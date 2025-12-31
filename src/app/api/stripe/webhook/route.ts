@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
+import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -23,43 +24,164 @@ export async function POST(req: Request) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        // TODO: Update user subscription in database
-        console.log('Checkout completed:', session.id);
+        const userId = session.client_reference_id;
+        const customerId = session.customer as string;
+        const subscriptionId = session.subscription as string;
+        const plan = session.metadata?.plan as 'pro' | 'team';
+
+        if (userId && customerId && subscriptionId) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              plan: plan || 'pro',
+              stripeCustomerId: customerId,
+              subscriptionId: subscriptionId,
+              subscriptionStatus: 'active',
+              // Clear trial dates when subscribing
+              trialStartedAt: null,
+              trialEndsAt: null,
+            },
+          });
+          console.log(`User ${userId} upgraded to ${plan}`);
+        }
         break;
       }
 
       case 'customer.subscription.created': {
         const subscription = event.data.object as Stripe.Subscription;
-        // TODO: Activate subscription for user
-        console.log('Subscription created:', subscription.id);
+        const customerId = subscription.customer as string;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+
+        if (user) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              subscriptionId: subscription.id,
+              subscriptionStatus: subscription.status as 'active' | 'past_due' | 'canceled',
+            },
+          });
+        }
         break;
       }
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        // TODO: Update subscription status
-        console.log('Subscription updated:', subscription.id);
+        const customerId = subscription.customer as string;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+
+        if (user) {
+          // Determine plan from price ID
+          const priceId = subscription.items.data[0]?.price.id;
+          let plan: 'pro' | 'team' = 'pro';
+
+          if (priceId?.includes('team')) {
+            plan = 'team';
+          }
+
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              plan: subscription.status === 'active' ? plan : 'free',
+              subscriptionStatus: subscription.status as 'active' | 'past_due' | 'canceled',
+            },
+          });
+        }
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        // TODO: Downgrade user to free plan
-        console.log('Subscription cancelled:', subscription.id);
+        const customerId = subscription.customer as string;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+
+        if (user) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              plan: 'free',
+              subscriptionId: null,
+              subscriptionStatus: 'canceled',
+            },
+          });
+
+          // Create audit log
+          await prisma.auditLog.create({
+            data: {
+              userId: user.id,
+              action: 'subscription.cancelled',
+              resource: 'subscription',
+              resourceId: subscription.id,
+            },
+          });
+        }
         break;
       }
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
-        // TODO: Record payment, send receipt email
-        console.log('Payment succeeded:', invoice.id);
+        const customerId = invoice.customer as string;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+
+        if (user) {
+          // Create audit log for payment
+          await prisma.auditLog.create({
+            data: {
+              userId: user.id,
+              action: 'payment.succeeded',
+              resource: 'invoice',
+              resourceId: invoice.id,
+              metadata: {
+                amount: invoice.amount_paid,
+                currency: invoice.currency,
+              },
+            },
+          });
+        }
         break;
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        // TODO: Notify user, retry logic
-        console.log('Payment failed:', invoice.id);
+        const customerId = invoice.customer as string;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+
+        if (user) {
+          // Update subscription status
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              subscriptionStatus: 'past_due',
+            },
+          });
+
+          // Create audit log
+          await prisma.auditLog.create({
+            data: {
+              userId: user.id,
+              action: 'payment.failed',
+              resource: 'invoice',
+              resourceId: invoice.id,
+            },
+          });
+
+          // TODO: Send payment failed email
+          console.log(`Payment failed for user ${user.email}`);
+        }
         break;
       }
 

@@ -1,0 +1,154 @@
+import { randomBytes, createHash } from 'crypto';
+import { prisma } from '@/lib/prisma';
+
+// Generate a new API key
+export function generateApiKey(): { key: string; hash: string; prefix: string } {
+  // Generate 32 random bytes -> 64 hex chars
+  const rawKey = randomBytes(32).toString('hex');
+
+  // Key format: ak_<prefix>_<rest>
+  const prefix = rawKey.substring(0, 8);
+  const key = `ak_${rawKey}`;
+
+  // Hash the key for storage
+  const hash = hashApiKey(key);
+
+  return { key, hash, prefix };
+}
+
+// Hash an API key for storage
+export function hashApiKey(key: string): string {
+  return createHash('sha256').update(key).digest('hex');
+}
+
+// Create a new API key for a user
+export async function createApiKey(userId: string, name: string): Promise<{
+  id: string;
+  key: string;
+  prefix: string;
+  name: string;
+  createdAt: Date;
+}> {
+  const { key, hash, prefix } = generateApiKey();
+
+  const apiKey = await prisma.apiKey.create({
+    data: {
+      userId,
+      name,
+      key: hash,
+      prefix,
+    },
+  });
+
+  // Return the raw key only once - it cannot be retrieved later
+  return {
+    id: apiKey.id,
+    key,
+    prefix: apiKey.prefix,
+    name: apiKey.name,
+    createdAt: apiKey.createdAt,
+  };
+}
+
+// Validate an API key and return the associated user
+export async function validateApiKey(key: string): Promise<{
+  valid: boolean;
+  userId?: string;
+  apiKeyId?: string;
+  error?: string;
+}> {
+  if (!key || !key.startsWith('ak_')) {
+    return { valid: false, error: 'Invalid API key format' };
+  }
+
+  const hash = hashApiKey(key);
+
+  const apiKey = await prisma.apiKey.findUnique({
+    where: { key: hash },
+    include: {
+      user: {
+        select: {
+          id: true,
+          plan: true,
+          trialEndsAt: true,
+        },
+      },
+    },
+  });
+
+  if (!apiKey) {
+    return { valid: false, error: 'Invalid API key' };
+  }
+
+  // Check if key is revoked
+  if (apiKey.revokedAt) {
+    return { valid: false, error: 'API key has been revoked' };
+  }
+
+  // Check if key is expired
+  if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
+    return { valid: false, error: 'API key has expired' };
+  }
+
+  // Check if user has API access
+  const plan = apiKey.user.plan;
+  const hasApiAccess = plan !== 'free';
+
+  // Check trial expiry
+  if (plan === 'trial' && apiKey.user.trialEndsAt && apiKey.user.trialEndsAt < new Date()) {
+    return { valid: false, error: 'Trial has expired. Please upgrade to continue using the API.' };
+  }
+
+  if (!hasApiAccess) {
+    return { valid: false, error: 'API access requires a Pro or Team subscription' };
+  }
+
+  // Update last used timestamp
+  await prisma.apiKey.update({
+    where: { id: apiKey.id },
+    data: { lastUsedAt: new Date() },
+  });
+
+  return {
+    valid: true,
+    userId: apiKey.userId,
+    apiKeyId: apiKey.id,
+  };
+}
+
+// List API keys for a user (without the actual key)
+export async function listApiKeys(userId: string) {
+  const keys = await prisma.apiKey.findMany({
+    where: {
+      userId,
+      revokedAt: null,
+    },
+    select: {
+      id: true,
+      name: true,
+      prefix: true,
+      lastUsedAt: true,
+      expiresAt: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return keys;
+}
+
+// Revoke an API key
+export async function revokeApiKey(userId: string, keyId: string): Promise<boolean> {
+  const result = await prisma.apiKey.updateMany({
+    where: {
+      id: keyId,
+      userId,
+      revokedAt: null,
+    },
+    data: {
+      revokedAt: new Date(),
+    },
+  });
+
+  return result.count > 0;
+}

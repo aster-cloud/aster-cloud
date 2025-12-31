@@ -1,0 +1,335 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// User model with subscription info
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  // Subscription
+  plan             Plan      @default(free)
+  stripeCustomerId String?   @unique
+  subscriptionId   String?   @unique
+  subscriptionStatus SubscriptionStatus?
+
+  // Trial
+  trialStartedAt DateTime?
+  trialEndsAt    DateTime?
+
+  // API Access
+  apiKeys        ApiKey[]
+
+  // Relations
+  accounts       Account[]
+  sessions       Session[]
+  policies       Policy[]
+  executions     Execution[]
+  usageRecords   UsageRecord[]
+  teams          TeamMember[]
+  ownedTeams     Team[]
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+enum Plan {
+  free
+  trial
+  pro
+  team
+  enterprise
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  incomplete
+  incomplete_expired
+  trialing
+  unpaid
+  paused
+}
+
+// API Keys for external access
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  key         String    @unique  // hashed
+  prefix      String               // first 8 chars for identification
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([prefix])
+}
+
+// Policy management
+model Policy {
+  id          String    @id @default(cuid())
+  userId      String
+  teamId      String?
+
+  name        String
+  description String?
+  content     String    @db.Text
+  version     Int       @default(1)
+  isPublic    Boolean   @default(false)
+  shareSlug   String?   @unique
+
+  // PII detection results
+  piiFields   Json?     // Array of detected PII fields
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  executions  Execution[]
+  versions    PolicyVersion[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([teamId])
+  @@index([shareSlug])
+}
+
+model PolicyVersion {
+  id        String   @id @default(cuid())
+  policyId  String
+  version   Int
+  content   String   @db.Text
+  comment   String?
+
+  policy    Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([policyId, version])
+  @@index([policyId])
+}
+
+// Policy execution tracking
+model Execution {
+  id          String   @id @default(cuid())
+  userId      String
+  policyId    String
+
+  input       Json
+  output      Json?
+  error       String?
+  durationMs  Int
+  success     Boolean
+
+  // API vs Dashboard
+  source      ExecutionSource @default(dashboard)
+  apiKeyId    String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy      Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([policyId])
+  @@index([createdAt])
+}
+
+enum ExecutionSource {
+  dashboard
+  api
+  playground
+}
+
+// Usage tracking for billing
+model UsageRecord {
+  id        String      @id @default(cuid())
+  userId    String
+  type      UsageType
+  count     Int         @default(1)
+  period    String      // Format: YYYY-MM (e.g., "2024-12")
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, type, period])
+  @@index([userId, period])
+}
+
+enum UsageType {
+  execution
+  pii_scan
+  compliance_report
+  api_call
+}
+
+// Team collaboration (Team plan)
+model Team {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  ownerId     String
+
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  policies    Policy[]
+  invitations TeamInvitation[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     TeamRole @default(member)
+
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+enum TeamRole {
+  owner
+  admin
+  member
+  viewer
+}
+
+model TeamInvitation {
+  id        String   @id @default(cuid())
+  teamId    String
+  email     String
+  role      TeamRole @default(member)
+  token     String   @unique
+  expiresAt DateTime
+
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([teamId])
+  @@index([email])
+  @@index([token])
+}
+
+// Compliance Reports
+model ComplianceReport {
+  id          String         @id @default(cuid())
+  userId      String
+  type        ComplianceType
+  title       String
+  status      ReportStatus   @default(generating)
+  data        Json?          // Report data
+  policyIds   String[]       // Policies included in report
+  period      String?        // e.g., "2024-Q4"
+
+  createdAt   DateTime       @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum ComplianceType {
+  gdpr
+  hipaa
+  soc2
+  pci_dss
+  custom
+}
+
+enum ReportStatus {
+  generating
+  completed
+  failed
+}
+
+// Audit Log for enterprise
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  teamId    String?
+  action    String
+  resource  String
+  resourceId String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([teamId])
+  @@index([createdAt])
+  @@index([action])
+}
