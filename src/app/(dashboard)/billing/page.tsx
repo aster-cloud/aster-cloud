@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
@@ -42,7 +42,7 @@ const PLANS = {
   },
 };
 
-export default function BillingPage() {
+function BillingContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly');
@@ -333,5 +333,13 @@ export default function BillingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse">Loading billing...</div>}>
+      <BillingContent />
+    </Suspense>
   );
 }

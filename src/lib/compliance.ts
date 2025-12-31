@@ -71,8 +71,11 @@ export async function generateComplianceReport(
       },
     });
 
+    // Define type for policy with includes
+    type PolicyWithIncludes = (typeof policies)[number];
+
     // Analyze policies
-    const policyInfos: PolicyInfo[] = policies.map((p) => ({
+    const policyInfos: PolicyInfo[] = policies.map((p: PolicyWithIncludes) => ({
       id: p.id,
       name: p.name,
       piiFields: (p.piiFields as string[]) || [],
@@ -82,17 +85,17 @@ export async function generateComplianceReport(
 
     // Aggregate PII fields
     const allPiiFields = new Set<string>();
-    policies.forEach((p) => {
-      ((p.piiFields as string[]) || []).forEach((field) => allPiiFields.add(field));
+    policies.forEach((p: PolicyWithIncludes) => {
+      ((p.piiFields as string[]) || []).forEach((field: string) => allPiiFields.add(field));
     });
 
     // Calculate compliance score
     const policiesWithPII = policies.filter(
-      (p) => p.piiFields && (p.piiFields as string[]).length > 0
+      (p: PolicyWithIncludes) => p.piiFields && (p.piiFields as string[]).length > 0
     ).length;
 
     const totalExecutions = policies.reduce(
-      (sum, p) => sum + p._count.executions,
+      (sum: number, p: PolicyWithIncludes) => sum + p._count.executions,
       0
     );
 
@@ -148,7 +151,7 @@ export async function generateComplianceReport(
       where: { id: report.id },
       data: {
         status: 'completed',
-        data,
+        data: data as object,
         completedAt: new Date(),
       },
     });

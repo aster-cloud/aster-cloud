@@ -71,8 +71,8 @@ export async function POST(req: Request, { params }: RouteParams) {
       data: {
         userId: session.user.id,
         policyId: id,
-        input,
-        output: output.result,
+        input: input as object,
+        output: output.result ? (output.result as object) : undefined,
         error: output.error,
         durationMs,
         success: !output.error,

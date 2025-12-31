@@ -1,12 +1,26 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
+// Lazy initialization to avoid build-time errors
+let stripeInstance: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (!stripeInstance) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-11-17.clover',
+      typescript: true,
+    });
+  }
+  return stripeInstance;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-11-17.clover',
-  typescript: true,
+// For backwards compatibility - lazy getter
+export const stripe = new Proxy({} as Stripe, {
+  get(_, prop) {
+    return getStripe()[prop as keyof Stripe];
+  },
 });
 
 // Price IDs for subscription plans

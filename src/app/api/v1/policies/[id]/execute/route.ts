@@ -77,8 +77,8 @@ export async function POST(req: Request, { params }: RouteParams) {
       data: {
         userId: validation.userId!,
         policyId: id,
-        input,
-        output: output.result,
+        input: input as object,
+        output: output.result ? (output.result as object) : undefined,
         error: output.error,
         durationMs,
         success: !output.error,
