@@ -3,9 +3,19 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import GitHubProvider from 'next-auth/providers/github';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { sendWelcomeEmail } from '@/lib/resend';
 import type { Adapter } from 'next-auth/adapters';
+
+// Password hashing utilities
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
+}
+
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword);
+}
 
 const TRIAL_DAYS = parseInt(process.env.NEXT_PUBLIC_TRIAL_DAYS || '14', 10);
 
@@ -20,7 +30,7 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    // Email/password for development and testing
+    // Email/password authentication
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -32,21 +42,39 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // For demo/testing purposes - in production, use proper password hashing
+        // Find user with password hash
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            image: true,
+            passwordHash: true,
+          },
         });
 
-        if (user) {
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            image: user.image,
-          };
+        // User not found or no password set (OAuth-only user)
+        if (!user || !user.passwordHash) {
+          return null;
         }
 
-        return null;
+        // Verify password using bcrypt
+        const isValidPassword = await verifyPassword(
+          credentials.password,
+          user.passwordHash
+        );
+
+        if (!isValidPassword) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        };
       },
     }),
   ],

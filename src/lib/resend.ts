@@ -9,17 +9,32 @@ export const resend = process.env.RESEND_API_KEY
   : null;
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@aster-lang.cloud';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://aster-lang.cloud';
+
+// Escape HTML to prevent XSS attacks
+function escapeHtml(text: string): string {
+  const htmlEscapes: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (char) => htmlEscapes[char]);
+}
 
 // Email templates
 export async function sendWelcomeEmail(email: string, name: string) {
   if (!resend) return;
+
+  const safeName = escapeHtml(name);
 
   await resend.emails.send({
     from: `Aster Cloud <${FROM_EMAIL}>`,
     to: email,
     subject: 'Welcome to Aster Cloud!',
     html: `
-      <h1>Welcome to Aster Cloud, ${name}!</h1>
+      <h1>Welcome to Aster Cloud, ${safeName}!</h1>
       <p>Your 14-day Pro trial has started.</p>
       <p>Start building policies with:</p>
       <ul>
@@ -27,7 +42,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
         <li>Advanced PII detection</li>
         <li>Compliance reports</li>
       </ul>
-      <p><a href="https://aster-lang.cloud/dashboard">Go to Dashboard</a></p>
+      <p><a href="${APP_URL}/dashboard">Go to Dashboard</a></p>
     `,
   });
 }
@@ -39,12 +54,14 @@ export async function sendTrialExpiringEmail(
 ) {
   if (!resend) return;
 
+  const safeName = escapeHtml(name);
+
   await resend.emails.send({
     from: `Aster Cloud <${FROM_EMAIL}>`,
     to: email,
     subject: `Your Pro trial ends in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
     html: `
-      <h1>Hi ${name},</h1>
+      <h1>Hi ${safeName},</h1>
       <p>Your Pro trial ends in <strong>${daysLeft} day${daysLeft > 1 ? 's' : ''}</strong>.</p>
       <p>After your trial, you'll lose access to:</p>
       <ul>
@@ -53,7 +70,7 @@ export async function sendTrialExpiringEmail(
         <li>Compliance reports</li>
         <li>API access</li>
       </ul>
-      <p><a href="https://aster-lang.cloud/billing">Upgrade Now</a></p>
+      <p><a href="${APP_URL}/billing">Upgrade Now</a></p>
     `,
   });
 }
@@ -61,15 +78,17 @@ export async function sendTrialExpiringEmail(
 export async function sendTrialEndedEmail(email: string, name: string) {
   if (!resend) return;
 
+  const safeName = escapeHtml(name);
+
   await resend.emails.send({
     from: `Aster Cloud <${FROM_EMAIL}>`,
     to: email,
     subject: 'Your Pro trial has ended',
     html: `
-      <h1>Hi ${name},</h1>
+      <h1>Hi ${safeName},</h1>
       <p>Your Pro trial has ended and your account has been downgraded to Free.</p>
       <p>You can still use Aster Cloud with limited features, or upgrade anytime.</p>
-      <p><a href="https://aster-lang.cloud/billing">View Plans</a></p>
+      <p><a href="${APP_URL}/billing">View Plans</a></p>
     `,
   });
 }
