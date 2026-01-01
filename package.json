@@ -36,8 +36,6 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
-    "@types/bcryptjs": "^3.0.0",
-    "@types/mixpanel-browser": "^2.66.0",
     "@types/node": "^24.10.4",
     "@types/pg": "^8.15.5",
     "@types/react": "^19.1.9",
