@@ -223,7 +223,8 @@ export async function hasFeatureAccess(
     });
   }
 
-  const value = getPlanConfig(effectivePlan).capabilities[feature];
+  const capabilities = getPlanConfig(effectivePlan).capabilities as PlanCapabilities;
+  const value = capabilities[feature];
 
   if (typeof value === 'boolean') {
     return value;
