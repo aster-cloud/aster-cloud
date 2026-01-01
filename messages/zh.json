@@ -1,0 +1,92 @@
+{
+  "common": {
+    "signIn": "登录",
+    "signUp": "注册",
+    "startFreeTrial": "开始免费试用",
+    "getStarted": "开始使用",
+    "viewDemo": "观看演示",
+    "contactSales": "联系销售",
+    "learnMore": "了解更多"
+  },
+  "nav": {
+    "brand": "Aster Cloud"
+  },
+  "hero": {
+    "title": "策略管理",
+    "titleHighlight": "化繁为简",
+    "description": "创建、测试和部署业务策略，内置PII保护、合规监控和团队协作功能。开始14天免费试用。",
+    "noCreditCard": "无需信用卡。14天免费试用。"
+  },
+  "features": {
+    "title": "策略管理所需的一切",
+    "piiProtection": {
+      "title": "PII 保护",
+      "description": "自动检测和保护策略中的个人身份信息。"
+    },
+    "complianceReports": {
+      "title": "合规报告",
+      "description": "一键生成 GDPR、HIPAA、SOC2 和 PCI-DSS 合规报告。"
+    },
+    "teamCollaboration": {
+      "title": "团队协作",
+      "description": "共享策略、管理权限，与团队实时协作。"
+    },
+    "realTimeExecution": {
+      "title": "实时执行",
+      "description": "即时测试和执行策略，获得详细结果和审计记录。"
+    },
+    "apiAccess": {
+      "title": "API 访问",
+      "description": "通过 RESTful API 和 SDK 将策略集成到您的应用程序中。"
+    },
+    "versionHistory": {
+      "title": "版本历史",
+      "description": "跟踪更改、回滚到之前版本，保持完整的审计日志。"
+    }
+  },
+  "pricing": {
+    "title": "简单透明的定价",
+    "subtitle": "免费开始，按需升级",
+    "perMonth": "/月",
+    "perUser": "/用户",
+    "minUsers": "最少 {count} 用户",
+    "free": {
+      "name": "免费版",
+      "features": {
+        "executions": "每月 100 次执行",
+        "policies": "3 个已保存策略",
+        "pii": "基础 PII 检测"
+      }
+    },
+    "pro": {
+      "name": "专业版",
+      "badge": "最受欢迎",
+      "features": {
+        "executions": "无限次执行",
+        "policies": "无限策略",
+        "compliance": "合规报告",
+        "api": "API 访问"
+      }
+    },
+    "team": {
+      "name": "团队版",
+      "features": {
+        "everything": "包含专业版所有功能",
+        "collaboration": "团队协作",
+        "rbac": "基于角色的访问控制",
+        "sso": "单点登录 (即将推出)"
+      }
+    }
+  },
+  "cta": {
+    "title": "准备好简化您的策略管理了吗？",
+    "description": "加入数千家使用 Aster Cloud 管理业务策略的公司。"
+  },
+  "footer": {
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "documentation": "文档",
+    "support": "支持",
+    "copyright": "版权所有。"
+  }
+}

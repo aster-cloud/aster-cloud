@@ -1,0 +1,92 @@
+{
+  "common": {
+    "signIn": "Sign in",
+    "signUp": "Sign Up",
+    "startFreeTrial": "Start Free Trial",
+    "getStarted": "Get Started",
+    "viewDemo": "View Demo",
+    "contactSales": "Contact Sales",
+    "learnMore": "Learn More"
+  },
+  "nav": {
+    "brand": "Aster Cloud"
+  },
+  "hero": {
+    "title": "Policy Management",
+    "titleHighlight": "Made Simple",
+    "description": "Create, test, and deploy business policies with built-in PII protection, compliance monitoring, and team collaboration. Start your 14-day free trial.",
+    "noCreditCard": "No credit card required. 14-day free trial."
+  },
+  "features": {
+    "title": "Everything you need for policy management",
+    "piiProtection": {
+      "title": "PII Protection",
+      "description": "Automatic detection and protection of personally identifiable information in your policies."
+    },
+    "complianceReports": {
+      "title": "Compliance Reports",
+      "description": "Generate GDPR, HIPAA, SOC2, and PCI-DSS compliance reports with a single click."
+    },
+    "teamCollaboration": {
+      "title": "Team Collaboration",
+      "description": "Share policies, manage permissions, and collaborate with your team in real-time."
+    },
+    "realTimeExecution": {
+      "title": "Real-time Execution",
+      "description": "Test and execute policies instantly with detailed results and audit trails."
+    },
+    "apiAccess": {
+      "title": "API Access",
+      "description": "Integrate policies into your applications with our RESTful API and SDKs."
+    },
+    "versionHistory": {
+      "title": "Version History",
+      "description": "Track changes, rollback to previous versions, and maintain a complete audit log."
+    }
+  },
+  "pricing": {
+    "title": "Simple, transparent pricing",
+    "subtitle": "Start free, upgrade when you need more",
+    "perMonth": "/month",
+    "perUser": "/user",
+    "minUsers": "min {count} users",
+    "free": {
+      "name": "Free",
+      "features": {
+        "executions": "100 executions/month",
+        "policies": "3 saved policies",
+        "pii": "Basic PII detection"
+      }
+    },
+    "pro": {
+      "name": "Pro",
+      "badge": "Most Popular",
+      "features": {
+        "executions": "Unlimited executions",
+        "policies": "Unlimited policies",
+        "compliance": "Compliance reports",
+        "api": "API access"
+      }
+    },
+    "team": {
+      "name": "Team",
+      "features": {
+        "everything": "Everything in Pro",
+        "collaboration": "Team collaboration",
+        "rbac": "Role-based access",
+        "sso": "SSO (coming soon)"
+      }
+    }
+  },
+  "cta": {
+    "title": "Ready to simplify your policy management?",
+    "description": "Join thousands of companies using Aster Cloud to manage their business policies."
+  },
+  "footer": {
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "documentation": "Documentation",
+    "support": "Support",
+    "copyright": "All rights reserved."
+  }
+}

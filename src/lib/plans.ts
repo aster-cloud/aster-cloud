@@ -1,6 +1,41 @@
 // src/lib/plans.ts
 // 单一真相源：集中管理订阅计划的展示、配额与价格配置
 
+// ==================== 货币配置 ====================
+export const CURRENCY_CONFIG = {
+  USD: { symbol: '$', code: 'USD', locale: 'en-US' },
+  CNY: { symbol: '¥', code: 'CNY', locale: 'zh-CN' },
+  EUR: { symbol: '€', code: 'EUR', locale: 'de-DE' },
+} as const;
+
+export type CurrencyCode = keyof typeof CURRENCY_CONFIG;
+
+// 语言到默认货币的映射
+export const LOCALE_CURRENCY_MAP: Record<string, CurrencyCode> = {
+  en: 'USD',
+  zh: 'CNY',
+  de: 'EUR',
+  fr: 'EUR',
+};
+
+// 多币种价格配置
+export const PLAN_PRICES = {
+  pro: {
+    USD: { monthly: 29, yearly: 290 },
+    CNY: { monthly: 199, yearly: 1990 },
+    EUR: { monthly: 27, yearly: 270 },
+  },
+  team: {
+    minUsers: 3,
+    perUser: {
+      USD: { monthly: 35, yearly: 350 },
+      CNY: { monthly: 239, yearly: 2390 },
+      EUR: { monthly: 30, yearly: 300 },
+    },
+  },
+} as const;
+
+// ==================== 类型定义 ====================
 type BillingPrice = {
   monthly: number | null;
   yearly: number | null;
@@ -184,4 +219,54 @@ export function hasCapability(plan: PlanType, capability: keyof PlanCapabilities
 export function getPlanStripePriceId(plan: PlanType, interval: BillingInterval) {
   const ids = PLANS[plan].stripePriceId;
   return ids ? ids[interval] ?? null : null;
+}
+
+// ==================== 多币种价格函数 ====================
+
+/**
+ * 根据语言获取默认货币
+ */
+export function getCurrencyForLocale(locale: string): CurrencyCode {
+  return LOCALE_CURRENCY_MAP[locale] || 'USD';
+}
+
+/**
+ * 格式化价格显示
+ */
+export function formatPrice(amount: number, currency: CurrencyCode): string {
+  const config = CURRENCY_CONFIG[currency];
+  return new Intl.NumberFormat(config.locale, {
+    style: 'currency',
+    currency: config.code,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
+ * 获取 Pro 计划的价格
+ */
+export function getProPrice(currency: CurrencyCode, interval: BillingInterval): number {
+  return PLAN_PRICES.pro[currency][interval];
+}
+
+/**
+ * 获取 Team 计划的单用户价格
+ */
+export function getTeamPerUserPrice(currency: CurrencyCode, interval: BillingInterval): number {
+  return PLAN_PRICES.team.perUser[currency][interval];
+}
+
+/**
+ * 获取 Team 计划的最少用户数
+ */
+export function getTeamMinUsers(): number {
+  return PLAN_PRICES.team.minUsers;
+}
+
+/**
+ * 获取 Team 计划的起始价格（最少用户数 * 单用户价格）
+ */
+export function getTeamStartingPrice(currency: CurrencyCode, interval: BillingInterval): number {
+  return PLAN_PRICES.team.minUsers * PLAN_PRICES.team.perUser[currency][interval];
 }
