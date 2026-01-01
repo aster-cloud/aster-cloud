@@ -35,6 +35,39 @@ export const PLAN_PRICES = {
   },
 } as const;
 
+// 多币种 Stripe 价格 ID 配置
+// 环境变量命名规则：NEXT_PUBLIC_STRIPE_{PLAN}_{INTERVAL}_{CURRENCY}_PRICE_ID
+export const STRIPE_PRICE_IDS: Record<string, Record<CurrencyCode, { monthly: string | undefined; yearly: string | undefined }>> = {
+  pro: {
+    USD: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID,
+    },
+    CNY: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_CNY_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_CNY_PRICE_ID,
+    },
+    EUR: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_EUR_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_EUR_PRICE_ID,
+    },
+  },
+  team: {
+    USD: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_TEAM_YEARLY_PRICE_ID,
+    },
+    CNY: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_CNY_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_TEAM_YEARLY_CNY_PRICE_ID,
+    },
+    EUR: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_EUR_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_TEAM_YEARLY_EUR_PRICE_ID,
+    },
+  },
+};
+
 // ==================== 类型定义 ====================
 type BillingPrice = {
   monthly: number | null;
@@ -118,7 +151,7 @@ export const PLANS = {
       apiAccess: true,
       teamFeatures: false,
     },
-    price: { monthly: 29, yearly: 290 },
+    price: PLAN_PRICES.pro.USD,
     stripePriceId: {
       monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
       yearly: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID,
@@ -143,7 +176,10 @@ export const PLANS = {
       sso: true,
       auditLogs: true,
     },
-    price: { monthly: 99, yearly: 990 },
+    price: {
+      monthly: PLAN_PRICES.team.minUsers * PLAN_PRICES.team.perUser.USD.monthly,
+      yearly: PLAN_PRICES.team.minUsers * PLAN_PRICES.team.perUser.USD.yearly,
+    },
     stripePriceId: {
       monthly: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID,
       yearly: process.env.NEXT_PUBLIC_STRIPE_TEAM_YEARLY_PRICE_ID,
@@ -191,6 +227,30 @@ export type PlanConfig = (typeof PLANS)[PlanType];
 export type PlanLimitType = keyof PlanConfig['limits'];
 export type BillingInterval = keyof PlanConfig['price'];
 
+/**
+ * 根据计划与币种返回价格，确保单一真相源
+ */
+export function getPlanPrice(plan: PlanType, currency: CurrencyCode = 'USD'): BillingPrice {
+  switch (plan) {
+    case 'pro':
+      return PLAN_PRICES.pro[currency];
+    case 'team': {
+      const perUser = PLAN_PRICES.team.perUser[currency];
+      const minUsers = PLAN_PRICES.team.minUsers;
+      return {
+        monthly: perUser.monthly * minUsers,
+        yearly: perUser.yearly * minUsers,
+      };
+    }
+    case 'free':
+    case 'trial':
+      return { monthly: 0, yearly: 0 };
+    case 'enterprise':
+    default:
+      return { monthly: null, yearly: null };
+  }
+}
+
 export function getPlanConfig(plan: PlanType): PlanConfig {
   return PLANS[plan];
 }
@@ -216,9 +276,36 @@ export function hasCapability(plan: PlanType, capability: keyof PlanCapabilities
   return Boolean(capabilities[capability]);
 }
 
-export function getPlanStripePriceId(plan: PlanType, interval: BillingInterval) {
-  const ids = PLANS[plan].stripePriceId;
-  return ids ? ids[interval] ?? null : null;
+/**
+ * 获取计划的 Stripe 价格 ID（支持多币种）
+ * @param plan 计划类型
+ * @param interval 计费周期
+ * @param currency 货币代码（默认 USD）
+ */
+export function getPlanStripePriceId(
+  plan: PlanType,
+  interval: BillingInterval,
+  currency: CurrencyCode = 'USD'
+): string | null {
+  // 检查是否有多币种价格 ID 配置
+  const currencyPriceIds = STRIPE_PRICE_IDS[plan]?.[currency];
+  if (currencyPriceIds) {
+    const priceId = currencyPriceIds[interval];
+    if (priceId) return priceId;
+  }
+
+  // 回退到 USD 价格 ID（如果当前货币未配置）
+  if (currency !== 'USD') {
+    const usdPriceIds = STRIPE_PRICE_IDS[plan]?.USD;
+    if (usdPriceIds) {
+      const usdPriceId = usdPriceIds[interval];
+      if (usdPriceId) return usdPriceId;
+    }
+  }
+
+  // 最后回退到 PLANS 中的旧配置（兼容性）
+  const legacyIds = PLANS[plan].stripePriceId;
+  return legacyIds ? legacyIds[interval] ?? null : null;
 }
 
 // ==================== 多币种价格函数 ====================

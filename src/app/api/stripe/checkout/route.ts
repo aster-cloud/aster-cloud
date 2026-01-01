@@ -2,13 +2,25 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { stripe } from '@/lib/stripe';
-import { getPlanStripePriceId, type PlanType, type BillingInterval } from '@/lib/plans';
+import {
+  CurrencyCode,
+  CURRENCY_CONFIG,
+  getPlanStripePriceId,
+  type PlanType,
+  type BillingInterval,
+} from '@/lib/plans';
+
+// 验证货币代码
+function isValidCurrency(currency: unknown): currency is CurrencyCode {
+  return typeof currency === 'string' && currency in CURRENCY_CONFIG;
+}
 
 export async function POST(req: Request) {
   try {
-    const { plan, interval } = (await req.json()) as {
+    const { plan, interval, currency: rawCurrency } = (await req.json()) as {
       plan: PlanType;
       interval: BillingInterval;
+      currency?: string;
     };
 
     if (!plan || !interval) {
@@ -17,6 +29,9 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    // 验证并默认货币为 USD
+    const currency: CurrencyCode = isValidCurrency(rawCurrency) ? rawCurrency : 'USD';
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || !session.user?.email) {
@@ -36,10 +51,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const priceId = getPlanStripePriceId(plan, interval);
+    const priceId = getPlanStripePriceId(plan, interval, currency);
     if (!priceId) {
       return NextResponse.json(
-        { error: 'Invalid plan or interval' },
+        { error: 'Invalid plan, interval, or currency configuration' },
         { status: 400 }
       );
     }
@@ -49,6 +64,8 @@ export async function POST(req: Request) {
       email,
       plan,
       interval,
+      currency,
+      priceId,
       ts: new Date().toISOString(),
     });
 
@@ -69,6 +86,7 @@ export async function POST(req: Request) {
         userId,
         plan,
         interval,
+        currency,
       },
     });
 

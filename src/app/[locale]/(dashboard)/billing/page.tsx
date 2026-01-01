@@ -3,9 +3,13 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   BillingInterval,
+  CurrencyCode,
+  formatPrice,
+  getCurrencyForLocale,
+  getPlanPrice,
   getPlanStripePriceId,
   isUnlimited,
   PLANS,
@@ -16,6 +20,8 @@ const DISPLAY_PLANS = (Object.keys(PLANS) as PlanType[]).filter((plan) => plan !
 
 function BillingContent() {
   const t = useTranslations('billing');
+  const locale = useLocale();
+  const currency = getCurrencyForLocale(locale) as CurrencyCode;
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [interval, setInterval] = useState<BillingInterval>('monthly');
@@ -56,7 +62,7 @@ function BillingContent() {
 
     setIsLoading(plan);
 
-    if (!getPlanStripePriceId(plan, interval)) {
+    if (!getPlanStripePriceId(plan, interval, currency)) {
       setMessage({
         type: 'error',
         text: 'Selected plan is not available for checkout. Please contact support.',
@@ -72,8 +78,7 @@ function BillingContent() {
         body: JSON.stringify({
           plan,
           interval,
-          userId: session.user.id,
-          email: session.user.email,
+          currency,
         }),
       });
 
@@ -202,9 +207,9 @@ function BillingContent() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {DISPLAY_PLANS.map((planKey) => {
           const plan = PLANS[planKey];
-          const priceValue = plan.price[interval];
+          const priceValue = getPlanPrice(planKey, currency)[interval];
           const isCurrentPlan = currentPlan === planKey;
-          const canCheckout = Boolean(getPlanStripePriceId(planKey, interval));
+          const canCheckout = Boolean(getPlanStripePriceId(planKey, interval, currency));
           const isFeatured = planKey === 'pro';
           const showInterval = typeof priceValue === 'number' && priceValue > 0;
 
@@ -228,12 +233,14 @@ function BillingContent() {
 
               <div className="mt-4 flex items-baseline">
                 {priceValue === null ? (
-                  <span className="text-2xl font-semibold text-gray-700">Contact sales</span>
+                  <span className="text-2xl font-semibold text-gray-700">{t('contactSales')}</span>
                 ) : (
                   <>
-                    <span className="text-4xl font-bold text-gray-900">${priceValue}</span>
+                    <span className="text-4xl font-bold text-gray-900">
+                      {formatPrice(priceValue, currency)}
+                    </span>
                     {showInterval && (
-                      <span className="ml-1 text-gray-500">/{interval === 'yearly' ? 'year' : 'month'}</span>
+                      <span className="ml-1 text-gray-500">/{interval === 'yearly' ? t('year') : t('month')}</span>
                     )}
                   </>
                 )}
