@@ -165,7 +165,7 @@ export function getPlanLimit(plan: PlanType, limitType: PlanLimitType): number {
 }
 
 export function hasFeature(plan: PlanType, feature: string): boolean {
-  return PLANS[plan].features.includes(feature);
+  return (PLANS[plan].features as readonly string[]).includes(feature);
 }
 
 export function isUnlimited(limit: number): boolean {
