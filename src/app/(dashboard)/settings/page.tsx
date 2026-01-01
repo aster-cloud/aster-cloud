@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -19,6 +20,26 @@ export default function SettingsPage() {
         <p className="mt-1 text-sm text-gray-500">
           Manage your account settings and preferences.
         </p>
+      </div>
+
+      {/* API Keys Section */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium leading-6 text-gray-900">API Keys</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage API keys for programmatic access to Aster Cloud.
+              </p>
+            </div>
+            <Link
+              href="/settings/api-keys"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Manage Keys
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Profile Section */}
