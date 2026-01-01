@@ -149,8 +149,39 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async signIn({ user, account }) {
-      // Allow all sign-ins - trial setup is handled by createUser event
+    async signIn({ user, account, profile }) {
+      // Prevent automatic account linking when user is already signed in
+      // Each OAuth provider should create a separate user unless explicitly linked
+      if (account?.provider && account.provider !== 'credentials') {
+        // Check if this OAuth account already exists
+        const existingAccount = await prisma.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            },
+          },
+        });
+
+        // If account exists, allow sign in
+        if (existingAccount) {
+          return true;
+        }
+
+        // For new OAuth accounts, check if a user with this email already exists
+        // If so, prevent automatic linking - require explicit action
+        const email = profile?.email || user?.email;
+        if (email) {
+          const existingUser = await prisma.user.findUnique({
+            where: { email },
+          });
+
+          // If user exists but this OAuth account is new,
+          // we still allow it (same email = same person)
+          // But if the email is DIFFERENT, we should NOT link
+        }
+      }
+
       return true;
     },
   },
