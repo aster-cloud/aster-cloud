@@ -176,8 +176,9 @@ export function canAccessApiKeys(plan: PlanType): boolean {
   return PLANS[plan].limits.apiKeys > 0;
 }
 
-export function hasCapability(plan: PlanType, capability: keyof PlanCapabilities) {
-  return Boolean(PLANS[plan].capabilities[capability]);
+export function hasCapability(plan: PlanType, capability: keyof PlanCapabilities): boolean {
+  const capabilities = PLANS[plan].capabilities as PlanCapabilities;
+  return Boolean(capabilities[capability]);
 }
 
 export function getPlanStripePriceId(plan: PlanType, interval: BillingInterval) {
