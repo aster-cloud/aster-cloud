@@ -92,3 +92,25 @@ export async function sendTrialEndedEmail(email: string, name: string) {
     `,
   });
 }
+
+export async function sendPasswordResetEmail(email: string, token: string) {
+  if (!resend) {
+    console.log(`Password reset link: ${APP_URL}/reset-password?token=${token}`);
+    return;
+  }
+
+  const resetLink = `${APP_URL}/reset-password?token=${token}`;
+
+  await resend.emails.send({
+    from: `Aster Cloud <${FROM_EMAIL}>`,
+    to: email,
+    subject: 'Reset your password',
+    html: `
+      <h1>Reset your password</h1>
+      <p>You requested a password reset for your Aster Cloud account.</p>
+      <p>Click the link below to reset your password. This link expires in 1 hour.</p>
+      <p><a href="${resetLink}">Reset Password</a></p>
+      <p>If you didn't request this, you can safely ignore this email.</p>
+    `,
+  });
+}
