@@ -3,8 +3,12 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 function ResetPasswordContent() {
+  const t = useTranslations('auth.resetPassword');
+  const tForgot = useTranslations('auth.forgotPassword');
+  const tNav = useTranslations('nav');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,12 +28,12 @@ function ResetPasswordContent() {
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('passwordMismatch'));
       return;
     }
 
     if (!token) {
-      setError('Invalid or missing reset token');
+      setError(t('invalidToken'));
       return;
     }
 
@@ -66,16 +70,16 @@ function ResetPasswordContent() {
         <div className="max-w-md w-full space-y-8">
           <div>
             <Link href="/" className="flex justify-center">
-              <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+              <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
             </Link>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Invalid Reset Link
+              {t('invalidToken')}
             </h2>
           </div>
 
           <div className="rounded-md bg-red-50 p-4">
             <p className="text-sm text-red-700">
-              This password reset link is invalid or has expired.
+              {t('invalidToken')}
             </p>
           </div>
 
@@ -84,7 +88,7 @@ function ResetPasswordContent() {
               href="/forgot-password"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              Request a new reset link
+              {tForgot('sendResetLink')}
             </Link>
           </div>
         </div>
@@ -98,13 +102,13 @@ function ResetPasswordContent() {
         <div className="max-w-md w-full space-y-8">
           <div>
             <Link href="/" className="flex justify-center">
-              <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+              <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
             </Link>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Password Reset!
+              {t('successTitle')}
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              Your password has been successfully reset. Redirecting to login...
+              {t('successMessage')}
             </p>
           </div>
 
@@ -117,7 +121,7 @@ function ResetPasswordContent() {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-green-800">
-                  Password successfully updated!
+                  {t('successMessage')}
                 </p>
               </div>
             </div>
@@ -128,7 +132,7 @@ function ResetPasswordContent() {
               href="/login"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              Sign in now
+              {t('signIn')}
             </Link>
           </div>
         </div>
@@ -141,13 +145,13 @@ function ResetPasswordContent() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+            <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
           </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Set new password
+            {t('title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your new password below.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -161,7 +165,7 @@ function ResetPasswordContent() {
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="password" className="sr-only">
-                New password
+                {t('newPassword')}
               </label>
               <input
                 id="password"
@@ -172,12 +176,12 @@ function ResetPasswordContent() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="New password"
+                placeholder={t('newPassword')}
               />
             </div>
             <div>
               <label htmlFor="confirmPassword" className="sr-only">
-                Confirm new password
+                {t('confirmPassword')}
               </label>
               <input
                 id="confirmPassword"
@@ -188,7 +192,7 @@ function ResetPasswordContent() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Confirm new password"
+                placeholder={t('confirmPassword')}
               />
             </div>
           </div>
@@ -199,7 +203,7 @@ function ResetPasswordContent() {
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isLoading ? 'Resetting...' : 'Reset password'}
+              {isLoading ? t('resetting') : t('resetPassword')}
             </button>
           </div>
 
@@ -208,7 +212,7 @@ function ResetPasswordContent() {
               href="/login"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              Back to sign in
+              {t('signIn')}
             </Link>
           </div>
         </form>

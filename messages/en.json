@@ -88,5 +88,63 @@
     "documentation": "Documentation",
     "support": "Support",
     "copyright": "All rights reserved."
+  },
+  "auth": {
+    "signup": {
+      "title": "Start your free trial",
+      "subtitle": "14 days of Pro features, no credit card required",
+      "trialIncludes": "Your trial includes:",
+      "trialFeatures": {
+        "executions": "Unlimited policy executions",
+        "pii": "Advanced PII detection",
+        "compliance": "Compliance reports",
+        "api": "API access",
+        "support": "Priority support"
+      },
+      "continueWithGithub": "Continue with GitHub",
+      "continueWithGoogle": "Continue with Google",
+      "termsAgreement": "By signing up, you agree to our",
+      "termsOfService": "Terms of Service",
+      "and": "and",
+      "privacyPolicy": "Privacy Policy",
+      "alreadyHaveAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "login": {
+      "title": "Sign in to your account",
+      "subtitle": "Welcome back! Please sign in to continue.",
+      "continueWithGithub": "Continue with GitHub",
+      "continueWithGoogle": "Continue with Google",
+      "orContinueWith": "Or continue with",
+      "email": "Email address",
+      "password": "Password",
+      "forgotPassword": "Forgot your password?",
+      "signIn": "Sign in",
+      "noAccount": "Don't have an account?",
+      "startTrial": "Start free trial"
+    },
+    "forgotPassword": {
+      "title": "Reset your password",
+      "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+      "email": "Email address",
+      "sendResetLink": "Send reset link",
+      "sending": "Sending...",
+      "successTitle": "Check your email",
+      "successMessage": "If an account exists with that email, we've sent a password reset link.",
+      "backToLogin": "Back to login"
+    },
+    "resetPassword": {
+      "title": "Set new password",
+      "subtitle": "Enter your new password below.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "resetPassword": "Reset password",
+      "resetting": "Resetting...",
+      "invalidToken": "Invalid or expired reset token",
+      "passwordMismatch": "Passwords do not match",
+      "successTitle": "Password reset successful",
+      "successMessage": "Your password has been reset. You can now sign in with your new password.",
+      "signIn": "Sign in"
+    }
   }
 }

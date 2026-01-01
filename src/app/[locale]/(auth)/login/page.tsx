@@ -4,8 +4,11 @@ import { useState, Suspense } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 function LoginContent() {
+  const t = useTranslations('auth.login');
+  const tNav = useTranslations('nav');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -49,15 +52,15 @@ function LoginContent() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+            <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
           </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            {t('title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
+            {t('noAccount')}{' '}
             <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
-              start your 14-day free trial
+              {t('startTrial')}
             </Link>
           </p>
         </div>
@@ -122,7 +125,7 @@ function LoginContent() {
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+              <span className="px-2 bg-gray-50 text-gray-500">{t('orContinueWith')}</span>
             </div>
           </div>
 
@@ -131,7 +134,7 @@ function LoginContent() {
             <div className="rounded-md shadow-sm -space-y-px">
               <div>
                 <label htmlFor="email" className="sr-only">
-                  Email address
+                  {t('email')}
                 </label>
                 <input
                   id="email"
@@ -142,12 +145,12 @@ function LoginContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Email address"
+                  placeholder={t('email')}
                 />
               </div>
               <div>
                 <label htmlFor="password" className="sr-only">
-                  Password
+                  {t('password')}
                 </label>
                 <input
                   id="password"
@@ -158,27 +161,15 @@ function LoginContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Password"
+                  placeholder={t('password')}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
-              </div>
-
+            <div className="flex items-center justify-end">
               <div className="text-sm">
                 <Link href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
-                  Forgot your password?
+                  {t('forgotPassword')}
                 </Link>
               </div>
             </div>
@@ -189,7 +180,7 @@ function LoginContent() {
                 disabled={isLoading}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? '...' : t('signIn')}
               </button>
             </div>
           </form>

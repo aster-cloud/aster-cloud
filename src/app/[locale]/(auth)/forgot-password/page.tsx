@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth.forgotPassword');
+  const tNav = useTranslations('nav');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -42,13 +45,13 @@ export default function ForgotPasswordPage() {
         <div className="max-w-md w-full space-y-8">
           <div>
             <Link href="/" className="flex justify-center">
-              <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+              <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
             </Link>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Check your email
+              {t('successTitle')}
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              If an account exists for {email}, you will receive a password reset link shortly.
+              {t('successMessage')}
             </p>
           </div>
 
@@ -61,7 +64,7 @@ export default function ForgotPasswordPage() {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-green-800">
-                  Password reset email sent!
+                  {t('successMessage')}
                 </p>
               </div>
             </div>
@@ -72,7 +75,7 @@ export default function ForgotPasswordPage() {
               href="/login"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              Back to sign in
+              {t('backToLogin')}
             </Link>
           </div>
         </div>
@@ -85,13 +88,13 @@ export default function ForgotPasswordPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+            <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
           </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Reset your password
+            {t('title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email address and we&apos;ll send you a link to reset your password.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -104,7 +107,7 @@ export default function ForgotPasswordPage() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="sr-only">
-              Email address
+              {t('email')}
             </label>
             <input
               id="email"
@@ -115,7 +118,7 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-              placeholder="Email address"
+              placeholder={t('email')}
             />
           </div>
 
@@ -125,7 +128,7 @@ export default function ForgotPasswordPage() {
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isLoading ? 'Sending...' : 'Send reset link'}
+              {isLoading ? t('sending') : t('sendResetLink')}
             </button>
           </div>
 
@@ -134,7 +137,7 @@ export default function ForgotPasswordPage() {
               href="/login"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              Back to sign in
+              {t('backToLogin')}
             </Link>
           </div>
         </form>
