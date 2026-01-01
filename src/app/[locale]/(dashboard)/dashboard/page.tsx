@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { isUnlimited } from '@/lib/plans';
+import { useTranslations } from 'next-intl';
 
 interface DashboardStats {
   plan: string;
@@ -38,6 +39,7 @@ interface Policy {
 }
 
 export default function DashboardPage() {
+  const t = useTranslations('dashboard');
   const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -74,7 +76,7 @@ export default function DashboardPage() {
       <div className="md:flex md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-            Welcome back, {session?.user?.name?.split(' ')[0] || 'there'}!
+            {t('welcomeBack', { name: session?.user?.name?.split(' ')[0] || 'there' })}
           </h2>
         </div>
         <div className="mt-4 flex md:ml-4 md:mt-0">
@@ -82,7 +84,7 @@ export default function DashboardPage() {
             href="/policies/new"
             className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
           >
-            New Policy
+            {t('newPolicy')}
           </Link>
         </div>
       </div>
@@ -97,13 +99,15 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-indigo-800">Pro Trial Active</h3>
+              <h3 className="text-sm font-medium text-indigo-800">{t('trialActive')}</h3>
               <p className="mt-1 text-sm text-indigo-700">
-                You have <strong>{stats.trialDaysLeft} day{stats.trialDaysLeft !== 1 ? 's' : ''}</strong> left in your trial.{' '}
+                {stats.trialDaysLeft === 1
+                  ? t('trialDaysLeft', { count: stats.trialDaysLeft })
+                  : t('trialDaysLeftPlural', { count: stats.trialDaysLeft })}{' '}
                 <Link href="/billing" className="font-medium underline">
-                  Upgrade now
+                  {t('upgradeNow')}
                 </Link>{' '}
-                to keep all Pro features.
+                {t('toKeepProFeatures')}
               </p>
             </div>
           </div>
@@ -118,7 +122,7 @@ export default function DashboardPage() {
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
             </svg>
             <span className="ml-2 text-sm font-medium text-green-800 capitalize">
-              {stats.plan} Plan Active
+              {t('planActive', { plan: stats.plan })}
             </span>
           </div>
         </div>
@@ -127,18 +131,18 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">Total Policies</dt>
+          <dt className="truncate text-sm font-medium text-gray-500">{t('stats.totalPolicies')}</dt>
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
             {stats?.usage.policies || 0}
           </dd>
           {stats?.usage.policiesLimit !== undefined && !isUnlimited(stats.usage.policiesLimit) && (
             <p className="mt-1 text-xs text-gray-400">
-              Limit: {stats?.usage.policiesLimit}
+              {t('stats.limit', { count: stats?.usage.policiesLimit })}
             </p>
           )}
         </div>
         <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">Executions This Month</dt>
+          <dt className="truncate text-sm font-medium text-gray-500">{t('stats.executionsThisMonth')}</dt>
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
             {stats?.usage.executions || 0}
           </dd>
@@ -157,30 +161,30 @@ export default function DashboardPage() {
                 />
               </div>
               <p className="mt-1 text-xs text-gray-400">
-                {stats?.usage.executionsLimit} limit
+                {t('stats.limit', { count: stats?.usage.executionsLimit })}
               </p>
             </div>
           )}
         </div>
         <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">PII Fields Detected</dt>
+          <dt className="truncate text-sm font-medium text-gray-500">{t('stats.piiFieldsDetected')}</dt>
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
             {totalPiiFields}
           </dd>
           {totalPiiFields > 0 && (
             <p className="mt-1 text-xs text-yellow-600">
-              Review recommended
+              {t('stats.reviewRecommended')}
             </p>
           )}
         </div>
         <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">API Calls</dt>
+          <dt className="truncate text-sm font-medium text-gray-500">{t('stats.apiCalls')}</dt>
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
             {stats?.usage.apiCalls || 0}
           </dd>
           {!stats?.features.apiAccess && (
             <Link href="/billing" className="mt-1 text-xs text-indigo-600">
-              Upgrade for API access
+              {t('stats.upgradeForApi')}
             </Link>
           )}
         </div>
@@ -188,7 +192,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="mt-8">
-        <h3 className="text-lg font-medium leading-6 text-gray-900">Quick Actions</h3>
+        <h3 className="text-lg font-medium leading-6 text-gray-900">{t('quickActions.title')}</h3>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Link
             href="/policies/new"
@@ -200,8 +204,8 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-900">Create Policy</p>
-              <p className="text-xs text-gray-500">Define new business rules</p>
+              <p className="text-sm font-medium text-gray-900">{t('quickActions.createPolicy')}</p>
+              <p className="text-xs text-gray-500">{t('quickActions.createPolicyDesc')}</p>
             </div>
           </Link>
 
@@ -215,8 +219,8 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-900">Generate Report</p>
-              <p className="text-xs text-gray-500">GDPR, HIPAA, SOC2</p>
+              <p className="text-sm font-medium text-gray-900">{t('quickActions.generateReport')}</p>
+              <p className="text-xs text-gray-500">{t('quickActions.generateReportDesc')}</p>
             </div>
           </Link>
 
@@ -230,8 +234,8 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-900">API Keys</p>
-              <p className="text-xs text-gray-500">Manage API access</p>
+              <p className="text-sm font-medium text-gray-900">{t('quickActions.apiKeys')}</p>
+              <p className="text-xs text-gray-500">{t('quickActions.apiKeysDesc')}</p>
             </div>
           </Link>
         </div>
@@ -240,9 +244,9 @@ export default function DashboardPage() {
       {/* Recent Policies */}
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">Recent Policies</h3>
+          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('recentPolicies.title')}</h3>
           <Link href="/policies" className="text-sm text-indigo-600 hover:text-indigo-500">
-            View all
+            {t('recentPolicies.viewAll')}
           </Link>
         </div>
         <div className="mt-4 overflow-hidden bg-white shadow sm:rounded-md">
@@ -261,10 +265,10 @@ export default function DashboardPage() {
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <p className="mt-2">No policies yet.</p>
+              <p className="mt-2">{t('recentPolicies.noPolicies')}</p>
               <p className="mt-2">
                 <Link href="/policies/new" className="text-indigo-600 hover:text-indigo-500">
-                  Create your first policy
+                  {t('recentPolicies.createFirst')}
                 </Link>
               </p>
             </div>
@@ -291,10 +295,10 @@ export default function DashboardPage() {
                       </div>
                       <div className="mt-2 flex justify-between">
                         <p className="text-sm text-gray-500 truncate">
-                          {policy.description || 'No description'}
+                          {policy.description || t('recentPolicies.noDescription')}
                         </p>
                         <p className="text-sm text-gray-400">
-                          {policy._count.executions} runs
+                          {t('recentPolicies.runs', { count: policy._count.executions })}
                         </p>
                       </div>
                     </div>

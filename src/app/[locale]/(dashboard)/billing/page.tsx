@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import {
   BillingInterval,
   getPlanStripePriceId,
@@ -14,6 +15,7 @@ import {
 const DISPLAY_PLANS = (Object.keys(PLANS) as PlanType[]).filter((plan) => plan !== 'trial');
 
 function BillingContent() {
+  const t = useTranslations('billing');
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [interval, setInterval] = useState<BillingInterval>('monthly');
@@ -28,14 +30,14 @@ function BillingContent() {
 
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
-      setMessage({ type: 'success', text: 'Subscription activated successfully!' });
+      setMessage({ type: 'success', text: t('subscriptionActivated') });
     } else if (searchParams.get('canceled') === 'true') {
-      setMessage({ type: 'error', text: 'Checkout was canceled.' });
+      setMessage({ type: 'error', text: t('checkoutCanceled') });
     }
 
     // Fetch usage stats
     fetchUsage();
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   const fetchUsage = async () => {
     try {
@@ -99,9 +101,9 @@ function BillingContent() {
     <div>
       <div className="md:flex md:items-center md:justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Billing & Subscription</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage your subscription and billing details
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -125,14 +127,14 @@ function BillingContent() {
       {/* Current Plan */}
       <div className="bg-white shadow sm:rounded-lg mb-8">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900">Current Plan</h3>
+          <h3 className="text-lg font-medium text-gray-900">{t('currentPlan')}</h3>
           <div className="mt-3 flex items-center">
             <span className="text-3xl font-bold text-gray-900 capitalize">
               {currentPlan}
             </span>
             {currentPlan === 'trial' && session?.user?.trialEndsAt && (
               <span className="ml-4 text-sm text-gray-500">
-                Trial ends {new Date(session.user.trialEndsAt).toLocaleDateString()}
+                {t('trialEnds', { date: new Date(session.user.trialEndsAt).toLocaleDateString() })}
               </span>
             )}
           </div>
@@ -141,7 +143,7 @@ function BillingContent() {
           {usage && (
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Executions this month</p>
+                <p className="text-sm text-gray-500">{t('executionsThisMonth')}</p>
                 <p className="text-lg font-medium">
                   {usage.executions} / {isUnlimited(usage.executionsLimit) ? '∞' : usage.executionsLimit}
                 </p>
@@ -157,7 +159,7 @@ function BillingContent() {
                 )}
               </div>
               <div>
-                <p className="text-sm text-gray-500">Saved policies</p>
+                <p className="text-sm text-gray-500">{t('savedPolicies')}</p>
                 <p className="text-lg font-medium">
                   {usage.policies} / {isUnlimited(usage.policiesLimit) ? '∞' : usage.policiesLimit}
                 </p>
@@ -179,7 +181,7 @@ function BillingContent() {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Monthly
+            {t('monthly')}
           </button>
           <button
             type="button"
@@ -190,8 +192,8 @@ function BillingContent() {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Yearly
-            <span className="ml-1 text-xs text-green-600 font-semibold">Save 20%</span>
+            {t('yearly')}
+            <span className="ml-1 text-xs text-green-600 font-semibold">{t('save20')}</span>
           </button>
         </div>
       </div>
@@ -215,7 +217,7 @@ function BillingContent() {
             >
               {isFeatured && (
                 <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800 mb-4">
-                  Most Popular
+                  {t('mostPopular')}
                 </span>
               )}
 
@@ -258,7 +260,7 @@ function BillingContent() {
                     disabled
                     className="w-full rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-400"
                   >
-                    Current Plan
+                    {t('currentPlanButton')}
                   </button>
                 ) : canCheckout ? (
                   <button
@@ -270,21 +272,21 @@ function BillingContent() {
                         : 'bg-gray-900 text-white hover:bg-gray-800'
                     } disabled:opacity-50`}
                   >
-                    {isLoading === planKey ? 'Loading...' : `Upgrade to ${plan.name}`}
+                    {isLoading === planKey ? t('loading') : t('upgradeTo', { plan: plan.name })}
                   </button>
                 ) : planKey === 'free' ? (
                   <button
                     disabled
                     className="w-full rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-500"
                   >
-                    Free Tier
+                    {t('freeTier')}
                   </button>
                 ) : (
                   <button
                     disabled
                     className="w-full rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-500"
                   >
-                    Contact Sales
+                    {t('contactSales')}
                   </button>
                 )}
               </div>
@@ -295,33 +297,30 @@ function BillingContent() {
 
       {/* FAQ */}
       <div className="mt-12">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Frequently Asked Questions</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">{t('faq.title')}</h2>
         <div className="space-y-4">
           <details className="bg-white rounded-lg shadow px-4 py-3">
             <summary className="font-medium text-gray-900 cursor-pointer">
-              Can I cancel my subscription anytime?
+              {t('faq.cancelAnytime.question')}
             </summary>
             <p className="mt-2 text-sm text-gray-600">
-              Yes, you can cancel your subscription at any time. Your access will continue until
-              the end of your current billing period.
+              {t('faq.cancelAnytime.answer')}
             </p>
           </details>
           <details className="bg-white rounded-lg shadow px-4 py-3">
             <summary className="font-medium text-gray-900 cursor-pointer">
-              What happens when my trial ends?
+              {t('faq.trialEnds.question')}
             </summary>
             <p className="mt-2 text-sm text-gray-600">
-              After your trial ends, you&apos;ll be automatically downgraded to the Free plan. You can
-              upgrade to Pro or Team at any time to regain access to premium features.
+              {t('faq.trialEnds.answer')}
             </p>
           </details>
           <details className="bg-white rounded-lg shadow px-4 py-3">
             <summary className="font-medium text-gray-900 cursor-pointer">
-              Do you offer refunds?
+              {t('faq.refunds.question')}
             </summary>
             <p className="mt-2 text-sm text-gray-600">
-              We offer a 30-day money-back guarantee. If you&apos;re not satisfied with your subscription,
-              contact us within 30 days for a full refund.
+              {t('faq.refunds.answer')}
             </p>
           </details>
         </div>

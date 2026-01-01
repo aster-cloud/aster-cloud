@@ -3,25 +3,23 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
-const USE_CASES = [
-  { id: 'finance', label: 'Financial Services', icon: '🏦' },
-  { id: 'healthcare', label: 'Healthcare', icon: '🏥' },
-  { id: 'ecommerce', label: 'E-commerce', icon: '🛒' },
-  { id: 'insurance', label: 'Insurance', icon: '📋' },
-  { id: 'legal', label: 'Legal', icon: '⚖️' },
-  { id: 'other', label: 'Other', icon: '🔧' },
-];
+const USE_CASE_IDS = ['finance', 'healthcare', 'ecommerce', 'insurance', 'legal', 'other'] as const;
+const USE_CASE_ICONS: Record<typeof USE_CASE_IDS[number], string> = {
+  finance: '🏦',
+  healthcare: '🏥',
+  ecommerce: '🛒',
+  insurance: '📋',
+  legal: '⚖️',
+  other: '🔧',
+};
 
-const GOALS = [
-  { id: 'pii', label: 'PII detection & protection' },
-  { id: 'compliance', label: 'Compliance reporting' },
-  { id: 'automation', label: 'Business rule automation' },
-  { id: 'team', label: 'Team policy collaboration' },
-  { id: 'integration', label: 'API integration' },
-];
+const GOAL_IDS = ['pii', 'compliance', 'automation', 'team', 'integration'] as const;
 
 export default function OnboardingPage() {
+  const t = useTranslations('auth.onboarding');
+  const tNav = useTranslations('nav');
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [selectedUseCase, setSelectedUseCase] = useState('');
@@ -51,10 +49,10 @@ export default function OnboardingPage() {
       <div className="max-w-lg w-full space-y-8">
         <div>
           <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+            <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
           </Link>
           <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">
-            Welcome! Let&apos;s get you started
+            {t('welcome')}
           </h2>
 
           {/* Progress */}
@@ -72,22 +70,22 @@ export default function OnboardingPage() {
 
         {step === 1 && (
           <div className="space-y-6">
-            <p className="text-center text-gray-600">What industry are you in?</p>
+            <p className="text-center text-gray-600">{t('industryQuestion')}</p>
 
             <div className="grid grid-cols-2 gap-3">
-              {USE_CASES.map((useCase) => (
+              {USE_CASE_IDS.map((id) => (
                 <button
-                  key={useCase.id}
+                  key={id}
                   type="button"
-                  onClick={() => setSelectedUseCase(useCase.id)}
+                  onClick={() => setSelectedUseCase(id)}
                   className={`flex items-center p-4 rounded-lg border-2 transition-colors ${
-                    selectedUseCase === useCase.id
+                    selectedUseCase === id
                       ? 'border-indigo-600 bg-indigo-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <span className="text-2xl mr-3">{useCase.icon}</span>
-                  <span className="text-sm font-medium text-gray-900">{useCase.label}</span>
+                  <span className="text-2xl mr-3">{USE_CASE_ICONS[id]}</span>
+                  <span className="text-sm font-medium text-gray-900">{t(`useCases.${id}`)}</span>
                 </button>
               ))}
             </div>
@@ -98,7 +96,7 @@ export default function OnboardingPage() {
               disabled={!selectedUseCase}
               className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Continue
+              {t('continue')}
             </button>
           </div>
         )}
@@ -106,35 +104,35 @@ export default function OnboardingPage() {
         {step === 2 && (
           <div className="space-y-6">
             <p className="text-center text-gray-600">
-              What are your main goals with Aster Cloud?
+              {t('goalsQuestion')}
             </p>
 
             <div className="space-y-3">
-              {GOALS.map((goal) => (
+              {GOAL_IDS.map((id) => (
                 <button
-                  key={goal.id}
+                  key={id}
                   type="button"
-                  onClick={() => toggleGoal(goal.id)}
+                  onClick={() => toggleGoal(id)}
                   className={`flex items-center w-full p-4 rounded-lg border-2 transition-colors ${
-                    selectedGoals.includes(goal.id)
+                    selectedGoals.includes(id)
                       ? 'border-indigo-600 bg-indigo-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <div
                     className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
-                      selectedGoals.includes(goal.id)
+                      selectedGoals.includes(id)
                         ? 'bg-indigo-600 border-indigo-600'
                         : 'border-gray-300'
                     }`}
                   >
-                    {selectedGoals.includes(goal.id) && (
+                    {selectedGoals.includes(id) && (
                       <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm font-medium text-gray-900">{goal.label}</span>
+                  <span className="text-sm font-medium text-gray-900">{t(`goals.${id}`)}</span>
                 </button>
               ))}
             </div>
@@ -145,7 +143,7 @@ export default function OnboardingPage() {
                 onClick={() => setStep(1)}
                 className="flex-1 py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
-                Back
+                {t('back')}
               </button>
               <button
                 type="button"
@@ -153,7 +151,7 @@ export default function OnboardingPage() {
                 disabled={selectedGoals.length === 0 || isLoading}
                 className="flex-1 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Starting...' : 'Get Started'}
+                {isLoading ? t('starting') : t('getStarted')}
               </button>
             </div>
           </div>
@@ -161,7 +159,7 @@ export default function OnboardingPage() {
 
         <p className="text-center text-sm text-gray-500">
           <Link href="/dashboard" className="text-indigo-600 hover:text-indigo-500">
-            Skip for now
+            {t('skipForNow')}
           </Link>
         </p>
       </div>

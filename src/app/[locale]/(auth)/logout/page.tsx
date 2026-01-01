@@ -3,8 +3,12 @@
 import { useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export default function LogoutPage() {
+  const t = useTranslations('auth.logout');
+  const tNav = useTranslations('nav');
+
   useEffect(() => {
     signOut({ callbackUrl: '/' });
   }, []);
@@ -14,13 +18,13 @@ export default function LogoutPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">Aster Cloud</span>
+            <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
           </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Signing out...
+            {t('title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            You are being signed out of your account.
+            {t('message')}
           </p>
         </div>
 

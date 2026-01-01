@@ -145,6 +145,213 @@
       "successTitle": "密码重置成功",
       "successMessage": "您的密码已重置。现在可以使用新密码登录。",
       "signIn": "登录"
+    },
+    "logout": {
+      "title": "正在退出...",
+      "message": "您正在退出账户。"
+    },
+    "onboarding": {
+      "welcome": "欢迎！让我们开始吧",
+      "industryQuestion": "您所在的行业是？",
+      "goalsQuestion": "您使用 Aster Cloud 的主要目标是什么？",
+      "continue": "继续",
+      "back": "返回",
+      "getStarted": "开始使用",
+      "starting": "启动中...",
+      "skipForNow": "暂时跳过",
+      "useCases": {
+        "finance": "金融服务",
+        "healthcare": "医疗健康",
+        "ecommerce": "电子商务",
+        "insurance": "保险",
+        "legal": "法律",
+        "other": "其他"
+      },
+      "goals": {
+        "pii": "PII 检测与保护",
+        "compliance": "合规报告",
+        "automation": "业务规则自动化",
+        "team": "团队策略协作",
+        "integration": "API 集成"
+      }
+    }
+  },
+  "dashboardNav": {
+    "dashboard": "仪表盘",
+    "policies": "策略",
+    "reports": "报告",
+    "billing": "账单",
+    "settings": "设置"
+  },
+  "dashboard": {
+    "welcomeBack": "欢迎回来，{name}！",
+    "newPolicy": "新建策略",
+    "trialActive": "专业版试用中",
+    "trialDaysLeft": "您的试用还剩 {count} 天。",
+    "trialDaysLeftPlural": "您的试用还剩 {count} 天。",
+    "upgradeNow": "立即升级",
+    "toKeepProFeatures": "以保留所有专业版功能。",
+    "planActive": "{plan} 计划已激活",
+    "stats": {
+      "totalPolicies": "策略总数",
+      "executionsThisMonth": "本月执行次数",
+      "piiFieldsDetected": "检测到的 PII 字段",
+      "apiCalls": "API 调用",
+      "limit": "限制：{count}",
+      "reviewRecommended": "建议审查",
+      "upgradeForApi": "升级以获取 API 访问权限"
+    },
+    "quickActions": {
+      "title": "快捷操作",
+      "createPolicy": "创建策略",
+      "createPolicyDesc": "定义新的业务规则",
+      "generateReport": "生成报告",
+      "generateReportDesc": "GDPR、HIPAA、SOC2",
+      "apiKeys": "API 密钥",
+      "apiKeysDesc": "管理 API 访问"
+    },
+    "recentPolicies": {
+      "title": "最近的策略",
+      "viewAll": "查看全部",
+      "noPolicies": "暂无策略。",
+      "createFirst": "创建您的第一个策略",
+      "noDescription": "暂无描述",
+      "runs": "{count} 次运行"
+    }
+  },
+  "billing": {
+    "title": "账单与订阅",
+    "subtitle": "管理您的订阅和账单详情",
+    "currentPlan": "当前计划",
+    "trialEnds": "试用期于 {date} 结束",
+    "executionsThisMonth": "本月执行次数",
+    "savedPolicies": "已保存的策略",
+    "monthly": "月付",
+    "yearly": "年付",
+    "save20": "节省 20%",
+    "mostPopular": "最受欢迎",
+    "currentPlanButton": "当前计划",
+    "upgradeTo": "升级至 {plan}",
+    "loading": "加载中...",
+    "freeTier": "免费版",
+    "contactSales": "联系销售",
+    "subscriptionActivated": "订阅激活成功！",
+    "checkoutCanceled": "结账已取消。",
+    "faq": {
+      "title": "常见问题",
+      "cancelAnytime": {
+        "question": "我可以随时取消订阅吗？",
+        "answer": "是的，您可以随时取消订阅。您的访问权限将持续到当前计费周期结束。"
+      },
+      "trialEnds": {
+        "question": "试用期结束后会怎样？",
+        "answer": "试用期结束后，您将自动降级为免费版。您可以随时升级到专业版或团队版以重新获得高级功能。"
+      },
+      "refunds": {
+        "question": "你们提供退款吗？",
+        "answer": "我们提供 30 天退款保证。如果您对订阅不满意，请在 30 天内联系我们获得全额退款。"
+      }
+    }
+  },
+  "policies": {
+    "title": "策略",
+    "subtitle": "管理您的业务策略和规则",
+    "newPolicy": "新建策略",
+    "noPolicies": "暂无策略",
+    "getStarted": "创建一个新策略开始使用。",
+    "piiFields": "{count} 个 PII 字段",
+    "public": "公开",
+    "executions": "{count} 次执行",
+    "execute": "执行",
+    "edit": "编辑",
+    "delete": "删除",
+    "updated": "更新于 {date}",
+    "confirmDelete": "确定要删除此策略吗？",
+    "failedToLoad": "加载策略失败",
+    "failedToDelete": "删除策略失败"
+  },
+  "reports": {
+    "title": "合规报告",
+    "subtitle": "为您的策略生成合规报告",
+    "generateNew": "生成新报告",
+    "noReports": "暂无报告",
+    "generateFirst": "在上方生成您的第一份合规报告。",
+    "upgradePlan": "升级计划",
+    "generating": "生成中...",
+    "generate": "生成 {type} 报告",
+    "status": {
+      "completed": "已完成",
+      "generating": "生成中...",
+      "failed": "失败"
+    },
+    "type": "类型：{type}",
+    "created": "创建于：{date}",
+    "policiesAnalyzed": "分析了 {count} 个策略",
+    "reportTypes": {
+      "gdpr": {
+        "name": "GDPR",
+        "description": "通用数据保护条例"
+      },
+      "hipaa": {
+        "name": "HIPAA",
+        "description": "健康保险可携性和责任法案"
+      },
+      "soc2": {
+        "name": "SOC 2",
+        "description": "服务组织控制 2"
+      },
+      "pci_dss": {
+        "name": "PCI-DSS",
+        "description": "支付卡行业数据安全标准"
+      }
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "管理您的账户设置和偏好。",
+    "apiKeys": {
+      "title": "API 密钥",
+      "subtitle": "管理用于访问 Aster Cloud 的 API 密钥。",
+      "manageKeys": "管理密钥",
+      "breadcrumb": "API 密钥",
+      "createNew": "创建新的 API 密钥",
+      "keyPlaceholder": "密钥名称（如：生产环境、开发环境）",
+      "createKey": "创建密钥",
+      "creating": "创建中...",
+      "yourKeys": "您的 API 密钥",
+      "noKeys": "暂无 API 密钥。在上方创建一个开始使用。",
+      "name": "名称",
+      "key": "密钥",
+      "lastUsed": "最后使用",
+      "created": "创建时间",
+      "actions": "操作",
+      "revoke": "撤销",
+      "never": "从未使用",
+      "keyCreated": "API 密钥已创建",
+      "copyWarning": "请立即复制您的 API 密钥。您将无法再次查看它！",
+      "copy": "复制",
+      "dismiss": "关闭",
+      "confirmRevoke": "确定要撤销此 API 密钥吗？此操作无法撤消。",
+      "usageExample": "使用示例",
+      "enterName": "请输入 API 密钥的名称"
+    },
+    "profile": {
+      "title": "个人资料",
+      "name": "姓名",
+      "email": "邮箱",
+      "plan": "计划",
+      "notSet": "未设置"
+    },
+    "account": {
+      "title": "账户",
+      "signOut": "退出登录",
+      "signOutDesc": "在此设备上退出您的账户。",
+      "signingOut": "正在退出..."
+    },
+    "dangerZone": {
+      "title": "危险区域",
+      "deleteAccount": "删除账户",
+      "deleteAccountDesc": "永久删除您的账户和所有相关数据。"
     }
   }
 }

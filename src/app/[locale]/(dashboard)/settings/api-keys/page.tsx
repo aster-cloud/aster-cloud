@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface ApiKey {
   id: string;
@@ -13,6 +14,8 @@ interface ApiKey {
 }
 
 export default function ApiKeysPage() {
+  const t = useTranslations('settings.apiKeys');
+  const tNav = useTranslations('dashboardNav');
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -48,7 +51,7 @@ export default function ApiKeysPage() {
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKeyName.trim()) {
-      setError('Please enter a name for your API key');
+      setError(t('enterName'));
       return;
     }
 
@@ -79,7 +82,7 @@ export default function ApiKeysPage() {
   };
 
   const handleRevokeKey = async (keyId: string) => {
-    if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
+    if (!confirm(t('confirmRevoke'))) {
       return;
     }
 
@@ -108,13 +111,13 @@ export default function ApiKeysPage() {
       <div className="flex items-center justify-between">
         <div>
           <nav className="text-sm text-gray-500 mb-2">
-            <Link href="/settings" className="hover:text-gray-700">Settings</Link>
+            <Link href="/settings" className="hover:text-gray-700">{tNav('settings')}</Link>
             <span className="mx-2">/</span>
-            <span className="text-gray-900">API Keys</span>
+            <span className="text-gray-900">{t('breadcrumb')}</span>
           </nav>
-          <h1 className="text-2xl font-bold text-gray-900">API Keys</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage API keys for programmatic access to Aster Cloud.
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -129,9 +132,9 @@ export default function ApiKeysPage() {
               </svg>
             </div>
             <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-green-800">API Key Created</h3>
+              <h3 className="text-sm font-medium text-green-800">{t('keyCreated')}</h3>
               <p className="mt-1 text-sm text-green-700">
-                Copy your API key now. You won&apos;t be able to see it again!
+                {t('copyWarning')}
               </p>
               <div className="mt-2 flex items-center space-x-2">
                 <code className="flex-1 bg-green-100 px-3 py-2 rounded text-sm font-mono text-green-900 break-all">
@@ -141,14 +144,14 @@ export default function ApiKeysPage() {
                   onClick={() => copyToClipboard(newKeyValue)}
                   className="px-3 py-2 text-sm font-medium text-green-700 bg-green-100 rounded hover:bg-green-200"
                 >
-                  Copy
+                  {t('copy')}
                 </button>
               </div>
               <button
                 onClick={() => setNewKeyValue(null)}
                 className="mt-2 text-sm text-green-600 hover:text-green-800"
               >
-                Dismiss
+                {t('dismiss')}
               </button>
             </div>
           </div>
@@ -165,13 +168,13 @@ export default function ApiKeysPage() {
       {/* Create New Key */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">Create New API Key</h3>
+          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('createNew')}</h3>
           <form onSubmit={handleCreateKey} className="mt-4 flex space-x-4">
             <input
               type="text"
               value={newKeyName}
               onChange={(e) => setNewKeyName(e.target.value)}
-              placeholder="Key name (e.g., Production, Development)"
+              placeholder={t('keyPlaceholder')}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
             <button
@@ -179,7 +182,7 @@ export default function ApiKeysPage() {
               disabled={isCreating}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isCreating ? 'Creating...' : 'Create Key'}
+              {isCreating ? t('creating') : t('createKey')}
             </button>
           </form>
         </div>
@@ -188,14 +191,14 @@ export default function ApiKeysPage() {
       {/* API Keys List */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">Your API Keys</h3>
+          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('yourKeys')}</h3>
           {isLoading ? (
             <div className="mt-4 text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
             </div>
           ) : apiKeys.length === 0 ? (
             <div className="mt-4 text-center py-8 text-gray-500">
-              No API keys yet. Create one above to get started.
+              {t('noKeys')}
             </div>
           ) : (
             <div className="mt-4 overflow-hidden">
@@ -203,19 +206,19 @@ export default function ApiKeysPage() {
                 <thead>
                   <tr>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
+                      {t('name')}
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Key
+                      {t('key')}
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Used
+                      {t('lastUsed')}
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
+                      {t('created')}
                     </th>
                     <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
+                      {t('actions')}
                     </th>
                   </tr>
                 </thead>
@@ -229,7 +232,7 @@ export default function ApiKeysPage() {
                         {key.prefix}...
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : 'Never'}
+                        {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : t('never')}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(key.createdAt).toLocaleDateString()}
@@ -239,7 +242,7 @@ export default function ApiKeysPage() {
                           onClick={() => handleRevokeKey(key.id)}
                           className="text-red-600 hover:text-red-900"
                         >
-                          Revoke
+                          {t('revoke')}
                         </button>
                       </td>
                     </tr>
@@ -254,7 +257,7 @@ export default function ApiKeysPage() {
       {/* Usage Example */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">Usage Example</h3>
+          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('usageExample')}</h3>
           <pre className="mt-4 bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto text-sm">
 {`curl -X POST https://aster-lang.cloud/api/execute \\
   -H "Authorization: Bearer YOUR_API_KEY" \\

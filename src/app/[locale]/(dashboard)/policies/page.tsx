@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface Policy {
   id: string;
@@ -18,6 +19,7 @@ interface Policy {
 }
 
 export default function PoliciesPage() {
+  const t = useTranslations('policies');
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,7 +35,7 @@ export default function PoliciesPage() {
       const data = await res.json();
       setPolicies(data);
     } catch (err) {
-      setError('Failed to load policies');
+      setError(t('failedToLoad'));
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -41,14 +43,14 @@ export default function PoliciesPage() {
   };
 
   const deletePolicy = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this policy?')) return;
+    if (!confirm(t('confirmDelete'))) return;
 
     try {
       const res = await fetch(`/api/policies/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete policy');
       setPolicies((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError('Failed to delete policy');
+      setError(t('failedToDelete'));
       console.error(err);
     }
   };
@@ -65,9 +67,9 @@ export default function PoliciesPage() {
     <div>
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Policies</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage your business policies and rules
+            {t('subtitle')}
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
@@ -78,7 +80,7 @@ export default function PoliciesPage() {
             <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
             </svg>
-            New Policy
+            {t('newPolicy')}
           </Link>
         </div>
       </div>
@@ -104,9 +106,9 @@ export default function PoliciesPage() {
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">No policies</h3>
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">{t('noPolicies')}</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Get started by creating a new policy.
+            {t('getStarted')}
           </p>
           <div className="mt-6">
             <Link
@@ -116,7 +118,7 @@ export default function PoliciesPage() {
               <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
               </svg>
-              New Policy
+              {t('newPolicy')}
             </Link>
           </div>
         </div>
@@ -143,20 +145,20 @@ export default function PoliciesPage() {
                       {/* PII Badge */}
                       {policy.piiFields && policy.piiFields.length > 0 && (
                         <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                          {policy.piiFields.length} PII fields
+                          {t('piiFields', { count: policy.piiFields.length })}
                         </span>
                       )}
 
                       {/* Public Badge */}
                       {policy.isPublic && (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                          Public
+                          {t('public')}
                         </span>
                       )}
 
                       {/* Execution count */}
                       <span className="text-sm text-gray-500">
-                        {policy._count.executions} executions
+                        {t('executions', { count: policy._count.executions })}
                       </span>
 
                       {/* Actions */}
@@ -165,26 +167,26 @@ export default function PoliciesPage() {
                           href={`/policies/${policy.id}/execute`}
                           className="text-indigo-600 hover:text-indigo-900 text-sm"
                         >
-                          Execute
+                          {t('execute')}
                         </Link>
                         <Link
                           href={`/policies/${policy.id}/edit`}
                           className="text-gray-600 hover:text-gray-900 text-sm"
                         >
-                          Edit
+                          {t('edit')}
                         </Link>
                         <button
                           onClick={() => deletePolicy(policy.id)}
                           className="text-red-600 hover:text-red-900 text-sm"
                         >
-                          Delete
+                          {t('delete')}
                         </button>
                       </div>
                     </div>
                   </div>
                   <div className="mt-2">
                     <p className="text-xs text-gray-400">
-                      Updated {new Date(policy.updatedAt).toLocaleDateString()}
+                      {t('updated', { date: new Date(policy.updatedAt).toLocaleDateString() })}
                     </p>
                   </div>
                 </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface ComplianceReport {
   id: string;
@@ -20,14 +21,10 @@ interface ComplianceReport {
   completedAt: string | null;
 }
 
-const REPORT_TYPES = [
-  { id: 'gdpr', name: 'GDPR', description: 'General Data Protection Regulation' },
-  { id: 'hipaa', name: 'HIPAA', description: 'Health Insurance Portability and Accountability Act' },
-  { id: 'soc2', name: 'SOC 2', description: 'Service Organization Control 2' },
-  { id: 'pci_dss', name: 'PCI-DSS', description: 'Payment Card Industry Data Security Standard' },
-];
+const REPORT_TYPE_IDS = ['gdpr', 'hipaa', 'soc2', 'pci_dss'] as const;
 
 export default function ReportsPage() {
+  const t = useTranslations('reports');
   const [reports, setReports] = useState<ComplianceReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -94,19 +91,19 @@ export default function ReportsPage() {
       case 'completed':
         return (
           <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-            Completed
+            {t('status.completed')}
           </span>
         );
       case 'generating':
         return (
           <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-            Generating...
+            {t('status.generating')}
           </span>
         );
       case 'failed':
         return (
           <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-            Failed
+            {t('status.failed')}
           </span>
         );
       default:
@@ -126,9 +123,9 @@ export default function ReportsPage() {
     <div>
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Compliance Reports</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Generate compliance reports for your policies
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -138,7 +135,7 @@ export default function ReportsPage() {
           <p className="text-sm text-red-700">{error}</p>
           {error.includes('subscription') && (
             <Link href="/billing" className="text-sm font-medium text-red-700 underline">
-              Upgrade plan
+              {t('upgradePlan')}
             </Link>
           )}
         </div>
@@ -148,23 +145,23 @@ export default function ReportsPage() {
       <div className="bg-white shadow sm:rounded-lg mb-8">
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Generate New Report
+            {t('generateNew')}
           </h3>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {REPORT_TYPES.map((type) => (
+            {REPORT_TYPE_IDS.map((id) => (
               <button
-                key={type.id}
-                onClick={() => setSelectedType(type.id)}
+                key={id}
+                onClick={() => setSelectedType(id)}
                 disabled={isGenerating}
                 className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                  selectedType === type.id
+                  selectedType === id
                     ? 'border-indigo-600 bg-indigo-50'
                     : 'border-gray-200 hover:border-gray-300'
                 } disabled:opacity-50`}
               >
-                <div className="font-medium text-gray-900">{type.name}</div>
-                <div className="text-sm text-gray-500">{type.description}</div>
+                <div className="font-medium text-gray-900">{t(`reportTypes.${id}.name`)}</div>
+                <div className="text-sm text-gray-500">{t(`reportTypes.${id}.description`)}</div>
               </button>
             ))}
           </div>
@@ -197,10 +194,10 @@ export default function ReportsPage() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Generating...
+                    {t('generating')}
                   </>
                 ) : (
-                  `Generate ${REPORT_TYPES.find((t) => t.id === selectedType)?.name} Report`
+                  t('generate', { type: t(`reportTypes.${selectedType}.name`) })
                 )}
               </button>
             </div>
@@ -224,9 +221,9 @@ export default function ReportsPage() {
               d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">No reports yet</h3>
+          <h3 className="mt-2 text-sm font-semibold text-gray-900">{t('noReports')}</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Generate your first compliance report above.
+            {t('generateFirst')}
           </p>
         </div>
       ) : (
@@ -257,15 +254,15 @@ export default function ReportsPage() {
                       )}
                     </div>
                     <div className="mt-2 flex items-center text-sm text-gray-500">
-                      <span>Type: {report.type.toUpperCase()}</span>
+                      <span>{t('type', { type: report.type.toUpperCase() })}</span>
                       <span className="mx-2">|</span>
                       <span>
-                        Created: {new Date(report.createdAt).toLocaleDateString()}
+                        {t('created', { date: new Date(report.createdAt).toLocaleDateString() })}
                       </span>
                       {report.status === 'completed' && report.data && (
                         <>
                           <span className="mx-2">|</span>
-                          <span>{report.data.summary.totalPolicies} policies analyzed</span>
+                          <span>{t('policiesAnalyzed', { count: report.data.summary.totalPolicies })}</span>
                         </>
                       )}
                     </div>

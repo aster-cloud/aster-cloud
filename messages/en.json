@@ -145,6 +145,213 @@
       "successTitle": "Password reset successful",
       "successMessage": "Your password has been reset. You can now sign in with your new password.",
       "signIn": "Sign in"
+    },
+    "logout": {
+      "title": "Signing out...",
+      "message": "You are being signed out of your account."
+    },
+    "onboarding": {
+      "welcome": "Welcome! Let's get you started",
+      "industryQuestion": "What industry are you in?",
+      "goalsQuestion": "What are your main goals with Aster Cloud?",
+      "continue": "Continue",
+      "back": "Back",
+      "getStarted": "Get Started",
+      "starting": "Starting...",
+      "skipForNow": "Skip for now",
+      "useCases": {
+        "finance": "Financial Services",
+        "healthcare": "Healthcare",
+        "ecommerce": "E-commerce",
+        "insurance": "Insurance",
+        "legal": "Legal",
+        "other": "Other"
+      },
+      "goals": {
+        "pii": "PII detection & protection",
+        "compliance": "Compliance reporting",
+        "automation": "Business rule automation",
+        "team": "Team policy collaboration",
+        "integration": "API integration"
+      }
+    }
+  },
+  "dashboardNav": {
+    "dashboard": "Dashboard",
+    "policies": "Policies",
+    "reports": "Reports",
+    "billing": "Billing",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "welcomeBack": "Welcome back, {name}!",
+    "newPolicy": "New Policy",
+    "trialActive": "Pro Trial Active",
+    "trialDaysLeft": "You have {count} day left in your trial.",
+    "trialDaysLeftPlural": "You have {count} days left in your trial.",
+    "upgradeNow": "Upgrade now",
+    "toKeepProFeatures": "to keep all Pro features.",
+    "planActive": "{plan} Plan Active",
+    "stats": {
+      "totalPolicies": "Total Policies",
+      "executionsThisMonth": "Executions This Month",
+      "piiFieldsDetected": "PII Fields Detected",
+      "apiCalls": "API Calls",
+      "limit": "Limit: {count}",
+      "reviewRecommended": "Review recommended",
+      "upgradeForApi": "Upgrade for API access"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "createPolicy": "Create Policy",
+      "createPolicyDesc": "Define new business rules",
+      "generateReport": "Generate Report",
+      "generateReportDesc": "GDPR, HIPAA, SOC2",
+      "apiKeys": "API Keys",
+      "apiKeysDesc": "Manage API access"
+    },
+    "recentPolicies": {
+      "title": "Recent Policies",
+      "viewAll": "View all",
+      "noPolicies": "No policies yet.",
+      "createFirst": "Create your first policy",
+      "noDescription": "No description",
+      "runs": "{count} runs"
+    }
+  },
+  "billing": {
+    "title": "Billing & Subscription",
+    "subtitle": "Manage your subscription and billing details",
+    "currentPlan": "Current Plan",
+    "trialEnds": "Trial ends {date}",
+    "executionsThisMonth": "Executions this month",
+    "savedPolicies": "Saved policies",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "save20": "Save 20%",
+    "mostPopular": "Most Popular",
+    "currentPlanButton": "Current Plan",
+    "upgradeTo": "Upgrade to {plan}",
+    "loading": "Loading...",
+    "freeTier": "Free Tier",
+    "contactSales": "Contact Sales",
+    "subscriptionActivated": "Subscription activated successfully!",
+    "checkoutCanceled": "Checkout was canceled.",
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "cancelAnytime": {
+        "question": "Can I cancel my subscription anytime?",
+        "answer": "Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period."
+      },
+      "trialEnds": {
+        "question": "What happens when my trial ends?",
+        "answer": "After your trial ends, you'll be automatically downgraded to the Free plan. You can upgrade to Pro or Team at any time to regain access to premium features."
+      },
+      "refunds": {
+        "question": "Do you offer refunds?",
+        "answer": "We offer a 30-day money-back guarantee. If you're not satisfied with your subscription, contact us within 30 days for a full refund."
+      }
+    }
+  },
+  "policies": {
+    "title": "Policies",
+    "subtitle": "Manage your business policies and rules",
+    "newPolicy": "New Policy",
+    "noPolicies": "No policies",
+    "getStarted": "Get started by creating a new policy.",
+    "piiFields": "{count} PII fields",
+    "public": "Public",
+    "executions": "{count} executions",
+    "execute": "Execute",
+    "edit": "Edit",
+    "delete": "Delete",
+    "updated": "Updated {date}",
+    "confirmDelete": "Are you sure you want to delete this policy?",
+    "failedToLoad": "Failed to load policies",
+    "failedToDelete": "Failed to delete policy"
+  },
+  "reports": {
+    "title": "Compliance Reports",
+    "subtitle": "Generate compliance reports for your policies",
+    "generateNew": "Generate New Report",
+    "noReports": "No reports yet",
+    "generateFirst": "Generate your first compliance report above.",
+    "upgradePlan": "Upgrade plan",
+    "generating": "Generating...",
+    "generate": "Generate {type} Report",
+    "status": {
+      "completed": "Completed",
+      "generating": "Generating...",
+      "failed": "Failed"
+    },
+    "type": "Type: {type}",
+    "created": "Created: {date}",
+    "policiesAnalyzed": "{count} policies analyzed",
+    "reportTypes": {
+      "gdpr": {
+        "name": "GDPR",
+        "description": "General Data Protection Regulation"
+      },
+      "hipaa": {
+        "name": "HIPAA",
+        "description": "Health Insurance Portability and Accountability Act"
+      },
+      "soc2": {
+        "name": "SOC 2",
+        "description": "Service Organization Control 2"
+      },
+      "pci_dss": {
+        "name": "PCI-DSS",
+        "description": "Payment Card Industry Data Security Standard"
+      }
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account settings and preferences.",
+    "apiKeys": {
+      "title": "API Keys",
+      "subtitle": "Manage API keys for programmatic access to Aster Cloud.",
+      "manageKeys": "Manage Keys",
+      "breadcrumb": "API Keys",
+      "createNew": "Create New API Key",
+      "keyPlaceholder": "Key name (e.g., Production, Development)",
+      "createKey": "Create Key",
+      "creating": "Creating...",
+      "yourKeys": "Your API Keys",
+      "noKeys": "No API keys yet. Create one above to get started.",
+      "name": "Name",
+      "key": "Key",
+      "lastUsed": "Last Used",
+      "created": "Created",
+      "actions": "Actions",
+      "revoke": "Revoke",
+      "never": "Never",
+      "keyCreated": "API Key Created",
+      "copyWarning": "Copy your API key now. You won't be able to see it again!",
+      "copy": "Copy",
+      "dismiss": "Dismiss",
+      "confirmRevoke": "Are you sure you want to revoke this API key? This action cannot be undone.",
+      "usageExample": "Usage Example",
+      "enterName": "Please enter a name for your API key"
+    },
+    "profile": {
+      "title": "Profile",
+      "name": "Name",
+      "email": "Email",
+      "plan": "Plan",
+      "notSet": "Not set"
+    },
+    "account": {
+      "title": "Account",
+      "signOut": "Sign out",
+      "signOutDesc": "Sign out of your account on this device.",
+      "signingOut": "Signing out..."
+    },
+    "dangerZone": {
+      "title": "Danger Zone",
+      "deleteAccount": "Delete account",
+      "deleteAccountDesc": "Permanently delete your account and all associated data."
     }
   }
 }
