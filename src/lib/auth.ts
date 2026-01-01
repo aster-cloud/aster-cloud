@@ -149,34 +149,8 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async signIn({ user, account, profile }) {
-      // Only for OAuth sign-ins (not credentials)
-      if (account?.provider !== 'credentials') {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-        });
-
-        // Start trial for new users
-        if (!existingUser) {
-          const trialEndsAt = new Date();
-          trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
-
-          await prisma.user.update({
-            where: { email: user.email! },
-            data: {
-              plan: 'trial',
-              trialStartedAt: new Date(),
-              trialEndsAt,
-            },
-          });
-
-          // Send welcome email
-          if (user.email && user.name) {
-            await sendWelcomeEmail(user.email, user.name);
-          }
-        }
-      }
-
+    async signIn({ user, account }) {
+      // Allow all sign-ins - trial setup is handled by createUser event
       return true;
     },
   },
