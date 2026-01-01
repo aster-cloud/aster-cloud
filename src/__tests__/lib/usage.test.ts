@@ -21,7 +21,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 // Import after mocking
-import { checkUsageLimit, recordUsage, FEATURE_LIMITS } from '@/lib/usage';
+import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { prisma } from '@/lib/prisma';
 
 // Cast prisma to mocked version
@@ -30,27 +30,6 @@ const mockPrisma = vi.mocked(prisma);
 describe('Usage Tracking', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  describe('FEATURE_LIMITS', () => {
-    it('should have correct limits for free plan', () => {
-      expect(FEATURE_LIMITS.free.executionsPerMonth).toBe(100);
-      expect(FEATURE_LIMITS.free.savedPolicies).toBe(3);
-      expect(FEATURE_LIMITS.free.apiAccess).toBe(false);
-      expect(FEATURE_LIMITS.free.complianceReports).toBe(false);
-    });
-
-    it('should have unlimited executions for pro plan', () => {
-      expect(FEATURE_LIMITS.pro.executionsPerMonth).toBe(Infinity);
-      expect(FEATURE_LIMITS.pro.savedPolicies).toBe(Infinity);
-      expect(FEATURE_LIMITS.pro.apiAccess).toBe(true);
-    });
-
-    it('should have team features only for team plan', () => {
-      expect(FEATURE_LIMITS.free.teamFeatures).toBe(false);
-      expect(FEATURE_LIMITS.pro.teamFeatures).toBe(false);
-      expect(FEATURE_LIMITS.team.teamFeatures).toBe(true);
-    });
   });
 
   describe('checkUsageLimit', () => {

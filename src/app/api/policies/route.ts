@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { checkUsageLimit, FEATURE_LIMITS } from '@/lib/usage';
+import { checkUsageLimit } from '@/lib/usage';
+import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
+import { detectPII } from '@/services/pii/detector';
 
 // GET /api/policies - List user's policies
 export async function GET() {
@@ -48,20 +50,32 @@ export async function POST(req: Request) {
     // Check policy limit for free users
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { plan: true },
+      select: { plan: true, trialEndsAt: true },
     });
 
     if (user) {
-      const limits = FEATURE_LIMITS[user.plan as keyof typeof FEATURE_LIMITS];
+      const plan = (user.plan && user.plan in PLANS ? user.plan : 'free') as PlanType;
+      const trialExpired =
+        plan === 'trial' && user.trialEndsAt && user.trialEndsAt < new Date();
+      const effectivePlan = trialExpired ? 'free' : plan;
+
+      if (trialExpired) {
+        await prisma.user.update({
+          where: { id: session.user.id },
+          data: { plan: 'free' },
+        });
+      }
+
+      const policyLimit = getPlanLimit(effectivePlan, 'policies');
       const policyCount = await prisma.policy.count({
         where: { userId: session.user.id },
       });
 
-      if (limits.savedPolicies !== Infinity && policyCount >= limits.savedPolicies) {
+      if (!isUnlimited(policyLimit) && policyCount >= policyLimit) {
         return NextResponse.json(
           {
             error: 'Policy limit reached',
-            message: `Free plan allows only ${limits.savedPolicies} policies. Upgrade to Pro for unlimited policies.`,
+            message: `Current plan allows ${policyLimit} policies. Upgrade for higher limits.`,
             upgrade: true,
           },
           { status: 403 }
@@ -69,8 +83,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Detect PII in policy content (basic detection)
-    const piiFields = detectPII(content);
+    const piiResult = detectPII(content);
 
     const policy = await prisma.policy.create({
       data: {
@@ -79,7 +92,7 @@ export async function POST(req: Request) {
         content,
         description,
         isPublic: isPublic || false,
-        piiFields,
+        piiFields: piiResult.detectedTypes,
       },
     });
 
@@ -98,29 +111,4 @@ export async function POST(req: Request) {
     console.error('Error creating policy:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-// Basic PII detection (in production, use ML-based detection)
-function detectPII(content: string): string[] {
-  const patterns: { name: string; pattern: RegExp }[] = [
-    { name: 'email', pattern: /\bemail\b/i },
-    { name: 'phone', pattern: /\b(phone|mobile|tel)\b/i },
-    { name: 'ssn', pattern: /\b(ssn|social.?security)\b/i },
-    { name: 'address', pattern: /\baddress\b/i },
-    { name: 'name', pattern: /\b(first.?name|last.?name|full.?name)\b/i },
-    { name: 'dob', pattern: /\b(date.?of.?birth|dob|birthday)\b/i },
-    { name: 'credit_card', pattern: /\b(credit.?card|card.?number)\b/i },
-    { name: 'passport', pattern: /\bpassport\b/i },
-    { name: 'driver_license', pattern: /\b(driver.?licen[cs]e|dl.?number)\b/i },
-    { name: 'bank_account', pattern: /\b(bank.?account|account.?number|iban)\b/i },
-  ];
-
-  const detected: string[] = [];
-  for (const { name, pattern } of patterns) {
-    if (pattern.test(content)) {
-      detected.push(name);
-    }
-  }
-
-  return detected;
 }

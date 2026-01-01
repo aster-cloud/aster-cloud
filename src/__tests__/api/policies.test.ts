@@ -29,11 +29,6 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/usage', () => ({
   checkUsageLimit: vi.fn().mockResolvedValue({ allowed: true }),
-  FEATURE_LIMITS: {
-    free: { savedPolicies: 3 },
-    pro: { savedPolicies: Infinity },
-    trial: { savedPolicies: Infinity },
-  },
 }));
 
 // We'll test the API logic directly by simulating what the route handlers do

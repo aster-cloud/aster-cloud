@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { isUnlimited } from '@/lib/plans';
 
 interface DashboardStats {
   plan: string;
@@ -130,7 +131,7 @@ export default function DashboardPage() {
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
             {stats?.usage.policies || 0}
           </dd>
-          {stats?.usage.policiesLimit !== Infinity && (
+          {stats?.usage.policiesLimit !== undefined && !isUnlimited(stats.usage.policiesLimit) && (
             <p className="mt-1 text-xs text-gray-400">
               Limit: {stats?.usage.policiesLimit}
             </p>
@@ -141,7 +142,8 @@ export default function DashboardPage() {
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
             {stats?.usage.executions || 0}
           </dd>
-          {stats?.usage.executionsLimit !== Infinity && (
+          {stats?.usage.executionsLimit !== undefined &&
+            !isUnlimited(stats.usage.executionsLimit) && (
             <div className="mt-2">
               <div className="h-2 w-full bg-gray-200 rounded-full">
                 <div

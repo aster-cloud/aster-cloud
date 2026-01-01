@@ -3,49 +3,20 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import {
+  BillingInterval,
+  getPlanStripePriceId,
+  isUnlimited,
+  PLANS,
+  PlanType,
+} from '@/lib/plans';
 
-const PLANS = {
-  free: {
-    name: 'Free',
-    price: { monthly: 0, yearly: 0 },
-    features: [
-      '100 executions/month',
-      '3 saved policies',
-      'Basic PII detection',
-      'Community support',
-    ],
-  },
-  pro: {
-    name: 'Pro',
-    price: { monthly: 49, yearly: 470 },
-    features: [
-      'Unlimited executions',
-      'Unlimited policies',
-      'Advanced PII detection',
-      'Policy sharing',
-      'Compliance reports',
-      'API access',
-      'Priority support',
-    ],
-  },
-  team: {
-    name: 'Team',
-    price: { monthly: 199, yearly: 1910 },
-    features: [
-      'Everything in Pro',
-      'Team collaboration',
-      'Role-based access',
-      'Shared policy library',
-      'Team analytics',
-      'SSO (coming soon)',
-    ],
-  },
-};
+const DISPLAY_PLANS = (Object.keys(PLANS) as PlanType[]).filter((plan) => plan !== 'trial');
 
 function BillingContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
-  const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly');
+  const [interval, setInterval] = useState<BillingInterval>('monthly');
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [usage, setUsage] = useState<{
@@ -78,10 +49,19 @@ function BillingContent() {
     }
   };
 
-  const handleCheckout = async (plan: 'pro' | 'team') => {
+  const handleCheckout = async (plan: PlanType) => {
     if (!session?.user?.id) return;
 
     setIsLoading(plan);
+
+    if (!getPlanStripePriceId(plan, interval)) {
+      setMessage({
+        type: 'error',
+        text: 'Selected plan is not available for checkout. Please contact support.',
+      });
+      setIsLoading(null);
+      return;
+    }
 
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -113,7 +93,7 @@ function BillingContent() {
     }
   };
 
-  const currentPlan = session?.user?.plan || 'free';
+  const currentPlan = (session?.user?.plan || 'free') as PlanType;
 
   return (
     <div>
@@ -163,9 +143,9 @@ function BillingContent() {
               <div>
                 <p className="text-sm text-gray-500">Executions this month</p>
                 <p className="text-lg font-medium">
-                  {usage.executions} / {usage.executionsLimit === Infinity ? '∞' : usage.executionsLimit}
+                  {usage.executions} / {isUnlimited(usage.executionsLimit) ? '∞' : usage.executionsLimit}
                 </p>
-                {usage.executionsLimit !== Infinity && (
+                {!isUnlimited(usage.executionsLimit) && (
                   <div className="mt-1 h-2 w-full bg-gray-200 rounded-full">
                     <div
                       className="h-2 bg-indigo-600 rounded-full"
@@ -179,7 +159,7 @@ function BillingContent() {
               <div>
                 <p className="text-sm text-gray-500">Saved policies</p>
                 <p className="text-lg font-medium">
-                  {usage.policies} / {usage.policiesLimit === Infinity ? '∞' : usage.policiesLimit}
+                  {usage.policies} / {isUnlimited(usage.policiesLimit) ? '∞' : usage.policiesLimit}
                 </p>
               </div>
             </div>
@@ -218,85 +198,99 @@ function BillingContent() {
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {(Object.entries(PLANS) as [keyof typeof PLANS, typeof PLANS.free][]).map(([planKey, plan]) => (
-          <div
-            key={planKey}
-            className={`rounded-lg border-2 bg-white p-6 ${
-              planKey === 'pro' ? 'border-indigo-600 shadow-lg' : 'border-gray-200'
-            }`}
-          >
-            {planKey === 'pro' && (
-              <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800 mb-4">
-                Most Popular
-              </span>
-            )}
+        {DISPLAY_PLANS.map((planKey) => {
+          const plan = PLANS[planKey];
+          const priceValue = plan.price[interval];
+          const isCurrentPlan = currentPlan === planKey;
+          const canCheckout = Boolean(getPlanStripePriceId(planKey, interval));
+          const isFeatured = planKey === 'pro';
+          const showInterval = typeof priceValue === 'number' && priceValue > 0;
 
-            <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
-
-            <div className="mt-4 flex items-baseline">
-              <span className="text-4xl font-bold text-gray-900">
-                ${plan.price[interval]}
-              </span>
-              {plan.price[interval] > 0 && (
-                <span className="ml-1 text-gray-500">/{interval === 'yearly' ? 'year' : 'month'}</span>
+          return (
+            <div
+              key={planKey}
+              className={`rounded-lg border-2 bg-white p-6 ${
+                isFeatured ? 'border-indigo-600 shadow-lg' : 'border-gray-200'
+              }`}
+            >
+              {isFeatured && (
+                <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800 mb-4">
+                  Most Popular
+                </span>
               )}
-            </div>
 
-            <ul className="mt-6 space-y-3">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex items-center text-sm text-gray-600">
-                  <svg className="h-4 w-4 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {feature}
-                </li>
-              ))}
-            </ul>
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                {plan.name}
+                <span className="text-sm font-normal text-gray-500">{plan.displayName}</span>
+              </h3>
 
-            <div className="mt-8">
-              {planKey === 'free' ? (
-                currentPlan === 'free' ? (
+              <div className="mt-4 flex items-baseline">
+                {priceValue === null ? (
+                  <span className="text-2xl font-semibold text-gray-700">Contact sales</span>
+                ) : (
+                  <>
+                    <span className="text-4xl font-bold text-gray-900">${priceValue}</span>
+                    {showInterval && (
+                      <span className="ml-1 text-gray-500">/{interval === 'yearly' ? 'year' : 'month'}</span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <ul className="mt-6 space-y-3">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-center text-sm text-gray-600">
+                    <svg className="h-4 w-4 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-8">
+                {isCurrentPlan ? (
                   <button
                     disabled
                     className="w-full rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-400"
                   >
                     Current Plan
                   </button>
-                ) : (
+                ) : canCheckout ? (
+                  <button
+                    onClick={() => handleCheckout(planKey)}
+                    disabled={isLoading !== null}
+                    className={`w-full rounded-md px-4 py-2 text-sm font-semibold shadow-sm ${
+                      planKey === 'pro'
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        : 'bg-gray-900 text-white hover:bg-gray-800'
+                    } disabled:opacity-50`}
+                  >
+                    {isLoading === planKey ? 'Loading...' : `Upgrade to ${plan.name}`}
+                  </button>
+                ) : planKey === 'free' ? (
                   <button
                     disabled
                     className="w-full rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-500"
                   >
                     Free Tier
                   </button>
-                )
-              ) : currentPlan === planKey ? (
-                <button
-                  disabled
-                  className="w-full rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-400"
-                >
-                  Current Plan
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleCheckout(planKey as 'pro' | 'team')}
-                  disabled={isLoading !== null}
-                  className={`w-full rounded-md px-4 py-2 text-sm font-semibold shadow-sm ${
-                    planKey === 'pro'
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-gray-900 text-white hover:bg-gray-800'
-                  } disabled:opacity-50`}
-                >
-                  {isLoading === planKey ? 'Loading...' : `Upgrade to ${plan.name}`}
-                </button>
-              )}
+                ) : (
+                  <button
+                    disabled
+                    className="w-full rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-500"
+                  >
+                    Contact Sales
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* FAQ */}

@@ -1,70 +1,48 @@
 import { prisma } from '@/lib/prisma';
-
-// Feature limits by plan
-export const FEATURE_LIMITS = {
-  free: {
-    executionsPerMonth: 100,
-    savedPolicies: 3,
-    piiDetection: 'basic' as const,
-    sharing: false,
-    complianceReports: false,
-    apiAccess: false,
-    teamFeatures: false,
-  },
-  trial: {
-    executionsPerMonth: Infinity,
-    savedPolicies: Infinity,
-    piiDetection: 'advanced' as const,
-    sharing: true,
-    complianceReports: true,
-    apiAccess: true,
-    teamFeatures: false,
-  },
-  pro: {
-    executionsPerMonth: Infinity,
-    savedPolicies: Infinity,
-    piiDetection: 'advanced' as const,
-    sharing: true,
-    complianceReports: true,
-    apiAccess: true,
-    teamFeatures: false,
-  },
-  team: {
-    executionsPerMonth: Infinity,
-    savedPolicies: Infinity,
-    piiDetection: 'advanced' as const,
-    sharing: true,
-    complianceReports: true,
-    apiAccess: true,
-    teamFeatures: true,
-  },
-  enterprise: {
-    executionsPerMonth: Infinity,
-    savedPolicies: Infinity,
-    piiDetection: 'advanced' as const,
-    sharing: true,
-    complianceReports: true,
-    apiAccess: true,
-    teamFeatures: true,
-    sso: true,
-    auditLogs: true,
-    customIntegrations: true,
-  },
-} as const;
+import {
+  PLANS,
+  getPlanConfig,
+  getPlanLimit,
+  isUnlimited,
+  PlanCapabilities,
+  PlanLimitType,
+  PlanType,
+} from '@/lib/plans';
 
 export type UsageType = 'execution' | 'pii_scan' | 'compliance_report' | 'api_call';
 
-// Get current period string (YYYY-MM)
+const USAGE_LIMIT_MAPPING: Record<UsageType, PlanLimitType | null> = {
+  execution: 'executions',
+  pii_scan: null,
+  compliance_report: null,
+  api_call: null,
+};
+
+// 获取当前周期字符串（YYYY-MM）
 function getCurrentPeriod(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// Check if user can perform an action
+function normalizePlan(plan?: string | null): PlanType {
+  if (plan && plan in PLANS) {
+    return plan as PlanType;
+  }
+  return 'free';
+}
+
+function resolvePlan(plan: PlanType, trialEndsAt: Date | null) {
+  if (plan === 'trial' && trialEndsAt && trialEndsAt < new Date()) {
+    return { plan: 'free' as PlanType, downgraded: true };
+  }
+  return { plan, downgraded: false };
+}
+
+// 检查指定用量是否超限
 export async function checkUsageLimit(
   userId: string,
   type: UsageType
-): Promise<{ allowed: boolean; remaining?: number; message?: string }> {
+): Promise<{ allowed: boolean; remaining?: number; limit?: number; message?: string }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -77,27 +55,26 @@ export async function checkUsageLimit(
     return { allowed: false, message: 'User not found' };
   }
 
-  // Check if trial has expired
-  let effectivePlan = user.plan;
-  if (user.plan === 'trial' && user.trialEndsAt && user.trialEndsAt < new Date()) {
-    // Trial expired, treat as free
-    effectivePlan = 'free';
+  const normalizedPlan = normalizePlan(user.plan);
+  const { plan: effectivePlan, downgraded } = resolvePlan(normalizedPlan, user.trialEndsAt);
 
-    // Update user's plan
+  if (downgraded) {
     await prisma.user.update({
       where: { id: userId },
-      data: { plan: 'free' },
+      data: { plan: effectivePlan },
     });
   }
 
-  const limits = FEATURE_LIMITS[effectivePlan as keyof typeof FEATURE_LIMITS];
-
-  // For unlimited plans, always allow
-  if (type === 'execution' && limits.executionsPerMonth === Infinity) {
-    return { allowed: true };
+  const limitKey = USAGE_LIMIT_MAPPING[type];
+  if (!limitKey) {
+    return { allowed: true, limit: -1, remaining: -1 };
   }
 
-  // Check current usage
+  const limit = getPlanLimit(effectivePlan, limitKey);
+  if (isUnlimited(limit)) {
+    return { allowed: true, limit, remaining: -1 };
+  }
+
   const period = getCurrentPeriod();
   const usage = await prisma.usageRecord.findUnique({
     where: {
@@ -110,23 +87,24 @@ export async function checkUsageLimit(
   });
 
   const currentCount = usage?.count || 0;
-  const limit = type === 'execution' ? limits.executionsPerMonth : Infinity;
 
   if (currentCount >= limit) {
     return {
       allowed: false,
+      limit,
       remaining: 0,
-      message: `You've reached your monthly limit of ${limit} ${type}s. Upgrade to Pro for unlimited access.`,
+      message: `You've reached your monthly limit of ${limit} ${type}s. Upgrade to unlock more capacity.`,
     };
   }
 
   return {
     allowed: true,
-    remaining: limit === Infinity ? undefined : limit - currentCount,
+    limit,
+    remaining: limit - currentCount,
   };
 }
 
-// Record usage
+// 记录用量计数
 export async function recordUsage(userId: string, type: UsageType, count = 1): Promise<void> {
   const period = getCurrentPeriod();
 
@@ -150,7 +128,7 @@ export async function recordUsage(userId: string, type: UsageType, count = 1): P
   });
 }
 
-// Get user's current usage stats
+// 获取用户用量统计
 export async function getUsageStats(userId: string) {
   const period = getCurrentPeriod();
 
@@ -175,12 +153,21 @@ export async function getUsageStats(userId: string) {
     }),
   ]);
 
-  const plan = user?.plan || 'free';
-  const limits = FEATURE_LIMITS[plan as keyof typeof FEATURE_LIMITS];
+  const normalizedPlan = normalizePlan(user?.plan || 'free');
+  const { plan: effectivePlan, downgraded } = resolvePlan(normalizedPlan, user?.trialEndsAt ?? null);
 
-  // Check trial status
+  if (downgraded) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { plan: effectivePlan },
+    });
+  }
+
+  const planConfig = getPlanConfig(effectivePlan);
+  const { limits, capabilities } = planConfig;
+
   let trialDaysLeft: number | null = null;
-  if (plan === 'trial' && user?.trialEndsAt) {
+  if (effectivePlan === 'trial' && user?.trialEndsAt) {
     const now = new Date();
     const diff = user.trialEndsAt.getTime() - now.getTime();
     trialDaysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -192,32 +179,32 @@ export async function getUsageStats(userId: string) {
   }
 
   return {
-    plan,
+    plan: effectivePlan,
     trialDaysLeft,
     limits,
     usage: {
       executions: executionCount,
-      executionsLimit: limits.executionsPerMonth,
+      executionsLimit: limits.executions,
       policies: policyCount,
-      policiesLimit: limits.savedPolicies,
+      policiesLimit: limits.policies,
       piiScans: usageByType.pii_scan || 0,
       complianceReports: usageByType.compliance_report || 0,
       apiCalls: usageByType.api_call || 0,
     },
     features: {
-      piiDetection: limits.piiDetection,
-      sharing: limits.sharing,
-      complianceReports: limits.complianceReports,
-      apiAccess: limits.apiAccess,
-      teamFeatures: limits.teamFeatures,
+      piiDetection: capabilities.piiDetection,
+      sharing: capabilities.sharing,
+      complianceReports: capabilities.complianceReports,
+      apiAccess: capabilities.apiAccess,
+      teamFeatures: capabilities.teamFeatures,
     },
   };
 }
 
-// Check if user has access to a specific feature
+// 检查指定功能是否可用
 export async function hasFeatureAccess(
   userId: string,
-  feature: keyof typeof FEATURE_LIMITS.free
+  feature: keyof PlanCapabilities
 ): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -226,25 +213,25 @@ export async function hasFeatureAccess(
 
   if (!user) return false;
 
-  // Check if trial has expired
-  let effectivePlan = user.plan;
-  if (user.plan === 'trial' && user.trialEndsAt && user.trialEndsAt < new Date()) {
-    effectivePlan = 'free';
+  const normalizedPlan = normalizePlan(user.plan);
+  const { plan: effectivePlan, downgraded } = resolvePlan(normalizedPlan, user.trialEndsAt);
+
+  if (downgraded) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { plan: effectivePlan },
+    });
   }
 
-  const limits = FEATURE_LIMITS[effectivePlan as keyof typeof FEATURE_LIMITS];
-  const value = limits[feature as keyof typeof limits];
+  const value = getPlanConfig(effectivePlan).capabilities[feature];
 
-  // For boolean features
   if (typeof value === 'boolean') {
     return value;
   }
 
-  // For numeric features (treat any positive number as having access)
   if (typeof value === 'number') {
     return value > 0;
   }
 
-  // For string features (treat any non-empty string as having access)
   return Boolean(value);
 }

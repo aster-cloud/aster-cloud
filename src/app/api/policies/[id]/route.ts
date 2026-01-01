@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { detectPII } from '@/services/pii/detector';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -79,6 +80,8 @@ export async function PUT(req: Request, { params }: RouteParams) {
     // Update policy and create new version if content changed
     const newVersion = content !== existingPolicy.content;
 
+    const piiResult = newVersion ? detectPII(content) : null;
+
     const policy = await prisma.policy.update({
       where: { id },
       data: {
@@ -87,7 +90,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
         description,
         isPublic,
         version: newVersion ? { increment: 1 } : undefined,
-        piiFields: newVersion ? detectPII(content) : undefined,
+        piiFields: newVersion ? piiResult?.detectedTypes : undefined,
       },
     });
 
@@ -139,26 +142,4 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     console.error('Error deleting policy:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-// Basic PII detection
-function detectPII(content: string): string[] {
-  const patterns: { name: string; pattern: RegExp }[] = [
-    { name: 'email', pattern: /\bemail\b/i },
-    { name: 'phone', pattern: /\b(phone|mobile|tel)\b/i },
-    { name: 'ssn', pattern: /\b(ssn|social.?security)\b/i },
-    { name: 'address', pattern: /\baddress\b/i },
-    { name: 'name', pattern: /\b(first.?name|last.?name|full.?name)\b/i },
-    { name: 'dob', pattern: /\b(date.?of.?birth|dob|birthday)\b/i },
-    { name: 'credit_card', pattern: /\b(credit.?card|card.?number)\b/i },
-  ];
-
-  const detected: string[] = [];
-  for (const { name, pattern } of patterns) {
-    if (pattern.test(content)) {
-      detected.push(name);
-    }
-  }
-
-  return detected;
 }

@@ -26,13 +26,20 @@ export default function ApiKeysPage() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('/api/keys');
-      if (response.ok) {
-        const data = await response.json();
-        setApiKeys(data.keys || []);
+      const response = await fetch('/api/api-keys');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || 'Failed to fetch API keys');
       }
+
+      const data = await response.json();
+      const normalized = Array.isArray(data)
+        ? data
+        : (data as { keys?: ApiKey[] }).keys || [];
+      setApiKeys(normalized);
     } catch (err) {
       console.error('Failed to fetch API keys:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch API keys');
     } finally {
       setIsLoading(false);
     }
@@ -49,15 +56,15 @@ export default function ApiKeysPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/keys', {
+      const response = await fetch('/api/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newKeyName }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create API key');
+        const data = await response.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || 'Failed to create API key');
       }
 
       const data = await response.json();
@@ -77,12 +84,13 @@ export default function ApiKeysPage() {
     }
 
     try {
-      const response = await fetch(`/api/keys/${keyId}`, {
+      const response = await fetch(`/api/api-keys/${keyId}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to revoke API key');
+        const data = await response.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || 'Failed to revoke API key');
       }
 
       fetchApiKeys();

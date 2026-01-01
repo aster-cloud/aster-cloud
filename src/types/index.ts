@@ -1,3 +1,5 @@
+import { PlanType } from '@/lib/plans';
+
 // User types
 export interface User {
   id: string;
@@ -11,7 +13,7 @@ export interface User {
   updatedAt: Date;
 }
 
-export type Plan = 'free' | 'trial' | 'pro' | 'team';
+export type Plan = PlanType;
 
 export interface UserSession {
   user: {
@@ -56,38 +58,3 @@ export interface UsageLimits {
 }
 
 // Feature gates
-export const FEATURE_LIMITS = {
-  free: {
-    executionsPerMonth: 100,
-    savedPolicies: 3,
-    piiDetection: 'basic',
-    sharing: false,
-    complianceReports: false,
-    apiAccess: false,
-  },
-  trial: {
-    executionsPerMonth: Infinity,
-    savedPolicies: Infinity,
-    piiDetection: 'advanced',
-    sharing: true,
-    complianceReports: true,
-    apiAccess: true,
-  },
-  pro: {
-    executionsPerMonth: Infinity,
-    savedPolicies: Infinity,
-    piiDetection: 'advanced',
-    sharing: true,
-    complianceReports: true,
-    apiAccess: true,
-  },
-  team: {
-    executionsPerMonth: Infinity,
-    savedPolicies: Infinity,
-    piiDetection: 'advanced',
-    sharing: true,
-    complianceReports: true,
-    apiAccess: true,
-    teamFeatures: true,
-  },
-} as const;

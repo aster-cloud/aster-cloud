@@ -1,21 +1,33 @@
 import { NextResponse } from 'next/server';
-import { stripe, PRICE_IDS, type PlanType, type BillingInterval } from '@/lib/stripe';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { stripe } from '@/lib/stripe';
+import { getPlanStripePriceId, type PlanType, type BillingInterval } from '@/lib/plans';
 
 export async function POST(req: Request) {
   try {
-    const { plan, interval, userId, email } = (await req.json()) as {
+    const { plan, interval } = (await req.json()) as {
       plan: PlanType;
       interval: BillingInterval;
-      userId: string;
-      email: string;
     };
 
-    if (!plan || !interval || !userId || !email) {
+    if (!plan || !interval) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || !session.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const userId = session.user.id;
+    const email = session.user.email;
 
     if (plan === 'free') {
       return NextResponse.json(
@@ -24,7 +36,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const priceId = PRICE_IDS[plan as keyof typeof PRICE_IDS]?.[interval];
+    const priceId = getPlanStripePriceId(plan, interval);
     if (!priceId) {
       return NextResponse.json(
         { error: 'Invalid plan or interval' },
@@ -32,7 +44,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const session = await stripe.checkout.sessions.create({
+    console.info('[stripe-checkout] creating session', {
+      userId,
+      email,
+      plan,
+      interval,
+      ts: new Date().toISOString(),
+    });
+
+    const sessionResponse = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
@@ -52,7 +72,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: sessionResponse.url });
   } catch (err) {
     console.error('Checkout session error:', err);
     return NextResponse.json(
