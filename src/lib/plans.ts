@@ -85,8 +85,8 @@ export const PLANS = {
     },
     price: { monthly: 29, yearly: 290 },
     stripePriceId: {
-      monthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
-      yearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
+      monthly: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID,
     },
   },
   team: {
@@ -110,8 +110,8 @@ export const PLANS = {
     },
     price: { monthly: 99, yearly: 990 },
     stripePriceId: {
-      monthly: process.env.STRIPE_TEAM_MONTHLY_PRICE_ID,
-      yearly: process.env.STRIPE_TEAM_YEARLY_PRICE_ID,
+      monthly: process.env.NEXT_PUBLIC_STRIPE_TEAM_MONTHLY_PRICE_ID,
+      yearly: process.env.NEXT_PUBLIC_STRIPE_TEAM_YEARLY_PRICE_ID,
     },
   },
   enterprise: {
