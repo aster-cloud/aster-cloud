@@ -43,14 +43,13 @@ export async function POST(req: Request) {
       select: { email: true },
     });
 
-    // 检查邀请邮箱是否匹配（可选：允许任何登录用户接受邀请）
-    // 如果需要严格匹配，取消下面的注释
-    // if (currentUser?.email !== invitation.email) {
-    //   return NextResponse.json(
-    //     { error: '此邀请发送给了另一个邮箱地址' },
-    //     { status: 403 }
-    //   );
-    // }
+    // 检查邀请邮箱是否匹配（安全要求：必须严格匹配）
+    if (!currentUser?.email || currentUser.email.toLowerCase() !== invitation.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: '此邀请仅限指定邮箱使用' },
+        { status: 403 }
+      );
+    }
 
     // 检查用户是否已是成员
     const existingMember = await prisma.teamMember.findUnique({

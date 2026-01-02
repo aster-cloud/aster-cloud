@@ -89,11 +89,10 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     // 如果提供了 policyId，将现有策略分配给团队
     if (policyId) {
-      // 验证策略存在且属于当前用户
+      // 获取策略信息
       const existingPolicy = await prisma.policy.findFirst({
         where: {
           id: policyId,
-          userId: session.user.id,
           teamId: null, // 只能分配个人策略
         },
       });
@@ -103,6 +102,28 @@ export async function POST(req: Request, { params }: RouteParams) {
           { error: '策略不存在或已分配给其他团队' },
           { status: 404 }
         );
+      }
+
+      // 检查权限：用户可以导入自己的策略，或者策略所有者也是团队成员
+      const isOwnPolicy = existingPolicy.userId === session.user.id;
+
+      if (!isOwnPolicy) {
+        // 检查策略所有者是否是团队成员
+        const policyOwnerMembership = await prisma.teamMember.findUnique({
+          where: {
+            teamId_userId: {
+              teamId,
+              userId: existingPolicy.userId,
+            },
+          },
+        });
+
+        if (!policyOwnerMembership) {
+          return NextResponse.json(
+            { error: '只能导入自己的策略或团队成员的策略' },
+            { status: 403 }
+          );
+        }
       }
 
       // 分配策略到团队

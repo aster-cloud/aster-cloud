@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 interface Member {
   id: string;
+  userId: string;
   role: string;
   user: {
     id: string;
@@ -35,12 +36,15 @@ type TeamRole = 'owner' | 'admin' | 'member' | 'viewer';
 export default function TeamMembersPage() {
   const t = useTranslations('teams');
   const params = useParams();
+  const router = useRouter();
   const teamId = params.teamId as string;
+  const locale = params.locale as string;
 
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [userRole, setUserRole] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -75,6 +79,7 @@ export default function TeamMembersPage() {
       if (membersRes.ok) {
         const membersData = await membersRes.json();
         setMembers(membersData.members);
+        setCurrentUserId(membersData.currentUserId);
       }
 
       if (invitationsRes.ok) {
@@ -172,6 +177,24 @@ export default function TeamMembersPage() {
     }
   };
 
+  const handleLeaveTeam = async (memberId: string) => {
+    if (!confirm(t('members.confirmLeave'))) return;
+
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to leave team');
+      }
+      // 离开团队后重定向到团队列表（保持当前语言）
+      router.push(`/${locale}/teams`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('members.leaveFailed'));
+    }
+  };
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner':
@@ -209,7 +232,7 @@ export default function TeamMembersPage() {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">{error || t('teamNotFound')}</p>
-        <Link href="/teams" className="mt-4 text-indigo-600 hover:text-indigo-700">
+        <Link href={`/${locale}/teams`} className="mt-4 text-indigo-600 hover:text-indigo-700">
           {t('backToTeams')}
         </Link>
       </div>
@@ -221,7 +244,7 @@ export default function TeamMembersPage() {
       {/* 页头 */}
       <div className="mb-6">
         <Link
-          href={`/teams/${teamId}`}
+          href={`/${locale}/teams/${teamId}`}
           className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
         >
           <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -391,22 +414,29 @@ export default function TeamMembersPage() {
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
                         {t(`roles.${member.role}`)}
                       </span>
-                    ) : canChangeRole && userRole === 'owner' ? (
+                    ) : canChangeRole && (userRole === 'owner' || (userRole === 'admin' && member.role !== 'admin')) ? (
                       <select
                         value={member.role}
                         onChange={(e) => handleRoleChange(member.id, e.target.value as TeamRole)}
                         className="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
                       >
-                        <option value="admin">{t('roles.admin')}</option>
-                        <option value="member">{t('roles.member')}</option>
-                        <option value="viewer">{t('roles.viewer')}</option>
+                        {getAvailableRoles().map((role) => (
+                          <option key={role} value={role}>{t(`roles.${role}`)}</option>
+                        ))}
                       </select>
                     ) : (
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
                         {t(`roles.${member.role}`)}
                       </span>
                     )}
-                    {canRemove && member.role !== 'owner' && (
+                    {member.userId === currentUserId && member.role !== 'owner' ? (
+                      <button
+                        onClick={() => handleLeaveTeam(member.id)}
+                        className="text-orange-600 hover:text-orange-800 text-sm"
+                      >
+                        {t('members.leave')}
+                      </button>
+                    ) : canRemove && member.role !== 'owner' && member.userId !== currentUserId && (
                       <button
                         onClick={() => handleRemoveMember(member.id, member.user.name || member.user.email)}
                         className="text-red-600 hover:text-red-800 text-sm"

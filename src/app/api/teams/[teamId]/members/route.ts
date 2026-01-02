@@ -56,6 +56,7 @@ export async function GET(req: Request, { params }: RouteParams) {
         role: member.role,
         joinedAt: member.createdAt.toISOString(),
       })),
+      currentUserId: session.user.id,
     });
   } catch (error) {
     console.error('Error listing team members:', error);
