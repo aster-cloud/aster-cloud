@@ -11,6 +11,8 @@ import {
   getCurrencyForLocale,
   getPlanPrice,
   getPlanStripePriceId,
+  getTeamMinUsers,
+  getTeamPerUserPrice,
   isUnlimited,
   PLANS,
   PlanType,
@@ -25,6 +27,7 @@ function BillingContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [interval, setInterval] = useState<BillingInterval>('monthly');
+  const [teamUsers, setTeamUsers] = useState<number>(getTeamMinUsers());
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [usage, setUsage] = useState<{
@@ -79,6 +82,7 @@ function BillingContent() {
           plan,
           interval,
           currency,
+          quantity: plan === 'team' ? teamUsers : 1,
         }),
       });
 
@@ -207,10 +211,24 @@ function BillingContent() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {DISPLAY_PLANS.map((planKey) => {
           const plan = PLANS[planKey];
-          const priceValue = getPlanPrice(planKey, currency)[interval];
+          const isTeamPlan = planKey === 'team';
           const isCurrentPlan = currentPlan === planKey;
           const canCheckout = Boolean(getPlanStripePriceId(planKey, interval, currency));
           const isFeatured = planKey === 'pro';
+
+          // Calculate price based on plan type
+          let priceValue: number | null;
+          let priceLabel: string;
+
+          if (isTeamPlan) {
+            const perUserPrice = getTeamPerUserPrice(currency, interval);
+            priceValue = perUserPrice * teamUsers;
+            priceLabel = `${formatPrice(perUserPrice, currency)}/${t('perUser')}`;
+          } else {
+            priceValue = getPlanPrice(planKey, currency)[interval];
+            priceLabel = '';
+          }
+
           const showInterval = typeof priceValue === 'number' && priceValue > 0;
 
           return (
@@ -245,6 +263,49 @@ function BillingContent() {
                   </>
                 )}
               </div>
+
+              {/* Per user price for Team plan */}
+              {isTeamPlan && priceLabel && (
+                <p className="mt-1 text-sm text-gray-500">{priceLabel}</p>
+              )}
+
+              {/* Team users selector */}
+              {isTeamPlan && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('teamUsers')}
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setTeamUsers(Math.max(getTeamMinUsers(), teamUsers - 1))}
+                      disabled={teamUsers <= getTeamMinUsers()}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={getTeamMinUsers()}
+                      max={100}
+                      value={teamUsers}
+                      onChange={(e) => setTeamUsers(Math.max(getTeamMinUsers(), Math.min(100, parseInt(e.target.value) || getTeamMinUsers())))}
+                      className="w-16 text-center border border-gray-300 rounded-md py-1 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTeamUsers(Math.min(100, teamUsers + 1))}
+                      disabled={teamUsers >= 100}
+                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t('minUsers', { count: getTeamMinUsers() })}
+                  </p>
+                </div>
+              )}
 
               <ul className="mt-6 space-y-3">
                 {plan.features.map((feature) => (

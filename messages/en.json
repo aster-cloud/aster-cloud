@@ -228,6 +228,8 @@
     "savedPolicies": "Saved policies",
     "monthly": "Monthly",
     "yearly": "Yearly",
+    "year": "year",
+    "month": "month",
     "save20": "Save 20%",
     "mostPopular": "Most Popular",
     "currentPlanButton": "Current Plan",
@@ -235,6 +237,9 @@
     "loading": "Loading...",
     "freeTier": "Free Tier",
     "contactSales": "Contact Sales",
+    "perUser": "user",
+    "teamUsers": "Team Members",
+    "minUsers": "Minimum {count} users",
     "subscriptionActivated": "Subscription activated successfully!",
     "checkoutCanceled": "Checkout was canceled.",
     "faq": {

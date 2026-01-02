@@ -17,10 +17,11 @@ function isValidCurrency(currency: unknown): currency is CurrencyCode {
 
 export async function POST(req: Request) {
   try {
-    const { plan, interval, currency: rawCurrency } = (await req.json()) as {
+    const { plan, interval, currency: rawCurrency, quantity } = (await req.json()) as {
       plan: PlanType;
       interval: BillingInterval;
       currency?: string;
+      quantity?: number;
     };
 
     if (!plan || !interval) {
@@ -29,6 +30,9 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    // Validate quantity for team plan (minimum 3 users)
+    const itemQuantity = plan === 'team' ? Math.max(3, quantity || 3) : 1;
 
     // 验证并默认货币为 USD
     const currency: CurrencyCode = isValidCurrency(rawCurrency) ? rawCurrency : 'USD';
@@ -66,6 +70,7 @@ export async function POST(req: Request) {
       interval,
       currency,
       priceId,
+      quantity: itemQuantity,
       ts: new Date().toISOString(),
     });
 
@@ -75,7 +80,7 @@ export async function POST(req: Request) {
       line_items: [
         {
           price: priceId,
-          quantity: 1,
+          quantity: itemQuantity,
         },
       ],
       customer_email: email,
@@ -87,6 +92,7 @@ export async function POST(req: Request) {
         plan,
         interval,
         currency,
+        quantity: String(itemQuantity),
       },
     });
 

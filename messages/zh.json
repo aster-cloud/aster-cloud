@@ -228,6 +228,8 @@
     "savedPolicies": "已保存的策略",
     "monthly": "月付",
     "yearly": "年付",
+    "year": "年",
+    "month": "月",
     "save20": "节省 20%",
     "mostPopular": "最受欢迎",
     "currentPlanButton": "当前计划",
@@ -235,6 +237,9 @@
     "loading": "加载中...",
     "freeTier": "免费版",
     "contactSales": "联系销售",
+    "perUser": "用户",
+    "teamUsers": "团队成员",
+    "minUsers": "最少 {count} 位用户",
     "subscriptionActivated": "订阅激活成功！",
     "checkoutCanceled": "结账已取消。",
     "faq": {

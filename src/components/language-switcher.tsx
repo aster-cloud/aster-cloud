@@ -15,18 +15,29 @@ export function LanguageSwitcher() {
 
     // Check if pathname starts with current locale
     for (const loc of locales) {
-      if (pathname.startsWith(`/${loc}/`) || pathname === `/${loc}`) {
-        newPathname = pathname.replace(`/${loc}`, '') || '/';
+      if (pathname.startsWith(`/${loc}/`)) {
+        newPathname = pathname.slice(loc.length + 1); // Remove /{locale}
+        break;
+      } else if (pathname === `/${loc}`) {
+        newPathname = '/';
         break;
       }
+    }
+
+    // Ensure newPathname starts with /
+    if (!newPathname.startsWith('/')) {
+      newPathname = '/' + newPathname;
     }
 
     // Navigate to new locale
     if (newLocale === 'en') {
       // English is default, no prefix needed
       router.push(newPathname);
+      router.refresh();
     } else {
-      router.push(`/${newLocale}${newPathname === '/' ? '' : newPathname}`);
+      const targetPath = newPathname === '/' ? `/${newLocale}` : `/${newLocale}${newPathname}`;
+      router.push(targetPath);
+      router.refresh();
     }
   };
 
