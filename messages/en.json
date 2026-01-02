@@ -256,6 +256,30 @@
       "refunds": {
         "question": "Do you offer refunds?",
         "answer": "We offer a 30-day money-back guarantee. If you're not satisfied with your subscription, contact us within 30 days for a full refund."
+      },
+      "apiVsExecutions": {
+        "question": "What's the difference between API calls and executions?",
+        "answer": "Executions count all policy runs (web UI + API). API calls only count requests made via the REST API. Each API request consumes both quotas. Web UI usage only consumes executions."
+      },
+      "upgradePlan": {
+        "question": "How do I upgrade or downgrade my plan?",
+        "answer": "You can upgrade anytime from this page. Your new plan takes effect immediately. To downgrade, cancel your current subscription and it will revert to Free at the end of the billing period."
+      },
+      "dataSecurity": {
+        "question": "How is my data secured?",
+        "answer": "All data is encrypted in transit (TLS 1.3) and at rest (AES-256). We follow SOC 2 Type II practices and never share your policy data with third parties."
+      },
+      "invoices": {
+        "question": "Can I get invoices for my subscription?",
+        "answer": "Yes, invoices are automatically generated and sent to your email after each payment. You can also download past invoices from your Stripe customer portal."
+      },
+      "freeLimits": {
+        "question": "What are the limitations of the Free plan?",
+        "answer": "Free plan includes 3 saved policies, 100 executions/month, and basic PII detection. API access and compliance reports require a Pro or Team plan."
+      },
+      "support": {
+        "question": "How can I contact support?",
+        "answer": "Free users can reach us via email at support@aster-lang.cloud. Pro and Team users get priority support with faster response times."
       }
     },
     "plans": {

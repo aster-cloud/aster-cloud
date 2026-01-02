@@ -256,6 +256,30 @@
       "refunds": {
         "question": "Bieten Sie Rückerstattungen an?",
         "answer": "Wir bieten eine 30-tägige Geld-zurück-Garantie. Wenn Sie mit Ihrem Abonnement nicht zufrieden sind, kontaktieren Sie uns innerhalb von 30 Tagen für eine vollständige Rückerstattung."
+      },
+      "apiVsExecutions": {
+        "question": "Was ist der Unterschied zwischen API-Aufrufen und Ausführungen?",
+        "answer": "Ausführungen zählen alle Richtlinien-Läufe (Web-UI + API). API-Aufrufe zählen nur Anfragen über die REST-API. Jede API-Anfrage verbraucht beide Kontingente. Web-UI-Nutzung verbraucht nur Ausführungen."
+      },
+      "upgradePlan": {
+        "question": "Wie kann ich meinen Plan upgraden oder downgraden?",
+        "answer": "Sie können jederzeit von dieser Seite aus upgraden. Ihr neuer Plan wird sofort wirksam. Zum Downgraden kündigen Sie Ihr aktuelles Abonnement und es wird am Ende des Abrechnungszeitraums auf Kostenlos zurückgesetzt."
+      },
+      "dataSecurity": {
+        "question": "Wie werden meine Daten gesichert?",
+        "answer": "Alle Daten werden bei der Übertragung (TLS 1.3) und im Ruhezustand (AES-256) verschlüsselt. Wir folgen SOC 2 Type II Praktiken und teilen Ihre Richtliniendaten niemals mit Dritten."
+      },
+      "invoices": {
+        "question": "Kann ich Rechnungen für mein Abonnement erhalten?",
+        "answer": "Ja, Rechnungen werden automatisch generiert und nach jeder Zahlung an Ihre E-Mail gesendet. Sie können auch frühere Rechnungen aus Ihrem Stripe-Kundenportal herunterladen."
+      },
+      "freeLimits": {
+        "question": "Was sind die Einschränkungen des kostenlosen Plans?",
+        "answer": "Der kostenlose Plan umfasst 3 gespeicherte Richtlinien, 100 Ausführungen/Monat und Basis-PII-Erkennung. API-Zugang und Compliance-Berichte erfordern einen Pro- oder Team-Plan."
+      },
+      "support": {
+        "question": "Wie kann ich den Support kontaktieren?",
+        "answer": "Kostenlose Benutzer können uns per E-Mail unter support@aster-lang.cloud erreichen. Pro- und Team-Benutzer erhalten Prioritäts-Support mit schnelleren Antwortzeiten."
       }
     },
     "plans": {

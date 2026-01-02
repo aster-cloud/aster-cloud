@@ -434,13 +434,29 @@ function BillingContent() {
       {/* FAQ */}
       <div className="mt-12">
         <h2 className="text-lg font-medium text-gray-900 mb-4">{t('faq.title')}</h2>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <details className="bg-white rounded-lg shadow px-4 py-3">
             <summary className="font-medium text-gray-900 cursor-pointer">
-              {t('faq.cancelAnytime.question')}
+              {t('faq.apiVsExecutions.question')}
             </summary>
             <p className="mt-2 text-sm text-gray-600">
-              {t('faq.cancelAnytime.answer')}
+              {t('faq.apiVsExecutions.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.freeLimits.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.freeLimits.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.upgradePlan.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.upgradePlan.answer')}
             </p>
           </details>
           <details className="bg-white rounded-lg shadow px-4 py-3">
@@ -453,10 +469,42 @@ function BillingContent() {
           </details>
           <details className="bg-white rounded-lg shadow px-4 py-3">
             <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.cancelAnytime.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.cancelAnytime.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
               {t('faq.refunds.question')}
             </summary>
             <p className="mt-2 text-sm text-gray-600">
               {t('faq.refunds.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.invoices.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.invoices.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.dataSecurity.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.dataSecurity.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3 md:col-span-2">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.support.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.support.answer')}
             </p>
           </details>
         </div>
