@@ -245,6 +245,8 @@
     "checkoutCanceled": "Bezahlvorgang wurde abgebrochen.",
     "faq": {
       "title": "Häufig gestellte Fragen",
+      "productQuestions": "Produktfragen",
+      "billingQuestions": "Abrechnung & Konto",
       "whatIsAster": {
         "question": "Was ist Aster Cloud?",
         "answer": "Aster Cloud ist eine Richtlinienverwaltungsplattform, mit der Sie Geschäftsregeln als Code definieren, testen und ausführen können. Sie eignet sich ideal für Compliance-Automatisierung, Entscheidungs-Engines und Geschäftslogik, die sich häufig ändert, ohne Code-Deployments zu erfordern."

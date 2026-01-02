@@ -245,6 +245,8 @@
     "checkoutCanceled": "Checkout was canceled.",
     "faq": {
       "title": "Frequently Asked Questions",
+      "productQuestions": "Product Questions",
+      "billingQuestions": "Billing & Account",
       "whatIsAster": {
         "question": "What is Aster Cloud?",
         "answer": "Aster Cloud is a policy management platform that lets you define, test, and execute business rules as code. It's ideal for compliance automation, decision engines, and business logic that changes frequently without code deployments."

@@ -245,6 +245,8 @@
     "checkoutCanceled": "结账已取消。",
     "faq": {
       "title": "常见问题",
+      "productQuestions": "产品问题",
+      "billingQuestions": "账单与账户",
       "whatIsAster": {
         "question": "什么是 Aster Cloud？",
         "answer": "Aster Cloud 是一个策略管理平台，让您可以将业务规则定义、测试和执行为代码。它非常适合合规自动化、决策引擎以及需要频繁变更但无需代码部署的业务逻辑。"
