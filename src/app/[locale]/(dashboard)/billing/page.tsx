@@ -511,6 +511,14 @@ function BillingContent() {
           </details>
           <details className="bg-white rounded-lg shadow px-4 py-3">
             <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.downgrade.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.downgrade.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
               {t('faq.trialEnds.question')}
             </summary>
             <p className="mt-2 text-sm text-gray-600">

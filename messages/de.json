@@ -269,6 +269,10 @@
         "question": "Gibt es eine selbst gehostete Option?",
         "answer": "Enterprise-Kunden können eine On-Premise-Bereitstellung mit dediziertem Support, individuellen SLA-Garantien und Private-Cloud-Optionen anfordern. Kontaktieren Sie unser Vertriebsteam für Details."
       },
+      "downgrade": {
+        "question": "Was passiert mit meinen Richtlinien, wenn ich downgrade?",
+        "answer": "Bei einem Downgrade auf einen niedrigeren Plan werden Richtlinien über Ihrem neuen Limit automatisch eingefroren (neueste Richtlinien bleiben aktiv). Eingefrorene Richtlinien können weiterhin angezeigt, aber nicht ausgeführt oder bearbeitet werden. Zum Auftauen können Sie entweder einige Richtlinien löschen oder Ihren Plan upgraden. Ihre Richtliniendaten werden beim Downgrade niemals gelöscht."
+      },
       "cancelAnytime": {
         "question": "Kann ich mein Abonnement jederzeit kündigen?",
         "answer": "Ja, Sie können Ihr Abonnement jederzeit kündigen. Ihr Zugang bleibt bis zum Ende des aktuellen Abrechnungszeitraums bestehen."
@@ -525,10 +529,12 @@
       "usageDescription": "Verwenden Sie Ihren API-Schlüssel, um Aster Cloud-Richtlinien in Ihre Anwendungen zu integrieren. Fügen Sie den Schlüssel im Authorization-Header ein.",
       "enterName": "Bitte geben Sie einen Namen für Ihren API-Schlüssel ein",
       "examples": {
+        "getPolicyId": "So erhalten Sie Ihre Richtlinien-ID",
+        "getPolicyIdDesc": "Finden Sie Ihre Richtlinien-ID auf der Richtlinienseite. Klicken Sie auf eine Richtlinie, um die ID in der URL zu sehen (z.B. /policies/abc123), oder verwenden Sie die Richtlinien-API unten.",
         "executePolicy": "Richtlinie ausführen",
-        "executePolicyDesc": "Führen Sie eine Richtlinie mit Eingabedaten aus und erhalten Sie das Entscheidungsergebnis.",
+        "executePolicyDesc": "Führen Sie eine Richtlinie mit Eingabedaten aus und erhalten Sie das Entscheidungsergebnis. Ersetzen Sie YOUR_POLICY_ID in der URL.",
         "listPolicies": "Richtlinien auflisten",
-        "listPoliciesDesc": "Rufen Sie alle verfügbaren Richtlinien für Ihr Konto ab.",
+        "listPoliciesDesc": "Rufen Sie alle verfügbaren Richtlinien für Ihr Konto ab. Verwenden Sie dies, um Ihre Richtlinien-IDs zu finden.",
         "responseExample": "Antwortformat",
         "responseExampleDesc": "Eine erfolgreiche Ausführung gibt die Richtlinienentscheidung und übereinstimmende Regeln zurück.",
         "errorHandling": "Fehlercodes",

@@ -269,6 +269,10 @@
         "question": "有私有化部署选项吗？",
         "answer": "企业客户可以申请本地部署，包括专属支持、自定义 SLA 保障和私有云选项。请联系我们的销售团队了解详情。"
       },
+      "downgrade": {
+        "question": "降级后我的策略会怎样？",
+        "answer": "当您降级到较低套餐时，超出新限额的策略会被自动冻结（最新创建的策略保持活跃）。冻结的策略仍可查看，但无法执行或编辑。要解冻策略，可以删除部分策略或升级套餐。降级过程中您的策略数据不会被删除。"
+      },
       "cancelAnytime": {
         "question": "我可以随时取消订阅吗？",
         "answer": "是的，您可以随时取消订阅。您的访问权限将持续到当前计费周期结束。"
@@ -525,10 +529,12 @@
       "usageDescription": "使用 API 密钥将 Aster Cloud 策略集成到您的应用程序中。请在 Authorization 请求头中包含密钥。",
       "enterName": "请输入 API 密钥的名称",
       "examples": {
+        "getPolicyId": "如何获取策略 ID",
+        "getPolicyIdDesc": "在策略页面找到您的策略 ID。点击任意策略，在 URL 中查看其 ID（例如：/policies/abc123），或使用下方的策略列表 API。",
         "executePolicy": "执行策略",
-        "executePolicyDesc": "使用输入数据运行策略并获取决策结果。",
+        "executePolicyDesc": "使用输入数据运行策略并获取决策结果。请将 URL 中的 YOUR_POLICY_ID 替换为您的策略 ID。",
         "listPolicies": "获取策略列表",
-        "listPoliciesDesc": "获取您账户下的所有可用策略。",
+        "listPoliciesDesc": "获取您账户下的所有可用策略。使用此接口可查找策略 ID。",
         "responseExample": "响应格式",
         "responseExampleDesc": "成功执行后返回策略决策结果和匹配的规则。",
         "errorHandling": "错误码说明",

@@ -269,6 +269,10 @@
         "question": "Is there a self-hosted option?",
         "answer": "Enterprise customers can request on-premise deployment with dedicated support, custom SLA guarantees, and private cloud options. Contact our sales team for details."
       },
+      "downgrade": {
+        "question": "What happens to my policies when I downgrade?",
+        "answer": "When you downgrade to a lower plan, policies beyond your new limit are automatically frozen (newest policies remain active). Frozen policies can still be viewed but cannot be executed or edited. To unfreeze, either delete some policies or upgrade your plan. Your policy data is never deleted during a downgrade."
+      },
       "cancelAnytime": {
         "question": "Can I cancel my subscription anytime?",
         "answer": "Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period."
@@ -525,10 +529,12 @@
       "usageDescription": "Use your API key to integrate Aster Cloud policies into your applications. Include the key in the Authorization header.",
       "enterName": "Please enter a name for your API key",
       "examples": {
+        "getPolicyId": "How to get your Policy ID",
+        "getPolicyIdDesc": "Find your Policy ID in the Policies page. Click on any policy to see its ID in the URL (e.g., /policies/abc123), or use the List Policies API below.",
         "executePolicy": "Execute Policy",
-        "executePolicyDesc": "Run a policy with input data and get the decision result.",
+        "executePolicyDesc": "Run a policy with input data and get the decision result. Replace YOUR_POLICY_ID in the URL.",
         "listPolicies": "List Policies",
-        "listPoliciesDesc": "Retrieve all policies available to your account.",
+        "listPoliciesDesc": "Retrieve all policies available to your account. Use this to find your Policy IDs.",
         "responseExample": "Response Format",
         "responseExampleDesc": "Successful execution returns the policy decision and matched rules.",
         "errorHandling": "Error Codes",
