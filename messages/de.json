@@ -1,301 +1,301 @@
 {
   "common": {
-    "signIn": "Sign in",
-    "signUp": "Sign Up",
-    "startFreeTrial": "Start Free Trial",
-    "getStarted": "Get Started",
-    "viewDemo": "View Demo",
-    "contactSales": "Contact Sales",
-    "learnMore": "Learn More"
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "startFreeTrial": "Kostenlose Testversion starten",
+    "getStarted": "Jetzt starten",
+    "viewDemo": "Demo ansehen",
+    "contactSales": "Vertrieb kontaktieren",
+    "learnMore": "Mehr erfahren"
   },
   "nav": {
     "brand": "Aster Cloud"
   },
   "hero": {
-    "title": "Policy Management",
-    "titleHighlight": "Made Simple",
-    "description": "Create, test, and deploy business policies with built-in PII protection, compliance monitoring, and team collaboration. Start your 14-day free trial.",
-    "noCreditCard": "No credit card required. 14-day free trial."
+    "title": "Richtlinienverwaltung",
+    "titleHighlight": "einfach gemacht",
+    "description": "Erstellen, testen und implementieren Sie Geschäftsrichtlinien mit integriertem PII-Schutz, Compliance-Überwachung und Teamzusammenarbeit. Starten Sie Ihre 14-tägige kostenlose Testversion.",
+    "noCreditCard": "Keine Kreditkarte erforderlich. 14 Tage kostenlos testen."
   },
   "features": {
-    "title": "Everything you need for policy management",
+    "title": "Alles, was Sie für die Richtlinienverwaltung brauchen",
     "piiProtection": {
-      "title": "PII Protection",
-      "description": "Automatic detection and protection of personally identifiable information in your policies."
+      "title": "PII-Schutz",
+      "description": "Automatische Erkennung und Schutz personenbezogener Daten in Ihren Richtlinien."
     },
     "complianceReports": {
-      "title": "Compliance Reports",
-      "description": "Generate GDPR, HIPAA, SOC2, and PCI-DSS compliance reports with a single click."
+      "title": "Compliance-Berichte",
+      "description": "Erstellen Sie DSGVO-, HIPAA-, SOC2- und PCI-DSS-Compliance-Berichte mit einem Klick."
     },
     "teamCollaboration": {
-      "title": "Team Collaboration",
-      "description": "Share policies, manage permissions, and collaborate with your team in real-time."
+      "title": "Teamzusammenarbeit",
+      "description": "Teilen Sie Richtlinien, verwalten Sie Berechtigungen und arbeiten Sie in Echtzeit mit Ihrem Team zusammen."
     },
     "realTimeExecution": {
-      "title": "Real-time Execution",
-      "description": "Test and execute policies instantly with detailed results and audit trails."
+      "title": "Echtzeit-Ausführung",
+      "description": "Testen und führen Sie Richtlinien sofort aus mit detaillierten Ergebnissen und Prüfprotokollen."
     },
     "apiAccess": {
-      "title": "API Access",
-      "description": "Integrate policies into your applications with our RESTful API and SDKs."
+      "title": "API-Zugang",
+      "description": "Integrieren Sie Richtlinien in Ihre Anwendungen mit unserer RESTful-API und SDKs."
     },
     "versionHistory": {
-      "title": "Version History",
-      "description": "Track changes, rollback to previous versions, and maintain a complete audit log."
+      "title": "Versionshistorie",
+      "description": "Verfolgen Sie Änderungen, kehren Sie zu früheren Versionen zurück und führen Sie ein vollständiges Prüfprotokoll."
     }
   },
   "pricing": {
-    "title": "Simple, transparent pricing",
-    "subtitle": "Start free, upgrade when you need more",
-    "perMonth": "/month",
-    "perUser": "/user",
-    "minUsers": "min {count} users",
+    "title": "Einfache, transparente Preise",
+    "subtitle": "Kostenlos starten, bei Bedarf upgraden",
+    "perMonth": "/Monat",
+    "perUser": "/Benutzer",
+    "minUsers": "min. {count} Benutzer",
     "free": {
-      "name": "Free",
+      "name": "Kostenlos",
       "features": {
-        "executions": "100 executions/month",
-        "policies": "3 saved policies",
-        "pii": "Basic PII detection"
+        "executions": "100 Ausführungen/Monat",
+        "policies": "3 gespeicherte Richtlinien",
+        "pii": "Basis-PII-Erkennung"
       }
     },
     "pro": {
       "name": "Pro",
-      "badge": "Most Popular",
+      "badge": "Beliebteste",
       "features": {
-        "executions": "Unlimited executions",
-        "policies": "Unlimited policies",
-        "compliance": "Compliance reports",
-        "api": "API access"
+        "executions": "Unbegrenzte Ausführungen",
+        "policies": "Unbegrenzte Richtlinien",
+        "compliance": "Compliance-Berichte",
+        "api": "API-Zugang"
       }
     },
     "team": {
       "name": "Team",
       "features": {
-        "everything": "Everything in Pro",
-        "collaboration": "Team collaboration",
-        "rbac": "Role-based access",
-        "sso": "SSO (coming soon)"
+        "everything": "Alles aus Pro",
+        "collaboration": "Teamzusammenarbeit",
+        "rbac": "Rollenbasierter Zugriff",
+        "sso": "SSO (demnächst)"
       }
     }
   },
   "cta": {
-    "title": "Ready to simplify your policy management?",
-    "description": "Join thousands of companies using Aster Cloud to manage their business policies."
+    "title": "Bereit, Ihre Richtlinienverwaltung zu vereinfachen?",
+    "description": "Schließen Sie sich Tausenden von Unternehmen an, die Aster Cloud zur Verwaltung ihrer Geschäftsrichtlinien nutzen."
   },
   "footer": {
-    "privacy": "Privacy",
-    "terms": "Terms",
-    "documentation": "Documentation",
+    "privacy": "Datenschutz",
+    "terms": "AGB",
+    "documentation": "Dokumentation",
     "support": "Support",
-    "copyright": "All rights reserved."
+    "copyright": "Alle Rechte vorbehalten."
   },
   "auth": {
     "signup": {
-      "title": "Start your free trial",
-      "subtitle": "14 days of Pro features, no credit card required",
-      "trialIncludes": "Your trial includes:",
+      "title": "Starten Sie Ihre kostenlose Testversion",
+      "subtitle": "14 Tage Pro-Funktionen, keine Kreditkarte erforderlich",
+      "trialIncludes": "Ihre Testversion beinhaltet:",
       "trialFeatures": {
-        "executions": "Unlimited policy executions",
-        "pii": "Advanced PII detection",
-        "compliance": "Compliance reports",
-        "api": "API access",
-        "support": "Priority support"
+        "executions": "Unbegrenzte Richtlinienausführungen",
+        "pii": "Erweiterte PII-Erkennung",
+        "compliance": "Compliance-Berichte",
+        "api": "API-Zugang",
+        "support": "Prioritäts-Support"
       },
-      "continueWithGithub": "Continue with GitHub",
-      "continueWithGoogle": "Continue with Google",
-      "termsAgreement": "By signing up, you agree to our",
-      "termsOfService": "Terms of Service",
-      "and": "and",
-      "privacyPolicy": "Privacy Policy",
-      "alreadyHaveAccount": "Already have an account?",
-      "signIn": "Sign in"
+      "continueWithGithub": "Mit GitHub fortfahren",
+      "continueWithGoogle": "Mit Google fortfahren",
+      "termsAgreement": "Mit der Registrierung stimmen Sie unseren",
+      "termsOfService": "Nutzungsbedingungen",
+      "and": "und",
+      "privacyPolicy": "Datenschutzrichtlinien",
+      "alreadyHaveAccount": "Bereits ein Konto?",
+      "signIn": "Anmelden"
     },
     "login": {
-      "title": "Sign in to your account",
-      "subtitle": "Welcome back! Please sign in to continue.",
-      "continueWithGithub": "Continue with GitHub",
-      "continueWithGoogle": "Continue with Google",
-      "orContinueWith": "Or continue with",
-      "email": "Email address",
-      "password": "Password",
-      "forgotPassword": "Forgot your password?",
-      "signIn": "Sign in",
-      "noAccount": "Don't have an account?",
-      "startTrial": "Start free trial"
+      "title": "Bei Ihrem Konto anmelden",
+      "subtitle": "Willkommen zurück! Bitte melden Sie sich an, um fortzufahren.",
+      "continueWithGithub": "Mit GitHub fortfahren",
+      "continueWithGoogle": "Mit Google fortfahren",
+      "orContinueWith": "Oder fortfahren mit",
+      "email": "E-Mail-Adresse",
+      "password": "Passwort",
+      "forgotPassword": "Passwort vergessen?",
+      "signIn": "Anmelden",
+      "noAccount": "Noch kein Konto?",
+      "startTrial": "Kostenlose Testversion starten"
     },
     "forgotPassword": {
-      "title": "Reset your password",
-      "subtitle": "Enter your email address and we'll send you a link to reset your password.",
-      "email": "Email address",
-      "sendResetLink": "Send reset link",
-      "sending": "Sending...",
-      "successTitle": "Check your email",
-      "successMessage": "If an account exists with that email, we've sent a password reset link.",
-      "backToLogin": "Back to login"
+      "title": "Passwort zurücksetzen",
+      "subtitle": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+      "email": "E-Mail-Adresse",
+      "sendResetLink": "Link senden",
+      "sending": "Wird gesendet...",
+      "successTitle": "Überprüfen Sie Ihre E-Mails",
+      "successMessage": "Wenn ein Konto mit dieser E-Mail existiert, haben wir Ihnen einen Link zum Zurücksetzen des Passworts gesendet.",
+      "backToLogin": "Zurück zur Anmeldung"
     },
     "resetPassword": {
-      "title": "Set new password",
-      "subtitle": "Enter your new password below.",
-      "newPassword": "New password",
-      "confirmPassword": "Confirm password",
-      "resetPassword": "Reset password",
-      "resetting": "Resetting...",
-      "invalidToken": "Invalid or expired reset token",
-      "passwordMismatch": "Passwords do not match",
-      "successTitle": "Password reset successful",
-      "successMessage": "Your password has been reset. You can now sign in with your new password.",
-      "signIn": "Sign in"
+      "title": "Neues Passwort festlegen",
+      "subtitle": "Geben Sie unten Ihr neues Passwort ein.",
+      "newPassword": "Neues Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "resetPassword": "Passwort zurücksetzen",
+      "resetting": "Wird zurückgesetzt...",
+      "invalidToken": "Ungültiger oder abgelaufener Token",
+      "passwordMismatch": "Passwörter stimmen nicht überein",
+      "successTitle": "Passwort erfolgreich zurückgesetzt",
+      "successMessage": "Ihr Passwort wurde zurückgesetzt. Sie können sich jetzt mit Ihrem neuen Passwort anmelden.",
+      "signIn": "Anmelden"
     },
     "logout": {
-      "title": "Signing out...",
-      "message": "You are being signed out of your account."
+      "title": "Abmelden...",
+      "message": "Sie werden von Ihrem Konto abgemeldet."
     },
     "onboarding": {
-      "welcome": "Welcome! Let's get you started",
-      "industryQuestion": "What industry are you in?",
-      "goalsQuestion": "What are your main goals with Aster Cloud?",
-      "continue": "Continue",
-      "back": "Back",
-      "getStarted": "Get Started",
-      "starting": "Starting...",
-      "skipForNow": "Skip for now",
+      "welcome": "Willkommen! Lassen Sie uns beginnen",
+      "industryQuestion": "In welcher Branche sind Sie tätig?",
+      "goalsQuestion": "Was sind Ihre Hauptziele mit Aster Cloud?",
+      "continue": "Weiter",
+      "back": "Zurück",
+      "getStarted": "Jetzt starten",
+      "starting": "Wird gestartet...",
+      "skipForNow": "Vorerst überspringen",
       "useCases": {
-        "finance": "Financial Services",
-        "healthcare": "Healthcare",
-        "ecommerce": "E-commerce",
-        "insurance": "Insurance",
-        "legal": "Legal",
-        "other": "Other"
+        "finance": "Finanzdienstleistungen",
+        "healthcare": "Gesundheitswesen",
+        "ecommerce": "E-Commerce",
+        "insurance": "Versicherung",
+        "legal": "Recht",
+        "other": "Sonstiges"
       },
       "goals": {
-        "pii": "PII detection & protection",
-        "compliance": "Compliance reporting",
-        "automation": "Business rule automation",
-        "team": "Team policy collaboration",
-        "integration": "API integration"
+        "pii": "PII-Erkennung & Schutz",
+        "compliance": "Compliance-Berichterstattung",
+        "automation": "Geschäftsregelautomatisierung",
+        "team": "Team-Richtlinien-Zusammenarbeit",
+        "integration": "API-Integration"
       }
     }
   },
   "dashboardNav": {
     "dashboard": "Dashboard",
-    "policies": "Policies",
-    "reports": "Reports",
-    "billing": "Billing",
-    "settings": "Settings"
+    "policies": "Richtlinien",
+    "reports": "Berichte",
+    "billing": "Abrechnung",
+    "settings": "Einstellungen"
   },
   "dashboard": {
-    "welcomeBack": "Welcome back, {name}!",
-    "newPolicy": "New Policy",
-    "trialActive": "Pro Trial Active",
-    "trialDaysLeft": "You have {count} day left in your trial.",
-    "trialDaysLeftPlural": "You have {count} days left in your trial.",
-    "upgradeNow": "Upgrade now",
-    "toKeepProFeatures": "to keep all Pro features.",
-    "planActive": "{plan} Plan Active",
+    "welcomeBack": "Willkommen zurück, {name}!",
+    "newPolicy": "Neue Richtlinie",
+    "trialActive": "Pro-Testversion aktiv",
+    "trialDaysLeft": "Sie haben noch {count} Tag in Ihrer Testversion.",
+    "trialDaysLeftPlural": "Sie haben noch {count} Tage in Ihrer Testversion.",
+    "upgradeNow": "Jetzt upgraden",
+    "toKeepProFeatures": "um alle Pro-Funktionen zu behalten.",
+    "planActive": "{plan}-Plan aktiv",
     "stats": {
-      "totalPolicies": "Total Policies",
-      "executionsThisMonth": "Executions This Month",
-      "piiFieldsDetected": "PII Fields Detected",
-      "apiCalls": "API Calls",
+      "totalPolicies": "Richtlinien gesamt",
+      "executionsThisMonth": "Ausführungen diesen Monat",
+      "piiFieldsDetected": "PII-Felder erkannt",
+      "apiCalls": "API-Aufrufe",
       "limit": "Limit: {count}",
-      "reviewRecommended": "Review recommended",
-      "upgradeForApi": "Upgrade for API access"
+      "reviewRecommended": "Überprüfung empfohlen",
+      "upgradeForApi": "Für API-Zugang upgraden"
     },
     "quickActions": {
-      "title": "Quick Actions",
-      "createPolicy": "Create Policy",
-      "createPolicyDesc": "Define new business rules",
-      "generateReport": "Generate Report",
-      "generateReportDesc": "GDPR, HIPAA, SOC2",
-      "apiKeys": "API Keys",
-      "apiKeysDesc": "Manage API access"
+      "title": "Schnellaktionen",
+      "createPolicy": "Richtlinie erstellen",
+      "createPolicyDesc": "Neue Geschäftsregeln definieren",
+      "generateReport": "Bericht erstellen",
+      "generateReportDesc": "DSGVO, HIPAA, SOC2",
+      "apiKeys": "API-Schlüssel",
+      "apiKeysDesc": "API-Zugang verwalten"
     },
     "recentPolicies": {
-      "title": "Recent Policies",
-      "viewAll": "View all",
-      "noPolicies": "No policies yet.",
-      "createFirst": "Create your first policy",
-      "noDescription": "No description",
-      "runs": "{count} runs"
+      "title": "Aktuelle Richtlinien",
+      "viewAll": "Alle anzeigen",
+      "noPolicies": "Noch keine Richtlinien.",
+      "createFirst": "Erstellen Sie Ihre erste Richtlinie",
+      "noDescription": "Keine Beschreibung",
+      "runs": "{count} Ausführungen"
     }
   },
   "billing": {
-    "title": "Billing & Subscription",
-    "subtitle": "Manage your subscription and billing details",
-    "currentPlan": "Current Plan",
-    "trialEnds": "Trial ends {date}",
-    "executionsThisMonth": "Executions this month",
-    "savedPolicies": "Saved policies",
-    "monthly": "Monthly",
-    "yearly": "Yearly",
-    "year": "year",
-    "month": "month",
-    "save20": "Save 20%",
-    "mostPopular": "Most Popular",
-    "currentPlanButton": "Current Plan",
-    "upgradeTo": "Upgrade to {plan}",
-    "loading": "Loading...",
-    "freeTier": "Free Tier",
-    "contactSales": "Contact Sales",
-    "perUser": "user",
-    "teamUsers": "Team Members",
-    "minUsers": "Minimum {count} users",
-    "subscriptionActivated": "Subscription activated successfully!",
-    "checkoutCanceled": "Checkout was canceled.",
+    "title": "Abrechnung & Abonnement",
+    "subtitle": "Verwalten Sie Ihr Abonnement und Ihre Rechnungsdetails",
+    "currentPlan": "Aktueller Plan",
+    "trialEnds": "Testversion endet am {date}",
+    "executionsThisMonth": "Ausführungen diesen Monat",
+    "savedPolicies": "Gespeicherte Richtlinien",
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "year": "Jahr",
+    "month": "Monat",
+    "save20": "2 Monate gratis",
+    "mostPopular": "Beliebteste",
+    "currentPlanButton": "Aktueller Plan",
+    "upgradeTo": "Auf {plan} upgraden",
+    "loading": "Lädt...",
+    "freeTier": "Kostenlos",
+    "contactSales": "Vertrieb kontaktieren",
+    "perUser": "Benutzer",
+    "teamUsers": "Teammitglieder",
+    "minUsers": "Mindestens {count} Benutzer",
+    "subscriptionActivated": "Abonnement erfolgreich aktiviert!",
+    "checkoutCanceled": "Bezahlvorgang wurde abgebrochen.",
     "faq": {
-      "title": "Frequently Asked Questions",
+      "title": "Häufig gestellte Fragen",
       "cancelAnytime": {
-        "question": "Can I cancel my subscription anytime?",
-        "answer": "Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period."
+        "question": "Kann ich mein Abonnement jederzeit kündigen?",
+        "answer": "Ja, Sie können Ihr Abonnement jederzeit kündigen. Ihr Zugang bleibt bis zum Ende des aktuellen Abrechnungszeitraums bestehen."
       },
       "trialEnds": {
-        "question": "What happens when my trial ends?",
-        "answer": "After your trial ends, you'll be automatically downgraded to the Free plan. You can upgrade to Pro or Team at any time to regain access to premium features."
+        "question": "Was passiert, wenn meine Testversion endet?",
+        "answer": "Nach Ablauf Ihrer Testversion werden Sie automatisch auf den kostenlosen Plan herabgestuft. Sie können jederzeit auf Pro oder Team upgraden, um wieder Zugang zu Premium-Funktionen zu erhalten."
       },
       "refunds": {
-        "question": "Do you offer refunds?",
-        "answer": "We offer a 30-day money-back guarantee. If you're not satisfied with your subscription, contact us within 30 days for a full refund."
+        "question": "Bieten Sie Rückerstattungen an?",
+        "answer": "Wir bieten eine 30-tägige Geld-zurück-Garantie. Wenn Sie mit Ihrem Abonnement nicht zufrieden sind, kontaktieren Sie uns innerhalb von 30 Tagen für eine vollständige Rückerstattung."
       }
     }
   },
   "policies": {
-    "title": "Policies",
-    "subtitle": "Manage your business policies and rules",
-    "newPolicy": "New Policy",
-    "noPolicies": "No policies",
-    "getStarted": "Get started by creating a new policy.",
-    "piiFields": "{count} PII fields",
-    "public": "Public",
-    "executions": "{count} executions",
-    "execute": "Execute",
-    "edit": "Edit",
-    "delete": "Delete",
-    "updated": "Updated {date}",
-    "confirmDelete": "Are you sure you want to delete this policy?",
-    "failedToLoad": "Failed to load policies",
-    "failedToDelete": "Failed to delete policy"
+    "title": "Richtlinien",
+    "subtitle": "Verwalten Sie Ihre Geschäftsrichtlinien und Regeln",
+    "newPolicy": "Neue Richtlinie",
+    "noPolicies": "Keine Richtlinien",
+    "getStarted": "Beginnen Sie mit dem Erstellen einer neuen Richtlinie.",
+    "piiFields": "{count} PII-Felder",
+    "public": "Öffentlich",
+    "executions": "{count} Ausführungen",
+    "execute": "Ausführen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "updated": "Aktualisiert {date}",
+    "confirmDelete": "Möchten Sie diese Richtlinie wirklich löschen?",
+    "failedToLoad": "Richtlinien konnten nicht geladen werden",
+    "failedToDelete": "Richtlinie konnte nicht gelöscht werden"
   },
   "reports": {
-    "title": "Compliance Reports",
-    "subtitle": "Generate compliance reports for your policies",
-    "generateNew": "Generate New Report",
-    "noReports": "No reports yet",
-    "generateFirst": "Generate your first compliance report above.",
-    "upgradePlan": "Upgrade plan",
-    "generating": "Generating...",
-    "generate": "Generate {type} Report",
+    "title": "Compliance-Berichte",
+    "subtitle": "Erstellen Sie Compliance-Berichte für Ihre Richtlinien",
+    "generateNew": "Neuen Bericht erstellen",
+    "noReports": "Noch keine Berichte",
+    "generateFirst": "Erstellen Sie oben Ihren ersten Compliance-Bericht.",
+    "upgradePlan": "Plan upgraden",
+    "generating": "Wird erstellt...",
+    "generate": "{type}-Bericht erstellen",
     "status": {
-      "completed": "Completed",
-      "generating": "Generating...",
-      "failed": "Failed"
+      "completed": "Abgeschlossen",
+      "generating": "Wird erstellt...",
+      "failed": "Fehlgeschlagen"
     },
-    "type": "Type: {type}",
-    "created": "Created: {date}",
-    "policiesAnalyzed": "{count} policies analyzed",
+    "type": "Typ: {type}",
+    "created": "Erstellt: {date}",
+    "policiesAnalyzed": "{count} Richtlinien analysiert",
     "reportTypes": {
       "gdpr": {
-        "name": "GDPR",
-        "description": "General Data Protection Regulation"
+        "name": "DSGVO",
+        "description": "Datenschutz-Grundverordnung"
       },
       "hipaa": {
         "name": "HIPAA",
@@ -312,58 +312,58 @@
     }
   },
   "settings": {
-    "title": "Settings",
-    "subtitle": "Manage your account settings and preferences.",
+    "title": "Einstellungen",
+    "subtitle": "Verwalten Sie Ihre Kontoeinstellungen und Präferenzen.",
     "apiKeys": {
-      "title": "API Keys",
-      "subtitle": "Manage API keys for programmatic access to Aster Cloud.",
-      "manageKeys": "Manage Keys",
-      "breadcrumb": "API Keys",
-      "createNew": "Create New API Key",
-      "keyPlaceholder": "Key name (e.g., Production, Development)",
-      "createKey": "Create Key",
-      "creating": "Creating...",
-      "yourKeys": "Your API Keys",
-      "noKeys": "No API keys yet. Create one above to get started.",
+      "title": "API-Schlüssel",
+      "subtitle": "Verwalten Sie API-Schlüssel für den programmatischen Zugriff auf Aster Cloud.",
+      "manageKeys": "Schlüssel verwalten",
+      "breadcrumb": "API-Schlüssel",
+      "createNew": "Neuen API-Schlüssel erstellen",
+      "keyPlaceholder": "Schlüsselname (z.B. Produktion, Entwicklung)",
+      "createKey": "Schlüssel erstellen",
+      "creating": "Wird erstellt...",
+      "yourKeys": "Ihre API-Schlüssel",
+      "noKeys": "Noch keine API-Schlüssel. Erstellen Sie oben einen, um zu beginnen.",
       "name": "Name",
-      "key": "Key",
-      "lastUsed": "Last Used",
-      "created": "Created",
-      "actions": "Actions",
-      "revoke": "Revoke",
-      "never": "Never",
-      "keyCreated": "API Key Created",
-      "copyWarning": "Copy your API key now. You won't be able to see it again!",
-      "copy": "Copy",
-      "dismiss": "Dismiss",
-      "confirmRevoke": "Are you sure you want to revoke this API key? This action cannot be undone.",
-      "usageExample": "Usage Example",
-      "enterName": "Please enter a name for your API key"
+      "key": "Schlüssel",
+      "lastUsed": "Zuletzt verwendet",
+      "created": "Erstellt",
+      "actions": "Aktionen",
+      "revoke": "Widerrufen",
+      "never": "Nie",
+      "keyCreated": "API-Schlüssel erstellt",
+      "copyWarning": "Kopieren Sie Ihren API-Schlüssel jetzt. Sie werden ihn nicht mehr sehen können!",
+      "copy": "Kopieren",
+      "dismiss": "Schließen",
+      "confirmRevoke": "Möchten Sie diesen API-Schlüssel wirklich widerrufen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "usageExample": "Verwendungsbeispiel",
+      "enterName": "Bitte geben Sie einen Namen für Ihren API-Schlüssel ein"
     },
     "profile": {
-      "title": "Profile",
+      "title": "Profil",
       "name": "Name",
-      "email": "Email",
+      "email": "E-Mail",
       "plan": "Plan",
-      "notSet": "Not set"
+      "notSet": "Nicht festgelegt"
     },
     "account": {
-      "title": "Account",
-      "signOut": "Sign out",
-      "signOutDesc": "Sign out of your account on this device.",
-      "signingOut": "Signing out..."
+      "title": "Konto",
+      "signOut": "Abmelden",
+      "signOutDesc": "Von Ihrem Konto auf diesem Gerät abmelden.",
+      "signingOut": "Wird abgemeldet..."
     },
     "dangerZone": {
-      "title": "Danger Zone",
-      "deleteAccount": "Delete account",
-      "deleteAccountDesc": "Permanently delete your account and all associated data."
+      "title": "Gefahrenzone",
+      "deleteAccount": "Konto löschen",
+      "deleteAccountDesc": "Löschen Sie Ihr Konto und alle zugehörigen Daten dauerhaft."
     },
     "language": {
-      "title": "Language Preferences",
-      "autoDetect": "Auto-detect language",
-      "autoDetectDesc": "Automatically detect your preferred language from browser settings.",
-      "enabled": "Enabled",
-      "disabled": "Disabled"
+      "title": "Spracheinstellungen",
+      "autoDetect": "Sprache automatisch erkennen",
+      "autoDetectDesc": "Erkennen Sie Ihre bevorzugte Sprache automatisch aus den Browsereinstellungen.",
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert"
     }
   }
 }
