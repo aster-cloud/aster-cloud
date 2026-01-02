@@ -6,6 +6,7 @@ const handleI18nRouting = createMiddleware({
   locales,
   defaultLocale,
   localePrefix: 'as-needed', // Don't add prefix for default locale
+  localeDetection: false, // Disable auto-detection from Accept-Language header
 });
 
 export default function proxy(request: NextRequest) {
