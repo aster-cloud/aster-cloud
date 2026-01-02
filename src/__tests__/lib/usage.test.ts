@@ -9,12 +9,10 @@ vi.mock('@/lib/prisma', () => ({
     },
     usageRecord: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       upsert: vi.fn(),
     },
     policy: {
-      count: vi.fn(),
-    },
-    execution: {
       count: vi.fn(),
     },
   },

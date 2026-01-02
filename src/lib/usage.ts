@@ -132,7 +132,7 @@ export async function recordUsage(userId: string, type: UsageType, count = 1): P
 export async function getUsageStats(userId: string) {
   const period = getCurrentPeriod();
 
-  const [user, usageRecords, policyCount, executionCount] = await Promise.all([
+  const [user, usageRecords, policyCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { plan: true, trialEndsAt: true },
@@ -142,14 +142,6 @@ export async function getUsageStats(userId: string) {
     }),
     prisma.policy.count({
       where: { userId },
-    }),
-    prisma.execution.count({
-      where: {
-        userId,
-        createdAt: {
-          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        },
-      },
     }),
   ]);
 
@@ -183,14 +175,14 @@ export async function getUsageStats(userId: string) {
     trialDaysLeft,
     limits,
     usage: {
-      executions: executionCount,
+      executions: usageByType.execution || 0,  // 使用 UsageRecord，与配额检查一致
       executionsLimit: limits.executions,
       policies: policyCount,
       policiesLimit: limits.policies,
       piiScans: usageByType.pii_scan || 0,
       complianceReports: usageByType.compliance_report || 0,
       apiCalls: usageByType.api_call || 0,
-      apiCallsLimit: limits.apiCalls,  // API 调用配额
+      apiCallsLimit: limits.apiCalls,
     },
     features: {
       piiDetection: capabilities.piiDetection,
