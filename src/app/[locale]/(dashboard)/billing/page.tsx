@@ -265,18 +265,17 @@ function BillingContent() {
           return (
             <div
               key={planKey}
-              className={`rounded-lg border-2 bg-white p-6 ${
-                isFeatured ? 'border-indigo-600 shadow-lg' : 'border-gray-200'
+              className={`rounded-2xl bg-white p-8 flex flex-col ${
+                isFeatured ? 'border-2 border-indigo-600 shadow-xl' : 'border border-gray-200'
               }`}
             >
-              {isFeatured && (
-                <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800 mb-4">
-                  {t('mostPopular')}
-                </span>
-              )}
-
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 {t(`plans.names.${planKey}`)}
+                {isFeatured && (
+                  <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                    {t('mostPopular')}
+                  </span>
+                )}
               </h3>
 
               <div className="mt-4 flex items-baseline">
@@ -352,7 +351,7 @@ function BillingContent() {
                 ))}
               </ul>
 
-              <div className="mt-8">
+              <div className="mt-auto pt-8">
                 {isCurrentPlan ? (
                   <button
                     disabled
