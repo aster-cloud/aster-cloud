@@ -370,6 +370,31 @@
     "example": {
       "name": "Kreditgenehmigungsrichtlinie",
       "description": "Regeln zur Bewertung von Kreditanträgen basierend auf Kreditwürdigkeit und Einkommen"
+    },
+    "execute": {
+      "title": "Ausführen: {name}",
+      "subtitle": "Testen Sie Ihre Richtlinie mit Beispieldaten",
+      "input": "Eingabe",
+      "loanExample": "Kredit-Beispiel",
+      "userExample": "Benutzer-Beispiel",
+      "inputPlaceholder": "{\"key\": \"value\"}",
+      "executeButton": "Richtlinie ausführen",
+      "executing": "Wird ausgeführt...",
+      "result": "Ergebnis",
+      "status": "Status",
+      "success": "Erfolgreich",
+      "failed": "Fehlgeschlagen",
+      "duration": "Dauer",
+      "decision": "Entscheidung",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "matchedRules": "Übereinstimmende Regeln:",
+      "actions": "Aktionen:",
+      "viewRawOutput": "Rohdaten anzeigen",
+      "emptyState": "Eingabe eingeben und Ausführen klicken",
+      "invalidJson": "Ungültige JSON-Eingabe",
+      "executionFailed": "Ausführung fehlgeschlagen",
+      "upgradePlan": "Plan upgraden"
     }
   },
   "reports": {

@@ -370,6 +370,31 @@
     "example": {
       "name": "Loan Approval Policy",
       "description": "Rules for evaluating loan applications based on credit score and income"
+    },
+    "execute": {
+      "title": "Execute: {name}",
+      "subtitle": "Test your policy with sample input data",
+      "input": "Input",
+      "loanExample": "Loan example",
+      "userExample": "User example",
+      "inputPlaceholder": "{\"key\": \"value\"}",
+      "executeButton": "Execute Policy",
+      "executing": "Executing...",
+      "result": "Result",
+      "status": "Status",
+      "success": "Success",
+      "failed": "Failed",
+      "duration": "Duration",
+      "decision": "Decision",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "matchedRules": "Matched Rules:",
+      "actions": "Actions:",
+      "viewRawOutput": "View raw output",
+      "emptyState": "Enter input and click Execute",
+      "invalidJson": "Invalid JSON input",
+      "executionFailed": "Execution failed",
+      "upgradePlan": "Upgrade plan"
     }
   },
   "reports": {

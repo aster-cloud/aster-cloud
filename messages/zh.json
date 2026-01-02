@@ -370,6 +370,31 @@
     "example": {
       "name": "贷款审批策略",
       "description": "基于信用评分和收入评估贷款申请的规则"
+    },
+    "execute": {
+      "title": "执行：{name}",
+      "subtitle": "使用示例输入数据测试您的策略",
+      "input": "输入",
+      "loanExample": "贷款示例",
+      "userExample": "用户示例",
+      "inputPlaceholder": "{\"key\": \"value\"}",
+      "executeButton": "执行策略",
+      "executing": "执行中...",
+      "result": "结果",
+      "status": "状态",
+      "success": "成功",
+      "failed": "失败",
+      "duration": "耗时",
+      "decision": "决策",
+      "approved": "通过",
+      "rejected": "拒绝",
+      "matchedRules": "匹配的规则：",
+      "actions": "执行的操作：",
+      "viewRawOutput": "查看原始输出",
+      "emptyState": "输入数据后点击执行",
+      "invalidJson": "无效的 JSON 输入",
+      "executionFailed": "执行失败",
+      "upgradePlan": "升级套餐"
     }
   },
   "reports": {
