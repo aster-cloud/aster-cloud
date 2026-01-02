@@ -412,7 +412,15 @@
     "dangerZone": {
       "title": "Danger Zone",
       "deleteAccount": "Delete account",
-      "deleteAccountDesc": "Permanently delete your account and all associated data."
+      "deleteAccountDesc": "Permanently delete your account and all associated data.",
+      "confirmTitle": "Delete your account?",
+      "confirmMessage": "This action cannot be undone. This will permanently delete:",
+      "confirmItem1": "Your account and profile information",
+      "confirmItem2": "All your policies, executions, and API keys",
+      "confirmItem3": "Any teams you own and their data",
+      "confirmDelete": "Yes, delete my account",
+      "deleting": "Deleting...",
+      "cancel": "Cancel"
     },
     "language": {
       "title": "Language Preferences",

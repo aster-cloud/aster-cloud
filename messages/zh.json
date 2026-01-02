@@ -412,7 +412,15 @@
     "dangerZone": {
       "title": "危险区域",
       "deleteAccount": "删除账户",
-      "deleteAccountDesc": "永久删除您的账户和所有相关数据。"
+      "deleteAccountDesc": "永久删除您的账户和所有相关数据。",
+      "confirmTitle": "确定删除账户？",
+      "confirmMessage": "此操作无法撤销。以下内容将被永久删除：",
+      "confirmItem1": "您的账户和个人资料",
+      "confirmItem2": "所有策略、执行记录和 API 密钥",
+      "confirmItem3": "您拥有的团队及其数据",
+      "confirmDelete": "是的，删除我的账户",
+      "deleting": "删除中...",
+      "cancel": "取消"
     },
     "language": {
       "title": "语言偏好设置",
