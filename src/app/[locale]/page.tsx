@@ -187,13 +187,13 @@ function HomeContent({ locale }: { locale: string }) {
           </p>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Free Plan */}
-            <div className="p-8 rounded-2xl border border-gray-200 bg-white">
+            <div className="p-8 rounded-2xl border border-gray-200 bg-white flex flex-col">
               <h3 className="text-lg font-semibold text-gray-900">{t('pricing.free.name')}</h3>
               <div className="mt-4 flex items-baseline">
                 <span className="text-4xl font-bold">{formatPrice(0, currency)}</span>
                 <span className="ml-1 text-gray-500">{t('pricing.perMonth')}</span>
               </div>
-              <ul className="mt-6 space-y-3 text-sm text-gray-600">
+              <ul className="mt-6 space-y-3 text-sm text-gray-600 flex-1">
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -222,7 +222,7 @@ function HomeContent({ locale }: { locale: string }) {
             </div>
 
             {/* Pro Plan */}
-            <div className="p-8 rounded-2xl border-2 border-indigo-600 bg-white relative shadow-xl">
+            <div className="p-8 rounded-2xl border-2 border-indigo-600 bg-white relative shadow-xl flex flex-col">
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
                 {t('pricing.pro.badge')}
               </span>
@@ -231,7 +231,7 @@ function HomeContent({ locale }: { locale: string }) {
                 <span className="text-4xl font-bold">{proMonthlyPrice}</span>
                 <span className="ml-1 text-gray-500">{t('pricing.perMonth')}</span>
               </div>
-              <ul className="mt-6 space-y-3 text-sm text-gray-600">
+              <ul className="mt-6 space-y-3 text-sm text-gray-600 flex-1">
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -266,14 +266,14 @@ function HomeContent({ locale }: { locale: string }) {
             </div>
 
             {/* Team Plan */}
-            <div className="p-8 rounded-2xl border border-gray-200 bg-white">
+            <div className="p-8 rounded-2xl border border-gray-200 bg-white flex flex-col">
               <h3 className="text-lg font-semibold text-gray-900">{t('pricing.team.name')}</h3>
               <div className="mt-4 flex items-baseline">
                 <span className="text-4xl font-bold">{teamPerUserPrice}</span>
                 <span className="ml-1 text-gray-500">{t('pricing.perUser')}{t('pricing.perMonth')}</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">{t('pricing.minUsers', { count: teamMinUsers })}</p>
-              <ul className="mt-6 space-y-3 text-sm text-gray-600">
+              <ul className="mt-6 space-y-3 text-sm text-gray-600 flex-1">
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
