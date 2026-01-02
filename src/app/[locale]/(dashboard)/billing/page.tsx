@@ -182,6 +182,16 @@ function BillingContent() {
                 <p className="text-lg font-medium">
                   {usage.policies} / {isUnlimited(usage.policiesLimit) ? '∞' : usage.policiesLimit}
                 </p>
+                {!isUnlimited(usage.policiesLimit) && (
+                  <div className="mt-1 h-2 w-full bg-gray-200 rounded-full">
+                    <div
+                      className="h-2 bg-indigo-600 rounded-full"
+                      style={{
+                        width: `${Math.min((usage.policies / usage.policiesLimit) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
