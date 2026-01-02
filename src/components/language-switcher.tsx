@@ -2,7 +2,13 @@
 
 import { useLocale } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
-import { locales, localeNames, type Locale } from '@/i18n/config';
+import { locales, localeNames, defaultLocale, type Locale } from '@/i18n/config';
+
+// Set cookie for locale preference
+function setLocaleCookie(locale: string) {
+  const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `NEXT_LOCALE=${locale}; expires=${expires}; path=/; SameSite=Lax`;
+}
 
 export function LanguageSwitcher() {
   const locale = useLocale();
@@ -10,6 +16,9 @@ export function LanguageSwitcher() {
   const pathname = usePathname();
 
   const handleChange = (newLocale: string) => {
+    // Update the NEXT_LOCALE cookie to reflect user's choice
+    setLocaleCookie(newLocale);
+
     // Remove current locale prefix from pathname
     let newPathname = pathname;
 
@@ -30,8 +39,8 @@ export function LanguageSwitcher() {
     }
 
     // Navigate to new locale
-    if (newLocale === 'en') {
-      // English is default, no prefix needed
+    if (newLocale === defaultLocale) {
+      // Default locale (English) - no prefix needed
       router.push(newPathname);
       router.refresh();
     } else {
