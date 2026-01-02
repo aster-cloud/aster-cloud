@@ -282,16 +282,16 @@ function BillingContent() {
             <div
               key={planKey}
               className={`rounded-2xl bg-white p-8 flex flex-col ${
-                isFeatured ? 'border-2 border-indigo-600 shadow-xl' : 'border border-gray-200'
+                isFeatured ? 'border-2 border-indigo-600 shadow-xl relative' : 'border border-gray-200'
               }`}
             >
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              {isFeatured && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                  {t('mostPopular')}
+                </span>
+              )}
+              <h3 className="text-lg font-semibold text-gray-900">
                 {t(`plans.names.${planKey}`)}
-                {isFeatured && (
-                  <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
-                    {t('mostPopular')}
-                  </span>
-                )}
               </h3>
 
               <div className="mt-4 flex items-baseline">
