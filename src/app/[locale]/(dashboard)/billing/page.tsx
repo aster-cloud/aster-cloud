@@ -45,6 +45,8 @@ function BillingContent() {
     executionsLimit: number;
     policies: number;
     policiesLimit: number;
+    apiCalls: number;
+    apiCallsLimit: number;
   } | null>(null);
 
   useEffect(() => {
@@ -160,7 +162,7 @@ function BillingContent() {
 
           {/* Usage */}
           {usage && (
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-gray-500">{t('executionsThisMonth')}</p>
                 <p className="text-lg font-medium">
@@ -178,6 +180,27 @@ function BillingContent() {
                     />
                   </div>
                   {isUnlimited(usage.executionsLimit) && <span className="text-sm">♾️</span>}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">{t('apiCallsThisMonth')}</p>
+                <p className="text-lg font-medium">
+                  {usage.apiCalls} / {isUnlimited(usage.apiCallsLimit) ? '∞' : (usage.apiCallsLimit === 0 ? '-' : usage.apiCallsLimit)}
+                </p>
+                <div className="mt-1 flex items-center gap-1">
+                  <div className="h-2 flex-1 bg-gray-200 rounded-full">
+                    <div
+                      className="h-2 bg-indigo-600 rounded-full"
+                      style={{
+                        width: usage.apiCallsLimit === 0
+                          ? '0%'
+                          : isUnlimited(usage.apiCallsLimit)
+                            ? '100%'
+                            : `${Math.min((usage.apiCalls / usage.apiCallsLimit) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                  {isUnlimited(usage.apiCallsLimit) && <span className="text-sm">♾️</span>}
                 </div>
               </div>
               <div>

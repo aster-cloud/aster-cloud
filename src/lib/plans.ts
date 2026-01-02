@@ -77,6 +77,7 @@ type BillingPrice = {
 type PlanLimits = {
   policies: number;
   executions: number;
+  apiCalls: number;  // API 调用配额（独立于 Web 执行）
   apiKeys: number;
   teamMembers: number;
 };
@@ -104,9 +105,12 @@ export const PLAN_FEATURE_KEYS = {
   executions5000: 'executions5000',
   allComplianceReports: 'allComplianceReports',
   apiAccess: 'apiAccess',
+  apiCalls1000: 'apiCalls1000',
+  apiCalls5000: 'apiCalls5000',
   // Team 计划特性
   unlimitedPolicies: 'unlimitedPolicies',
   executions50000: 'executions50000',
+  apiCalls50000: 'apiCalls50000',
   teamCollaboration: 'teamCollaboration',
   ssoRbac: 'ssoRbac',
   prioritySupport: 'prioritySupport',
@@ -115,6 +119,7 @@ export const PLAN_FEATURE_KEYS = {
   slaGuarantee: 'slaGuarantee',
   dedicatedSupport: 'dedicatedSupport',
   customIntegrations: 'customIntegrations',
+  unlimitedApiCalls: 'unlimitedApiCalls',
 } as const;
 
 export const PLANS = {
@@ -123,6 +128,7 @@ export const PLANS = {
     limits: {
       policies: 3,
       executions: 100,
+      apiCalls: 0,  // 免费版不提供 API 访问
       apiKeys: 0,
       teamMembers: 1,
     },
@@ -142,10 +148,11 @@ export const PLANS = {
     limits: {
       policies: 25,
       executions: 5000,
+      apiCalls: 1000,  // 试用期 API 配额
       apiKeys: 5,
       teamMembers: 5,
     },
-    featureKeys: ['policies25', 'executions5000', 'allComplianceReports', 'apiAccess'],
+    featureKeys: ['policies25', 'executions5000', 'apiCalls1000', 'allComplianceReports', 'apiAccess'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -162,10 +169,11 @@ export const PLANS = {
     limits: {
       policies: 25,
       executions: 5000,
+      apiCalls: 5000,  // Pro 计划 API 配额
       apiKeys: 5,
       teamMembers: 5,
     },
-    featureKeys: ['policies25', 'executions5000', 'allComplianceReports', 'apiAccess'],
+    featureKeys: ['policies25', 'executions5000', 'apiCalls5000', 'allComplianceReports', 'apiAccess'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -184,10 +192,11 @@ export const PLANS = {
     limits: {
       policies: -1,
       executions: 50000,
+      apiCalls: 50000,  // Team 计划 API 配额
       apiKeys: 20,
       teamMembers: -1,
     },
-    featureKeys: ['unlimitedPolicies', 'executions50000', 'teamCollaboration', 'ssoRbac', 'prioritySupport'],
+    featureKeys: ['unlimitedPolicies', 'executions50000', 'apiCalls50000', 'teamCollaboration', 'ssoRbac', 'prioritySupport'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -211,10 +220,11 @@ export const PLANS = {
     limits: {
       policies: -1,
       executions: -1,
+      apiCalls: -1,  // Enterprise 无限 API 配额
       apiKeys: -1,
       teamMembers: -1,
     },
-    featureKeys: ['customDeployment', 'slaGuarantee', 'dedicatedSupport', 'customIntegrations'],
+    featureKeys: ['unlimitedApiCalls', 'customDeployment', 'slaGuarantee', 'dedicatedSupport', 'customIntegrations'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,

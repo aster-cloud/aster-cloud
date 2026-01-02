@@ -15,7 +15,7 @@ const USAGE_LIMIT_MAPPING: Record<UsageType, PlanLimitType | null> = {
   execution: 'executions',
   pii_scan: null,
   compliance_report: null,
-  api_call: null,
+  api_call: 'apiCalls',  // API 调用独立配额
 };
 
 // 获取当前周期字符串（YYYY-MM）
@@ -190,6 +190,7 @@ export async function getUsageStats(userId: string) {
       piiScans: usageByType.pii_scan || 0,
       complianceReports: usageByType.compliance_report || 0,
       apiCalls: usageByType.api_call || 0,
+      apiCallsLimit: limits.apiCalls,  // API 调用配额
     },
     features: {
       piiDetection: capabilities.piiDetection,

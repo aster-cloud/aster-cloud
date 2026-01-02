@@ -42,12 +42,24 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
     }
 
-    const limitCheck = await checkUsageLimit(validation.userId, 'api_call');
-    if (!limitCheck.allowed) {
+    // 双重配额校验：API 调用配额 + 执行配额
+    const apiLimitCheck = await checkUsageLimit(validation.userId, 'api_call');
+    if (!apiLimitCheck.allowed) {
       return NextResponse.json(
         {
-          error: 'Usage limit exceeded',
-          message: limitCheck.message,
+          error: 'API call limit exceeded',
+          message: apiLimitCheck.message,
+        },
+        { status: 429 }
+      );
+    }
+
+    const executionLimitCheck = await checkUsageLimit(validation.userId, 'execution');
+    if (!executionLimitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Execution limit exceeded',
+          message: executionLimitCheck.message,
         },
         { status: 429 }
       );
