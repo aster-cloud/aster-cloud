@@ -1,4 +1,4 @@
-export const locales = ['en', 'zh'] as const;
+export const locales = ['en', 'zh', 'de'] as const;
 export const defaultLocale = 'en' as const;
 
 // Whether to auto-detect locale from browser's Accept-Language header
@@ -11,4 +11,5 @@ export type Locale = (typeof locales)[number];
 export const localeNames: Record<Locale, string> = {
   en: 'English',
   zh: '中文',
+  de: 'Deutsch',
 };
