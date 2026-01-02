@@ -275,9 +275,8 @@ function BillingContent() {
                 </span>
               )}
 
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                {plan.name}
-                <span className="text-sm font-normal text-gray-500">{plan.displayName}</span>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t(`plans.names.${planKey}`)}
               </h3>
 
               <div className="mt-4 flex items-baseline">
@@ -339,8 +338,8 @@ function BillingContent() {
               )}
 
               <ul className="mt-6 space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center text-sm text-gray-600">
+                {plan.featureKeys.map((featureKey) => (
+                  <li key={featureKey} className="flex items-center text-sm text-gray-600">
                     <svg className="h-4 w-4 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
                       <path
                         fillRule="evenodd"
@@ -348,7 +347,7 @@ function BillingContent() {
                         clipRule="evenodd"
                       />
                     </svg>
-                    {feature}
+                    {t(`plans.features.${featureKey}`)}
                   </li>
                 ))}
               </ul>

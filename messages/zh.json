@@ -256,6 +256,34 @@
         "question": "你们提供退款吗？",
         "answer": "我们提供 30 天退款保证。如果您对订阅不满意，请在 30 天内联系我们获得全额退款。"
       }
+    },
+    "plans": {
+      "names": {
+        "free": "免费版",
+        "trial": "试用版",
+        "pro": "专业版",
+        "team": "团队版",
+        "enterprise": "企业版"
+      },
+      "features": {
+        "basicPolicyManagement": "基础策略管理",
+        "limitedExecutions": "每月 100 次执行",
+        "extendedPolicyManagement": "扩展策略管理",
+        "moreExecutions": "每月 500 次执行",
+        "apiAccess": "API 访问",
+        "unlimitedPolicies": "无限策略",
+        "highExecutions": "每月 5,000 次执行",
+        "fullApiAccess": "完整 API 访问",
+        "prioritySupport": "优先支持",
+        "unlimitedExecutions": "无限执行次数",
+        "teamCollaboration": "团队协作",
+        "adminControls": "管理员控制",
+        "auditLogs": "审计日志",
+        "customDeployment": "定制部署",
+        "slaGuarantee": "SLA 保障",
+        "dedicatedSupport": "专属支持",
+        "customIntegrations": "定制集成"
+      }
     }
   },
   "policies": {

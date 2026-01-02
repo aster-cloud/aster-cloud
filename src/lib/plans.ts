@@ -92,17 +92,37 @@ export type PlanCapabilities = {
   customIntegrations?: boolean;
 };
 
+// Plan feature keys for i18n (use with t('plans.features.{key}'))
+export const PLAN_FEATURE_KEYS = {
+  basicPolicyManagement: 'basicPolicyManagement',
+  limitedExecutions: 'limitedExecutions',
+  extendedPolicyManagement: 'extendedPolicyManagement',
+  moreExecutions: 'moreExecutions',
+  apiAccess: 'apiAccess',
+  unlimitedPolicies: 'unlimitedPolicies',
+  highExecutions: 'highExecutions',
+  fullApiAccess: 'fullApiAccess',
+  prioritySupport: 'prioritySupport',
+  unlimitedExecutions: 'unlimitedExecutions',
+  teamCollaboration: 'teamCollaboration',
+  adminControls: 'adminControls',
+  auditLogs: 'auditLogs',
+  customDeployment: 'customDeployment',
+  slaGuarantee: 'slaGuarantee',
+  dedicatedSupport: 'dedicatedSupport',
+  customIntegrations: 'customIntegrations',
+} as const;
+
 export const PLANS = {
   free: {
-    name: 'Free',
-    displayName: '免费版',
+    name: 'free',
     limits: {
       policies: 3,
       executions: 100,
       apiKeys: 0,
       teamMembers: 1,
     },
-    features: ['基础策略管理', '有限执行次数'],
+    featureKeys: ['basicPolicyManagement', 'limitedExecutions'],
     capabilities: {
       piiDetection: 'basic',
       sharing: false,
@@ -114,15 +134,14 @@ export const PLANS = {
     stripePriceId: null,
   },
   trial: {
-    name: 'Trial',
-    displayName: '试用版',
+    name: 'trial',
     limits: {
       policies: 10,
       executions: 500,
       apiKeys: 1,
       teamMembers: 1,
     },
-    features: ['扩展策略管理', '更多执行次数', 'API 访问'],
+    featureKeys: ['extendedPolicyManagement', 'moreExecutions', 'apiAccess'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -135,15 +154,14 @@ export const PLANS = {
     trialDays: 14,
   },
   pro: {
-    name: 'Pro',
-    displayName: '专业版',
+    name: 'pro',
     limits: {
       policies: 50,
       executions: 5000,
       apiKeys: 5,
       teamMembers: 1,
     },
-    features: ['无限策略', '大量执行次数', '完整 API 访问', '优先支持'],
+    featureKeys: ['unlimitedPolicies', 'highExecutions', 'fullApiAccess', 'prioritySupport'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -158,15 +176,14 @@ export const PLANS = {
     },
   },
   team: {
-    name: 'Team',
-    displayName: '团队版',
+    name: 'team',
     limits: {
       policies: -1,
       executions: -1,
       apiKeys: 20,
       teamMembers: 10,
     },
-    features: ['无限策略', '无限执行', '团队协作', '管理员控制', '审计日志'],
+    featureKeys: ['unlimitedPolicies', 'unlimitedExecutions', 'teamCollaboration', 'adminControls', 'auditLogs'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -186,15 +203,14 @@ export const PLANS = {
     },
   },
   enterprise: {
-    name: 'Enterprise',
-    displayName: '企业版',
+    name: 'enterprise',
     limits: {
       policies: -1,
       executions: -1,
       apiKeys: -1,
       teamMembers: -1,
     },
-    features: ['自定义部署', 'SLA 保障', '专属支持', '定制集成'],
+    featureKeys: ['customDeployment', 'slaGuarantee', 'dedicatedSupport', 'customIntegrations'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -212,9 +228,8 @@ export const PLANS = {
   string,
   {
     name: string;
-    displayName: string;
     limits: PlanLimits;
-    features: readonly string[];
+    featureKeys: readonly string[];
     capabilities: PlanCapabilities;
     price: BillingPrice;
     stripePriceId: { monthly: string | undefined | null; yearly: string | undefined | null } | null;
@@ -260,7 +275,7 @@ export function getPlanLimit(plan: PlanType, limitType: PlanLimitType): number {
 }
 
 export function hasFeature(plan: PlanType, feature: string): boolean {
-  return (PLANS[plan].features as readonly string[]).includes(feature);
+  return (PLANS[plan].featureKeys as readonly string[]).includes(feature);
 }
 
 export function isUnlimited(limit: number): boolean {

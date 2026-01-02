@@ -256,6 +256,34 @@
         "question": "Do you offer refunds?",
         "answer": "We offer a 30-day money-back guarantee. If you're not satisfied with your subscription, contact us within 30 days for a full refund."
       }
+    },
+    "plans": {
+      "names": {
+        "free": "Free",
+        "trial": "Trial",
+        "pro": "Pro",
+        "team": "Team",
+        "enterprise": "Enterprise"
+      },
+      "features": {
+        "basicPolicyManagement": "Basic policy management",
+        "limitedExecutions": "100 executions/month",
+        "extendedPolicyManagement": "Extended policy management",
+        "moreExecutions": "500 executions/month",
+        "apiAccess": "API access",
+        "unlimitedPolicies": "Unlimited policies",
+        "highExecutions": "5,000 executions/month",
+        "fullApiAccess": "Full API access",
+        "prioritySupport": "Priority support",
+        "unlimitedExecutions": "Unlimited executions",
+        "teamCollaboration": "Team collaboration",
+        "adminControls": "Admin controls",
+        "auditLogs": "Audit logs",
+        "customDeployment": "Custom deployment",
+        "slaGuarantee": "SLA guarantee",
+        "dedicatedSupport": "Dedicated support",
+        "customIntegrations": "Custom integrations"
+      }
     }
   },
   "policies": {
