@@ -49,7 +49,7 @@ interface Translations {
     executionsThisMonth: string;
     apiCalls: string;
     piiFieldsDetected: string;
-    limit: (count: number) => string;
+    limitTemplate: string;
     upgradeForApi: string;
     reviewRecommended: string;
   };
@@ -68,8 +68,13 @@ interface Translations {
     noPolicies: string;
     createFirst: string;
     noDescription: string;
-    runs: (count: number) => string;
+    runsTemplate: string;
   };
+}
+
+// 简单模板插值
+function formatTemplate(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
 }
 
 interface DashboardContentProps {
@@ -162,7 +167,7 @@ export function DashboardContent({
                 />
               </div>
               <p className="mt-1 text-xs text-gray-400">
-                {t.stats.limit(stats.usage.policiesLimit)}
+                {formatTemplate(t.stats.limitTemplate, { count: stats.usage.policiesLimit })}
               </p>
             </div>
           )}
@@ -189,7 +194,7 @@ export function DashboardContent({
                 />
               </div>
               <p className="mt-1 text-xs text-gray-400">
-                {t.stats.limit(stats.usage.executionsLimit)}
+                {formatTemplate(t.stats.limitTemplate, { count: stats.usage.executionsLimit })}
               </p>
             </div>
           )}
@@ -219,7 +224,7 @@ export function DashboardContent({
                 />
               </div>
               <p className="mt-1 text-xs text-gray-400">
-                {t.stats.limit(stats.usage.apiCallsLimit)}
+                {formatTemplate(t.stats.limitTemplate, { count: stats.usage.apiCallsLimit })}
               </p>
             </div>
           )}
@@ -347,7 +352,7 @@ export function DashboardContent({
                           {policy.description || t.recentPolicies.noDescription}
                         </p>
                         <p className="text-sm text-gray-400">
-                          {t.recentPolicies.runs(policy._count.executions)}
+                          {formatTemplate(t.recentPolicies.runsTemplate, { count: policy._count.executions })}
                         </p>
                       </div>
                     </div>

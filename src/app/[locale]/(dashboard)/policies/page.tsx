@@ -62,8 +62,7 @@ export default async function PoliciesPage() {
     confirmDelete: t('confirmDelete'),
     freeze: {
       title: t('freeze.title'),
-      message: (frozen: number, limit: number, total: number) =>
-        t('freeze.message', { frozen, limit, total }),
+      messageTemplate: t.raw('freeze.message'),
       upgradeLink: t('freeze.upgradeLink'),
       badge: t('freeze.badge'),
       cannotExecute: t('freeze.cannotExecute'),
@@ -71,13 +70,13 @@ export default async function PoliciesPage() {
     },
     noPolicies: t('noPolicies'),
     getStarted: t('getStarted'),
-    piiFields: (count: number) => t('piiFields', { count }),
+    piiFieldsTemplate: t.raw('piiFields'),
     public: t('public'),
-    executions: (count: number) => t('executions', { count }),
+    executionsTemplate: t.raw('executions'),
     executeAction: t('executeAction'),
     edit: t('edit'),
     delete: t('delete'),
-    updated: (date: string) => t('updated', { date }),
+    updatedTemplate: t.raw('updated'),
   };
 
   return (

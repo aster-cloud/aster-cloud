@@ -33,7 +33,7 @@ interface Translations {
   confirmDelete: string;
   freeze: {
     title: string;
-    message: (frozen: number, limit: number, total: number) => string;
+    messageTemplate: string;
     upgradeLink: string;
     badge: string;
     cannotExecute: string;
@@ -41,13 +41,18 @@ interface Translations {
   };
   noPolicies: string;
   getStarted: string;
-  piiFields: (count: number) => string;
+  piiFieldsTemplate: string;
   public: string;
-  executions: (count: number) => string;
+  executionsTemplate: string;
   executeAction: string;
   edit: string;
   delete: string;
-  updated: (date: string) => string;
+  updatedTemplate: string;
+}
+
+// 简单模板插值
+function formatTemplate(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
 }
 
 interface PoliciesContentProps {
@@ -115,7 +120,7 @@ export function PoliciesContent({
             <div className="ml-3">
               <h3 className="text-sm font-medium text-amber-800">{t.freeze.title}</h3>
               <p className="mt-1 text-sm text-amber-700">
-                {t.freeze.message(freezeInfo.frozenCount, freezeInfo.limit, freezeInfo.total)}
+                {formatTemplate(t.freeze.messageTemplate, { frozen: freezeInfo.frozenCount, limit: freezeInfo.limit, total: freezeInfo.total })}
               </p>
               <div className="mt-2">
                 <Link
@@ -192,7 +197,7 @@ export function PoliciesContent({
                       {/* PII Badge */}
                       {policy.piiFields && policy.piiFields.length > 0 && (
                         <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                          {t.piiFields(policy.piiFields.length)}
+                          {formatTemplate(t.piiFieldsTemplate, { count: policy.piiFields.length })}
                         </span>
                       )}
 
@@ -205,7 +210,7 @@ export function PoliciesContent({
 
                       {/* Execution count */}
                       <span className="text-sm text-gray-500">
-                        {t.executions(policy._count.executions)}
+                        {formatTemplate(t.executionsTemplate, { count: policy._count.executions })}
                       </span>
 
                       {/* Actions */}
@@ -245,7 +250,7 @@ export function PoliciesContent({
                   </div>
                   <div className="mt-2">
                     <p className="text-xs text-gray-400">
-                      {t.updated(new Date(policy.updatedAt).toLocaleDateString())}
+                      {formatTemplate(t.updatedTemplate, { date: new Date(policy.updatedAt).toLocaleDateString() })}
                     </p>
                   </div>
                 </div>

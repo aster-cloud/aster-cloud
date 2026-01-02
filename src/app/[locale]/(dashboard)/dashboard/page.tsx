@@ -71,7 +71,7 @@ export default async function DashboardPage() {
       executionsThisMonth: t('stats.executionsThisMonth'),
       apiCalls: t('stats.apiCalls'),
       piiFieldsDetected: t('stats.piiFieldsDetected'),
-      limit: (count: number) => t('stats.limit', { count }),
+      limitTemplate: t.raw('stats.limit'),
       upgradeForApi: t('stats.upgradeForApi'),
       reviewRecommended: t('stats.reviewRecommended'),
     },
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
       noPolicies: t('recentPolicies.noPolicies'),
       createFirst: t('recentPolicies.createFirst'),
       noDescription: t('recentPolicies.noDescription'),
-      runs: (count: number) => t('recentPolicies.runs', { count }),
+      runsTemplate: t.raw('recentPolicies.runs'),
     },
   };
 
