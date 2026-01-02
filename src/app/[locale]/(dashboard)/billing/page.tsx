@@ -166,32 +166,38 @@ function BillingContent() {
                 <p className="text-lg font-medium">
                   {usage.executions} / {isUnlimited(usage.executionsLimit) ? '∞' : usage.executionsLimit}
                 </p>
-                {!isUnlimited(usage.executionsLimit) && (
-                  <div className="mt-1 h-2 w-full bg-gray-200 rounded-full">
+                <div className="mt-1 flex items-center gap-1">
+                  <div className="h-2 flex-1 bg-gray-200 rounded-full">
                     <div
                       className="h-2 bg-indigo-600 rounded-full"
                       style={{
-                        width: `${Math.min((usage.executions / usage.executionsLimit) * 100, 100)}%`,
+                        width: isUnlimited(usage.executionsLimit)
+                          ? '100%'
+                          : `${Math.min((usage.executions / usage.executionsLimit) * 100, 100)}%`,
                       }}
                     />
                   </div>
-                )}
+                  {isUnlimited(usage.executionsLimit) && <span className="text-sm">♾️</span>}
+                </div>
               </div>
               <div>
                 <p className="text-sm text-gray-500">{t('savedPolicies')}</p>
                 <p className="text-lg font-medium">
                   {usage.policies} / {isUnlimited(usage.policiesLimit) ? '∞' : usage.policiesLimit}
                 </p>
-                {!isUnlimited(usage.policiesLimit) && (
-                  <div className="mt-1 h-2 w-full bg-gray-200 rounded-full">
+                <div className="mt-1 flex items-center gap-1">
+                  <div className="h-2 flex-1 bg-gray-200 rounded-full">
                     <div
                       className="h-2 bg-indigo-600 rounded-full"
                       style={{
-                        width: `${Math.min((usage.policies / usage.policiesLimit) * 100, 100)}%`,
+                        width: isUnlimited(usage.policiesLimit)
+                          ? '100%'
+                          : `${Math.min((usage.policies / usage.policiesLimit) * 100, 100)}%`,
                       }}
                     />
                   </div>
-                )}
+                  {isUnlimited(usage.policiesLimit) && <span className="text-sm">♾️</span>}
+                </div>
               </div>
             </div>
           )}
