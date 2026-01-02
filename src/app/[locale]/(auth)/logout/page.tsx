@@ -3,15 +3,21 @@
 import { useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { defaultLocale } from '@/i18n/config';
 
 export default function LogoutPage() {
   const t = useTranslations('auth.logout');
   const tNav = useTranslations('nav');
+  const locale = useLocale();
+
+  // Build locale-aware callback URL
+  const localePrefix = locale === defaultLocale ? '' : `/${locale}`;
+  const callbackUrl = `${localePrefix}/`;
 
   useEffect(() => {
-    signOut({ callbackUrl: '/' });
-  }, []);
+    signOut({ callbackUrl });
+  }, [callbackUrl]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

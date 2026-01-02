@@ -2,17 +2,23 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import { defaultLocale } from '@/i18n/config';
 
 export default function SignupPage() {
   const t = useTranslations('auth.signup');
   const tNav = useTranslations('nav');
+  const locale = useLocale();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Build locale-aware callback URL
+  const localePrefix = locale === defaultLocale ? '' : `/${locale}`;
+  const callbackUrl = `${localePrefix}/onboarding`;
 
   const handleOAuthSignIn = (provider: string) => {
     setIsLoading(true);
-    signIn(provider, { callbackUrl: '/onboarding' });
+    signIn(provider, { callbackUrl });
   };
 
   const trialFeatures = [

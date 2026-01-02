@@ -4,18 +4,24 @@ import { useState, Suspense } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { defaultLocale } from '@/i18n/config';
 
 function LoginContent() {
   const t = useTranslations('auth.login');
   const tNav = useTranslations('nav');
+  const locale = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const { data: session } = useSession();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
+  // Build locale-aware default callback URL
+  const localePrefix = locale === defaultLocale ? '' : `/${locale}`;
+  const defaultCallbackUrl = `${localePrefix}/dashboard`;
+  const callbackUrl = searchParams.get('callbackUrl') || defaultCallbackUrl;
   const errorParam = searchParams.get('error');
 
   const handleSubmit = async (e: React.FormEvent) => {

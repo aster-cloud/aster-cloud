@@ -3,7 +3,8 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { Link } from '@/i18n/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { defaultLocale } from '@/i18n/config';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
 
@@ -20,9 +21,14 @@ function setCookie(name: string, value: string, days: number = 365) {
 
 export default function SettingsPage() {
   const t = useTranslations('settings');
+  const locale = useLocale();
   const { data: session } = useSession();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [localeDetection, setLocaleDetection] = useState(false);
+
+  // Build locale-aware callback URL
+  const localePrefix = locale === defaultLocale ? '' : `/${locale}`;
+  const logoutCallbackUrl = `${localePrefix}/`;
 
   useEffect(() => {
     // Load locale detection preference from cookie
@@ -42,7 +48,7 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    await signOut({ callbackUrl: '/' });
+    await signOut({ callbackUrl: logoutCallbackUrl });
   };
 
   return (
