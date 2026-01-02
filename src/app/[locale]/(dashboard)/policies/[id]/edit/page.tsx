@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface Policy {
   id: string;
@@ -18,6 +19,7 @@ export default function EditPolicyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const t = useTranslations('policies');
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -34,14 +36,14 @@ export default function EditPolicyPage({
   const fetchPolicy = async () => {
     try {
       const res = await fetch(`/api/policies/${id}`);
-      if (!res.ok) throw new Error('Failed to fetch policy');
+      if (!res.ok) throw new Error(t('form.failedToLoad'));
       const data: Policy = await res.json();
       setName(data.name);
       setDescription(data.description || '');
       setContent(data.content);
       setIsPublic(data.isPublic);
     } catch (err) {
-      setError('Failed to load policy');
+      setError(t('form.failedToLoad'));
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -62,12 +64,12 @@ export default function EditPolicyPage({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to update policy');
+        throw new Error(data.error || t('form.failedToUpdate'));
       }
 
       router.push(`/policies/${id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update policy');
+      setError(err instanceof Error ? err.message : t('form.failedToUpdate'));
     } finally {
       setIsSaving(false);
     }
@@ -91,10 +93,10 @@ export default function EditPolicyPage({
                 <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
               </svg>
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Edit Policy</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('form.editTitle')}</h1>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            Update your policy rules and settings
+            {t('form.editSubtitle')}
           </p>
         </div>
       </div>
@@ -111,7 +113,7 @@ export default function EditPolicyPage({
             {/* Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Policy Name
+                {t('form.name')}
               </label>
               <input
                 type="text"
@@ -120,14 +122,14 @@ export default function EditPolicyPage({
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                placeholder="e.g., Loan Approval Policy"
+                placeholder={t('form.namePlaceholder')}
               />
             </div>
 
             {/* Description */}
             <div className="mt-4">
               <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                Description (optional)
+                {t('form.description')}
               </label>
               <input
                 type="text"
@@ -135,14 +137,14 @@ export default function EditPolicyPage({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                placeholder="Brief description of what this policy does"
+                placeholder={t('form.descriptionPlaceholder')}
               />
             </div>
 
             {/* Content */}
             <div className="mt-4">
               <label htmlFor="content" className="block text-sm font-medium text-gray-700">
-                Policy Content
+                {t('form.content')}
               </label>
               <div className="mt-1">
                 <textarea
@@ -152,11 +154,11 @@ export default function EditPolicyPage({
                   onChange={(e) => setContent(e.target.value)}
                   required
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono"
-                  placeholder="// Write your policy rules here..."
+                  placeholder={t('form.contentPlaceholder')}
                 />
               </div>
               <p className="mt-2 text-sm text-gray-500">
-                Use Aster policy syntax. Format: if [field] [condition] [value] then [action]
+                {t('form.contentHelp')}
               </p>
             </div>
 
@@ -170,7 +172,7 @@ export default function EditPolicyPage({
                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
               <label htmlFor="isPublic" className="ml-2 block text-sm text-gray-700">
-                Make this policy public (shareable via link)
+                {t('form.isPublic')}
               </label>
             </div>
           </div>
@@ -182,14 +184,14 @@ export default function EditPolicyPage({
             href={`/policies/${id}`}
             className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
           >
-            Cancel
+            {t('form.cancel')}
           </Link>
           <button
             type="submit"
             disabled={isSaving}
             className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
           >
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            {isSaving ? t('form.saving') : t('form.save')}
           </button>
         </div>
       </form>

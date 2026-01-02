@@ -322,6 +322,7 @@
     "getStarted": "Beginnen Sie mit dem Erstellen einer neuen Richtlinie.",
     "piiFields": "{count} PII-Felder",
     "public": "Öffentlich",
+    "private": "Privat",
     "executions": "{count} Ausführungen",
     "execute": "Ausführen",
     "edit": "Bearbeiten",
@@ -329,7 +330,47 @@
     "updated": "Aktualisiert {date}",
     "confirmDelete": "Möchten Sie diese Richtlinie wirklich löschen?",
     "failedToLoad": "Richtlinien konnten nicht geladen werden",
-    "failedToDelete": "Richtlinie konnte nicht gelöscht werden"
+    "failedToDelete": "Richtlinie konnte nicht gelöscht werden",
+    "form": {
+      "createTitle": "Neue Richtlinie erstellen",
+      "createSubtitle": "Definieren Sie Ihre Geschäftsregeln mit der Aster-Richtliniensprache",
+      "editTitle": "Richtlinie bearbeiten",
+      "editSubtitle": "Aktualisieren Sie Ihre Richtlinienregeln und Einstellungen",
+      "loadExample": "Beispiel laden",
+      "name": "Richtlinienname",
+      "namePlaceholder": "z.B. Kreditgenehmigungsrichtlinie",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Kurze Beschreibung der Richtlinienfunktion",
+      "content": "Richtlinieninhalt",
+      "contentPlaceholder": "// Schreiben Sie hier Ihre Richtlinienregeln...",
+      "contentHelp": "Verwenden Sie die Aster-Richtliniensyntax. Format: if [Feld] [Bedingung] [Wert] then [Aktion]",
+      "isPublic": "Diese Richtlinie öffentlich machen (per Link teilbar)",
+      "cancel": "Abbrechen",
+      "create": "Richtlinie erstellen",
+      "creating": "Wird erstellt...",
+      "save": "Änderungen speichern",
+      "saving": "Wird gespeichert...",
+      "viewPlans": "Pläne anzeigen",
+      "failedToCreate": "Richtlinie konnte nicht erstellt werden",
+      "failedToUpdate": "Richtlinie konnte nicht aktualisiert werden",
+      "failedToLoad": "Richtlinie konnte nicht geladen werden"
+    },
+    "detail": {
+      "version": "Version",
+      "executions": "Ausführungen",
+      "piiFields": "PII-Felder",
+      "status": "Status",
+      "piiWarning": "PII erkannt",
+      "piiWarningMessage": "Diese Richtlinie verweist auf potenziell sensible Daten:",
+      "policyContent": "Richtlinieninhalt",
+      "versionHistory": "Versionsverlauf",
+      "backToPolicies": "Zurück zu Richtlinien",
+      "policyNotFound": "Richtlinie nicht gefunden"
+    },
+    "example": {
+      "name": "Kreditgenehmigungsrichtlinie",
+      "description": "Regeln zur Bewertung von Kreditanträgen basierend auf Kreditwürdigkeit und Einkommen"
+    }
   },
   "reports": {
     "title": "Compliance-Berichte",

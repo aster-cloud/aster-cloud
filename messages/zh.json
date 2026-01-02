@@ -322,6 +322,7 @@
     "getStarted": "创建一个新策略开始使用。",
     "piiFields": "{count} 个 PII 字段",
     "public": "公开",
+    "private": "私有",
     "executions": "{count} 次执行",
     "execute": "执行",
     "edit": "编辑",
@@ -329,7 +330,47 @@
     "updated": "更新于 {date}",
     "confirmDelete": "确定要删除此策略吗？",
     "failedToLoad": "加载策略失败",
-    "failedToDelete": "删除策略失败"
+    "failedToDelete": "删除策略失败",
+    "form": {
+      "createTitle": "新建策略",
+      "createSubtitle": "使用 Aster 策略语言定义您的业务规则",
+      "editTitle": "编辑策略",
+      "editSubtitle": "更新您的策略规则和设置",
+      "loadExample": "加载示例",
+      "name": "策略名称",
+      "namePlaceholder": "例如：贷款审批策略",
+      "description": "描述（可选）",
+      "descriptionPlaceholder": "简要描述此策略的功能",
+      "content": "策略内容",
+      "contentPlaceholder": "// 在此编写策略规则...",
+      "contentHelp": "使用 Aster 策略语法。格式：if [字段] [条件] [值] then [操作]",
+      "isPublic": "公开此策略（可通过链接分享）",
+      "cancel": "取消",
+      "create": "创建策略",
+      "creating": "创建中...",
+      "save": "保存更改",
+      "saving": "保存中...",
+      "viewPlans": "查看套餐",
+      "failedToCreate": "创建策略失败",
+      "failedToUpdate": "更新策略失败",
+      "failedToLoad": "加载策略失败"
+    },
+    "detail": {
+      "version": "版本",
+      "executions": "执行次数",
+      "piiFields": "PII 字段",
+      "status": "状态",
+      "piiWarning": "检测到 PII",
+      "piiWarningMessage": "此策略引用了可能敏感的数据：",
+      "policyContent": "策略内容",
+      "versionHistory": "版本历史",
+      "backToPolicies": "返回策略列表",
+      "policyNotFound": "策略未找到"
+    },
+    "example": {
+      "name": "贷款审批策略",
+      "description": "基于信用评分和收入评估贷款申请的规则"
+    }
   },
   "reports": {
     "title": "合规报告",

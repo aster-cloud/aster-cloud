@@ -322,6 +322,7 @@
     "getStarted": "Get started by creating a new policy.",
     "piiFields": "{count} PII fields",
     "public": "Public",
+    "private": "Private",
     "executions": "{count} executions",
     "execute": "Execute",
     "edit": "Edit",
@@ -329,7 +330,47 @@
     "updated": "Updated {date}",
     "confirmDelete": "Are you sure you want to delete this policy?",
     "failedToLoad": "Failed to load policies",
-    "failedToDelete": "Failed to delete policy"
+    "failedToDelete": "Failed to delete policy",
+    "form": {
+      "createTitle": "Create New Policy",
+      "createSubtitle": "Define your business rules using Aster policy language",
+      "editTitle": "Edit Policy",
+      "editSubtitle": "Update your policy rules and settings",
+      "loadExample": "Load example",
+      "name": "Policy Name",
+      "namePlaceholder": "e.g., Loan Approval Policy",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Brief description of what this policy does",
+      "content": "Policy Content",
+      "contentPlaceholder": "// Write your policy rules here...",
+      "contentHelp": "Use Aster policy syntax. Format: if [field] [condition] [value] then [action]",
+      "isPublic": "Make this policy public (shareable via link)",
+      "cancel": "Cancel",
+      "create": "Create Policy",
+      "creating": "Creating...",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "viewPlans": "View plans",
+      "failedToCreate": "Failed to create policy",
+      "failedToUpdate": "Failed to update policy",
+      "failedToLoad": "Failed to load policy"
+    },
+    "detail": {
+      "version": "Version",
+      "executions": "Executions",
+      "piiFields": "PII Fields",
+      "status": "Status",
+      "piiWarning": "PII Detected",
+      "piiWarningMessage": "This policy references potentially sensitive data:",
+      "policyContent": "Policy Content",
+      "versionHistory": "Version History",
+      "backToPolicies": "Back to policies",
+      "policyNotFound": "Policy not found"
+    },
+    "example": {
+      "name": "Loan Approval Policy",
+      "description": "Rules for evaluating loan applications based on credit score and income"
+    }
   },
   "reports": {
     "title": "Compliance Reports",
