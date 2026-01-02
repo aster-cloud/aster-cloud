@@ -336,7 +336,7 @@ function BillingContent() {
                 </div>
               )}
 
-              <ul className="mt-6 space-y-3">
+              <ul className="mt-6 space-y-3 flex-1">
                 {plan.featureKeys.map((featureKey) => (
                   <li key={featureKey} className="flex items-center text-sm text-gray-600">
                     <svg className="h-4 w-4 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
