@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import {
   BillingInterval,
   CurrencyCode,
+  CURRENCY_CONFIG,
   formatPrice,
   getCurrencyForLocale,
   getPlanPrice,
@@ -19,13 +20,22 @@ import {
 } from '@/lib/plans';
 
 const DISPLAY_PLANS = (Object.keys(PLANS) as PlanType[]).filter((plan) => plan !== 'trial');
+const AVAILABLE_CURRENCIES: CurrencyCode[] = ['USD', 'CNY', 'EUR'];
+
+// Currency display names
+const CURRENCY_NAMES: Record<CurrencyCode, string> = {
+  USD: 'US Dollar ($)',
+  CNY: '人民币 (¥)',
+  EUR: 'Euro (€)',
+};
 
 function BillingContent() {
   const t = useTranslations('billing');
   const locale = useLocale();
-  const currency = getCurrencyForLocale(locale) as CurrencyCode;
+  const defaultCurrency = getCurrencyForLocale(locale) as CurrencyCode;
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const [currency, setCurrency] = useState<CurrencyCode>(defaultCurrency);
   const [interval, setInterval] = useState<BillingInterval>('monthly');
   const [teamUsers, setTeamUsers] = useState<number>(getTeamMinUsers());
   const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -178,8 +188,9 @@ function BillingContent() {
         </div>
       </div>
 
-      {/* Billing Interval Toggle */}
-      <div className="flex justify-center mb-8">
+      {/* Billing Options: Interval Toggle + Currency Selector */}
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
+        {/* Billing Interval Toggle */}
         <div className="relative flex rounded-lg bg-gray-100 p-1">
           <button
             type="button"
@@ -204,6 +215,26 @@ function BillingContent() {
             {t('yearly')}
             <span className="ml-1 text-xs text-green-600 font-semibold">{t('save20')}</span>
           </button>
+        </div>
+
+        {/* Currency Selector */}
+        <div className="relative">
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+          >
+            {AVAILABLE_CURRENCIES.map((curr) => (
+              <option key={curr} value={curr}>
+                {CURRENCY_NAMES[curr]}
+              </option>
+            ))}
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
       </div>
 
