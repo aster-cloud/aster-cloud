@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hasFeatureAccess } from '@/lib/usage';
+import { validateTeamName, validateSlug } from '@/lib/validation';
 
 // GET /api/teams - 列出用户的团队
 export async function GET() {
@@ -66,22 +67,15 @@ export async function POST(req: Request) {
     const { name, slug } = await req.json();
 
     // 验证名称
-    if (!name || typeof name !== 'string' || name.length < 2 || name.length > 50) {
-      return NextResponse.json({ error: '团队名称必须是 2-50 个字符' }, { status: 400 });
+    const nameValidation = validateTeamName(name);
+    if (!nameValidation.valid) {
+      return NextResponse.json({ error: nameValidation.error }, { status: 400 });
     }
 
     // 验证 slug
-    if (
-      !slug ||
-      typeof slug !== 'string' ||
-      !/^[a-z0-9-]+$/.test(slug) ||
-      slug.length < 2 ||
-      slug.length > 50
-    ) {
-      return NextResponse.json(
-        { error: 'Slug 必须是 2-50 个小写字母、数字或连字符' },
-        { status: 400 }
-      );
+    const slugValidation = validateSlug(slug);
+    if (!slugValidation.valid) {
+      return NextResponse.json({ error: slugValidation.error }, { status: 400 });
     }
 
     // 检查 slug 唯一性

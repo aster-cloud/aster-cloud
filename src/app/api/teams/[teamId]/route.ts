@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
+import { validateTeamName, validateSlug } from '@/lib/validation';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
 
@@ -39,15 +40,17 @@ export async function GET(req: Request, { params }: RouteParams) {
     }
 
     return NextResponse.json({
-      id: team.id,
-      name: team.name,
-      slug: team.slug,
-      ownerId: team.ownerId,
-      currentUserRole: team.members[0]?.role,
-      memberCount: team._count.members,
-      policyCount: team._count.policies,
-      createdAt: team.createdAt.toISOString(),
-      updatedAt: team.updatedAt.toISOString(),
+      team: {
+        id: team.id,
+        name: team.name,
+        slug: team.slug,
+        ownerId: team.ownerId,
+        memberCount: team._count.members,
+        policyCount: team._count.policies,
+        createdAt: team.createdAt.toISOString(),
+        updatedAt: team.updatedAt.toISOString(),
+      },
+      role: team.members[0]?.role,
     });
   } catch (error) {
     console.error('Error getting team:', error);
@@ -80,24 +83,18 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     // 验证并更新名称
     if (name !== undefined) {
-      if (typeof name !== 'string' || name.length < 2 || name.length > 50) {
-        return NextResponse.json({ error: '团队名称必须是 2-50 个字符' }, { status: 400 });
+      const nameValidation = validateTeamName(name);
+      if (!nameValidation.valid) {
+        return NextResponse.json({ error: nameValidation.error }, { status: 400 });
       }
       updateData.name = name;
     }
 
     // 验证并更新 slug
     if (slug !== undefined) {
-      if (
-        typeof slug !== 'string' ||
-        !/^[a-z0-9-]+$/.test(slug) ||
-        slug.length < 2 ||
-        slug.length > 50
-      ) {
-        return NextResponse.json(
-          { error: 'Slug 必须是 2-50 个小写字母、数字或连字符' },
-          { status: 400 }
-        );
+      const slugValidation = validateSlug(slug);
+      if (!slugValidation.valid) {
+        return NextResponse.json({ error: slugValidation.error }, { status: 400 });
       }
 
       // 检查 slug 唯一性（排除当前团队）
@@ -120,10 +117,12 @@ export async function PUT(req: Request, { params }: RouteParams) {
     });
 
     return NextResponse.json({
-      id: team.id,
-      name: team.name,
-      slug: team.slug,
-      updatedAt: team.updatedAt.toISOString(),
+      team: {
+        id: team.id,
+        name: team.name,
+        slug: team.slug,
+        updatedAt: team.updatedAt.toISOString(),
+      },
     });
   } catch (error) {
     console.error('Error updating team:', error);
