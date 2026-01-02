@@ -254,16 +254,211 @@ export default function ApiKeysPage() {
         </div>
       </div>
 
-      {/* Usage Example */}
+      {/* Usage Examples */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg font-medium leading-6 text-gray-900">{t('usageExample')}</h3>
-          <pre className="mt-4 bg-gray-900 text-gray-100 p-4 rounded-md overflow-x-auto text-sm">
-{`curl -X POST https://aster-lang.cloud/api/execute \\
+          <p className="mt-1 text-sm text-gray-500">{t('usageDescription')}</p>
+
+          {/* Execute Policy */}
+          <div className="mt-6">
+            <h4 className="text-sm font-medium text-gray-900">{t('examples.executePolicy')}</h4>
+            <p className="mt-1 text-xs text-gray-500">{t('examples.executePolicyDesc')}</p>
+
+            {/* cURL */}
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-500 uppercase">cURL</span>
+                <button
+                  onClick={() => copyToClipboard(`curl -X POST https://aster-lang.cloud/api/v1/execute \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"policyId": "...", "input": {...}}'`}
-          </pre>
+  -d '{
+    "policyId": "your-policy-id",
+    "input": {
+      "creditScore": 750,
+      "income": 85000,
+      "loanAmount": 250000
+    }
+  }'`)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800"
+                >
+                  {t('copy')}
+                </button>
+              </div>
+              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
+{`curl -X POST https://aster-lang.cloud/api/v1/execute \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "policyId": "your-policy-id",
+    "input": {
+      "creditScore": 750,
+      "income": 85000,
+      "loanAmount": 250000
+    }
+  }'`}
+              </pre>
+            </div>
+
+            {/* JavaScript/Node.js */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-500 uppercase">JavaScript / Node.js</span>
+                <button
+                  onClick={() => copyToClipboard(`const response = await fetch('https://aster-lang.cloud/api/v1/execute', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    policyId: 'your-policy-id',
+    input: {
+      creditScore: 750,
+      income: 85000,
+      loanAmount: 250000,
+    },
+  }),
+});
+
+const result = await response.json();
+console.log(result.success ? 'Approved' : 'Rejected');`)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800"
+                >
+                  {t('copy')}
+                </button>
+              </div>
+              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
+{`const response = await fetch('https://aster-lang.cloud/api/v1/execute', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    policyId: 'your-policy-id',
+    input: {
+      creditScore: 750,
+      income: 85000,
+      loanAmount: 250000,
+    },
+  }),
+});
+
+const result = await response.json();
+console.log(result.success ? 'Approved' : 'Rejected');`}
+              </pre>
+            </div>
+
+            {/* Python */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-500 uppercase">Python</span>
+                <button
+                  onClick={() => copyToClipboard(`import requests
+
+response = requests.post(
+    'https://aster-lang.cloud/api/v1/execute',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json',
+    },
+    json={
+        'policyId': 'your-policy-id',
+        'input': {
+            'creditScore': 750,
+            'income': 85000,
+            'loanAmount': 250000,
+        },
+    },
+)
+
+result = response.json()
+print('Approved' if result['success'] else 'Rejected')`)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800"
+                >
+                  {t('copy')}
+                </button>
+              </div>
+              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
+{`import requests
+
+response = requests.post(
+    'https://aster-lang.cloud/api/v1/execute',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'Content-Type': 'application/json',
+    },
+    json={
+        'policyId': 'your-policy-id',
+        'input': {
+            'creditScore': 750,
+            'income': 85000,
+            'loanAmount': 250000,
+        },
+    },
+)
+
+result = response.json()
+print('Approved' if result['success'] else 'Rejected')`}
+              </pre>
+            </div>
+          </div>
+
+          {/* List Policies */}
+          <div className="mt-8">
+            <h4 className="text-sm font-medium text-gray-900">{t('examples.listPolicies')}</h4>
+            <p className="mt-1 text-xs text-gray-500">{t('examples.listPoliciesDesc')}</p>
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-500 uppercase">cURL</span>
+                <button
+                  onClick={() => copyToClipboard(`curl -X GET https://aster-lang.cloud/api/v1/policies \\
+  -H "Authorization: Bearer YOUR_API_KEY"`)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800"
+                >
+                  {t('copy')}
+                </button>
+              </div>
+              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
+{`curl -X GET https://aster-lang.cloud/api/v1/policies \\
+  -H "Authorization: Bearer YOUR_API_KEY"`}
+              </pre>
+            </div>
+          </div>
+
+          {/* Response Example */}
+          <div className="mt-8">
+            <h4 className="text-sm font-medium text-gray-900">{t('examples.responseExample')}</h4>
+            <p className="mt-1 text-xs text-gray-500">{t('examples.responseExampleDesc')}</p>
+            <pre className="mt-3 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
+{`{
+  "executionId": "exec_abc123",
+  "success": true,
+  "output": {
+    "allowed": true,
+    "matchedRules": ["credit_score_check", "income_verification"],
+    "actions": ["approve_loan", "set_interest_rate"]
+  },
+  "durationMs": 12
+}`}
+            </pre>
+          </div>
+
+          {/* Error Handling */}
+          <div className="mt-8">
+            <h4 className="text-sm font-medium text-gray-900">{t('examples.errorHandling')}</h4>
+            <p className="mt-1 text-xs text-gray-500">{t('examples.errorHandlingDesc')}</p>
+            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-3">
+              <div className="text-xs text-amber-800 space-y-1">
+                <p><code className="bg-amber-100 px-1 rounded">401</code> - {t('examples.error401')}</p>
+                <p><code className="bg-amber-100 px-1 rounded">403</code> - {t('examples.error403')}</p>
+                <p><code className="bg-amber-100 px-1 rounded">404</code> - {t('examples.error404')}</p>
+                <p><code className="bg-amber-100 px-1 rounded">429</code> - {t('examples.error429')}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

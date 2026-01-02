@@ -245,6 +245,30 @@
     "checkoutCanceled": "Checkout was canceled.",
     "faq": {
       "title": "Frequently Asked Questions",
+      "whatIsAster": {
+        "question": "What is Aster Cloud?",
+        "answer": "Aster Cloud is a policy management platform that lets you define, test, and execute business rules as code. It's ideal for compliance automation, decision engines, and business logic that changes frequently without code deployments."
+      },
+      "whatIsPolicy": {
+        "question": "What is a policy and how do I create one?",
+        "answer": "A policy is a set of business rules written in Aster's human-readable language. For example: 'if credit_score >= 700 and income > 50000 then approve_loan'. Create policies from the dashboard using our visual editor or by writing rules directly."
+      },
+      "piiDetection": {
+        "question": "How does PII detection work?",
+        "answer": "Our AI automatically scans your policies for personally identifiable information (PII) like email addresses, phone numbers, SSN, and financial data. Detected PII is flagged in reports to help you maintain compliance with GDPR, HIPAA, and other regulations."
+      },
+      "complianceStandards": {
+        "question": "What compliance standards do you support?",
+        "answer": "We generate compliance reports for GDPR (data protection), HIPAA (healthcare), SOC 2 (security controls), and PCI-DSS (payment data). Reports analyze your policies and provide actionable recommendations."
+      },
+      "integration": {
+        "question": "Can I integrate Aster Cloud with my applications?",
+        "answer": "Yes! Use our REST API to execute policies from any application. We provide code examples for JavaScript, Python, cURL, and more. API keys can be managed from Settings > API Keys."
+      },
+      "selfHosted": {
+        "question": "Is there a self-hosted option?",
+        "answer": "Enterprise customers can request on-premise deployment with dedicated support, custom SLA guarantees, and private cloud options. Contact our sales team for details."
+      },
       "cancelAnytime": {
         "question": "Can I cancel my subscription anytime?",
         "answer": "Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period."
@@ -331,6 +355,14 @@
     "confirmDelete": "Are you sure you want to delete this policy?",
     "failedToLoad": "Failed to load policies",
     "failedToDelete": "Failed to delete policy",
+    "freeze": {
+      "title": "Policy Limit Exceeded",
+      "message": "{frozen} of your {total} policies are frozen. Your plan allows {limit} active policies.",
+      "upgradeLink": "Upgrade your plan to unlock all policies",
+      "badge": "Frozen",
+      "cannotExecute": "Cannot execute frozen policy",
+      "cannotEdit": "Cannot edit frozen policy"
+    },
     "form": {
       "createTitle": "Create New Policy",
       "createSubtitle": "Define your business rules using Aster policy language",
@@ -489,8 +521,23 @@
       "copy": "Copy",
       "dismiss": "Dismiss",
       "confirmRevoke": "Are you sure you want to revoke this API key? This action cannot be undone.",
-      "usageExample": "Usage Example",
-      "enterName": "Please enter a name for your API key"
+      "usageExample": "Usage Examples",
+      "usageDescription": "Use your API key to integrate Aster Cloud policies into your applications. Include the key in the Authorization header.",
+      "enterName": "Please enter a name for your API key",
+      "examples": {
+        "executePolicy": "Execute Policy",
+        "executePolicyDesc": "Run a policy with input data and get the decision result.",
+        "listPolicies": "List Policies",
+        "listPoliciesDesc": "Retrieve all policies available to your account.",
+        "responseExample": "Response Format",
+        "responseExampleDesc": "Successful execution returns the policy decision and matched rules.",
+        "errorHandling": "Error Codes",
+        "errorHandlingDesc": "Common HTTP status codes you may encounter when using the API.",
+        "error401": "Invalid or missing API key",
+        "error403": "Insufficient permissions or quota exceeded",
+        "error404": "Policy not found",
+        "error429": "Rate limit exceeded, please retry later"
+      }
     },
     "profile": {
       "title": "Profile",

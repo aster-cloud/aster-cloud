@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { executePolicy } from '@/services/policy/executor';
+import { isPolicyFrozen } from '@/lib/policy-freeze';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -43,6 +44,21 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     if (!policy) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
+    }
+
+    // 检查策略是否被冻结（只对策略所有者检查）
+    if (policy.userId === session.user.id) {
+      const freezeInfo = await isPolicyFrozen(session.user.id, id);
+      if (freezeInfo.isFrozen) {
+        return NextResponse.json(
+          {
+            error: 'Policy is frozen',
+            message: `This policy is frozen because your plan allows ${freezeInfo.activePoliciesLimit} policies but you have ${freezeInfo.totalPolicies}. Delete some policies or upgrade your plan.`,
+            frozen: true,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const limitCheck = await checkUsageLimit(session.user.id, 'execution');

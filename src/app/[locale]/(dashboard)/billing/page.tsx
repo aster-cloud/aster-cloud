@@ -435,6 +435,56 @@ function BillingContent() {
       <div className="mt-12">
         <h2 className="text-lg font-medium text-gray-900 mb-4">{t('faq.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Product Questions */}
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.whatIsAster.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.whatIsAster.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.whatIsPolicy.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.whatIsPolicy.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.piiDetection.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.piiDetection.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.complianceStandards.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.complianceStandards.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.integration.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.integration.answer')}
+            </p>
+          </details>
+          <details className="bg-white rounded-lg shadow px-4 py-3">
+            <summary className="font-medium text-gray-900 cursor-pointer">
+              {t('faq.selfHosted.question')}
+            </summary>
+            <p className="mt-2 text-sm text-gray-600">
+              {t('faq.selfHosted.answer')}
+            </p>
+          </details>
+          {/* Billing Questions */}
           <details className="bg-white rounded-lg shadow px-4 py-3">
             <summary className="font-medium text-gray-900 cursor-pointer">
               {t('faq.apiVsExecutions.question')}

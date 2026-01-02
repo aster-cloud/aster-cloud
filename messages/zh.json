@@ -245,6 +245,30 @@
     "checkoutCanceled": "结账已取消。",
     "faq": {
       "title": "常见问题",
+      "whatIsAster": {
+        "question": "什么是 Aster Cloud？",
+        "answer": "Aster Cloud 是一个策略管理平台，让您可以将业务规则定义、测试和执行为代码。它非常适合合规自动化、决策引擎以及需要频繁变更但无需代码部署的业务逻辑。"
+      },
+      "whatIsPolicy": {
+        "question": "什么是策略？如何创建策略？",
+        "answer": "策略是用 Aster 人类可读语言编写的一组业务规则。例如：'if credit_score >= 700 and income > 50000 then approve_loan'。您可以从仪表盘使用可视化编辑器创建策略，也可以直接编写规则。"
+      },
+      "piiDetection": {
+        "question": "PII 检测是如何工作的？",
+        "answer": "我们的 AI 会自动扫描您的策略，识别个人身份信息（PII），如电子邮件地址、电话号码、身份证号和财务数据。检测到的 PII 会在报告中标注，帮助您遵守 GDPR、HIPAA 等法规。"
+      },
+      "complianceStandards": {
+        "question": "支持哪些合规标准？",
+        "answer": "我们生成 GDPR（数据保护）、HIPAA（医疗）、SOC 2（安全控制）和 PCI-DSS（支付数据）合规报告。报告会分析您的策略并提供可操作的建议。"
+      },
+      "integration": {
+        "question": "能否将 Aster Cloud 集成到我的应用程序？",
+        "answer": "可以！使用我们的 REST API 可以从任何应用程序执行策略。我们提供 JavaScript、Python、cURL 等多种语言的代码示例。API 密钥可在设置 > API 密钥中管理。"
+      },
+      "selfHosted": {
+        "question": "有私有化部署选项吗？",
+        "answer": "企业客户可以申请本地部署，包括专属支持、自定义 SLA 保障和私有云选项。请联系我们的销售团队了解详情。"
+      },
       "cancelAnytime": {
         "question": "我可以随时取消订阅吗？",
         "answer": "是的，您可以随时取消订阅。您的访问权限将持续到当前计费周期结束。"
@@ -331,6 +355,14 @@
     "confirmDelete": "确定要删除此策略吗？",
     "failedToLoad": "加载策略失败",
     "failedToDelete": "删除策略失败",
+    "freeze": {
+      "title": "策略数量超出限制",
+      "message": "您的 {total} 个策略中有 {frozen} 个已被冻结。当前套餐允许 {limit} 个活跃策略。",
+      "upgradeLink": "升级套餐以解锁所有策略",
+      "badge": "已冻结",
+      "cannotExecute": "无法执行已冻结的策略",
+      "cannotEdit": "无法编辑已冻结的策略"
+    },
     "form": {
       "createTitle": "新建策略",
       "createSubtitle": "使用 Aster 策略语言定义您的业务规则",
@@ -490,7 +522,22 @@
       "dismiss": "关闭",
       "confirmRevoke": "确定要撤销此 API 密钥吗？此操作无法撤消。",
       "usageExample": "使用示例",
-      "enterName": "请输入 API 密钥的名称"
+      "usageDescription": "使用 API 密钥将 Aster Cloud 策略集成到您的应用程序中。请在 Authorization 请求头中包含密钥。",
+      "enterName": "请输入 API 密钥的名称",
+      "examples": {
+        "executePolicy": "执行策略",
+        "executePolicyDesc": "使用输入数据运行策略并获取决策结果。",
+        "listPolicies": "获取策略列表",
+        "listPoliciesDesc": "获取您账户下的所有可用策略。",
+        "responseExample": "响应格式",
+        "responseExampleDesc": "成功执行后返回策略决策结果和匹配的规则。",
+        "errorHandling": "错误码说明",
+        "errorHandlingDesc": "使用 API 时可能遇到的常见 HTTP 状态码。",
+        "error401": "API 密钥无效或缺失",
+        "error403": "权限不足或配额已用尽",
+        "error404": "策略未找到",
+        "error429": "请求频率超限，请稍后重试"
+      }
     },
     "profile": {
       "title": "个人资料",

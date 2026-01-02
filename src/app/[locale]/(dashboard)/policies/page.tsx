@@ -13,14 +13,22 @@ interface Policy {
   piiFields: string[] | null;
   createdAt: string;
   updatedAt: string;
+  isFrozen: boolean;
   _count: {
     executions: number;
   };
 }
 
+interface FreezeInfo {
+  limit: number;
+  total: number;
+  frozenCount: number;
+}
+
 export default function PoliciesPage() {
   const t = useTranslations('policies');
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [freezeInfo, setFreezeInfo] = useState<FreezeInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -33,7 +41,8 @@ export default function PoliciesPage() {
       const res = await fetch('/api/policies');
       if (!res.ok) throw new Error('Failed to fetch policies');
       const data = await res.json();
-      setPolicies(data);
+      setPolicies(data.policies);
+      setFreezeInfo(data.freezeInfo);
     } catch (err) {
       setError(t('failedToLoad'));
       console.error(err);
@@ -91,6 +100,33 @@ export default function PoliciesPage() {
         </div>
       )}
 
+      {/* Freeze Warning Banner */}
+      {freezeInfo && freezeInfo.frozenCount > 0 && (
+        <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-amber-800">{t('freeze.title')}</h3>
+              <p className="mt-1 text-sm text-amber-700">
+                {t('freeze.message', { frozen: freezeInfo.frozenCount, limit: freezeInfo.limit, total: freezeInfo.total })}
+              </p>
+              <div className="mt-2">
+                <Link
+                  href="/billing"
+                  className="text-sm font-medium text-amber-800 underline hover:text-amber-900"
+                >
+                  {t('freeze.upgradeLink')}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {policies.length === 0 ? (
         <div className="mt-8 text-center">
           <svg
@@ -142,6 +178,16 @@ export default function PoliciesPage() {
                       </Link>
                     </div>
                     <div className="ml-4 flex items-center space-x-4">
+                      {/* Frozen Badge */}
+                      {policy.isFrozen && (
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                          <svg className="mr-1 h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 1zM5.05 3.05a.75.75 0 011.06 0l1.062 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.06zm9.9 0a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.06a.75.75 0 011.06 0zM10 14a4 4 0 100-8 4 4 0 000 8zm-8.25-3.25a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zm14.5 0a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zM5.05 16.95a.75.75 0 001.06 0l1.06-1.06a.75.75 0 00-1.06-1.061l-1.06 1.06a.75.75 0 000 1.061zm9.9 0a.75.75 0 010-1.06l1.06-1.061a.75.75 0 111.061 1.06l-1.06 1.06a.75.75 0 01-1.061 0z" clipRule="evenodd" />
+                          </svg>
+                          {t('freeze.badge')}
+                        </span>
+                      )}
+
                       {/* PII Badge */}
                       {policy.piiFields && policy.piiFields.length > 0 && (
                         <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
@@ -163,18 +209,30 @@ export default function PoliciesPage() {
 
                       {/* Actions */}
                       <div className="flex items-center space-x-2">
-                        <Link
-                          href={`/policies/${policy.id}/execute`}
-                          className="text-indigo-600 hover:text-indigo-900 text-sm"
-                        >
-                          {t('executeAction')}
-                        </Link>
-                        <Link
-                          href={`/policies/${policy.id}/edit`}
-                          className="text-gray-600 hover:text-gray-900 text-sm"
-                        >
-                          {t('edit')}
-                        </Link>
+                        {policy.isFrozen ? (
+                          <span className="text-gray-400 text-sm cursor-not-allowed" title={t('freeze.cannotExecute')}>
+                            {t('executeAction')}
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/policies/${policy.id}/execute`}
+                            className="text-indigo-600 hover:text-indigo-900 text-sm"
+                          >
+                            {t('executeAction')}
+                          </Link>
+                        )}
+                        {policy.isFrozen ? (
+                          <span className="text-gray-400 text-sm cursor-not-allowed" title={t('freeze.cannotEdit')}>
+                            {t('edit')}
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/policies/${policy.id}/edit`}
+                            className="text-gray-600 hover:text-gray-900 text-sm"
+                          >
+                            {t('edit')}
+                          </Link>
+                        )}
                         <button
                           onClick={() => deletePolicy(policy.id)}
                           className="text-red-600 hover:text-red-900 text-sm"

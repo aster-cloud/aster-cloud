@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { checkUsageLimit } from '@/lib/usage';
 import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
 import { detectPII } from '@/services/pii/detector';
+import { addFreezeStatusToPolicies, getPolicyFreezeStatus } from '@/lib/policy-freeze';
 
 // GET /api/policies - List user's policies
 export async function GET() {
@@ -13,17 +14,33 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const policies = await prisma.policy.findMany({
-      where: { userId: session.user.id },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        _count: {
-          select: { executions: true },
+    const [policies, freezeStatus] = await Promise.all([
+      prisma.policy.findMany({
+        where: { userId: session.user.id },
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          _count: {
+            select: { executions: true },
+          },
         },
+      }),
+      getPolicyFreezeStatus(session.user.id),
+    ]);
+
+    // 添加冻结状态到每个策略
+    const policiesWithFreeze = policies.map((policy) => ({
+      ...policy,
+      isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
+    }));
+
+    return NextResponse.json({
+      policies: policiesWithFreeze,
+      freezeInfo: {
+        limit: freezeStatus.limit,
+        total: freezeStatus.totalPolicies,
+        frozenCount: freezeStatus.frozenCount,
       },
     });
-
-    return NextResponse.json(policies);
   } catch (error) {
     console.error('Error fetching policies:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

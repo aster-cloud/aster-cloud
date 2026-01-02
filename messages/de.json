@@ -245,6 +245,30 @@
     "checkoutCanceled": "Bezahlvorgang wurde abgebrochen.",
     "faq": {
       "title": "Häufig gestellte Fragen",
+      "whatIsAster": {
+        "question": "Was ist Aster Cloud?",
+        "answer": "Aster Cloud ist eine Richtlinienverwaltungsplattform, mit der Sie Geschäftsregeln als Code definieren, testen und ausführen können. Sie eignet sich ideal für Compliance-Automatisierung, Entscheidungs-Engines und Geschäftslogik, die sich häufig ändert, ohne Code-Deployments zu erfordern."
+      },
+      "whatIsPolicy": {
+        "question": "Was ist eine Richtlinie und wie erstelle ich eine?",
+        "answer": "Eine Richtlinie ist eine Reihe von Geschäftsregeln, die in Asters menschenlesbarer Sprache geschrieben sind. Zum Beispiel: 'if credit_score >= 700 and income > 50000 then approve_loan'. Erstellen Sie Richtlinien über das Dashboard mit unserem visuellen Editor oder durch direktes Schreiben von Regeln."
+      },
+      "piiDetection": {
+        "question": "Wie funktioniert die PII-Erkennung?",
+        "answer": "Unsere KI scannt Ihre Richtlinien automatisch auf personenbezogene Daten (PII) wie E-Mail-Adressen, Telefonnummern, Sozialversicherungsnummern und Finanzdaten. Erkannte PII werden in Berichten markiert, um Ihnen bei der Einhaltung von DSGVO, HIPAA und anderen Vorschriften zu helfen."
+      },
+      "complianceStandards": {
+        "question": "Welche Compliance-Standards unterstützen Sie?",
+        "answer": "Wir erstellen Compliance-Berichte für DSGVO (Datenschutz), HIPAA (Gesundheitswesen), SOC 2 (Sicherheitskontrollen) und PCI-DSS (Zahlungsdaten). Die Berichte analysieren Ihre Richtlinien und geben umsetzbare Empfehlungen."
+      },
+      "integration": {
+        "question": "Kann ich Aster Cloud in meine Anwendungen integrieren?",
+        "answer": "Ja! Verwenden Sie unsere REST-API, um Richtlinien aus jeder Anwendung auszuführen. Wir bieten Code-Beispiele für JavaScript, Python, cURL und mehr. API-Schlüssel können unter Einstellungen > API-Schlüssel verwaltet werden."
+      },
+      "selfHosted": {
+        "question": "Gibt es eine selbst gehostete Option?",
+        "answer": "Enterprise-Kunden können eine On-Premise-Bereitstellung mit dediziertem Support, individuellen SLA-Garantien und Private-Cloud-Optionen anfordern. Kontaktieren Sie unser Vertriebsteam für Details."
+      },
       "cancelAnytime": {
         "question": "Kann ich mein Abonnement jederzeit kündigen?",
         "answer": "Ja, Sie können Ihr Abonnement jederzeit kündigen. Ihr Zugang bleibt bis zum Ende des aktuellen Abrechnungszeitraums bestehen."
@@ -331,6 +355,14 @@
     "confirmDelete": "Möchten Sie diese Richtlinie wirklich löschen?",
     "failedToLoad": "Richtlinien konnten nicht geladen werden",
     "failedToDelete": "Richtlinie konnte nicht gelöscht werden",
+    "freeze": {
+      "title": "Richtlinienlimit überschritten",
+      "message": "{frozen} von {total} Richtlinien sind eingefroren. Ihr Plan erlaubt {limit} aktive Richtlinien.",
+      "upgradeLink": "Upgraden Sie Ihren Plan, um alle Richtlinien freizuschalten",
+      "badge": "Eingefroren",
+      "cannotExecute": "Eingefrorene Richtlinie kann nicht ausgeführt werden",
+      "cannotEdit": "Eingefrorene Richtlinie kann nicht bearbeitet werden"
+    },
     "form": {
       "createTitle": "Neue Richtlinie erstellen",
       "createSubtitle": "Definieren Sie Ihre Geschäftsregeln mit der Aster-Richtliniensprache",
@@ -489,8 +521,23 @@
       "copy": "Kopieren",
       "dismiss": "Schließen",
       "confirmRevoke": "Möchten Sie diesen API-Schlüssel wirklich widerrufen? Diese Aktion kann nicht rückgängig gemacht werden.",
-      "usageExample": "Verwendungsbeispiel",
-      "enterName": "Bitte geben Sie einen Namen für Ihren API-Schlüssel ein"
+      "usageExample": "Verwendungsbeispiele",
+      "usageDescription": "Verwenden Sie Ihren API-Schlüssel, um Aster Cloud-Richtlinien in Ihre Anwendungen zu integrieren. Fügen Sie den Schlüssel im Authorization-Header ein.",
+      "enterName": "Bitte geben Sie einen Namen für Ihren API-Schlüssel ein",
+      "examples": {
+        "executePolicy": "Richtlinie ausführen",
+        "executePolicyDesc": "Führen Sie eine Richtlinie mit Eingabedaten aus und erhalten Sie das Entscheidungsergebnis.",
+        "listPolicies": "Richtlinien auflisten",
+        "listPoliciesDesc": "Rufen Sie alle verfügbaren Richtlinien für Ihr Konto ab.",
+        "responseExample": "Antwortformat",
+        "responseExampleDesc": "Eine erfolgreiche Ausführung gibt die Richtlinienentscheidung und übereinstimmende Regeln zurück.",
+        "errorHandling": "Fehlercodes",
+        "errorHandlingDesc": "Häufige HTTP-Statuscodes, die bei der API-Nutzung auftreten können.",
+        "error401": "Ungültiger oder fehlender API-Schlüssel",
+        "error403": "Unzureichende Berechtigungen oder Kontingent überschritten",
+        "error404": "Richtlinie nicht gefunden",
+        "error429": "Ratenlimit überschritten, bitte später erneut versuchen"
+      }
     },
     "profile": {
       "title": "Profil",

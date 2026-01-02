@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { detectPII } from '@/services/pii/detector';
+import { isPolicyFrozen } from '@/lib/policy-freeze';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -47,7 +48,24 @@ export async function GET(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
     }
 
-    return NextResponse.json(policy);
+    // 检查策略是否被冻结（只对策略所有者检查）
+    let freezeInfo = null;
+    if (policy.userId === session.user.id) {
+      freezeInfo = await isPolicyFrozen(session.user.id, id);
+    }
+
+    return NextResponse.json({
+      ...policy,
+      isFrozen: freezeInfo?.isFrozen ?? false,
+      freezeInfo: freezeInfo
+        ? {
+            reason: freezeInfo.reason,
+            limit: freezeInfo.activePoliciesLimit,
+            total: freezeInfo.totalPolicies,
+            frozenCount: freezeInfo.frozenCount,
+          }
+        : null,
+    });
   } catch (error) {
     console.error('Error fetching policy:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -75,6 +93,19 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     if (!existingPolicy) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
+    }
+
+    // 检查策略是否被冻结
+    const freezeInfo = await isPolicyFrozen(session.user.id, id);
+    if (freezeInfo.isFrozen) {
+      return NextResponse.json(
+        {
+          error: 'Policy is frozen',
+          message: `This policy is frozen because your plan allows ${freezeInfo.activePoliciesLimit} policies but you have ${freezeInfo.totalPolicies}. Delete some policies or upgrade your plan.`,
+          frozen: true,
+        },
+        { status: 403 }
+      );
     }
 
     // Update policy and create new version if content changed
