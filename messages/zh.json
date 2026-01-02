@@ -431,6 +431,36 @@
         "name": "PCI-DSS",
         "description": "支付卡行业数据安全标准"
       }
+    },
+    "detail": {
+      "failedToLoad": "加载报告失败",
+      "reportNotFound": "未找到报告",
+      "backToReports": "返回报告列表",
+      "generatingMessage": "报告正在生成中，请稍后查看。",
+      "failedMessage": "报告生成失败，请尝试重新生成。",
+      "complianceScore": "合规评分",
+      "overallCompliance": "基于您的策略的整体合规评级",
+      "categories": {
+        "dataProtection": "数据保护",
+        "accessControl": "访问控制",
+        "auditLogging": "审计日志"
+      },
+      "summary": {
+        "totalPolicies": "策略总数",
+        "policiesWithPII": "包含PII的策略",
+        "totalExecutions": "执行总次数",
+        "riskLevel": "风险等级"
+      },
+      "riskLevel": {
+        "low": "低风险",
+        "medium": "中等风险",
+        "high": "高风险"
+      },
+      "piiAnalysis": "PII分析",
+      "detectedFields": "检测到的PII字段",
+      "recommendations": "建议",
+      "policiesAnalyzed": "已分析的策略",
+      "executionCount": "{count} 次执行"
     }
   },
   "settings": {

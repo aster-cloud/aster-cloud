@@ -431,6 +431,36 @@
         "name": "PCI-DSS",
         "description": "Payment Card Industry Data Security Standard"
       }
+    },
+    "detail": {
+      "failedToLoad": "Bericht konnte nicht geladen werden",
+      "reportNotFound": "Bericht nicht gefunden",
+      "backToReports": "Zurück zu Berichten",
+      "generatingMessage": "Dieser Bericht wird erstellt. Bitte schauen Sie in Kürze wieder vorbei.",
+      "failedMessage": "Dieser Bericht konnte nicht erstellt werden. Bitte versuchen Sie, einen neuen zu erstellen.",
+      "complianceScore": "Compliance-Bewertung",
+      "overallCompliance": "Gesamte Compliance-Bewertung basierend auf Ihren Richtlinien",
+      "categories": {
+        "dataProtection": "Datenschutz",
+        "accessControl": "Zugriffskontrolle",
+        "auditLogging": "Audit-Protokollierung"
+      },
+      "summary": {
+        "totalPolicies": "Richtlinien gesamt",
+        "policiesWithPII": "Richtlinien mit PII",
+        "totalExecutions": "Ausführungen gesamt",
+        "riskLevel": "Risikostufe"
+      },
+      "riskLevel": {
+        "low": "Niedriges Risiko",
+        "medium": "Mittleres Risiko",
+        "high": "Hohes Risiko"
+      },
+      "piiAnalysis": "PII-Analyse",
+      "detectedFields": "Erkannte PII-Felder",
+      "recommendations": "Empfehlungen",
+      "policiesAnalyzed": "Analysierte Richtlinien",
+      "executionCount": "{count} Ausführungen"
     }
   },
   "settings": {
