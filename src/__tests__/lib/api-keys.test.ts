@@ -21,6 +21,7 @@ import {
   validateApiKey,
   listApiKeys,
   revokeApiKey,
+  authenticateApiRequest,
 } from '@/lib/api-keys';
 import { prisma } from '@/lib/prisma';
 
@@ -222,6 +223,90 @@ describe('API Keys', () => {
       const result = await revokeApiKey('user-1', 'non-existent');
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('authenticateApiRequest', () => {
+    const createMockRequest = (authHeader?: string): Request => {
+      const headers = new Headers();
+      if (authHeader) {
+        headers.set('authorization', authHeader);
+      }
+      return new Request('https://example.com/api/test', { headers });
+    };
+
+    it('should reject request without Authorization header', async () => {
+      const req = createMockRequest();
+      const result = await authenticateApiRequest(req);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.status).toBe(401);
+        expect(result.error).toContain('Authorization');
+      }
+    });
+
+    it('should reject request with non-Bearer Authorization', async () => {
+      const req = createMockRequest('Basic abc123');
+      const result = await authenticateApiRequest(req);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.status).toBe(401);
+        expect(result.error).toContain('Authorization');
+      }
+    });
+
+    it('should reject request with invalid API key', async () => {
+      mockPrisma.apiKey.findUnique.mockResolvedValue(null);
+
+      const req = createMockRequest('Bearer ak_invalidkey123');
+      const result = await authenticateApiRequest(req);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.status).toBe(401);
+        expect(result.error).toContain('Invalid');
+      }
+    });
+
+    it('should accept valid API key and return userId and apiKeyId', async () => {
+      mockPrisma.apiKey.findUnique.mockResolvedValue({
+        id: 'key-123',
+        userId: 'user-456',
+        revokedAt: null,
+        expiresAt: null,
+        user: { id: 'user-456', plan: 'pro', trialEndsAt: null },
+      });
+      mockPrisma.apiKey.update.mockResolvedValue({});
+
+      const req = createMockRequest('Bearer ak_validkey123');
+      const result = await authenticateApiRequest(req);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.userId).toBe('user-456');
+        expect(result.apiKeyId).toBe('key-123');
+      }
+    });
+
+    it('should reject free user API key', async () => {
+      mockPrisma.apiKey.findUnique.mockResolvedValue({
+        id: 'key-123',
+        userId: 'user-456',
+        revokedAt: null,
+        expiresAt: null,
+        user: { id: 'user-456', plan: 'free', trialEndsAt: null },
+      });
+
+      const req = createMockRequest('Bearer ak_freeuser123');
+      const result = await authenticateApiRequest(req);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.status).toBe(401);
+        expect(result.error).toContain('subscription');
+      }
     });
   });
 });

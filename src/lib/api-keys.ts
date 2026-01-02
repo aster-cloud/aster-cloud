@@ -152,3 +152,46 @@ export async function revokeApiKey(userId: string, keyId: string): Promise<boole
 
   return result.count > 0;
 }
+
+// API 认证结果类型
+export type ApiAuthResult =
+  | {
+      success: true;
+      userId: string;
+      apiKeyId: string;
+    }
+  | {
+      success: false;
+      error: string;
+      status: number;
+    };
+
+// 从请求中验证 API Key 的辅助函数
+export async function authenticateApiRequest(req: Request): Promise<ApiAuthResult> {
+  const authHeader = req.headers.get('authorization');
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return {
+      success: false,
+      error: 'Missing or invalid Authorization header',
+      status: 401,
+    };
+  }
+
+  const apiKey = authHeader.substring(7);
+  const validation = await validateApiKey(apiKey);
+
+  if (!validation.valid || !validation.userId) {
+    return {
+      success: false,
+      error: validation.error || 'Invalid API key',
+      status: 401,
+    };
+  }
+
+  return {
+    success: true,
+    userId: validation.userId,
+    apiKeyId: validation.apiKeyId!,
+  };
+}

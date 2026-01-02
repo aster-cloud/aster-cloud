@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { validateApiKey } from '@/lib/api-keys';
+import { authenticateApiRequest } from '@/lib/api-keys';
 import { prisma } from '@/lib/prisma';
 import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { executePolicy } from '@/services/policy/executor';
@@ -12,18 +12,12 @@ export async function POST(req: Request, { params }: RouteParams) {
   const startTime = Date.now();
 
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing or invalid Authorization header' }, { status: 401 });
+    const auth = await authenticateApiRequest(req);
+    if (!auth.success) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
-    const apiKey = authHeader.substring(7);
-    const validation = await validateApiKey(apiKey);
-
-    if (!validation.valid || !validation.userId) {
-      return NextResponse.json({ error: validation.error }, { status: 401 });
-    }
-
+    const { userId, apiKeyId } = auth;
     const { id } = await params;
     const { input } = await req.json();
 
@@ -34,7 +28,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const policy = await prisma.policy.findFirst({
       where: {
         id,
-        OR: [{ userId: validation.userId }, { isPublic: true }],
+        OR: [{ userId }, { isPublic: true }],
       },
     });
 
@@ -43,7 +37,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     // 双重配额校验：API 调用配额 + 执行配额
-    const apiLimitCheck = await checkUsageLimit(validation.userId, 'api_call');
+    const apiLimitCheck = await checkUsageLimit(userId, 'api_call');
     if (!apiLimitCheck.allowed) {
       return NextResponse.json(
         {
@@ -54,7 +48,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     }
 
-    const executionLimitCheck = await checkUsageLimit(validation.userId, 'execution');
+    const executionLimitCheck = await checkUsageLimit(userId, 'execution');
     if (!executionLimitCheck.allowed) {
       return NextResponse.json(
         {
@@ -68,7 +62,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const executionResult = await executePolicy({
       policy,
       input,
-      userId: validation.userId,
+      userId,
     });
 
     const normalizedResult = {
@@ -81,7 +75,7 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     await prisma.execution.create({
       data: {
-        userId: validation.userId,
+        userId,
         policyId: id,
         input: input as object,
         output: normalizedResult as object,
@@ -89,12 +83,12 @@ export async function POST(req: Request, { params }: RouteParams) {
         durationMs,
         success: executionResult.allowed,
         source: 'api',
-        apiKeyId: validation.apiKeyId,
+        apiKeyId,
       },
     });
 
-    await recordUsage(validation.userId, 'api_call');
-    await recordUsage(validation.userId, 'execution');
+    await recordUsage(userId, 'api_call');
+    await recordUsage(userId, 'execution');
 
     return NextResponse.json({
       success: executionResult.allowed,
