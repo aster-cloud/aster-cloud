@@ -92,21 +92,25 @@ export type PlanCapabilities = {
   customIntegrations?: boolean;
 };
 
-// Plan feature keys for i18n (use with t('plans.features.{key}'))
+// Plan feature keys for i18n (use with t('billing.plans.features.{key}'))
+// 统一用于首页和账单页的功能描述
 export const PLAN_FEATURE_KEYS = {
-  basicPolicyManagement: 'basicPolicyManagement',
-  limitedExecutions: 'limitedExecutions',
-  extendedPolicyManagement: 'extendedPolicyManagement',
-  moreExecutions: 'moreExecutions',
+  // Free 计划特性
+  policies3: 'policies3',
+  executions100: 'executions100',
+  basicPii: 'basicPii',
+  // Pro 计划特性
+  policies25: 'policies25',
+  executions5000: 'executions5000',
+  allComplianceReports: 'allComplianceReports',
   apiAccess: 'apiAccess',
+  // Team 计划特性
   unlimitedPolicies: 'unlimitedPolicies',
-  highExecutions: 'highExecutions',
-  fullApiAccess: 'fullApiAccess',
-  prioritySupport: 'prioritySupport',
-  unlimitedExecutions: 'unlimitedExecutions',
+  executions50000: 'executions50000',
   teamCollaboration: 'teamCollaboration',
-  adminControls: 'adminControls',
-  auditLogs: 'auditLogs',
+  ssoRbac: 'ssoRbac',
+  prioritySupport: 'prioritySupport',
+  // Enterprise 计划特性
   customDeployment: 'customDeployment',
   slaGuarantee: 'slaGuarantee',
   dedicatedSupport: 'dedicatedSupport',
@@ -122,7 +126,7 @@ export const PLANS = {
       apiKeys: 0,
       teamMembers: 1,
     },
-    featureKeys: ['basicPolicyManagement', 'limitedExecutions'],
+    featureKeys: ['policies3', 'executions100', 'basicPii'],
     capabilities: {
       piiDetection: 'basic',
       sharing: false,
@@ -136,12 +140,12 @@ export const PLANS = {
   trial: {
     name: 'trial',
     limits: {
-      policies: 10,
-      executions: 500,
-      apiKeys: 1,
-      teamMembers: 1,
+      policies: 25,
+      executions: 5000,
+      apiKeys: 5,
+      teamMembers: 5,
     },
-    featureKeys: ['extendedPolicyManagement', 'moreExecutions', 'apiAccess'],
+    featureKeys: ['policies25', 'executions5000', 'allComplianceReports', 'apiAccess'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -156,12 +160,12 @@ export const PLANS = {
   pro: {
     name: 'pro',
     limits: {
-      policies: 50,
+      policies: 25,
       executions: 5000,
       apiKeys: 5,
-      teamMembers: 1,
+      teamMembers: 5,
     },
-    featureKeys: ['unlimitedPolicies', 'highExecutions', 'fullApiAccess', 'prioritySupport'],
+    featureKeys: ['policies25', 'executions5000', 'allComplianceReports', 'apiAccess'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
@@ -179,11 +183,11 @@ export const PLANS = {
     name: 'team',
     limits: {
       policies: -1,
-      executions: -1,
+      executions: 50000,
       apiKeys: 20,
-      teamMembers: 10,
+      teamMembers: -1,
     },
-    featureKeys: ['unlimitedPolicies', 'unlimitedExecutions', 'teamCollaboration', 'adminControls', 'auditLogs'],
+    featureKeys: ['unlimitedPolicies', 'executions50000', 'teamCollaboration', 'ssoRbac', 'prioritySupport'],
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
