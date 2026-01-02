@@ -17,6 +17,7 @@ interface DashboardStats {
     piiScans: number;
     complianceReports: number;
     apiCalls: number;
+    apiCallsLimit: number;
   };
   features: {
     piiDetection: string;
@@ -130,17 +131,32 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* 策略总数 */}
         <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
           <dt className="truncate text-sm font-medium text-gray-500">{t('stats.totalPolicies')}</dt>
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
             {stats?.usage.policies || 0}
           </dd>
           {stats?.usage.policiesLimit !== undefined && !isUnlimited(stats.usage.policiesLimit) && (
-            <p className="mt-1 text-xs text-gray-400">
-              {t('stats.limit', { count: stats?.usage.policiesLimit })}
-            </p>
+            <div className="mt-2">
+              <div className="h-2 w-full bg-gray-200 rounded-full">
+                <div
+                  className="h-2 bg-indigo-600 rounded-full"
+                  style={{
+                    width: `${Math.min(
+                      ((stats?.usage.policies || 0) / (stats?.usage.policiesLimit || 1)) * 100,
+                      100
+                    )}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">
+                {t('stats.limit', { count: stats?.usage.policiesLimit })}
+              </p>
+            </div>
           )}
         </div>
+        {/* 本月执行次数 */}
         <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
           <dt className="truncate text-sm font-medium text-gray-500">{t('stats.executionsThisMonth')}</dt>
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
@@ -166,6 +182,36 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        {/* API 调用 */}
+        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
+          <dt className="truncate text-sm font-medium text-gray-500">{t('stats.apiCalls')}</dt>
+          <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
+            {stats?.usage.apiCalls || 0}
+          </dd>
+          {!stats?.features.apiAccess ? (
+            <Link href="/billing" className="mt-1 text-xs text-indigo-600">
+              {t('stats.upgradeForApi')}
+            </Link>
+          ) : stats?.usage.apiCallsLimit !== undefined && !isUnlimited(stats.usage.apiCallsLimit) && (
+            <div className="mt-2">
+              <div className="h-2 w-full bg-gray-200 rounded-full">
+                <div
+                  className="h-2 bg-indigo-600 rounded-full"
+                  style={{
+                    width: `${Math.min(
+                      ((stats?.usage.apiCalls || 0) / (stats?.usage.apiCallsLimit || 1)) * 100,
+                      100
+                    )}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">
+                {t('stats.limit', { count: stats?.usage.apiCallsLimit })}
+              </p>
+            </div>
+          )}
+        </div>
+        {/* PII 字段检测 - 移动到最后 */}
         <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
           <dt className="truncate text-sm font-medium text-gray-500">{t('stats.piiFieldsDetected')}</dt>
           <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
@@ -175,17 +221,6 @@ export default function DashboardPage() {
             <p className="mt-1 text-xs text-yellow-600">
               {t('stats.reviewRecommended')}
             </p>
-          )}
-        </div>
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">{t('stats.apiCalls')}</dt>
-          <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-            {stats?.usage.apiCalls || 0}
-          </dd>
-          {!stats?.features.apiAccess && (
-            <Link href="/billing" className="mt-1 text-xs text-indigo-600">
-              {t('stats.upgradeForApi')}
-            </Link>
           )}
         </div>
       </div>
