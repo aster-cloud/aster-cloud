@@ -102,6 +102,13 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
     const { teamId, memberId } = await params;
 
+    // 先验证操作者是否为团队成员（防止信息泄露/成员枚举）
+    const access = await checkTeamAccess(session.user.id, teamId);
+    if (!access.allowed) {
+      // 对未授权用户统一返回 404，防止枚举攻击
+      return NextResponse.json({ error: '成员不存在' }, { status: 404 });
+    }
+
     // 获取目标成员
     const targetMember = await prisma.teamMember.findUnique({
       where: { id: memberId },
@@ -113,7 +120,6 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
     const isSelf = targetMember.userId === session.user.id;
 
-    // 如果是移除自己，只需要检查是否是成员
     // 如果是移除他人，需要检查移除权限
     if (!isSelf) {
       const permission = await checkTeamPermission(
@@ -124,12 +130,6 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       if (!permission.allowed) {
         return NextResponse.json({ error: permission.error }, { status: permission.status });
       }
-    }
-
-    // 获取操作者的角色
-    const access = await checkTeamAccess(session.user.id, teamId);
-    if (!access.allowed) {
-      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     // 检查是否可以移除

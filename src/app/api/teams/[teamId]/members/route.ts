@@ -5,7 +5,7 @@ import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
 
-// GET /api/teams/[teamId]/members - 列出团队成员
+// GET /api/teams/[teamId]/members - 列出团队成员（支持分页）
 export async function GET(req: Request, { params }: RouteParams) {
   try {
     const session = await getSession();
@@ -14,6 +14,13 @@ export async function GET(req: Request, { params }: RouteParams) {
     }
 
     const { teamId } = await params;
+
+    // 解析分页参数（防护 NaN 和负值）
+    const url = new URL(req.url);
+    const rawLimit = parseInt(url.searchParams.get('limit') || '50');
+    const rawOffset = parseInt(url.searchParams.get('offset') || '0');
+    const limit = Math.min(Math.max(isNaN(rawLimit) ? 50 : rawLimit, 1), 100);
+    const offset = Math.max(isNaN(rawOffset) ? 0 : rawOffset, 0);
 
     // 检查访问权限
     const permission = await checkTeamPermission(
@@ -25,23 +32,29 @@ export async function GET(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: permission.error }, { status: permission.status });
     }
 
-    const members = await prisma.teamMember.findMany({
-      where: { teamId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
+    // 并行查询成员列表和总数
+    const [members, total] = await Promise.all([
+      prisma.teamMember.findMany({
+        where: { teamId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            },
           },
         },
-      },
-      orderBy: [
-        { role: 'asc' }, // owner 在前
-        { createdAt: 'asc' },
-      ],
-    });
+        orderBy: [
+          { role: 'asc' }, // owner 在前
+          { createdAt: 'asc' },
+        ],
+        take: limit,
+        skip: offset,
+      }),
+      prisma.teamMember.count({ where: { teamId } }),
+    ]);
 
     return NextResponse.json({
       members: members.map((member) => ({
@@ -57,6 +70,12 @@ export async function GET(req: Request, { params }: RouteParams) {
         joinedAt: member.createdAt.toISOString(),
       })),
       currentUserId: session.user.id,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + members.length < total,
+      },
     });
   } catch (error) {
     console.error('Error listing team members:', error);

@@ -104,26 +104,13 @@ export async function POST(req: Request, { params }: RouteParams) {
         );
       }
 
-      // 检查权限：用户可以导入自己的策略，或者策略所有者也是团队成员
-      const isOwnPolicy = existingPolicy.userId === session.user.id;
-
-      if (!isOwnPolicy) {
-        // 检查策略所有者是否是团队成员
-        const policyOwnerMembership = await prisma.teamMember.findUnique({
-          where: {
-            teamId_userId: {
-              teamId,
-              userId: existingPolicy.userId,
-            },
-          },
-        });
-
-        if (!policyOwnerMembership) {
-          return NextResponse.json(
-            { error: '只能导入自己的策略或团队成员的策略' },
-            { status: 403 }
-          );
-        }
+      // 安全检查：只允许策略所有者本人导入自己的策略到团队
+      // 防止未经授权泄露他人策略内容
+      if (existingPolicy.userId !== session.user.id) {
+        return NextResponse.json(
+          { error: '只能导入自己的策略' },
+          { status: 403 }
+        );
       }
 
       // 分配策略到团队

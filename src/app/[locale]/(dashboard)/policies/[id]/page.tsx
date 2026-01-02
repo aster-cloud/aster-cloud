@@ -1,223 +1,98 @@
-'use client';
+import { getSession } from '@/lib/auth';
+import { redirect, notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import { getTranslations } from 'next-intl/server';
+import { PolicyDetailContent } from './policy-detail-content';
 
-import { useState, useEffect, use } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+// 服务端数据获取
+async function getPolicyData(userId: string, policyId: string) {
+  const policy = await prisma.policy.findFirst({
+    where: {
+      id: policyId,
+      userId,
+    },
+    include: {
+      versions: {
+        orderBy: { version: 'desc' },
+        take: 10,
+      },
+      _count: {
+        select: { executions: true },
+      },
+    },
+  });
 
-interface PolicyVersion {
-  id: string;
-  version: number;
-  content: string;
-  comment: string | null;
-  createdAt: string;
-}
+  if (!policy) {
+    return null;
+  }
 
-interface Policy {
-  id: string;
-  name: string;
-  description: string | null;
-  content: string;
-  version: number;
-  isPublic: boolean;
-  shareSlug: string | null;
-  piiFields: string[] | null;
-  createdAt: string;
-  updatedAt: string;
-  versions: PolicyVersion[];
-  _count: {
-    executions: number;
+  return {
+    id: policy.id,
+    name: policy.name,
+    description: policy.description,
+    content: policy.content,
+    version: policy.version,
+    isPublic: policy.isPublic,
+    shareSlug: policy.shareSlug,
+    piiFields: policy.piiFields as string[] | null,
+    createdAt: policy.createdAt.toISOString(),
+    updatedAt: policy.updatedAt.toISOString(),
+    versions: policy.versions.map((v) => ({
+      id: v.id,
+      version: v.version,
+      content: v.content,
+      comment: v.comment,
+      createdAt: v.createdAt.toISOString(),
+    })),
+    _count: { executions: policy._count.executions },
   };
 }
 
-export default function PolicyDetailPage({
+export default async function PolicyDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const router = useRouter();
-  const t = useTranslations('policies');
-  const [policy, setPolicy] = useState<Policy | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchPolicy();
-  }, [id]);
-
-  const fetchPolicy = async () => {
-    try {
-      const res = await fetch(`/api/policies/${id}`);
-      if (!res.ok) throw new Error('Failed to fetch policy');
-      const data = await res.json();
-      setPolicy(data);
-    } catch (err) {
-      setError(t('failedToLoad'));
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const deletePolicy = async () => {
-    if (!confirm(t('confirmDelete'))) return;
-
-    try {
-      const res = await fetch(`/api/policies/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete policy');
-      router.push('/policies');
-    } catch (err) {
-      setError(t('failedToDelete'));
-      console.error(err);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+  const session = await getSession();
+  if (!session?.user?.id) {
+    redirect('/login');
   }
 
-  if (error || !policy) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error || t('detail.policyNotFound')}</p>
-        <Link href="/policies" className="mt-4 text-indigo-600 hover:underline">
-          {t('detail.backToPolicies')}
-        </Link>
-      </div>
-    );
+  const { id } = await params;
+  const policy = await getPolicyData(session.user.id, id);
+
+  if (!policy) {
+    notFound();
   }
+
+  const t = await getTranslations('policies');
+
+  // 预渲染翻译字符串
+  const translations = {
+    executeAction: t('executeAction'),
+    edit: t('edit'),
+    delete: t('delete'),
+    confirmDelete: t('confirmDelete'),
+    failedToDelete: t('failedToDelete'),
+    public: t('public'),
+    private: t('private'),
+    detail: {
+      version: t('detail.version'),
+      executions: t('detail.executions'),
+      piiFields: t('detail.piiFields'),
+      status: t('detail.status'),
+      piiWarning: t('detail.piiWarning'),
+      piiWarningMessage: t('detail.piiWarningMessage'),
+      policyContent: t('detail.policyContent'),
+      versionHistory: t('detail.versionHistory'),
+      backToPolicies: t('detail.backToPolicies'),
+    },
+  };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="md:flex md:items-center md:justify-between mb-6">
-        <div>
-          <div className="flex items-center">
-            <Link href="/policies" className="text-gray-400 hover:text-gray-600 mr-2">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-              </svg>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">{policy.name}</h1>
-          </div>
-          {policy.description && (
-            <p className="mt-1 text-sm text-gray-500">{policy.description}</p>
-          )}
-        </div>
-        <div className="mt-4 md:mt-0 flex space-x-3">
-          <Link
-            href={`/policies/${id}/execute`}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-          >
-            {t('executeAction')}
-          </Link>
-          <Link
-            href={`/policies/${id}/edit`}
-            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-          >
-            {t('edit')}
-          </Link>
-          <button
-            onClick={deletePolicy}
-            className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
-          >
-            {t('delete')}
-          </button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.version')}</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">v{policy.version}</dd>
-        </div>
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.executions')}</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">{policy._count.executions}</dd>
-        </div>
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.piiFields')}</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">
-            {policy.piiFields?.length || 0}
-          </dd>
-        </div>
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.status')}</dt>
-          <dd className="mt-1">
-            {policy.isPublic ? (
-              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
-                {t('public')}
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-800">
-                {t('private')}
-              </span>
-            )}
-          </dd>
-        </div>
-      </div>
-
-      {/* PII Warning */}
-      {policy.piiFields && policy.piiFields.length > 0 && (
-        <div className="mb-6 rounded-md bg-yellow-50 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">{t('detail.piiWarning')}</h3>
-              <p className="mt-1 text-sm text-yellow-700">
-                {t('detail.piiWarningMessage')}{' '}
-                <span className="font-medium">{policy.piiFields.join(', ')}</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="bg-white shadow sm:rounded-lg mb-6">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('detail.policyContent')}</h3>
-          <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-            {policy.content}
-          </pre>
-        </div>
-      </div>
-
-      {/* Version History */}
-      {policy.versions.length > 0 && (
-        <div className="bg-white shadow sm:rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">{t('detail.versionHistory')}</h3>
-            <ul className="divide-y divide-gray-200">
-              {policy.versions.map((version) => (
-                <li key={version.id} className="py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-medium text-gray-900">v{version.version}</span>
-                      {version.comment && (
-                        <span className="ml-2 text-gray-500">- {version.comment}</span>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-400">
-                      {new Date(version.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-    </div>
+    <PolicyDetailContent
+      policy={policy}
+      translations={translations}
+    />
   );
 }

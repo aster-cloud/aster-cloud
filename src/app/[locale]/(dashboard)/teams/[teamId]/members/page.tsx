@@ -47,6 +47,9 @@ export default function TeamMembersPage() {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hasMoreMembers, setHasMoreMembers] = useState(false);
+  const [totalMembers, setTotalMembers] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // 邀请表单状态
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -63,10 +66,11 @@ export default function TeamMembersPage() {
     try {
       const [teamRes, membersRes, invitationsRes] = await Promise.all([
         fetch(`/api/teams/${teamId}`),
-        fetch(`/api/teams/${teamId}/members`),
+        fetch(`/api/teams/${teamId}/members?limit=100`),
         fetch(`/api/teams/${teamId}/invitations`),
       ]);
 
+      // 检查团队请求
       if (!teamRes.ok) {
         const data = await teamRes.json();
         throw new Error(data.error || 'Failed to fetch team');
@@ -76,20 +80,54 @@ export default function TeamMembersPage() {
       setTeam(teamData.team);
       setUserRole(teamData.role);
 
-      if (membersRes.ok) {
-        const membersData = await membersRes.json();
-        setMembers(membersData.members);
-        setCurrentUserId(membersData.currentUserId);
+      // 检查成员列表请求
+      if (!membersRes.ok) {
+        const data = await membersRes.json();
+        throw new Error(data.error || t('members.loadFailed'));
+      }
+      const membersData = await membersRes.json();
+      setMembers(membersData.members);
+      setCurrentUserId(membersData.currentUserId);
+      // 处理分页信息
+      if (membersData.pagination) {
+        setHasMoreMembers(membersData.pagination.hasMore);
+        setTotalMembers(membersData.pagination.total);
       }
 
-      if (invitationsRes.ok) {
-        const invitationsData = await invitationsRes.json();
-        setInvitations(invitationsData.invitations);
+      // 检查邀请列表请求
+      if (!invitationsRes.ok) {
+        const data = await invitationsRes.json();
+        throw new Error(data.error || t('members.invitationsLoadFailed'));
       }
+      const invitationsData = await invitationsRes.json();
+      setInvitations(invitationsData.invitations);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('failedToLoad'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 加载更多成员
+  const loadMoreMembers = async () => {
+    if (isLoadingMore || !hasMoreMembers) return;
+    setIsLoadingMore(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members?limit=100&offset=${members.length}`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || t('members.loadFailed'));
+      }
+      const data = await res.json();
+      setMembers((prev) => [...prev, ...data.members]);
+      if (data.pagination) {
+        setHasMoreMembers(data.pagination.hasMore);
+        setTotalMembers(data.pagination.total);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('members.loadFailed'));
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -132,10 +170,13 @@ export default function TeamMembersPage() {
       const res = await fetch(`/api/teams/${teamId}/invitations/${invitationId}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Failed to revoke invitation');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || t('members.revokeFailed'));
+      }
       setInvitations((prev) => prev.filter((i) => i.id !== invitationId));
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : t('members.revokeFailed'));
     }
   };
 
@@ -151,6 +192,11 @@ export default function TeamMembersPage() {
         throw new Error(data.error || 'Failed to remove member');
       }
       setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      // 同步更新成员计数
+      setTotalMembers((prev) => Math.max(0, prev - 1));
+      // 如果还有更多成员且当前列表变短了，可能需要加载下一条
+      // 简化处理：仅更新 hasMore 状态
+      setHasMoreMembers((prev) => prev && members.length - 1 < totalMembers - 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('members.removeFailed'));
     }
@@ -382,8 +428,13 @@ export default function TeamMembersPage() {
       {/* 成员列表 */}
       <div className="mt-8">
         <h2 className="text-lg font-medium text-gray-900">
-          {t('members.currentMembers', { count: members.length })}
+          {t('members.currentMembers', { count: totalMembers || members.length })}
         </h2>
+        {hasMoreMembers && (
+          <p className="text-sm text-gray-500 mt-1">
+            {t('members.showingPartial', { shown: members.length, total: totalMembers })}
+          </p>
+        )}
         <div className="mt-4 bg-white shadow rounded-lg overflow-hidden">
           <ul className="divide-y divide-gray-200">
             {members.map((member) => (
@@ -449,6 +500,18 @@ export default function TeamMembersPage() {
               </li>
             ))}
           </ul>
+          {/* 加载更多按钮 */}
+          {hasMoreMembers && (
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+              <button
+                onClick={loadMoreMembers}
+                disabled={isLoadingMore}
+                className="w-full text-center text-sm text-indigo-600 hover:text-indigo-800 disabled:text-gray-400"
+              >
+                {isLoadingMore ? t('members.loadingMore') : t('members.loadMore')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
