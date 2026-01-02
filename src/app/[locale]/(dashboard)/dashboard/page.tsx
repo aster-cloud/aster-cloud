@@ -53,7 +53,11 @@ export default function DashboardPage() {
     ])
       .then(([usageData, policiesData]) => {
         setStats(usageData);
-        setPolicies(policiesData.slice(0, 5)); // Show only 5 recent policies
+        // 按执行次数排序，显示最常调用的5个策略
+        const sortedPolicies = (policiesData.policies || [])
+          .sort((a: Policy, b: Policy) => b._count.executions - a._count.executions)
+          .slice(0, 5);
+        setPolicies(sortedPolicies);
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));

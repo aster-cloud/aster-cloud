@@ -211,7 +211,7 @@
       "apiKeysDesc": "管理 API 访问"
     },
     "recentPolicies": {
-      "title": "最近的策略",
+      "title": "常用策略",
       "viewAll": "查看全部",
       "noPolicies": "暂无策略。",
       "createFirst": "创建您的第一个策略",

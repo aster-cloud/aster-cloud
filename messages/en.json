@@ -211,7 +211,7 @@
       "apiKeysDesc": "Manage API access"
     },
     "recentPolicies": {
-      "title": "Recent Policies",
+      "title": "Top Policies",
       "viewAll": "View all",
       "noPolicies": "No policies yet.",
       "createFirst": "Create your first policy",

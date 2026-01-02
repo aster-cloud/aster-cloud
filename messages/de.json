@@ -211,7 +211,7 @@
       "apiKeysDesc": "API-Zugang verwalten"
     },
     "recentPolicies": {
-      "title": "Aktuelle Richtlinien",
+      "title": "Top-Richtlinien",
       "viewAll": "Alle anzeigen",
       "noPolicies": "Noch keine Richtlinien.",
       "createFirst": "Erstellen Sie Ihre erste Richtlinie",
