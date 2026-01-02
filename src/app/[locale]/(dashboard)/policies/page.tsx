@@ -167,7 +167,7 @@ export default function PoliciesPage() {
                           href={`/policies/${policy.id}/execute`}
                           className="text-indigo-600 hover:text-indigo-900 text-sm"
                         >
-                          {t('execute')}
+                          {t('executeAction')}
                         </Link>
                         <Link
                           href={`/policies/${policy.id}/edit`}

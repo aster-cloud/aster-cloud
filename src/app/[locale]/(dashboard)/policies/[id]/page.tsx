@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface PolicyVersion {
   id: string;
@@ -36,6 +37,7 @@ export default function PolicyDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const t = useTranslations('policies');
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,7 +53,7 @@ export default function PolicyDetailPage({
       const data = await res.json();
       setPolicy(data);
     } catch (err) {
-      setError('Failed to load policy');
+      setError(t('failedToLoad'));
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -59,14 +61,14 @@ export default function PolicyDetailPage({
   };
 
   const deletePolicy = async () => {
-    if (!confirm('Are you sure you want to delete this policy?')) return;
+    if (!confirm(t('confirmDelete'))) return;
 
     try {
       const res = await fetch(`/api/policies/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete policy');
       router.push('/policies');
     } catch (err) {
-      setError('Failed to delete policy');
+      setError(t('failedToDelete'));
       console.error(err);
     }
   };
@@ -82,9 +84,9 @@ export default function PolicyDetailPage({
   if (error || !policy) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">{error || 'Policy not found'}</p>
+        <p className="text-red-600">{error || t('detail.policyNotFound')}</p>
         <Link href="/policies" className="mt-4 text-indigo-600 hover:underline">
-          Back to policies
+          {t('detail.backToPolicies')}
         </Link>
       </div>
     );
@@ -112,19 +114,19 @@ export default function PolicyDetailPage({
             href={`/policies/${id}/execute`}
             className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
           >
-            Execute
+            {t('executeAction')}
           </Link>
           <Link
             href={`/policies/${id}/edit`}
             className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
           >
-            Edit
+            {t('edit')}
           </Link>
           <button
             onClick={deletePolicy}
             className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
           >
-            Delete
+            {t('delete')}
           </button>
         </div>
       </div>
@@ -132,29 +134,29 @@ export default function PolicyDetailPage({
       {/* Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">
         <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">Version</dt>
+          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.version')}</dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900">v{policy.version}</dd>
         </div>
         <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">Executions</dt>
+          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.executions')}</dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900">{policy._count.executions}</dd>
         </div>
         <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">PII Fields</dt>
+          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.piiFields')}</dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900">
             {policy.piiFields?.length || 0}
           </dd>
         </div>
         <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">Status</dt>
+          <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.status')}</dt>
           <dd className="mt-1">
             {policy.isPublic ? (
               <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
-                Public
+                {t('public')}
               </span>
             ) : (
               <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-800">
-                Private
+                {t('private')}
               </span>
             )}
           </dd>
@@ -171,9 +173,9 @@ export default function PolicyDetailPage({
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">PII Detected</h3>
+              <h3 className="text-sm font-medium text-yellow-800">{t('detail.piiWarning')}</h3>
               <p className="mt-1 text-sm text-yellow-700">
-                This policy references potentially sensitive data:{' '}
+                {t('detail.piiWarningMessage')}{' '}
                 <span className="font-medium">{policy.piiFields.join(', ')}</span>
               </p>
             </div>
@@ -184,7 +186,7 @@ export default function PolicyDetailPage({
       {/* Content */}
       <div className="bg-white shadow sm:rounded-lg mb-6">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Policy Content</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('detail.policyContent')}</h3>
           <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
             {policy.content}
           </pre>
@@ -195,7 +197,7 @@ export default function PolicyDetailPage({
       {policy.versions.length > 0 && (
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Version History</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">{t('detail.versionHistory')}</h3>
             <ul className="divide-y divide-gray-200">
               {policy.versions.map((version) => (
                 <li key={version.id} className="py-3">

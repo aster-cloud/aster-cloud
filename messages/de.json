@@ -324,7 +324,7 @@
     "public": "Öffentlich",
     "private": "Privat",
     "executions": "{count} Ausführungen",
-    "execute": "Ausführen",
+    "executeAction": "Ausführen",
     "edit": "Bearbeiten",
     "delete": "Löschen",
     "updated": "Aktualisiert {date}",
