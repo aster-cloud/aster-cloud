@@ -148,8 +148,8 @@ function BillingContent() {
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg font-medium text-gray-900">{t('currentPlan')}</h3>
           <div className="mt-3 flex items-center">
-            <span className="text-3xl font-bold text-gray-900 capitalize">
-              {currentPlan}
+            <span className="text-3xl font-bold text-gray-900">
+              {t(`plans.names.${currentPlan}`)}
             </span>
             {currentPlan === 'trial' && session?.user?.trialEndsAt && (
               <span className="ml-4 text-sm text-gray-500">
@@ -370,7 +370,7 @@ function BillingContent() {
                         : 'bg-gray-900 text-white hover:bg-gray-800'
                     } disabled:opacity-50`}
                   >
-                    {isLoading === planKey ? t('loading') : t('upgradeTo', { plan: plan.name })}
+                    {isLoading === planKey ? t('loading') : t('upgradeTo', { plan: t(`plans.names.${planKey}`) })}
                   </button>
                 ) : planKey === 'free' ? (
                   <button
