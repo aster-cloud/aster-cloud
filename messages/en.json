@@ -357,6 +357,13 @@
       "title": "Danger Zone",
       "deleteAccount": "Delete account",
       "deleteAccountDesc": "Permanently delete your account and all associated data."
+    },
+    "language": {
+      "title": "Language Preferences",
+      "autoDetect": "Auto-detect language",
+      "autoDetectDesc": "Automatically detect your preferred language from browser settings.",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
     }
   }
 }

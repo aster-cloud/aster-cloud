@@ -1,14 +1,44 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+
+const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? match[2] : null;
+}
+
+function setCookie(name: string, value: string, days: number = 365) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
+}
 
 export default function SettingsPage() {
   const t = useTranslations('settings');
   const { data: session } = useSession();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [localeDetection, setLocaleDetection] = useState(false);
+
+  useEffect(() => {
+    // Load locale detection preference from cookie
+    const saved = getCookie(LOCALE_DETECTION_COOKIE);
+    if (saved !== null) {
+      setLocaleDetection(saved === 'true');
+    }
+  }, []);
+
+  const handleLocaleDetectionToggle = () => {
+    const newValue = !localeDetection;
+    setLocaleDetection(newValue);
+    setCookie(LOCALE_DETECTION_COOKIE, String(newValue));
+    // Refresh to apply the change
+    window.location.reload();
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -40,6 +70,38 @@ export default function SettingsPage() {
             >
               {t('apiKeys.manageKeys')}
             </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Language Preferences Section */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('language.title')}</h3>
+          <div className="mt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{t('language.autoDetect')}</p>
+                <p className="text-sm text-gray-500">{t('language.autoDetectDesc')}</p>
+              </div>
+              <button
+                onClick={handleLocaleDetectionToggle}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  localeDetection ? 'bg-indigo-600' : 'bg-gray-200'
+                }`}
+                role="switch"
+                aria-checked={localeDetection}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    localeDetection ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              {localeDetection ? t('language.enabled') : t('language.disabled')}
+            </p>
           </div>
         </div>
       </div>

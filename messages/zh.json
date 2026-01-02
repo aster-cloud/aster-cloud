@@ -357,6 +357,13 @@
       "title": "危险区域",
       "deleteAccount": "删除账户",
       "deleteAccountDesc": "永久删除您的账户和所有相关数据。"
+    },
+    "language": {
+      "title": "语言偏好设置",
+      "autoDetect": "自动检测语言",
+      "autoDetectDesc": "根据浏览器设置自动检测您的首选语言。",
+      "enabled": "已启用",
+      "disabled": "已禁用"
     }
   }
 }
