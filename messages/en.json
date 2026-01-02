@@ -180,8 +180,104 @@
     "dashboard": "Dashboard",
     "policies": "Policies",
     "reports": "Reports",
+    "teams": "Teams",
     "billing": "Billing",
     "settings": "Settings"
+  },
+  "teams": {
+    "title": "Teams",
+    "subtitle": "Manage your team workspaces and collaborate on policies",
+    "createTeam": "Create Team",
+    "noTeams": "No teams yet",
+    "noTeamsDesc": "Create a team to start collaborating with others",
+    "yourRole": "Your role",
+    "members": "{count} members",
+    "policies": "{count} policies",
+    "viewTeam": "View Team",
+    "upgradeRequired": "Team features require a Team subscription",
+    "upgradePlan": "Upgrade Plan",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "viewer": "Viewer"
+    },
+    "create": {
+      "title": "Create a New Team",
+      "subtitle": "Set up a workspace for your team",
+      "nameLabel": "Team Name",
+      "namePlaceholder": "e.g., Engineering Team",
+      "slugLabel": "Team URL",
+      "slugPlaceholder": "engineering-team",
+      "slugHint": "This will be used in URLs. Only lowercase letters, numbers, and hyphens.",
+      "slugTaken": "This slug is already taken",
+      "creating": "Creating...",
+      "create": "Create Team"
+    },
+    "dashboard": {
+      "overview": "Overview",
+      "members": "Members",
+      "policies": "Policies",
+      "settings": "Settings",
+      "recentActivity": "Recent Activity",
+      "noActivity": "No recent activity"
+    },
+    "members": {
+      "title": "Team Members",
+      "invite": "Invite Member",
+      "pendingInvitations": "Pending Invitations",
+      "noPending": "No pending invitations",
+      "noMembers": "No members yet",
+      "joined": "Joined {date}",
+      "expires": "Expires {date}",
+      "revoke": "Revoke",
+      "remove": "Remove",
+      "changeRole": "Change Role",
+      "confirmRemove": "Are you sure you want to remove this member?",
+      "confirmRevoke": "Are you sure you want to revoke this invitation?",
+      "cannotRemoveOwner": "Cannot remove team owner",
+      "cannotLeaveAsOwner": "Transfer ownership before leaving"
+    },
+    "invite": {
+      "title": "Invite Team Member",
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "colleague@example.com",
+      "roleLabel": "Role",
+      "sending": "Sending...",
+      "send": "Send Invitation",
+      "sent": "Invitation sent!",
+      "alreadyMember": "This user is already a team member"
+    },
+    "policies": {
+      "title": "Team Policies",
+      "noPolicies": "No team policies yet",
+      "assignPolicy": "Assign Policy",
+      "createNew": "Create New Policy"
+    },
+    "settings": {
+      "general": "General Settings",
+      "dangerZone": "Danger Zone",
+      "transferOwnership": "Transfer Ownership",
+      "transferOwnershipDesc": "Transfer team ownership to another admin",
+      "leaveTeam": "Leave Team",
+      "leaveTeamDesc": "Remove yourself from this team",
+      "deleteTeam": "Delete Team",
+      "deleteTeamDesc": "Permanently delete this team and all its data",
+      "confirmDelete": "Are you sure? This action cannot be undone.",
+      "sso": "Single Sign-On (SSO)",
+      "ssoComingSoon": "SSO configuration coming soon",
+      "auditLogs": "Audit Logs",
+      "auditLogsComingSoon": "Audit logs coming soon"
+    },
+    "acceptInvite": {
+      "title": "Team Invitation",
+      "joining": "You've been invited to join",
+      "accept": "Accept Invitation",
+      "accepting": "Accepting...",
+      "expired": "This invitation has expired",
+      "invalid": "Invalid invitation",
+      "alreadyMember": "You're already a member of this team"
+    }
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {name}!",

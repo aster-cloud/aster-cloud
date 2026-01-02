@@ -180,8 +180,104 @@
     "dashboard": "Dashboard",
     "policies": "Richtlinien",
     "reports": "Berichte",
+    "teams": "Teams",
     "billing": "Abrechnung",
     "settings": "Einstellungen"
+  },
+  "teams": {
+    "title": "Teams",
+    "subtitle": "Verwalten Sie Ihre Team-Arbeitsbereiche und arbeiten Sie an Richtlinien zusammen",
+    "createTeam": "Team erstellen",
+    "noTeams": "Noch keine Teams",
+    "noTeamsDesc": "Erstellen Sie ein Team, um mit anderen zusammenzuarbeiten",
+    "yourRole": "Ihre Rolle",
+    "members": "{count} Mitglieder",
+    "policies": "{count} Richtlinien",
+    "viewTeam": "Team anzeigen",
+    "upgradeRequired": "Team-Funktionen erfordern ein Team-Abonnement",
+    "upgradePlan": "Plan upgraden",
+    "roles": {
+      "owner": "Eigentümer",
+      "admin": "Administrator",
+      "member": "Mitglied",
+      "viewer": "Betrachter"
+    },
+    "create": {
+      "title": "Neues Team erstellen",
+      "subtitle": "Richten Sie einen Arbeitsbereich für Ihr Team ein",
+      "nameLabel": "Teamname",
+      "namePlaceholder": "z.B. Engineering-Team",
+      "slugLabel": "Team-URL",
+      "slugPlaceholder": "engineering-team",
+      "slugHint": "Wird in URLs verwendet. Nur Kleinbuchstaben, Zahlen und Bindestriche.",
+      "slugTaken": "Dieser Slug ist bereits vergeben",
+      "creating": "Wird erstellt...",
+      "create": "Team erstellen"
+    },
+    "dashboard": {
+      "overview": "Übersicht",
+      "members": "Mitglieder",
+      "policies": "Richtlinien",
+      "settings": "Einstellungen",
+      "recentActivity": "Letzte Aktivitäten",
+      "noActivity": "Keine aktuellen Aktivitäten"
+    },
+    "members": {
+      "title": "Team-Mitglieder",
+      "invite": "Mitglied einladen",
+      "pendingInvitations": "Ausstehende Einladungen",
+      "noPending": "Keine ausstehenden Einladungen",
+      "noMembers": "Noch keine Mitglieder",
+      "joined": "Beigetreten {date}",
+      "expires": "Läuft ab {date}",
+      "revoke": "Widerrufen",
+      "remove": "Entfernen",
+      "changeRole": "Rolle ändern",
+      "confirmRemove": "Sind Sie sicher, dass Sie dieses Mitglied entfernen möchten?",
+      "confirmRevoke": "Sind Sie sicher, dass Sie diese Einladung widerrufen möchten?",
+      "cannotRemoveOwner": "Team-Eigentümer kann nicht entfernt werden",
+      "cannotLeaveAsOwner": "Übertragen Sie die Eigentümerschaft, bevor Sie gehen"
+    },
+    "invite": {
+      "title": "Team-Mitglied einladen",
+      "emailLabel": "E-Mail-Adresse",
+      "emailPlaceholder": "kollege@beispiel.com",
+      "roleLabel": "Rolle",
+      "sending": "Wird gesendet...",
+      "send": "Einladung senden",
+      "sent": "Einladung gesendet!",
+      "alreadyMember": "Dieser Benutzer ist bereits Team-Mitglied"
+    },
+    "policies": {
+      "title": "Team-Richtlinien",
+      "noPolicies": "Noch keine Team-Richtlinien",
+      "assignPolicy": "Richtlinie zuweisen",
+      "createNew": "Neue Richtlinie erstellen"
+    },
+    "settings": {
+      "general": "Allgemeine Einstellungen",
+      "dangerZone": "Gefahrenzone",
+      "transferOwnership": "Eigentümerschaft übertragen",
+      "transferOwnershipDesc": "Übertragen Sie die Team-Eigentümerschaft an einen anderen Administrator",
+      "leaveTeam": "Team verlassen",
+      "leaveTeamDesc": "Sich selbst aus diesem Team entfernen",
+      "deleteTeam": "Team löschen",
+      "deleteTeamDesc": "Dieses Team und alle zugehörigen Daten dauerhaft löschen",
+      "confirmDelete": "Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "sso": "Single Sign-On (SSO)",
+      "ssoComingSoon": "SSO-Konfiguration demnächst verfügbar",
+      "auditLogs": "Prüfprotokolle",
+      "auditLogsComingSoon": "Prüfprotokolle demnächst verfügbar"
+    },
+    "acceptInvite": {
+      "title": "Team-Einladung",
+      "joining": "Sie wurden eingeladen beizutreten",
+      "accept": "Einladung annehmen",
+      "accepting": "Wird angenommen...",
+      "expired": "Diese Einladung ist abgelaufen",
+      "invalid": "Ungültige Einladung",
+      "alreadyMember": "Sie sind bereits Mitglied dieses Teams"
+    }
   },
   "dashboard": {
     "welcomeBack": "Willkommen zurück, {name}!",

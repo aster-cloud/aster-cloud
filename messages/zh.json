@@ -180,8 +180,104 @@
     "dashboard": "仪表盘",
     "policies": "策略",
     "reports": "报告",
+    "teams": "团队",
     "billing": "账单",
     "settings": "设置"
+  },
+  "teams": {
+    "title": "团队",
+    "subtitle": "管理团队工作区，协作编辑策略",
+    "createTeam": "创建团队",
+    "noTeams": "暂无团队",
+    "noTeamsDesc": "创建一个团队开始与他人协作",
+    "yourRole": "您的角色",
+    "members": "{count} 位成员",
+    "policies": "{count} 个策略",
+    "viewTeam": "查看团队",
+    "upgradeRequired": "团队功能需要团队版订阅",
+    "upgradePlan": "升级计划",
+    "roles": {
+      "owner": "所有者",
+      "admin": "管理员",
+      "member": "成员",
+      "viewer": "查看者"
+    },
+    "create": {
+      "title": "创建新团队",
+      "subtitle": "为您的团队设置工作区",
+      "nameLabel": "团队名称",
+      "namePlaceholder": "例如：工程团队",
+      "slugLabel": "团队 URL",
+      "slugPlaceholder": "engineering-team",
+      "slugHint": "将用于 URL。仅允许小写字母、数字和连字符。",
+      "slugTaken": "此 slug 已被使用",
+      "creating": "创建中...",
+      "create": "创建团队"
+    },
+    "dashboard": {
+      "overview": "概览",
+      "members": "成员",
+      "policies": "策略",
+      "settings": "设置",
+      "recentActivity": "最近活动",
+      "noActivity": "暂无最近活动"
+    },
+    "members": {
+      "title": "团队成员",
+      "invite": "邀请成员",
+      "pendingInvitations": "待处理邀请",
+      "noPending": "暂无待处理邀请",
+      "noMembers": "暂无成员",
+      "joined": "加入于 {date}",
+      "expires": "过期于 {date}",
+      "revoke": "撤销",
+      "remove": "移除",
+      "changeRole": "更改角色",
+      "confirmRemove": "确定要移除此成员吗？",
+      "confirmRevoke": "确定要撤销此邀请吗？",
+      "cannotRemoveOwner": "无法移除团队所有者",
+      "cannotLeaveAsOwner": "离开前请先转让所有权"
+    },
+    "invite": {
+      "title": "邀请团队成员",
+      "emailLabel": "邮箱地址",
+      "emailPlaceholder": "colleague@example.com",
+      "roleLabel": "角色",
+      "sending": "发送中...",
+      "send": "发送邀请",
+      "sent": "邀请已发送！",
+      "alreadyMember": "此用户已是团队成员"
+    },
+    "policies": {
+      "title": "团队策略",
+      "noPolicies": "暂无团队策略",
+      "assignPolicy": "分配策略",
+      "createNew": "创建新策略"
+    },
+    "settings": {
+      "general": "常规设置",
+      "dangerZone": "危险区域",
+      "transferOwnership": "转让所有权",
+      "transferOwnershipDesc": "将团队所有权转让给其他管理员",
+      "leaveTeam": "离开团队",
+      "leaveTeamDesc": "将自己从此团队中移除",
+      "deleteTeam": "删除团队",
+      "deleteTeamDesc": "永久删除此团队及其所有数据",
+      "confirmDelete": "确定吗？此操作无法撤销。",
+      "sso": "单点登录 (SSO)",
+      "ssoComingSoon": "SSO 配置即将推出",
+      "auditLogs": "审计日志",
+      "auditLogsComingSoon": "审计日志即将推出"
+    },
+    "acceptInvite": {
+      "title": "团队邀请",
+      "joining": "您被邀请加入",
+      "accept": "接受邀请",
+      "accepting": "接受中...",
+      "expired": "此邀请已过期",
+      "invalid": "无效的邀请",
+      "alreadyMember": "您已是此团队的成员"
+    }
   },
   "dashboard": {
     "welcomeBack": "欢迎回来，{name}！",
