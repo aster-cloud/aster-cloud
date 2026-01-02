@@ -1,5 +1,6 @@
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
+import { LanguageSwitcher } from '@/components/language-switcher';
 
 export default async function DashboardLayout({
   children,
@@ -53,6 +54,7 @@ export default async function DashboardLayout({
               >
                 {t('settings')}
               </Link>
+              <LanguageSwitcher />
               {/* User menu placeholder */}
               <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
                 <span className="text-indigo-600 text-sm font-medium">U</span>
