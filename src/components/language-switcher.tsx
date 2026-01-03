@@ -1,8 +1,8 @@
 'use client';
 
 import { useLocale } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
-import { locales, localeNames, defaultLocale, type Locale } from '@/i18n/config';
+import { useRouter, usePathname } from '@/i18n/navigation';
+import { locales, localeNames, type Locale } from '@/i18n/config';
 
 // Set cookie for locale preference
 function setLocaleCookie(locale: string) {
@@ -19,35 +19,9 @@ export function LanguageSwitcher() {
     // Update the NEXT_LOCALE cookie to reflect user's choice
     setLocaleCookie(newLocale);
 
-    // Remove current locale prefix from pathname
-    let newPathname = pathname;
-
-    // Check if pathname starts with current locale
-    for (const loc of locales) {
-      if (pathname.startsWith(`/${loc}/`)) {
-        newPathname = pathname.slice(loc.length + 1); // Remove /{locale}
-        break;
-      } else if (pathname === `/${loc}`) {
-        newPathname = '/';
-        break;
-      }
-    }
-
-    // Ensure newPathname starts with /
-    if (!newPathname.startsWith('/')) {
-      newPathname = '/' + newPathname;
-    }
-
-    // Navigate to new locale
-    if (newLocale === defaultLocale) {
-      // Default locale (English) - no prefix needed
-      router.push(newPathname);
-      router.refresh();
-    } else {
-      const targetPath = newPathname === '/' ? `/${newLocale}` : `/${newLocale}${newPathname}`;
-      router.push(targetPath);
-      router.refresh();
-    }
+    // Use next-intl's locale-aware router to navigate
+    // The router.replace with locale option handles the path correctly
+    router.replace(pathname, { locale: newLocale as Locale });
   };
 
   return (
