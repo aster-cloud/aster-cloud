@@ -16,7 +16,8 @@ interface ExecutionResult {
   durationMs: number;
 }
 
-const EXAMPLE_INPUTS = {
+// 英文策略测试数据
+const EXAMPLE_INPUTS_EN = {
   loanApplication: {
     creditScore: 720,
     income: 85000,
@@ -30,6 +31,31 @@ const EXAMPLE_INPUTS = {
   },
 };
 
+// 中文策略测试数据（与中文 CNL 策略字段匹配）
+const EXAMPLE_INPUTS_ZH = {
+  loanApplication: {
+    申请人: {
+      编号: 'A001',
+      信用评分: 720,
+      收入: 85000,
+      申请金额: 50000,
+    },
+  },
+  userVerification: {
+    用户: {
+      邮箱: 'user@example.com',
+      手机已验证: true,
+      资料已提交: true,
+    },
+  },
+};
+
+// 检测策略是否为中文
+function isPolicyChinese(content: string): boolean {
+  const chinesePatterns = [/【模块】/, /【定义】/, /入参.*产出/, /模块\s+\S+。/, /定义\s+\S+\s+包含/];
+  return chinesePatterns.some((p) => p.test(content));
+}
+
 interface ExecutePolicyContentProps {
   policyId: string;
   locale: string;
@@ -37,18 +63,29 @@ interface ExecutePolicyContentProps {
 
 export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentProps) {
   const t = useTranslations('policies.execute');
-  const [input, setInput] = useState('{\n  "creditScore": 720,\n  "income": 85000\n}');
+  const [input, setInput] = useState('');
   const [result, setResult] = useState<ExecutionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [policyName, setPolicyName] = useState('');
+  const [isChinese, setIsChinese] = useState(false);
 
   useEffect(() => {
-    // Fetch policy name
+    // Fetch policy details including content
     fetch(`/api/policies/${policyId}`)
       .then((res) => res.json())
-      .then((data) => setPolicyName(data.name))
-      .catch(() => {});
+      .then((data) => {
+        setPolicyName(data.name);
+        // 检测策略语言并设置对应的默认测试数据
+        const chinese = isPolicyChinese(data.content || '');
+        setIsChinese(chinese);
+        const examples = chinese ? EXAMPLE_INPUTS_ZH : EXAMPLE_INPUTS_EN;
+        setInput(JSON.stringify(examples.loanApplication, null, 2));
+      })
+      .catch(() => {
+        // 默认使用英文测试数据
+        setInput(JSON.stringify(EXAMPLE_INPUTS_EN.loanApplication, null, 2));
+      });
   }, [policyId]);
 
   const handleExecute = async () => {
@@ -90,8 +127,9 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     }
   };
 
-  const loadExample = (type: keyof typeof EXAMPLE_INPUTS) => {
-    setInput(JSON.stringify(EXAMPLE_INPUTS[type], null, 2));
+  const loadExample = (type: 'loanApplication' | 'userVerification') => {
+    const examples = isChinese ? EXAMPLE_INPUTS_ZH : EXAMPLE_INPUTS_EN;
+    setInput(JSON.stringify(examples[type], null, 2));
   };
 
   return (
