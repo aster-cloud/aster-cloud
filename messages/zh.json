@@ -194,8 +194,11 @@
     "members": "{count} 位成员",
     "policies": "{count} 个策略",
     "viewTeam": "查看团队",
-    "upgradeRequired": "团队功能需要团队版订阅",
-    "upgradePlan": "升级计划",
+    "upgradeRequired": {
+      "title": "需要升级订阅",
+      "description": "团队功能需要团队版订阅才能使用",
+      "upgradeButton": "升级计划"
+    },
     "roles": {
       "owner": "所有者",
       "admin": "管理员",

@@ -194,8 +194,11 @@
     "members": "{count} Mitglieder",
     "policies": "{count} Richtlinien",
     "viewTeam": "Team anzeigen",
-    "upgradeRequired": "Team-Funktionen erfordern ein Team-Abonnement",
-    "upgradePlan": "Plan upgraden",
+    "upgradeRequired": {
+      "title": "Upgrade erforderlich",
+      "description": "Team-Funktionen erfordern ein Team-Abonnement",
+      "upgradeButton": "Plan upgraden"
+    },
     "roles": {
       "owner": "Eigentümer",
       "admin": "Administrator",
