@@ -200,6 +200,24 @@ export class PolicyApiClient {
   }
 
   /**
+   * 直接评估策略源代码
+   * 编译并执行 CNL 源代码，适用于 Dashboard 执行场景
+   */
+  async evaluateSource(
+    source: string,
+    context: Record<string, unknown> | Record<string, unknown>[],
+    options?: { locale?: string; functionName?: string }
+  ): Promise<PolicyEvaluateResponse> {
+    const normalizedContext = Array.isArray(context) ? context : [context];
+    return this.request<PolicyEvaluateResponse>('POST', '/api/policies/evaluate-source', {
+      source,
+      context: normalizedContext,
+      locale: options?.locale || 'en-US',
+      functionName: options?.functionName || 'evaluate',
+    });
+  }
+
+  /**
    * 健康检查
    */
   async healthCheck(): Promise<HealthCheckResponse> {
@@ -219,7 +237,8 @@ export class PolicyApiClient {
   connectPreview(
     onMessage: (message: PreviewMessage) => void,
     onError?: (error: Error) => void,
-    onClose?: () => void
+    onClose?: () => void,
+    onOpen?: () => void
   ): () => void {
     if (this.ws) {
       this.ws.close();
@@ -230,6 +249,7 @@ export class PolicyApiClient {
 
     this.ws.onopen = () => {
       console.log('[PolicyAPI] WebSocket connected');
+      onOpen?.();
     };
 
     this.ws.onmessage = (event) => {
@@ -260,17 +280,28 @@ export class PolicyApiClient {
 
   /**
    * 发送预览请求
+   *
+   * @param source - 策略源代码
+   * @param context - 评估上下文，支持单个对象或数组格式（与 REST API 保持一致）
+   * @param locale - CNL 语言
    */
-  sendPreview(source: string, context: Record<string, unknown>, locale?: string): void {
+  sendPreview(
+    source: string,
+    context: Record<string, unknown> | Record<string, unknown>[],
+    locale?: string
+  ): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.warn('[PolicyAPI] WebSocket not connected');
       return;
     }
 
+    // 统一为数组格式，与 REST API 保持一致
+    const normalizedContext = Array.isArray(context) ? context : [context];
+
     this.ws.send(JSON.stringify({
       type: 'preview',
       source,
-      context,
+      context: normalizedContext,
       locale: locale || 'en-US',
     }));
   }

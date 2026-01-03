@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Define mock functions first
 const mockUserFindUnique = vi.fn();
 const mockPolicyFindMany = vi.fn();
+const mockPolicyCount = vi.fn();
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -11,6 +12,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     policy: {
       findMany: (...args: unknown[]) => mockPolicyFindMany(...args),
+      count: (...args: unknown[]) => mockPolicyCount(...args),
     },
   },
 }));
@@ -68,10 +70,13 @@ describe('Policy Freeze Logic', () => {
         plan: 'team',
         trialEndsAt: null,
       });
+      // 无限制套餐仍返回真实策略数
+      mockPolicyCount.mockResolvedValue(10);
 
       const result = await getPolicyFreezeStatus('team-user');
 
       expect(result.limit).toBe(-1);
+      expect(result.totalPolicies).toBe(10);
       expect(result.frozenCount).toBe(0);
       expect(result.frozenPolicyIds.size).toBe(0);
     });
@@ -81,10 +86,13 @@ describe('Policy Freeze Logic', () => {
         plan: 'enterprise',
         trialEndsAt: null,
       });
+      // 无限制套餐仍返回真实策略数
+      mockPolicyCount.mockResolvedValue(50);
 
       const result = await getPolicyFreezeStatus('enterprise-user');
 
       expect(result.limit).toBe(-1);
+      expect(result.totalPolicies).toBe(50);
       expect(result.frozenCount).toBe(0);
     });
 
@@ -229,15 +237,16 @@ describe('Policy Freeze Logic', () => {
         trialEndsAt: null,
       });
 
+      // 优化后的 isPolicyFrozen 使用 count + findMany(take: limit)
+      mockPolicyCount.mockResolvedValue(4);
+      // 只返回前 3 个活跃策略（limit=3）
       mockPolicyFindMany.mockResolvedValue([
         { id: 'policy-1' },
         { id: 'policy-2' },
         { id: 'policy-3' },
-        { id: 'policy-4' },
       ]);
 
       const frozenResult = await isPolicyFrozen('user-1', 'policy-4');
-      const activeResult = await isPolicyFrozen('user-1', 'policy-1');
 
       expect(frozenResult.isFrozen).toBe(true);
       expect(frozenResult.reason).toContain('frozen');
@@ -245,22 +254,35 @@ describe('Policy Freeze Logic', () => {
       expect(frozenResult.totalPolicies).toBe(4);
       expect(frozenResult.frozenCount).toBe(1);
 
+      // 重置 mock 并测试活跃策略
+      mockPolicyCount.mockResolvedValue(4);
+      mockPolicyFindMany.mockResolvedValue([
+        { id: 'policy-1' },
+        { id: 'policy-2' },
+        { id: 'policy-3' },
+      ]);
+
+      const activeResult = await isPolicyFrozen('user-1', 'policy-1');
+
       expect(activeResult.isFrozen).toBe(false);
       expect(activeResult.reason).toBeUndefined();
     });
 
-    it('should return not frozen for non-existent policy', async () => {
+    it('should return not frozen for non-existent policy when under limit', async () => {
       mockUserFindUnique.mockResolvedValue({
         plan: 'free',
         trialEndsAt: null,
       });
 
+      // 只有 1 个策略，未超限
+      mockPolicyCount.mockResolvedValue(1);
       mockPolicyFindMany.mockResolvedValue([
         { id: 'policy-1' },
       ]);
 
       const result = await isPolicyFrozen('user-1', 'non-existent');
 
+      // 未超限时，任何策略都不冻结
       expect(result.isFrozen).toBe(false);
     });
   });
