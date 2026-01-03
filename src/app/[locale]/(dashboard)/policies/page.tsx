@@ -43,10 +43,15 @@ async function getPoliciesData(userId: string) {
   return { policies: policiesWithFreeze, freezeInfo };
 }
 
-export default async function PoliciesPage() {
+export default async function PoliciesPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect(`/${locale}/login`);
   }
 
   const { policies, freezeInfo } = await getPoliciesData(session.user.id);
@@ -84,6 +89,7 @@ export default async function PoliciesPage() {
       initialPolicies={policies}
       freezeInfo={freezeInfo}
       translations={translations}
+      locale={locale}
     />
   );
 }

@@ -53,11 +53,13 @@ interface Translations {
 interface PolicyDetailContentProps {
   policy: Policy;
   translations: Translations;
+  locale: string;
 }
 
 export function PolicyDetailContent({
   policy,
   translations: t,
+  locale,
 }: PolicyDetailContentProps) {
   const router = useRouter();
   const [error, setError] = useState('');
@@ -68,7 +70,7 @@ export function PolicyDetailContent({
     try {
       const res = await fetch(`/api/policies/${policy.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete policy');
-      router.push('/policies');
+      router.push(`/${locale}/policies`);
     } catch (err) {
       setError(t.failedToDelete);
       console.error(err);
@@ -87,7 +89,7 @@ export function PolicyDetailContent({
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div>
           <div className="flex items-center">
-            <Link href="/policies" className="text-gray-400 hover:text-gray-600 mr-2">
+            <Link href={`/${locale}/policies`} className="text-gray-400 hover:text-gray-600 mr-2">
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
               </svg>
@@ -100,13 +102,13 @@ export function PolicyDetailContent({
         </div>
         <div className="mt-4 md:mt-0 flex space-x-3">
           <Link
-            href={`/policies/${policy.id}/execute`}
+            href={`/${locale}/policies/${policy.id}/execute`}
             className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
           >
             {t.executeAction}
           </Link>
           <Link
-            href={`/policies/${policy.id}/edit`}
+            href={`/${locale}/policies/${policy.id}/edit`}
             className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
           >
             {t.edit}

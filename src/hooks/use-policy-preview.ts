@@ -39,8 +39,8 @@ interface UsePolicyPreviewResult {
     context: Record<string, unknown>[],
     locale?: string
   ) => Promise<PolicyEvaluateResponse>;
-  /** 发送实时预览请求 */
-  sendPreview: (source: string, context: Record<string, unknown>, locale?: string) => void;
+  /** 发送实时预览请求（支持单个对象或数组格式） */
+  sendPreview: (source: string, context: Record<string, unknown> | Record<string, unknown>[], locale?: string) => void;
   /** 连接 WebSocket */
   connect: () => void;
   /** 断开 WebSocket */
@@ -87,6 +87,8 @@ export function usePolicyPreview({
         break;
       case 'diagnostics':
         setDiagnostics(message.data as PolicyDiagnostic[]);
+        // 诊断消息也应该结束加载状态，避免 UI 永久显示 "加载中"
+        setIsLoading(false);
         break;
       case 'error':
         setError(String(message.data));
@@ -107,9 +109,12 @@ export function usePolicyPreview({
       },
       () => {
         setIsConnected(false);
+      },
+      // 只有在 WebSocket 真正打开后才设置 isConnected 为 true
+      () => {
+        setIsConnected(true);
       }
     );
-    setIsConnected(true);
   }, [useWebSocket, handleMessage]);
 
   // 断开 WebSocket
@@ -189,7 +194,7 @@ export function usePolicyPreview({
   // 发送实时预览请求 (debounced)
   const sendPreview = useCallback((
     source: string,
-    context: Record<string, unknown>,
+    context: Record<string, unknown> | Record<string, unknown>[],
     locale?: string
   ) => {
     if (!clientRef.current || !isConnected) return;

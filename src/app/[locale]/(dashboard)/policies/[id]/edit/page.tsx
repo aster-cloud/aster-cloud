@@ -5,16 +5,15 @@ import { prisma } from '@/lib/prisma';
 import { EditPolicyContent } from './edit-policy-content';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
 }
 
 export default async function EditPolicyPage({ params }: PageProps) {
+  const { id, locale } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect(`/${locale}/login`);
   }
-
-  const { id } = await params;
   const t = await getTranslations('policies');
 
   // 获取策略详情（只能编辑自己的策略）

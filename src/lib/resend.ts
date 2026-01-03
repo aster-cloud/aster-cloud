@@ -114,3 +114,39 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     `,
   });
 }
+
+export async function sendTeamInvitationEmail(
+  email: string,
+  teamName: string,
+  inviterName: string,
+  token: string
+): Promise<{ success: boolean; inviteUrl: string }> {
+  const inviteUrl = `${APP_URL}/teams/invite?token=${token}`;
+  const safeTeamName = escapeHtml(teamName);
+  const safeInviterName = escapeHtml(inviterName);
+
+  if (!resend) {
+    console.log(`Team invitation link: ${inviteUrl}`);
+    return { success: false, inviteUrl };
+  }
+
+  try {
+    await resend.emails.send({
+      from: `Aster Cloud <${FROM_EMAIL}>`,
+      to: email,
+      subject: `You've been invited to join ${safeTeamName}`,
+      html: `
+        <h1>Team Invitation</h1>
+        <p><strong>${safeInviterName}</strong> has invited you to join <strong>${safeTeamName}</strong> on Aster Cloud.</p>
+        <p>Click the link below to accept the invitation:</p>
+        <p><a href="${inviteUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">Accept Invitation</a></p>
+        <p>This invitation will expire in 7 days.</p>
+        <p>If you didn't expect this invitation, you can safely ignore this email.</p>
+      `,
+    });
+    return { success: true, inviteUrl };
+  } catch (error) {
+    console.error('Failed to send team invitation email:', error);
+    return { success: false, inviteUrl };
+  }
+}

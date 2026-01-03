@@ -351,46 +351,5 @@ export function MonacoPolicyEditor({
   );
 }
 
-// 示例策略模板
-export const ASTER_POLICY_TEMPLATES = {
-  'en-US': `// Loan Approval Policy
-// This policy evaluates loan applications based on credit score and income
-
-This module is finance.loan.
-
-Define Applicant with
-  id: Text,
-  creditScore: Int,
-  income: Float,
-  requestedAmount: Float.
-
-To evaluateLoan with applicant: Applicant, produce Text:
-  If applicant.creditScore greater than 750:
-    Return "Approved with premium rate".
-  Otherwise:
-    If applicant.creditScore greater than 650:
-      Return "Approved with standard rate".
-    Otherwise:
-      Return "Requires manual review".
-`,
-  'zh-CN': `// 贷款审批策略
-// 此策略根据信用评分和收入评估贷款申请
-
-【模块】金融.贷款。
-
-【定义】申请人 包含
-  编号：文本，
-  信用评分：整数，
-  收入：小数，
-  申请金额：小数。
-
-入参 申请人：申请人，产出 文本：
-  若 申请人.信用评分 大于 750：
-    返回「批准，优惠利率」。
-  否则：
-    若 申请人.信用评分 大于 650：
-      返回「批准，标准利率」。
-    否则：
-      返回「需要人工审核」。
-`,
-};
+// 注意：示例策略模板已迁移至 @/config/aster-policy-templates.ts
+// 以避免静态导入导致 Monaco 编辑器动态加载失效

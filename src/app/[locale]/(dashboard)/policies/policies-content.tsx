@@ -59,15 +59,33 @@ interface PoliciesContentProps {
   initialPolicies: Policy[];
   freezeInfo: FreezeInfo;
   translations: Translations;
+  locale: string;
 }
 
 export function PoliciesContent({
   initialPolicies,
-  freezeInfo,
+  freezeInfo: initialFreezeInfo,
   translations: t,
+  locale,
 }: PoliciesContentProps) {
   const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
+  const [freezeInfo, setFreezeInfo] = useState<FreezeInfo>(initialFreezeInfo);
   const [error, setError] = useState('');
+
+  // 重新获取策略列表和冻结状态
+  const refreshPolicies = async () => {
+    try {
+      const res = await fetch('/api/policies');
+      if (!res.ok) return;
+      const data = await res.json();
+      setPolicies(data.policies || []);
+      if (data.freezeInfo) {
+        setFreezeInfo(data.freezeInfo);
+      }
+    } catch (err) {
+      console.error('Failed to refresh policies:', err);
+    }
+  };
 
   const deletePolicy = async (id: string) => {
     if (!confirm(t.confirmDelete)) return;
@@ -75,7 +93,8 @@ export function PoliciesContent({
     try {
       const res = await fetch(`/api/policies/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete policy');
-      setPolicies((prev) => prev.filter((p) => p.id !== id));
+      // 删除后重新获取列表以更新冻结状态
+      await refreshPolicies();
     } catch (err) {
       setError(t.failedToDelete);
       console.error(err);
@@ -91,7 +110,7 @@ export function PoliciesContent({
         </div>
         <div className="mt-4 sm:mt-0">
           <Link
-            href="/policies/new"
+            href={`/${locale}/policies/new`}
             className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
           >
             <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -124,7 +143,7 @@ export function PoliciesContent({
               </p>
               <div className="mt-2">
                 <Link
-                  href="/billing"
+                  href={`/${locale}/billing`}
                   className="text-sm font-medium text-amber-800 underline hover:text-amber-900"
                 >
                   {t.freeze.upgradeLink}
@@ -154,7 +173,7 @@ export function PoliciesContent({
           <p className="mt-1 text-sm text-gray-500">{t.getStarted}</p>
           <div className="mt-6">
             <Link
-              href="/policies/new"
+              href={`/${locale}/policies/new`}
               className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
             >
               <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -172,7 +191,7 @@ export function PoliciesContent({
                 <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <Link href={`/policies/${policy.id}`} className="block">
+                      <Link href={`/${locale}/policies/${policy.id}`} className="block">
                         <p className="text-sm font-medium text-indigo-600 truncate hover:underline">
                           {policy.name}
                         </p>
@@ -221,7 +240,7 @@ export function PoliciesContent({
                           </span>
                         ) : (
                           <Link
-                            href={`/policies/${policy.id}/execute`}
+                            href={`/${locale}/policies/${policy.id}/execute`}
                             className="text-indigo-600 hover:text-indigo-900 text-sm"
                           >
                             {t.executeAction}
@@ -233,7 +252,7 @@ export function PoliciesContent({
                           </span>
                         ) : (
                           <Link
-                            href={`/policies/${policy.id}/edit`}
+                            href={`/${locale}/policies/${policy.id}/edit`}
                             className="text-gray-600 hover:text-gray-900 text-sm"
                           >
                             {t.edit}

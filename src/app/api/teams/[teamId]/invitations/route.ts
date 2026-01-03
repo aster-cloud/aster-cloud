@@ -9,6 +9,7 @@ import {
   canInviteWithRole,
   TeamRole,
 } from '@/lib/team-permissions';
+import { sendTeamInvitationEmail } from '@/lib/resend';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
 
@@ -22,29 +23,6 @@ function getInvitationExpiryDate(days: number = 7): Date {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + days);
   return expiresAt;
-}
-
-// 占位符：发送邀请邮件（TODO: 实现实际邮件发送）
-async function sendTeamInvitationEmail(
-  email: string,
-  teamName: string,
-  inviterName: string,
-  token: string
-): Promise<void> {
-  const inviteUrl = `${process.env.NEXTAUTH_URL}/teams/invite?token=${token}`;
-
-  // 占位符：输出到控制台
-  console.log(`
-    [团队邀请邮件]
-    收件人: ${email}
-    主题: 你被邀请加入 ${teamName}
-
-    ${inviterName} 邀请你加入 Aster Cloud 上的 ${teamName} 团队。
-
-    点击此处接受邀请: ${inviteUrl}
-
-    此邀请将在 7 天后过期。
-  `);
 }
 
 // GET /api/teams/[teamId]/invitations - 列出待处理的邀请
@@ -185,7 +163,12 @@ export async function POST(req: Request, { params }: RouteParams) {
     });
 
     // 发送邀请邮件
-    await sendTeamInvitationEmail(email, team?.name || '未知团队', inviter?.name || '团队成员', token);
+    const emailResult = await sendTeamInvitationEmail(
+      email,
+      team?.name || '未知团队',
+      inviter?.name || '团队成员',
+      token
+    );
 
     return NextResponse.json(
       {
@@ -193,6 +176,9 @@ export async function POST(req: Request, { params }: RouteParams) {
         email: invitation.email,
         role: invitation.role,
         expiresAt: invitation.expiresAt.toISOString(),
+        emailSent: emailResult.success,
+        // 始终返回邀请链接，便于手动分享或审计
+        inviteUrl: emailResult.inviteUrl,
       },
       { status: 201 }
     );

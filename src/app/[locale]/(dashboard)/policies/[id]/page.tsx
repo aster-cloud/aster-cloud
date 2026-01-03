@@ -51,14 +51,14 @@ async function getPolicyData(userId: string, policyId: string) {
 export default async function PolicyDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
 }) {
+  const { id, locale } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect(`/${locale}/login`);
   }
 
-  const { id } = await params;
   const policy = await getPolicyData(session.user.id, id);
 
   if (!policy) {
@@ -93,6 +93,7 @@ export default async function PolicyDetailPage({
     <PolicyDetailContent
       policy={policy}
       translations={translations}
+      locale={locale}
     />
   );
 }
