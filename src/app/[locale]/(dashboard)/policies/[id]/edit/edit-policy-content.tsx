@@ -3,6 +3,21 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { useLocale } from 'next-intl';
+
+// 动态导入 Monaco 编辑器以避免 SSR 问题
+const MonacoPolicyEditor = dynamic(
+  () => import('@/components/policy/monaco-policy-editor').then((mod) => mod.MonacoPolicyEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] bg-gray-900 rounded-lg flex items-center justify-center text-gray-400">
+        Loading editor...
+      </div>
+    ),
+  }
+);
 
 interface Policy {
   id: string;
@@ -41,6 +56,7 @@ export function EditPolicyContent({
   translations: t,
 }: EditPolicyContentProps) {
   const router = useRouter();
+  const locale = useLocale();
   const [name, setName] = useState(policy.name);
   const [description, setDescription] = useState(policy.description || '');
   const [content, setContent] = useState(policy.content);
@@ -131,19 +147,17 @@ export function EditPolicyContent({
               />
             </div>
 
-            {/* Content */}
+            {/* Content - Monaco Editor */}
             <div className="mt-6">
               <label htmlFor="content" className="block text-sm font-semibold text-gray-900">
                 {t.form.content}
               </label>
               <div className="mt-2">
-                <textarea
-                  id="content"
-                  rows={15}
+                <MonacoPolicyEditor
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  required
-                  className="block w-full rounded-lg border border-gray-300 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  onChange={setContent}
+                  locale={locale}
+                  height="400px"
                   placeholder={t.form.contentPlaceholder}
                 />
               </div>

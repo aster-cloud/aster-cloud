@@ -3,20 +3,27 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import dynamic from 'next/dynamic';
+import { ASTER_POLICY_TEMPLATES } from '@/components/policy/monaco-policy-editor';
 
-const EXAMPLE_POLICY = `// Loan Approval Policy
-// Rules for evaluating loan applications
-
-if creditScore >= 750 then approve with premium rate
-if creditScore >= 650 then approve with standard rate
-if creditScore < 650 then require manual review
-if income >= 100000 then increase limit by 20%
-if debtToIncomeRatio > 0.4 then reject application`;
+// 动态导入 Monaco 编辑器以避免 SSR 问题
+const MonacoPolicyEditor = dynamic(
+  () => import('@/components/policy/monaco-policy-editor').then((mod) => mod.MonacoPolicyEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] bg-gray-900 rounded-lg flex items-center justify-center text-gray-400">
+        Loading editor...
+      </div>
+    ),
+  }
+);
 
 export default function NewPolicyPage() {
   const t = useTranslations('policies');
   const router = useRouter();
+  const locale = useLocale();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
@@ -58,7 +65,9 @@ export default function NewPolicyPage() {
   const loadExample = () => {
     setName(t('example.name'));
     setDescription(t('example.description'));
-    setContent(EXAMPLE_POLICY);
+    // 根据当前语言加载对应的示例模板
+    const templateKey = locale === 'zh' ? 'zh-CN' : 'en-US';
+    setContent(ASTER_POLICY_TEMPLATES[templateKey as keyof typeof ASTER_POLICY_TEMPLATES]);
   };
 
   return (
@@ -127,19 +136,17 @@ export default function NewPolicyPage() {
               />
             </div>
 
-            {/* Content */}
+            {/* Content - Monaco Editor */}
             <div className="mt-6">
               <label htmlFor="content" className="block text-sm font-semibold text-gray-900">
                 {t('form.content')}
               </label>
               <div className="mt-2">
-                <textarea
-                  id="content"
-                  rows={15}
+                <MonacoPolicyEditor
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  required
-                  className="block w-full rounded-lg border border-gray-300 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                  onChange={setContent}
+                  locale={locale}
+                  height="400px"
                   placeholder={t('form.contentPlaceholder')}
                 />
               </div>
