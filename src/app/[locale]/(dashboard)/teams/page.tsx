@@ -1,198 +1,89 @@
-'use client';
+import { getTranslations } from 'next-intl/server';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { hasFeatureAccess } from '@/lib/usage';
+import { TeamsContent } from './teams-content';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-
-interface Team {
-  id: string;
-  name: string;
-  slug: string;
-  role: string;
-  memberCount: number;
-  policyCount: number;
-  createdAt: string;
-}
-
-export default function TeamsPage() {
-  const t = useTranslations('teams');
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [needsUpgrade, setNeedsUpgrade] = useState(false);
-
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-
-  const fetchTeams = async () => {
-    try {
-      const res = await fetch('/api/teams');
-      if (res.status === 403) {
-        const data = await res.json();
-        if (data.upgrade) {
-          setNeedsUpgrade(true);
-          setIsLoading(false);
-          return;
-        }
-      }
-      if (!res.ok) throw new Error('Failed to fetch teams');
-      const data = await res.json();
-      setTeams(data.teams);
-    } catch (err) {
-      setError(t('failedToLoad'));
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'bg-purple-100 text-purple-800';
-      case 'admin':
-        return 'bg-blue-100 text-blue-800';
-      case 'member':
-        return 'bg-green-100 text-green-800';
-      case 'viewer':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+export default async function TeamsPage() {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    redirect('/login');
   }
 
-  // 需要升级提示
-  if (needsUpgrade) {
-    return (
-      <div className="text-center py-12">
-        <svg
-          className="mx-auto h-12 w-12 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-          />
-        </svg>
-        <h2 className="mt-4 text-xl font-semibold text-gray-900">{t('upgradeRequired.title')}</h2>
-        <p className="mt-2 text-gray-500">{t('upgradeRequired.description')}</p>
-        <div className="mt-6">
-          <Link
-            href="/billing"
-            className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-          >
-            {t('upgradeRequired.upgradeButton')}
-          </Link>
-        </div>
-      </div>
-    );
+  const t = await getTranslations('teams');
+
+  // 检查团队功能访问权限
+  const hasAccess = await hasFeatureAccess(session.user.id, 'teamFeatures');
+
+  let teams: {
+    id: string;
+    name: string;
+    slug: string;
+    role: string;
+    memberCount: number;
+    policyCount: number;
+    createdAt: string;
+  }[] = [];
+
+  if (hasAccess) {
+    const teamsData = await prisma.team.findMany({
+      where: {
+        members: {
+          some: { userId: session.user.id },
+        },
+      },
+      include: {
+        members: {
+          where: { userId: session.user.id },
+          select: { role: true },
+        },
+        _count: {
+          select: { members: true, policies: true },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    teams = teamsData.map((team) => ({
+      id: team.id,
+      name: team.name,
+      slug: team.slug,
+      role: team.members[0]?.role || 'member',
+      memberCount: team._count.members,
+      policyCount: team._count.policies,
+      createdAt: team.createdAt.toISOString(),
+    }));
   }
+
+  // 预渲染所有翻译字符串
+  const translations = {
+    title: t('title'),
+    subtitle: t('subtitle'),
+    newTeam: t('newTeam'),
+    failedToLoad: t('failedToLoad'),
+    noTeams: t('noTeams'),
+    getStarted: t('getStarted'),
+    memberCountTemplate: t.raw('memberCount'),
+    policyCountTemplate: t.raw('policyCount'),
+    roles: {
+      owner: t('roles.owner'),
+      admin: t('roles.admin'),
+      member: t('roles.member'),
+      viewer: t('roles.viewer'),
+    },
+    upgradeRequired: {
+      title: t('upgradeRequired.title'),
+      description: t('upgradeRequired.description'),
+      upgradeButton: t('upgradeRequired.upgradeButton'),
+    },
+  };
 
   return (
-    <div>
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
-        </div>
-        <div className="mt-4 sm:mt-0">
-          <Link
-            href="/teams/new"
-            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-          >
-            <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-            </svg>
-            {t('newTeam')}
-          </Link>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mt-4 rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-
-      {teams.length === 0 ? (
-        <div className="mt-8 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">{t('noTeams')}</h3>
-          <p className="mt-1 text-sm text-gray-500">{t('getStarted')}</p>
-          <div className="mt-6">
-            <Link
-              href="/teams/new"
-              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-            >
-              <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-              </svg>
-              {t('newTeam')}
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((team) => (
-            <Link
-              key={team.id}
-              href={`/teams/${team.id}`}
-              className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">{team.name}</h3>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getRoleBadgeColor(team.role)}`}
-                  >
-                    {t(`roles.${team.role}`)}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-gray-500">/{team.slug}</p>
-                <div className="mt-4 flex items-center space-x-4 text-sm text-gray-500">
-                  <div className="flex items-center">
-                    <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {t('memberCount', { count: team.memberCount })}
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    {t('policyCount', { count: team.policyCount })}
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+    <TeamsContent
+      initialTeams={teams}
+      needsUpgrade={!hasAccess}
+      translations={translations}
+    />
   );
 }

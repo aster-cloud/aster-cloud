@@ -1,335 +1,111 @@
-'use client';
+import { getTranslations } from 'next-intl/server';
+import { redirect, notFound } from 'next/navigation';
+import { getSession } from '@/lib/auth';
+import { getComplianceReport } from '@/lib/compliance';
+import { ReportDetailContent } from './report-detail-content';
 
-import { useState, useEffect, use } from 'react';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-
-interface ComplianceReport {
-  id: string;
-  type: string;
-  title: string;
-  status: 'generating' | 'completed' | 'failed';
-  data: {
-    summary: {
-      totalPolicies: number;
-      policiesWithPII: number;
-      totalExecutions: number;
-      complianceScore: number;
-    };
-    policies: Array<{
-      id: string;
-      name: string;
-      piiFields: string[];
-      executionCount: number;
-      lastExecuted: string | null;
-    }>;
-    piiAnalysis: {
-      fieldsDetected: string[];
-      riskLevel: 'low' | 'medium' | 'high';
-      recommendations: string[];
-    };
-    auditTrail: {
-      recentExecutions: number;
-      dataRetentionDays: number;
-      lastAuditDate: string;
-    };
-    recommendations: string[];
-    scores: {
-      overall: number;
-      categories: {
-        dataProtection: number;
-        accessControl: number;
-        auditLogging: number;
-      };
-    };
-  } | null;
-  createdAt: string;
-  completedAt: string | null;
+interface PageProps {
+  params: Promise<{ id: string }>;
 }
 
-export default function ReportDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
-  const t = useTranslations('reports');
-  const [report, setReport] = useState<ComplianceReport | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchReport();
-  }, [id]);
-
-  const fetchReport = async () => {
-    try {
-      const res = await fetch(`/api/reports/${id}`);
-      if (!res.ok) throw new Error('Failed to fetch report');
-      const data = await res.json();
-      setReport(data);
-    } catch (err) {
-      setError(t('detail.failedToLoad'));
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getScoreBgColor = (score: number) => {
-    if (score >= 80) return 'bg-green-100';
-    if (score >= 60) return 'bg-yellow-100';
-    return 'bg-red-100';
-  };
-
-  const getRiskBadge = (level: 'low' | 'medium' | 'high') => {
-    const colors = {
-      low: 'bg-green-100 text-green-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-red-100 text-red-800',
-    };
-    return (
-      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors[level]}`}>
-        {t(`detail.riskLevel.${level}`)}
-      </span>
-    );
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return (
-          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-            {t('status.completed')}
-          </span>
-        );
-      case 'generating':
-        return (
-          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-            {t('status.generating')}
-          </span>
-        );
-      case 'failed':
-        return (
-          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-            {t('status.failed')}
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+export default async function ReportDetailPage({ params }: PageProps) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    redirect('/login');
   }
 
-  if (error || !report) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error || t('detail.reportNotFound')}</p>
-        <Link href="/reports" className="mt-4 text-indigo-600 hover:underline">
-          {t('detail.backToReports')}
-        </Link>
-      </div>
-    );
-  }
+  const { id } = await params;
+  const t = await getTranslations('reports');
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="md:flex md:items-center md:justify-between mb-6">
-        <div>
-          <div className="flex items-center">
-            <Link href="/reports" className="text-gray-400 hover:text-gray-600 mr-2">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-              </svg>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">{report.title}</h1>
-          </div>
-          <div className="mt-2 flex items-center space-x-3">
-            {getStatusBadge(report.status)}
-            <span className="text-sm text-gray-500">
-              {t('type', { type: report.type.toUpperCase() })}
-            </span>
-            <span className="text-sm text-gray-500">
-              {t('created', { date: new Date(report.createdAt).toLocaleDateString() })}
-            </span>
-          </div>
-        </div>
-      </div>
+  // 获取报告详情
+  const reportData = await getComplianceReport(session.user.id, id);
 
-      {report.status === 'generating' && (
-        <div className="mb-6 rounded-md bg-blue-50 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="animate-spin h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-blue-700">{t('detail.generatingMessage')}</p>
-            </div>
-          </div>
-        </div>
-      )}
+  // 序列化报告数据
+  const report = reportData
+    ? {
+        id: reportData.id,
+        type: reportData.type,
+        title: reportData.title,
+        status: reportData.status as 'generating' | 'completed' | 'failed',
+        data: reportData.data as {
+          summary: {
+            totalPolicies: number;
+            policiesWithPII: number;
+            totalExecutions: number;
+            complianceScore: number;
+          };
+          policies: Array<{
+            id: string;
+            name: string;
+            piiFields: string[];
+            executionCount: number;
+            lastExecuted: string | null;
+          }>;
+          piiAnalysis: {
+            fieldsDetected: string[];
+            riskLevel: 'low' | 'medium' | 'high';
+            recommendations: string[];
+          };
+          auditTrail: {
+            recentExecutions: number;
+            dataRetentionDays: number;
+            lastAuditDate: string;
+          };
+          recommendations: string[];
+          scores: {
+            overall: number;
+            categories: {
+              dataProtection: number;
+              accessControl: number;
+              auditLogging: number;
+            };
+          };
+        } | null,
+        createdAt: reportData.createdAt.toISOString(),
+        completedAt: reportData.completedAt?.toISOString() ?? null,
+      }
+    : null;
 
-      {report.status === 'failed' && (
-        <div className="mb-6 rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-700">{t('detail.failedMessage')}</p>
-        </div>
-      )}
+  // 预渲染所有翻译字符串
+  const translations = {
+    typeTemplate: t.raw('type'),
+    createdTemplate: t.raw('created'),
+    status: {
+      completed: t('status.completed'),
+      generating: t('status.generating'),
+      failed: t('status.failed'),
+    },
+    detail: {
+      failedToLoad: t('detail.failedToLoad'),
+      reportNotFound: t('detail.reportNotFound'),
+      backToReports: t('detail.backToReports'),
+      generatingMessage: t('detail.generatingMessage'),
+      failedMessage: t('detail.failedMessage'),
+      complianceScore: t('detail.complianceScore'),
+      overallCompliance: t('detail.overallCompliance'),
+      categories: {
+        dataProtection: t('detail.categories.dataProtection'),
+        accessControl: t('detail.categories.accessControl'),
+        auditLogging: t('detail.categories.auditLogging'),
+      },
+      summary: {
+        totalPolicies: t('detail.summary.totalPolicies'),
+        policiesWithPII: t('detail.summary.policiesWithPII'),
+        totalExecutions: t('detail.summary.totalExecutions'),
+        riskLevel: t('detail.summary.riskLevel'),
+      },
+      riskLevel: {
+        low: t('detail.riskLevel.low'),
+        medium: t('detail.riskLevel.medium'),
+        high: t('detail.riskLevel.high'),
+      },
+      piiAnalysis: t('detail.piiAnalysis'),
+      detectedFields: t('detail.detectedFields'),
+      recommendations: t('detail.recommendations'),
+      policiesAnalyzed: t('detail.policiesAnalyzed'),
+      executionCountTemplate: t.raw('detail.executionCount'),
+    },
+  };
 
-      {report.status === 'completed' && report.data && (
-        <>
-          {/* Compliance Score */}
-          <div className="bg-white shadow sm:rounded-lg mb-6">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">{t('detail.complianceScore')}</h3>
-                  <p className="mt-1 text-sm text-gray-500">{t('detail.overallCompliance')}</p>
-                </div>
-                <div className={`text-5xl font-bold ${getScoreColor(report.data.summary.complianceScore)}`}>
-                  {report.data.summary.complianceScore}%
-                </div>
-              </div>
-
-              {/* Category Scores */}
-              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className={`rounded-lg p-4 ${getScoreBgColor(report.data.scores.categories.dataProtection)}`}>
-                  <div className="text-sm font-medium text-gray-600">{t('detail.categories.dataProtection')}</div>
-                  <div className={`text-2xl font-bold ${getScoreColor(report.data.scores.categories.dataProtection)}`}>
-                    {report.data.scores.categories.dataProtection}%
-                  </div>
-                </div>
-                <div className={`rounded-lg p-4 ${getScoreBgColor(report.data.scores.categories.accessControl)}`}>
-                  <div className="text-sm font-medium text-gray-600">{t('detail.categories.accessControl')}</div>
-                  <div className={`text-2xl font-bold ${getScoreColor(report.data.scores.categories.accessControl)}`}>
-                    {report.data.scores.categories.accessControl}%
-                  </div>
-                </div>
-                <div className={`rounded-lg p-4 ${getScoreBgColor(report.data.scores.categories.auditLogging)}`}>
-                  <div className="text-sm font-medium text-gray-600">{t('detail.categories.auditLogging')}</div>
-                  <div className={`text-2xl font-bold ${getScoreColor(report.data.scores.categories.auditLogging)}`}>
-                    {report.data.scores.categories.auditLogging}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.summary.totalPolicies')}</dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">{report.data.summary.totalPolicies}</dd>
-            </div>
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.summary.policiesWithPII')}</dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">{report.data.summary.policiesWithPII}</dd>
-            </div>
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.summary.totalExecutions')}</dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">{report.data.summary.totalExecutions}</dd>
-            </div>
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t('detail.summary.riskLevel')}</dt>
-              <dd className="mt-1">{getRiskBadge(report.data.piiAnalysis.riskLevel)}</dd>
-            </div>
-          </div>
-
-          {/* PII Analysis */}
-          {report.data.piiAnalysis.fieldsDetected.length > 0 && (
-            <div className="bg-white shadow sm:rounded-lg mb-6">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t('detail.piiAnalysis')}</h3>
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">{t('detail.detectedFields')}</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {report.data.piiAnalysis.fieldsDetected.map((field) => (
-                      <span
-                        key={field}
-                        className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800"
-                      >
-                        {field}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Recommendations */}
-          {report.data.recommendations.length > 0 && (
-            <div className="bg-white shadow sm:rounded-lg mb-6">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t('detail.recommendations')}</h3>
-                <ul className="space-y-2">
-                  {report.data.recommendations.map((rec, index) => (
-                    <li key={index} className="flex items-start">
-                      <svg className="h-5 w-5 text-indigo-500 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-sm text-gray-700">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Policies Analyzed */}
-          {report.data.policies.length > 0 && (
-            <div className="bg-white shadow sm:rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t('detail.policiesAnalyzed')}</h3>
-                <ul className="divide-y divide-gray-200">
-                  {report.data.policies.map((policy) => (
-                    <li key={policy.id} className="py-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Link href={`/policies/${policy.id}`} className="text-sm font-medium text-indigo-600 hover:underline">
-                            {policy.name}
-                          </Link>
-                          {policy.piiFields.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {policy.piiFields.map((field) => (
-                                <span
-                                  key={field}
-                                  className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
-                                >
-                                  {field}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {t('detail.executionCount', { count: policy.executionCount })}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
+  return <ReportDetailContent report={report} translations={translations} />;
 }

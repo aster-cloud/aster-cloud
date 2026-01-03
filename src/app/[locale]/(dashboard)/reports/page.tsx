@@ -1,278 +1,80 @@
-'use client';
+import { getTranslations } from 'next-intl/server';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
+import { getComplianceReports } from '@/lib/compliance';
+import { ReportsContent } from './reports-content';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-
-interface ComplianceReport {
-  id: string;
-  type: string;
-  title: string;
-  status: 'generating' | 'completed' | 'failed';
-  data: {
-    summary: {
-      totalPolicies: number;
-      policiesWithPII: number;
-      totalExecutions: number;
-      complianceScore: number;
-    };
-  } | null;
-  createdAt: string;
-  completedAt: string | null;
-}
-
-const REPORT_TYPE_IDS = ['gdpr', 'hipaa', 'soc2', 'pci_dss'] as const;
-
-export default function ReportsPage() {
-  const t = useTranslations('reports');
-  const [reports, setReports] = useState<ComplianceReport[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedType, setSelectedType] = useState('');
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
-    try {
-      const res = await fetch('/api/reports');
-      if (!res.ok) throw new Error('Failed to fetch reports');
-      const data = await res.json();
-      setReports(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const generateReport = async (type: string) => {
-    setIsGenerating(true);
-    setError('');
-
-    try {
-      const res = await fetch('/api/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.upgrade) {
-          setError(data.error);
-        } else {
-          throw new Error(data.error || 'Failed to generate report');
-        }
-        return;
-      }
-
-      // Refresh reports list
-      await fetchReports();
-      setSelectedType('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate report');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return (
-          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-            {t('status.completed')}
-          </span>
-        );
-      case 'generating':
-        return (
-          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-            {t('status.generating')}
-          </span>
-        );
-      case 'failed':
-        return (
-          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-            {t('status.failed')}
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+export default async function ReportsPage() {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    redirect('/login');
   }
 
+  const t = await getTranslations('reports');
+
+  // 获取报告列表
+  const reportsData = await getComplianceReports(session.user.id);
+
+  // 序列化数据以便传递给客户端组件
+  const reports = reportsData.map((report) => ({
+    id: report.id,
+    type: report.type,
+    title: report.title,
+    status: report.status as 'generating' | 'completed' | 'failed',
+    data: report.data as {
+      summary: {
+        totalPolicies: number;
+        policiesWithPII: number;
+        totalExecutions: number;
+        complianceScore: number;
+      };
+    } | null,
+    createdAt: report.createdAt.toISOString(),
+    completedAt: report.completedAt?.toISOString() ?? null,
+  }));
+
+  // 预渲染所有翻译字符串
+  const translations = {
+    title: t('title'),
+    subtitle: t('subtitle'),
+    upgradePlan: t('upgradePlan'),
+    generateNew: t('generateNew'),
+    generating: t('generating'),
+    generateTemplate: t.raw('generate'),
+    noReports: t('noReports'),
+    generateFirst: t('generateFirst'),
+    typeTemplate: t.raw('type'),
+    createdTemplate: t.raw('created'),
+    policiesAnalyzedTemplate: t.raw('policiesAnalyzed'),
+    status: {
+      completed: t('status.completed'),
+      generating: t('status.generating'),
+      failed: t('status.failed'),
+    },
+    reportTypes: {
+      gdpr: {
+        name: t('reportTypes.gdpr.name'),
+        description: t('reportTypes.gdpr.description'),
+      },
+      hipaa: {
+        name: t('reportTypes.hipaa.name'),
+        description: t('reportTypes.hipaa.description'),
+      },
+      soc2: {
+        name: t('reportTypes.soc2.name'),
+        description: t('reportTypes.soc2.description'),
+      },
+      pci_dss: {
+        name: t('reportTypes.pci_dss.name'),
+        description: t('reportTypes.pci_dss.description'),
+      },
+    },
+  };
+
   return (
-    <div>
-      <div className="md:flex md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {t('subtitle')}
-          </p>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-6 rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-          {error.includes('subscription') && (
-            <Link href="/billing" className="text-sm font-medium text-red-700 underline">
-              {t('upgradePlan')}
-            </Link>
-          )}
-        </div>
-      )}
-
-      {/* Generate Report */}
-      <div className="bg-white shadow sm:rounded-lg mb-8">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {t('generateNew')}
-          </h3>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {REPORT_TYPE_IDS.map((id) => (
-              <button
-                key={id}
-                onClick={() => setSelectedType(id)}
-                disabled={isGenerating}
-                className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                  selectedType === id
-                    ? 'border-indigo-600 bg-indigo-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                } disabled:opacity-50`}
-              >
-                <div className="font-medium text-gray-900">{t(`reportTypes.${id}.name`)}</div>
-                <div className="text-sm text-gray-500">{t(`reportTypes.${id}.description`)}</div>
-              </button>
-            ))}
-          </div>
-
-          {selectedType && (
-            <div className="mt-4">
-              <button
-                onClick={() => generateReport(selectedType)}
-                disabled={isGenerating}
-                className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    {t('generating')}
-                  </>
-                ) : (
-                  t('generate', { type: t(`reportTypes.${selectedType}.name`) })
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Reports List */}
-      {reports.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">{t('noReports')}</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {t('generateFirst')}
-          </p>
-        </div>
-      ) : (
-        <div className="bg-white shadow sm:rounded-lg overflow-hidden">
-          <ul className="divide-y divide-gray-200">
-            {reports.map((report) => (
-              <li key={report.id}>
-                <Link
-                  href={`/reports/${report.id}`}
-                  className="block hover:bg-gray-50"
-                >
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-indigo-600">
-                          {report.title}
-                        </span>
-                        <span className="ml-2">{getStatusBadge(report.status)}</span>
-                      </div>
-                      {report.status === 'completed' && report.data && (
-                        <span
-                          className={`text-2xl font-bold ${getScoreColor(
-                            report.data.summary.complianceScore
-                          )}`}
-                        >
-                          {report.data.summary.complianceScore}%
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 flex items-center text-sm text-gray-500">
-                      <span>{t('type', { type: report.type.toUpperCase() })}</span>
-                      <span className="mx-2">|</span>
-                      <span>
-                        {t('created', { date: new Date(report.createdAt).toLocaleDateString() })}
-                      </span>
-                      {report.status === 'completed' && report.data && (
-                        <>
-                          <span className="mx-2">|</span>
-                          <span>{t('policiesAnalyzed', { count: report.data.summary.totalPolicies })}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
+    <ReportsContent
+      initialReports={reports}
+      translations={translations}
+    />
   );
 }
