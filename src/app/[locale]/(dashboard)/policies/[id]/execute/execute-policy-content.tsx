@@ -16,9 +16,26 @@ interface ExecutionResult {
   durationMs: number;
 }
 
+/**
+ * CNL 策略测试数据
+ *
+ * 重要说明：Aster CNL 运行时期望 context 为参数值数组，按函数参数顺序传入。
+ * 不需要用参数名包装数据，直接传入字段值即可。
+ *
+ * 例如，对于函数声明：
+ *   评估贷款 入参 申请人：申请人，产出 结果：
+ *
+ * context 应为：
+ *   [{ 编号: "A001", 信用评分: 720, ... }]
+ *
+ * 而不是：
+ *   [{ 申请人: { 编号: "A001", ... } }]
+ */
+
 // 英文策略测试数据
 const EXAMPLE_INPUTS_EN = {
   loanApplication: {
+    id: 'A001',
     creditScore: 720,
     income: 85000,
     debtToIncomeRatio: 0.35,
@@ -31,41 +48,33 @@ const EXAMPLE_INPUTS_EN = {
   },
 };
 
-// 中文策略测试数据（与中文 CNL 策略字段匹配）
+// 中文策略测试数据（字段名与中文 CNL 类型定义匹配）
 const EXAMPLE_INPUTS_ZH = {
   loanApplication: {
-    申请人: {
-      编号: 'A001',
-      信用评分: 720,
-      收入: 85000,
-      申请金额: 50000,
-    },
+    编号: 'A001',
+    信用评分: 720,
+    收入: 85000,
+    申请金额: 50000,
   },
   userVerification: {
-    用户: {
-      邮箱: 'user@example.com',
-      手机已验证: true,
-      资料已提交: true,
-    },
+    邮箱: 'user@example.com',
+    手机已验证: true,
+    资料已提交: true,
   },
 };
 
-// 德语策略测试数据（与德语 CNL 策略字段匹配）
+// 德语策略测试数据（字段名与德语 CNL 类型定义匹配）
 const EXAMPLE_INPUTS_DE = {
   loanApplication: {
-    antragsteller: {
-      kennung: 'A001',
-      bonitaet: 720,
-      einkommen: 85000,
-      kreditbetrag: 50000,
-    },
+    kennung: 'A001',
+    bonitaet: 720,
+    einkommen: 85000,
+    kreditbetrag: 50000,
   },
   userVerification: {
-    benutzer: {
-      email: 'user@example.com',
-      telefonVerifiziert: true,
-      dokumenteEingereicht: true,
-    },
+    email: 'user@example.com',
+    telefonVerifiziert: true,
+    dokumenteEingereicht: true,
   },
 };
 
