@@ -11,10 +11,11 @@ import type { Policy } from '@prisma/client';
 
 // CNL 必须特征模式 - 这些是 CNL 独有的，简单 DSL 不具备
 const CNL_REQUIRED_PATTERNS = [
-  /^\s*(module|模块)\s+/m, // 模块声明
-  /^\s*(type|类型)\s+\w+/m, // 类型定义（后面必须有类型名）
-  /^\s*(function|函数)\s+\w+/m, // 函数定义（后面必须有函数名）
-  /^\s*capability\s+\w+/m, // 能力声明
+  // 英文语法变体
+  /This module is\s+\S+/im, // This module is finance.loan.
+  /Define\s+\w+\s+with/im, // Define Applicant with
+  /To\s+\w+.*produce\s+\w+/im, // To evaluateLoan with ... produce Text:
+  /^\s*capability\s+\w+/m, // capability 声明
   /^\s*use\s+\w+/m, // use 导入
   // 中文方括号语法变体
   /【模块】/m, // 【模块】金融.贷款
@@ -228,45 +229,94 @@ async function executeWithSimpleEngine(
 }
 
 /**
+ * 从 CNL 结果中解析批准状态
+ *
+ * CNL 函数可能返回：
+ * 1. 对象格式：{ approved: boolean, reason?: string }
+ * 2. 字符串格式："批准，优惠利率" / "Approved with premium rate" / "Genehmigt..."
+ *
+ * 对于字符串格式，通过关键字匹配判断批准状态
+ */
+function parseApprovalFromResult(result: unknown): { approved: boolean; message: string } {
+  // 对象格式：直接提取 approved 字段
+  if (result && typeof result === 'object' && 'approved' in result) {
+    const obj = result as { approved: boolean; reason?: string };
+    return {
+      approved: obj.approved === true,
+      message: obj.reason || (obj.approved ? 'Approved' : 'Denied'),
+    };
+  }
+
+  // 字符串格式：通过关键字判断
+  if (typeof result === 'string') {
+    const resultStr = result.toLowerCase();
+    // 批准关键字（中/英/德）
+    const approvalKeywords = ['批准', 'approved', 'genehmigt', '通过', 'accept'];
+    // 拒绝/待定关键字
+    const denialKeywords = ['拒绝', 'denied', 'reject', 'abgelehnt', '需要人工', 'requires', 'manual', 'erfordert'];
+
+    const isApproved = approvalKeywords.some((kw) => resultStr.includes(kw));
+    const isDenied = denialKeywords.some((kw) => resultStr.includes(kw));
+
+    // 如果同时包含批准和待定/拒绝关键字，以拒绝为准（保守原则）
+    if (isApproved && !isDenied) {
+      return { approved: true, message: result };
+    }
+    return { approved: false, message: result };
+  }
+
+  // 其他类型：无法解析，视为拒绝
+  return { approved: false, message: 'Unknown result format' };
+}
+
+/**
  * 构建 CNL 执行成功结果
  * 安全原则：fail-closed，未明确允许即拒绝
  */
 function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): PolicyExecutionResult {
-  const resultObj = apiResponse.result as { approved?: boolean; reason?: string; reasons?: string[] } | undefined;
-  // fail-closed: 仅当 success=true 且 approved=true 时才允许
-  const allowed = apiResponse.success && resultObj?.approved === true;
+  // 如果 API 调用失败，直接返回失败结果
+  if (!apiResponse.success) {
+    return {
+      allowed: false,
+      approved: false,
+      matchedRules: [],
+      deniedReasons: [apiResponse.error || 'Policy evaluation failed'],
+      metadata: {
+        evaluatedAt: new Date().toISOString(),
+        policyId: policy.id,
+        policyName: policy.name,
+        ruleCount: 0,
+        matchedRuleCount: 0,
+        denyCount: 1,
+        engine: 'aster-cnl',
+        executionTime: apiResponse.executionTime,
+        policyVersion: apiResponse.policyVersion,
+      },
+      result: apiResponse.result,
+    };
+  }
+
+  // 解析执行结果
+  const { approved, message } = parseApprovalFromResult(apiResponse.result);
 
   // 构建拒绝原因列表
   const deniedReasons: string[] = [];
-  if (apiResponse.error) {
-    deniedReasons.push(apiResponse.error);
-  } else if (!allowed) {
-    // CNL 评估结果为拒绝或缺失 approved 字段时，记录原因
-    if (resultObj?.reasons && Array.isArray(resultObj.reasons)) {
-      deniedReasons.push(...resultObj.reasons);
-    } else if (resultObj?.reason) {
-      deniedReasons.push(resultObj.reason);
-    } else if (resultObj?.approved === false) {
-      deniedReasons.push('Policy evaluation result: denied');
-    } else {
-      // approved 字段缺失，可能是上游 bug，打印警告并拒绝
-      console.warn('[CNLExecutor] Missing approved field in CNL result, failing safely');
-      deniedReasons.push('Policy evaluation failed: missing approval status');
-    }
+  if (!approved) {
+    deniedReasons.push(message);
   }
 
   return {
-    allowed,
-    approved: allowed,
-    matchedRules: [],
+    allowed: approved,
+    approved,
+    matchedRules: approved ? [message] : [],
     deniedReasons,
     metadata: {
       evaluatedAt: new Date().toISOString(),
       policyId: policy.id,
       policyName: policy.name,
-      ruleCount: 0,
-      matchedRuleCount: 0,
-      denyCount: deniedReasons.length,
+      ruleCount: 1,
+      matchedRuleCount: approved ? 1 : 0,
+      denyCount: approved ? 0 : 1,
       engine: 'aster-cnl',
       executionTime: apiResponse.executionTime,
       policyVersion: apiResponse.policyVersion,
