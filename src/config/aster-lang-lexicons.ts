@@ -263,10 +263,89 @@ export const ZH_CN_LEXICON: LexiconConfig = {
   },
 };
 
+// 德语词法配置
+export const DE_DE_LEXICON: LexiconConfig = {
+  id: 'de-DE',
+  name: 'Deutsch',
+  keywords: {
+    [SemanticTokenKind.MODULE_DECL]: 'dieses modul ist',
+    [SemanticTokenKind.IMPORT]: 'verwende',
+    [SemanticTokenKind.IMPORT_ALIAS]: 'als',
+    [SemanticTokenKind.TYPE_DEF]: 'definiere',
+    [SemanticTokenKind.TYPE_WITH]: 'mit',
+    [SemanticTokenKind.TYPE_ONE_OF]: 'als eines von',
+    [SemanticTokenKind.FUNC_TO]: 'um',
+    [SemanticTokenKind.FUNC_PRODUCE]: 'erzeuge',
+    [SemanticTokenKind.FUNC_PERFORMS]: 'es führt aus',
+    [SemanticTokenKind.IF]: 'falls',
+    [SemanticTokenKind.OTHERWISE]: 'sonst',
+    [SemanticTokenKind.MATCH]: 'prüfe',
+    [SemanticTokenKind.WHEN]: 'wenn',
+    [SemanticTokenKind.RETURN]: 'gib zurück',
+    [SemanticTokenKind.FOR_EACH]: 'für jedes',
+    [SemanticTokenKind.IN]: 'in',
+    [SemanticTokenKind.LET]: 'sei',
+    [SemanticTokenKind.BE]: 'gleich',
+    [SemanticTokenKind.SET]: 'setze',
+    [SemanticTokenKind.TO_WORD]: 'auf',
+    [SemanticTokenKind.OR]: 'oder',
+    [SemanticTokenKind.AND]: 'und',
+    [SemanticTokenKind.NOT]: 'nicht',
+    [SemanticTokenKind.PLUS]: 'plus',
+    [SemanticTokenKind.MINUS_WORD]: 'minus',
+    [SemanticTokenKind.TIMES]: 'mal',
+    [SemanticTokenKind.DIVIDED_BY]: 'geteilt durch',
+    [SemanticTokenKind.LESS_THAN]: 'kleiner als',
+    [SemanticTokenKind.GREATER_THAN]: 'größer als',
+    [SemanticTokenKind.EQUALS_TO]: 'gleich',
+    [SemanticTokenKind.IS]: 'ist',
+    [SemanticTokenKind.MAYBE]: 'vielleicht',
+    [SemanticTokenKind.OPTION_OF]: 'option von',
+    [SemanticTokenKind.RESULT_OF]: 'ergebnis von',
+    [SemanticTokenKind.OK_OF]: 'ok von',
+    [SemanticTokenKind.ERR_OF]: 'fehler von',
+    [SemanticTokenKind.SOME_OF]: 'einige von',
+    [SemanticTokenKind.NONE]: 'keine',
+    [SemanticTokenKind.TRUE]: 'wahr',
+    [SemanticTokenKind.FALSE]: 'falsch',
+    [SemanticTokenKind.NULL]: 'null',
+    [SemanticTokenKind.TEXT]: 'text',
+    [SemanticTokenKind.INT_TYPE]: 'ganzzahl',
+    [SemanticTokenKind.FLOAT_TYPE]: 'dezimal',
+    [SemanticTokenKind.BOOL_TYPE]: 'bool',
+    [SemanticTokenKind.IO]: 'io',
+    [SemanticTokenKind.CPU]: 'cpu',
+    [SemanticTokenKind.WORKFLOW]: 'arbeitsablauf',
+    [SemanticTokenKind.STEP]: 'schritt',
+    [SemanticTokenKind.DEPENDS]: 'hängt ab',
+    [SemanticTokenKind.ON]: 'von',
+    [SemanticTokenKind.COMPENSATE]: 'kompensiere',
+    [SemanticTokenKind.RETRY]: 'wiederhole',
+    [SemanticTokenKind.TIMEOUT]: 'zeitüberschreitung',
+    [SemanticTokenKind.MAX_ATTEMPTS]: 'max versuche',
+    [SemanticTokenKind.BACKOFF]: 'verzögerung',
+    [SemanticTokenKind.WITHIN]: 'innerhalb',
+    [SemanticTokenKind.SCOPE]: 'bereich',
+    [SemanticTokenKind.START]: 'starte',
+    [SemanticTokenKind.ASYNC]: 'async',
+    [SemanticTokenKind.AWAIT]: 'warte',
+    [SemanticTokenKind.WAIT_FOR]: 'warte auf',
+  },
+  punctuation: {
+    statementEnd: '.',
+    listSeparator: ',',
+    blockStart: ':',
+    stringQuotes: { open: '"', close: '"' },
+  },
+};
+
 // 获取词法配置
 export function getLexicon(locale: string): LexiconConfig {
   if (locale === 'zh' || locale === 'zh-CN') {
     return ZH_CN_LEXICON;
+  }
+  if (locale === 'de' || locale === 'de-DE') {
+    return DE_DE_LEXICON;
   }
   return EN_US_LEXICON;
 }

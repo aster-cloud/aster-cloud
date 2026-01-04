@@ -20,10 +20,17 @@ const CNL_REQUIRED_PATTERNS = [
   /【模块】/m, // 【模块】金融.贷款
   /【定义】/m, // 【定义】申请人 包含
   /入参\s+\S+.*产出/m, // 入参 申请人：申请人，产出 文本
+  // 德语语法变体
+  /Dieses Modul ist/im, // Dieses Modul ist finanz.kredit
+  /Definiere\s+\w+\s+mit/im, // Definiere Antragsteller mit
+  /Um\s+\w+\s+mit.*erzeuge/im, // Um kreditPruefen mit ... erzeuge
 ];
 
 // 中文 CNL 关键字
 const CHINESE_KEYWORDS = ['模块', '类型', '函数', '当', '则', '如果', '那么', '并且', '或者', '定义', '入参', '产出', '若', '返回'];
+
+// 德语 CNL 关键字
+const GERMAN_KEYWORDS = ['Modul', 'Definiere', 'Falls', 'Sonst', 'Gib zurück', 'erzeuge', 'größer als', 'kleiner als', 'Ganzzahl', 'Dezimal'];
 
 /**
  * 检测策略内容是否为 Aster CNL 格式
@@ -47,11 +54,18 @@ export function isAsterCNL(content: string): boolean {
 }
 
 /**
- * 检测 CNL 语言类型（中文/英文）
+ * 检测 CNL 语言类型（中文/英文/德文）
  */
 export function detectCNLLocale(content: string): string {
   const hasChineseKeywords = CHINESE_KEYWORDS.some((keyword) => content.includes(keyword));
-  return hasChineseKeywords ? 'zh-CN' : 'en-US';
+  if (hasChineseKeywords) {
+    return 'zh-CN';
+  }
+  const hasGermanKeywords = GERMAN_KEYWORDS.some((keyword) => content.toLowerCase().includes(keyword.toLowerCase()));
+  if (hasGermanKeywords) {
+    return 'de-DE';
+  }
+  return 'en-US';
 }
 
 /**

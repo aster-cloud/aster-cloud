@@ -50,15 +50,55 @@ const EXAMPLE_INPUTS_ZH = {
   },
 };
 
-// 检测策略是否为中文
-function isPolicyChinese(content: string): boolean {
+// 德语策略测试数据（与德语 CNL 策略字段匹配）
+const EXAMPLE_INPUTS_DE = {
+  loanApplication: {
+    antragsteller: {
+      kennung: 'A001',
+      bonitaet: 720,
+      einkommen: 85000,
+      kreditbetrag: 50000,
+    },
+  },
+  userVerification: {
+    benutzer: {
+      email: 'user@example.com',
+      telefonVerifiziert: true,
+      dokumenteEingereicht: true,
+    },
+  },
+};
+
+// 检测策略语言类型
+type PolicyLocale = 'zh' | 'de' | 'en';
+
+function detectPolicyLocale(content: string): PolicyLocale {
   const chinesePatterns = [/【模块】/, /【定义】/, /入参.*产出/, /模块\s+\S+。/, /定义\s+\S+\s+包含/];
-  return chinesePatterns.some((p) => p.test(content));
+  if (chinesePatterns.some((p) => p.test(content))) {
+    return 'zh';
+  }
+  const germanPatterns = [/Dieses Modul ist/i, /Definiere\s+\w+\s+mit/i, /Falls\s+/i, /Gib zurück/i];
+  if (germanPatterns.some((p) => p.test(content))) {
+    return 'de';
+  }
+  return 'en';
 }
 
 interface ExecutePolicyContentProps {
   policyId: string;
   locale: string;
+}
+
+// 根据策略语言类型获取对应的测试数据
+function getExampleInputs(policyLocale: PolicyLocale) {
+  switch (policyLocale) {
+    case 'zh':
+      return EXAMPLE_INPUTS_ZH;
+    case 'de':
+      return EXAMPLE_INPUTS_DE;
+    default:
+      return EXAMPLE_INPUTS_EN;
+  }
 }
 
 export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentProps) {
@@ -68,7 +108,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [policyName, setPolicyName] = useState('');
-  const [isChinese, setIsChinese] = useState(false);
+  const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
 
   useEffect(() => {
     // Fetch policy details including content
@@ -77,9 +117,9 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       .then((data) => {
         setPolicyName(data.name);
         // 检测策略语言并设置对应的默认测试数据
-        const chinese = isPolicyChinese(data.content || '');
-        setIsChinese(chinese);
-        const examples = chinese ? EXAMPLE_INPUTS_ZH : EXAMPLE_INPUTS_EN;
+        const detectedLocale = detectPolicyLocale(data.content || '');
+        setPolicyLocale(detectedLocale);
+        const examples = getExampleInputs(detectedLocale);
         setInput(JSON.stringify(examples.loanApplication, null, 2));
       })
       .catch(() => {
@@ -128,7 +168,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   };
 
   const loadExample = (type: 'loanApplication' | 'userVerification') => {
-    const examples = isChinese ? EXAMPLE_INPUTS_ZH : EXAMPLE_INPUTS_EN;
+    const examples = getExampleInputs(policyLocale);
     setInput(JSON.stringify(examples[type], null, 2));
   };
 

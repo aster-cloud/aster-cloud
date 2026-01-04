@@ -45,12 +45,37 @@ To evaluateLoan with applicant: Applicant, produce Text:
     否则：
       返回「需要人工审核」。
 `,
+  'de-DE': `// Kreditgenehmigungsrichtlinie
+// Diese Richtlinie bewertet Kreditanträge basierend auf Bonitätsbewertung und Einkommen
+
+Dieses Modul ist finanz.kredit.
+
+Definiere Antragsteller mit
+  kennung: Text,
+  bonitaet: Ganzzahl,
+  einkommen: Dezimal,
+  kreditbetrag: Dezimal.
+
+Um kreditPruefen mit antragsteller: Antragsteller, erzeuge Text:
+  Falls antragsteller.bonitaet größer als 750:
+    Gib zurück "Genehmigt mit Vorzugszins".
+  Sonst:
+    Falls antragsteller.bonitaet größer als 650:
+      Gib zurück "Genehmigt mit Standardzins".
+    Sonst:
+      Gib zurück "Erfordert manuelle Prüfung".
+`,
 };
 
 /**
  * 根据 locale 获取对应的模板
  */
 export function getTemplateForLocale(locale: string): string {
-  const templateKey = locale.startsWith('zh') ? 'zh-CN' : 'en-US';
-  return ASTER_POLICY_TEMPLATES[templateKey];
+  if (locale.startsWith('zh')) {
+    return ASTER_POLICY_TEMPLATES['zh-CN'];
+  }
+  if (locale.startsWith('de')) {
+    return ASTER_POLICY_TEMPLATES['de-DE'];
+  }
+  return ASTER_POLICY_TEMPLATES['en-US'];
 }
