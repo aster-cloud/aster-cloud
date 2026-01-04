@@ -270,24 +270,37 @@ function parseApprovalFromResult(result: unknown): { approved: boolean; message:
 }
 
 /**
- * 构建 CNL 执行成功结果
- * 安全原则：fail-closed，未明确允许即拒绝
+ * 构建 CNL 执行结果
+ *
+ * 策略：
+ * 1. 如果有 result，优先解析 result 判断批准状态
+ * 2. 如果没有 result 且 success=false，返回错误
+ * 3. 安全原则：fail-closed，无法解析时拒绝
  */
 function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): PolicyExecutionResult {
-  // 如果 API 调用失败，直接返回失败结果
-  if (!apiResponse.success) {
+  // 如果有 result，尝试解析（即使 success=false）
+  // 某些情况下 API 可能返回 success=false 但仍有有效结果
+  if (apiResponse.result !== undefined && apiResponse.result !== null) {
+    const { approved, message } = parseApprovalFromResult(apiResponse.result);
+
+    // 构建结果
+    const deniedReasons: string[] = [];
+    if (!approved) {
+      deniedReasons.push(message);
+    }
+
     return {
-      allowed: false,
-      approved: false,
-      matchedRules: [],
-      deniedReasons: [apiResponse.error || 'Policy evaluation failed'],
+      allowed: approved,
+      approved,
+      matchedRules: approved ? [message] : [],
+      deniedReasons,
       metadata: {
         evaluatedAt: new Date().toISOString(),
         policyId: policy.id,
         policyName: policy.name,
-        ruleCount: 0,
-        matchedRuleCount: 0,
-        denyCount: 1,
+        ruleCount: 1,
+        matchedRuleCount: approved ? 1 : 0,
+        denyCount: approved ? 0 : 1,
         engine: 'aster-cnl',
         executionTime: apiResponse.executionTime,
         policyVersion: apiResponse.policyVersion,
@@ -296,27 +309,19 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
     };
   }
 
-  // 解析执行结果
-  const { approved, message } = parseApprovalFromResult(apiResponse.result);
-
-  // 构建拒绝原因列表
-  const deniedReasons: string[] = [];
-  if (!approved) {
-    deniedReasons.push(message);
-  }
-
+  // 没有 result 且调用失败，返回错误
   return {
-    allowed: approved,
-    approved,
-    matchedRules: approved ? [message] : [],
-    deniedReasons,
+    allowed: false,
+    approved: false,
+    matchedRules: [],
+    deniedReasons: [apiResponse.error || 'Policy evaluation failed: no result returned'],
     metadata: {
       evaluatedAt: new Date().toISOString(),
       policyId: policy.id,
       policyName: policy.name,
-      ruleCount: 1,
-      matchedRuleCount: approved ? 1 : 0,
-      denyCount: approved ? 0 : 1,
+      ruleCount: 0,
+      matchedRuleCount: 0,
+      denyCount: 1,
       engine: 'aster-cnl',
       executionTime: apiResponse.executionTime,
       policyVersion: apiResponse.policyVersion,
