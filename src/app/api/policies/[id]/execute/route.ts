@@ -126,7 +126,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         output: executionResult as object,
         error: primaryError,
         durationMs,
-        success: executionResult.allowed,
+        success: executionResult.allowed ?? false,
         source: 'dashboard',
       },
     });
