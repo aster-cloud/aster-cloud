@@ -5,10 +5,7 @@
  */
 
 export const ASTER_POLICY_TEMPLATES = {
-  'en-US': `// Loan Approval Policy
-// This policy evaluates loan applications based on credit score and income
-
-This module is finance.loan.
+  'en-US': `This module is finance.loan.
 
 Define Applicant with
   id: Text,
@@ -25,10 +22,7 @@ To evaluateLoan with applicant: Applicant, produce Text:
     Otherwise:
       Return "Requires manual review".
 `,
-  'zh-CN': `// 贷款审批策略
-// 此策略根据信用评分和收入评估贷款申请
-
-【模块】金融.贷款。
+  'zh-CN': `【模块】金融.贷款。
 
 【定义】申请人 包含
   编号：文本，
@@ -45,10 +39,7 @@ To evaluateLoan with applicant: Applicant, produce Text:
     否则：
       返回「需要人工审核」。
 `,
-  'de-DE': `// Kreditgenehmigungsrichtlinie
-// Diese Richtlinie bewertet Kreditanträge basierend auf Bonitätsbewertung und Einkommen
-
-Dieses Modul ist finanz.kredit.
+  'de-DE': `Dieses Modul ist finanz.kredit.
 
 Definiere Antragsteller mit
   kennung: Text,
