@@ -18,5 +18,8 @@ export default async function LoginPage() {
     signIn: t('signIn'),
   };
 
-  return <LoginContent translations={translations} />;
+  // 获取 Turnstile Site Key（服务端安全传递）
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+
+  return <LoginContent translations={translations} turnstileSiteKey={turnstileSiteKey} />;
 }

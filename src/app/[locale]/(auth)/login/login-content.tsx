@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useCallback } from 'react';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { defaultLocale } from '@/i18n/config';
+import { Turnstile, TurnstilePlaceholder } from '@/components/turnstile';
 
 interface Translations {
   brand: string;
@@ -21,14 +22,17 @@ interface Translations {
 
 interface LoginContentProps {
   translations: Translations;
+  turnstileSiteKey?: string;
 }
 
-function LoginForm({ translations: t }: LoginContentProps) {
+function LoginForm({ translations: t, turnstileSiteKey }: LoginContentProps) {
   const locale = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
   const { data: session } = useSession();
   const searchParams = useSearchParams();
 
@@ -38,11 +42,53 @@ function LoginForm({ translations: t }: LoginContentProps) {
   const callbackUrl = searchParams.get('callbackUrl') || defaultCallbackUrl;
   const errorParam = searchParams.get('error');
 
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
+    // 1. 预验证（Turnstile + 速率限制 + 账户锁定）
+    try {
+      const verifyRes = await fetch('/api/auth/verify-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, turnstileToken }),
+      });
+
+      const verifyData = await verifyRes.json();
+
+      if (!verifyRes.ok) {
+        if (verifyData.code === 'RATE_LIMITED') {
+          setError(`Too many attempts. Please wait ${verifyData.retryAfter} seconds.`);
+        } else if (verifyData.code === 'ACCOUNT_LOCKED') {
+          setError(`Account locked. Please try again in ${Math.ceil(verifyData.retryAfter / 60)} minutes.`);
+        } else if (verifyData.code === 'CAPTCHA_FAILED') {
+          setError('CAPTCHA verification failed. Please try again.');
+          setTurnstileToken(null);
+        } else {
+          setError(verifyData.error || 'Verification failed');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (verifyData.remainingAttempts !== undefined) {
+        setRemainingAttempts(verifyData.remainingAttempts);
+      }
+    } catch (verifyError) {
+      console.error('Verification error:', verifyError);
+      // 验证失败时仍然尝试登录（降级处理）
+    }
+
+    // 2. 执行登录
     const result = await signIn('credentials', {
       email,
       password,
@@ -51,8 +97,17 @@ function LoginForm({ translations: t }: LoginContentProps) {
     });
 
     if (result?.error) {
-      setError('Invalid email or password');
+      if (result.error === 'ACCOUNT_LOCKED') {
+        setError('Account is temporarily locked due to too many failed attempts.');
+      } else {
+        setError('Invalid email or password');
+        if (remainingAttempts !== null && remainingAttempts > 0) {
+          setError(`Invalid email or password. ${remainingAttempts - 1} attempts remaining.`);
+        }
+      }
       setIsLoading(false);
+      // 重置 Turnstile
+      setTurnstileToken(null);
     } else if (result?.url) {
       window.location.href = result.url;
     }
@@ -194,10 +249,25 @@ function LoginForm({ translations: t }: LoginContentProps) {
               </div>
             </div>
 
+            {/* Turnstile CAPTCHA */}
+            {turnstileSiteKey ? (
+              <div className="flex justify-center">
+                <Turnstile
+                  siteKey={turnstileSiteKey}
+                  onVerify={handleTurnstileVerify}
+                  onExpire={handleTurnstileExpire}
+                  theme="auto"
+                  language={locale}
+                />
+              </div>
+            ) : process.env.NODE_ENV === 'development' ? (
+              <TurnstilePlaceholder onVerify={handleTurnstileVerify} />
+            ) : null}
+
             <div>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || (!!turnstileSiteKey && !turnstileToken)}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
                 {isLoading ? '...' : t.signIn}
@@ -210,10 +280,10 @@ function LoginForm({ translations: t }: LoginContentProps) {
   );
 }
 
-export function LoginContent({ translations }: LoginContentProps) {
+export function LoginContent({ translations, turnstileSiteKey }: LoginContentProps) {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-      <LoginForm translations={translations} />
+      <LoginForm translations={translations} turnstileSiteKey={turnstileSiteKey} />
     </Suspense>
   );
 }

@@ -71,6 +71,12 @@ model User {
   image         String?
   passwordHash  String?   // For email/password authentication
 
+  // Account Lockout (防暴力破解)
+  failedLoginAttempts Int       @default(0)
+  lastFailedLoginAt   DateTime?
+  lockedUntil         DateTime?
+  lockoutCount        Int       @default(0)  // 累计锁定次数，用于渐进式锁定
+
   // Subscription
   plan             Plan      @default(free)
   stripeCustomerId String?   @unique

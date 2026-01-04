@@ -6,6 +6,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { sendWelcomeEmail } from '@/lib/resend';
+import { checkAccountLockout, recordFailedAttempt, resetFailedAttempts } from '@/lib/account-lockout';
 import type { Adapter } from 'next-auth/adapters';
 import type { Provider } from 'next-auth/providers/index';
 
@@ -56,9 +57,18 @@ providers.push(
           return null;
         }
 
+        const email = credentials.email.toLowerCase().trim();
+
+        // 检查账户锁定状态
+        const lockoutStatus = await checkAccountLockout(email);
+        if (lockoutStatus.locked) {
+          console.warn(`[Auth] 账户被锁定: ${email}, 解锁时间: ${lockoutStatus.lockedUntil}`);
+          throw new Error('ACCOUNT_LOCKED');
+        }
+
         // Find user with password hash
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
           select: {
             id: true,
             email: true,
@@ -70,6 +80,8 @@ providers.push(
 
         // User not found or no password set (OAuth-only user)
         if (!user || !user.passwordHash) {
+          // 记录失败尝试（即使用户不存在，也要记录以防止用户枚举）
+          await recordFailedAttempt(email);
           return null;
         }
 
@@ -80,8 +92,17 @@ providers.push(
         );
 
         if (!isValidPassword) {
+          // 记录失败尝试
+          const failedResult = await recordFailedAttempt(email);
+          if (failedResult.nowLocked) {
+            console.warn(`[Auth] 账户因多次失败被锁定: ${email}`);
+            throw new Error('ACCOUNT_LOCKED');
+          }
           return null;
         }
+
+        // 登录成功，重置失败计数
+        await resetFailedAttempts(email);
 
         return {
           id: user.id,
