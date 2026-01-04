@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import type { ParameterInfo, FieldInfo, TypeKind } from '@/services/policy/policy-api';
 
 interface ExecutionResult {
   executionId: string;
@@ -15,6 +16,16 @@ interface ExecutionResult {
   error?: string;
   durationMs: number;
 }
+
+interface PolicySchema {
+  success: boolean;
+  moduleName?: string;
+  functionName?: string;
+  parameters?: ParameterInfo[];
+  error?: string;
+}
+
+type InputMode = 'form' | 'json';
 
 /**
  * CNL 策略测试数据
@@ -110,6 +121,63 @@ function getExampleInputs(policyLocale: PolicyLocale) {
   }
 }
 
+// 默认值工厂：根据类型生成初始值
+function getDefaultValue(typeKind: TypeKind, typeName: string): unknown {
+  switch (typeKind) {
+    case 'primitive':
+      if (['int', 'integer', 'long', '整数', '长整数', 'ganzzahl', 'langzahl'].some(t => typeName.toLowerCase().includes(t))) {
+        return 0;
+      }
+      if (['double', 'float', 'decimal', '小数', '浮点数', 'dezimal'].some(t => typeName.toLowerCase().includes(t))) {
+        return 0.0;
+      }
+      if (['bool', 'boolean', '布尔', 'wahrheitswert'].some(t => typeName.toLowerCase().includes(t))) {
+        return false;
+      }
+      return '';
+    case 'struct':
+      return {};
+    case 'list':
+      return [];
+    case 'option':
+      return null;
+    default:
+      return '';
+  }
+}
+
+// 从表单值构建命名上下文
+function buildNamedContext(
+  formValues: Record<string, Record<string, unknown>>,
+  parameters: ParameterInfo[]
+): Record<string, unknown> {
+  const context: Record<string, unknown> = {};
+  for (const param of parameters) {
+    const value = formValues[param.name];
+    if (value !== undefined) {
+      context[param.name] = value;
+    }
+  }
+  return context;
+}
+
+// 初始化表单值
+function initFormValues(parameters: ParameterInfo[]): Record<string, Record<string, unknown>> {
+  const values: Record<string, Record<string, unknown>> = {};
+  for (const param of parameters) {
+    if (param.typeKind === 'struct' && param.fields) {
+      const structValue: Record<string, unknown> = {};
+      for (const field of param.fields) {
+        structValue[field.name] = getDefaultValue(field.typeKind, field.type);
+      }
+      values[param.name] = structValue;
+    } else {
+      values[param.name] = getDefaultValue(param.typeKind, param.type) as Record<string, unknown>;
+    }
+  }
+  return values;
+}
+
 export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentProps) {
   const t = useTranslations('policies.execute');
   const [input, setInput] = useState('');
@@ -119,23 +187,87 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [policyName, setPolicyName] = useState('');
   const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
 
+  // 新增状态：动态表单
+  const [inputMode, setInputMode] = useState<InputMode>('json');
+  const [schema, setSchema] = useState<PolicySchema | null>(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
+  const [policyContent, setPolicyContent] = useState('');
+
+  // 获取策略参数模式
+  const fetchSchema = useCallback(async (content: string, detectedLocale: PolicyLocale) => {
+    if (!content) return;
+
+    setSchemaLoading(true);
+    try {
+      const localeMap: Record<PolicyLocale, string> = {
+        zh: 'zh-CN',
+        de: 'de-DE',
+        en: 'en-US',
+      };
+
+      const res = await fetch('/api/policies/schema', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: content,
+          locale: localeMap[detectedLocale],
+        }),
+      });
+
+      const data: PolicySchema = await res.json();
+      if (data.success && data.parameters && data.parameters.length > 0) {
+        setSchema(data);
+        // 初始化表单值
+        setFormValues(initFormValues(data.parameters));
+      }
+    } catch (err) {
+      console.error('Failed to fetch schema:', err);
+    } finally {
+      setSchemaLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Fetch policy details including content
     fetch(`/api/policies/${policyId}`)
       .then((res) => res.json())
       .then((data) => {
         setPolicyName(data.name);
+        setPolicyContent(data.content || '');
         // 检测策略语言并设置对应的默认测试数据
         const detectedLocale = detectPolicyLocale(data.content || '');
         setPolicyLocale(detectedLocale);
         const examples = getExampleInputs(detectedLocale);
         setInput(JSON.stringify(examples.loanApplication, null, 2));
+        // 获取策略参数模式
+        if (data.content) {
+          fetchSchema(data.content, detectedLocale);
+        }
       })
       .catch(() => {
         // 默认使用英文测试数据
         setInput(JSON.stringify(EXAMPLE_INPUTS_EN.loanApplication, null, 2));
       });
-  }, [policyId]);
+  }, [policyId, fetchSchema]);
+
+  // 更新表单字段值
+  const updateFormField = (paramName: string, fieldName: string | null, value: unknown) => {
+    setFormValues(prev => {
+      const newValues = { ...prev };
+      if (fieldName === null) {
+        // 直接更新参数值（非结构体类型）
+        newValues[paramName] = value as Record<string, unknown>;
+      } else {
+        // 更新结构体字段
+        newValues[paramName] = {
+          ...prev[paramName],
+          [fieldName]: value,
+        };
+      }
+      return newValues;
+    });
+  };
 
   const handleExecute = async () => {
     setIsLoading(true);
@@ -143,7 +275,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     setResult(null);
 
     try {
-      const parsedInput = JSON.parse(input);
+      let parsedInput: unknown;
+
+      if (inputMode === 'form' && schema?.parameters) {
+        // 从表单构建命名上下文
+        parsedInput = buildNamedContext(formValues, schema.parameters);
+      } else {
+        // JSON 模式：解析输入
+        parsedInput = JSON.parse(input);
+      }
 
       const res = await fetch(`/api/policies/${policyId}/execute`, {
         method: 'POST',
@@ -181,6 +321,122 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     setInput(JSON.stringify(examples[type], null, 2));
   };
 
+  // 渲染单个表单字段
+  const renderField = (
+    paramName: string,
+    fieldName: string | null,
+    typeName: string,
+    typeKind: TypeKind,
+    value: unknown
+  ) => {
+    const id = fieldName ? `${paramName}-${fieldName}` : paramName;
+    const label = fieldName || paramName;
+
+    // 根据类型渲染不同的输入控件
+    if (['bool', 'boolean', '布尔', 'wahrheitswert'].some(t => typeName.toLowerCase().includes(t))) {
+      return (
+        <div key={id} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id={id}
+            checked={Boolean(value)}
+            onChange={(e) => updateFormField(paramName, fieldName, e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <label htmlFor={id} className="text-sm font-medium text-gray-700">
+            {label}
+          </label>
+          <span className="text-xs text-gray-400">({typeName})</span>
+        </div>
+      );
+    }
+
+    if (['int', 'integer', 'long', '整数', '长整数', 'ganzzahl', 'langzahl'].some(t => typeName.toLowerCase().includes(t))) {
+      return (
+        <div key={id}>
+          <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+            {label} <span className="text-xs text-gray-400">({typeName})</span>
+          </label>
+          <input
+            type="number"
+            id={id}
+            value={value as number ?? 0}
+            onChange={(e) => updateFormField(paramName, fieldName, parseInt(e.target.value, 10) || 0)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          />
+        </div>
+      );
+    }
+
+    if (['double', 'float', 'decimal', '小数', '浮点数', 'dezimal'].some(t => typeName.toLowerCase().includes(t))) {
+      return (
+        <div key={id}>
+          <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+            {label} <span className="text-xs text-gray-400">({typeName})</span>
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            id={id}
+            value={value as number ?? 0}
+            onChange={(e) => updateFormField(paramName, fieldName, parseFloat(e.target.value) || 0)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          />
+        </div>
+      );
+    }
+
+    // 默认：文本输入
+    return (
+      <div key={id}>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+          {label} <span className="text-xs text-gray-400">({typeName})</span>
+        </label>
+        <input
+          type="text"
+          id={id}
+          value={String(value ?? '')}
+          onChange={(e) => updateFormField(paramName, fieldName, e.target.value)}
+          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+        />
+      </div>
+    );
+  };
+
+  // 渲染参数表单
+  const renderParameterForm = (param: ParameterInfo) => {
+    const paramValue = formValues[param.name];
+
+    if (param.typeKind === 'struct' && param.fields && param.fields.length > 0) {
+      // 结构体类型：渲染字段组
+      return (
+        <div key={param.name} className="border border-gray-200 rounded-lg p-4 mb-4">
+          <h4 className="text-sm font-semibold text-gray-800 mb-3">
+            {param.name} <span className="text-xs font-normal text-gray-400">({param.type})</span>
+          </h4>
+          <div className="space-y-3">
+            {param.fields.map((field) =>
+              renderField(
+                param.name,
+                field.name,
+                field.type,
+                field.typeKind,
+                (paramValue as Record<string, unknown>)?.[field.name]
+              )
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // 基本类型：直接渲染
+    return (
+      <div key={param.name} className="mb-4">
+        {renderField(param.name, null, param.type, param.typeKind, paramValue)}
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -206,29 +462,84 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
           <div className="px-6 py-6 sm:p-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{t('input')}</h3>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => loadExample('loanApplication')}
-                  className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
-                >
-                  {t('loanExample')}
-                </button>
-                <button
-                  onClick={() => loadExample('userVerification')}
-                  className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
-                >
-                  {t('userExample')}
-                </button>
+              <div className="flex items-center space-x-3">
+                {/* Mode Toggle */}
+                {schema?.parameters && schema.parameters.length > 0 && (
+                  <div className="flex rounded-lg bg-gray-100 p-1">
+                    <button
+                      onClick={() => setInputMode('form')}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                        inputMode === 'form'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Form
+                    </button>
+                    <button
+                      onClick={() => setInputMode('json')}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                        inputMode === 'json'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      JSON
+                    </button>
+                  </div>
+                )}
+                {inputMode === 'json' && (
+                  <>
+                    <button
+                      onClick={() => loadExample('loanApplication')}
+                      className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
+                    >
+                      {t('loanExample')}
+                    </button>
+                    <button
+                      onClick={() => loadExample('userVerification')}
+                      className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
+                    >
+                      {t('userExample')}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              rows={12}
-              className="block w-full rounded-lg border border-gray-300 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-              placeholder={t('inputPlaceholder')}
-            />
+            {/* Schema Loading Indicator */}
+            {schemaLoading && (
+              <div className="flex items-center justify-center py-4 text-sm text-gray-500">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Loading schema...
+              </div>
+            )}
+
+            {/* Form Mode */}
+            {inputMode === 'form' && schema?.parameters && schema.parameters.length > 0 && !schemaLoading && (
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                {schema.functionName && (
+                  <div className="text-sm text-gray-500 mb-2">
+                    Function: <span className="font-mono text-gray-700">{schema.functionName}</span>
+                  </div>
+                )}
+                {schema.parameters.map((param) => renderParameterForm(param))}
+              </div>
+            )}
+
+            {/* JSON Mode */}
+            {inputMode === 'json' && (
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={12}
+                className="block w-full rounded-lg border border-gray-300 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                placeholder={t('inputPlaceholder')}
+              />
+            )}
 
             <button
               onClick={handleExecute}

@@ -96,6 +96,55 @@ export interface HealthCheckResponse {
   }>;
 }
 
+// Schema 类型定义（用于动态表单生成）
+export type TypeKind = 'primitive' | 'struct' | 'enum' | 'list' | 'map' | 'option' | 'result' | 'function' | 'unknown';
+
+export interface FieldInfo {
+  /** 字段名称 */
+  name: string;
+  /** 字段类型显示名称 */
+  type: string;
+  /** 字段类型分类 */
+  typeKind: TypeKind;
+}
+
+export interface ParameterInfo {
+  /** 参数名称 */
+  name: string;
+  /** 参数类型显示名称 */
+  type: string;
+  /** 参数类型分类 */
+  typeKind: TypeKind;
+  /** 是否可选 */
+  optional: boolean;
+  /** 参数位置（0 开始） */
+  position: number;
+  /** 结构体字段（仅 struct 类型） */
+  fields?: FieldInfo[];
+}
+
+export interface PolicySchemaRequest {
+  /** 策略源代码 (CNL 格式) */
+  source: string;
+  /** 目标函数名（可选，默认使用第一个函数） */
+  functionName?: string;
+  /** CNL 语言 */
+  locale?: string;
+}
+
+export interface PolicySchemaResponse {
+  /** 是否成功 */
+  success: boolean;
+  /** 模块名称 */
+  moduleName?: string;
+  /** 函数名称 */
+  functionName?: string;
+  /** 参数列表 */
+  parameters?: ParameterInfo[];
+  /** 错误信息 */
+  error?: string;
+}
+
 // WebSocket 消息类型
 export interface PreviewMessage {
   type: 'preview' | 'error' | 'diagnostics';
@@ -200,18 +249,44 @@ export class PolicyApiClient {
   }
 
   /**
+   * 获取策略参数模式
+   * 从 CNL 源代码提取函数参数的结构化模式信息，用于动态表单生成
+   *
+   * @param source - CNL 源代码
+   * @param options - 可选参数（函数名、语言）
+   * @returns 参数模式响应
+   */
+  async getSchema(
+    source: string,
+    options?: { functionName?: string; locale?: string }
+  ): Promise<PolicySchemaResponse> {
+    return this.request<PolicySchemaResponse>('POST', '/api/policies/schema', {
+      source,
+      functionName: options?.functionName,
+      locale: options?.locale || 'en-US',
+    });
+  }
+
+  /**
    * 直接评估策略源代码
    * 编译并执行 CNL 源代码，适用于 Dashboard 执行场景
+   *
+   * 支持两种上下文格式：
+   * 1. 命名格式: { "申请": {...}, "年龄": 25 } - 参数名与函数定义匹配
+   * 2. 位置格式: [{...}, 25] - 按位置顺序传参
+   *
+   * @param source - CNL 源代码
+   * @param context - 评估上下文（命名对象或位置数组）
+   * @param options - 可选参数（语言、函数名）
    */
   async evaluateSource(
     source: string,
-    context: Record<string, unknown> | Record<string, unknown>[],
+    context: Record<string, unknown> | unknown[],
     options?: { locale?: string; functionName?: string }
   ): Promise<PolicyEvaluateResponse> {
-    const normalizedContext = Array.isArray(context) ? context : [context];
     return this.request<PolicyEvaluateResponse>('POST', '/api/policies/evaluate-source', {
       source,
-      context: normalizedContext,
+      context,  // 直接传递，让后端处理命名/位置映射
       locale: options?.locale || 'en-US',
       functionName: options?.functionName || 'evaluate',
     });
