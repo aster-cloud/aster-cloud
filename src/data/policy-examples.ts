@@ -37,14 +37,26 @@ const loanEvaluationZh: PolicyExample = {
   descriptionZh: '基于申请人年龄的简单贷款评估',
   locale: 'zh-CN',
   category: 'loan',
-  source: `功能 评估贷款 入参 申请：贷款申请，年龄：整数，产出 贷款决定：
-  令 贷款决定 为 假
-  令 年龄合格 为 假
-  若 年龄 大于等于 18 则
-    设置 贷款决定 为 真
-  返回 贷款决定`,
+  source: `【模块】金融.贷款评估。
+
+【定义】贷款申请 包含 申请人编号：文本，金额：整数。
+
+【定义】贷款决定 包含 批准：布尔，原因：文本。
+
+检查年龄 入参 年龄：整数，产出 布尔：
+  若 年龄 小于 18：
+    返回 假。
+  返回 真。
+
+评估贷款 入参 申请：贷款申请，年龄：整数，产出 贷款决定：
+  令 年龄合格 为 检查年龄(年龄)。
+  若 非 年龄合格：
+    返回 贷款决定(批准：假，原因：「申请人未满18岁」)。
+  若 申请.金额 大于 100000：
+    返回 贷款决定(批准：假，原因：「金额超过限额」)。
+  返回 贷款决定(批准：真，原因：「审核通过」)。`,
   defaultInput: {
-    申请: { 编号: 'A001', 金额: 50000 },
+    申请: { 申请人编号: 'A001', 金额: 50000 },
     年龄: 25,
   },
 };
@@ -61,44 +73,40 @@ const loanApplicationZh: PolicyExample = {
   descriptionZh: '完整贷款申请：包含信用评分、收入和债务比率验证',
   locale: 'zh-CN',
   category: 'loan',
-  source: `定义 申请人 包含
-  编号：字符串，
-  姓名：字符串，
+  source: `【模块】金融.贷款申请。
+
+【定义】申请人 包含
+  编号：文本，
+  姓名：文本，
   年龄：整数，
   信用评分：整数，
   年收入：整数，
   现有债务：整数。
 
-定义 贷款请求 包含
+【定义】贷款请求 包含
   金额：整数，
   期限月数：整数，
-  用途：字符串。
+  用途：文本。
 
-功能 计算债务比率 入参 申请人：申请人，贷款请求：贷款请求，产出 比率：小数：
-  令 月还款 为 贷款请求 的 金额 除以 贷款请求 的 期限月数
-  令 月收入 为 申请人 的 年收入 除以 12
-  令 现有月债务 为 申请人 的 现有债务 除以 12
-  令 总月债务 为 现有月债务 加 月还款
-  令 比率 为 总月债务 除以 月收入
-  返回 比率
+计算债务比率 入参 申请人数据：申请人，请求：贷款请求，产出 小数：
+  令 月还款 为 请求.金额 除以 请求.期限月数。
+  令 月收入 为 申请人数据.年收入 除以 12。
+  令 现有月债务 为 申请人数据.现有债务 除以 12。
+  令 总月债务 为 现有月债务 加 月还款。
+  令 比率 为 总月债务 除以 月收入。
+  返回 比率。
 
-功能 评估贷款申请 入参 申请人：申请人，贷款请求：贷款请求，产出 结果：布尔：
-  令 结果 为 假
-
-  若 申请人 的 年龄 小于 18 则
-    返回 假
-
-  若 申请人 的 信用评分 小于 600 则
-    返回 假
-
-  令 债务比率 为 计算债务比率（申请人，贷款请求）
-  若 债务比率 大于 0.43 则
-    返回 假
-
-  设置 结果 为 真
-  返回 结果`,
+评估贷款申请 入参 申请人数据：申请人，请求：贷款请求，产出 布尔：
+  若 申请人数据.年龄 小于 18：
+    返回 假。
+  若 申请人数据.信用评分 小于 600：
+    返回 假。
+  令 债务比率 为 计算债务比率(申请人数据，请求)。
+  若 债务比率 大于 0.43：
+    返回 假。
+  返回 真。`,
   defaultInput: {
-    申请人: {
+    申请人数据: {
       编号: 'A001',
       姓名: '张三',
       年龄: 30,
@@ -106,7 +114,7 @@ const loanApplicationZh: PolicyExample = {
       年收入: 120000,
       现有债务: 24000,
     },
-    贷款请求: {
+    请求: {
       金额: 50000,
       期限月数: 36,
       用途: '购车',
@@ -126,26 +134,23 @@ const userVerificationZh: PolicyExample = {
   descriptionZh: '多因素用户验证',
   locale: 'zh-CN',
   category: 'verification',
-  source: `定义 用户信息 包含
-  邮箱：字符串，
-  手机号：字符串，
+  source: `【模块】身份.用户验证。
+
+【定义】用户信息 包含
+  邮箱：文本，
+  手机号：文本，
   手机已验证：布尔，
   邮箱已验证：布尔，
   实名认证：布尔。
 
-功能 验证用户 入参 用户：用户信息，产出 验证结果：布尔：
-  令 验证结果 为 假
-
-  若 用户 的 手机已验证 等于 假 则
-    返回 假
-
-  若 用户 的 邮箱已验证 等于 假 则
-    返回 假
-
-  若 用户 的 实名认证 等于 真 则
-    设置 验证结果 为 真
-
-  返回 验证结果`,
+验证用户 入参 用户：用户信息，产出 布尔：
+  若 用户.手机已验证 等于 假：
+    返回 假。
+  若 用户.邮箱已验证 等于 假：
+    返回 假。
+  若 用户.实名认证 等于 真：
+    返回 真。
+  返回 假。`,
   defaultInput: {
     用户: {
       邮箱: 'user@example.com',
@@ -173,45 +178,35 @@ const autoInsuranceEn: PolicyExample = {
   descriptionZh: '根据驾驶员档案和车辆详情计算汽车保险费',
   locale: 'en-US',
   category: 'insurance',
-  source: `Define Driver with
-  age: Integer,
-  yearsLicensed: Integer,
-  accidentCount: Integer,
-  violationCount: Integer,
-  creditScore: Integer.
+  source: `This module is demo.insurance.auto.
 
-Define Vehicle with
-  year: Integer,
-  make: String,
-  model: String,
-  value: Integer,
-  safetyRating: Integer.
+Define Driver with age: Int, yearsLicensed: Int, accidentCount: Int, violationCount: Int, creditScore: Int.
 
-Function calculateAgeFactor with driver: Driver, outputs factor: Decimal:
-  Let factor be 1.0
-  If driver's age less than 25 then
-    Set factor to 1.5
-  If driver's age greater than 65 then
-    Set factor to 1.2
-  Return factor
+Define Vehicle with year: Int, make: Text, model: Text, value: Int, safetyRating: Int.
 
-Function calculateVehicleFactor with vehicle: Vehicle, outputs factor: Decimal:
-  Let factor be 1.0
-  Let vehicleAge be 2024 minus vehicle's year
-  If vehicleAge less than 3 then
-    Set factor to 1.3
-  If vehicle's safetyRating greater than or equal to 4 then
-    Set factor to factor times 0.9
-  Return factor
+To calculateAgeFactor with age: Int, produce Int:
+  If <(age, 25),:
+    Return 150.
+  If >(age, 65),:
+    Return 120.
+  Return 100.
 
-Function calculateBasePremium with driver: Driver, vehicle: Vehicle, outputs premium: Integer:
-  Let baseCost be 500
-  Let ageFactor be calculateAgeFactor(driver)
-  Let vehicleFactor be calculateVehicleFactor(vehicle)
-  Let accidentPenalty be driver's accidentCount times 200
-  Let violationPenalty be driver's violationCount times 100
-  Let premium be baseCost times ageFactor times vehicleFactor plus accidentPenalty plus violationPenalty
-  Return premium`,
+To calculateVehicleFactor with vehicle: Vehicle, produce Int:
+  Let vehicleAge be -(2025, vehicle.year).
+  If <(vehicleAge, 3),:
+    Return 130.
+  If >=(vehicle.safetyRating, 4),:
+    Return 90.
+  Return 100.
+
+To calculateBasePremium with driver: Driver, vehicle: Vehicle, produce Int:
+  Let baseCost be 500.
+  Let ageFactor be calculateAgeFactor(driver.age).
+  Let vehicleFactor be calculateVehicleFactor(vehicle).
+  Let accidentPenalty be *(driver.accidentCount, 200).
+  Let violationPenalty be *(driver.violationCount, 100).
+  Let premium be +(+(*(baseCost, ageFactor), *(baseCost, vehicleFactor)), +(accidentPenalty, violationPenalty)).
+  Return premium.`,
   defaultInput: {
     driver: {
       age: 35,
@@ -242,42 +237,35 @@ const lifeInsuranceEn: PolicyExample = {
   descriptionZh: '根据申请人健康档案计算人寿保险费',
   locale: 'en-US',
   category: 'insurance',
-  source: `Define Applicant with
-  age: Integer,
-  gender: String,
-  smoker: Boolean,
-  bmi: Decimal,
-  occupation: String,
-  healthScore: Integer.
+  source: `This module is demo.insurance.life.
 
-Define PolicyRequest with
-  coverageAmount: Integer,
-  termYears: Integer.
+Define Applicant with age: Int, gender: Text, smoker: Bool, bmi: Int, occupation: Text, healthScore: Int.
 
-Function calculateBaseRate with applicant: Applicant, outputs rate: Decimal:
-  Let rate be 0.5
-  If applicant's age greater than 50 then
-    Set rate to rate plus 0.3
-  If applicant's age greater than 60 then
-    Set rate to rate plus 0.5
-  Return rate
+Define PolicyRequest with coverageAmount: Int, termYears: Int.
 
-Function calculateHealthMultiplier with applicant: Applicant, outputs multiplier: Decimal:
-  Let multiplier be 1.0
-  If applicant's smoker equals true then
-    Set multiplier to multiplier times 2.0
-  If applicant's bmi greater than 30 then
-    Set multiplier to multiplier times 1.3
-  If applicant's healthScore less than 70 then
-    Set multiplier to multiplier times 1.2
-  Return multiplier
+To calculateBaseRate with age: Int, produce Int:
+  If >(age, 60),:
+    Return 80.
+  If >(age, 50),:
+    Return 50.
+  Return 30.
 
-Function calculatePremium with applicant: Applicant, request: PolicyRequest, outputs premium: Integer:
-  Let baseRate be calculateBaseRate(applicant)
-  Let healthMultiplier be calculateHealthMultiplier(applicant)
-  Let annualCost be request's coverageAmount times baseRate times healthMultiplier divided by 1000
-  Let premium be annualCost divided by 12
-  Return premium`,
+To calculateHealthMultiplier with applicant: Applicant, produce Int:
+  Let multiplier be 100.
+  If =(applicant.smoker, true),:
+    Let multiplier be *(multiplier, 2).
+  If >(applicant.bmi, 30),:
+    Let multiplier be +(multiplier, 30).
+  If <(applicant.healthScore, 70),:
+    Let multiplier be +(multiplier, 20).
+  Return multiplier.
+
+To calculatePremium with applicant: Applicant, request: PolicyRequest, produce Int:
+  Let baseRate be calculateBaseRate(applicant.age).
+  Let healthMultiplier be calculateHealthMultiplier(applicant).
+  Let annualCost be /(*(*(request.coverageAmount, baseRate), healthMultiplier), 100000).
+  Let premium be /(annualCost, 12).
+  Return premium.`,
   defaultInput: {
     applicant: {
       age: 40,
@@ -306,56 +294,36 @@ const healthcareEligibilityEn: PolicyExample = {
   descriptionZh: '根据保险和年龄检查患者医疗服务资格',
   locale: 'en-US',
   category: 'healthcare',
-  source: `Define Patient with
-  age: Integer,
-  hasInsurance: Boolean,
-  insuranceType: String,
-  chronicConditions: Integer.
+  source: `This module is demo.healthcare.eligibility.
 
-Define Service with
-  name: String,
-  category: String,
-  requiresPreAuth: Boolean,
-  cost: Integer.
+Define Patient with age: Int, hasInsurance: Bool, insuranceType: Text, chronicConditions: Int.
 
-Function checkCoverage with patient: Patient, service: Service, outputs covered: Boolean:
-  Let covered be false
+Define Service with name: Text, category: Text, requiresPreAuth: Bool, cost: Int.
 
-  If patient's hasInsurance equals false then
-    Return false
+To checkCoverage with patient: Patient, service: Service, produce Bool:
+  If =(patient.hasInsurance, false),:
+    Return false.
+  If <(patient.age, 18),:
+    Return true.
+  If >=(patient.age, 65),:
+    Return true.
+  If =(patient.insuranceType, "premium"),:
+    Return true.
+  If =(patient.insuranceType, "basic"),:
+    If =(service.category, "emergency"),:
+      Return true.
+    If =(service.category, "preventive"),:
+      Return true.
+  Return false.
 
-  If patient's age less than 18 then
-    Set covered to true
-    Return covered
-
-  If patient's age greater than or equal to 65 then
-    Set covered to true
-    Return covered
-
-  If patient's insuranceType equals "premium" then
-    Set covered to true
-
-  If patient's insuranceType equals "basic" then
-    If service's category equals "emergency" then
-      Set covered to true
-    If service's category equals "preventive" then
-      Set covered to true
-
-  Return covered
-
-Function calculateCopay with patient: Patient, service: Service, outputs copay: Integer:
-  Let copay be service's cost
-
-  If patient's hasInsurance equals false then
-    Return copay
-
-  If patient's insuranceType equals "premium" then
-    Set copay to service's cost times 0.1
-
-  If patient's insuranceType equals "basic" then
-    Set copay to service's cost times 0.3
-
-  Return copay`,
+To calculateCopay with patient: Patient, service: Service, produce Int:
+  If =(patient.hasInsurance, false),:
+    Return service.cost.
+  If =(patient.insuranceType, "premium"),:
+    Return /(service.cost, 10).
+  If =(patient.insuranceType, "basic"),:
+    Return /(*(service.cost, 3), 10).
+  Return service.cost.`,
   defaultInput: {
     patient: {
       age: 45,
@@ -384,31 +352,21 @@ const simpleLoanEn: PolicyExample = {
   descriptionZh: '基于信用评分和收入的基础贷款审批',
   locale: 'en-US',
   category: 'loan',
-  source: `Define LoanApplication with
-  applicantId: String,
-  creditScore: Integer,
-  annualIncome: Integer,
-  requestedAmount: Integer,
-  employmentYears: Integer.
+  source: `This module is demo.loan.simple.
 
-Function evaluateLoan with application: LoanApplication, outputs approved: Boolean:
-  Let approved be false
+Define LoanApplication with applicantId: Text, creditScore: Int, annualIncome: Int, requestedAmount: Int, employmentYears: Int.
 
-  If application's creditScore less than 600 then
-    Return false
-
-  If application's annualIncome less than 30000 then
-    Return false
-
-  Let maxLoanAmount be application's annualIncome times 3
-  If application's requestedAmount greater than maxLoanAmount then
-    Return false
-
-  If application's employmentYears less than 1 then
-    Return false
-
-  Set approved to true
-  Return approved`,
+To evaluateLoan with application: LoanApplication, produce Bool:
+  If <(application.creditScore, 600),:
+    Return false.
+  If <(application.annualIncome, 30000),:
+    Return false.
+  Let maxLoanAmount be *(application.annualIncome, 3).
+  If >(application.requestedAmount, maxLoanAmount),:
+    Return false.
+  If <(application.employmentYears, 1),:
+    Return false.
+  Return true.`,
   defaultInput: {
     application: {
       applicantId: 'APP-001',
