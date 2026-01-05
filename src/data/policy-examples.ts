@@ -26,139 +26,88 @@ export interface PolicyExample {
 // ============================================
 
 /**
- * 贷款评估策略（简化版）
+ * 年龄检查策略
  * 演示基本的条件判断和返回值
  */
-const loanEvaluationZh: PolicyExample = {
-  id: 'loan-evaluation-zh',
-  name: 'Loan Evaluation',
-  nameZh: '贷款评估',
-  description: 'Simple loan evaluation based on applicant age',
-  descriptionZh: '基于申请人年龄的简单贷款评估',
+const ageCheckZh: PolicyExample = {
+  id: 'age-check-zh',
+  name: 'Age Check',
+  nameZh: '年龄检查',
+  description: 'Simple age validation returning boolean',
+  descriptionZh: '简单的年龄验证，返回布尔值',
   locale: 'zh-CN',
   category: 'loan',
-  source: `【模块】金融.贷款评估。
-
-【定义】贷款申请 包含 申请人编号：文本，金额：整数。
-
-【定义】贷款决定 包含 批准：布尔，原因：文本。
+  source: `【模块】金融.验证。
 
 检查年龄 入参 年龄：整数，产出 布尔：
   若 年龄 小于 18：
     返回 假。
-  返回 真。
-
-评估贷款 入参 申请：贷款申请，年龄：整数，产出 贷款决定：
-  令 年龄合格 为 检查年龄(年龄)。
-  若 非 年龄合格：
-    返回 贷款决定(批准：假，原因：「申请人未满18岁」)。
-  若 申请.金额 大于 100000：
-    返回 贷款决定(批准：假，原因：「金额超过限额」)。
-  返回 贷款决定(批准：真，原因：「审核通过」)。`,
+  若 年龄 大于 65：
+    返回 假。
+  返回 真。`,
   defaultInput: {
-    申请: { 申请人编号: 'A001', 金额: 50000 },
     年龄: 25,
   },
 };
 
 /**
- * 贷款申请策略（完整版）
- * 演示复杂的业务规则：信用评分、收入验证、债务比率
+ * 贷款金额检查策略
+ * 演示数值比较和简单计算
  */
-const loanApplicationZh: PolicyExample = {
-  id: 'loan-application-zh',
-  name: 'Loan Application',
-  nameZh: '贷款申请',
-  description: 'Complete loan application with credit score, income and debt ratio validation',
-  descriptionZh: '完整贷款申请：包含信用评分、收入和债务比率验证',
+const loanAmountCheckZh: PolicyExample = {
+  id: 'loan-amount-check-zh',
+  name: 'Loan Amount Check',
+  nameZh: '贷款金额检查',
+  description: 'Check if loan amount is within limits',
+  descriptionZh: '检查贷款金额是否在限额内',
   locale: 'zh-CN',
   category: 'loan',
-  source: `【模块】金融.贷款申请。
+  source: `【模块】金融.贷款检查。
 
-【定义】申请人 包含
-  编号：文本，
-  姓名：文本，
-  年龄：整数，
-  信用评分：整数，
-  年收入：整数，
-  现有债务：整数。
+【定义】贷款申请 包含 申请人编号：文本，金额：整数，年收入：整数。
 
-【定义】贷款请求 包含
-  金额：整数，
-  期限月数：整数，
-  用途：文本。
-
-计算债务比率 入参 申请人数据：申请人，请求：贷款请求，产出 小数：
-  令 月还款 为 请求.金额 除以 请求.期限月数。
-  令 月收入 为 申请人数据.年收入 除以 12。
-  令 现有月债务 为 申请人数据.现有债务 除以 12。
-  令 总月债务 为 现有月债务 加 月还款。
-  令 比率 为 总月债务 除以 月收入。
-  返回 比率。
-
-评估贷款申请 入参 申请人数据：申请人，请求：贷款请求，产出 布尔：
-  若 申请人数据.年龄 小于 18：
+检查金额 入参 申请：贷款申请，产出 布尔：
+  若 申请.金额 小于 1000：
     返回 假。
-  若 申请人数据.信用评分 小于 600：
+  若 申请.金额 大于 1000000：
     返回 假。
-  令 债务比率 为 计算债务比率(申请人数据，请求)。
-  若 债务比率 大于 0.43：
+  令 最大贷款 为 申请.年收入 乘以 5。
+  若 申请.金额 大于 最大贷款：
     返回 假。
   返回 真。`,
   defaultInput: {
-    申请人数据: {
-      编号: 'A001',
-      姓名: '张三',
-      年龄: 30,
-      信用评分: 720,
-      年收入: 120000,
-      现有债务: 24000,
-    },
-    请求: {
-      金额: 50000,
-      期限月数: 36,
-      用途: '购车',
+    申请: {
+      申请人编号: 'A001',
+      金额: 100000,
+      年收入: 50000,
     },
   },
 };
 
 /**
- * 用户验证策略
- * 演示多条件验证逻辑
+ * 信用评分检查策略
+ * 演示多条件验证
  */
-const userVerificationZh: PolicyExample = {
-  id: 'user-verification-zh',
-  name: 'User Verification',
-  nameZh: '用户验证',
-  description: 'Multi-factor user verification',
-  descriptionZh: '多因素用户验证',
+const creditScoreCheckZh: PolicyExample = {
+  id: 'credit-score-check-zh',
+  name: 'Credit Score Check',
+  nameZh: '信用评分检查',
+  description: 'Evaluate credit score and return risk level',
+  descriptionZh: '评估信用评分并返回风险等级',
   locale: 'zh-CN',
-  category: 'verification',
-  source: `【模块】身份.用户验证。
+  category: 'loan',
+  source: `【模块】金融.信用检查。
 
-【定义】用户信息 包含
-  邮箱：文本，
-  手机号：文本，
-  手机已验证：布尔，
-  邮箱已验证：布尔，
-  实名认证：布尔。
-
-验证用户 入参 用户：用户信息，产出 布尔：
-  若 用户.手机已验证 等于 假：
-    返回 假。
-  若 用户.邮箱已验证 等于 假：
-    返回 假。
-  若 用户.实名认证 等于 真：
-    返回 真。
-  返回 假。`,
+评估信用 入参 评分：整数，产出 整数：
+  若 评分 小于 550：
+    返回 0。
+  若 评分 小于 650：
+    返回 1。
+  若 评分 小于 750：
+    返回 2。
+  返回 3。`,
   defaultInput: {
-    用户: {
-      邮箱: 'user@example.com',
-      手机号: '13800138000',
-      手机已验证: true,
-      邮箱已验证: true,
-      实名认证: true,
-    },
+    评分: 720,
   },
 };
 
@@ -167,176 +116,27 @@ const userVerificationZh: PolicyExample = {
 // ============================================
 
 /**
- * Auto Insurance Quote
- * Complex insurance calculation with driver and vehicle factors
+ * Simple Age Check (English)
+ * Basic age validation
  */
-const autoInsuranceEn: PolicyExample = {
-  id: 'auto-insurance-en',
-  name: 'Auto Insurance Quote',
-  nameZh: '汽车保险报价',
-  description: 'Calculate auto insurance premium based on driver profile and vehicle details',
-  descriptionZh: '根据驾驶员档案和车辆详情计算汽车保险费',
+const ageCheckEn: PolicyExample = {
+  id: 'age-check-en',
+  name: 'Age Check',
+  nameZh: '年龄检查',
+  description: 'Simple age validation returning boolean',
+  descriptionZh: '简单的年龄验证，返回布尔值',
   locale: 'en-US',
-  category: 'insurance',
-  source: `This module is demo.insurance.auto.
+  category: 'loan',
+  source: `This module is demo.validation.age.
 
-Define Driver with age: Int, yearsLicensed: Int, accidentCount: Int, violationCount: Int, creditScore: Int.
-
-Define Vehicle with year: Int, make: Text, model: Text, value: Int, safetyRating: Int.
-
-To calculateAgeFactor with age: Int, produce Int:
-  If <(age, 25),:
-    Return 150.
-  If >(age, 65),:
-    Return 120.
-  Return 100.
-
-To calculateVehicleFactor with vehicle: Vehicle, produce Int:
-  Let vehicleAge be -(2025, vehicle.year).
-  If <(vehicleAge, 3),:
-    Return 130.
-  If >=(vehicle.safetyRating, 4),:
-    Return 90.
-  Return 100.
-
-To calculateBasePremium with driver: Driver, vehicle: Vehicle, produce Int:
-  Let baseCost be 500.
-  Let ageFactor be calculateAgeFactor(driver.age).
-  Let vehicleFactor be calculateVehicleFactor(vehicle).
-  Let accidentPenalty be *(driver.accidentCount, 200).
-  Let violationPenalty be *(driver.violationCount, 100).
-  Let premium be +(+(*(baseCost, ageFactor), *(baseCost, vehicleFactor)), +(accidentPenalty, violationPenalty)).
-  Return premium.`,
-  defaultInput: {
-    driver: {
-      age: 35,
-      yearsLicensed: 15,
-      accidentCount: 0,
-      violationCount: 1,
-      creditScore: 750,
-    },
-    vehicle: {
-      year: 2022,
-      make: 'Toyota',
-      model: 'Camry',
-      value: 28000,
-      safetyRating: 5,
-    },
-  },
-};
-
-/**
- * Life Insurance Quote
- * Health-based life insurance calculation
- */
-const lifeInsuranceEn: PolicyExample = {
-  id: 'life-insurance-en',
-  name: 'Life Insurance Quote',
-  nameZh: '人寿保险报价',
-  description: 'Calculate life insurance premium based on applicant health profile',
-  descriptionZh: '根据申请人健康档案计算人寿保险费',
-  locale: 'en-US',
-  category: 'insurance',
-  source: `This module is demo.insurance.life.
-
-Define Applicant with age: Int, gender: Text, smoker: Bool, bmi: Int, occupation: Text, healthScore: Int.
-
-Define PolicyRequest with coverageAmount: Int, termYears: Int.
-
-To calculateBaseRate with age: Int, produce Int:
-  If >(age, 60),:
-    Return 80.
-  If >(age, 50),:
-    Return 50.
-  Return 30.
-
-To calculateHealthMultiplier with applicant: Applicant, produce Int:
-  Let multiplier be 100.
-  If =(applicant.smoker, true),:
-    Let multiplier be *(multiplier, 2).
-  If >(applicant.bmi, 30),:
-    Let multiplier be +(multiplier, 30).
-  If <(applicant.healthScore, 70),:
-    Let multiplier be +(multiplier, 20).
-  Return multiplier.
-
-To calculatePremium with applicant: Applicant, request: PolicyRequest, produce Int:
-  Let baseRate be calculateBaseRate(applicant.age).
-  Let healthMultiplier be calculateHealthMultiplier(applicant).
-  Let annualCost be /(*(*(request.coverageAmount, baseRate), healthMultiplier), 100000).
-  Let premium be /(annualCost, 12).
-  Return premium.`,
-  defaultInput: {
-    applicant: {
-      age: 40,
-      gender: 'male',
-      smoker: false,
-      bmi: 24.5,
-      occupation: 'engineer',
-      healthScore: 85,
-    },
-    request: {
-      coverageAmount: 500000,
-      termYears: 20,
-    },
-  },
-};
-
-/**
- * Healthcare Eligibility
- * Check patient eligibility for healthcare services
- */
-const healthcareEligibilityEn: PolicyExample = {
-  id: 'healthcare-eligibility-en',
-  name: 'Healthcare Eligibility',
-  nameZh: '医疗资格审核',
-  description: 'Check patient eligibility for medical services based on insurance and age',
-  descriptionZh: '根据保险和年龄检查患者医疗服务资格',
-  locale: 'en-US',
-  category: 'healthcare',
-  source: `This module is demo.healthcare.eligibility.
-
-Define Patient with age: Int, hasInsurance: Bool, insuranceType: Text, chronicConditions: Int.
-
-Define Service with name: Text, category: Text, requiresPreAuth: Bool, cost: Int.
-
-To checkCoverage with patient: Patient, service: Service, produce Bool:
-  If =(patient.hasInsurance, false),:
+To checkAge with age: Int, produce Bool:
+  If <(age, 18),:
     Return false.
-  If <(patient.age, 18),:
-    Return true.
-  If >=(patient.age, 65),:
-    Return true.
-  If =(patient.insuranceType, "premium"),:
-    Return true.
-  If =(patient.insuranceType, "basic"),:
-    If =(service.category, "emergency"),:
-      Return true.
-    If =(service.category, "preventive"),:
-      Return true.
-  Return false.
-
-To calculateCopay with patient: Patient, service: Service, produce Int:
-  If =(patient.hasInsurance, false),:
-    Return service.cost.
-  If =(patient.insuranceType, "premium"),:
-    Return /(service.cost, 10).
-  If =(patient.insuranceType, "basic"),:
-    Return /(*(service.cost, 3), 10).
-  Return service.cost.`,
+  If >(age, 65),:
+    Return false.
+  Return true.`,
   defaultInput: {
-    patient: {
-      age: 45,
-      hasInsurance: true,
-      insuranceType: 'premium',
-      chronicConditions: 1,
-    },
-    service: {
-      name: 'Annual Physical',
-      category: 'preventive',
-      requiresPreAuth: false,
-      cost: 500,
-    },
+    age: 25,
   },
 };
 
@@ -378,20 +178,160 @@ To evaluateLoan with application: LoanApplication, produce Bool:
   },
 };
 
+/**
+ * Age Factor Calculator
+ * Calculate insurance age factor
+ */
+const ageFactorEn: PolicyExample = {
+  id: 'age-factor-en',
+  name: 'Age Factor Calculator',
+  nameZh: '年龄因子计算',
+  description: 'Calculate age factor for insurance premium',
+  descriptionZh: '计算保险费的年龄因子',
+  locale: 'en-US',
+  category: 'insurance',
+  source: `This module is demo.insurance.factor.
+
+To calculateAgeFactor with age: Int, produce Int:
+  If <(age, 25),:
+    Return 150.
+  If <(age, 35),:
+    Return 120.
+  If <(age, 55),:
+    Return 100.
+  If <(age, 70),:
+    Return 130.
+  Return 160.`,
+  defaultInput: {
+    age: 35,
+  },
+};
+
+/**
+ * Health Score Evaluator
+ * Evaluate health score for insurance
+ */
+const healthScoreEn: PolicyExample = {
+  id: 'health-score-en',
+  name: 'Health Score Evaluator',
+  nameZh: '健康评分评估',
+  description: 'Evaluate health score for insurance eligibility',
+  descriptionZh: '评估保险资格的健康评分',
+  locale: 'en-US',
+  category: 'healthcare',
+  source: `This module is demo.healthcare.score.
+
+Define HealthProfile with age: Int, bmi: Int, smoker: Bool, exerciseHours: Int.
+
+To evaluateHealth with profile: HealthProfile, produce Int:
+  Let score be 100.
+  If >(profile.age, 50),:
+    Let score be -(score, 20).
+  If >(profile.bmi, 30),:
+    Let score be -(score, 15).
+  If =(profile.smoker, true),:
+    Let score be -(score, 30).
+  If <(profile.exerciseHours, 3),:
+    Let score be -(score, 10).
+  If <(score, 0),:
+    Return 0.
+  Return score.`,
+  defaultInput: {
+    profile: {
+      age: 35,
+      bmi: 24,
+      smoker: false,
+      exerciseHours: 5,
+    },
+  },
+};
+
+/**
+ * Patient Eligibility Check
+ * Simple eligibility check based on age
+ */
+const patientEligibilityEn: PolicyExample = {
+  id: 'patient-eligibility-en',
+  name: 'Patient Eligibility',
+  nameZh: '患者资格审核',
+  description: 'Check patient eligibility for medical services',
+  descriptionZh: '检查患者医疗服务资格',
+  locale: 'en-US',
+  category: 'healthcare',
+  source: `This module is demo.healthcare.eligibility.
+
+Define Patient with age: Int, hasInsurance: Bool, memberYears: Int.
+
+To checkEligibility with patient: Patient, produce Bool:
+  If =(patient.hasInsurance, false),:
+    Return false.
+  If <(patient.age, 18),:
+    Return true.
+  If >=(patient.age, 65),:
+    Return true.
+  If >=(patient.memberYears, 1),:
+    Return true.
+  Return false.`,
+  defaultInput: {
+    patient: {
+      age: 45,
+      hasInsurance: true,
+      memberYears: 3,
+    },
+  },
+};
+
+/**
+ * Premium Calculator
+ * Calculate insurance premium based on age and risk
+ */
+const premiumCalculatorEn: PolicyExample = {
+  id: 'premium-calculator-en',
+  name: 'Premium Calculator',
+  nameZh: '保费计算器',
+  description: 'Calculate insurance premium based on age and risk factors',
+  descriptionZh: '根据年龄和风险因素计算保险费',
+  locale: 'en-US',
+  category: 'insurance',
+  source: `This module is demo.insurance.premium.
+
+Define RiskProfile with age: Int, riskScore: Int, coverageAmount: Int.
+
+To calculatePremium with profile: RiskProfile, produce Int:
+  Let basePremium be /(profile.coverageAmount, 1000).
+  Let ageFactor be 100.
+  If <(profile.age, 30),:
+    Let ageFactor be 80.
+  If >(profile.age, 50),:
+    Let ageFactor be 150.
+  Let riskFactor be +(100, profile.riskScore).
+  Let premium be /(*(*(basePremium, ageFactor), riskFactor), 10000).
+  Return premium.`,
+  defaultInput: {
+    profile: {
+      age: 35,
+      riskScore: 10,
+      coverageAmount: 500000,
+    },
+  },
+};
+
 // ============================================
 // 导出所有示例
 // ============================================
 
 export const POLICY_EXAMPLES: PolicyExample[] = [
   // 中文示例
-  loanEvaluationZh,
-  loanApplicationZh,
-  userVerificationZh,
+  ageCheckZh,
+  loanAmountCheckZh,
+  creditScoreCheckZh,
   // 英文示例
+  ageCheckEn,
   simpleLoanEn,
-  autoInsuranceEn,
-  lifeInsuranceEn,
-  healthcareEligibilityEn,
+  ageFactorEn,
+  healthScoreEn,
+  patientEligibilityEn,
+  premiumCalculatorEn,
 ];
 
 // 按类别分组
