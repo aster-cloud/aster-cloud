@@ -44,16 +44,12 @@ export interface PolicyCompileRequest {
 
 // 响应类型定义
 export interface PolicyEvaluateResponse {
-  /** 是否成功 */
-  success: boolean;
   /** 评估结果 */
-  result?: unknown;
-  /** 错误信息 */
-  error?: string;
+  result: unknown;
   /** 执行时间 (毫秒) */
-  executionTime?: number;
-  /** 策略版本 */
-  policyVersion?: string;
+  executionTimeMs: number;
+  /** 错误信息 (null 表示成功) */
+  error: string | null;
 }
 
 export interface PolicyCompileResponse {

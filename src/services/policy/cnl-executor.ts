@@ -302,8 +302,7 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
         matchedRuleCount: approved ? 1 : 0,
         denyCount: approved ? 0 : 1,
         engine: 'aster-cnl',
-        executionTime: apiResponse.executionTime,
-        policyVersion: apiResponse.policyVersion,
+        executionTime: apiResponse.executionTimeMs,
       },
       result: apiResponse.result,
     };
@@ -323,8 +322,7 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
       matchedRuleCount: 0,
       denyCount: 1,
       engine: 'aster-cnl',
-      executionTime: apiResponse.executionTime,
-      policyVersion: apiResponse.policyVersion,
+      executionTime: apiResponse.executionTimeMs,
     },
     result: apiResponse.result,
   };

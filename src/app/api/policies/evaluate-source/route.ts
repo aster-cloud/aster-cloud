@@ -49,13 +49,20 @@ export async function POST(req: Request) {
     });
 
     // Policy API 返回 { result, executionTimeMs, error }
+    // 使用类型断言获取实际字段
+    const apiResponse = response as unknown as {
+      result: unknown;
+      executionTimeMs: number;
+      error: string | null;
+    };
+
     // 如果 error 存在则表示失败
-    if (response.error) {
+    if (apiResponse.error) {
       return NextResponse.json(
         {
           success: false,
-          error: response.error,
-          executionTimeMs: response.executionTime,
+          error: apiResponse.error,
+          executionTimeMs: apiResponse.executionTimeMs,
         },
         { status: 400 }
       );
@@ -68,10 +75,10 @@ export async function POST(req: Request) {
       output: {
         matchedRules: [],
         actions: [],
-        approved: Boolean(response.result),
+        approved: Boolean(apiResponse.result),
       },
-      result: response.result,
-      durationMs: response.executionTime || 0,
+      result: apiResponse.result,
+      durationMs: apiResponse.executionTimeMs || 0,
     });
   } catch (error) {
     console.error('Error evaluating policy source:', error);
