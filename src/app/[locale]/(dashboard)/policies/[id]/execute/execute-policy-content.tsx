@@ -3,7 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import type { ParameterInfo, FieldInfo, TypeKind } from '@/services/policy/policy-api';
+import type { ParameterInfo, TypeKind } from '@/services/policy/policy-api';
+import {
+  POLICY_EXAMPLES,
+  type PolicyExample,
+  getExampleName,
+  getExampleDescription,
+  getCategoryLabel,
+} from '@/data/policy-examples';
 
 interface ExecutionResult {
   executionId: string;
@@ -192,7 +199,13 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [schema, setSchema] = useState<PolicySchema | null>(null);
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [policyContent, setPolicyContent] = useState('');
+
+  // 策略示例选择
+  const [selectedExample, setSelectedExample] = useState<PolicyExample | null>(null);
+  const [showExampleSelector, setShowExampleSelector] = useState(false);
+  const [showSourceCode, setShowSourceCode] = useState(false);
 
   // 获取策略参数模式
   const fetchSchema = useCallback(async (content: string, detectedLocale: PolicyLocale) => {
@@ -285,11 +298,27 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
         parsedInput = JSON.parse(input);
       }
 
-      const res = await fetch(`/api/policies/${policyId}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: parsedInput }),
-      });
+      let res: Response;
+
+      if (selectedExample) {
+        // 使用示例策略：通过 evaluate-source API 直接执行源代码
+        res = await fetch('/api/policies/evaluate-source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: selectedExample.source,
+            context: parsedInput,
+            locale: selectedExample.locale,
+          }),
+        });
+      } else {
+        // 使用已保存的策略：通过 policyId 执行
+        res = await fetch(`/api/policies/${policyId}/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: parsedInput }),
+        });
+      }
 
       const data = await res.json();
 
@@ -320,6 +349,36 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     const examples = getExampleInputs(policyLocale);
     setInput(JSON.stringify(examples[type], null, 2));
   };
+
+  // 选择策略示例
+  const handleSelectExample = useCallback(
+    (example: PolicyExample) => {
+      setSelectedExample(example);
+      setShowExampleSelector(false);
+      setPolicyContent(example.source);
+      setPolicyName(getExampleName(example, locale));
+
+      // 设置语言
+      const localeMap: Record<string, PolicyLocale> = {
+        'zh-CN': 'zh',
+        'en-US': 'en',
+        'de-DE': 'de',
+      };
+      const detectedLocale = localeMap[example.locale] || 'en';
+      setPolicyLocale(detectedLocale);
+
+      // 设置默认输入
+      setInput(JSON.stringify(example.defaultInput, null, 2));
+
+      // 获取 schema 并初始化表单
+      fetchSchema(example.source, detectedLocale);
+
+      // 重置结果
+      setResult(null);
+      setError('');
+    },
+    [locale, fetchSchema]
+  );
 
   // 渲染单个表单字段
   const renderField = (
@@ -454,6 +513,100 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
         <p className="mt-1 text-sm text-gray-500">
           {t('subtitle')}
         </p>
+      </div>
+
+      {/* 策略示例选择器 */}
+      <div className="mb-6 bg-white shadow-sm sm:rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">
+              {locale.startsWith('zh') ? '选择示例策略：' : 'Select Example Policy:'}
+            </span>
+            <div className="relative">
+              <button
+                onClick={() => setShowExampleSelector(!showExampleSelector)}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {selectedExample
+                  ? getExampleName(selectedExample, locale)
+                  : locale.startsWith('zh')
+                    ? '选择策略...'
+                    : 'Choose a policy...'}
+                <svg
+                  className={`h-4 w-4 transition-transform ${showExampleSelector ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* 下拉菜单 */}
+              {showExampleSelector && (
+                <div className="absolute z-10 mt-2 w-80 origin-top-left rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="py-1 max-h-96 overflow-y-auto">
+                    {/* 按类别分组显示 */}
+                    {(['loan', 'insurance', 'healthcare', 'verification'] as const).map((category) => {
+                      const categoryExamples = POLICY_EXAMPLES.filter((e) => e.category === category);
+                      if (categoryExamples.length === 0) return null;
+                      return (
+                        <div key={category}>
+                          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                            {getCategoryLabel(category, locale)}
+                          </div>
+                          {categoryExamples.map((example) => (
+                            <button
+                              key={example.id}
+                              onClick={() => handleSelectExample(example)}
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 ${
+                                selectedExample?.id === example.id ? 'bg-indigo-100 text-indigo-900' : 'text-gray-700'
+                              }`}
+                            >
+                              <div className="font-medium">{getExampleName(example, locale)}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {getExampleDescription(example, locale)}
+                              </div>
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                {example.locale === 'zh-CN' ? '🇨🇳 中文' : example.locale === 'de-DE' ? '🇩🇪 Deutsch' : '🇺🇸 English'}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 查看源代码按钮 */}
+          {selectedExample && (
+            <button
+              onClick={() => setShowSourceCode(!showSourceCode)}
+              className="text-sm text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              {showSourceCode
+                ? locale.startsWith('zh')
+                  ? '隐藏源代码'
+                  : 'Hide Source'
+                : locale.startsWith('zh')
+                  ? '查看源代码'
+                  : 'View Source'}
+            </button>
+          )}
+        </div>
+
+        {/* 源代码显示 */}
+        {showSourceCode && selectedExample && (
+          <div className="mt-4 rounded-lg bg-gray-900 p-4 overflow-x-auto">
+            <pre className="text-sm text-gray-100 whitespace-pre-wrap font-mono">{selectedExample.source}</pre>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
