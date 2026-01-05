@@ -555,7 +555,12 @@
       "emptyState": "Enter input and click Execute",
       "invalidJson": "Invalid JSON input",
       "executionFailed": "Execution failed",
-      "upgradePlan": "Upgrade plan"
+      "upgradePlan": "Upgrade plan",
+      "saveToMyPolicies": "Save to My Policies",
+      "saving": "Saving...",
+      "savedSuccessfully": "Policy saved successfully!",
+      "saveError": "Failed to save policy",
+      "policyLimitReached": "Policy limit reached. Upgrade your plan for more."
     }
   },
   "reports": {

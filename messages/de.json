@@ -555,7 +555,12 @@
       "emptyState": "Eingabe eingeben und Ausführen klicken",
       "invalidJson": "Ungültige JSON-Eingabe",
       "executionFailed": "Ausführung fehlgeschlagen",
-      "upgradePlan": "Plan upgraden"
+      "upgradePlan": "Plan upgraden",
+      "saveToMyPolicies": "Zu meinen Richtlinien speichern",
+      "saving": "Wird gespeichert...",
+      "savedSuccessfully": "Richtlinie erfolgreich gespeichert!",
+      "saveError": "Richtlinie konnte nicht gespeichert werden",
+      "policyLimitReached": "Richtlinienlimit erreicht. Bitte upgraden Sie."
     }
   },
   "reports": {

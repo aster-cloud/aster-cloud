@@ -207,6 +207,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [showExampleSelector, setShowExampleSelector] = useState(false);
   const [showSourceCode, setShowSourceCode] = useState(false);
 
+  // 保存策略状态
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   // 获取策略参数模式
   const fetchSchema = useCallback(async (content: string, detectedLocale: PolicyLocale) => {
     if (!content) return;
@@ -379,6 +383,49 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     },
     [locale, fetchSchema]
   );
+
+  // 保存示例策略到我的策略
+  const handleSavePolicy = useCallback(async () => {
+    if (!selectedExample) return;
+
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const res = await fetch('/api/policies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: getExampleName(selectedExample, locale),
+          content: selectedExample.source,
+          description: getExampleDescription(selectedExample, locale),
+          isPublic: false,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.upgrade) {
+          setSaveMessage({ type: 'error', text: t('policyLimitReached') });
+        } else {
+          setSaveMessage({ type: 'error', text: data.error || t('saveError') });
+        }
+        return;
+      }
+
+      setSaveMessage({ type: 'success', text: t('savedSuccessfully') });
+      // 3秒后清除成功消息
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      setSaveMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : t('saveError'),
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedExample, locale, t]);
 
   // 渲染单个表单字段
   const renderField = (
@@ -581,25 +628,71 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             </div>
           </div>
 
-          {/* 查看源代码按钮 */}
+          {/* 查看源代码和保存按钮 */}
           {selectedExample && (
-            <button
-              onClick={() => setShowSourceCode(!showSourceCode)}
-              className="text-sm text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-              {showSourceCode
-                ? locale.startsWith('zh')
-                  ? '隐藏源代码'
-                  : 'Hide Source'
-                : locale.startsWith('zh')
-                  ? '查看源代码'
-                  : 'View Source'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSourceCode(!showSourceCode)}
+                className="text-sm text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                {showSourceCode
+                  ? locale.startsWith('zh')
+                    ? '隐藏源代码'
+                    : 'Hide Source'
+                  : locale.startsWith('zh')
+                    ? '查看源代码'
+                    : 'View Source'}
+              </button>
+              <button
+                onClick={handleSavePolicy}
+                disabled={isSaving}
+                className="text-sm bg-green-600 hover:bg-green-700 text-white font-medium px-3 py-1.5 rounded-md flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {t('saving')}
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    {t('saveToMyPolicies')}
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
+
+        {/* 保存消息提示 */}
+        {saveMessage && (
+          <div className={`mt-3 p-3 rounded-lg text-sm ${
+            saveMessage.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            <div className="flex items-center gap-2">
+              {saveMessage.type === 'success' ? (
+                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              {saveMessage.text}
+            </div>
+          </div>
+        )}
 
         {/* 源代码显示 */}
         {showSourceCode && selectedExample && (

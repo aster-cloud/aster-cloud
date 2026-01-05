@@ -555,7 +555,12 @@
       "emptyState": "输入数据后点击执行",
       "invalidJson": "无效的 JSON 输入",
       "executionFailed": "执行失败",
-      "upgradePlan": "升级套餐"
+      "upgradePlan": "升级套餐",
+      "saveToMyPolicies": "保存到我的策略",
+      "saving": "保存中...",
+      "savedSuccessfully": "策略保存成功！",
+      "saveError": "保存策略失败",
+      "policyLimitReached": "策略数量已达上限，请升级套餐。"
     }
   },
   "reports": {
