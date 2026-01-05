@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { ASTER_POLICY_TEMPLATES } from '@/config/aster-policy-templates';
+import {
+  POLICY_EXAMPLES,
+  type PolicyExample,
+  getExampleName,
+  getExampleDescription,
+  getCategoryLabel,
+} from '@/data/policy-examples';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -33,6 +39,10 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   const [isPublic, setIsPublic] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // 示例选择器状态
+  const [selectedExample, setSelectedExample] = useState<PolicyExample | null>(null);
+  const [showExampleSelector, setShowExampleSelector] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,13 +75,25 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
     }
   };
 
-  const loadExample = () => {
-    setName(t('example.name'));
-    setDescription(t('example.description'));
-    // 根据当前语言加载对应的示例模板（支持 zh、zh-CN、zh-Hans 等）
-    const templateKey = locale.startsWith('zh') ? 'zh-CN' : 'en-US';
-    setContent(ASTER_POLICY_TEMPLATES[templateKey as keyof typeof ASTER_POLICY_TEMPLATES]);
-  };
+  // 选择示例策略作为模板
+  const handleSelectExample = useCallback(
+    (example: PolicyExample) => {
+      setSelectedExample(example);
+      setShowExampleSelector(false);
+      setName(getExampleName(example, locale));
+      setDescription(getExampleDescription(example, locale));
+      setContent(example.source);
+    },
+    [locale]
+  );
+
+  // 清除选中的示例
+  const handleClearExample = useCallback(() => {
+    setSelectedExample(null);
+    setName('');
+    setDescription('');
+    setContent('');
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -82,13 +104,106 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
             {t('form.createSubtitle')}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={loadExample}
-          className="mt-4 md:mt-0 text-sm text-indigo-600 hover:text-indigo-500"
-        >
-          {t('form.loadExample')}
-        </button>
+      </div>
+
+      {/* 示例策略选择器 */}
+      <div className="mb-6 bg-white shadow-sm sm:rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">
+              {locale.startsWith('zh') ? '从示例开始：' : 'Start from example:'}
+            </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowExampleSelector(!showExampleSelector)}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {selectedExample
+                  ? getExampleName(selectedExample, locale)
+                  : locale.startsWith('zh')
+                    ? '选择示例模板...'
+                    : 'Choose a template...'}
+                <svg
+                  className={`h-4 w-4 transition-transform ${showExampleSelector ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* 下拉菜单 */}
+              {showExampleSelector && (
+                <div className="absolute z-10 mt-2 w-80 origin-top-left rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="py-1 max-h-96 overflow-y-auto">
+                    {/* 按类别分组显示 */}
+                    {(['loan', 'insurance', 'healthcare', 'verification'] as const).map((category) => {
+                      const categoryExamples = POLICY_EXAMPLES.filter((e) => e.category === category);
+                      if (categoryExamples.length === 0) return null;
+                      return (
+                        <div key={category}>
+                          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                            {getCategoryLabel(category, locale)}
+                          </div>
+                          {categoryExamples.map((example) => (
+                            <button
+                              key={example.id}
+                              type="button"
+                              onClick={() => handleSelectExample(example)}
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 ${
+                                selectedExample?.id === example.id ? 'bg-indigo-100 text-indigo-900' : 'text-gray-700'
+                              }`}
+                            >
+                              <div className="font-medium">{getExampleName(example, locale)}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {getExampleDescription(example, locale)}
+                              </div>
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                {example.locale === 'zh-CN' ? '🇨🇳 中文' : example.locale === 'de-DE' ? '🇩🇪 Deutsch' : '🇺🇸 English'}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 清除选择按钮 */}
+          {selectedExample && (
+            <button
+              type="button"
+              onClick={handleClearExample}
+              className="text-sm text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              {locale.startsWith('zh') ? '清除' : 'Clear'}
+            </button>
+          )}
+        </div>
+
+        {/* 已选示例提示 */}
+        {selectedExample && (
+          <div className="mt-3 p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+            <div className="flex items-start gap-2">
+              <svg className="h-5 w-5 text-indigo-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-sm text-indigo-700">
+                {locale.startsWith('zh')
+                  ? '已加载示例模板。你可以修改名称、描述和策略内容，然后保存为你的策略。'
+                  : 'Template loaded. You can modify the name, description and policy content, then save as your policy.'}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
