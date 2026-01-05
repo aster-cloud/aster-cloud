@@ -48,11 +48,13 @@ export async function POST(req: Request) {
       functionName,
     });
 
-    if (!response.success) {
+    // Policy API 返回 { result, executionTimeMs, error }
+    // 如果 error 存在则表示失败
+    if (response.error) {
       return NextResponse.json(
         {
           success: false,
-          error: response.error || 'Evaluation failed',
+          error: response.error,
           executionTimeMs: response.executionTime,
         },
         { status: 400 }
