@@ -1,8 +1,30 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Geist";
+  src:
+    url("/fonts/geist-latin-ext.woff2") format("woff2"),
+    url("/fonts/geist-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src:
+    url("/fonts/geist-mono-latin-ext.woff2") format("woff2"),
+    url("/fonts/geist-mono-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-geist-sans: "Geist", Arial, Helvetica, sans-serif;
+  --font-geist-mono: "Geist Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 @theme inline {
@@ -22,5 +44,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans);
 }

@@ -18,12 +18,6 @@ export default defineConfig({
     setupFiles: [],
     // 更长的超时时间
     testTimeout: 60000,
-    // 串行执行以避免 API 限流 (Vitest 4 新配置)
-    pool: 'forks',
-    // Vitest 4: poolOptions 移到顶层
-    forks: {
-      singleFork: true,
-    },
     // 详细输出
     reporters: ['verbose'],
   },

@@ -15,10 +15,6 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       exclude: ['node_modules/', 'src/__tests__/setup.ts', 'src/__tests__/integration/**'],
     },
-    // 集成测试使用 node 环境
-    environmentMatchGlobs: [
-      ['src/__tests__/integration/**', 'node'],
-    ],
     // 集成测试超时设置
     testTimeout: 30000,
   },

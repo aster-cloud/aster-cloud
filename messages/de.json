@@ -89,6 +89,88 @@
     "support": "Support",
     "copyright": "Alle Rechte vorbehalten."
   },
+  "legal": {
+    "terms": {
+      "title": "Nutzungsbedingungen",
+      "lastUpdated": "Zuletzt aktualisiert: {date}",
+      "sections": {
+        "acceptance": {
+          "title": "1. Zustimmung zu den Bedingungen",
+          "content": "Durch den Zugriff auf und die Nutzung von Aster Cloud akzeptieren Sie diese Bedingungen und erkennen die Bestimmungen dieser Vereinbarung an."
+        },
+        "services": {
+          "title": "2. Beschreibung der Dienste",
+          "content": "Aster Cloud bietet eine Richtlinienverwaltungsplattform, mit der Benutzer Geschäftsregeln erstellen, testen und ausführen können. Unsere Dienste umfassen Richtlinienerstellung und -verwaltung, PII-Erkennung, Compliance-Berichterstattung und API-Zugriff."
+        },
+        "accounts": {
+          "title": "3. Benutzerkonten",
+          "content": "Sie sind für die Vertraulichkeit Ihrer Kontozugangsdaten und für alle Aktivitäten verantwortlich, die in Ihrem Konto stattfinden. Benachrichtigen Sie uns umgehend über jede unbefugte Nutzung Ihres Kontos."
+        },
+        "usage": {
+          "title": "4. Zulässige Nutzung",
+          "content": "Sie dürfen unsere Dienste nicht für rechtswidrige Zwecke verwenden oder in einer Weise, die unsere Dienste beschädigen, deaktivieren oder beeinträchtigen könnte. Versuchen Sie nicht, unbefugten Zugriff auf Teile des Dienstes zu erlangen."
+        },
+        "payment": {
+          "title": "5. Zahlungsbedingungen",
+          "content": "Kostenpflichtige Abonnements werden monatlich oder jährlich im Voraus abgerechnet. Alle Gebühren sind nicht erstattungsfähig, sofern nicht ausdrücklich in unserer Rückerstattungsrichtlinie angegeben."
+        },
+        "termination": {
+          "title": "6. Kündigung",
+          "content": "Wir können Ihr Konto jederzeit wegen Verstößen gegen diese Bedingungen kündigen oder sperren. Sie können Ihr Abonnement jederzeit in den Kontoeinstellungen kündigen."
+        },
+        "liability": {
+          "title": "7. Haftungsbeschränkung",
+          "content": "Aster Cloud haftet nicht für indirekte, zufällige, besondere, Folge- oder Strafschäden, die durch die Nutzung unserer Dienste entstehen."
+        },
+        "changes": {
+          "title": "8. Änderungen der Bedingungen",
+          "content": "Wir behalten uns das Recht vor, diese Bedingungen jederzeit zu ändern. Über wesentliche Änderungen informieren wir die Benutzer per E-Mail oder direkt im Dienst."
+        }
+      }
+    },
+    "privacy": {
+      "title": "Datenschutzrichtlinie",
+      "lastUpdated": "Zuletzt aktualisiert: {date}",
+      "sections": {
+        "intro": {
+          "title": "Einleitung",
+          "content": "Diese Datenschutzrichtlinie erläutert, wie Aster Cloud Ihre personenbezogenen Daten sammelt, verwendet und schützt, wenn Sie unsere Dienste nutzen."
+        },
+        "collection": {
+          "title": "1. Welche Daten wir erheben",
+          "content": "Wir erfassen Informationen, die Sie uns direkt bereitstellen, wie Name, E-Mail-Adresse und Zahlungsdaten. Außerdem sammeln wir Nutzungsdaten wie Richtlinienausführungen und API-Nutzungsstatistiken."
+        },
+        "usage": {
+          "title": "2. Wie wir Ihre Daten verwenden",
+          "content": "Wir verwenden Ihre Daten, um unsere Dienste bereitzustellen und zu verbessern, Transaktionen zu verarbeiten, Mitteilungen zu senden und gesetzliche Verpflichtungen zu erfüllen."
+        },
+        "sharing": {
+          "title": "3. Weitergabe von Informationen",
+          "content": "Wir verkaufen Ihre personenbezogenen Daten nicht. Wir teilen Informationen nur mit Dienstleistern, die uns beim Betrieb unserer Plattform unterstützen, oder wenn dies gesetzlich erforderlich ist."
+        },
+        "security": {
+          "title": "4. Datensicherheit",
+          "content": "Wir setzen branchenübliche Sicherheitsmaßnahmen wie Verschlüsselung bei der Übertragung (TLS 1.3) und im Ruhezustand (AES-256) ein, um Ihre Daten zu schützen."
+        },
+        "retention": {
+          "title": "5. Datenspeicherung",
+          "content": "Wir bewahren Ihre Daten auf, solange Ihr Konto aktiv ist oder wie zur Bereitstellung der Dienste erforderlich. Sie können jederzeit die Löschung Ihrer Daten anfordern."
+        },
+        "rights": {
+          "title": "6. Ihre Rechte",
+          "content": "Sie haben das Recht, auf Ihre personenbezogenen Daten zuzugreifen, sie zu korrigieren oder zu löschen. Sie können außerdem eine Kopie Ihrer Daten anfordern oder bestimmten Verarbeitungen widersprechen."
+        },
+        "cookies": {
+          "title": "7. Cookies und Tracking",
+          "content": "Wir verwenden Cookies und ähnliche Technologien, um Sitzungen aufrechtzuerhalten, Präferenzen zu speichern und Nutzungsstatistiken zu analysieren."
+        },
+        "contact": {
+          "title": "8. Kontakt",
+          "content": "Wenn Sie Fragen zu dieser Datenschutzrichtlinie haben, kontaktieren Sie uns unter privacy@aster-lang.cloud."
+        }
+      }
+    }
+  },
   "auth": {
     "signup": {
       "title": "Starten Sie Ihre kostenlose Testversion",
@@ -117,12 +199,22 @@
       "continueWithGoogle": "Mit Google fortfahren",
       "orContinueWith": "Oder fortfahren mit",
       "email": "E-Mail-Adresse",
-      "password": "Passwort",
-      "forgotPassword": "Passwort vergessen?",
-      "signIn": "Anmelden",
-      "noAccount": "Noch kein Konto?",
-      "startTrial": "Kostenlose Testversion starten"
-    },
+    "password": "Passwort",
+    "forgotPassword": "Passwort vergessen?",
+    "signIn": "Anmelden",
+    "noAccount": "Noch kein Konto?",
+    "startTrial": "Kostenlose Testversion starten",
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      "rateLimited": "Zu viele Versuche. Bitte warten Sie {seconds} Sekunden.",
+      "accountLocked": "Konto gesperrt. Bitte versuchen Sie es in {minutes} Minuten erneut.",
+      "accountLockedGeneric": "Dieses Konto wurde temporär wegen zu vieler fehlgeschlagener Versuche gesperrt.",
+      "captchaFailed": "CAPTCHA-Verifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "verificationFailed": "Verifizierung fehlgeschlagen",
+      "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort",
+      "invalidCredentialsWithAttempts": "Ungültige E-Mail-Adresse oder Passwort. {attempts} Versuche verbleiben."
+    }
+  },
     "forgotPassword": {
       "title": "Passwort zurücksetzen",
       "subtitle": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
@@ -182,7 +274,14 @@
     "reports": "Berichte",
     "teams": "Teams",
     "billing": "Abrechnung",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "mobile": {
+      "openMenu": "Menü öffnen",
+      "closeMenu": "Menü schließen"
+    },
+    "userMenu": {
+      "profile": "Benutzermenü"
+    }
   },
   "teams": {
     "title": "Teams",
