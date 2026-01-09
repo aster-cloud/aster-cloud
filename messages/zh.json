@@ -807,5 +807,157 @@
       "enabled": "已启用",
       "disabled": "已禁用"
     }
+  },
+  "demo": {
+    "badge": "演示模式",
+    "sessionExpires": "会话将在 {time} 后过期",
+    "policiesUsed": "已使用 {current}/{max} 个策略",
+    "signUpForFull": "注册获取完整功能",
+    "alreadyHaveAccount": "已有账户？",
+    "signUp": "注册",
+    "learnMore": "了解更多",
+    "startTrial": "开始免费试用",
+    "footerNote": "这是演示环境，数据每日清理。",
+    "nav": {
+      "dashboard": "仪表板",
+      "policies": "策略",
+      "execute": "执行"
+    },
+    "landing": {
+      "title": "体验 Aster Cloud",
+      "subtitle": "无需注册账户即可试用我们的策略管理平台。探索功能、创建策略并查看实时执行结果。",
+      "startDemo": "开始演示",
+      "createAccount": "创建免费账户"
+    },
+    "features": {
+      "policies": {
+        "title": "策略管理",
+        "description": "创建和管理业务规则，支持版本控制和审计追踪。"
+      },
+      "execute": {
+        "title": "实时执行",
+        "description": "使用自定义输入数据即时测试您的策略并查看详细结果。"
+      },
+      "pii": {
+        "title": "PII 检测",
+        "description": "自动检测策略中的个人身份信息。"
+      },
+      "versions": {
+        "title": "版本历史",
+        "description": "追踪变更并维护策略修改的完整历史记录。"
+      }
+    },
+    "limitations": {
+      "title": "演示限制",
+      "sessionExpiry": "会话在 24 小时后过期",
+      "policyLimit": "每个会话最多 10 个策略",
+      "noApi": "演示模式下无法使用 API",
+      "dataCleared": "所有演示数据每日清理",
+      "upgrade": "想要完整功能？",
+      "signUp": "注册免费试用"
+    },
+    "dashboard": {
+      "title": "演示仪表板",
+      "subtitle": "在演示模式下探索 Aster Cloud 功能",
+      "stats": {
+        "policies": "策略数",
+        "executions": "执行次数",
+        "piiDetected": "检测到的 PII",
+        "timeRemaining": "剩余时间"
+      },
+      "quickActions": {
+        "title": "快捷操作",
+        "createPolicy": "创建策略",
+        "createPolicyDesc": "定义新的业务规则",
+        "executePolicy": "执行策略",
+        "executePolicyDesc": "使用示例数据测试",
+        "viewExamples": "查看示例",
+        "viewExamplesDesc": "浏览示例策略"
+      },
+      "recentPolicies": {
+        "title": "最近策略",
+        "viewAll": "查看全部",
+        "noPolicies": "暂无策略",
+        "createFirst": "创建您的第一个策略"
+      }
+    },
+    "policies": {
+      "title": "演示策略",
+      "subtitle": "管理您的演示策略",
+      "newPolicy": "新建策略",
+      "noPolicies": "暂无策略",
+      "createFirst": "创建您的第一个策略",
+      "loadExamples": "加载示例",
+      "piiFields": "{count} 个 PII 字段",
+      "executions": "{count} 次执行",
+      "updated": "更新于 {date}",
+      "policiesCount": "策略: {current} / {max}",
+      "actions": {
+        "execute": "执行",
+        "edit": "编辑",
+        "delete": "删除"
+      },
+      "confirmDelete": "确定要删除此策略吗？",
+      "limitReached": "已达策略上限（最多 10 个）",
+      "detail": {
+        "backToList": "返回策略列表",
+        "version": "版本",
+        "executions": "执行次数",
+        "piiFields": "PII 字段",
+        "piiWarning": "策略中检测到 PII",
+        "content": "策略内容",
+        "versionHistory": "版本历史",
+        "execute": "执行",
+        "edit": "编辑",
+        "delete": "删除",
+        "confirmDelete": "确定要删除此策略吗？",
+        "notFound": "策略未找到",
+        "loading": "加载中..."
+      },
+      "form": {
+        "createTitle": "创建演示策略",
+        "createSubtitle": "使用 Aster 策略语言定义您的业务规则",
+        "editTitle": "编辑演示策略",
+        "editSubtitle": "更新您的策略规则",
+        "name": "策略名称",
+        "namePlaceholder": "例如：贷款审批策略",
+        "description": "描述（可选）",
+        "descriptionPlaceholder": "简要描述此策略的功能",
+        "content": "策略内容",
+        "contentPlaceholder": "// 在这里编写您的策略规则...",
+        "loadExample": "加载示例",
+        "cancel": "取消",
+        "create": "创建策略",
+        "creating": "创建中...",
+        "save": "保存更改",
+        "saving": "保存中...",
+        "limitReached": "演示会话最多可创建 10 个策略。"
+      }
+    },
+    "execute": {
+      "title": "执行策略",
+      "subtitle": "使用自定义输入数据测试您的策略",
+      "selectPolicy": "选择策略",
+      "noPolicies": "无可用策略",
+      "createFirst": "请先创建策略",
+      "input": "输入数据 (JSON)",
+      "inputPlaceholder": "{\"key\": \"value\"}",
+      "execute": "执行策略",
+      "executing": "执行中...",
+      "result": "执行结果",
+      "status": "状态",
+      "success": "成功",
+      "failed": "失败",
+      "duration": "耗时",
+      "decision": "决策",
+      "matchedRules": "匹配规则",
+      "actions": "动作",
+      "error": "错误",
+      "invalidJson": "无效的 JSON 输入",
+      "examples": {
+        "loan": "贷款示例",
+        "user": "用户示例"
+      }
+    }
   }
 }

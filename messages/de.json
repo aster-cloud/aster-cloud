@@ -807,5 +807,157 @@
       "enabled": "Aktiviert",
       "disabled": "Deaktiviert"
     }
+  },
+  "demo": {
+    "badge": "Demo-Modus",
+    "sessionExpires": "Sitzung läuft ab in {time}",
+    "policiesUsed": "{current}/{max} Richtlinien verwendet",
+    "signUpForFull": "Registrieren Sie sich für vollen Zugang",
+    "alreadyHaveAccount": "Bereits ein Konto?",
+    "signUp": "Registrieren",
+    "learnMore": "Mehr erfahren",
+    "startTrial": "Kostenlose Testversion starten",
+    "footerNote": "Dies ist eine Demo-Umgebung. Daten werden täglich gelöscht.",
+    "nav": {
+      "dashboard": "Dashboard",
+      "policies": "Richtlinien",
+      "execute": "Ausführen"
+    },
+    "landing": {
+      "title": "Erleben Sie Aster Cloud",
+      "subtitle": "Testen Sie unsere Richtlinienverwaltungsplattform ohne Konto. Erkunden Sie Funktionen, erstellen Sie Richtlinien und sehen Sie Echtzeit-Ergebnisse.",
+      "startDemo": "Demo starten",
+      "createAccount": "Kostenloses Konto erstellen"
+    },
+    "features": {
+      "policies": {
+        "title": "Richtlinienverwaltung",
+        "description": "Erstellen und verwalten Sie Geschäftsregeln mit Versionskontrolle und Prüfprotokollen."
+      },
+      "execute": {
+        "title": "Echtzeit-Ausführung",
+        "description": "Testen Sie Ihre Richtlinien sofort mit benutzerdefinierten Eingabedaten und sehen Sie detaillierte Ergebnisse."
+      },
+      "pii": {
+        "title": "PII-Erkennung",
+        "description": "Automatische Erkennung personenbezogener Daten in Ihren Richtlinien."
+      },
+      "versions": {
+        "title": "Versionsverlauf",
+        "description": "Verfolgen Sie Änderungen und pflegen Sie eine vollständige Historie der Richtlinienänderungen."
+      }
+    },
+    "limitations": {
+      "title": "Demo-Einschränkungen",
+      "sessionExpiry": "Sitzungen laufen nach 24 Stunden ab",
+      "policyLimit": "Begrenzt auf 10 Richtlinien pro Sitzung",
+      "noApi": "API-Zugriff im Demo-Modus nicht verfügbar",
+      "dataCleared": "Alle Demo-Daten werden täglich gelöscht",
+      "upgrade": "Wollen Sie vollen Zugang?",
+      "signUp": "Registrieren Sie sich für eine kostenlose Testversion"
+    },
+    "dashboard": {
+      "title": "Demo-Dashboard",
+      "subtitle": "Erkunden Sie die Aster Cloud-Funktionen im Demo-Modus",
+      "stats": {
+        "policies": "Richtlinien",
+        "executions": "Ausführungen",
+        "piiDetected": "PII erkannt",
+        "timeRemaining": "Verbleibende Zeit"
+      },
+      "quickActions": {
+        "title": "Schnellaktionen",
+        "createPolicy": "Richtlinie erstellen",
+        "createPolicyDesc": "Neue Geschäftsregeln definieren",
+        "executePolicy": "Richtlinie ausführen",
+        "executePolicyDesc": "Mit Beispieldaten testen",
+        "viewExamples": "Beispiele ansehen",
+        "viewExamplesDesc": "Beispielrichtlinien erkunden"
+      },
+      "recentPolicies": {
+        "title": "Aktuelle Richtlinien",
+        "viewAll": "Alle anzeigen",
+        "noPolicies": "Noch keine Richtlinien",
+        "createFirst": "Erstellen Sie Ihre erste Richtlinie"
+      }
+    },
+    "policies": {
+      "title": "Demo-Richtlinien",
+      "subtitle": "Verwalten Sie Ihre Demo-Richtlinien",
+      "newPolicy": "Neue Richtlinie",
+      "noPolicies": "Noch keine Richtlinien",
+      "createFirst": "Erstellen Sie Ihre erste Richtlinie",
+      "loadExamples": "Beispiel laden",
+      "piiFields": "{count} PII-Felder",
+      "executions": "{count} Ausführungen",
+      "updated": "Aktualisiert {date}",
+      "policiesCount": "Richtlinien: {current} / {max}",
+      "actions": {
+        "execute": "Ausführen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen"
+      },
+      "confirmDelete": "Möchten Sie diese Richtlinie wirklich löschen?",
+      "limitReached": "Richtlinienlimit erreicht (max. 10)",
+      "detail": {
+        "backToList": "Zurück zu Richtlinien",
+        "version": "Version",
+        "executions": "Ausführungen",
+        "piiFields": "PII-Felder",
+        "piiWarning": "PII in Richtlinie erkannt",
+        "content": "Richtlinieninhalt",
+        "versionHistory": "Versionsverlauf",
+        "execute": "Ausführen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "confirmDelete": "Möchten Sie diese Richtlinie wirklich löschen?",
+        "notFound": "Richtlinie nicht gefunden",
+        "loading": "Wird geladen..."
+      },
+      "form": {
+        "createTitle": "Demo-Richtlinie erstellen",
+        "createSubtitle": "Definieren Sie Ihre Geschäftsregeln mit der Aster-Richtliniensprache",
+        "editTitle": "Demo-Richtlinie bearbeiten",
+        "editSubtitle": "Aktualisieren Sie Ihre Richtlinienregeln",
+        "name": "Richtlinienname",
+        "namePlaceholder": "z.B. Kreditgenehmigungsrichtlinie",
+        "description": "Beschreibung (optional)",
+        "descriptionPlaceholder": "Kurze Beschreibung der Richtlinienfunktion",
+        "content": "Richtlinieninhalt",
+        "contentPlaceholder": "// Schreiben Sie hier Ihre Richtlinienregeln...",
+        "loadExample": "Beispiel laden",
+        "cancel": "Abbrechen",
+        "create": "Richtlinie erstellen",
+        "creating": "Wird erstellt...",
+        "save": "Änderungen speichern",
+        "saving": "Wird gespeichert...",
+        "limitReached": "Sie haben das Maximum von 10 Richtlinien für Demo-Sitzungen erreicht."
+      }
+    },
+    "execute": {
+      "title": "Richtlinie ausführen",
+      "subtitle": "Testen Sie Ihre Richtlinien mit benutzerdefinierten Eingabedaten",
+      "selectPolicy": "Richtlinie auswählen",
+      "noPolicies": "Keine Richtlinien verfügbar",
+      "createFirst": "Erstellen Sie zuerst eine Richtlinie",
+      "input": "Eingabedaten (JSON)",
+      "inputPlaceholder": "{\"key\": \"value\"}",
+      "execute": "Richtlinie ausführen",
+      "executing": "Wird ausgeführt...",
+      "result": "Ausführungsergebnis",
+      "status": "Status",
+      "success": "Erfolgreich",
+      "failed": "Fehlgeschlagen",
+      "duration": "Dauer",
+      "decision": "Entscheidung",
+      "matchedRules": "Übereinstimmende Regeln",
+      "actions": "Aktionen",
+      "error": "Fehler",
+      "invalidJson": "Ungültige JSON-Eingabe",
+      "examples": {
+        "loan": "Kredit-Beispiel",
+        "user": "Benutzer-Beispiel"
+      }
+    }
   }
 }

@@ -807,5 +807,157 @@
       "enabled": "Enabled",
       "disabled": "Disabled"
     }
+  },
+  "demo": {
+    "badge": "Demo Mode",
+    "sessionExpires": "Session expires in {time}",
+    "policiesUsed": "{current}/{max} policies used",
+    "signUpForFull": "Sign up for full access",
+    "alreadyHaveAccount": "Already have an account?",
+    "signUp": "Sign Up",
+    "learnMore": "Learn More",
+    "startTrial": "Start Free Trial",
+    "footerNote": "This is a demo environment. Data is cleared daily.",
+    "nav": {
+      "dashboard": "Dashboard",
+      "policies": "Policies",
+      "execute": "Execute"
+    },
+    "landing": {
+      "title": "Experience Aster Cloud",
+      "subtitle": "Try our policy management platform without creating an account. Explore features, create policies, and see real-time execution results.",
+      "startDemo": "Start Demo",
+      "createAccount": "Create Free Account"
+    },
+    "features": {
+      "policies": {
+        "title": "Policy Management",
+        "description": "Create and manage business rules with version control and audit trails."
+      },
+      "execute": {
+        "title": "Real-time Execution",
+        "description": "Test your policies instantly with custom input data and see detailed results."
+      },
+      "pii": {
+        "title": "PII Detection",
+        "description": "Automatic detection of personally identifiable information in your policies."
+      },
+      "versions": {
+        "title": "Version History",
+        "description": "Track changes and maintain a complete history of policy modifications."
+      }
+    },
+    "limitations": {
+      "title": "Demo Limitations",
+      "sessionExpiry": "Sessions expire after 24 hours",
+      "policyLimit": "Limited to 10 policies per session",
+      "noApi": "API access not available in demo mode",
+      "dataCleared": "All demo data is cleared daily",
+      "upgrade": "Want full access?",
+      "signUp": "Sign up for a free trial"
+    },
+    "dashboard": {
+      "title": "Demo Dashboard",
+      "subtitle": "Explore Aster Cloud capabilities in demo mode",
+      "stats": {
+        "policies": "Policies",
+        "executions": "Executions",
+        "piiDetected": "PII Detected",
+        "timeRemaining": "Time Remaining"
+      },
+      "quickActions": {
+        "title": "Quick Actions",
+        "createPolicy": "Create Policy",
+        "createPolicyDesc": "Define new business rules",
+        "executePolicy": "Execute Policy",
+        "executePolicyDesc": "Test with sample data",
+        "viewExamples": "View Examples",
+        "viewExamplesDesc": "Explore sample policies"
+      },
+      "recentPolicies": {
+        "title": "Recent Policies",
+        "viewAll": "View all",
+        "noPolicies": "No policies yet",
+        "createFirst": "Create your first policy"
+      }
+    },
+    "policies": {
+      "title": "Demo Policies",
+      "subtitle": "Manage your demo policies",
+      "newPolicy": "New Policy",
+      "noPolicies": "No policies yet",
+      "createFirst": "Create your first policy",
+      "loadExamples": "Load Example",
+      "piiFields": "{count} PII fields",
+      "executions": "{count} executions",
+      "updated": "Updated {date}",
+      "policiesCount": "Policies: {current} / {max}",
+      "actions": {
+        "execute": "Execute",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "confirmDelete": "Are you sure you want to delete this policy?",
+      "limitReached": "Policy limit reached (10 max)",
+      "detail": {
+        "backToList": "Back to policies",
+        "version": "Version",
+        "executions": "Executions",
+        "piiFields": "PII Fields",
+        "piiWarning": "PII Detected in Policy",
+        "content": "Policy Content",
+        "versionHistory": "Version History",
+        "execute": "Execute",
+        "edit": "Edit",
+        "delete": "Delete",
+        "confirmDelete": "Are you sure you want to delete this policy?",
+        "notFound": "Policy not found",
+        "loading": "Loading..."
+      },
+      "form": {
+        "createTitle": "Create Demo Policy",
+        "createSubtitle": "Define your business rules using Aster policy language",
+        "editTitle": "Edit Demo Policy",
+        "editSubtitle": "Update your policy rules",
+        "name": "Policy Name",
+        "namePlaceholder": "e.g., Loan Approval Policy",
+        "description": "Description (optional)",
+        "descriptionPlaceholder": "Brief description of what this policy does",
+        "content": "Policy Content",
+        "contentPlaceholder": "// Write your policy rules here...",
+        "loadExample": "Load example",
+        "cancel": "Cancel",
+        "create": "Create Policy",
+        "creating": "Creating...",
+        "save": "Save Changes",
+        "saving": "Saving...",
+        "limitReached": "You have reached the maximum of 10 policies for demo sessions."
+      }
+    },
+    "execute": {
+      "title": "Execute Policy",
+      "subtitle": "Test your policies with custom input data",
+      "selectPolicy": "Select Policy",
+      "noPolicies": "No policies available",
+      "createFirst": "Create a policy first",
+      "input": "Input Data (JSON)",
+      "inputPlaceholder": "{\"key\": \"value\"}",
+      "execute": "Execute Policy",
+      "executing": "Executing...",
+      "result": "Execution Result",
+      "status": "Status",
+      "success": "Success",
+      "failed": "Failed",
+      "duration": "Duration",
+      "decision": "Decision",
+      "matchedRules": "Matched Rules",
+      "actions": "Actions",
+      "error": "Error",
+      "invalidJson": "Invalid JSON input",
+      "examples": {
+        "loan": "Loan example",
+        "user": "User example"
+      }
+    }
   }
 }

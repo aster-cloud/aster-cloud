@@ -353,3 +353,104 @@ model AuditLog {
   @@index([createdAt])
   @@index([action])
 }
+
+// ============================================
+// Demo 功能数据模型
+// 用于展示 Aster Cloud 功能，与生产数据完全隔离
+// ============================================
+
+// Demo 会话 - 基于 Cookie 的匿名会话
+model DemoSession {
+  id          String   @id @default(cuid())
+  sessionId   String   @unique  // Cookie 中的标识
+  ipAddress   String?
+  userAgent   String?
+  expiresAt   DateTime           // 24小时后过期
+
+  // 关联数据（级联删除）
+  policies    DemoPolicy[]
+  executions  DemoExecution[]
+  auditLogs   DemoAuditLog[]
+
+  createdAt   DateTime @default(now())
+
+  @@index([expiresAt])
+  @@index([sessionId])
+}
+
+// Demo 策略
+model DemoPolicy {
+  id          String   @id @default(cuid())
+  sessionId   String
+  name        String
+  description String?
+  content     String   @db.Text
+  version     Int      @default(1)
+
+  // PII 检测结果
+  piiFields   Json?
+
+  // 关联
+  session     DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  versions    DemoPolicyVersion[]
+  executions  DemoExecution[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sessionId])
+}
+
+// Demo 策略版本历史
+model DemoPolicyVersion {
+  id        String   @id @default(cuid())
+  policyId  String
+  version   Int
+  content   String   @db.Text
+  comment   String?
+
+  policy    DemoPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([policyId, version])
+  @@index([policyId])
+}
+
+// Demo 策略执行记录
+model DemoExecution {
+  id          String   @id @default(cuid())
+  sessionId   String
+  policyId    String
+
+  input       Json
+  output      Json?
+  error       String?
+  durationMs  Int
+  success     Boolean
+
+  session     DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  policy      DemoPolicy  @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([policyId])
+  @@index([createdAt])
+}
+
+// Demo 审计日志
+model DemoAuditLog {
+  id         String   @id @default(cuid())
+  sessionId  String
+  action     String   // create_policy, update_policy, delete_policy, execute_policy
+  resource   String   // policy, execution
+  resourceId String?
+  metadata   Json?
+
+  session    DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([action])
+}
