@@ -16,22 +16,37 @@ import {
 import { detectPII } from '@/services/pii/detector';
 
 // GET /api/demo/policies - 获取 Demo 会话的所有策略
-export async function GET() {
+// 支持 ?include=content,defaultInput 参数以包含额外字段
+export async function GET(req: Request) {
   try {
     const session = await requireDemoSession();
+    const url = new URL(req.url);
+    const include = url.searchParams.get('include')?.split(',') || [];
 
-    // 列表视图不返回 content 字段，减少响应体积
+    // 基础字段
+    const selectFields: Record<string, boolean> = {
+      id: true,
+      name: true,
+      description: true,
+      version: true,
+      piiFields: true,
+      createdAt: true,
+      updatedAt: true,
+    };
+
+    // 可选字段
+    if (include.includes('content')) {
+      selectFields.content = true;
+    }
+    if (include.includes('defaultInput')) {
+      selectFields.defaultInput = true;
+    }
+
     const policies = await prisma.demoPolicy.findMany({
       where: { sessionId: session.id },
       orderBy: { updatedAt: 'desc' },
       select: {
-        id: true,
-        name: true,
-        description: true,
-        version: true,
-        piiFields: true,
-        createdAt: true,
-        updatedAt: true,
+        ...selectFields,
         _count: {
           select: { executions: true },
         },
@@ -69,7 +84,7 @@ export async function POST(req: Request) {
     }
 
     // 解析 JSON 请求体，处理格式错误
-    let body: { name?: string; content?: string; description?: string };
+    let body: { name?: string; content?: string; description?: string; defaultInput?: Record<string, unknown> };
     try {
       body = await req.json();
     } catch {
@@ -79,7 +94,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, content, description } = body;
+    const { name, content, description, defaultInput } = body;
 
     if (!name || !content) {
       return NextResponse.json(
@@ -97,6 +112,7 @@ export async function POST(req: Request) {
         name,
         content,
         description,
+        defaultInput: (defaultInput as object) ?? undefined,
         piiFields: piiResult.detectedTypes,
       },
     });

@@ -940,7 +940,7 @@
       "selectPolicy": "Select Policy",
       "noPolicies": "No policies available",
       "createFirst": "Create a policy first",
-      "input": "Input Data (JSON)",
+      "input": "Input Data",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "execute": "Execute Policy",
       "executing": "Executing...",
@@ -954,6 +954,19 @@
       "actions": "Actions",
       "error": "Error",
       "invalidJson": "Invalid JSON input",
+      "policyPreview": "Policy Preview",
+      "showJsonEditor": "JSON",
+      "showForm": "Form",
+      "viewRawOutput": "View raw output",
+      "selectAndExecute": "Select a policy and click Execute to see results",
+      "noFormFields": "Please switch to JSON editor to input data",
+      "loadingSchema": "Loading form...",
+      "decisions": {
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "review": "Manual Review",
+        "pending": "Pending"
+      },
       "examples": {
         "loan": "Loan example",
         "user": "User example"

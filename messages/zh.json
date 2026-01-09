@@ -940,7 +940,7 @@
       "selectPolicy": "选择策略",
       "noPolicies": "无可用策略",
       "createFirst": "请先创建策略",
-      "input": "输入数据 (JSON)",
+      "input": "输入数据",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "execute": "执行策略",
       "executing": "执行中...",
@@ -954,6 +954,19 @@
       "actions": "动作",
       "error": "错误",
       "invalidJson": "无效的 JSON 输入",
+      "policyPreview": "策略预览",
+      "showJsonEditor": "JSON",
+      "showForm": "表单",
+      "viewRawOutput": "查看原始输出",
+      "selectAndExecute": "选择策略并点击执行查看结果",
+      "noFormFields": "请切换到 JSON 编辑器输入数据",
+      "loadingSchema": "加载表单...",
+      "decisions": {
+        "approved": "通过",
+        "rejected": "拒绝",
+        "review": "人工审核",
+        "pending": "待处理"
+      },
       "examples": {
         "loan": "贷款示例",
         "user": "用户示例"

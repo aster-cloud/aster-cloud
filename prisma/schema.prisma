@@ -387,6 +387,9 @@ model DemoPolicy {
   content     String   @db.Text
   version     Int      @default(1)
 
+  // 示例输入数据（从 PolicyExample 复制）
+  defaultInput Json?
+
   // PII 检测结果
   piiFields   Json?
 

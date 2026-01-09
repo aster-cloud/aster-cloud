@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
-import { POLICY_EXAMPLES } from '@/data/policy-examples';
+import {
+  POLICY_EXAMPLES,
+  getExampleName,
+  getExampleDescription,
+  getCategoryLabel,
+  POLICY_EXAMPLES_BY_LOCALE,
+  type PolicyExample,
+} from '@/data/policy-examples';
 
 interface DemoPolicyFormClientProps {
   translations: {
@@ -33,6 +40,7 @@ interface DemoPolicyFormClientProps {
     description: string;
     content: string;
   };
+  locale?: string;
 }
 
 export function DemoPolicyFormClient({
@@ -40,6 +48,7 @@ export function DemoPolicyFormClient({
   mode,
   policyId,
   initialData,
+  locale = 'en',
 }: DemoPolicyFormClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,21 +57,37 @@ export function DemoPolicyFormClient({
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [content, setContent] = useState(initialData?.content || '');
+  const [defaultInput, setDefaultInput] = useState<Record<string, unknown> | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 根据 UI 语言获取策略示例列表（优先显示匹配语言的示例）
+  const sortedExamples = useMemo(() => {
+    const policyLocale = locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
+    const matchingExamples = POLICY_EXAMPLES_BY_LOCALE[policyLocale] || [];
+    const otherExamples = POLICY_EXAMPLES.filter((e) => e.locale !== policyLocale);
+    return [...matchingExamples, ...otherExamples];
+  }, [locale]);
 
   // 加载示例策略
   useEffect(() => {
     const exampleKey = searchParams.get('example');
     if (exampleKey && mode === 'create') {
-      const example = POLICY_EXAMPLES.find((e) => e.id === exampleKey);
+      // 首先尝试找到匹配当前语言的示例
+      const policyLocale = locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
+      let example = POLICY_EXAMPLES.find((e) => e.id === exampleKey && e.locale === policyLocale);
+      // 如果没有匹配语言的，则查找任意匹配的示例
+      if (!example) {
+        example = POLICY_EXAMPLES.find((e) => e.id === exampleKey || e.category === exampleKey);
+      }
       if (example) {
-        setName(example.name);
-        setDescription(example.description);
+        setName(getExampleName(example, locale));
+        setDescription(getExampleDescription(example, locale));
         setContent(example.source);
+        setDefaultInput(example.defaultInput as Record<string, unknown>);
       }
     }
-  }, [searchParams, mode]);
+  }, [searchParams, mode, locale]);
 
   const canCreate =
     mode === 'edit' ||
@@ -85,7 +110,7 @@ export function DemoPolicyFormClient({
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, content }),
+        body: JSON.stringify({ name, description, content, defaultInput }),
       });
 
       if (!response.ok) {
@@ -106,9 +131,10 @@ export function DemoPolicyFormClient({
   const loadExample = (exampleId: string) => {
     const example = POLICY_EXAMPLES.find((e) => e.id === exampleId);
     if (example) {
-      setName(example.name);
-      setDescription(example.description);
+      setName(getExampleName(example, locale));
+      setDescription(getExampleDescription(example, locale));
       setContent(example.source);
+      setDefaultInput(example.defaultInput as Record<string, unknown>);
     }
   };
 
@@ -148,9 +174,9 @@ export function DemoPolicyFormClient({
               <option value="" disabled>
                 Select...
               </option>
-              {POLICY_EXAMPLES.slice(0, 5).map((example) => (
+              {sortedExamples.map((example) => (
                 <option key={example.id} value={example.id}>
-                  {example.name}
+                  {getExampleName(example, locale)} ({getCategoryLabel(example.category, locale)})
                 </option>
               ))}
             </select>

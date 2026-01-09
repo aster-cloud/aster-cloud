@@ -940,7 +940,7 @@
       "selectPolicy": "Richtlinie auswählen",
       "noPolicies": "Keine Richtlinien verfügbar",
       "createFirst": "Erstellen Sie zuerst eine Richtlinie",
-      "input": "Eingabedaten (JSON)",
+      "input": "Eingabedaten",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "execute": "Richtlinie ausführen",
       "executing": "Wird ausgeführt...",
@@ -954,6 +954,19 @@
       "actions": "Aktionen",
       "error": "Fehler",
       "invalidJson": "Ungültige JSON-Eingabe",
+      "policyPreview": "Richtlinienvorschau",
+      "showJsonEditor": "JSON",
+      "showForm": "Formular",
+      "viewRawOutput": "Rohausgabe anzeigen",
+      "selectAndExecute": "Wählen Sie eine Richtlinie und klicken Sie auf Ausführen",
+      "noFormFields": "Bitte wechseln Sie zum JSON-Editor",
+      "loadingSchema": "Lade Formular...",
+      "decisions": {
+        "approved": "Genehmigt",
+        "rejected": "Abgelehnt",
+        "review": "Manuelle Überprüfung",
+        "pending": "Ausstehend"
+      },
       "examples": {
         "loan": "Kredit-Beispiel",
         "user": "Benutzer-Beispiel"

@@ -1,8 +1,9 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { DemoPolicyFormClient } from '../form-client';
 
 export default async function NewDemoPolicyPage() {
   const t = await getTranslations('demo.policies.form');
+  const locale = await getLocale();
 
   const translations = {
     createTitle: t('createTitle'),
@@ -24,5 +25,5 @@ export default async function NewDemoPolicyPage() {
     limitReached: t('limitReached'),
   };
 
-  return <DemoPolicyFormClient translations={translations} mode="create" />;
+  return <DemoPolicyFormClient translations={translations} mode="create" locale={locale} />;
 }
