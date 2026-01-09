@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Link } from '@/i18n/navigation';
+import Link from 'next/link';
 
 interface Policy {
   id: string;

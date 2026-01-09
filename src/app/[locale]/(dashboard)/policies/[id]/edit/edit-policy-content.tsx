@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Link } from '@/i18n/navigation';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useLocale } from 'next-intl';
 
