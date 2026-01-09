@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 
 const USE_CASE_IDS = ['finance', 'healthcare', 'ecommerce', 'insurance', 'legal', 'other'] as const;
 const USE_CASE_ICONS: Record<typeof USE_CASE_IDS[number], string> = {

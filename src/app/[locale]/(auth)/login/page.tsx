@@ -16,6 +16,16 @@ export default async function LoginPage() {
     password: t('password'),
     forgotPassword: t('forgotPassword'),
     signIn: t('signIn'),
+    errors: {
+      generic: t('errors.generic'),
+      rateLimited: t('errors.rateLimited'),
+      accountLocked: t('errors.accountLocked'),
+      accountLockedGeneric: t('errors.accountLockedGeneric'),
+      captchaFailed: t('errors.captchaFailed'),
+      verificationFailed: t('errors.verificationFailed'),
+      invalidCredentials: t('errors.invalidCredentials'),
+      invalidCredentialsWithAttempts: t('errors.invalidCredentialsWithAttempts'),
+    },
   };
 
   // 获取 Turnstile Site Key（服务端安全传递）

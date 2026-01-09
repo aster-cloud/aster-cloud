@@ -89,6 +89,88 @@
     "support": "支持",
     "copyright": "版权所有。"
   },
+  "legal": {
+    "terms": {
+      "title": "服务条款",
+      "lastUpdated": "最后更新：{date}",
+      "sections": {
+        "acceptance": {
+          "title": "1. 条款接受",
+          "content": "访问和使用 Aster Cloud 即表示您接受并同意受本协议条款的约束。"
+        },
+        "services": {
+          "title": "2. 服务说明",
+          "content": "Aster Cloud 提供策略管理平台，允许用户创建、测试和执行业务规则。我们的服务包括策略创建和管理、PII 检测、合规报告和 API 访问。"
+        },
+        "accounts": {
+          "title": "3. 用户账户",
+          "content": "您有责任维护账户凭证的机密性，并对您账户下发生的所有活动负责。如发现任何未授权使用您账户的情况，您必须立即通知我们。"
+        },
+        "usage": {
+          "title": "4. 可接受使用",
+          "content": "您同意不将我们的服务用于任何非法目的，或以任何可能损害、禁用或损坏我们服务的方式使用。您不得试图未经授权访问服务的任何部分。"
+        },
+        "payment": {
+          "title": "5. 付款条款",
+          "content": "付费订阅按月或按年预先计费。除我们的退款政策中明确规定外，所有费用均不予退还。"
+        },
+        "termination": {
+          "title": "6. 终止",
+          "content": "如违反这些条款，我们可能随时终止或暂停您的账户。您可以随时通过账户设置取消订阅。"
+        },
+        "liability": {
+          "title": "7. 责任限制",
+          "content": "Aster Cloud 不对因您使用我们服务而产生的任何间接、附带、特殊、后果性或惩罚性损害承担责任。"
+        },
+        "changes": {
+          "title": "8. 条款变更",
+          "content": "我们保留随时修改这些条款的权利。我们将通过电子邮件或服务通知用户任何重大变更。"
+        }
+      }
+    },
+    "privacy": {
+      "title": "隐私政策",
+      "lastUpdated": "最后更新：{date}",
+      "sections": {
+        "intro": {
+          "title": "简介",
+          "content": "本隐私政策说明了 Aster Cloud 在您使用我们的服务时如何收集、使用和保护您的个人信息。"
+        },
+        "collection": {
+          "title": "1. 我们收集的信息",
+          "content": "我们收集您直接提供给我们的信息，如您的姓名、电子邮件地址和付款信息。我们还收集使用数据，包括策略执行日志和 API 使用统计。"
+        },
+        "usage": {
+          "title": "2. 我们如何使用您的信息",
+          "content": "我们使用您的信息来提供和改进我们的服务、处理交易、发送通信以及遵守法律义务。"
+        },
+        "sharing": {
+          "title": "3. 信息共享",
+          "content": "我们不出售您的个人信息。我们可能会与协助我们运营平台的服务提供商共享信息，或在法律要求时共享。"
+        },
+        "security": {
+          "title": "4. 数据安全",
+          "content": "我们实施行业标准的安全措施，包括传输中加密（TLS 1.3）和静态加密（AES-256）来保护您的数据。"
+        },
+        "retention": {
+          "title": "5. 数据保留",
+          "content": "只要您的账户处于活跃状态或需要提供服务，我们就会保留您的数据。您可以随时请求删除您的数据。"
+        },
+        "rights": {
+          "title": "6. 您的权利",
+          "content": "您有权访问、更正或删除您的个人数据。您也可以请求获取您的数据副本或反对某些处理活动。"
+        },
+        "cookies": {
+          "title": "7. Cookie 和跟踪",
+          "content": "我们使用 cookie 和类似技术来维护会话、记住偏好设置并分析使用模式。"
+        },
+        "contact": {
+          "title": "8. 联系我们",
+          "content": "如果您对本隐私政策有任何疑问，请通过 privacy@aster-lang.cloud 与我们联系。"
+        }
+      }
+    }
+  },
   "auth": {
     "signup": {
       "title": "开始免费试用",
@@ -121,7 +203,17 @@
       "forgotPassword": "忘记密码？",
       "signIn": "登录",
       "noAccount": "还没有账户？",
-      "startTrial": "开始免费试用"
+      "startTrial": "开始免费试用",
+      "errors": {
+        "generic": "发生错误，请重试。",
+        "rateLimited": "尝试次数过多，请等待 {seconds} 秒后重试。",
+        "accountLocked": "账户已锁定，请 {minutes} 分钟后再试。",
+        "accountLockedGeneric": "由于多次登录失败，账户已被临时锁定。",
+        "captchaFailed": "验证码验证失败，请重试。",
+        "verificationFailed": "验证失败",
+        "invalidCredentials": "邮箱或密码错误",
+        "invalidCredentialsWithAttempts": "邮箱或密码错误，还剩 {attempts} 次尝试机会。"
+      }
     },
     "forgotPassword": {
       "title": "重置密码",
@@ -182,7 +274,14 @@
     "reports": "报告",
     "teams": "团队",
     "billing": "账单",
-    "settings": "设置"
+    "settings": "设置",
+    "mobile": {
+      "openMenu": "打开菜单",
+      "closeMenu": "关闭菜单"
+    },
+    "userMenu": {
+      "profile": "用户菜单"
+    }
   },
   "teams": {
     "title": "团队",

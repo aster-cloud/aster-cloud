@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { signOut } from 'next-auth/react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { defaultLocale } from '@/i18n/config';
 

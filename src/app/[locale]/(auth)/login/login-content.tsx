@@ -18,6 +18,16 @@ interface Translations {
   password: string;
   forgotPassword: string;
   signIn: string;
+  errors: {
+    generic: string;
+    rateLimited: string;
+    accountLocked: string;
+    accountLockedGeneric: string;
+    captchaFailed: string;
+    verificationFailed: string;
+    invalidCredentials: string;
+    invalidCredentialsWithAttempts: string;
+  };
 }
 
 interface LoginContentProps {
@@ -67,14 +77,14 @@ function LoginForm({ translations: t, turnstileSiteKey }: LoginContentProps) {
 
       if (!verifyRes.ok) {
         if (verifyData.code === 'RATE_LIMITED') {
-          setError(`Too many attempts. Please wait ${verifyData.retryAfter} seconds.`);
+          setError(t.errors.rateLimited.replace('{seconds}', verifyData.retryAfter));
         } else if (verifyData.code === 'ACCOUNT_LOCKED') {
-          setError(`Account locked. Please try again in ${Math.ceil(verifyData.retryAfter / 60)} minutes.`);
+          setError(t.errors.accountLocked.replace('{minutes}', String(Math.ceil(verifyData.retryAfter / 60))));
         } else if (verifyData.code === 'CAPTCHA_FAILED') {
-          setError('CAPTCHA verification failed. Please try again.');
+          setError(t.errors.captchaFailed);
           setTurnstileToken(null);
         } else {
-          setError(verifyData.error || 'Verification failed');
+          setError(verifyData.error || t.errors.verificationFailed);
         }
         setIsLoading(false);
         return;
@@ -98,11 +108,11 @@ function LoginForm({ translations: t, turnstileSiteKey }: LoginContentProps) {
 
     if (result?.error) {
       if (result.error === 'ACCOUNT_LOCKED') {
-        setError('Account is temporarily locked due to too many failed attempts.');
+        setError(t.errors.accountLockedGeneric);
       } else {
-        setError('Invalid email or password');
+        setError(t.errors.invalidCredentials);
         if (remainingAttempts !== null && remainingAttempts > 0) {
-          setError(`Invalid email or password. ${remainingAttempts - 1} attempts remaining.`);
+          setError(t.errors.invalidCredentialsWithAttempts.replace('{attempts}', String(remainingAttempts - 1)));
         }
       }
       setIsLoading(false);
@@ -143,7 +153,7 @@ function LoginForm({ translations: t, turnstileSiteKey }: LoginContentProps) {
         {(error || errorParam) && (
           <div className="rounded-md bg-red-50 p-4">
             <p className="text-sm text-red-700">
-              {error || 'Something went wrong. Please try again.'}
+              {error || t.errors.generic}
             </p>
           </div>
         )}

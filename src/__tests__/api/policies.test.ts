@@ -1,37 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Mock dependencies
-const mockGetSession = vi.fn();
-const mockPrisma = {
-  policy: {
-    findMany: vi.fn(),
-    findFirst: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn(),
-  },
-  policyVersion: {
-    create: vi.fn(),
-  },
-  user: {
-    findUnique: vi.fn(),
-  },
-  execution: {
-    create: vi.fn(),
-  },
-};
-
-const mockGetPolicyFreezeStatus = vi.fn();
-const mockIsPolicyFrozen = vi.fn();
-const mockAddFreezeStatusToPolicies = vi.fn();
+import { GET, POST } from '@/app/api/policies/route';
+import {
+  GET as GET_BY_ID,
+  PUT,
+  DELETE,
+} from '@/app/api/policies/[id]/route';
+import { getSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { checkUsageLimit, recordUsage } from '@/lib/usage';
+import {
+  getPolicyFreezeStatus,
+  isPolicyFrozen,
+} from '@/lib/policy-freeze';
+import { detectPII } from '@/services/pii/detector';
 
 vi.mock('@/lib/auth', () => ({
-  getSession: () => mockGetSession(),
+  getSession: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
-  prisma: mockPrisma,
+  prisma: {
+    policy: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    policyVersion: {
+      create: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
+    },
+    execution: {
+      create: vi.fn(),
+    },
+  },
 }));
 
 vi.mock('@/lib/usage', () => ({
@@ -40,434 +46,651 @@ vi.mock('@/lib/usage', () => ({
 }));
 
 vi.mock('@/lib/policy-freeze', () => ({
-  getPolicyFreezeStatus: () => mockGetPolicyFreezeStatus(),
-  isPolicyFrozen: (userId: string, policyId: string) => mockIsPolicyFrozen(userId, policyId),
-  addFreezeStatusToPolicies: () => mockAddFreezeStatusToPolicies(),
+  getPolicyFreezeStatus: vi.fn(),
+  isPolicyFrozen: vi.fn(),
 }));
 
-// We'll test the API logic directly by simulating what the route handlers do
+vi.mock('@/services/pii/detector', () => ({
+  detectPII: vi.fn(),
+}));
 
-describe('Policies API', () => {
+const mockGetSession = vi.mocked(getSession);
+const mockPrisma = vi.mocked(prisma);
+const mockCheckUsageLimit = vi.mocked(checkUsageLimit);
+const mockRecordUsage = vi.mocked(recordUsage);
+const mockGetPolicyFreezeStatus = vi.mocked(getPolicyFreezeStatus);
+const mockIsPolicyFrozen = vi.mocked(isPolicyFrozen);
+const mockDetectPII = vi.mocked(detectPII);
+
+// 辅助函数：创建 POST 请求
+function createPostRequest(body: Record<string, unknown>) {
+  return new Request('http://localhost/api/policies', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+// 辅助函数：创建带 ID 的请求
+function createRequestWithId(
+  id: string,
+  method: string,
+  body?: Record<string, unknown>
+) {
+  const options: RequestInit = {
+    method,
+    headers: { 'content-type': 'application/json' },
+  };
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+  return new Request(`http://localhost/api/policies/${id}`, options);
+}
+
+// 辅助函数：创建 Next.js 15 的 async params
+function createParams(id: string): { params: Promise<{ id: string }> } {
+  return { params: Promise.resolve({ id }) };
+}
+
+describe('Policies API - 真实路由测试', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSession.mockResolvedValue({
+      user: { id: 'user-1', email: 'user@example.com' },
+    } as Awaited<ReturnType<typeof getSession>>);
+    mockDetectPII.mockReturnValue({
+      hasPII: false,
+      detectedTypes: [],
+      locations: [],
+      riskLevel: 'low',
+    });
   });
 
   describe('GET /api/policies', () => {
     it('should return 401 when not authenticated', async () => {
       mockGetSession.mockResolvedValue(null);
 
-      // Simulate the check in the API
-      const session = await mockGetSession();
-      expect(session).toBeNull();
+      const response = await GET();
+      const body = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(body.error).toBe('Unauthorized');
     });
 
-    it('should return policies for authenticated user', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
+    it('should return policies list with freeze status', async () => {
+      const mockPolicies = [
+        {
+          id: 'p1',
+          name: 'Policy 1',
+          description: 'Test',
+          content: 'if score >= 80 then approve',
+          isPublic: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          _count: { executions: 5 },
+        },
+        {
+          id: 'p2',
+          name: 'Policy 2',
+          description: 'Test 2',
+          content: 'if age >= 18 then allow',
+          isPublic: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          _count: { executions: 10 },
+        },
+      ];
+
+      mockPrisma.policy.findMany.mockResolvedValue(mockPolicies);
+      // 路由使用 getPolicyFreezeStatus，返回 frozenPolicyIds Set
+      mockGetPolicyFreezeStatus.mockResolvedValue({
+        frozenPolicyIds: new Set<string>(),
+        limit: 10,
+        totalPolicies: 2,
+        frozenCount: 0,
       });
 
-      mockPrisma.policy.findMany.mockResolvedValue([
-        { id: 'p1', name: 'Policy 1', _count: { executions: 5 } },
-        { id: 'p2', name: 'Policy 2', _count: { executions: 10 } },
-      ]);
+      const response = await GET();
+      const body = await response.json();
 
-      const session = await mockGetSession();
-      expect(session?.user?.id).toBe('user-1');
+      expect(response.status).toBe(200);
+      expect(body.policies).toHaveLength(2);
+      expect(body.policies[0].name).toBe('Policy 1');
+      expect(body.freezeInfo.limit).toBe(10);
+      expect(mockPrisma.policy.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1' },
+        })
+      );
+    });
 
-      const policies = await mockPrisma.policy.findMany({
-        where: { userId: session!.user!.id },
-        orderBy: { updatedAt: 'desc' },
-      });
+    it('should return 500 on internal error', async () => {
+      mockPrisma.policy.findMany.mockRejectedValue(new Error('Database error'));
 
-      expect(policies).toHaveLength(2);
-      expect(policies[0].name).toBe('Policy 1');
+      const response = await GET();
+      const body = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(body.error).toBe('Internal server error');
     });
   });
 
   describe('POST /api/policies', () => {
-    it('should create a new policy', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
+    beforeEach(() => {
       mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
         plan: 'pro',
       });
-
       mockPrisma.policy.count.mockResolvedValue(0);
+    });
 
-      mockPrisma.policy.create.mockResolvedValue({
+    it('should return 401 when not authenticated', async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      const response = await POST(
+        createPostRequest({
+          name: 'Test Policy',
+          content: 'if score >= 80 then approve',
+        })
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(body.error).toBe('Unauthorized');
+    });
+
+    it('should return 400 when name is missing', async () => {
+      const response = await POST(
+        createPostRequest({
+          content: 'if score >= 80 then approve',
+        })
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain('required');
+    });
+
+    it('should return 400 when content is missing', async () => {
+      const response = await POST(
+        createPostRequest({
+          name: 'Test Policy',
+        })
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain('required');
+    });
+
+    it('should return 403 when free user exceeds policy limit', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        plan: 'free',
+      });
+      mockPrisma.policy.count.mockResolvedValue(3); // At limit
+
+      const response = await POST(
+        createPostRequest({
+          name: 'Test Policy',
+          content: 'if score >= 80 then approve',
+        })
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(body.error).toContain('limit');
+    });
+
+    it('should create policy and version on success', async () => {
+      const newPolicy = {
         id: 'new-policy',
         name: 'Test Policy',
         content: 'if score >= 80 then approve',
+        description: null,
+        isPublic: false,
         piiFields: [],
-      });
-
-      mockPrisma.policyVersion.create.mockResolvedValue({});
-
-      const policy = await mockPrisma.policy.create({
-        data: {
-          userId: 'user-1',
-          name: 'Test Policy',
-          content: 'if score >= 80 then approve',
-          piiFields: [],
-        },
-      });
-
-      expect(policy.name).toBe('Test Policy');
-      expect(mockPrisma.policyVersion.create).not.toHaveBeenCalled(); // Not called yet
-    });
-
-    it('should detect PII in policy content', () => {
-      const detectPII = (content: string): string[] => {
-        const patterns = [
-          { name: 'email', pattern: /\bemail\b/i },
-          { name: 'ssn', pattern: /\b(ssn|social.?security)\b/i },
-          { name: 'phone', pattern: /\b(phone|mobile)\b/i },
-        ];
-
-        const detected: string[] = [];
-        for (const { name, pattern } of patterns) {
-          if (pattern.test(content)) {
-            detected.push(name);
-          }
-        }
-        return detected;
+        version: 1,
+        userId: 'user-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
-      const content1 = 'if email is valid then approve';
-      const content2 = 'check user SSN and phone number';
-      const content3 = 'if score >= 80 then approve';
+      mockPrisma.policy.create.mockResolvedValue(newPolicy);
+      mockPrisma.policyVersion.create.mockResolvedValue({});
 
-      expect(detectPII(content1)).toContain('email');
-      expect(detectPII(content2)).toContain('ssn');
-      expect(detectPII(content2)).toContain('phone');
-      expect(detectPII(content3)).toHaveLength(0);
+      const response = await POST(
+        createPostRequest({
+          name: 'Test Policy',
+          content: 'if score >= 80 then approve',
+        })
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(body.id).toBe('new-policy');
+      expect(body.name).toBe('Test Policy');
+      expect(mockPrisma.policy.create).toHaveBeenCalled();
+      expect(mockPrisma.policyVersion.create).toHaveBeenCalled();
     });
 
-    it('should enforce policy limit for free users', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
+    it('should detect and store PII fields', async () => {
+      mockDetectPII.mockReturnValue({
+        hasPII: true,
+        detectedTypes: ['email', 'phone'],
+        locations: [
+          { type: 'email', match: 'user@test.com', index: 10, length: 14 },
+        ],
+        riskLevel: 'medium',
       });
 
-      mockPrisma.user.findUnique.mockResolvedValue({
-        plan: 'free',
+      mockPrisma.policy.create.mockResolvedValue({
+        id: 'new-policy',
+        name: 'PII Policy',
+        content: 'if email then notify',
+        piiFields: ['email', 'phone'],
+      });
+      mockPrisma.policyVersion.create.mockResolvedValue({});
+
+      const response = await POST(
+        createPostRequest({
+          name: 'PII Policy',
+          content: 'if email then notify',
+        })
+      );
+
+      expect(response.status).toBe(201);
+      expect(mockDetectPII).toHaveBeenCalled();
+      expect(mockPrisma.policy.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            piiFields: ['email', 'phone'],
+          }),
+        })
+      );
+    });
+
+    it('should return 500 on internal error', async () => {
+      mockPrisma.policy.create.mockRejectedValue(new Error('Database error'));
+
+      const response = await POST(
+        createPostRequest({
+          name: 'Test Policy',
+          content: 'if score >= 80 then approve',
+        })
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(body.error).toBe('Internal server error');
+    });
+  });
+
+  describe('GET /api/policies/[id]', () => {
+    it('should return 401 when not authenticated', async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      const response = await GET_BY_ID(
+        createRequestWithId('policy-1', 'GET'),
+        createParams('policy-1')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(body.error).toBe('Unauthorized');
+    });
+
+    it('should return 404 when policy not found', async () => {
+      mockPrisma.policy.findFirst.mockResolvedValue(null);
+
+      const response = await GET_BY_ID(
+        createRequestWithId('non-existent', 'GET'),
+        createParams('non-existent')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(body.error).toBe('Policy not found');
+    });
+
+    it('should return policy with freeze info', async () => {
+      const mockPolicy = {
+        id: 'policy-1',
+        name: 'Test Policy',
+        content: 'if score >= 80 then approve',
+        userId: 'user-1',
+        versions: [],
+        _count: { executions: 5 },
+      };
+
+      mockPrisma.policy.findFirst.mockResolvedValue(mockPolicy);
+      mockIsPolicyFrozen.mockResolvedValue({
+        isFrozen: false,
+        activePoliciesLimit: 10,
+        totalPolicies: 5,
+        frozenCount: 0,
       });
 
-      mockPrisma.policy.count.mockResolvedValue(3); // At limit
+      const response = await GET_BY_ID(
+        createRequestWithId('policy-1', 'GET'),
+        createParams('policy-1')
+      );
+      const body = await response.json();
 
-      const user = await mockPrisma.user.findUnique({ where: { id: 'user-1' } });
-      const policyCount = await mockPrisma.policy.count({ where: { userId: 'user-1' } });
-
-      const FREE_LIMIT = 3;
-      const isAtLimit = user.plan === 'free' && policyCount >= FREE_LIMIT;
-
-      expect(isAtLimit).toBe(true);
+      expect(response.status).toBe(200);
+      expect(body.id).toBe('policy-1');
+      // isFrozen 在顶层，freezeInfo 包含详细信息
+      expect(body.isFrozen).toBe(false);
+      expect(body.freezeInfo).toBeDefined();
+      expect(body.freezeInfo.limit).toBe(10);
     });
   });
 
   describe('PUT /api/policies/[id]', () => {
-    it('should update policy and create version when content changes', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
+    beforeEach(() => {
       mockPrisma.policy.findFirst.mockResolvedValue({
         id: 'policy-1',
+        name: 'Original Name',
+        content: 'original content',
+        userId: 'user-1',
+        version: 1,
+      });
+      mockIsPolicyFrozen.mockResolvedValue({
+        isFrozen: false,
+        activePoliciesLimit: 10,
+        totalPolicies: 5,
+        frozenCount: 0,
+      });
+    });
+
+    it('should return 401 when not authenticated', async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      const response = await PUT(
+        createRequestWithId('policy-1', 'PUT', { name: 'Updated' }),
+        createParams('policy-1')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(body.error).toBe('Unauthorized');
+    });
+
+    it('should return 404 when policy not found', async () => {
+      mockPrisma.policy.findFirst.mockResolvedValue(null);
+
+      const response = await PUT(
+        createRequestWithId('non-existent', 'PUT', { name: 'Updated' }),
+        createParams('non-existent')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(body.error).toBe('Policy not found');
+    });
+
+    it('should return 403 when policy is frozen', async () => {
+      mockIsPolicyFrozen.mockResolvedValue({
+        isFrozen: true,
+        reason: 'Policy is frozen due to plan limit',
+        activePoliciesLimit: 3,
+        totalPolicies: 5,
+        frozenCount: 2,
+      });
+
+      const response = await PUT(
+        createRequestWithId('policy-1', 'PUT', { name: 'Updated' }),
+        createParams('policy-1')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(body.error).toBe('Policy is frozen');
+      expect(body.frozen).toBe(true);
+      expect(mockPrisma.policy.update).not.toHaveBeenCalled();
+    });
+
+    it('should update policy and create version when content changes', async () => {
+      mockPrisma.policy.update.mockResolvedValue({
+        id: 'policy-1',
+        name: 'Updated Name',
+        content: 'new content',
+        version: 2,
+      });
+      mockPrisma.policyVersion.create.mockResolvedValue({});
+
+      const response = await PUT(
+        createRequestWithId('policy-1', 'PUT', {
+          name: 'Updated Name',
+          content: 'new content',
+        }),
+        createParams('policy-1')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.name).toBe('Updated Name');
+      expect(mockPrisma.policy.update).toHaveBeenCalled();
+      expect(mockPrisma.policyVersion.create).toHaveBeenCalled();
+    });
+
+    it('should update policy without version when only name changes', async () => {
+      mockPrisma.policy.update.mockResolvedValue({
+        id: 'policy-1',
+        name: 'Updated Name',
         content: 'original content',
         version: 1,
       });
 
-      const newContent = 'updated content';
-      const existingPolicy = await mockPrisma.policy.findFirst({});
-      const contentChanged = newContent !== existingPolicy.content;
+      const response = await PUT(
+        createRequestWithId('policy-1', 'PUT', {
+          name: 'Updated Name',
+          content: 'original content', // Same as existing, no version should be created
+        }),
+        createParams('policy-1')
+      );
+      const body = await response.json();
 
-      expect(contentChanged).toBe(true);
-
-      if (contentChanged) {
-        mockPrisma.policy.update.mockResolvedValue({
-          id: 'policy-1',
-          content: newContent,
-          version: 2,
-        });
-
-        const updated = await mockPrisma.policy.update({
-          where: { id: 'policy-1' },
-          data: { content: newContent, version: { increment: 1 } },
-        });
-
-        expect(updated.version).toBe(2);
-      }
+      expect(response.status).toBe(200);
+      expect(body.name).toBe('Updated Name');
+      expect(mockPrisma.policyVersion.create).not.toHaveBeenCalled();
     });
   });
 
   describe('DELETE /api/policies/[id]', () => {
-    it('should delete policy owned by user', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
+    beforeEach(() => {
       mockPrisma.policy.findFirst.mockResolvedValue({
         id: 'policy-1',
         userId: 'user-1',
       });
+    });
 
+    it('should return 401 when not authenticated', async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      const response = await DELETE(
+        createRequestWithId('policy-1', 'DELETE'),
+        createParams('policy-1')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(body.error).toBe('Unauthorized');
+    });
+
+    it('should return 404 when policy not found or not owned', async () => {
+      mockPrisma.policy.findFirst.mockResolvedValue(null);
+
+      const response = await DELETE(
+        createRequestWithId('non-existent', 'DELETE'),
+        createParams('non-existent')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(body.error).toBe('Policy not found');
+    });
+
+    it('should delete policy even if frozen (to reduce count)', async () => {
       mockPrisma.policy.delete.mockResolvedValue({});
 
-      const policy = await mockPrisma.policy.findFirst({
-        where: { id: 'policy-1', userId: 'user-1' },
+      const response = await DELETE(
+        createRequestWithId('policy-1', 'DELETE'),
+        createParams('policy-1')
+      );
+      const body = await response.json();
+
+      // 路由返回 200 和 { success: true }
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(mockPrisma.policy.delete).toHaveBeenCalledWith({
+        where: { id: 'policy-1' },
       });
-
-      expect(policy).not.toBeNull();
-
-      await mockPrisma.policy.delete({ where: { id: 'policy-1' } });
-
-      expect(mockPrisma.policy.delete).toHaveBeenCalled();
     });
 
-    it('should not delete policy owned by other user', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
+    it('should return 500 on internal error', async () => {
+      mockPrisma.policy.delete.mockRejectedValue(new Error('Database error'));
 
-      mockPrisma.policy.findFirst.mockResolvedValue(null); // Policy not found for this user
+      const response = await DELETE(
+        createRequestWithId('policy-1', 'DELETE'),
+        createParams('policy-1')
+      );
+      const body = await response.json();
 
-      const policy = await mockPrisma.policy.findFirst({
-        where: { id: 'policy-1', userId: 'user-1' },
-      });
-
-      expect(policy).toBeNull();
-    });
-  });
-});
-
-describe('Policy Execution', () => {
-  describe('Rule Parsing', () => {
-    it('should parse simple rules', () => {
-      interface Rule {
-        field: string;
-        condition: string;
-        value: unknown;
-        action: string;
-      }
-
-      const parsePolicyRules = (content: string): Rule[] => {
-        const rules: Rule[] = [];
-        const lines = content.split('\n');
-
-        for (const line of lines) {
-          const match = line.match(/if\s+(\w+)\s+(>=|<=|>|<|==|!=)\s+(\S+)\s+then\s+(.+)/i);
-          if (match) {
-            rules.push({
-              field: match[1],
-              condition: match[2],
-              value: isNaN(Number(match[3])) ? match[3] : Number(match[3]),
-              action: match[4].trim(),
-            });
-          }
-        }
-        return rules;
-      };
-
-      const content = `
-if creditScore >= 750 then approve
-if income < 30000 then reject
-if status == verified then proceed
-      `;
-
-      const rules = parsePolicyRules(content);
-
-      expect(rules).toHaveLength(3);
-      expect(rules[0]).toEqual({
-        field: 'creditScore',
-        condition: '>=',
-        value: 750,
-        action: 'approve',
-      });
-      expect(rules[1].value).toBe(30000);
-      expect(rules[2].value).toBe('verified');
-    });
-  });
-
-  describe('Rule Evaluation', () => {
-    it('should evaluate rules against input', () => {
-      interface Rule {
-        field: string;
-        condition: string;
-        value: unknown;
-        action: string;
-      }
-
-      const evaluateRules = (
-        rules: Rule[],
-        input: Record<string, unknown>
-      ): { approved: boolean; matchedRules: string[] } => {
-        const result = {
-          approved: true,
-          matchedRules: [] as string[],
-        };
-
-        for (const rule of rules) {
-          const fieldValue = input[rule.field];
-          let matched = false;
-
-          switch (rule.condition) {
-            case '>=':
-              matched = Number(fieldValue) >= Number(rule.value);
-              break;
-            case '<':
-              matched = Number(fieldValue) < Number(rule.value);
-              break;
-          }
-
-          if (matched) {
-            result.matchedRules.push(`${rule.field} ${rule.condition} ${rule.value}`);
-            if (rule.action.includes('reject')) {
-              result.approved = false;
-            }
-          }
-        }
-
-        return result;
-      };
-
-      const rules: Rule[] = [
-        { field: 'score', condition: '>=', value: 80, action: 'approve' },
-        { field: 'risk', condition: '>=', value: 0.8, action: 'reject' },
-      ];
-
-      // Approved case
-      const result1 = evaluateRules(rules, { score: 85, risk: 0.2 });
-      expect(result1.approved).toBe(true);
-      expect(result1.matchedRules).toContain('score >= 80');
-
-      // Rejected case
-      const result2 = evaluateRules(rules, { score: 90, risk: 0.9 });
-      expect(result2.approved).toBe(false);
-      expect(result2.matchedRules).toContain('risk >= 0.8');
+      expect(response.status).toBe(500);
+      expect(body.error).toBe('Internal server error');
     });
   });
 });
 
-describe('Policy Freeze API Behavior', () => {
+describe('Policy Freeze Behavior - 真实路由测试', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSession.mockResolvedValue({
+      user: { id: 'user-1', email: 'user@example.com' },
+    } as Awaited<ReturnType<typeof getSession>>);
   });
 
   describe('GET /api/policies with freeze status', () => {
-    it('should return policies with freeze info when user has frozen policies', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
+    it('should return policies with correct freeze indicators', async () => {
+      const mockPolicies = [
+        { id: 'p1', name: 'Active 1', updatedAt: new Date('2024-01-05'), _count: { executions: 0 } },
+        { id: 'p2', name: 'Active 2', updatedAt: new Date('2024-01-04'), _count: { executions: 0 } },
+        { id: 'p3', name: 'Active 3', updatedAt: new Date('2024-01-03'), _count: { executions: 0 } },
+        { id: 'p4', name: 'Frozen 1', updatedAt: new Date('2024-01-02'), _count: { executions: 0 } },
+        { id: 'p5', name: 'Frozen 2', updatedAt: new Date('2024-01-01'), _count: { executions: 0 } },
+      ];
 
-      // User has 5 policies but limit is 3
-      mockPrisma.policy.findMany.mockResolvedValue([
-        { id: 'p1', name: 'Policy 1', updatedAt: new Date('2024-01-05') },
-        { id: 'p2', name: 'Policy 2', updatedAt: new Date('2024-01-04') },
-        { id: 'p3', name: 'Policy 3', updatedAt: new Date('2024-01-03') },
-        { id: 'p4', name: 'Policy 4', updatedAt: new Date('2024-01-02') },
-        { id: 'p5', name: 'Policy 5', updatedAt: new Date('2024-01-01') },
-      ]);
-
+      mockPrisma.policy.findMany.mockResolvedValue(mockPolicies);
+      // 路由使用 getPolicyFreezeStatus，返回 frozenPolicyIds 为 Set
       mockGetPolicyFreezeStatus.mockResolvedValue({
+        frozenPolicyIds: new Set(['p4', 'p5']),
         limit: 3,
         totalPolicies: 5,
         frozenCount: 2,
-        frozenPolicyIds: new Set(['p4', 'p5']),
       });
 
-      const session = await mockGetSession();
-      expect(session?.user?.id).toBe('user-1');
+      const response = await GET();
+      const body = await response.json();
 
-      const freezeStatus = await mockGetPolicyFreezeStatus();
-      expect(freezeStatus.limit).toBe(3);
-      expect(freezeStatus.frozenCount).toBe(2);
-      expect(freezeStatus.frozenPolicyIds.has('p4')).toBe(true);
-      expect(freezeStatus.frozenPolicyIds.has('p5')).toBe(true);
+      expect(response.status).toBe(200);
+      expect(body.policies).toHaveLength(5);
+      expect(body.policies[0].isFrozen).toBe(false);
+      expect(body.policies[3].isFrozen).toBe(true);
+      expect(body.policies[4].isFrozen).toBe(true);
+      expect(body.freezeInfo.frozenCount).toBe(2);
     });
 
-    it('should return no frozen policies for unlimited plan users', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'team-user' },
-      });
+    it('should return no frozen policies for unlimited plan', async () => {
+      const mockPolicies = [
+        { id: 'p1', name: 'Policy 1', _count: { executions: 0 } },
+        { id: 'p2', name: 'Policy 2', _count: { executions: 0 } },
+      ];
 
-      mockPrisma.policy.findMany.mockResolvedValue([
-        { id: 'p1', name: 'Policy 1' },
-        { id: 'p2', name: 'Policy 2' },
-      ]);
-
+      mockPrisma.policy.findMany.mockResolvedValue(mockPolicies);
       mockGetPolicyFreezeStatus.mockResolvedValue({
-        limit: -1, // Unlimited
+        frozenPolicyIds: new Set<string>(),
+        limit: -1, // unlimited
         totalPolicies: 2,
         frozenCount: 0,
-        frozenPolicyIds: new Set(),
       });
 
-      const freezeStatus = await mockGetPolicyFreezeStatus();
-      expect(freezeStatus.limit).toBe(-1);
-      expect(freezeStatus.frozenCount).toBe(0);
+      const response = await GET();
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.policies.every((p: { isFrozen: boolean }) => !p.isFrozen)).toBe(true);
     });
   });
 
   describe('GET /api/policies/[id] freeze info', () => {
-    it('should return freeze info for a frozen policy', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
+    it('should return freeze info for frozen policy', async () => {
       mockPrisma.policy.findFirst.mockResolvedValue({
         id: 'policy-4',
-        userId: 'user-1',
         name: 'Frozen Policy',
+        userId: 'user-1',
+        versions: [],
+        _count: { executions: 0 },
       });
 
       mockIsPolicyFrozen.mockResolvedValue({
         isFrozen: true,
-        reason: 'This policy is frozen because it exceeds your plan limit',
+        reason: 'Policy is frozen because it exceeds your plan limit',
         activePoliciesLimit: 3,
         totalPolicies: 5,
         frozenCount: 2,
       });
 
-      const freezeInfo = await mockIsPolicyFrozen('user-1', 'policy-4');
-      expect(freezeInfo.isFrozen).toBe(true);
-      expect(freezeInfo.activePoliciesLimit).toBe(3);
-      expect(freezeInfo.totalPolicies).toBe(5);
+      const response = await GET_BY_ID(
+        createRequestWithId('policy-4', 'GET'),
+        createParams('policy-4')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      // isFrozen 在顶层
+      expect(body.isFrozen).toBe(true);
+      // freezeInfo 包含详细信息（limit, total, frozenCount）
+      expect(body.freezeInfo.limit).toBe(3);
+      expect(body.freezeInfo.total).toBe(5);
     });
 
     it('should return not frozen for active policy', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
       mockPrisma.policy.findFirst.mockResolvedValue({
         id: 'policy-1',
-        userId: 'user-1',
         name: 'Active Policy',
+        userId: 'user-1',
+        versions: [],
+        _count: { executions: 5 },
       });
 
       mockIsPolicyFrozen.mockResolvedValue({
         isFrozen: false,
-        activePoliciesLimit: 3,
+        activePoliciesLimit: 10,
         totalPolicies: 3,
         frozenCount: 0,
       });
 
-      const freezeInfo = await mockIsPolicyFrozen('user-1', 'policy-1');
-      expect(freezeInfo.isFrozen).toBe(false);
+      const response = await GET_BY_ID(
+        createRequestWithId('policy-1', 'GET'),
+        createParams('policy-1')
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      // isFrozen 在顶层
+      expect(body.isFrozen).toBe(false);
     });
   });
 
   describe('PUT /api/policies/[id] freeze blocking', () => {
-    it('should block update on frozen policy with 403', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
+    it('should block update with 403 when policy is frozen', async () => {
       mockPrisma.policy.findFirst.mockResolvedValue({
         id: 'policy-4',
-        userId: 'user-1',
+        name: 'Frozen Policy',
         content: 'old content',
+        userId: 'user-1',
+        version: 1,
       });
 
       mockIsPolicyFrozen.mockResolvedValue({
@@ -478,44 +701,30 @@ describe('Policy Freeze API Behavior', () => {
         frozenCount: 2,
       });
 
-      const session = await mockGetSession();
-      expect(session?.user?.id).toBe('user-1');
+      const response = await PUT(
+        createRequestWithId('policy-4', 'PUT', { content: 'new content' }),
+        createParams('policy-4')
+      );
+      const body = await response.json();
 
-      const policy = await mockPrisma.policy.findFirst({
-        where: { id: 'policy-4', userId: 'user-1' },
-      });
-      expect(policy).not.toBeNull();
-
-      const freezeInfo = await mockIsPolicyFrozen('user-1', 'policy-4');
-      expect(freezeInfo.isFrozen).toBe(true);
-
-      // API should return 403 when trying to update frozen policy
-      if (freezeInfo.isFrozen) {
-        const expectedResponse = {
-          error: 'Policy is frozen',
-          message: `This policy is frozen because your plan allows ${freezeInfo.activePoliciesLimit} policies but you have ${freezeInfo.totalPolicies}. Delete some policies or upgrade your plan.`,
-          frozen: true,
-        };
-        expect(expectedResponse.frozen).toBe(true);
-        expect(mockPrisma.policy.update).not.toHaveBeenCalled();
-      }
+      expect(response.status).toBe(403);
+      expect(body.frozen).toBe(true);
+      expect(body.message).toContain('frozen');
+      expect(mockPrisma.policy.update).not.toHaveBeenCalled();
     });
 
-    it('should allow update on active policy', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
+    it('should allow update when policy is not frozen', async () => {
       mockPrisma.policy.findFirst.mockResolvedValue({
         id: 'policy-1',
-        userId: 'user-1',
+        name: 'Active Policy',
         content: 'old content',
+        userId: 'user-1',
         version: 1,
       });
 
       mockIsPolicyFrozen.mockResolvedValue({
         isFrozen: false,
-        activePoliciesLimit: 3,
+        activePoliciesLimit: 10,
         totalPolicies: 3,
         frozenCount: 0,
       });
@@ -525,154 +734,28 @@ describe('Policy Freeze API Behavior', () => {
         content: 'new content',
         version: 2,
       });
-
-      const freezeInfo = await mockIsPolicyFrozen('user-1', 'policy-1');
-      expect(freezeInfo.isFrozen).toBe(false);
-
-      // API should allow update for non-frozen policy
-      if (!freezeInfo.isFrozen) {
-        const updated = await mockPrisma.policy.update({
-          where: { id: 'policy-1' },
-          data: { content: 'new content', version: { increment: 1 } },
-        });
-        expect(updated.content).toBe('new content');
-        expect(mockPrisma.policy.update).toHaveBeenCalled();
-      }
-    });
-  });
-
-  describe('POST /api/policies/[id]/execute freeze blocking', () => {
-    it('should block execution of frozen policy with 403', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
+      mockPrisma.policyVersion.create.mockResolvedValue({});
+      mockDetectPII.mockReturnValue({
+        hasPII: false,
+        detectedTypes: [],
+        locations: [],
+        riskLevel: 'low',
       });
 
-      mockPrisma.policy.findFirst.mockResolvedValue({
-        id: 'policy-4',
-        userId: 'user-1',
-        content: 'if score >= 80 then approve',
-      });
+      const response = await PUT(
+        createRequestWithId('policy-1', 'PUT', { content: 'new content' }),
+        createParams('policy-1')
+      );
+      const body = await response.json();
 
-      mockIsPolicyFrozen.mockResolvedValue({
-        isFrozen: true,
-        reason: 'Policy is frozen',
-        activePoliciesLimit: 3,
-        totalPolicies: 5,
-        frozenCount: 2,
-      });
-
-      const session = await mockGetSession();
-      expect(session?.user?.id).toBe('user-1');
-
-      const policy = await mockPrisma.policy.findFirst({ where: { id: 'policy-4' } });
-      expect(policy).not.toBeNull();
-      expect(policy!.userId).toBe('user-1');
-
-      // Owner is executing their own frozen policy
-      const freezeInfo = await mockIsPolicyFrozen('user-1', 'policy-4');
-      expect(freezeInfo.isFrozen).toBe(true);
-
-      // Execution should be blocked
-      if (freezeInfo.isFrozen) {
-        const expectedResponse = {
-          error: 'Policy is frozen',
-          message: `This policy is frozen because your plan allows ${freezeInfo.activePoliciesLimit} policies but you have ${freezeInfo.totalPolicies}. Delete some policies or upgrade your plan.`,
-          frozen: true,
-        };
-        expect(expectedResponse.frozen).toBe(true);
-        expect(mockPrisma.execution.create).not.toHaveBeenCalled();
-      }
-    });
-
-    it('should allow execution of active policy', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
-      mockPrisma.policy.findFirst.mockResolvedValue({
-        id: 'policy-1',
-        userId: 'user-1',
-        content: 'if score >= 80 then approve',
-      });
-
-      mockIsPolicyFrozen.mockResolvedValue({
-        isFrozen: false,
-        activePoliciesLimit: 3,
-        totalPolicies: 3,
-        frozenCount: 0,
-      });
-
-      mockPrisma.execution.create.mockResolvedValue({
-        id: 'exec-1',
-        policyId: 'policy-1',
-        success: true,
-      });
-
-      const freezeInfo = await mockIsPolicyFrozen('user-1', 'policy-1');
-      expect(freezeInfo.isFrozen).toBe(false);
-
-      // Execution should proceed
-      if (!freezeInfo.isFrozen) {
-        const execution = await mockPrisma.execution.create({
-          data: {
-            userId: 'user-1',
-            policyId: 'policy-1',
-            input: { score: 90 },
-            output: { approved: true },
-            success: true,
-          },
-        });
-        expect(execution.success).toBe(true);
-        expect(mockPrisma.execution.create).toHaveBeenCalled();
-      }
-    });
-
-    it('should allow other users to execute public frozen policy', async () => {
-      // Another user executes a public policy that is frozen for the owner
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-2' }, // Different user
-      });
-
-      mockPrisma.policy.findFirst.mockResolvedValue({
-        id: 'policy-4',
-        userId: 'user-1', // Owner is different
-        isPublic: true,
-        content: 'if score >= 80 then approve',
-      });
-
-      const session = await mockGetSession();
-      const policy = await mockPrisma.policy.findFirst({ where: { id: 'policy-4' } });
-
-      // Other user is not the owner, freeze check should not apply
-      const isOwner = policy!.userId === session!.user!.id;
-      expect(isOwner).toBe(false);
-
-      // Execution should proceed for non-owners
-      mockPrisma.execution.create.mockResolvedValue({
-        id: 'exec-2',
-        policyId: 'policy-4',
-        success: true,
-      });
-
-      const execution = await mockPrisma.execution.create({
-        data: {
-          userId: 'user-2',
-          policyId: 'policy-4',
-          input: { score: 90 },
-          output: { approved: true },
-          success: true,
-        },
-      });
-      expect(execution.success).toBe(true);
+      expect(response.status).toBe(200);
+      expect(body.content).toBe('new content');
+      expect(mockPrisma.policy.update).toHaveBeenCalled();
     });
   });
 
   describe('DELETE /api/policies/[id] on frozen policy', () => {
-    it('should allow deletion of frozen policy (to reduce count)', async () => {
-      mockGetSession.mockResolvedValue({
-        user: { id: 'user-1' },
-      });
-
+    it('should allow deletion of frozen policy to reduce count', async () => {
       mockPrisma.policy.findFirst.mockResolvedValue({
         id: 'policy-4',
         userId: 'user-1',
@@ -680,16 +763,15 @@ describe('Policy Freeze API Behavior', () => {
 
       mockPrisma.policy.delete.mockResolvedValue({});
 
-      const session = await mockGetSession();
-      expect(session?.user?.id).toBe('user-1');
+      const response = await DELETE(
+        createRequestWithId('policy-4', 'DELETE'),
+        createParams('policy-4')
+      );
+      const body = await response.json();
 
-      const policy = await mockPrisma.policy.findFirst({
-        where: { id: 'policy-4', userId: 'user-1' },
-      });
-      expect(policy).not.toBeNull();
-
-      // Deletion should be allowed even for frozen policies
-      await mockPrisma.policy.delete({ where: { id: 'policy-4' } });
+      // 路由返回 200 和 { success: true }
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
       expect(mockPrisma.policy.delete).toHaveBeenCalledWith({
         where: { id: 'policy-4' },
       });
@@ -697,93 +779,73 @@ describe('Policy Freeze API Behavior', () => {
   });
 });
 
-describe('Policy Freeze Edge Cases in API', () => {
+describe('Policy Edge Cases - 真实路由测试', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSession.mockResolvedValue({
+      user: { id: 'trial-user', email: 'trial@example.com' },
+    } as Awaited<ReturnType<typeof getSession>>);
   });
 
-  it('should handle trial expiration during freeze check', async () => {
-    mockGetSession.mockResolvedValue({
-      user: { id: 'trial-user' },
-    });
+  it('should handle trial expiration affecting freeze status', async () => {
+    // 用户原来是 trial（25 policies limit），但 trial 过期后降级为 free（3 policies limit）
+    // 现在有 10 个 policies，7 个被冻结
+    const mockPolicies = Array.from({ length: 10 }, (_, i) => ({
+      id: `p${i + 1}`,
+      name: `Policy ${i + 1}`,
+      updatedAt: new Date(`2024-01-${String(10 - i).padStart(2, '0')}`),
+      _count: { executions: 0 },
+    }));
 
-    // User was on trial (25 policies limit) but trial expired
-    // Now they're on free (3 policies limit) with 10 policies
+    mockPrisma.policy.findMany.mockResolvedValue(mockPolicies);
+
+    // 前 3 个 ID 不在冻结集合中（活跃），后 7 个在冻结集合中
+    const frozenIds = mockPolicies.slice(3).map((p) => p.id);
     mockGetPolicyFreezeStatus.mockResolvedValue({
-      limit: 3, // Downgraded to free
+      frozenPolicyIds: new Set(frozenIds),
+      limit: 3,
       totalPolicies: 10,
       frozenCount: 7,
-      frozenPolicyIds: new Set([
-        'p4',
-        'p5',
-        'p6',
-        'p7',
-        'p8',
-        'p9',
-        'p10',
-      ]),
     });
 
-    const freezeStatus = await mockGetPolicyFreezeStatus();
-    expect(freezeStatus.limit).toBe(3);
-    expect(freezeStatus.frozenCount).toBe(7);
-    expect(freezeStatus.frozenPolicyIds.size).toBe(7);
+    const response = await GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.policies).toHaveLength(10);
+
+    const frozenPolicies = body.policies.filter(
+      (p: { isFrozen: boolean }) => p.isFrozen
+    );
+    expect(frozenPolicies).toHaveLength(7);
+    expect(body.freezeInfo.frozenCount).toBe(7);
   });
 
   it('should correctly order policies by updatedAt for freeze determination', async () => {
-    mockGetSession.mockResolvedValue({
-      user: { id: 'user-1' },
-    });
-
-    // Policies should be frozen based on updatedAt order (oldest frozen first)
-    const policies = [
-      { id: 'recently-updated', updatedAt: new Date('2024-12-01') },
-      { id: 'moderately-old', updatedAt: new Date('2024-06-01') },
-      { id: 'old-policy', updatedAt: new Date('2024-01-01') },
-      { id: 'very-old', updatedAt: new Date('2023-06-01') },
+    const mockPolicies = [
+      { id: 'recently-updated', name: 'Recent', updatedAt: new Date('2024-12-01'), _count: { executions: 5 } },
+      { id: 'old-policy', name: 'Old', updatedAt: new Date('2024-01-01'), _count: { executions: 10 } },
     ];
 
-    // With limit 2, the 2 oldest should be frozen
+    mockPrisma.policy.findMany.mockResolvedValue(mockPolicies);
+    // 只有老策略被冻结
     mockGetPolicyFreezeStatus.mockResolvedValue({
-      limit: 2,
-      totalPolicies: 4,
-      frozenCount: 2,
-      frozenPolicyIds: new Set(['old-policy', 'very-old']),
-    });
-
-    const freezeStatus = await mockGetPolicyFreezeStatus();
-    expect(freezeStatus.frozenPolicyIds.has('recently-updated')).toBe(false);
-    expect(freezeStatus.frozenPolicyIds.has('moderately-old')).toBe(false);
-    expect(freezeStatus.frozenPolicyIds.has('old-policy')).toBe(true);
-    expect(freezeStatus.frozenPolicyIds.has('very-old')).toBe(true);
-  });
-
-  it('should handle concurrent freeze check and policy deletion', async () => {
-    mockGetSession.mockResolvedValue({
-      user: { id: 'user-1' },
-    });
-
-    // Initial state: 5 policies, 3 limit, 2 frozen
-    mockGetPolicyFreezeStatus.mockResolvedValueOnce({
-      limit: 3,
-      totalPolicies: 5,
-      frozenCount: 2,
-      frozenPolicyIds: new Set(['p4', 'p5']),
-    });
-
-    const initialStatus = await mockGetPolicyFreezeStatus();
-    expect(initialStatus.frozenCount).toBe(2);
-
-    // After deleting one frozen policy: 4 policies, 1 frozen
-    mockGetPolicyFreezeStatus.mockResolvedValueOnce({
-      limit: 3,
-      totalPolicies: 4,
+      frozenPolicyIds: new Set(['old-policy']),
+      limit: 1,
+      totalPolicies: 2,
       frozenCount: 1,
-      frozenPolicyIds: new Set(['p4']),
     });
 
-    const afterDelete = await mockGetPolicyFreezeStatus();
-    expect(afterDelete.frozenCount).toBe(1);
-    expect(afterDelete.totalPolicies).toBe(4);
+    const response = await GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    const recentPolicy = body.policies.find(
+      (p: { id: string }) => p.id === 'recently-updated'
+    );
+    const oldPolicy = body.policies.find((p: { id: string }) => p.id === 'old-policy');
+
+    expect(recentPolicy.isFrozen).toBe(false);
+    expect(oldPolicy.isFrozen).toBe(true);
   });
 });

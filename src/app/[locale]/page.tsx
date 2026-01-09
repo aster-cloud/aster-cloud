@@ -295,10 +295,10 @@ function HomeContent({ locale }: { locale: string }) {
               {t('nav.brand')}
             </div>
             <div className="flex space-x-6 text-gray-400 text-sm">
-              <a href="#" className="hover:text-white">{t('footer.privacy')}</a>
-              <a href="#" className="hover:text-white">{t('footer.terms')}</a>
-              <a href="#" className="hover:text-white">{t('footer.documentation')}</a>
-              <a href="#" className="hover:text-white">{t('footer.support')}</a>
+              <Link href="/privacy" className="hover:text-white">{t('footer.privacy')}</Link>
+              <Link href="/terms" className="hover:text-white">{t('footer.terms')}</Link>
+              <a href="https://docs.aster-lang.cloud" target="_blank" rel="noopener noreferrer" className="hover:text-white">{t('footer.documentation')}</a>
+              <a href="mailto:support@aster-lang.cloud" className="hover:text-white">{t('footer.support')}</a>
             </div>
           </div>
           <div className="mt-8 text-center text-gray-500 text-sm">

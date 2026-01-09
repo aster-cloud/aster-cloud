@@ -5,10 +5,14 @@ const mockUserFindUnique = vi.fn();
 const mockPolicyFindMany = vi.fn();
 const mockPolicyCount = vi.fn();
 
+// 添加批量查询 mock
+const mockUserFindMany = vi.fn();
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
       findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
+      findMany: (...args: unknown[]) => mockUserFindMany(...args),
     },
     policy: {
       findMany: (...args: unknown[]) => mockPolicyFindMany(...args),
@@ -44,6 +48,7 @@ import {
   getPolicyFreezeStatus,
   isPolicyFrozen,
   addFreezeStatusToPolicies,
+  getBatchPolicyFreezeStatus,
 } from '@/lib/policy-freeze';
 
 describe('Policy Freeze Logic', () => {
@@ -420,5 +425,186 @@ describe('Policy Freeze Edge Cases', () => {
     for (let i = 4; i <= 10; i++) {
       expect(result.frozenPolicyIds.has(`policy-${i}`)).toBe(true);
     }
+  });
+});
+
+describe('getBatchPolicyFreezeStatus', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return empty map for empty user IDs', async () => {
+    const result = await getBatchPolicyFreezeStatus([]);
+
+    expect(result.size).toBe(0);
+    expect(mockUserFindMany).not.toHaveBeenCalled();
+  });
+
+  it('should deduplicate user IDs', async () => {
+    mockUserFindMany.mockResolvedValue([
+      { id: 'user-1', plan: 'team', trialEndsAt: null },
+    ]);
+
+    await getBatchPolicyFreezeStatus(['user-1', 'user-1', 'user-1']);
+
+    // 应该只查询一次，且只包含去重后的用户 ID
+    expect(mockUserFindMany).toHaveBeenCalledTimes(1);
+    const callArgs = mockUserFindMany.mock.calls[0][0];
+    expect(callArgs.where.id.in).toHaveLength(1);
+    expect(callArgs.where.id.in).toContain('user-1');
+  });
+
+  it('should return empty set for unlimited plan users without policy query', async () => {
+    mockUserFindMany.mockResolvedValue([
+      { id: 'team-user', plan: 'team', trialEndsAt: null },
+      { id: 'enterprise-user', plan: 'enterprise', trialEndsAt: null },
+    ]);
+
+    const result = await getBatchPolicyFreezeStatus(['team-user', 'enterprise-user']);
+
+    expect(result.size).toBe(2);
+    expect(result.get('team-user')?.size).toBe(0);
+    expect(result.get('enterprise-user')?.size).toBe(0);
+    // 无限制套餐不应该查询策略
+    expect(mockPolicyFindMany).not.toHaveBeenCalled();
+  });
+
+  it('should calculate frozen policies for limited plan users', async () => {
+    mockUserFindMany.mockResolvedValue([
+      { id: 'free-user', plan: 'free', trialEndsAt: null },
+    ]);
+
+    // free 用户有 5 个策略，限制为 3，应该冻结 2 个
+    mockPolicyFindMany.mockResolvedValue([
+      { id: 'policy-1', userId: 'free-user' },
+      { id: 'policy-2', userId: 'free-user' },
+      { id: 'policy-3', userId: 'free-user' },
+      { id: 'policy-4', userId: 'free-user' },
+      { id: 'policy-5', userId: 'free-user' },
+    ]);
+
+    const result = await getBatchPolicyFreezeStatus(['free-user']);
+
+    expect(result.size).toBe(1);
+    const frozenIds = result.get('free-user');
+    expect(frozenIds?.size).toBe(2);
+    expect(frozenIds?.has('policy-4')).toBe(true);
+    expect(frozenIds?.has('policy-5')).toBe(true);
+    // 前 3 个策略应该是活跃的
+    expect(frozenIds?.has('policy-1')).toBe(false);
+    expect(frozenIds?.has('policy-2')).toBe(false);
+    expect(frozenIds?.has('policy-3')).toBe(false);
+  });
+
+  it('should handle mixed plan users correctly', async () => {
+    mockUserFindMany.mockResolvedValue([
+      { id: 'free-user', plan: 'free', trialEndsAt: null },
+      { id: 'team-user', plan: 'team', trialEndsAt: null },
+      { id: 'pro-user', plan: 'pro', trialEndsAt: null },
+    ]);
+
+    // 只为有限制的用户返回策略
+    mockPolicyFindMany.mockResolvedValue([
+      // free-user 的策略（limit=3，有 4 个）
+      { id: 'free-p1', userId: 'free-user' },
+      { id: 'free-p2', userId: 'free-user' },
+      { id: 'free-p3', userId: 'free-user' },
+      { id: 'free-p4', userId: 'free-user' },
+      // pro-user 的策略（limit=25，有 2 个，不冻结）
+      { id: 'pro-p1', userId: 'pro-user' },
+      { id: 'pro-p2', userId: 'pro-user' },
+    ]);
+
+    const result = await getBatchPolicyFreezeStatus(['free-user', 'team-user', 'pro-user']);
+
+    expect(result.size).toBe(3);
+
+    // team-user 无限制，空集合
+    expect(result.get('team-user')?.size).toBe(0);
+
+    // pro-user 未超限，空集合
+    expect(result.get('pro-user')?.size).toBe(0);
+
+    // free-user 超限 1 个
+    expect(result.get('free-user')?.size).toBe(1);
+    expect(result.get('free-user')?.has('free-p4')).toBe(true);
+  });
+
+  it('should treat expired trial as free plan', async () => {
+    const expiredDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // Yesterday
+
+    mockUserFindMany.mockResolvedValue([
+      { id: 'expired-trial', plan: 'trial', trialEndsAt: expiredDate },
+    ]);
+
+    // 过期 trial 降级为 free（limit=3），有 5 个策略
+    mockPolicyFindMany.mockResolvedValue([
+      { id: 'p1', userId: 'expired-trial' },
+      { id: 'p2', userId: 'expired-trial' },
+      { id: 'p3', userId: 'expired-trial' },
+      { id: 'p4', userId: 'expired-trial' },
+      { id: 'p5', userId: 'expired-trial' },
+    ]);
+
+    const result = await getBatchPolicyFreezeStatus(['expired-trial']);
+
+    const frozenIds = result.get('expired-trial');
+    expect(frozenIds?.size).toBe(2);
+    expect(frozenIds?.has('p4')).toBe(true);
+    expect(frozenIds?.has('p5')).toBe(true);
+  });
+
+  it('should treat active trial as trial plan', async () => {
+    const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
+
+    mockUserFindMany.mockResolvedValue([
+      { id: 'active-trial', plan: 'trial', trialEndsAt: futureDate },
+    ]);
+
+    // 活跃 trial（limit=25），有 5 个策略，不冻结
+    mockPolicyFindMany.mockResolvedValue([
+      { id: 'p1', userId: 'active-trial' },
+      { id: 'p2', userId: 'active-trial' },
+      { id: 'p3', userId: 'active-trial' },
+      { id: 'p4', userId: 'active-trial' },
+      { id: 'p5', userId: 'active-trial' },
+    ]);
+
+    const result = await getBatchPolicyFreezeStatus(['active-trial']);
+
+    const frozenIds = result.get('active-trial');
+    expect(frozenIds?.size).toBe(0);
+  });
+
+  it('should handle user with no policies', async () => {
+    mockUserFindMany.mockResolvedValue([
+      { id: 'empty-user', plan: 'free', trialEndsAt: null },
+    ]);
+
+    mockPolicyFindMany.mockResolvedValue([]);
+
+    const result = await getBatchPolicyFreezeStatus(['empty-user']);
+
+    expect(result.get('empty-user')?.size).toBe(0);
+  });
+
+  it('should handle unknown plan as free', async () => {
+    mockUserFindMany.mockResolvedValue([
+      { id: 'unknown-user', plan: 'unknown-plan', trialEndsAt: null },
+    ]);
+
+    // 未知套餐降级为 free（limit=3），有 4 个策略
+    mockPolicyFindMany.mockResolvedValue([
+      { id: 'p1', userId: 'unknown-user' },
+      { id: 'p2', userId: 'unknown-user' },
+      { id: 'p3', userId: 'unknown-user' },
+      { id: 'p4', userId: 'unknown-user' },
+    ]);
+
+    const result = await getBatchPolicyFreezeStatus(['unknown-user']);
+
+    const frozenIds = result.get('unknown-user');
+    expect(frozenIds?.size).toBe(1);
+    expect(frozenIds?.has('p4')).toBe(true);
   });
 });
