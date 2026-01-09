@@ -283,6 +283,53 @@ function DynamicFormField({
 }) {
   const fieldType = typeof value;
 
+  // 处理嵌套对象（递归渲染）
+  if (fieldType === 'object' && value !== null && !Array.isArray(value)) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-3 mb-2">
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          {name}
+        </label>
+        <div className="space-y-2 pl-2">
+          {Object.entries(value as Record<string, unknown>).map(([subKey, subValue]) => (
+            <DynamicFormField
+              key={subKey}
+              name={subKey}
+              value={subValue}
+              onChange={(fieldName, newValue) => {
+                onChange(name, { ...(value as Record<string, unknown>), [fieldName]: newValue });
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 处理数组（显示为 JSON）
+  if (Array.isArray(value)) {
+    return (
+      <div>
+        <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+          {name} <span className="text-xs text-gray-400">(array)</span>
+        </label>
+        <textarea
+          id={name}
+          value={JSON.stringify(value, null, 2)}
+          onChange={(e) => {
+            try {
+              onChange(name, JSON.parse(e.target.value));
+            } catch {
+              // 保持原值如果 JSON 解析失败
+            }
+          }}
+          rows={3}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"
+        />
+      </div>
+    );
+  }
+
   if (fieldType === 'boolean') {
     return (
       <div className="flex items-center space-x-2">
@@ -326,7 +373,7 @@ function DynamicFormField({
       <input
         type="text"
         id={name}
-        value={String(value)}
+        value={value === null || value === undefined ? '' : String(value)}
         onChange={(e) => onChange(name, e.target.value)}
         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
       />
