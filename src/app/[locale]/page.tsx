@@ -77,7 +77,7 @@ function HomeContent({ locale }: { locale: string }) {
               {t('common.getStarted')}
             </Link>
             <Link
-              href="/login"
+              href="/demo"
               className="bg-white text-gray-700 px-8 py-3 rounded-lg font-semibold text-lg border border-gray-300 hover:bg-gray-50 transition-colors"
             >
               {t('common.viewDemo')}
