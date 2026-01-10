@@ -22,6 +22,14 @@ export async function GET() {
         },
         orderBy: { updatedAt: 'desc' },
         include: {
+          group: {
+            select: {
+              id: true,
+              name: true,
+              icon: true,
+              parentId: true,
+            },
+          },
           _count: {
             select: { executions: true },
           },
@@ -58,13 +66,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, content, description, isPublic } = await req.json();
+    const { name, content, description, isPublic, groupId } = await req.json();
 
     if (!name || !content) {
       return NextResponse.json(
         { error: 'Name and content are required' },
         { status: 400 }
       );
+    }
+
+    // 如果指定了分组，验证分组存在且用户有权限
+    if (groupId) {
+      const group = await prisma.policyGroup.findFirst({
+        where: {
+          id: groupId,
+          OR: [
+            { userId: session.user.id },
+            {
+              team: {
+                members: {
+                  some: { userId: session.user.id },
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      if (!group) {
+        return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+      }
     }
 
     // Check policy limit for free users
@@ -116,6 +147,7 @@ export async function POST(req: Request) {
         description,
         isPublic: isPublic || false,
         piiFields: piiResult.detectedTypes,
+        groupId: groupId || null,
       },
     });
 

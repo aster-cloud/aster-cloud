@@ -591,6 +591,27 @@
       "cannotExecute": "无法执行已冻结的策略",
       "cannotEdit": "无法编辑已冻结的策略"
     },
+    "groups": {
+      "allPolicies": "全部策略",
+      "ungrouped": "未分组",
+      "newGroup": "新建分组",
+      "newSubgroup": "新建子分组",
+      "edit": "编辑",
+      "delete": "删除",
+      "policiesCount": "{count} 个策略",
+      "createTitle": "创建分组",
+      "editTitle": "编辑分组",
+      "nameLabel": "分组名称",
+      "namePlaceholder": "请输入分组名称",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "可选描述信息",
+      "save": "保存",
+      "cancel": "取消",
+      "deleteConfirm": "确定删除此分组？",
+      "deleteWarning": "分组内的策略将移至父分组。",
+      "saving": "保存中...",
+      "deleting": "删除中..."
+    },
     "form": {
       "createTitle": "新建策略",
       "createSubtitle": "使用 Aster 策略语言定义您的业务规则",

@@ -591,6 +591,27 @@
       "cannotExecute": "Cannot execute frozen policy",
       "cannotEdit": "Cannot edit frozen policy"
     },
+    "groups": {
+      "allPolicies": "All Policies",
+      "ungrouped": "Ungrouped",
+      "newGroup": "New Group",
+      "newSubgroup": "New Subgroup",
+      "edit": "Edit",
+      "delete": "Delete",
+      "policiesCount": "{count} policies",
+      "createTitle": "Create Group",
+      "editTitle": "Edit Group",
+      "nameLabel": "Group Name",
+      "namePlaceholder": "Enter group name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional description",
+      "save": "Save",
+      "cancel": "Cancel",
+      "deleteConfirm": "Delete this group?",
+      "deleteWarning": "Policies in this group will be moved to the parent group.",
+      "saving": "Saving...",
+      "deleting": "Deleting..."
+    },
     "form": {
       "createTitle": "Create New Policy",
       "createSubtitle": "Define your business rules using Aster policy language",

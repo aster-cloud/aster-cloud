@@ -94,6 +94,7 @@ model User {
   accounts     Account[]
   sessions     Session[]
   policies     Policy[]
+  policyGroups PolicyGroup[]
   executions   Execution[]
   usageRecords UsageRecord[]
   teams        TeamMember[]
@@ -144,11 +145,49 @@ model ApiKey {
   @@index([prefix])
 }
 
+// Policy Group - 多级分组支持
+model PolicyGroup {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  icon        String? // Lucide icon name
+  sortOrder   Int     @default(0)
+
+  // 自引用实现多级嵌套
+  parentId String?
+  parent   PolicyGroup?  @relation("GroupHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children PolicyGroup[] @relation("GroupHierarchy")
+
+  // 关联策略
+  policies Policy[]
+
+  // 所有者（用户或团队级别）
+  userId String?
+  teamId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // 是否为系统预设分组
+  isSystem Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([userId])
+  @@index([teamId])
+  @@index([sortOrder])
+}
+
 // Policy management
 model Policy {
   id     String  @id @default(cuid())
   userId String
   teamId String?
+
+  // 分组关联
+  groupId String?
+  group   PolicyGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   name        String
   description String?
@@ -176,6 +215,7 @@ model Policy {
 
   @@index([userId])
   @@index([teamId])
+  @@index([groupId])
   @@index([shareSlug])
   @@index([deletedAt])
 }
@@ -281,10 +321,11 @@ model Team {
   slug    String @unique
   ownerId String
 
-  owner       User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  members     TeamMember[]
-  policies    Policy[]
-  invitations TeamInvitation[]
+  owner        User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+  policies     Policy[]
+  policyGroups PolicyGroup[]
+  invitations  TeamInvitation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

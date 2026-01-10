@@ -591,6 +591,27 @@
       "cannotExecute": "Eingefrorene Richtlinie kann nicht ausgeführt werden",
       "cannotEdit": "Eingefrorene Richtlinie kann nicht bearbeitet werden"
     },
+    "groups": {
+      "allPolicies": "Alle Richtlinien",
+      "ungrouped": "Nicht gruppiert",
+      "newGroup": "Neue Gruppe",
+      "newSubgroup": "Neue Untergruppe",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "policiesCount": "{count} Richtlinien",
+      "createTitle": "Gruppe erstellen",
+      "editTitle": "Gruppe bearbeiten",
+      "nameLabel": "Gruppenname",
+      "namePlaceholder": "Gruppenname eingeben",
+      "descriptionLabel": "Beschreibung",
+      "descriptionPlaceholder": "Optionale Beschreibung",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "deleteConfirm": "Diese Gruppe löschen?",
+      "deleteWarning": "Richtlinien in dieser Gruppe werden in die übergeordnete Gruppe verschoben.",
+      "saving": "Speichern...",
+      "deleting": "Löschen..."
+    },
     "form": {
       "createTitle": "Neue Richtlinie erstellen",
       "createSubtitle": "Definieren Sie Ihre Geschäftsregeln mit der Aster-Richtliniensprache",

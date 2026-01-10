@@ -83,7 +83,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const { name, content, description, isPublic } = await req.json();
+    const { name, content, description, isPublic, groupId } = await req.json();
 
     // Check ownership (exclude deleted policies)
     const existingPolicy = await prisma.policy.findFirst({
@@ -125,6 +125,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
         isPublic,
         version: newVersion ? { increment: 1 } : undefined,
         piiFields: newVersion ? piiResult?.detectedTypes : undefined,
+        ...(groupId !== undefined && { groupId: groupId || null }),
       },
     });
 
