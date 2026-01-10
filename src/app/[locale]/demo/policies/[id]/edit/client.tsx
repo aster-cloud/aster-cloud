@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
-import { getMockPolicy } from '@/data/demo-mock-data';
+import { fetchDemoPolicy, updateDemoPolicy } from '@/lib/demo-api';
 
 interface DemoPolicyEditClientProps {
   policyId: string;
@@ -43,36 +43,51 @@ export function DemoPolicyEditClient({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载现有策略数据（使用模拟数据）
-  useEffect(() => {
-    // 模拟短暂加载延迟
-    const timer = setTimeout(() => {
-      const mockPolicy = getMockPolicy(policyId);
-      if (mockPolicy) {
-        setName(mockPolicy.name);
-        setDescription(mockPolicy.description || '');
-        setContent(mockPolicy.content);
+  // 加载现有策略数据
+  const loadPolicy = useCallback(async () => {
+    try {
+      const response = await fetchDemoPolicy(policyId);
+      if (response.success && response.data) {
+        setName(response.data.name);
+        setDescription(response.data.description || '');
+        setContent(response.data.content);
       } else {
-        setError('Policy not found');
+        setError(response.error || 'Policy not found');
       }
+    } catch (err) {
+      setError('Policy not found');
+    } finally {
       setLoading(false);
-    }, 150);
-    return () => clearTimeout(timer);
+    }
   }, [policyId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadPolicy();
+  }, [loadPolicy]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setSaving(true);
     setError(null);
 
-    // 模拟保存延迟
-    setTimeout(() => {
-      // Demo 模式下只是模拟保存成功
-      refreshSession();
-      router.push(`/demo/policies/${policyId}`);
+    try {
+      const response = await updateDemoPolicy(policyId, {
+        name,
+        description,
+        content,
+      });
+      if (response.success) {
+        refreshSession();
+        router.push(`/demo/policies/${policyId}`);
+      } else {
+        setError(response.error || 'Failed to save policy');
+      }
+    } catch (err) {
+      setError('Failed to save policy');
+    } finally {
       setSaving(false);
-    }, 300);
+    }
   };
 
   if (loading) {

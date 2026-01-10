@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
-import { MOCK_DEMO_POLICIES } from '@/data/demo-mock-data';
+import { fetchDemoPolicies, deleteDemoPolicy } from '@/lib/demo-api';
 
 interface DemoPolicy {
   id: string;
@@ -46,37 +46,45 @@ export function DemoPoliciesClient({ translations: t }: DemoPoliciesClientProps)
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const fetchPolicies = useCallback(() => {
-    // 使用模拟数据而非 API 调用
-    // 添加 version 字段（模拟数据中没有）
-    const policiesWithVersion = MOCK_DEMO_POLICIES.map(p => ({
-      ...p,
-      version: 1,
-    }));
-    setPolicies(policiesWithVersion as DemoPolicy[]);
-    setLoading(false);
+  const loadPolicies = useCallback(async () => {
+    try {
+      const response = await fetchDemoPolicies();
+      if (response.success && response.data) {
+        // 添加 version 字段
+        const policiesWithVersion = response.data.policies.map(p => ({
+          ...p,
+          version: p.version || 1,
+        }));
+        setPolicies(policiesWithVersion as DemoPolicy[]);
+      }
+    } catch (err) {
+      console.error('Failed to load policies:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     if (session) {
-      // 模拟短暂加载延迟
-      const timer = setTimeout(() => {
-        fetchPolicies();
-      }, 150);
-      return () => clearTimeout(timer);
+      loadPolicies();
     }
-  }, [session, fetchPolicies]);
+  }, [session, loadPolicies]);
 
-  const handleDelete = (policyId: string) => {
+  const handleDelete = async (policyId: string) => {
     if (!confirm(t.confirmDelete)) return;
 
     setDeleting(policyId);
-    // 模拟删除延迟
-    setTimeout(() => {
-      setPolicies((prev) => prev.filter((p) => p.id !== policyId));
-      refreshSession();
+    try {
+      const response = await deleteDemoPolicy(policyId);
+      if (response.success) {
+        setPolicies((prev) => prev.filter((p) => p.id !== policyId));
+        refreshSession();
+      }
+    } catch (err) {
+      console.error('Failed to delete policy:', err);
+    } finally {
       setDeleting(null);
-    }, 200);
+    }
   };
 
   const canCreateMore = limits

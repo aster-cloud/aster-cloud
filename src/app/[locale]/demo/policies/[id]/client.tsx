@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
-import { getMockPolicy } from '@/data/demo-mock-data';
+import { fetchDemoPolicy, deleteDemoPolicy } from '@/lib/demo-api';
 
 interface DemoPolicy {
   id: string;
@@ -56,51 +56,42 @@ export function DemoPolicyDetailClient({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loadPolicy = useCallback(async () => {
+    try {
+      const response = await fetchDemoPolicy(policyId);
+      if (response.success && response.data) {
+        setPolicy(response.data);
+      } else {
+        setError(response.error || t.notFound);
+      }
+    } catch (err) {
+      setError(t.notFound);
+    } finally {
+      setLoading(false);
+    }
+  }, [policyId, t.notFound]);
+
   useEffect(() => {
     if (session) {
-      // 模拟短暂加载延迟
-      const timer = setTimeout(() => {
-        const mockPolicy = getMockPolicy(policyId);
-        if (mockPolicy) {
-          // 转换模拟数据格式
-          setPolicy({
-            id: mockPolicy.id,
-            name: mockPolicy.name,
-            description: mockPolicy.description,
-            content: mockPolicy.content,
-            version: 1,
-            piiFields: mockPolicy.piiFields,
-            createdAt: mockPolicy.createdAt,
-            updatedAt: mockPolicy.updatedAt,
-            versions: [
-              {
-                id: `${mockPolicy.id}-v1`,
-                version: 1,
-                comment: 'Initial version',
-                createdAt: mockPolicy.createdAt,
-              },
-            ],
-            _count: mockPolicy._count,
-          });
-        } else {
-          setError(t.notFound);
-        }
-        setLoading(false);
-      }, 150);
-      return () => clearTimeout(timer);
+      loadPolicy();
     }
-  }, [session, policyId, t.notFound]);
+  }, [session, loadPolicy]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirm(t.confirmDelete)) return;
 
     setDeleting(true);
-    // 模拟删除延迟
-    setTimeout(() => {
-      refreshSession();
-      router.push('/demo/policies');
+    try {
+      const response = await deleteDemoPolicy(policyId);
+      if (response.success) {
+        refreshSession();
+        router.push('/demo/policies');
+      }
+    } catch (err) {
+      console.error('Failed to delete policy:', err);
+    } finally {
       setDeleting(false);
-    }, 200);
+    }
   };
 
   if (loading) {

@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
-import { MOCK_DEMO_POLICIES, getMockExecutionResult, type MockDemoPolicy } from '@/data/demo-mock-data';
+import { fetchDemoPolicies, executeDemoPolicy } from '@/lib/demo-api';
 
-interface DemoPolicy {
+interface ExecutePolicy {
   id: string;
   name: string;
   content?: string;
@@ -422,7 +422,7 @@ export function DemoExecuteClient({ translations: t, locale = 'en' }: DemoExecut
   const searchParams = useSearchParams();
   const { session } = useDemoSession();
 
-  const [policies, setPolicies] = useState<DemoPolicy[]>([]);
+  const [policies, setPolicies] = useState<ExecutePolicy[]>([]);
   const [selectedPolicyId, setSelectedPolicyId] = useState<string>('');
   const [inputMode, setInputMode] = useState<'form' | 'json'>('form');
   const [formData, setFormData] = useState<Record<string, unknown>>({});
@@ -483,17 +483,17 @@ export function DemoExecuteClient({ translations: t, locale = 'en' }: DemoExecut
     });
   }, []);
 
-  // 加载策略列表（使用模拟数据）
-  useEffect(() => {
-    if (session) {
-      // 模拟短暂加载延迟
-      const timer = setTimeout(() => {
-        // 转换模拟数据格式
-        const policiesData = MOCK_DEMO_POLICIES.map((p: MockDemoPolicy) => ({
+  // 加载策略列表
+  const loadPolicies = useCallback(async () => {
+    try {
+      const response = await fetchDemoPolicies();
+      if (response.success && response.data) {
+        // 转换为执行所需格式
+        const policiesData = response.data.policies.map((p) => ({
           id: p.id,
           name: p.name,
           content: p.content,
-          defaultInput: getDefaultInputForPolicy(p.id),
+          defaultInput: p.defaultInput || getDefaultInputForPolicy(p.id),
         }));
         setPolicies(policiesData);
 
@@ -504,11 +504,19 @@ export function DemoExecuteClient({ translations: t, locale = 'en' }: DemoExecut
         } else if (policiesData.length > 0) {
           setSelectedPolicyId(policiesData[0].id);
         }
-        setLoading(false);
-      }, 150);
-      return () => clearTimeout(timer);
+      }
+    } catch (err) {
+      console.error('Failed to load policies:', err);
+    } finally {
+      setLoading(false);
     }
-  }, [session, searchParams]);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (session) {
+      loadPolicies();
+    }
+  }, [session, loadPolicies]);
 
   // 当选中的策略改变时，更新输入数据并获取 schema
   useEffect(() => {
@@ -573,23 +581,18 @@ export function DemoExecuteClient({ translations: t, locale = 'en' }: DemoExecut
     setError(null);
     setResult(null);
 
-    // 模拟执行延迟
-    setTimeout(() => {
-      try {
-        const mockResult = getMockExecutionResult(selectedPolicyId, parsedInput);
-        setResult({
-          id: mockResult.executionId,
-          success: mockResult.success,
-          output: mockResult.output as Record<string, unknown> | null,
-          error: mockResult.error || null,
-          durationMs: mockResult.durationMs,
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setExecuting(false);
+    try {
+      const response = await executeDemoPolicy(selectedPolicyId, parsedInput);
+      if (response.success && response.data) {
+        setResult(response.data.execution);
+      } else {
+        setError(response.error || 'Execution failed');
       }
-    }, 200 + Math.random() * 300); // 200-500ms 模拟延迟
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setExecuting(false);
+    }
   };
 
   // 获取决策显示文本（优先使用翻译文件）

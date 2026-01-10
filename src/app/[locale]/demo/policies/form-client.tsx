@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
+import { createDemoPolicy } from '@/lib/demo-api';
 import {
   POLICY_EXAMPLES,
   getExampleName,
@@ -93,24 +94,32 @@ export function DemoPolicyFormClient({
     mode === 'edit' ||
     (limits ? limits.policies.current < limits.policies.max : true);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canCreate) return;
 
     setSaving(true);
     setError(null);
 
-    // 模拟保存延迟
-    setTimeout(() => {
-      // Demo 模式下生成一个模拟 ID
-      const mockId = mode === 'create'
-        ? `demo-policy-${Date.now()}`
-        : policyId;
+    try {
+      const response = await createDemoPolicy({
+        name,
+        description,
+        content,
+        defaultInput: defaultInput || undefined,
+      });
 
-      refreshSession();
-      router.push(`/demo/policies/${mockId}`);
+      if (response.success && response.data) {
+        refreshSession();
+        router.push(`/demo/policies/${response.data.id}`);
+      } else {
+        setError(response.error || 'Failed to create policy');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create policy');
+    } finally {
       setSaving(false);
-    }, 300);
+    }
   };
 
   const loadExample = (exampleId: string) => {

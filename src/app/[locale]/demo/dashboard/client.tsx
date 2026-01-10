@@ -1,9 +1,9 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
-import { MOCK_DEMO_POLICIES, type MockDemoPolicy } from '@/data/demo-mock-data';
+import { fetchDemoPolicies } from '@/lib/demo-api';
 
 interface DemoPolicy {
   id: string;
@@ -49,20 +49,26 @@ export function DemoDashboardClient({ translations: t }: DemoDashboardClientProp
   const [policies, setPolicies] = useState<DemoPolicy[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // 使用模拟数据而非 API 调用
-    if (session) {
-      // 模拟短暂加载延迟
-      const timer = setTimeout(() => {
-        setPolicies(MOCK_DEMO_POLICIES as DemoPolicy[]);
-        setLoading(false);
-      }, 150);
-      return () => clearTimeout(timer);
-    } else if (!sessionLoading) {
-      // Session 不存在且不在加载中，直接结束加载状态
+  const loadPolicies = useCallback(async () => {
+    try {
+      const response = await fetchDemoPolicies();
+      if (response.success && response.data) {
+        setPolicies(response.data.policies);
+      }
+    } catch (err) {
+      console.error('Failed to load policies:', err);
+    } finally {
       setLoading(false);
     }
-  }, [session, sessionLoading]);
+  }, []);
+
+  useEffect(() => {
+    if (session) {
+      loadPolicies();
+    } else if (!sessionLoading) {
+      setLoading(false);
+    }
+  }, [session, sessionLoading, loadPolicies]);
 
   const totalExecutions = policies.reduce((sum, policy) => sum + policy._count.executions, 0);
   const totalPiiFields = policies.reduce((sum, policy) => sum + (policy.piiFields?.length || 0), 0);

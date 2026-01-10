@@ -18,13 +18,13 @@ export default async function LoginPage() {
     signIn: t('signIn'),
     errors: {
       generic: t('errors.generic'),
-      rateLimited: t('errors.rateLimited'),
-      accountLocked: t('errors.accountLocked'),
+      rateLimited: t.raw('errors.rateLimited'),
+      accountLocked: t.raw('errors.accountLocked'),
       accountLockedGeneric: t('errors.accountLockedGeneric'),
       captchaFailed: t('errors.captchaFailed'),
       verificationFailed: t('errors.verificationFailed'),
       invalidCredentials: t('errors.invalidCredentials'),
-      invalidCredentialsWithAttempts: t('errors.invalidCredentialsWithAttempts'),
+      invalidCredentialsWithAttempts: t.raw('errors.invalidCredentialsWithAttempts'),
     },
   };
 
