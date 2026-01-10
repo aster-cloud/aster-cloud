@@ -32,7 +32,7 @@ function HomeContent({ locale }: { locale: string }) {
   const teamMinUsers = getTeamMinUsers();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex flex-col">
       {/* Navigation */}
       <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm fixed w-full z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -288,7 +288,7 @@ function HomeContent({ locale }: { locale: string }) {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-900">
+      <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-900 mt-auto">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-white font-bold text-xl mb-4 md:mb-0">

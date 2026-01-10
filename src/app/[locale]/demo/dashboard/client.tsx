@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
+import { MOCK_DEMO_POLICIES, type MockDemoPolicy } from '@/data/demo-mock-data';
 
 interface DemoPolicy {
   id: string;
@@ -49,22 +50,14 @@ export function DemoDashboardClient({ translations: t }: DemoDashboardClientProp
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchPolicies() {
-      try {
-        const response = await fetch('/api/demo/policies');
-        if (response.ok) {
-          const data = await response.json();
-          setPolicies(data.policies);
-        }
-      } catch (error) {
-        console.error('Error fetching policies:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
+    // 使用模拟数据而非 API 调用
     if (session) {
-      fetchPolicies();
+      // 模拟短暂加载延迟
+      const timer = setTimeout(() => {
+        setPolicies(MOCK_DEMO_POLICIES as DemoPolicy[]);
+        setLoading(false);
+      }, 150);
+      return () => clearTimeout(timer);
     } else if (!sessionLoading) {
       // Session 不存在且不在加载中，直接结束加载状态
       setLoading(false);

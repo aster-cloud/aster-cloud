@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
+import { MOCK_DEMO_POLICIES, getMockExecutionResult, type MockDemoPolicy } from '@/data/demo-mock-data';
 
 interface DemoPolicy {
   id: string;
@@ -82,6 +83,42 @@ function getDefaultValue(typeKind: TypeKind, typeName: string): unknown {
       return null;
     default:
       return '';
+  }
+}
+
+// 获取策略的默认输入数据
+function getDefaultInputForPolicy(policyId: string): Record<string, unknown> {
+  switch (policyId) {
+    case 'demo-policy-001':
+      return {
+        applicant: {
+          id: 'APP-001',
+          creditScore: 720,
+          income: 65000,
+          debtToIncomeRatio: 0.35,
+          loanAmount: 25000,
+        },
+      };
+    case 'demo-policy-002':
+      return {
+        transaction: {
+          amount: 1500,
+          merchantCategory: 'retail',
+          isInternational: false,
+          hourOfDay: 14,
+        },
+      };
+    case 'demo-policy-003':
+      return {
+        user: {
+          email: 'user@example.com',
+          phoneVerified: true,
+          documentsSubmitted: false,
+          accountAge: 15,
+        },
+      };
+    default:
+      return {};
   }
 }
 
@@ -408,44 +445,22 @@ export function DemoExecuteClient({ translations: t, locale = 'en' }: DemoExecut
     [policies, selectedPolicyId]
   );
 
-  // 获取策略参数模式
+  // 获取策略参数模式（Demo 模式：使用模拟 schema）
   const fetchSchema = useCallback(async (content: string) => {
     if (!content) return;
 
     setSchemaLoading(true);
-    try {
+
+    // 模拟短暂延迟
+    setTimeout(() => {
       const detectedLocale = detectPolicyLocale(content);
       setPolicyLocale(detectedLocale);
 
-      const localeMap: Record<PolicyLocale, string> = {
-        zh: 'zh-CN',
-        de: 'de-DE',
-        en: 'en-US',
-      };
-
-      const res = await fetch('/api/policies/schema', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: content,
-          locale: localeMap[detectedLocale],
-        }),
-      });
-
-      const data: PolicySchema = await res.json();
-      if (data.success && data.parameters && data.parameters.length > 0) {
-        setSchema(data);
-        // 初始化表单值
-        setSchemaFormValues(initFormValues(data.parameters));
-      } else {
-        setSchema(null);
-      }
-    } catch (err) {
-      console.error('Failed to fetch schema:', err);
+      // Demo 模式下不解析真实 schema，直接使用 null
+      // 表单将回退到基于 defaultInput 的动态表单
       setSchema(null);
-    } finally {
       setSchemaLoading(false);
-    }
+    }, 100);
   }, []);
 
   // 更新 schema 表单字段
@@ -468,32 +483,30 @@ export function DemoExecuteClient({ translations: t, locale = 'en' }: DemoExecut
     });
   }, []);
 
-  // 加载策略列表（包含 content 和 defaultInput）
+  // 加载策略列表（使用模拟数据）
   useEffect(() => {
-    async function fetchPolicies() {
-      try {
-        const response = await fetch('/api/demo/policies?include=content,defaultInput');
-        if (response.ok) {
-          const data = await response.json();
-          setPolicies(data.policies);
-
-          // 如果 URL 中指定了策略 ID，则选中它
-          const policyId = searchParams.get('policy');
-          if (policyId && data.policies.some((p: DemoPolicy) => p.id === policyId)) {
-            setSelectedPolicyId(policyId);
-          } else if (data.policies.length > 0) {
-            setSelectedPolicyId(data.policies[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching policies:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     if (session) {
-      fetchPolicies();
+      // 模拟短暂加载延迟
+      const timer = setTimeout(() => {
+        // 转换模拟数据格式
+        const policiesData = MOCK_DEMO_POLICIES.map((p: MockDemoPolicy) => ({
+          id: p.id,
+          name: p.name,
+          content: p.content,
+          defaultInput: getDefaultInputForPolicy(p.id),
+        }));
+        setPolicies(policiesData);
+
+        // 如果 URL 中指定了策略 ID，则选中它
+        const policyId = searchParams.get('policy');
+        if (policyId && policiesData.some((p) => p.id === policyId)) {
+          setSelectedPolicyId(policyId);
+        } else if (policiesData.length > 0) {
+          setSelectedPolicyId(policiesData[0].id);
+        }
+        setLoading(false);
+      }, 150);
+      return () => clearTimeout(timer);
     }
   }, [session, searchParams]);
 
@@ -560,28 +573,23 @@ export function DemoExecuteClient({ translations: t, locale = 'en' }: DemoExecut
     setError(null);
     setResult(null);
 
-    try {
-      const response = await fetch(
-        `/api/demo/policies/${selectedPolicyId}/execute`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input: parsedInput }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Execution failed');
+    // 模拟执行延迟
+    setTimeout(() => {
+      try {
+        const mockResult = getMockExecutionResult(selectedPolicyId, parsedInput);
+        setResult({
+          id: mockResult.executionId,
+          success: mockResult.success,
+          output: mockResult.output as Record<string, unknown> | null,
+          error: mockResult.error || null,
+          durationMs: mockResult.durationMs,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setExecuting(false);
       }
-
-      setResult(data.execution);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setExecuting(false);
-    }
+    }, 200 + Math.random() * 300); // 200-500ms 模拟延迟
   };
 
   // 获取决策显示文本（优先使用翻译文件）

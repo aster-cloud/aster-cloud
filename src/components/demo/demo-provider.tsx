@@ -1,6 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import {
+  MOCK_DEMO_SESSION,
+  MOCK_DEMO_LIMITS,
+  getUpdatedTimeRemaining,
+} from '@/data/demo-mock-data';
 
 interface DemoSessionData {
   id: string;
@@ -46,47 +51,33 @@ export function DemoProvider({ children }: DemoProviderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSession = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // 创建或获取会话
-      const response = await fetch('/api/demo/session', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create demo session');
-      }
-
-      const data = await response.json();
-      setSession(data.session);
-      setLimits(data.limits);
-    } catch (err) {
-      console.error('Error fetching demo session:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
+  const initMockSession = useCallback(() => {
+    // 使用模拟数据初始化会话
+    setSession({
+      ...MOCK_DEMO_SESSION,
+      timeRemaining: getUpdatedTimeRemaining(),
+    });
+    setLimits(MOCK_DEMO_LIMITS);
+    setLoading(false);
+    setError(null);
   }, []);
 
   const refreshSession = useCallback(async () => {
-    try {
-      const response = await fetch('/api/demo/session');
-      if (response.ok) {
-        const data = await response.json();
-        setSession(data.session);
-        setLimits(data.limits);
-      }
-    } catch (err) {
-      console.error('Error refreshing demo session:', err);
-    }
+    // 刷新时更新剩余时间
+    setSession(prev => prev ? {
+      ...prev,
+      timeRemaining: getUpdatedTimeRemaining(),
+    } : null);
   }, []);
 
   useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
+    // 模拟短暂加载延迟
+    const timer = setTimeout(() => {
+      initMockSession();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [initMockSession]);
 
   // 定时刷新会话状态（每分钟）
   useEffect(() => {

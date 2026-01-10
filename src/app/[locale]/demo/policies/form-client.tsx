@@ -93,39 +93,24 @@ export function DemoPolicyFormClient({
     mode === 'edit' ||
     (limits ? limits.policies.current < limits.policies.max : true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canCreate) return;
 
     setSaving(true);
     setError(null);
 
-    try {
-      const url =
-        mode === 'create'
-          ? '/api/demo/policies'
-          : `/api/demo/policies/${policyId}`;
-      const method = mode === 'create' ? 'POST' : 'PUT';
+    // 模拟保存延迟
+    setTimeout(() => {
+      // Demo 模式下生成一个模拟 ID
+      const mockId = mode === 'create'
+        ? `demo-policy-${Date.now()}`
+        : policyId;
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, content, defaultInput }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save policy');
-      }
-
-      const policy = await response.json();
       refreshSession();
-      router.push(`/demo/policies/${policy.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
+      router.push(`/demo/policies/${mockId}`);
       setSaving(false);
-    }
+    }, 300);
   };
 
   const loadExample = (exampleId: string) => {

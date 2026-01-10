@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
+import { MOCK_DEMO_POLICIES } from '@/data/demo-mock-data';
 
 interface DemoPolicy {
   id: string;
@@ -45,44 +46,37 @@ export function DemoPoliciesClient({ translations: t }: DemoPoliciesClientProps)
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const fetchPolicies = useCallback(async () => {
-    try {
-      const response = await fetch('/api/demo/policies');
-      if (response.ok) {
-        const data = await response.json();
-        setPolicies(data.policies);
-      }
-    } catch (error) {
-      console.error('Error fetching policies:', error);
-    } finally {
-      setLoading(false);
-    }
+  const fetchPolicies = useCallback(() => {
+    // 使用模拟数据而非 API 调用
+    // 添加 version 字段（模拟数据中没有）
+    const policiesWithVersion = MOCK_DEMO_POLICIES.map(p => ({
+      ...p,
+      version: 1,
+    }));
+    setPolicies(policiesWithVersion as DemoPolicy[]);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     if (session) {
-      fetchPolicies();
+      // 模拟短暂加载延迟
+      const timer = setTimeout(() => {
+        fetchPolicies();
+      }, 150);
+      return () => clearTimeout(timer);
     }
   }, [session, fetchPolicies]);
 
-  const handleDelete = async (policyId: string) => {
+  const handleDelete = (policyId: string) => {
     if (!confirm(t.confirmDelete)) return;
 
     setDeleting(policyId);
-    try {
-      const response = await fetch(`/api/demo/policies/${policyId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setPolicies((prev) => prev.filter((p) => p.id !== policyId));
-        refreshSession();
-      }
-    } catch (error) {
-      console.error('Error deleting policy:', error);
-    } finally {
+    // 模拟删除延迟
+    setTimeout(() => {
+      setPolicies((prev) => prev.filter((p) => p.id !== policyId));
+      refreshSession();
       setDeleting(null);
-    }
+    }, 200);
   };
 
   const canCreateMore = limits

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useDemoSession } from '@/components/demo';
+import { getMockPolicy } from '@/data/demo-mock-data';
 
 interface DemoPolicyEditClientProps {
   policyId: string;
@@ -42,55 +43,36 @@ export function DemoPolicyEditClient({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载现有策略数据
+  // 加载现有策略数据（使用模拟数据）
   useEffect(() => {
-    async function fetchPolicy() {
-      try {
-        const response = await fetch(`/api/demo/policies/${policyId}`);
-        if (response.ok) {
-          const policy = await response.json();
-          setName(policy.name);
-          setDescription(policy.description || '');
-          setContent(policy.content);
-        } else {
-          setError('Policy not found');
-        }
-      } catch (err) {
-        console.error('Error fetching policy:', err);
-        setError('Failed to load policy');
-      } finally {
-        setLoading(false);
+    // 模拟短暂加载延迟
+    const timer = setTimeout(() => {
+      const mockPolicy = getMockPolicy(policyId);
+      if (mockPolicy) {
+        setName(mockPolicy.name);
+        setDescription(mockPolicy.description || '');
+        setContent(mockPolicy.content);
+      } else {
+        setError('Policy not found');
       }
-    }
-
-    fetchPolicy();
+      setLoading(false);
+    }, 150);
+    return () => clearTimeout(timer);
   }, [policyId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     setSaving(true);
     setError(null);
 
-    try {
-      const response = await fetch(`/api/demo/policies/${policyId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, content }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to save policy');
-      }
-
+    // 模拟保存延迟
+    setTimeout(() => {
+      // Demo 模式下只是模拟保存成功
       refreshSession();
       router.push(`/demo/policies/${policyId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
       setSaving(false);
-    }
+    }, 300);
   };
 
   if (loading) {
