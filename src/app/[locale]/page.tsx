@@ -69,18 +69,12 @@ function HomeContent({ locale }: { locale: string }) {
           <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
             {t('hero.description')}
           </p>
-          <div className="mt-10 flex justify-center gap-4">
+          <div className="mt-10 flex justify-center">
             <Link
               href="/signup"
               className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold text-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
             >
               {t('common.getStarted')}
-            </Link>
-            <Link
-              href="/demo"
-              className="bg-white text-gray-700 px-8 py-3 rounded-lg font-semibold text-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-            >
-              {t('common.viewDemo')}
             </Link>
           </div>
           <p className="mt-4 text-sm text-gray-500">

@@ -4,7 +4,6 @@
     "signUp": "Registrieren",
     "startFreeTrial": "Kostenlose Testversion starten",
     "getStarted": "Jetzt starten",
-    "viewDemo": "Demo ansehen",
     "contactSales": "Vertrieb kontaktieren",
     "learnMore": "Mehr erfahren"
   },
@@ -199,22 +198,22 @@
       "continueWithGoogle": "Mit Google fortfahren",
       "orContinueWith": "Oder fortfahren mit",
       "email": "E-Mail-Adresse",
-    "password": "Passwort",
-    "forgotPassword": "Passwort vergessen?",
-    "signIn": "Anmelden",
-    "noAccount": "Noch kein Konto?",
-    "startTrial": "Kostenlose Testversion starten",
-    "errors": {
-      "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
-      "rateLimited": "Zu viele Versuche. Bitte warten Sie {seconds} Sekunden.",
-      "accountLocked": "Konto gesperrt. Bitte versuchen Sie es in {minutes} Minuten erneut.",
-      "accountLockedGeneric": "Dieses Konto wurde temporär wegen zu vieler fehlgeschlagener Versuche gesperrt.",
-      "captchaFailed": "CAPTCHA-Verifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
-      "verificationFailed": "Verifizierung fehlgeschlagen",
-      "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort",
-      "invalidCredentialsWithAttempts": "Ungültige E-Mail-Adresse oder Passwort. {attempts} Versuche verbleiben."
-    }
-  },
+      "password": "Passwort",
+      "forgotPassword": "Passwort vergessen?",
+      "signIn": "Anmelden",
+      "noAccount": "Noch kein Konto?",
+      "startTrial": "Kostenlose Testversion starten",
+      "errors": {
+        "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+        "rateLimited": "Zu viele Versuche. Bitte warten Sie {seconds} Sekunden.",
+        "accountLocked": "Konto gesperrt. Bitte versuchen Sie es in {minutes} Minuten erneut.",
+        "accountLockedGeneric": "Dieses Konto wurde temporär wegen zu vieler fehlgeschlagener Versuche gesperrt.",
+        "captchaFailed": "CAPTCHA-Verifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+        "verificationFailed": "Verifizierung fehlgeschlagen",
+        "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort",
+        "invalidCredentialsWithAttempts": "Ungültige E-Mail-Adresse oder Passwort. {attempts} Versuche verbleiben."
+      }
+    },
     "forgotPassword": {
       "title": "Passwort zurücksetzen",
       "subtitle": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
@@ -293,42 +292,6 @@
     "getStarted": "Erstellen Sie ein Team, um mit anderen zusammenzuarbeiten",
     "failedToLoad": "Teams konnten nicht geladen werden",
     "yourRole": "Ihre Rolle",
-    "members": "{count} Mitglieder",
-    "policies": "{count} Richtlinien",
-    "memberCount": "{count} Mitglieder",
-    "policyCount": "{count} Richtlinien",
-    "viewTeam": "Team anzeigen",
-    "upgradeRequired": {
-      "title": "Upgrade erforderlich",
-      "description": "Team-Funktionen erfordern ein Team-Abonnement",
-      "upgradeButton": "Plan upgraden"
-    },
-    "roles": {
-      "owner": "Eigentümer",
-      "admin": "Administrator",
-      "member": "Mitglied",
-      "viewer": "Betrachter"
-    },
-    "create": {
-      "title": "Neues Team erstellen",
-      "subtitle": "Richten Sie einen Arbeitsbereich für Ihr Team ein",
-      "nameLabel": "Teamname",
-      "namePlaceholder": "z.B. Engineering-Team",
-      "slugLabel": "Team-URL",
-      "slugPlaceholder": "engineering-team",
-      "slugHint": "Wird in URLs verwendet. Nur Kleinbuchstaben, Zahlen und Bindestriche.",
-      "slugTaken": "Dieser Slug ist bereits vergeben",
-      "creating": "Wird erstellt...",
-      "create": "Team erstellen"
-    },
-    "dashboard": {
-      "overview": "Übersicht",
-      "members": "Mitglieder",
-      "policies": "Richtlinien",
-      "settings": "Einstellungen",
-      "recentActivity": "Letzte Aktivitäten",
-      "noActivity": "Keine aktuellen Aktivitäten"
-    },
     "members": {
       "title": "Team-Mitglieder",
       "inviteMember": "Mitglied einladen",
@@ -364,6 +327,46 @@
       "cannotRemoveOwner": "Team-Eigentümer kann nicht entfernt werden",
       "cannotLeaveAsOwner": "Übertragen Sie die Eigentümerschaft, bevor Sie gehen"
     },
+    "policies": {
+      "title": "Team-Richtlinien",
+      "noPolicies": "Noch keine Team-Richtlinien",
+      "assignPolicy": "Richtlinie zuweisen",
+      "createNew": "Neue Richtlinie erstellen"
+    },
+    "memberCount": "{count} Mitglieder",
+    "policyCount": "{count} Richtlinien",
+    "viewTeam": "Team anzeigen",
+    "upgradeRequired": {
+      "title": "Upgrade erforderlich",
+      "description": "Team-Funktionen erfordern ein Team-Abonnement",
+      "upgradeButton": "Plan upgraden"
+    },
+    "roles": {
+      "owner": "Eigentümer",
+      "admin": "Administrator",
+      "member": "Mitglied",
+      "viewer": "Betrachter"
+    },
+    "create": {
+      "title": "Neues Team erstellen",
+      "subtitle": "Richten Sie einen Arbeitsbereich für Ihr Team ein",
+      "nameLabel": "Teamname",
+      "namePlaceholder": "z.B. Engineering-Team",
+      "slugLabel": "Team-URL",
+      "slugPlaceholder": "engineering-team",
+      "slugHint": "Wird in URLs verwendet. Nur Kleinbuchstaben, Zahlen und Bindestriche.",
+      "slugTaken": "Dieser Slug ist bereits vergeben",
+      "creating": "Wird erstellt...",
+      "create": "Team erstellen"
+    },
+    "dashboard": {
+      "overview": "Übersicht",
+      "members": "Mitglieder",
+      "policies": "Richtlinien",
+      "settings": "Einstellungen",
+      "recentActivity": "Letzte Aktivitäten",
+      "noActivity": "Keine aktuellen Aktivitäten"
+    },
     "invite": {
       "title": "Team-Mitglied einladen",
       "emailLabel": "E-Mail-Adresse",
@@ -373,12 +376,6 @@
       "send": "Einladung senden",
       "sent": "Einladung gesendet!",
       "alreadyMember": "Dieser Benutzer ist bereits Team-Mitglied"
-    },
-    "policies": {
-      "title": "Team-Richtlinien",
-      "noPolicies": "Noch keine Team-Richtlinien",
-      "assignPolicy": "Richtlinie zuweisen",
-      "createNew": "Neue Richtlinie erstellen"
     },
     "settings": {
       "general": "Allgemeine Einstellungen",
@@ -887,171 +884,6 @@
       "autoDetectDesc": "Erkennen Sie Ihre bevorzugte Sprache automatisch aus den Browsereinstellungen.",
       "enabled": "Aktiviert",
       "disabled": "Deaktiviert"
-    }
-  },
-  "demo": {
-    "badge": "Demo-Modus",
-    "sessionExpires": "Sitzung läuft ab in {time}",
-    "policiesUsed": "{current}/{max} Richtlinien verwendet",
-    "signUpForFull": "Registrieren Sie sich für vollen Zugang",
-    "alreadyHaveAccount": "Bereits ein Konto?",
-    "signUp": "Registrieren",
-    "learnMore": "Mehr erfahren",
-    "startTrial": "Kostenlose Testversion starten",
-    "footerNote": "Dies ist eine Demo-Umgebung. Daten werden täglich gelöscht.",
-    "nav": {
-      "dashboard": "Dashboard",
-      "policies": "Richtlinien",
-      "execute": "Ausführen"
-    },
-    "landing": {
-      "title": "Erleben Sie Aster Cloud",
-      "subtitle": "Testen Sie unsere Richtlinienverwaltungsplattform ohne Konto. Erkunden Sie Funktionen, erstellen Sie Richtlinien und sehen Sie Echtzeit-Ergebnisse.",
-      "startDemo": "Demo starten",
-      "createAccount": "Kostenloses Konto erstellen"
-    },
-    "features": {
-      "policies": {
-        "title": "Richtlinienverwaltung",
-        "description": "Erstellen und verwalten Sie Geschäftsregeln mit Versionskontrolle und Prüfprotokollen."
-      },
-      "execute": {
-        "title": "Echtzeit-Ausführung",
-        "description": "Testen Sie Ihre Richtlinien sofort mit benutzerdefinierten Eingabedaten und sehen Sie detaillierte Ergebnisse."
-      },
-      "pii": {
-        "title": "PII-Erkennung",
-        "description": "Automatische Erkennung personenbezogener Daten in Ihren Richtlinien."
-      },
-      "versions": {
-        "title": "Versionsverlauf",
-        "description": "Verfolgen Sie Änderungen und pflegen Sie eine vollständige Historie der Richtlinienänderungen."
-      }
-    },
-    "limitations": {
-      "title": "Demo-Einschränkungen",
-      "sessionExpiry": "Sitzungen laufen nach 24 Stunden ab",
-      "policyLimit": "Begrenzt auf 10 Richtlinien pro Sitzung",
-      "noApi": "API-Zugriff im Demo-Modus nicht verfügbar",
-      "dataCleared": "Alle Demo-Daten werden täglich gelöscht",
-      "upgrade": "Wollen Sie vollen Zugang?",
-      "signUp": "Registrieren Sie sich für eine kostenlose Testversion"
-    },
-    "dashboard": {
-      "title": "Demo-Dashboard",
-      "subtitle": "Erkunden Sie die Aster Cloud-Funktionen im Demo-Modus",
-      "stats": {
-        "policies": "Richtlinien",
-        "executions": "Ausführungen",
-        "piiDetected": "PII erkannt",
-        "timeRemaining": "Verbleibende Zeit"
-      },
-      "quickActions": {
-        "title": "Schnellaktionen",
-        "createPolicy": "Richtlinie erstellen",
-        "createPolicyDesc": "Neue Geschäftsregeln definieren",
-        "executePolicy": "Richtlinie ausführen",
-        "executePolicyDesc": "Mit Beispieldaten testen",
-        "viewExamples": "Beispiele ansehen",
-        "viewExamplesDesc": "Beispielrichtlinien erkunden"
-      },
-      "recentPolicies": {
-        "title": "Aktuelle Richtlinien",
-        "viewAll": "Alle anzeigen",
-        "noPolicies": "Noch keine Richtlinien",
-        "createFirst": "Erstellen Sie Ihre erste Richtlinie"
-      }
-    },
-    "policies": {
-      "title": "Demo-Richtlinien",
-      "subtitle": "Verwalten Sie Ihre Demo-Richtlinien",
-      "newPolicy": "Neue Richtlinie",
-      "noPolicies": "Noch keine Richtlinien",
-      "createFirst": "Erstellen Sie Ihre erste Richtlinie",
-      "loadExamples": "Beispiel laden",
-      "piiFields": "{count} PII-Felder",
-      "executions": "{count} Ausführungen",
-      "updated": "Aktualisiert {date}",
-      "policiesCount": "Richtlinien: {current} / {max}",
-      "actions": {
-        "execute": "Ausführen",
-        "edit": "Bearbeiten",
-        "delete": "Löschen"
-      },
-      "confirmDelete": "Möchten Sie diese Richtlinie wirklich löschen?",
-      "limitReached": "Richtlinienlimit erreicht (max. 10)",
-      "detail": {
-        "backToList": "Zurück zu Richtlinien",
-        "version": "Version",
-        "executions": "Ausführungen",
-        "piiFields": "PII-Felder",
-        "piiWarning": "PII in Richtlinie erkannt",
-        "content": "Richtlinieninhalt",
-        "versionHistory": "Versionsverlauf",
-        "execute": "Ausführen",
-        "edit": "Bearbeiten",
-        "delete": "Löschen",
-        "confirmDelete": "Möchten Sie diese Richtlinie wirklich löschen?",
-        "notFound": "Richtlinie nicht gefunden",
-        "loading": "Wird geladen..."
-      },
-      "form": {
-        "createTitle": "Demo-Richtlinie erstellen",
-        "createSubtitle": "Definieren Sie Ihre Geschäftsregeln mit der Aster-Richtliniensprache",
-        "editTitle": "Demo-Richtlinie bearbeiten",
-        "editSubtitle": "Aktualisieren Sie Ihre Richtlinienregeln",
-        "name": "Richtlinienname",
-        "namePlaceholder": "z.B. Kreditgenehmigungsrichtlinie",
-        "description": "Beschreibung (optional)",
-        "descriptionPlaceholder": "Kurze Beschreibung der Richtlinienfunktion",
-        "content": "Richtlinieninhalt",
-        "contentPlaceholder": "// Schreiben Sie hier Ihre Richtlinienregeln...",
-        "loadExample": "Beispiel laden",
-        "cancel": "Abbrechen",
-        "create": "Richtlinie erstellen",
-        "creating": "Wird erstellt...",
-        "save": "Änderungen speichern",
-        "saving": "Wird gespeichert...",
-        "limitReached": "Sie haben das Maximum von 10 Richtlinien für Demo-Sitzungen erreicht."
-      }
-    },
-    "execute": {
-      "title": "Richtlinie ausführen",
-      "subtitle": "Testen Sie Ihre Richtlinien mit benutzerdefinierten Eingabedaten",
-      "selectPolicy": "Richtlinie auswählen",
-      "noPolicies": "Keine Richtlinien verfügbar",
-      "createFirst": "Erstellen Sie zuerst eine Richtlinie",
-      "input": "Eingabedaten",
-      "inputPlaceholder": "{\"key\": \"value\"}",
-      "execute": "Richtlinie ausführen",
-      "executing": "Wird ausgeführt...",
-      "result": "Ausführungsergebnis",
-      "status": "Status",
-      "success": "Erfolgreich",
-      "failed": "Fehlgeschlagen",
-      "duration": "Dauer",
-      "decision": "Entscheidung",
-      "matchedRules": "Übereinstimmende Regeln",
-      "actions": "Aktionen",
-      "error": "Fehler",
-      "invalidJson": "Ungültige JSON-Eingabe",
-      "policyPreview": "Richtlinienvorschau",
-      "showJsonEditor": "JSON",
-      "showForm": "Formular",
-      "viewRawOutput": "Rohausgabe anzeigen",
-      "selectAndExecute": "Wählen Sie eine Richtlinie und klicken Sie auf Ausführen",
-      "noFormFields": "Bitte wechseln Sie zum JSON-Editor",
-      "loadingSchema": "Lade Formular...",
-      "decisions": {
-        "approved": "Genehmigt",
-        "rejected": "Abgelehnt",
-        "review": "Manuelle Überprüfung",
-        "pending": "Ausstehend"
-      },
-      "examples": {
-        "loan": "Kredit-Beispiel",
-        "user": "Benutzer-Beispiel"
-      }
     }
   }
 }
