@@ -3,14 +3,11 @@
  *
  * CNL 解析器不支持 // 风格的注释，此脚本会移除策略内容开头的注释行
  *
- * 运行方式：npx tsx scripts/fix-policy-comments.ts
+ * 运行方式：
+ *   source .env.local && npx tsx scripts/fix-policy-comments.ts
+ * 或使用 dotenv-cli：
+ *   npx dotenv -e .env.local -- npx tsx scripts/fix-policy-comments.ts
  */
-
-import path from 'node:path';
-import dotenv from 'dotenv';
-
-// 加载 .env.local 环境变量
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
 import { prisma } from '../src/lib/prisma';
 
