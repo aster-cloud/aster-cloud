@@ -421,7 +421,7 @@ Check fraud with transaction: Transaction, producing result:
     Return FraudResult with isSuspicious as true, riskLevel as "MEDIUM", reason as "Late night high-value transaction".
   Otherwise
     Return FraudResult with isSuspicious as false, riskLevel as "LOW", reason as "Transaction appears normal".`,
-      piiFields: null,
+      piiFields: undefined,
       defaultInput: {
         transaction: {
           amount: 1500,
