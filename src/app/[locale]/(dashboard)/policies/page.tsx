@@ -9,7 +9,7 @@ import { PoliciesContent } from './policies-content';
 async function getPoliciesData(userId: string) {
   const [policies, freezeStatus] = await Promise.all([
     prisma.policy.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       orderBy: { updatedAt: 'desc' },
       include: {
         _count: {
@@ -62,6 +62,7 @@ export default async function PoliciesPage({
     title: t('title'),
     subtitle: t('subtitle'),
     newPolicy: t('newPolicy'),
+    trash: t('trash.title'),
     failedToLoad: t('failedToLoad'),
     failedToDelete: t('failedToDelete'),
     confirmDelete: t('confirmDelete'),

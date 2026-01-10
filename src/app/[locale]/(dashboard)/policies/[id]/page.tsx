@@ -79,6 +79,7 @@ export default async function PolicyDetailPage({
     detail: {
       version: t('detail.version'),
       executions: t('detail.executions'),
+      viewLogs: t('detail.viewLogs'),
       piiFields: t('detail.piiFields'),
       status: t('detail.status'),
       piiWarning: t('detail.piiWarning'),

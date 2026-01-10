@@ -16,7 +16,10 @@ export async function GET() {
 
     const [policies, freezeStatus] = await Promise.all([
       prisma.policy.findMany({
-        where: { userId: session.user.id },
+        where: {
+          userId: session.user.id,
+          deletedAt: null, // 排除已删除的策略
+        },
         orderBy: { updatedAt: 'desc' },
         include: {
           _count: {
@@ -85,7 +88,10 @@ export async function POST(req: Request) {
 
       const policyLimit = getPlanLimit(effectivePlan, 'policies');
       const policyCount = await prisma.policy.count({
-        where: { userId: session.user.id },
+        where: {
+          userId: session.user.id,
+          deletedAt: null, // 仅计算未删除的策略
+        },
       });
 
       if (!isUnlimited(policyLimit) && policyCount >= policyLimit) {

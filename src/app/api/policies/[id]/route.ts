@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { detectPII } from '@/services/pii/detector';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
+import { softDeletePolicy } from '@/lib/policy-lifecycle';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -21,6 +22,7 @@ export async function GET(req: Request, { params }: RouteParams) {
     const policy = await prisma.policy.findFirst({
       where: {
         id,
+        deletedAt: null, // 排除已删除的策略
         OR: [
           { userId: session.user.id },
           { isPublic: true },
@@ -83,11 +85,12 @@ export async function PUT(req: Request, { params }: RouteParams) {
     const { id } = await params;
     const { name, content, description, isPublic } = await req.json();
 
-    // Check ownership
+    // Check ownership (exclude deleted policies)
     const existingPolicy = await prisma.policy.findFirst({
       where: {
         id,
         userId: session.user.id,
+        deletedAt: null,
       },
     });
 
@@ -142,7 +145,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/policies/[id] - Delete a policy
+// DELETE /api/policies/[id] - Soft delete a policy (move to trash)
 export async function DELETE(req: Request, { params }: RouteParams) {
   try {
     const session = await getSession();
@@ -152,23 +155,26 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
     const { id } = await params;
 
-    // Check ownership
-    const policy = await prisma.policy.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
-
-    if (!policy) {
-      return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
+    // 解析可选的删除原因
+    let reason: string | undefined;
+    try {
+      const body = await req.json();
+      reason = body?.reason;
+    } catch {
+      // 无请求体，忽略
     }
 
-    await prisma.policy.delete({
-      where: { id },
-    });
+    // 使用软删除
+    const result = await softDeletePolicy(id, session.user.id, reason);
 
-    return NextResponse.json({ success: true });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Policy moved to trash. It will be permanently deleted after 30 days.',
+    });
   } catch (error) {
     console.error('Error deleting policy:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

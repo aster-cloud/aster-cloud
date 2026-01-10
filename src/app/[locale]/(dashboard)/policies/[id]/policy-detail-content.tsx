@@ -40,6 +40,7 @@ interface Translations {
   detail: {
     version: string;
     executions: string;
+    viewLogs: string;
     piiFields: string;
     status: string;
     piiWarning: string;
@@ -128,10 +129,14 @@ export function PolicyDetailContent({
           <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.version}</dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900">v{policy.version}</dd>
         </div>
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
+        <Link
+          href={`/${locale}/policies/${policy.id}/logs`}
+          className="bg-white overflow-hidden rounded-lg shadow px-4 py-5 hover:bg-gray-50 transition-colors block"
+        >
           <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.executions}</dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900">{policy._count.executions}</dd>
-        </div>
+          <p className="mt-1 text-xs text-indigo-600">{t.detail.viewLogs} →</p>
+        </Link>
         <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
           <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.piiFields}</dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900">

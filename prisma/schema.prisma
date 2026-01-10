@@ -51,10 +51,10 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  email     String
-  token     String   @unique
-  expires   DateTime
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
 
   createdAt DateTime @default(now())
 
@@ -69,18 +69,18 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  passwordHash  String?   // For email/password authentication
+  passwordHash  String? // For email/password authentication
 
   // Account Lockout (防暴力破解)
   failedLoginAttempts Int       @default(0)
   lastFailedLoginAt   DateTime?
   lockedUntil         DateTime?
-  lockoutCount        Int       @default(0)  // 累计锁定次数，用于渐进式锁定
+  lockoutCount        Int       @default(0) // 累计锁定次数，用于渐进式锁定
 
   // Subscription
-  plan             Plan      @default(free)
-  stripeCustomerId String?   @unique
-  subscriptionId   String?   @unique
+  plan               Plan                @default(free)
+  stripeCustomerId   String?             @unique
+  subscriptionId     String?             @unique
   subscriptionStatus SubscriptionStatus?
 
   // Trial
@@ -88,19 +88,19 @@ model User {
   trialEndsAt    DateTime?
 
   // API Access
-  apiKeys        ApiKey[]
+  apiKeys ApiKey[]
 
   // Relations
-  accounts       Account[]
-  sessions       Session[]
-  policies       Policy[]
-  executions     Execution[]
-  usageRecords   UsageRecord[]
-  teams          TeamMember[]
-  ownedTeams     Team[]
+  accounts     Account[]
+  sessions     Session[]
+  policies     Policy[]
+  executions   Execution[]
+  usageRecords UsageRecord[]
+  teams        TeamMember[]
+  ownedTeams   Team[]
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -127,18 +127,18 @@ enum SubscriptionStatus {
 
 // API Keys for external access
 model ApiKey {
-  id          String    @id @default(cuid())
-  userId      String
-  name        String
-  key         String    @unique  // hashed
-  prefix      String               // first 8 chars for identification
-  lastUsedAt  DateTime?
-  expiresAt   DateTime?
-  revokedAt   DateTime?
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  key        String    @unique // hashed
+  prefix     String // first 8 chars for identification
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([prefix])
@@ -146,41 +146,48 @@ model ApiKey {
 
 // Policy management
 model Policy {
-  id          String    @id @default(cuid())
-  userId      String
-  teamId      String?
+  id     String  @id @default(cuid())
+  userId String
+  teamId String?
 
   name        String
   description String?
-  content     String    @db.Text
-  version     Int       @default(1)
-  isPublic    Boolean   @default(false)
-  shareSlug   String?   @unique
+  content     String  @db.Text
+  version     Int     @default(1)
+  isPublic    Boolean @default(false)
+  shareSlug   String? @unique
 
   // PII detection results
-  piiFields   Json?     // Array of detected PII fields
+  piiFields Json? // Array of detected PII fields
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  executions  Execution[]
-  versions    PolicyVersion[]
+  // Soft delete (回收站)
+  deletedAt    DateTime?
+  deletedBy    String?
+  deleteReason String?
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team       Team?             @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  executions Execution[]
+  versions   PolicyVersion[]
+  recycleBin PolicyRecycleBin?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([teamId])
   @@index([shareSlug])
+  @@index([deletedAt])
 }
 
 model PolicyVersion {
-  id        String   @id @default(cuid())
-  policyId  String
-  version   Int
-  content   String   @db.Text
-  comment   String?
+  id       String  @id @default(cuid())
+  policyId String
+  version  Int
+  content  String  @db.Text
+  comment  String?
 
-  policy    Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -188,30 +195,53 @@ model PolicyVersion {
   @@index([policyId])
 }
 
+// Policy Recycle Bin - 存储已删除策略的快照
+model PolicyRecycleBin {
+  id        String   @id @default(cuid())
+  policyId  String   @unique
+  userId    String
+  snapshot  Json // 完整策略数据快照（包含 content, name, description, piiFields 等）
+  deletedAt DateTime @default(now())
+  deletedBy String // 删除操作的用户 ID
+  expiresAt DateTime // deletedAt + 30天，用于定时清理任务
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 // Policy execution tracking
 model Execution {
-  id          String   @id @default(cuid())
-  userId      String
-  policyId    String
+  id       String @id @default(cuid())
+  userId   String
+  policyId String
 
-  input       Json
-  output      Json?
-  error       String?
-  durationMs  Int
-  success     Boolean
+  input      Json
+  output     Json?
+  error      String?
+  durationMs Int
+  success    Boolean
+
+  // 策略版本追踪
+  policyVersion Int? // 执行时的策略版本号
 
   // API vs Dashboard
-  source      ExecutionSource @default(dashboard)
-  apiKeyId    String?
+  source   ExecutionSource @default(dashboard)
+  apiKeyId String?
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  policy      Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  // 执行日志增强
+  metadata Json? // 额外元数据（IP 地址、用户代理、请求 ID 等）
 
-  createdAt   DateTime @default(now())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([policyId])
   @@index([createdAt])
+  @@index([success])
 }
 
 enum ExecutionSource {
@@ -222,16 +252,16 @@ enum ExecutionSource {
 
 // Usage tracking for billing
 model UsageRecord {
-  id        String      @id @default(cuid())
-  userId    String
-  type      UsageType
-  count     Int         @default(1)
-  period    String      // Format: YYYY-MM (e.g., "2024-12")
+  id     String    @id @default(cuid())
+  userId String
+  type   UsageType
+  count  Int       @default(1)
+  period String // Format: YYYY-MM (e.g., "2024-12")
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, type, period])
   @@index([userId, period])
@@ -246,31 +276,31 @@ enum UsageType {
 
 // Team collaboration (Team plan)
 model Team {
-  id          String       @id @default(cuid())
-  name        String
-  slug        String       @unique
-  ownerId     String
+  id      String @id @default(cuid())
+  name    String
+  slug    String @unique
+  ownerId String
 
-  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner       User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members     TeamMember[]
   policies    Policy[]
   invitations TeamInvitation[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([ownerId])
   @@index([slug])
 }
 
 model TeamMember {
-  id       String   @id @default(cuid())
-  teamId   String
-  userId   String
-  role     TeamRole @default(member)
+  id     String   @id @default(cuid())
+  teamId String
+  userId String
+  role   TeamRole @default(member)
 
-  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -293,7 +323,7 @@ model TeamInvitation {
   token     String   @unique
   expiresAt DateTime
 
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -304,16 +334,16 @@ model TeamInvitation {
 
 // Compliance Reports
 model ComplianceReport {
-  id          String         @id @default(cuid())
-  userId      String
-  type        ComplianceType
-  title       String
-  status      ReportStatus   @default(generating)
-  data        Json?          // Report data
-  policyIds   String[]       // Policies included in report
-  period      String?        // e.g., "2024-Q4"
+  id        String         @id @default(cuid())
+  userId    String
+  type      ComplianceType
+  title     String
+  status    ReportStatus   @default(generating)
+  data      Json? // Report data
+  policyIds String[] // Policies included in report
+  period    String? // e.g., "2024-Q4"
 
-  createdAt   DateTime       @default(now())
+  createdAt   DateTime  @default(now())
   completedAt DateTime?
 
   @@index([userId])
@@ -336,15 +366,15 @@ enum ReportStatus {
 
 // Audit Log for enterprise
 model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  teamId    String?
-  action    String
-  resource  String
+  id         String  @id @default(cuid())
+  userId     String?
+  teamId     String?
+  action     String
+  resource   String
   resourceId String?
-  metadata  Json?
-  ipAddress String?
-  userAgent String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
 
   createdAt DateTime @default(now())
 
@@ -361,18 +391,18 @@ model AuditLog {
 
 // Demo 会话 - 基于 Cookie 的匿名会话
 model DemoSession {
-  id          String   @id @default(cuid())
-  sessionId   String   @unique  // Cookie 中的标识
-  ipAddress   String?
-  userAgent   String?
-  expiresAt   DateTime           // 24小时后过期
+  id        String   @id @default(cuid())
+  sessionId String   @unique // Cookie 中的标识
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime // 24小时后过期
 
   // 关联数据（级联删除）
-  policies    DemoPolicy[]
-  executions  DemoExecution[]
-  auditLogs   DemoAuditLog[]
+  policies   DemoPolicy[]
+  executions DemoExecution[]
+  auditLogs  DemoAuditLog[]
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([expiresAt])
   @@index([sessionId])
@@ -380,40 +410,40 @@ model DemoSession {
 
 // Demo 策略
 model DemoPolicy {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   sessionId   String
   name        String
   description String?
-  content     String   @db.Text
-  version     Int      @default(1)
+  content     String  @db.Text
+  version     Int     @default(1)
 
   // 示例输入数据（从 PolicyExample 复制）
   defaultInput Json?
 
   // PII 检测结果
-  piiFields   Json?
+  piiFields Json?
 
   // 关联
-  session     DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  versions    DemoPolicyVersion[]
-  executions  DemoExecution[]
+  session    DemoSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  versions   DemoPolicyVersion[]
+  executions DemoExecution[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([sessionId])
 }
 
 // Demo 策略版本历史
 model DemoPolicyVersion {
-  id        String   @id @default(cuid())
-  policyId  String
-  version   Int
-  content   String   @db.Text
-  comment   String?
+  id       String  @id @default(cuid())
+  policyId String
+  version  Int
+  content  String  @db.Text
+  comment  String?
 
   policy    DemoPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 
   @@unique([policyId, version])
   @@index([policyId])
@@ -421,20 +451,20 @@ model DemoPolicyVersion {
 
 // Demo 策略执行记录
 model DemoExecution {
-  id          String   @id @default(cuid())
-  sessionId   String
-  policyId    String
+  id        String @id @default(cuid())
+  sessionId String
+  policyId  String
 
-  input       Json
-  output      Json?
-  error       String?
-  durationMs  Int
-  success     Boolean
+  input      Json
+  output     Json?
+  error      String?
+  durationMs Int
+  success    Boolean
 
-  session     DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  policy      DemoPolicy  @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  session DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  policy  DemoPolicy  @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([sessionId])
   @@index([policyId])
@@ -443,15 +473,15 @@ model DemoExecution {
 
 // Demo 审计日志
 model DemoAuditLog {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   sessionId  String
-  action     String   // create_policy, update_policy, delete_policy, execute_policy
-  resource   String   // policy, execution
+  action     String // create_policy, update_policy, delete_policy, execute_policy
+  resource   String // policy, execution
   resourceId String?
   metadata   Json?
 
-  session    DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  createdAt  DateTime    @default(now())
+  session   DemoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
 
   @@index([sessionId])
   @@index([createdAt])

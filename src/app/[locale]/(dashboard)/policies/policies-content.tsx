@@ -28,6 +28,7 @@ interface Translations {
   title: string;
   subtitle: string;
   newPolicy: string;
+  trash: string;
   failedToLoad: string;
   failedToDelete: string;
   confirmDelete: string;
@@ -108,7 +109,16 @@ export function PoliciesContent({
           <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
           <p className="mt-1 text-sm text-gray-500">{t.subtitle}</p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        <div className="mt-4 sm:mt-0 flex space-x-3">
+          <Link
+            href={`/${locale}/policies/trash`}
+            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            <svg className="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            {t.trash}
+          </Link>
           <Link
             href={`/${locale}/policies/new`}
             className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
