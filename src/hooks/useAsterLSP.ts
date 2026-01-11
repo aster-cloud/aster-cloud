@@ -91,21 +91,16 @@ export function useAsterLSP({
     // Check for external LSP host (production)
     // Note: NEXT_PUBLIC_* variables are inlined at build time
     const lspHost = process.env.NEXT_PUBLIC_LSP_HOST;
-    console.log('[LSP] NEXT_PUBLIC_LSP_HOST:', lspHost);
 
     if (lspHost) {
       // External host - use wss:// and /lsp path
       const protocol = lspHost.startsWith('localhost') ? 'ws:' : 'wss:';
-      const url = `${protocol}//${lspHost}/lsp?locale=${locale}`;
-      console.log('[LSP] Connecting to external host:', url);
-      return url;
+      return `${protocol}//${lspHost}/lsp?locale=${locale}`;
     }
 
     // Local development - use same host with /api/lsp path
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/api/lsp?locale=${locale}`;
-    console.log('[LSP] Connecting to local host:', url);
-    return url;
+    return `${protocol}//${window.location.host}/api/lsp?locale=${locale}`;
   }, [locale]);
 
   /**
@@ -321,15 +316,8 @@ export function useAsterLSP({
    * Connect to the LSP server
    */
   const connect = useCallback(async () => {
-    console.log('[LSP] connect() called');
-    if (isDisposedRef.current) {
-      console.log('[LSP] Aborted: component disposed');
-      return;
-    }
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('[LSP] Aborted: already connected');
-      return;
-    }
+    if (isDisposedRef.current) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     // Clear any pending reconnect
     if (reconnectTimeoutRef.current) {
@@ -342,7 +330,6 @@ export function useAsterLSP({
 
     try {
       const wsUrl = getWebSocketUrl();
-      console.log('[LSP] Creating WebSocket to:', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -445,14 +432,11 @@ export function useAsterLSP({
     // Reset disposed flag on mount/remount (important for React Strict Mode)
     isDisposedRef.current = false;
 
-    console.log('[LSP] useEffect triggered - autoConnect:', autoConnect, 'editor:', !!editor);
     if (autoConnect && editor) {
-      console.log('[LSP] Starting auto-connect...');
       connect();
     }
 
     return () => {
-      console.log('[LSP] useEffect cleanup - disposing');
       isDisposedRef.current = true;
       disconnect();
     };

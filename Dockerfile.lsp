@@ -32,6 +32,9 @@ COPY package.json lsp-server.ts ./
 # Install tsx for TypeScript execution
 RUN corepack enable pnpm && pnpm add -D tsx --ignore-scripts
 
+# Create .asteri directory for LSP workspace index
+RUN mkdir -p /app/.asteri && chown asteruser:nodejs /app/.asteri
+
 # Use non-root user
 USER asteruser
 
