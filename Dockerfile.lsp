@@ -11,20 +11,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm and dependencies
-RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod
-
-# Build stage
-FROM base AS builder
-WORKDIR /app
-
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml tsconfig.json ./
-COPY lsp-server.ts ./
-
-# Install dev dependencies for building
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+# Install pnpm and only LSP-related dependencies (skip postinstall/prisma)
+RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Production image
 FROM base AS runner
@@ -39,8 +27,10 @@ RUN adduser --system --uid 1001 asteruser
 
 # Copy necessary files
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/lsp-server.ts ./
+COPY package.json lsp-server.ts ./
+
+# Install tsx for TypeScript execution
+RUN corepack enable pnpm && pnpm add -D tsx --ignore-scripts
 
 # Use non-root user
 USER asteruser
