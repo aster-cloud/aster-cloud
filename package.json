@@ -5,8 +5,10 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "next dev",
+    "dev:lsp": "tsx server.ts",
     "build": "prisma db push && next build --webpack",
     "start": "next start",
+    "start:lsp": "node --import tsx server.ts",
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
@@ -19,6 +21,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@aster-cloud/aster-lang-ts": "0.0.1",
     "@auth/prisma-adapter": "^2.11.1",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/adapter-pg": "^7.2.0",
@@ -36,7 +39,9 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^6.6.0",
-    "stripe": "^20.1.0"
+    "stripe": "^20.1.0",
+    "vscode-ws-jsonrpc": "^3.5.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
@@ -46,6 +51,7 @@
     "@types/pg": "^8.15.5",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.1.2",
     "eslint": "^9.39.2",
     "eslint-config-next": "16.1.1",
@@ -53,6 +59,7 @@
     "lucide-react": "^0.562.0",
     "prisma": "^7.2.0",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   }

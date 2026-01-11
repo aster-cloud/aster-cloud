@@ -9,6 +9,7 @@ import {
   getKeywordsByCategory,
   type LexiconConfig,
 } from '@/config/aster-lang-lexicons';
+import { useAsterLSP, type CNLLocale } from '@/hooks/useAsterLSP';
 
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
@@ -23,6 +24,10 @@ interface MonacoPolicyEditorProps {
   height?: string;
   readOnly?: boolean;
   placeholder?: string;
+  /** Policy ID for LSP document URI */
+  policyId?: string;
+  /** Enable LSP features (diagnostics, completion, etc.) */
+  enableLSP?: boolean;
 }
 
 // 注册 Aster Lang 语言
@@ -255,6 +260,8 @@ export function MonacoPolicyEditor({
   height = '400px',
   readOnly = false,
   placeholder,
+  policyId,
+  enableLSP = false,
 }: MonacoPolicyEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
@@ -263,6 +270,18 @@ export function MonacoPolicyEditor({
 
   const isDark = resolvedTheme === 'dark';
   const lexicon = getLexicon(locale);
+
+  // Map locale string to CNLLocale type
+  const lspLocale: CNLLocale = locale === 'zh' ? 'zh-CN' : locale === 'de' ? 'de-DE' : 'en-US';
+
+  // LSP integration (only when enabled and policyId provided)
+  const { connected: lspConnected, connecting: lspConnecting, error: lspError, reconnect: lspReconnect } = useAsterLSP({
+    editor: isEditorReady ? editorRef.current : null,
+    documentUri: policyId ? `file:///policies/${policyId}.aster` : 'file:///untitled.aster',
+    locale: lspLocale,
+    autoConnect: enableLSP,
+    autoReconnect: enableLSP,
+  });
 
   // 编辑器挂载回调
   const handleEditorMount: OnMount = useCallback(
@@ -307,6 +326,33 @@ export function MonacoPolicyEditor({
 
   return (
     <div className="relative rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+      {/* LSP Status Indicator */}
+      {enableLSP && (
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded text-xs">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              lspConnected
+                ? 'bg-green-500'
+                : lspConnecting
+                  ? 'bg-yellow-500 animate-pulse'
+                  : 'bg-red-500'
+            }`}
+            title={lspConnected ? 'LSP Connected' : lspConnecting ? 'Connecting...' : lspError || 'Disconnected'}
+          />
+          <span className="text-gray-600 dark:text-gray-400">
+            {lspConnected ? 'LSP' : lspConnecting ? 'Connecting' : 'Offline'}
+          </span>
+          {!lspConnected && !lspConnecting && (
+            <button
+              onClick={lspReconnect}
+              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
+
       <Editor
         height={height}
         language={ASTER_LANG_ID}
