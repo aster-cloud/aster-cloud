@@ -442,6 +442,9 @@ export function useAsterLSP({
 
   // Auto-connect on mount
   useEffect(() => {
+    // Reset disposed flag on mount/remount (important for React Strict Mode)
+    isDisposedRef.current = false;
+
     console.log('[LSP] useEffect triggered - autoConnect:', autoConnect, 'editor:', !!editor);
     if (autoConnect && editor) {
       console.log('[LSP] Starting auto-connect...');
@@ -449,6 +452,7 @@ export function useAsterLSP({
     }
 
     return () => {
+      console.log('[LSP] useEffect cleanup - disposing');
       isDisposedRef.current = true;
       disconnect();
     };
