@@ -321,8 +321,15 @@ export function useAsterLSP({
    * Connect to the LSP server
    */
   const connect = useCallback(async () => {
-    if (isDisposedRef.current) return;
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    console.log('[LSP] connect() called');
+    if (isDisposedRef.current) {
+      console.log('[LSP] Aborted: component disposed');
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('[LSP] Aborted: already connected');
+      return;
+    }
 
     // Clear any pending reconnect
     if (reconnectTimeoutRef.current) {
@@ -335,6 +342,7 @@ export function useAsterLSP({
 
     try {
       const wsUrl = getWebSocketUrl();
+      console.log('[LSP] Creating WebSocket to:', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -434,7 +442,9 @@ export function useAsterLSP({
 
   // Auto-connect on mount
   useEffect(() => {
+    console.log('[LSP] useEffect triggered - autoConnect:', autoConnect, 'editor:', !!editor);
     if (autoConnect && editor) {
+      console.log('[LSP] Starting auto-connect...');
       connect();
     }
 
