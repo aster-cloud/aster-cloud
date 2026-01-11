@@ -178,6 +178,8 @@ export function EditPolicyContent({
                   locale={locale}
                   height="400px"
                   placeholder={t.form.contentPlaceholder}
+                  policyId={policy.id}
+                  enableLSP={true}
                 />
               </div>
               <p className="mt-3 text-sm text-gray-500">
