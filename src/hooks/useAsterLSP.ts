@@ -89,16 +89,23 @@ export function useAsterLSP({
     if (typeof window === 'undefined') return '';
 
     // Check for external LSP host (production)
+    // Note: NEXT_PUBLIC_* variables are inlined at build time
     const lspHost = process.env.NEXT_PUBLIC_LSP_HOST;
+    console.log('[LSP] NEXT_PUBLIC_LSP_HOST:', lspHost);
+
     if (lspHost) {
       // External host - use wss:// and /lsp path
       const protocol = lspHost.startsWith('localhost') ? 'ws:' : 'wss:';
-      return `${protocol}//${lspHost}/lsp?locale=${locale}`;
+      const url = `${protocol}//${lspHost}/lsp?locale=${locale}`;
+      console.log('[LSP] Connecting to external host:', url);
+      return url;
     }
 
     // Local development - use same host with /api/lsp path
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}/api/lsp?locale=${locale}`;
+    const url = `${protocol}//${window.location.host}/api/lsp?locale=${locale}`;
+    console.log('[LSP] Connecting to local host:', url);
+    return url;
   }, [locale]);
 
   /**

@@ -339,12 +339,17 @@ export function MonacoPolicyEditor({
             }`}
             title={lspConnected ? 'LSP Connected' : lspConnecting ? 'Connecting...' : lspError || 'Disconnected'}
           />
-          <span className="text-gray-600 dark:text-gray-400">
+          <span className="text-gray-600 dark:text-gray-400" title={lspError || undefined}>
             {lspConnected ? 'LSP' : lspConnecting ? 'Connecting' : 'Offline'}
           </span>
           {!lspConnected && !lspConnecting && (
             <button
-              onClick={lspReconnect}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                lspReconnect();
+              }}
               className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline"
             >
               Retry
