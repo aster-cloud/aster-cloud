@@ -435,7 +435,8 @@
       "noPolicies": "暂无策略。",
       "createFirst": "创建您的第一个策略",
       "noDescription": "暂无描述",
-      "runs": "{count} 次运行"
+      "runs": "{count} 次运行",
+      "deleted": "已删除"
     }
   },
   "billing": {

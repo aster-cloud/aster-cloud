@@ -34,6 +34,7 @@ interface Policy {
   _count: {
     executions: number;
   };
+  isDeleted?: boolean;
 }
 
 interface Translations {
@@ -69,6 +70,7 @@ interface Translations {
     createFirst: string;
     noDescription: string;
     runsTemplate: string;
+    deleted: string;
   };
 }
 
@@ -336,10 +338,15 @@ export function DashboardContent({
                   >
                     <div className="px-4 py-4 sm:px-6">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-indigo-600 truncate">
+                        <p className={`text-sm font-medium truncate ${policy.isDeleted ? 'text-gray-400 line-through' : 'text-indigo-600'}`}>
                           {policy.name}
                         </p>
-                        <div className="ml-2 flex-shrink-0 flex">
+                        <div className="ml-2 flex-shrink-0 flex gap-2">
+                          {policy.isDeleted && (
+                            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                              {t.recentPolicies.deleted}
+                            </span>
+                          )}
                           {policy.piiFields && policy.piiFields.length > 0 && (
                             <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
                               {policy.piiFields.length} PII

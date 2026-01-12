@@ -435,7 +435,8 @@
       "noPolicies": "No policies yet.",
       "createFirst": "Create your first policy",
       "noDescription": "No description",
-      "runs": "{count} runs"
+      "runs": "{count} runs",
+      "deleted": "Deleted"
     }
   },
   "billing": {

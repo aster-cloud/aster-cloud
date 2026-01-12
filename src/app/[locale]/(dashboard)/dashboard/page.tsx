@@ -23,7 +23,7 @@ async function getDashboardData(userId: string) {
     getPolicyFreezeStatus(userId),
   ]);
 
-  // 按执行次数排序，取前5个
+  // 按执行次数排序，取前5个（包括已删除的策略，显示已删除标记）
   const topPolicies = policiesData
     .map((p) => ({
       id: p.id,
@@ -33,6 +33,7 @@ async function getDashboardData(userId: string) {
       updatedAt: p.updatedAt.toISOString(),
       _count: { executions: p._count.executions },
       isFrozen: freezeStatus.frozenPolicyIds.has(p.id),
+      isDeleted: p.deletedAt !== null,
     }))
     .sort((a, b) => b._count.executions - a._count.executions)
     .slice(0, 5);
@@ -91,6 +92,7 @@ export default async function DashboardPage() {
       createFirst: t('recentPolicies.createFirst'),
       noDescription: t('recentPolicies.noDescription'),
       runsTemplate: t.raw('recentPolicies.runs'),
+      deleted: t('recentPolicies.deleted'),
     },
   };
 

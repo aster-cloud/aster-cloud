@@ -435,7 +435,8 @@
       "noPolicies": "Noch keine Richtlinien.",
       "createFirst": "Erstellen Sie Ihre erste Richtlinie",
       "noDescription": "Keine Beschreibung",
-      "runs": "{count} Ausführungen"
+      "runs": "{count} Ausführungen",
+      "deleted": "Gelöscht"
     }
   },
   "billing": {
