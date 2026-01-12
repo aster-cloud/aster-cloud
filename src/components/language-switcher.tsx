@@ -26,6 +26,9 @@ export function LanguageSwitcher() {
 
   return (
     <select
+      id="language-selector"
+      name="language"
+      aria-label="Select language"
       value={locale}
       onChange={(e) => handleChange(e.target.value)}
       className="bg-transparent border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"

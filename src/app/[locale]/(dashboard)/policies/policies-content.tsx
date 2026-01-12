@@ -1,10 +1,20 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
-import { Folder } from 'lucide-react';
+import { Folder, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  DragOverlay,
+  useDraggable,
+  DragEndEvent,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 
 interface Policy {
   id: string;
@@ -87,6 +97,145 @@ function formatTemplate(template: string, values: Record<string, string | number
   return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
 }
 
+// 可拖拽的策略项
+interface DraggablePolicyItemProps {
+  policy: Policy;
+  locale: string;
+  translations: Translations;
+  onDelete: (id: string) => void;
+}
+
+function DraggablePolicyItem({ policy, locale, translations: t, onDelete }: DraggablePolicyItemProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: policy.id,
+    data: { type: 'policy', policy },
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    opacity: isDragging ? 0.5 : 1,
+  } : undefined;
+
+  return (
+    <li ref={setNodeRef} style={style}>
+      <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 group">
+        <div className="flex items-center justify-between">
+          {/* 拖拽手柄 */}
+          <div
+            {...listeners}
+            {...attributes}
+            className="flex-shrink-0 mr-3 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="w-4 h-4 text-gray-400" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <Link href={`/${locale}/policies/${policy.id}`} className="block">
+              <p className="text-sm font-medium text-indigo-600 truncate hover:underline">
+                {policy.name}
+              </p>
+              {policy.description && (
+                <p className="mt-1 text-sm text-gray-500 truncate">
+                  {policy.description}
+                </p>
+              )}
+            </Link>
+          </div>
+          <div className="ml-4 flex items-center space-x-4">
+            {/* Group Badge */}
+            {policy.group && (
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                <Folder className="w-3 h-3 mr-1" />
+                {policy.group.name}
+              </span>
+            )}
+
+            {/* Frozen Badge */}
+            {policy.isFrozen && (
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                <svg className="mr-1 h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 1zM5.05 3.05a.75.75 0 011.06 0l1.062 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.06zm9.9 0a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.06a.75.75 0 011.06 0zM10 14a4 4 0 100-8 4 4 0 000 8zm-8.25-3.25a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zm14.5 0a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zM5.05 16.95a.75.75 0 001.06 0l1.06-1.06a.75.75 0 00-1.06-1.061l-1.06 1.06a.75.75 0 000 1.061zm9.9 0a.75.75 0 010-1.06l1.06-1.061a.75.75 0 111.061 1.06l-1.06 1.06a.75.75 0 01-1.061 0z" clipRule="evenodd" />
+                </svg>
+                {t.freeze.badge}
+              </span>
+            )}
+
+            {/* PII Badge */}
+            {policy.piiFields && policy.piiFields.length > 0 && (
+              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                {formatTemplate(t.piiFieldsTemplate, { count: policy.piiFields.length })}
+              </span>
+            )}
+
+            {/* Public Badge */}
+            {policy.isPublic && (
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                {t.public}
+              </span>
+            )}
+
+            {/* Execution count */}
+            <span className="text-sm text-gray-500">
+              {formatTemplate(t.executionsTemplate, { count: policy._count.executions })}
+            </span>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-2">
+              {policy.isFrozen ? (
+                <span className="text-gray-400 text-sm cursor-not-allowed" title={t.freeze.cannotExecute}>
+                  {t.executeAction}
+                </span>
+              ) : (
+                <Link
+                  href={`/${locale}/policies/${policy.id}/execute`}
+                  className="text-indigo-600 hover:text-indigo-900 text-sm"
+                >
+                  {t.executeAction}
+                </Link>
+              )}
+              {policy.isFrozen ? (
+                <span className="text-gray-400 text-sm cursor-not-allowed" title={t.freeze.cannotEdit}>
+                  {t.edit}
+                </span>
+              ) : (
+                <Link
+                  href={`/${locale}/policies/${policy.id}/edit`}
+                  className="text-gray-600 hover:text-gray-900 text-sm"
+                >
+                  {t.edit}
+                </Link>
+              )}
+              <button
+                onClick={() => onDelete(policy.id)}
+                className="text-red-600 hover:text-red-900 text-sm"
+              >
+                {t.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 ml-8">
+          <p className="text-xs text-gray-400">
+            {formatTemplate(t.updatedTemplate, { date: new Date(policy.updatedAt).toLocaleDateString() })}
+          </p>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// 拖拽覆盖层显示的策略项
+function DragOverlayPolicy({ policy }: { policy: Policy }) {
+  return (
+    <div className="bg-white shadow-lg rounded-md px-4 py-3 border-2 border-indigo-500 cursor-grabbing">
+      <p className="text-sm font-medium text-indigo-600">{policy.name}</p>
+      {policy.description && (
+        <p className="mt-1 text-sm text-gray-500 truncate">{policy.description}</p>
+      )}
+    </div>
+  );
+}
+
 interface PoliciesContentProps {
   initialPolicies: Policy[];
   initialGroups: PolicyGroup[];
@@ -113,6 +262,18 @@ export function PoliciesContent({
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [editingGroup, setEditingGroup] = useState<PolicyGroup | null>(null);
   const [createParentId, setCreateParentId] = useState<string | null>(null);
+
+  // 拖拽状态
+  const [activePolicy, setActivePolicy] = useState<Policy | null>(null);
+
+  // 配置拖拽传感器
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 需要移动8px才开始拖拽，避免误触
+      },
+    })
+  );
 
   // 筛选后的策略列表
   const filteredPolicies = useMemo(() => {
@@ -177,6 +338,89 @@ export function PoliciesContent({
       console.error('Failed to refresh groups:', err);
     }
   }, []);
+
+  // 拖拽开始
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const { active } = event;
+    const policy = policies.find((p) => p.id === active.id);
+    if (policy) {
+      setActivePolicy(policy);
+    }
+  }, [policies]);
+
+  // 拖拽结束 - 更新策略的分组
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActivePolicy(null);
+
+    if (!over) return;
+
+    const policyId = active.id as string;
+    const targetGroupId = over.id as string;
+
+    // 找到被拖拽的策略
+    const policy = policies.find((p) => p.id === policyId);
+    if (!policy) return;
+
+    // 如果目标是 'ungrouped'，设置 groupId 为 null
+    const newGroupId = targetGroupId === 'ungrouped' ? null : targetGroupId;
+
+    // 如果分组没变化，不做任何操作
+    if (policy.groupId === newGroupId) return;
+
+    // 乐观更新 UI
+    setPolicies((prev) =>
+      prev.map((p) =>
+        p.id === policyId
+          ? {
+              ...p,
+              groupId: newGroupId,
+              group: newGroupId
+                ? (() => {
+                    // 从 groups 中找到目标分组
+                    const findGroup = (groups: PolicyGroup[], id: string): PolicyGroup | null => {
+                      for (const g of groups) {
+                        if (g.id === id) return g;
+                        if (g.children) {
+                          const found = findGroup(g.children, id);
+                          if (found) return found;
+                        }
+                      }
+                      return null;
+                    };
+                    const targetGroup = findGroup(groups, newGroupId);
+                    return targetGroup
+                      ? { id: targetGroup.id, name: targetGroup.name, icon: targetGroup.icon, parentId: targetGroup.parentId }
+                      : null;
+                  })()
+                : null,
+            }
+          : p
+      )
+    );
+
+    // 调用 API 更新
+    try {
+      const res = await fetch(`/api/policies/${policyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId: newGroupId }),
+      });
+
+      if (!res.ok) {
+        // 如果失败，回滚更改
+        await refreshPolicies();
+        setError(locale.startsWith('zh') ? '移动策略失败' : 'Failed to move policy');
+      } else {
+        // 刷新分组以更新策略计数
+        await refreshGroups();
+      }
+    } catch (err) {
+      console.error('Failed to update policy group:', err);
+      await refreshPolicies();
+      setError(locale.startsWith('zh') ? '移动策略失败' : 'Failed to move policy');
+    }
+  }, [policies, groups, locale, refreshPolicies, refreshGroups]);
 
   const deletePolicy = async (id: string) => {
     if (!confirm(t.confirmDelete)) return;
@@ -266,25 +510,31 @@ export function PoliciesContent({
   }, [editingGroup, selectedGroupId, refreshGroups, refreshPolicies]);
 
   return (
-    <div className="flex h-[calc(100vh-8rem)]">
-      {/* 左侧分组树 */}
-      <PolicyGroupTree
-        groups={groups}
-        selectedGroupId={selectedGroupId}
-        onSelectGroup={setSelectedGroupId}
-        onCreateGroup={handleCreateGroup}
-        onEditGroup={handleEditGroup}
-        onDeleteGroup={handleDeleteGroup}
-        translations={{
-          allPolicies: t.groups.allPolicies,
-          ungrouped: t.groups.ungrouped,
-          newGroup: t.groups.newGroup,
-          newSubgroup: t.groups.newSubgroup,
-          edit: t.groups.edit,
-          delete: t.groups.delete,
-          policiesCount: t.groups.policiesCount,
-        }}
-      />
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex h-[calc(100vh-8rem)]">
+        {/* 左侧分组树 */}
+        <PolicyGroupTree
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onSelectGroup={setSelectedGroupId}
+          onCreateGroup={handleCreateGroup}
+          onEditGroup={handleEditGroup}
+          onDeleteGroup={handleDeleteGroup}
+          isDragging={!!activePolicy}
+          translations={{
+            allPolicies: t.groups.allPolicies,
+            ungrouped: t.groups.ungrouped,
+            newGroup: t.groups.newGroup,
+            newSubgroup: t.groups.newSubgroup,
+            edit: t.groups.edit,
+            delete: t.groups.delete,
+            policiesCount: t.groups.policiesCount,
+          }}
+        />
 
       {/* 右侧策略列表 */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -381,106 +631,23 @@ export function PoliciesContent({
           <div className="mt-8 overflow-hidden bg-white shadow sm:rounded-md">
             <ul className="divide-y divide-gray-200">
               {filteredPolicies.map((policy) => (
-                <li key={policy.id}>
-                  <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/${locale}/policies/${policy.id}`} className="block">
-                          <p className="text-sm font-medium text-indigo-600 truncate hover:underline">
-                            {policy.name}
-                          </p>
-                          {policy.description && (
-                            <p className="mt-1 text-sm text-gray-500 truncate">
-                              {policy.description}
-                            </p>
-                          )}
-                        </Link>
-                      </div>
-                      <div className="ml-4 flex items-center space-x-4">
-                        {/* Group Badge */}
-                        {policy.group && (
-                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                            <Folder className="w-3 h-3 mr-1" />
-                            {policy.group.name}
-                          </span>
-                        )}
-
-                        {/* Frozen Badge */}
-                        {policy.isFrozen && (
-                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                            <svg className="mr-1 h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 1zM5.05 3.05a.75.75 0 011.06 0l1.062 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.06zm9.9 0a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.06a.75.75 0 011.06 0zM10 14a4 4 0 100-8 4 4 0 000 8zm-8.25-3.25a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zm14.5 0a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5zM5.05 16.95a.75.75 0 001.06 0l1.06-1.06a.75.75 0 00-1.06-1.061l-1.06 1.06a.75.75 0 000 1.061zm9.9 0a.75.75 0 010-1.06l1.06-1.061a.75.75 0 111.061 1.06l-1.06 1.06a.75.75 0 01-1.061 0z" clipRule="evenodd" />
-                            </svg>
-                            {t.freeze.badge}
-                          </span>
-                        )}
-
-                        {/* PII Badge */}
-                        {policy.piiFields && policy.piiFields.length > 0 && (
-                          <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                            {formatTemplate(t.piiFieldsTemplate, { count: policy.piiFields.length })}
-                          </span>
-                        )}
-
-                        {/* Public Badge */}
-                        {policy.isPublic && (
-                          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                            {t.public}
-                          </span>
-                        )}
-
-                        {/* Execution count */}
-                        <span className="text-sm text-gray-500">
-                          {formatTemplate(t.executionsTemplate, { count: policy._count.executions })}
-                        </span>
-
-                        {/* Actions */}
-                        <div className="flex items-center space-x-2">
-                          {policy.isFrozen ? (
-                            <span className="text-gray-400 text-sm cursor-not-allowed" title={t.freeze.cannotExecute}>
-                              {t.executeAction}
-                            </span>
-                          ) : (
-                            <Link
-                              href={`/${locale}/policies/${policy.id}/execute`}
-                              className="text-indigo-600 hover:text-indigo-900 text-sm"
-                            >
-                              {t.executeAction}
-                            </Link>
-                          )}
-                          {policy.isFrozen ? (
-                            <span className="text-gray-400 text-sm cursor-not-allowed" title={t.freeze.cannotEdit}>
-                              {t.edit}
-                            </span>
-                          ) : (
-                            <Link
-                              href={`/${locale}/policies/${policy.id}/edit`}
-                              className="text-gray-600 hover:text-gray-900 text-sm"
-                            >
-                              {t.edit}
-                            </Link>
-                          )}
-                          <button
-                            onClick={() => deletePolicy(policy.id)}
-                            className="text-red-600 hover:text-red-900 text-sm"
-                          >
-                            {t.delete}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-400">
-                        {formatTemplate(t.updatedTemplate, { date: new Date(policy.updatedAt).toLocaleDateString() })}
-                      </p>
-                    </div>
-                  </div>
-                </li>
+                <DraggablePolicyItem
+                  key={policy.id}
+                  policy={policy}
+                  locale={locale}
+                  translations={t}
+                  onDelete={deletePolicy}
+                />
               ))}
             </ul>
           </div>
         )}
       </div>
+
+      {/* 拖拽覆盖层 */}
+      <DragOverlay>
+        {activePolicy ? <DragOverlayPolicy policy={activePolicy} /> : null}
+      </DragOverlay>
 
       {/* 分组对话框 */}
       <PolicyGroupDialog
@@ -507,6 +674,7 @@ export function PoliciesContent({
           deleting: t.groups.deleting,
         }}
       />
-    </div>
+      </div>
+    </DndContext>
   );
 }

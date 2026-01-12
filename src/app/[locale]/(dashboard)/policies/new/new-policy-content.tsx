@@ -12,6 +12,7 @@ import {
   getExampleDescription,
   getCategoryLabel,
 } from '@/data/policy-examples';
+import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -37,6 +38,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [groupId, setGroupId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,7 +55,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       const res = await fetch('/api/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, content, isPublic }),
+        body: JSON.stringify({ name, description, content, isPublic, groupId }),
       });
 
       const data = await res.json();
@@ -254,6 +256,21 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t('form.descriptionPlaceholder')}
               />
+            </div>
+
+            {/* Group */}
+            <div className="mt-6">
+              <PolicyGroupSelect
+                value={groupId}
+                onChange={setGroupId}
+                label={locale.startsWith('zh') ? '分组' : 'Group'}
+                placeholder={locale.startsWith('zh') ? '选择分组（可选）...' : 'Select a group (optional)...'}
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                {locale.startsWith('zh')
+                  ? '可选：将策略归类到一个分组以便管理'
+                  : 'Optional: Organize your policy into a group for better management'}
+              </p>
             </div>
 
             {/* Content - Monaco Editor */}

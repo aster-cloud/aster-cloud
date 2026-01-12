@@ -28,6 +28,7 @@ export default async function EditPolicyPage({ params }: PageProps) {
       description: true,
       content: true,
       isPublic: true,
+      groupId: true,
     },
   });
 
@@ -42,6 +43,7 @@ export default async function EditPolicyPage({ params }: PageProps) {
     description: policyData.description,
     content: policyData.content,
     isPublic: policyData.isPublic,
+    groupId: policyData.groupId,
   };
 
   // 预渲染所有翻译字符串

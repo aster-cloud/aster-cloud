@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface TrashItem {
   id: string;
   policyId: string;
-  policyName: string;
+  name: string;
+  description: string | null;
   deletedAt: string;
   expiresAt: string;
-  deleteReason: string | null;
+  daysRemaining: number;
 }
 
 interface TrashStats {
@@ -55,6 +57,13 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    type: 'delete' | 'empty';
+    policyId?: string;
+    policyName?: string;
+  } | null>(null);
 
   const fetchTrash = useCallback(async () => {
     setLoading(true);
@@ -107,52 +116,60 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
     }
   };
 
-  const permanentDelete = async (policyId: string) => {
-    if (!confirm(t.trash.confirmPermanentDelete)) return;
-
-    setActionLoading(policyId);
-    setError('');
-    setSuccessMessage('');
-
-    try {
-      const res = await fetch(`/api/policies/trash/${policyId}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) throw new Error('Failed to delete policy');
-
-      setSuccessMessage(t.trash.deleteSuccess);
-      await fetchTrash();
-    } catch (err) {
-      setError(t.trash.actionError);
-      console.error(err);
-    } finally {
-      setActionLoading(null);
-    }
+  const handleDeleteClick = (policyId: string, policyName: string) => {
+    setConfirmDialog({ type: 'delete', policyId, policyName });
   };
 
-  const emptyTrash = async () => {
-    if (!confirm(t.trash.confirmEmptyTrash)) return;
+  const handleEmptyTrashClick = () => {
+    setConfirmDialog({ type: 'empty' });
+  };
 
-    setActionLoading('empty');
-    setError('');
-    setSuccessMessage('');
+  const handleConfirmAction = async () => {
+    if (!confirmDialog) return;
 
-    try {
-      const res = await fetch('/api/policies/trash', {
-        method: 'DELETE',
-      });
+    if (confirmDialog.type === 'delete' && confirmDialog.policyId) {
+      setActionLoading(confirmDialog.policyId);
+      setError('');
+      setSuccessMessage('');
 
-      if (!res.ok) throw new Error('Failed to empty trash');
+      try {
+        const res = await fetch(`/api/policies/trash/${confirmDialog.policyId}`, {
+          method: 'DELETE',
+        });
 
-      const data = await res.json();
-      setSuccessMessage(t.trash.emptySuccess.replace('{count}', data.deletedCount.toString()));
-      await fetchTrash();
-    } catch (err) {
-      setError(t.trash.actionError);
-      console.error(err);
-    } finally {
-      setActionLoading(null);
+        if (!res.ok) throw new Error('Failed to delete policy');
+
+        setSuccessMessage(t.trash.deleteSuccess);
+        await fetchTrash();
+      } catch (err) {
+        setError(t.trash.actionError);
+        console.error(err);
+      } finally {
+        setActionLoading(null);
+        setConfirmDialog(null);
+      }
+    } else if (confirmDialog.type === 'empty') {
+      setActionLoading('empty');
+      setError('');
+      setSuccessMessage('');
+
+      try {
+        const res = await fetch('/api/policies/trash', {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) throw new Error('Failed to empty trash');
+
+        const data = await res.json();
+        setSuccessMessage(t.trash.emptySuccess.replace('{count}', data.deletedCount.toString()));
+        await fetchTrash();
+      } catch (err) {
+        setError(t.trash.actionError);
+        console.error(err);
+      } finally {
+        setActionLoading(null);
+        setConfirmDialog(null);
+      }
     }
   };
 
@@ -184,7 +201,7 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
         </div>
         {items.length > 0 && (
           <button
-            onClick={emptyTrash}
+            onClick={handleEmptyTrashClick}
             disabled={actionLoading === 'empty'}
             className="mt-4 md:mt-0 inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
           >
@@ -244,44 +261,51 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
         ) : (
           <ul className="divide-y divide-gray-200">
             {items.map((item) => {
-              const daysRemaining = getDaysRemaining(item.expiresAt);
+              const daysRemaining = item.daysRemaining ?? getDaysRemaining(item.expiresAt);
               const isExpiringSoon = daysRemaining <= 7;
 
               return (
-                <li key={item.id} className="p-4">
-                  <div className="flex items-center justify-between">
+                <li key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {item.policyName}
-                      </h3>
-                      <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-                        <span>
-                          {t.trash.deletedAt}: {new Date(item.deletedAt).toLocaleDateString()}
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">
+                          {item.name}
+                        </h3>
                         <span
-                          className={isExpiringSoon ? 'text-orange-600 font-medium' : ''}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            isExpiringSoon
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
                         >
                           {t.trash.daysRemaining.replace('{days}', daysRemaining.toString())}
                         </span>
                       </div>
-                      {item.deleteReason && (
-                        <p className="mt-1 text-sm text-gray-400">
-                          {t.trash.reason}: {item.deleteReason}
+                      {item.description && (
+                        <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                          {item.description}
                         </p>
                       )}
+                      <div className="mt-2 flex items-center text-xs text-gray-400">
+                        <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        {t.trash.deletedAt}: {new Date(item.deletedAt).toLocaleDateString()}
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={() => restorePolicy(item.policyId)}
                         disabled={actionLoading === item.policyId}
-                        className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                        className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                       >
                         {actionLoading === item.policyId ? '...' : t.trash.restore}
                       </button>
                       <button
-                        onClick={() => permanentDelete(item.policyId)}
+                        onClick={() => handleDeleteClick(item.policyId, item.name)}
                         disabled={actionLoading === item.policyId}
-                        className="inline-flex items-center rounded-md bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-200 disabled:opacity-50"
+                        className="inline-flex items-center rounded-md bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-200 disabled:opacity-50 transition-colors"
                       >
                         {t.trash.permanentDelete}
                       </button>
@@ -293,6 +317,30 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
           </ul>
         )}
       </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog !== null}
+        title={
+          confirmDialog?.type === 'empty'
+            ? t.trash.emptyTrash
+            : t.trash.permanentDelete
+        }
+        description={
+          confirmDialog?.type === 'empty'
+            ? t.trash.confirmEmptyTrash
+            : t.trash.confirmPermanentDelete.replace('{name}', confirmDialog?.policyName || '')
+        }
+        confirmLabel={
+          confirmDialog?.type === 'empty'
+            ? t.trash.emptyTrash
+            : t.trash.permanentDelete
+        }
+        variant="danger"
+        isLoading={actionLoading !== null}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

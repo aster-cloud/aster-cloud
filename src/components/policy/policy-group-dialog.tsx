@@ -164,10 +164,12 @@ export function PolicyGroupDialog({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="group-name" className="block text-sm font-medium text-gray-700 mb-1">
                     {t.nameLabel}
                   </label>
                   <input
+                    id="group-name"
+                    name="group-name"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -178,10 +180,12 @@ export function PolicyGroupDialog({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="group-description" className="block text-sm font-medium text-gray-700 mb-1">
                     {t.descriptionLabel}
                   </label>
                   <textarea
+                    id="group-description"
+                    name="group-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t.descriptionPlaceholder}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useLocale } from 'next-intl';
+import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -25,6 +26,7 @@ interface Policy {
   description: string | null;
   content: string;
   isPublic: boolean;
+  groupId: string | null;
 }
 
 interface Translations {
@@ -61,6 +63,7 @@ export function EditPolicyContent({
   const [description, setDescription] = useState(policy.description || '');
   const [content, setContent] = useState(policy.content);
   const [isPublic, setIsPublic] = useState(policy.isPublic);
+  const [groupId, setGroupId] = useState<string | null>(policy.groupId);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -73,7 +76,7 @@ export function EditPolicyContent({
       const res = await fetch(`/api/policies/${policy.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, content, isPublic }),
+        body: JSON.stringify({ name, description, content, isPublic, groupId }),
       });
 
       if (!res.ok) {
@@ -166,6 +169,21 @@ export function EditPolicyContent({
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t.form.descriptionPlaceholder}
               />
+            </div>
+
+            {/* Group */}
+            <div className="mt-6">
+              <PolicyGroupSelect
+                value={groupId}
+                onChange={setGroupId}
+                label={locale.startsWith('zh') ? '分组' : 'Group'}
+                placeholder={locale.startsWith('zh') ? '选择分组（可选）...' : 'Select a group (optional)...'}
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                {locale.startsWith('zh')
+                  ? '可选：将策略归类到一个分组以便管理'
+                  : 'Optional: Organize your policy into a group for better management'}
+              </p>
             </div>
 
             {/* Content - Monaco Editor */}

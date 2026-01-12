@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, MoreVertical, Pencil, Trash2, FolderPlus } from 'lucide-react';
+import { useDroppable } from '@dnd-kit/core';
 
 export interface PolicyGroup {
   id: string;
@@ -24,6 +25,7 @@ interface PolicyGroupTreeProps {
   onCreateGroup?: (parentId: string | null) => void;
   onEditGroup?: (group: PolicyGroup) => void;
   onDeleteGroup?: (group: PolicyGroup) => void;
+  isDragging?: boolean;
   translations: {
     allPolicies: string;
     ungrouped: string;
@@ -35,6 +37,33 @@ interface PolicyGroupTreeProps {
   };
 }
 
+// 可放置的分组项包装器
+function DroppableGroupItem({
+  id,
+  children,
+  isDragging,
+}: {
+  id: string;
+  children: (isOver: boolean) => React.ReactNode;
+  isDragging?: boolean;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id,
+    data: { type: 'group', groupId: id },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`transition-colors ${
+        isDragging && isOver ? 'ring-2 ring-indigo-500 ring-inset rounded-md' : ''
+      }`}
+    >
+      {children(isOver)}
+    </div>
+  );
+}
+
 export function PolicyGroupTree({
   groups,
   selectedGroupId,
@@ -42,6 +71,7 @@ export function PolicyGroupTree({
   onCreateGroup,
   onEditGroup,
   onDeleteGroup,
+  isDragging = false,
   translations: t,
 }: PolicyGroupTreeProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -72,16 +102,20 @@ export function PolicyGroupTree({
     const isMenuOpen = menuOpenId === group.id;
 
     return (
-      <div key={group.id}>
-        <div
-          className={`group flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors ${
-            isSelected
-              ? 'bg-indigo-100 text-indigo-800'
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}
-          style={{ paddingLeft: `${depth * 16 + 8}px` }}
-          onClick={() => onSelectGroup(group.id)}
-        >
+      <DroppableGroupItem key={group.id} id={group.id} isDragging={isDragging}>
+        {(isOver) => (
+          <>
+            <div
+              className={`group flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors ${
+                isDragging && isOver
+                  ? 'bg-indigo-100 text-indigo-800'
+                  : isSelected
+                  ? 'bg-indigo-100 text-indigo-800'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              style={{ paddingLeft: `${depth * 16 + 8}px` }}
+              onClick={() => onSelectGroup(group.id)}
+            >
           {/* Expand/Collapse Icon */}
           <span
             className={`flex-shrink-0 w-4 h-4 mr-1 ${hasChildren ? 'cursor-pointer' : ''}`}
@@ -168,13 +202,15 @@ export function PolicyGroupTree({
           )}
         </div>
 
-        {/* Children */}
-        {hasChildren && isExpanded && (
-          <div>
-            {group.children.map((child) => renderGroupItem(child, depth + 1))}
-          </div>
+            {/* Children */}
+            {hasChildren && isExpanded && (
+              <div>
+                {group.children.map((child) => renderGroupItem(child, depth + 1))}
+              </div>
+            )}
+          </>
         )}
-      </div>
+      </DroppableGroupItem>
     );
   };
 
@@ -211,17 +247,23 @@ export function PolicyGroupTree({
         </div>
 
         {/* Ungrouped */}
-        <div
-          className={`flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors mb-2 ${
-            selectedGroupId === 'ungrouped'
-              ? 'bg-indigo-100 text-indigo-800'
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}
-          onClick={() => onSelectGroup('ungrouped')}
-        >
-          <Folder className="w-4 h-4 mr-2 text-gray-400" />
-          <span className="flex-1">{t.ungrouped}</span>
-        </div>
+        <DroppableGroupItem id="ungrouped" isDragging={isDragging}>
+          {(isOver) => (
+            <div
+              className={`flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors mb-2 ${
+                isDragging && isOver
+                  ? 'bg-indigo-100 text-indigo-800'
+                  : selectedGroupId === 'ungrouped'
+                  ? 'bg-indigo-100 text-indigo-800'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              onClick={() => onSelectGroup('ungrouped')}
+            >
+              <Folder className="w-4 h-4 mr-2 text-gray-400" />
+              <span className="flex-1">{t.ungrouped}</span>
+            </div>
+          )}
+        </DroppableGroupItem>
 
         {/* Divider */}
         <div className="border-t border-gray-200 my-2" />
