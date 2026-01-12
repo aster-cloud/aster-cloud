@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 interface ExecutionLog {
@@ -76,6 +76,9 @@ interface LogsContentProps {
   policyName: string;
   translations: Translations;
   locale: string;
+  initialLogs: ExecutionLog[];
+  initialStats: Stats;
+  initialTotalPages: number;
 }
 
 // Source badge colors and icons
@@ -112,13 +115,22 @@ const sourceConfig = {
   },
 };
 
-export function LogsContent({ policyId, policyName, translations: t, locale }: LogsContentProps) {
-  const [logs, setLogs] = useState<ExecutionLog[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
+export function LogsContent({
+  policyId,
+  policyName,
+  translations: t,
+  locale,
+  initialLogs,
+  initialStats,
+  initialTotalPages,
+}: LogsContentProps) {
+  // 使用服务端提供的初始数据，避免客户端首次加载时的空白
+  const [logs, setLogs] = useState<ExecutionLog[]>(initialLogs);
+  const [stats, setStats] = useState<Stats | null>(initialStats);
+  const [loading, setLoading] = useState(false); // 初始数据已有，无需加载状态
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [totalPages, setTotalPages] = useState(initialTotalPages);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   // Filters
@@ -126,6 +138,9 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
   const [sourceFilter, setSourceFilter] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  // 跟踪是否为首次挂载，避免重复获取服务端已提供的数据
+  const isInitialMount = useRef(true);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -168,13 +183,17 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
     }
   }, [policyId]);
 
+  // 仅在筛选条件或分页变化时获取数据，首次挂载使用服务端数据
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     fetchLogs();
   }, [fetchLogs]);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  // Stats 已在服务端获取，无需客户端重新获取
+  // 如果需要刷新 stats，可以在特定操作后手动调用 fetchStats
 
   const resetFilters = () => {
     setSuccessFilter('');

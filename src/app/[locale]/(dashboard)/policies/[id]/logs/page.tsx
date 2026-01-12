@@ -2,22 +2,33 @@ import { getSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getTranslations } from 'next-intl/server';
+import { queryExecutionLogs, getExecutionStats } from '@/lib/policy-execution-log';
 import { LogsContent } from './logs-content';
 
-async function getPolicyBasicInfo(userId: string, policyId: string) {
-  const policy = await prisma.policy.findFirst({
-    where: {
-      id: policyId,
+async function getInitialLogsData(userId: string, policyId: string) {
+  // 并行获取策略信息、日志和统计
+  const [policy, logsResult, stats] = await Promise.all([
+    prisma.policy.findFirst({
+      where: {
+        id: policyId,
+        userId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    }),
+    queryExecutionLogs({
       userId,
-      deletedAt: null,
-    },
-    select: {
-      id: true,
-      name: true,
-    },
-  });
+      policyId,
+      page: 1,
+      pageSize: 20,
+    }),
+    getExecutionStats(userId, policyId, 30),
+  ]);
 
-  return policy;
+  return { policy, logsResult, stats };
 }
 
 export default async function PolicyLogsPage({
@@ -31,11 +42,34 @@ export default async function PolicyLogsPage({
     redirect(`/${locale}/login`);
   }
 
-  const policy = await getPolicyBasicInfo(session.user.id, id);
+  const { policy, logsResult, stats } = await getInitialLogsData(session.user.id, id);
 
   if (!policy) {
     notFound();
   }
+
+  // 序列化日志数据（Date -> string）
+  const initialLogs = logsResult.items.map((item) => ({
+    id: item.id,
+    success: item.success,
+    input: item.input,
+    output: item.output,
+    error: item.error,
+    duration: item.durationMs,
+    source: item.source,
+    policyVersion: item.policyVersion,
+    createdAt: item.createdAt.toISOString(),
+  }));
+
+  const initialStats = {
+    totalExecutions: stats.totalExecutions,
+    successCount: stats.successCount,
+    failureCount: stats.failureCount,
+    avgDurationMs: stats.avgDurationMs,
+    successRate: stats.successRate,
+    bySource: stats.bySource.map((s) => ({ source: s.source, count: s.count })),
+    recentTrend: stats.recentTrend,
+  };
 
   const t = await getTranslations('policies');
 
@@ -78,5 +112,15 @@ export default async function PolicyLogsPage({
     },
   };
 
-  return <LogsContent policyId={id} policyName={policy.name} translations={translations} locale={locale} />;
+  return (
+    <LogsContent
+      policyId={id}
+      policyName={policy.name}
+      translations={translations}
+      locale={locale}
+      initialLogs={initialLogs}
+      initialStats={initialStats}
+      initialTotalPages={logsResult.totalPages}
+    />
+  );
 }
