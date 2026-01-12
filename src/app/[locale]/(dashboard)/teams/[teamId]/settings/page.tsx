@@ -183,6 +183,7 @@ export default function TeamSettingsPage() {
             <input
               type="text"
               id="name"
+              name="name"
               required
               minLength={2}
               maxLength={50}
@@ -203,6 +204,7 @@ export default function TeamSettingsPage() {
               <input
                 type="text"
                 id="slug"
+                name="slug"
                 required
                 minLength={2}
                 maxLength={50}
@@ -271,11 +273,13 @@ export default function TeamSettingsPage() {
                 <li>{t('settings.deleteWarning3')}</li>
               </ul>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label htmlFor="deleteConfirm" className="block text-sm font-medium text-gray-700">
                   {t('settings.typeToConfirm', { name: team.name })}
                 </label>
                 <input
                   type="text"
+                  id="deleteConfirm"
+                  name="deleteConfirm"
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"

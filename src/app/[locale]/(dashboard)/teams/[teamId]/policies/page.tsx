@@ -185,6 +185,7 @@ export default function TeamPoliciesPage() {
                 <input
                   type="text"
                   id="name"
+                  name="name"
                   required
                   value={newPolicy.name}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, name: e.target.value }))}
@@ -199,6 +200,7 @@ export default function TeamPoliciesPage() {
                 <input
                   type="text"
                   id="description"
+                  name="description"
                   value={newPolicy.description}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, description: e.target.value }))}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
@@ -211,6 +213,7 @@ export default function TeamPoliciesPage() {
                 </label>
                 <textarea
                   id="content"
+                  name="content"
                   required
                   rows={10}
                   value={newPolicy.content}

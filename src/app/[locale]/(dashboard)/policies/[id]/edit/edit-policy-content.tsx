@@ -143,6 +143,7 @@ export function EditPolicyContent({
               <input
                 type="text"
                 id="name"
+                name="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -159,6 +160,7 @@ export function EditPolicyContent({
               <input
                 type="text"
                 id="description"
+                name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
@@ -191,6 +193,7 @@ export function EditPolicyContent({
             <div className="mt-6 flex items-center">
               <input
                 id="isPublic"
+                name="isPublic"
                 type="checkbox"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}

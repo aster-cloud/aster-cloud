@@ -212,10 +212,12 @@ export function ApiKeysContent({
       {/* Create New Key */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">{t.createNew}</h3>
+          <label htmlFor="apiKeyName" className="text-lg font-medium leading-6 text-gray-900">{t.createNew}</label>
           <form onSubmit={handleCreateKey} className="mt-4 flex space-x-4">
             <input
               type="text"
+              id="apiKeyName"
+              name="apiKeyName"
               value={newKeyName}
               onChange={(e) => setNewKeyName(e.target.value)}
               placeholder={t.keyPlaceholder}

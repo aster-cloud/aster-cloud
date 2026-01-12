@@ -686,6 +686,9 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             {/* JSON Mode */}
             {inputMode === 'json' && (
               <textarea
+                id="jsonInput"
+                name="jsonInput"
+                aria-label={t('input')}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 rows={12}
