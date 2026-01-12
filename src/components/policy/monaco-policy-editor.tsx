@@ -275,7 +275,7 @@ export function MonacoPolicyEditor({
   const lspLocale: CNLLocale = locale === 'zh' ? 'zh-CN' : locale === 'de' ? 'de-DE' : 'en-US';
 
   // LSP integration (only when enabled and policyId provided)
-  const { connected: lspConnected, connecting: lspConnecting, error: lspError, reconnect: lspReconnect } = useAsterLSP({
+  const { connected: lspConnected } = useAsterLSP({
     editor: isEditorReady ? editorRef.current : null,
     documentUri: policyId ? `file:///policies/${policyId}.aster` : 'file:///untitled.aster',
     locale: lspLocale,
@@ -326,35 +326,16 @@ export function MonacoPolicyEditor({
 
   return (
     <div className="relative rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-      {/* LSP Status Indicator */}
-      {enableLSP && (
+      {/* LSP Status Indicator - Only show when connected */}
+      {enableLSP && lspConnected && (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded text-xs">
           <span
-            className={`w-2 h-2 rounded-full ${
-              lspConnected
-                ? 'bg-green-500'
-                : lspConnecting
-                  ? 'bg-yellow-500 animate-pulse'
-                  : 'bg-red-500'
-            }`}
-            title={lspConnected ? 'LSP Connected' : lspConnecting ? 'Connecting...' : lspError || 'Disconnected'}
+            className="w-2 h-2 rounded-full bg-green-500"
+            title="LSP Connected"
           />
-          <span className="text-gray-600 dark:text-gray-400" title={lspError || undefined}>
-            {lspConnected ? 'LSP' : lspConnecting ? 'Connecting' : 'Offline'}
+          <span className="text-gray-600 dark:text-gray-400">
+            LSP
           </span>
-          {!lspConnected && !lspConnecting && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                lspReconnect();
-              }}
-              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline"
-            >
-              Retry
-            </button>
-          )}
         </div>
       )}
 

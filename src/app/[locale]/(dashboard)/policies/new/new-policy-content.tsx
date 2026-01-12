@@ -256,10 +256,10 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
 
             {/* Content - Monaco Editor */}
             <div className="mt-6">
-              <label htmlFor="content" className="block text-sm font-semibold text-gray-900">
+              <label id="content-label" className="block text-sm font-semibold text-gray-900">
                 {t('form.content')}
               </label>
-              <div className="mt-2">
+              <div className="mt-2" role="group" aria-labelledby="content-label">
                 <MonacoPolicyEditor
                   value={content}
                   onChange={setContent}
