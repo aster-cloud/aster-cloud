@@ -12,6 +12,12 @@ const mockTranslations = {
   policiesCount: '{count} policies',
 };
 
+// 默认计数 props
+const defaultCountProps = {
+  totalPoliciesCount: 10,
+  ungroupedCount: 3,
+};
+
 const createMockGroup = (overrides: Partial<PolicyGroup> = {}): PolicyGroup => ({
   id: 'group-1',
   name: 'Test Group',
@@ -43,6 +49,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -62,6 +69,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -78,6 +86,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -91,6 +100,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -107,6 +117,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId="g1"
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -123,6 +134,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId="g1"
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -137,6 +149,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -153,6 +166,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -176,6 +190,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -207,6 +222,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -236,6 +252,7 @@ describe('PolicyGroupTree', () => {
           onSelectGroup={mockOnSelectGroup}
           onCreateGroup={mockOnCreateGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -253,6 +270,7 @@ describe('PolicyGroupTree', () => {
           onSelectGroup={mockOnSelectGroup}
           onCreateGroup={mockOnCreateGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -275,6 +293,7 @@ describe('PolicyGroupTree', () => {
           onEditGroup={mockOnEditGroup}
           onDeleteGroup={mockOnDeleteGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 
@@ -293,6 +312,7 @@ describe('PolicyGroupTree', () => {
           selectedGroupId={null}
           onSelectGroup={mockOnSelectGroup}
           translations={mockTranslations}
+          {...defaultCountProps}
         />
       );
 

@@ -26,6 +26,8 @@ interface PolicyGroupTreeProps {
   onEditGroup?: (group: PolicyGroup) => void;
   onDeleteGroup?: (group: PolicyGroup) => void;
   isDragging?: boolean;
+  totalPoliciesCount: number;
+  ungroupedCount: number;
   translations: {
     allPolicies: string;
     ungrouped: string;
@@ -72,6 +74,8 @@ export function PolicyGroupTree({
   onEditGroup,
   onDeleteGroup,
   isDragging = false,
+  totalPoliciesCount,
+  ungroupedCount,
   translations: t,
 }: PolicyGroupTreeProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -244,6 +248,7 @@ export function PolicyGroupTree({
         >
           <Folder className="w-4 h-4 mr-2 text-gray-400" />
           <span className="flex-1">{t.allPolicies}</span>
+          <span className="text-xs text-gray-400">{totalPoliciesCount}</span>
         </div>
 
         {/* Ungrouped */}
@@ -261,6 +266,7 @@ export function PolicyGroupTree({
             >
               <Folder className="w-4 h-4 mr-2 text-gray-400" />
               <span className="flex-1">{t.ungrouped}</span>
+              <span className="text-xs text-gray-400">{ungroupedCount}</span>
             </div>
           )}
         </DroppableGroupItem>

@@ -281,6 +281,10 @@ export function PoliciesContent({
     })
   );
 
+  // 计算策略总数和未分组策略数（基于本地状态，拖拽后立即更新）
+  const totalPoliciesCount = policies.length;
+  const ungroupedCount = useMemo(() => policies.filter((p) => !p.groupId).length, [policies]);
+
   // 筛选后的策略列表
   const filteredPolicies = useMemo(() => {
     if (selectedGroupId === null) {
@@ -550,6 +554,8 @@ export function PoliciesContent({
           onEditGroup={handleEditGroup}
           onDeleteGroup={handleDeleteGroup}
           isDragging={!!activePolicy}
+          totalPoliciesCount={totalPoliciesCount}
+          ungroupedCount={ungroupedCount}
           translations={{
             allPolicies: t.groups.allPolicies,
             ungrouped: t.groups.ungrouped,
