@@ -112,21 +112,26 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     // Update policy and create new version if content changed
-    const newVersion = content !== existingPolicy.content;
+    // Only consider it a new version if content is explicitly provided and different
+    const newVersion = content !== undefined && content !== existingPolicy.content;
 
     const piiResult = newVersion ? detectPII(content) : null;
 
+    // Build update data, only including fields that are explicitly provided
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (content !== undefined) updateData.content = content;
+    if (description !== undefined) updateData.description = description;
+    if (isPublic !== undefined) updateData.isPublic = isPublic;
+    if (groupId !== undefined) updateData.groupId = groupId || null;
+    if (newVersion) {
+      updateData.version = { increment: 1 };
+      updateData.piiFields = piiResult?.detectedTypes;
+    }
+
     const policy = await prisma.policy.update({
       where: { id },
-      data: {
-        name,
-        content,
-        description,
-        isPublic,
-        version: newVersion ? { increment: 1 } : undefined,
-        piiFields: newVersion ? piiResult?.detectedTypes : undefined,
-        ...(groupId !== undefined && { groupId: groupId || null }),
-      },
+      data: updateData,
     });
 
     if (newVersion) {

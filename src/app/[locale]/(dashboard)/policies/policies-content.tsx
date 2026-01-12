@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Folder, GripVertical } from 'lucide-react';
 import {
   DndContext,
@@ -102,7 +103,7 @@ interface DraggablePolicyItemProps {
   policy: Policy;
   locale: string;
   translations: Translations;
-  onDelete: (id: string) => void;
+  onDelete: (policy: Policy) => void;
 }
 
 function DraggablePolicyItem({ policy, locale, translations: t, onDelete }: DraggablePolicyItemProps) {
@@ -206,7 +207,7 @@ function DraggablePolicyItem({ policy, locale, translations: t, onDelete }: Drag
                 </Link>
               )}
               <button
-                onClick={() => onDelete(policy.id)}
+                onClick={() => onDelete(policy)}
                 className="text-red-600 hover:text-red-900 text-sm"
               >
                 {t.delete}
@@ -265,6 +266,11 @@ export function PoliciesContent({
 
   // 拖拽状态
   const [activePolicy, setActivePolicy] = useState<Policy | null>(null);
+
+  // 删除确认对话框状态
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [policyToDelete, setPolicyToDelete] = useState<Policy | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 配置拖拽传感器
   const sensors = useSensors(
@@ -422,19 +428,38 @@ export function PoliciesContent({
     }
   }, [policies, groups, locale, refreshPolicies, refreshGroups]);
 
-  const deletePolicy = async (id: string) => {
-    if (!confirm(t.confirmDelete)) return;
+  // 打开删除确认对话框
+  const handleDeleteClick = useCallback((policy: Policy) => {
+    setPolicyToDelete(policy);
+    setDeleteDialogOpen(true);
+  }, []);
 
+  // 确认删除策略
+  const handleConfirmDelete = useCallback(async () => {
+    if (!policyToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/policies/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/policies/${policyToDelete.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete policy');
       // 删除后重新获取列表以更新冻结状态
       await refreshPolicies();
+      setDeleteDialogOpen(false);
+      setPolicyToDelete(null);
     } catch (err) {
       setError(t.failedToDelete);
       console.error(err);
+    } finally {
+      setIsDeleting(false);
     }
-  };
+  }, [policyToDelete, refreshPolicies, t.failedToDelete]);
+
+  // 取消删除
+  const handleCancelDelete = useCallback(() => {
+    if (isDeleting) return;
+    setDeleteDialogOpen(false);
+    setPolicyToDelete(null);
+  }, [isDeleting]);
 
   // 分组操作
   const handleCreateGroup = useCallback((parentId: string | null) => {
@@ -636,7 +661,7 @@ export function PoliciesContent({
                   policy={policy}
                   locale={locale}
                   translations={t}
-                  onDelete={deletePolicy}
+                  onDelete={handleDeleteClick}
                 />
               ))}
             </ul>
@@ -673,6 +698,25 @@ export function PoliciesContent({
           saving: t.groups.saving,
           deleting: t.groups.deleting,
         }}
+      />
+
+      {/* 删除策略确认对话框 */}
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title={locale.startsWith('zh') ? '删除策略' : 'Delete Policy'}
+        message={
+          policyToDelete
+            ? locale.startsWith('zh')
+              ? `确定要删除策略 "${policyToDelete.name}" 吗？此操作可以在回收站中撤销。`
+              : `Are you sure you want to delete "${policyToDelete.name}"? This can be undone from the trash.`
+            : ''
+        }
+        confirmLabel={locale.startsWith('zh') ? '删除' : 'Delete'}
+        cancelLabel={locale.startsWith('zh') ? '取消' : 'Cancel'}
+        variant="danger"
+        isLoading={isDeleting}
       />
       </div>
     </DndContext>

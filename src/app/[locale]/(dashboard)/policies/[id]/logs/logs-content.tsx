@@ -337,7 +337,7 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               Status
             </label>
             <select
@@ -346,7 +346,7 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
                 setSuccessFilter(e.target.value);
                 setPage(1);
               }}
-              className="block w-full rounded-lg border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             >
               <option value="">{t.logs.all}</option>
               <option value="true">{t.logs.success}</option>
@@ -354,7 +354,7 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               {t.logs.source}
             </label>
             <select
@@ -363,7 +363,7 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
                 setSourceFilter(e.target.value);
                 setPage(1);
               }}
-              className="block w-full rounded-lg border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             >
               <option value="">{t.logs.all}</option>
               <option value="WEB">{t.logs.web}</option>
@@ -372,25 +372,25 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               {t.logs.from}
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="block w-full rounded-lg border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               {t.logs.to}
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full rounded-lg border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             />
           </div>
         </div>

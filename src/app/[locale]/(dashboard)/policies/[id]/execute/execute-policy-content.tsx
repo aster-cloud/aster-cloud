@@ -339,18 +339,18 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     // 根据类型渲染不同的输入控件
     if (['bool', 'boolean', '布尔', 'wahrheitswert'].some(t => typeName.toLowerCase().includes(t))) {
       return (
-        <div key={id} className="flex items-center gap-2">
+        <div key={id} className="flex items-center gap-3 py-2">
           <input
             type="checkbox"
             id={id}
             checked={Boolean(value)}
             onChange={(e) => updateFormField(paramName, fieldName, e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20 cursor-pointer transition-colors"
           />
-          <label htmlFor={id} className="text-sm font-medium text-gray-700">
+          <label htmlFor={id} className="text-sm font-medium text-gray-700 cursor-pointer">
             {label}
           </label>
-          <span className="text-xs text-gray-400">({typeName})</span>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
         </div>
       );
     }
@@ -358,15 +358,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (['int', 'integer', 'long', '整数', '长整数', 'ganzzahl', 'langzahl'].some(t => typeName.toLowerCase().includes(t))) {
       return (
         <div key={id}>
-          <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
-            {label} <span className="text-xs text-gray-400">({typeName})</span>
+          <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
+            {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
           </label>
           <input
             type="number"
             id={id}
             value={value as number ?? 0}
             onChange={(e) => updateFormField(paramName, fieldName, parseInt(e.target.value, 10) || 0)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           />
         </div>
       );
@@ -375,8 +375,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (['double', 'float', 'decimal', '小数', '浮点数', 'dezimal'].some(t => typeName.toLowerCase().includes(t))) {
       return (
         <div key={id}>
-          <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
-            {label} <span className="text-xs text-gray-400">({typeName})</span>
+          <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
+            {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
           </label>
           <input
             type="number"
@@ -384,7 +384,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             id={id}
             value={value as number ?? 0}
             onChange={(e) => updateFormField(paramName, fieldName, parseFloat(e.target.value) || 0)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           />
         </div>
       );
@@ -393,15 +393,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     // 默认：文本输入
     return (
       <div key={id}>
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
-          {label} <span className="text-xs text-gray-400">({typeName})</span>
+        <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
+          {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
         </label>
         <input
           type="text"
           id={id}
           value={String(value ?? '')}
           onChange={(e) => updateFormField(paramName, fieldName, e.target.value)}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
         />
       </div>
     );
@@ -414,11 +414,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (param.typeKind === 'struct' && param.fields && param.fields.length > 0) {
       // 结构体类型：渲染字段组
       return (
-        <div key={param.name} className="border border-gray-200 rounded-lg p-4 mb-4">
-          <h4 className="text-sm font-semibold text-gray-800 mb-3">
-            {param.name} <span className="text-xs font-normal text-gray-400">({param.type})</span>
+        <div key={param.name} className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-4">
+          <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center">
+            <span className="w-2 h-2 bg-indigo-500 rounded-full mr-2" />
+            {param.name}
+            <span className="ml-2 text-xs font-normal text-gray-400 bg-white px-2 py-0.5 rounded border border-gray-200">
+              {param.type}
+            </span>
           </h4>
-          <div className="space-y-3">
+          <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-100">
             {param.fields.map((field) =>
               renderField(
                 param.name,
