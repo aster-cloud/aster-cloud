@@ -378,7 +378,7 @@ export function PoliciesContent({
     // 如果分组没变化，不做任何操作
     if (policy.groupId === newGroupId) return;
 
-    // 乐观更新 UI
+    // 乐观更新策略的分组信息
     setPolicies((prev) =>
       prev.map((p) =>
         p.id === policyId
@@ -408,6 +408,39 @@ export function PoliciesContent({
           : p
       )
     );
+
+    // 乐观更新分组的策略计数
+    const oldGroupId = policy.groupId;
+    setGroups((prev) => {
+      const updateGroupCount = (groups: PolicyGroup[]): PolicyGroup[] => {
+        return groups.map((g) => {
+          let updatedGroup = { ...g };
+          // 如果是原分组，计数减1
+          if (g.id === oldGroupId) {
+            updatedGroup = {
+              ...updatedGroup,
+              _count: { policies: Math.max(0, g._count.policies - 1) },
+            };
+          }
+          // 如果是目标分组，计数加1
+          if (g.id === newGroupId) {
+            updatedGroup = {
+              ...updatedGroup,
+              _count: { policies: g._count.policies + 1 },
+            };
+          }
+          // 递归处理子分组
+          if (g.children && g.children.length > 0) {
+            updatedGroup = {
+              ...updatedGroup,
+              children: updateGroupCount(g.children),
+            };
+          }
+          return updatedGroup;
+        });
+      };
+      return updateGroupCount(prev);
+    });
 
     // 调用 API 更新
     try {
