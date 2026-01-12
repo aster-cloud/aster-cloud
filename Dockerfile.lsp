@@ -1,20 +1,19 @@
-# Aster LSP WebSocket Server
-# Standalone LSP service for Monaco editor integration
+# Aster LSP WebSocket Server - Optimized minimal image
+# Only includes ws and @aster-cloud/aster-lang-ts dependencies
 
 FROM node:22-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# Copy minimal package.json with only LSP dependencies
+COPY lsp-package.json ./package.json
 
-# Install pnpm and only LSP-related dependencies (skip postinstall/prisma)
-RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod --ignore-scripts
+# Install pnpm and minimal dependencies
+RUN corepack enable pnpm && pnpm install --prod --ignore-scripts
 
-# Production image
+# Production image - minimal footprint
 FROM base AS runner
 WORKDIR /app
 
@@ -22,15 +21,12 @@ ENV NODE_ENV=production
 ENV PORT=3001
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 asteruser
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 asteruser
 
-# Copy necessary files
+# Copy only necessary files from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json lsp-server.ts ./
-
-# Install tsx for TypeScript execution
-RUN corepack enable pnpm && pnpm add -D tsx --ignore-scripts
+COPY lsp-server.mjs ./
 
 # Create .asteri directory for LSP workspace index
 RUN mkdir -p /app/.asteri && chown asteruser:nodejs /app/.asteri
@@ -44,5 +40,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Run the LSP server
-CMD ["node", "--import", "tsx", "lsp-server.ts"]
+# Run the LSP server directly with Node.js (no tsx needed)
+CMD ["node", "lsp-server.mjs"]

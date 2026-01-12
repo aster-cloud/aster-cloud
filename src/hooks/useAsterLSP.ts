@@ -154,36 +154,6 @@ export function useAsterLSP({
   }, []);
 
   /**
-   * Handle incoming LSP messages
-   */
-  const handleMessage = useCallback((data: string) => {
-    try {
-      const message: LSPMessage = JSON.parse(data);
-
-      // Handle response to a request
-      if (message.id !== undefined && (message.result !== undefined || message.error !== undefined)) {
-        const pending = pendingRequestsRef.current.get(message.id as number);
-        if (pending) {
-          pendingRequestsRef.current.delete(message.id as number);
-          if (message.error) {
-            pending.reject(new Error(message.error.message));
-          } else {
-            pending.resolve(message.result);
-          }
-        }
-        return;
-      }
-
-      // Handle server notifications
-      if (message.method) {
-        handleServerNotification(message.method, message.params);
-      }
-    } catch (e) {
-      console.error('[LSP] Failed to parse message:', e);
-    }
-  }, []);
-
-  /**
    * Handle notifications from the LSP server
    */
   const handleServerNotification = useCallback(
@@ -216,6 +186,71 @@ export function useAsterLSP({
     },
     []
   );
+
+  /**
+   * Process a single parsed LSP message
+   */
+  const processMessage = useCallback((message: LSPMessage) => {
+    // Handle response to a request
+    if (message.id !== undefined && (message.result !== undefined || message.error !== undefined)) {
+      const pending = pendingRequestsRef.current.get(message.id as number);
+      if (pending) {
+        pendingRequestsRef.current.delete(message.id as number);
+        if (message.error) {
+          pending.reject(new Error(message.error.message));
+        } else {
+          pending.resolve(message.result);
+        }
+      }
+      return;
+    }
+
+    // Handle server notifications
+    if (message.method) {
+      handleServerNotification(message.method, message.params);
+    }
+  }, [handleServerNotification]);
+
+  /**
+   * Handle incoming LSP messages
+   * Supports both single JSON messages and concatenated JSON messages
+   */
+  const handleMessage = useCallback((data: string) => {
+    // Try parsing as a single JSON message first (most common case)
+    try {
+      const message: LSPMessage = JSON.parse(data);
+      processMessage(message);
+      return;
+    } catch {
+      // If single parse fails, try splitting concatenated JSON
+    }
+
+    // Handle potentially concatenated JSON messages
+    // This can happen when the server sends multiple messages in rapid succession
+    let remaining = data.trim();
+    let depth = 0;
+    let start = 0;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const char = remaining[i];
+      if (char === '{') {
+        if (depth === 0) start = i;
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          // Found a complete JSON object
+          const jsonStr = remaining.slice(start, i + 1);
+          try {
+            const message: LSPMessage = JSON.parse(jsonStr);
+            processMessage(message);
+          } catch (e) {
+            console.error('[LSP] Failed to parse message segment:', e);
+          }
+        }
+      }
+    }
+  }, [processMessage]);
 
   /**
    * Initialize LSP connection
