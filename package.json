@@ -21,7 +21,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@aster-cloud/aster-lang-ts": "0.0.4",
+    "@aster-cloud/aster-lang-ts": "0.0.5",
     "@auth/prisma-adapter": "^2.11.1",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/adapter-pg": "^7.2.0",

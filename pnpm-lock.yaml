@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@aster-cloud/aster-lang-ts':
-        specifier: 0.0.2
-        version: 0.0.2(ws@8.19.0)(zod@4.3.5)
+        specifier: 0.0.5
+        version: 0.0.5(ws@8.19.0)(zod@4.3.5)
       '@auth/prisma-adapter':
         specifier: ^2.11.1
         version: 2.11.1(@prisma/client@7.2.0(prisma@7.2.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(typescript@5.9.3))
@@ -157,8 +157,8 @@ packages:
   '@asamuzakjp/nwsapi@2.3.9':
     resolution: {integrity: sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q==}
 
-  '@aster-cloud/aster-lang-ts@0.0.2':
-    resolution: {integrity: sha512-gB9T7eyvK23UlMNeM+vrf03UzWWpXpeCKl1DbWHZLAxZRdsUoDs361a56d00bIEiCXRGExN8XvxilL5r8Xt2ow==}
+  '@aster-cloud/aster-lang-ts@0.0.5':
+    resolution: {integrity: sha512-9YOJTNh6EVA9Kmhgp9yUlnR2OkV/HIuEwaN3OaoynH376cUcgKTTCal6x65hAGgAGgz5fOqaGYJAvIJnDxt7Ng==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
@@ -3757,7 +3757,7 @@ snapshots:
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
-  '@aster-cloud/aster-lang-ts@0.0.2(ws@8.19.0)(zod@4.3.5)':
+  '@aster-cloud/aster-lang-ts@0.0.5(ws@8.19.0)(zod@4.3.5)':
     dependencies:
       '@anthropic-ai/sdk': 0.71.2(zod@4.3.5)
       '@types/semver': 7.7.1

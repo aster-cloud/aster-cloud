@@ -138,7 +138,34 @@ wss.on('connection', (ws, request) => {
   });
 
   // Forward messages from LSP process (stdout) to WebSocket
+  // Use a message queue to ensure messages are sent one at a time
   let buffer = '';
+  const messageQueue = [];
+  let isSending = false;
+
+  const processQueue = () => {
+    if (isSending || messageQueue.length === 0) return;
+    if (ws.readyState !== WebSocket.OPEN) {
+      messageQueue.length = 0;
+      return;
+    }
+
+    isSending = true;
+    const message = messageQueue.shift();
+
+    // Use callback to ensure message is sent before processing next
+    ws.send(message, (err) => {
+      isSending = false;
+      if (err) {
+        console.error('[LSP] WebSocket send error:', err);
+      }
+      // Process next message on next tick to prevent coalescing
+      if (messageQueue.length > 0) {
+        setImmediate(processQueue);
+      }
+    });
+  };
+
   lspProcess.stdout?.on('data', (data) => {
     buffer += data.toString();
 
@@ -163,10 +190,12 @@ wss.on('connection', (ws, request) => {
       const message = buffer.slice(messageStart, messageEnd);
       buffer = buffer.slice(messageEnd);
 
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
-      }
+      // Queue message instead of sending directly
+      messageQueue.push(message);
     }
+
+    // Start processing queue
+    processQueue();
   });
 
   // Handle LSP process errors
