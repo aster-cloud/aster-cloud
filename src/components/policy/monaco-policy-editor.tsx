@@ -328,14 +328,8 @@ export function MonacoPolicyEditor({
     <div className="relative rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
       {/* LSP Status Indicator - Only show when connected */}
       {enableLSP && lspConnected && (
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded text-xs">
-          <span
-            className="w-2 h-2 rounded-full bg-green-500"
-            title="LSP Connected"
-          />
-          <span className="text-gray-600 dark:text-gray-400">
-            LSP
-          </span>
+        <div className="absolute top-2 right-2 z-10">
+          <span className="w-2 h-2 rounded-full bg-green-500 block" />
         </div>
       )}
 
