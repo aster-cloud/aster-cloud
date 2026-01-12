@@ -16,16 +16,19 @@ interface ExecutionLog {
 }
 
 interface Stats {
-  total: number;
-  successful: number;
-  failed: number;
-  avgDuration: number;
+  totalExecutions: number;
+  successCount: number;
+  failureCount: number;
+  avgDurationMs: number;
   successRate: number;
-  dailyStats: Array<{
+  bySource: Array<{
+    source: string;
+    count: number;
+  }>;
+  recentTrend: Array<{
     date: string;
-    total: number;
-    successful: number;
-    failed: number;
+    successCount: number;
+    failureCount: number;
   }>;
 }
 
@@ -255,7 +258,7 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
                 </div>
               </div>
               <p className="mt-4 text-sm font-medium text-indigo-100">{t.logs.totalExecutions}</p>
-              <p className="mt-1 text-3xl font-bold text-white">{stats.total.toLocaleString()}</p>
+              <p className="mt-1 text-3xl font-bold text-white">{stats.totalExecutions.toLocaleString()}</p>
             </div>
           </div>
 
@@ -272,10 +275,10 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
               </div>
               <p className="mt-4 text-sm font-medium text-emerald-100">{t.logs.successRate}</p>
               <p className="mt-1 text-3xl font-bold text-white">
-                {stats.total > 0 ? Math.round((stats.successful / stats.total) * 100) : 0}%
+                {Math.round(stats.successRate)}%
               </p>
               <p className="mt-1 text-xs text-emerald-200">
-                {stats.successful} / {stats.total}
+                {stats.successCount} / {stats.totalExecutions}
               </p>
             </div>
           </div>
@@ -292,7 +295,7 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
                 </div>
               </div>
               <p className="mt-4 text-sm font-medium text-rose-100">{t.logs.failed}</p>
-              <p className="mt-1 text-3xl font-bold text-white">{stats.failed.toLocaleString()}</p>
+              <p className="mt-1 text-3xl font-bold text-white">{stats.failureCount.toLocaleString()}</p>
             </div>
           </div>
 
@@ -308,7 +311,7 @@ export function LogsContent({ policyId, policyName, translations: t, locale }: L
                 </div>
               </div>
               <p className="mt-4 text-sm font-medium text-amber-100">{t.logs.avgDuration}</p>
-              <p className="mt-1 text-3xl font-bold text-white">{formatDuration(stats.avgDuration)}</p>
+              <p className="mt-1 text-3xl font-bold text-white">{formatDuration(stats.avgDurationMs)}</p>
             </div>
           </div>
         </div>
