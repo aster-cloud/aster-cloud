@@ -206,8 +206,8 @@ export function PolicyGroupTree({
           )}
         </div>
 
-            {/* Children */}
-            {hasChildren && isExpanded && (
+            {/* Children - 拖拽时自动展开所有子分组以便放置 */}
+            {hasChildren && (isExpanded || isDragging) && (
               <div>
                 {group.children.map((child) => renderGroupItem(child, depth + 1))}
               </div>

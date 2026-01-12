@@ -78,7 +78,7 @@ describe('PolicyGroupTree', () => {
     });
 
     it('should display policy count for each group', () => {
-      const groups = [createMockGroup({ id: 'g1', name: 'Test', _count: { policies: 10 } })];
+      const groups = [createMockGroup({ id: 'g1', name: 'Test', _count: { policies: 7 } })];
 
       render(
         <PolicyGroupTree
@@ -90,7 +90,8 @@ describe('PolicyGroupTree', () => {
         />
       );
 
-      expect(screen.getByText('10')).toBeInTheDocument();
+      // 使用更具体的断言以避免与 totalPoliciesCount 冲突
+      expect(screen.getByText('7')).toBeInTheDocument();
     });
 
     it('should highlight selected "All Policies" option', () => {

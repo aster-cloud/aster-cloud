@@ -104,12 +104,23 @@ interface DraggablePolicyItemProps {
   locale: string;
   translations: Translations;
   onDelete: (policy: Policy) => void;
+  isSelected: boolean;
+  onToggleSelect: (policyId: string, event: React.MouseEvent) => void;
+  selectedCount: number;
 }
 
-function DraggablePolicyItem({ policy, locale, translations: t, onDelete }: DraggablePolicyItemProps) {
+function DraggablePolicyItem({
+  policy,
+  locale,
+  translations: t,
+  onDelete,
+  isSelected,
+  onToggleSelect,
+  selectedCount,
+}: DraggablePolicyItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: policy.id,
-    data: { type: 'policy', policy },
+    data: { type: 'policy', policy, isSelected, selectedCount },
   });
 
   const style = transform ? {
@@ -119,8 +130,21 @@ function DraggablePolicyItem({ policy, locale, translations: t, onDelete }: Drag
 
   return (
     <li ref={setNodeRef} style={style}>
-      <div className="px-4 py-4 sm:px-6 hover:bg-gray-50 group">
+      <div className={`px-4 py-4 sm:px-6 hover:bg-gray-50 group ${isSelected ? 'bg-indigo-50' : ''}`}>
         <div className="flex items-center justify-between">
+          {/* 复选框 */}
+          <div
+            className="flex-shrink-0 mr-2"
+            onClick={(e) => onToggleSelect(policy.id, e)}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {}}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+            />
+          </div>
+
           {/* 拖拽手柄 */}
           <div
             {...listeners}
@@ -226,13 +250,22 @@ function DraggablePolicyItem({ policy, locale, translations: t, onDelete }: Drag
 }
 
 // 拖拽覆盖层显示的策略项
-function DragOverlayPolicy({ policy }: { policy: Policy }) {
+function DragOverlayPolicy({ policy, selectedCount }: { policy: Policy; selectedCount: number }) {
   return (
     <div className="bg-white shadow-lg rounded-md px-4 py-3 border-2 border-indigo-500 cursor-grabbing">
-      <p className="text-sm font-medium text-indigo-600">{policy.name}</p>
-      {policy.description && (
-        <p className="mt-1 text-sm text-gray-500 truncate">{policy.description}</p>
-      )}
+      <div className="flex items-center">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-indigo-600">{policy.name}</p>
+          {policy.description && (
+            <p className="mt-1 text-sm text-gray-500 truncate">{policy.description}</p>
+          )}
+        </div>
+        {selectedCount > 1 && (
+          <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-medium">
+            {selectedCount}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -267,6 +300,9 @@ export function PoliciesContent({
   // 拖拽状态
   const [activePolicy, setActivePolicy] = useState<Policy | null>(null);
 
+  // 多选状态
+  const [selectedPolicyIds, setSelectedPolicyIds] = useState<Set<string>>(new Set());
+
   // 删除确认对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [policyToDelete, setPolicyToDelete] = useState<Policy | null>(null);
@@ -284,6 +320,25 @@ export function PoliciesContent({
   // 计算策略总数和未分组策略数（基于本地状态，拖拽后立即更新）
   const totalPoliciesCount = policies.length;
   const ungroupedCount = useMemo(() => policies.filter((p) => !p.groupId).length, [policies]);
+
+  // 切换策略选中状态
+  const handleToggleSelect = useCallback((policyId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSelectedPolicyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(policyId)) {
+        next.delete(policyId);
+      } else {
+        next.add(policyId);
+      }
+      return next;
+    });
+  }, []);
+
+  // 清除选中状态
+  const clearSelection = useCallback(() => {
+    setSelectedPolicyIds(new Set());
+  }, []);
 
   // 筛选后的策略列表
   const filteredPolicies = useMemo(() => {
@@ -355,78 +410,83 @@ export function PoliciesContent({
     const policy = policies.find((p) => p.id === active.id);
     if (policy) {
       setActivePolicy(policy);
+      // 如果拖拽的策略未选中，清除其他选择，只选中当前
+      if (!selectedPolicyIds.has(policy.id)) {
+        setSelectedPolicyIds(new Set([policy.id]));
+      }
     }
-  }, [policies]);
+  }, [policies, selectedPolicyIds]);
 
-  // 拖拽结束 - 更新策略的分组
+  // 拖拽结束 - 更新策略的分组（支持批量移动）
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setActivePolicy(null);
 
     if (!over) return;
 
-    const policyId = active.id as string;
+    const draggedPolicyId = active.id as string;
     const targetGroupId = over.id as string;
-
-    // 找到被拖拽的策略
-    const policy = policies.find((p) => p.id === policyId);
-    if (!policy) return;
 
     // 如果目标是 'ungrouped'，设置 groupId 为 null
     const newGroupId = targetGroupId === 'ungrouped' ? null : targetGroupId;
 
-    // 如果分组没变化，不做任何操作
-    if (policy.groupId === newGroupId) return;
+    // 获取要移动的所有策略 ID（如果被拖拽的策略在选中列表中，移动所有选中的）
+    const policyIdsToMove = selectedPolicyIds.has(draggedPolicyId)
+      ? Array.from(selectedPolicyIds)
+      : [draggedPolicyId];
+
+    // 获取要移动的策略
+    const policiesToMove = policies.filter((p) => policyIdsToMove.includes(p.id));
+
+    // 过滤掉分组未变化的策略
+    const policiesToUpdate = policiesToMove.filter((p) => p.groupId !== newGroupId);
+    if (policiesToUpdate.length === 0) return;
+
+    // 计算每个原分组减少的策略数
+    const groupCountChanges = new Map<string | null, number>();
+    for (const p of policiesToUpdate) {
+      const oldGroupId = p.groupId;
+      groupCountChanges.set(oldGroupId, (groupCountChanges.get(oldGroupId) || 0) - 1);
+    }
+    // 目标分组增加的策略数
+    groupCountChanges.set(newGroupId, (groupCountChanges.get(newGroupId) || 0) + policiesToUpdate.length);
+
+    // 从 groups 中找到目标分组信息
+    const findGroup = (groups: PolicyGroup[], id: string): PolicyGroup | null => {
+      for (const g of groups) {
+        if (g.id === id) return g;
+        if (g.children) {
+          const found = findGroup(g.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const targetGroup = newGroupId ? findGroup(groups, newGroupId) : null;
+    const newGroupInfo = targetGroup
+      ? { id: targetGroup.id, name: targetGroup.name, icon: targetGroup.icon, parentId: targetGroup.parentId }
+      : null;
 
     // 乐观更新策略的分组信息
+    const policyIdsToUpdateSet = new Set(policiesToUpdate.map((p) => p.id));
     setPolicies((prev) =>
       prev.map((p) =>
-        p.id === policyId
-          ? {
-              ...p,
-              groupId: newGroupId,
-              group: newGroupId
-                ? (() => {
-                    // 从 groups 中找到目标分组
-                    const findGroup = (groups: PolicyGroup[], id: string): PolicyGroup | null => {
-                      for (const g of groups) {
-                        if (g.id === id) return g;
-                        if (g.children) {
-                          const found = findGroup(g.children, id);
-                          if (found) return found;
-                        }
-                      }
-                      return null;
-                    };
-                    const targetGroup = findGroup(groups, newGroupId);
-                    return targetGroup
-                      ? { id: targetGroup.id, name: targetGroup.name, icon: targetGroup.icon, parentId: targetGroup.parentId }
-                      : null;
-                  })()
-                : null,
-            }
+        policyIdsToUpdateSet.has(p.id)
+          ? { ...p, groupId: newGroupId, group: newGroupInfo }
           : p
       )
     );
 
     // 乐观更新分组的策略计数
-    const oldGroupId = policy.groupId;
     setGroups((prev) => {
       const updateGroupCount = (groups: PolicyGroup[]): PolicyGroup[] => {
         return groups.map((g) => {
           let updatedGroup = { ...g };
-          // 如果是原分组，计数减1
-          if (g.id === oldGroupId) {
+          const change = groupCountChanges.get(g.id);
+          if (change) {
             updatedGroup = {
               ...updatedGroup,
-              _count: { policies: Math.max(0, g._count.policies - 1) },
-            };
-          }
-          // 如果是目标分组，计数加1
-          if (g.id === newGroupId) {
-            updatedGroup = {
-              ...updatedGroup,
-              _count: { policies: g._count.policies + 1 },
+              _count: { policies: Math.max(0, g._count.policies + change) },
             };
           }
           // 递归处理子分组
@@ -442,28 +502,34 @@ export function PoliciesContent({
       return updateGroupCount(prev);
     });
 
-    // 调用 API 更新
+    // 调用 API 批量更新
     try {
-      const res = await fetch(`/api/policies/${policyId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupId: newGroupId }),
-      });
+      const updatePromises = policiesToUpdate.map((p) =>
+        fetch(`/api/policies/${p.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ groupId: newGroupId }),
+        })
+      );
 
-      if (!res.ok) {
-        // 如果失败，回滚更改
+      const results = await Promise.all(updatePromises);
+      const hasError = results.some((res) => !res.ok);
+
+      if (hasError) {
+        // 如果有失败，回滚更改
         await refreshPolicies();
         setError(locale.startsWith('zh') ? '移动策略失败' : 'Failed to move policy');
       } else {
-        // 刷新分组以更新策略计数
+        // 刷新分组以更新策略计数，并清除选择
         await refreshGroups();
+        clearSelection();
       }
     } catch (err) {
       console.error('Failed to update policy group:', err);
       await refreshPolicies();
       setError(locale.startsWith('zh') ? '移动策略失败' : 'Failed to move policy');
     }
-  }, [policies, groups, locale, refreshPolicies, refreshGroups]);
+  }, [policies, groups, selectedPolicyIds, locale, refreshPolicies, refreshGroups, clearSelection]);
 
   // 打开删除确认对话框
   const handleDeleteClick = useCallback((policy: Policy) => {
@@ -701,6 +767,9 @@ export function PoliciesContent({
                   locale={locale}
                   translations={t}
                   onDelete={handleDeleteClick}
+                  isSelected={selectedPolicyIds.has(policy.id)}
+                  onToggleSelect={handleToggleSelect}
+                  selectedCount={selectedPolicyIds.size}
                 />
               ))}
             </ul>
@@ -710,7 +779,12 @@ export function PoliciesContent({
 
       {/* 拖拽覆盖层 */}
       <DragOverlay>
-        {activePolicy ? <DragOverlayPolicy policy={activePolicy} /> : null}
+        {activePolicy ? (
+          <DragOverlayPolicy
+            policy={activePolicy}
+            selectedCount={selectedPolicyIds.has(activePolicy.id) ? selectedPolicyIds.size : 1}
+          />
+        ) : null}
       </DragOverlay>
 
       {/* 分组对话框 */}
