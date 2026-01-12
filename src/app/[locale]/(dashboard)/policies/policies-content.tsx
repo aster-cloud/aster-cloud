@@ -703,10 +703,10 @@ export function PoliciesContent({
       {/* 删除策略确认对话框 */}
       <ConfirmDialog
         isOpen={deleteDialogOpen}
-        onClose={handleCancelDelete}
+        onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
         title={locale.startsWith('zh') ? '删除策略' : 'Delete Policy'}
-        message={
+        description={
           policyToDelete
             ? locale.startsWith('zh')
               ? `确定要删除策略 "${policyToDelete.name}" 吗？此操作可以在回收站中撤销。`
