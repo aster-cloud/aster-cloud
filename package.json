@@ -6,7 +6,7 @@
     "postinstall": "prisma generate",
     "dev": "next dev",
     "dev:lsp": "tsx server.ts",
-    "build": "prisma db push && next build --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "start:lsp": "node --import tsx server.ts",
     "lint": "eslint",
