@@ -259,9 +259,6 @@ export function EditPolicyContent({
                     uiLocale={locale}
                     disabled={!content.trim()}
                   />
-                  <span className="text-sm text-gray-500">
-                    {locale.startsWith('zh') ? 'CNL 语言：' : 'CNL Language:'}
-                  </span>
                   <CNLLanguageSelector value={cnlLocale} onChange={handleCnlLocaleChange} compact />
                 </div>
               </div>

@@ -247,9 +247,6 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
             )}
 
             {/* CNL 语言选择器 */}
-            <span className="text-sm font-medium text-gray-700">
-              {locale.startsWith('zh') ? 'CNL 语言：' : 'CNL Language:'}
-            </span>
             <CNLLanguageSelector value={cnlLocale} onChange={handleCnlLocaleChange} />
 
             {/* 清除选择按钮 */}
