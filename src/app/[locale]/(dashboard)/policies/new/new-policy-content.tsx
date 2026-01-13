@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -9,17 +9,14 @@ import {
   POLICY_EXAMPLES,
   CATEGORY_LABELS,
   type PolicyExample,
-  type SupportedLocale,
   getExampleName,
   getExampleDescription,
   getExampleSource,
   normalizeLocale,
 } from '@/data/policy-examples';
 import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
-import { CNLLanguageSelector } from '@/components/policy/cnl-language-selector';
 import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
 import { CNLSyntaxConverterDialog, CNLConvertButton } from '@/components/policy/cnl-syntax-converter-dialog';
-import { detectCNLLanguage } from '@/lib/cnl-language-detector';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -49,8 +46,8 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // CNL 语言选择状态（独立于 UI locale）
-  const [cnlLocale, setCnlLocale] = useState<SupportedLocale>(() => normalizeLocale(locale));
+  // CNL 语言跟随页面 locale
+  const cnlLocale = normalizeLocale(locale);
 
   // 示例选择器状态
   const [selectedExample, setSelectedExample] = useState<PolicyExample | null>(null);
@@ -97,42 +94,15 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       setShowExampleSelector(false);
       setName(getExampleName(example, locale));
       setDescription(getExampleDescription(example, locale));
-      // 使用 CNL 语言获取对应的源码
-      setContent(getExampleSource(example, cnlLocale));
+      // 使用当前页面语言获取对应的源码
+      setContent(getExampleSource(example, normalizeLocale(locale)));
     },
-    [locale, cnlLocale]
+    [locale]
   );
-
-  // 语言检测结果（仅用于非模板内容）
-  const detectionResult = useMemo(() => {
-    // 如果已选择模板，不需要检测
-    if (selectedExample) return null;
-    return detectCNLLanguage(content);
-  }, [content, selectedExample]);
-
-  // 处理 CNL 语言切换
-  const handleCnlLocaleChange = useCallback(
-    (newLocale: SupportedLocale) => {
-      setCnlLocale(newLocale);
-      // 如果已选择示例，切换到对应语言的源码
-      if (selectedExample) {
-        setContent(getExampleSource(selectedExample, newLocale));
-      }
-    },
-    [selectedExample]
-  );
-
-  // 应用检测到的语言
-  const handleApplyDetectedLanguage = useCallback(() => {
-    if (detectionResult) {
-      setCnlLocale(detectionResult.detected);
-    }
-  }, [detectionResult]);
 
   // 应用语法转换结果
-  const handleApplyConversion = useCallback((convertedContent: string, newLocale: SupportedLocale) => {
+  const handleApplyConversion = useCallback((convertedContent: string) => {
     setContent(convertedContent);
-    setCnlLocale(newLocale);
     // 转换后清除模板选择状态，因为内容已经被修改
     setSelectedExample(null);
   }, []);
@@ -222,22 +192,6 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* 语言检测提示（仅在非模板模式且检测到不同语言时显示） */}
-            {!selectedExample && detectionResult && detectionResult.confidence >= 50 && detectionResult.detected !== cnlLocale && (
-              <button
-                type="button"
-                onClick={handleApplyDetectedLanguage}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {locale.startsWith('zh')
-                  ? `检测到 ${detectionResult.detected === 'zh-CN' ? '中文' : detectionResult.detected === 'de-DE' ? '德语' : '英语'}`
-                  : `Detected ${detectionResult.detected === 'zh-CN' ? 'Chinese' : detectionResult.detected === 'de-DE' ? 'German' : 'English'}`}
-              </button>
-            )}
-
             {/* 语法转换按钮（仅在有内容且非模板模式时显示） */}
             {!selectedExample && content.trim() && (
               <CNLConvertButton
@@ -245,9 +199,6 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 uiLocale={locale}
               />
             )}
-
-            {/* CNL 语言选择器 */}
-            <CNLLanguageSelector value={cnlLocale} onChange={handleCnlLocaleChange} />
 
             {/* 清除选择按钮 */}
             {selectedExample && (
@@ -274,8 +225,8 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
               </svg>
               <div className="text-sm text-indigo-700">
                 {locale.startsWith('zh')
-                  ? `已加载示例模板（${cnlLocale === 'zh-CN' ? '中文' : cnlLocale === 'de-DE' ? '德语' : '英语'}）。你可以切换 CNL 语言查看不同版本，或修改后保存为你的策略。`
-                  : `Template loaded (${cnlLocale === 'zh-CN' ? 'Chinese' : cnlLocale === 'de-DE' ? 'German' : 'English'}). You can switch CNL language to view different versions, or modify and save as your policy.`}
+                  ? '已加载示例模板。你可以修改后保存为你的策略。'
+                  : 'Template loaded. You can modify and save as your policy.'}
               </div>
             </div>
           </div>
