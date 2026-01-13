@@ -648,6 +648,12 @@
       "backToPolicies": "Back to policies",
       "policyNotFound": "Policy not found"
     },
+    "deleteDialog": {
+      "title": "Delete Policy",
+      "description": "Are you sure you want to delete \"{name}\"? This can be undone from the trash.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
     "example": {
       "name": "Loan Approval Policy",
       "description": "Rules for evaluating loan applications based on credit score and income"

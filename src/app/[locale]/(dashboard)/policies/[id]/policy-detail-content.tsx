@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface PolicyVersion {
   id: string;
@@ -49,6 +50,12 @@ interface Translations {
     versionHistory: string;
     backToPolicies: string;
   };
+  deleteDialog: {
+    title: string;
+    description: string;
+    confirm: string;
+    cancel: string;
+  };
 }
 
 interface PolicyDetailContentProps {
@@ -64,19 +71,32 @@ export function PolicyDetailContent({
 }: PolicyDetailContentProps) {
   const router = useRouter();
   const [error, setError] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const deletePolicy = async () => {
-    if (!confirm(t.confirmDelete)) return;
+  const handleDeleteClick = useCallback(() => {
+    setDeleteDialogOpen(true);
+  }, []);
 
+  const handleConfirmDelete = useCallback(async () => {
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/policies/${policy.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete policy');
+      setDeleteDialogOpen(false);
       router.push(`/${locale}/policies`);
     } catch (err) {
       setError(t.failedToDelete);
       console.error(err);
+    } finally {
+      setIsDeleting(false);
     }
-  };
+  }, [policy.id, locale, router, t.failedToDelete]);
+
+  const handleCancelDelete = useCallback(() => {
+    if (isDeleting) return;
+    setDeleteDialogOpen(false);
+  }, [isDeleting]);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -115,7 +135,7 @@ export function PolicyDetailContent({
             {t.edit}
           </Link>
           <button
-            onClick={deletePolicy}
+            onClick={handleDeleteClick}
             className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
           >
             {t.delete}
@@ -214,6 +234,19 @@ export function PolicyDetailContent({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title={t.deleteDialog.title}
+        description={t.deleteDialog.description.replace('{name}', policy.name)}
+        confirmLabel={t.deleteDialog.confirm}
+        cancelLabel={t.deleteDialog.cancel}
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

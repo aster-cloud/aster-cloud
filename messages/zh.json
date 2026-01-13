@@ -648,6 +648,12 @@
       "backToPolicies": "返回策略列表",
       "policyNotFound": "策略未找到"
     },
+    "deleteDialog": {
+      "title": "删除策略",
+      "description": "确定要删除策略 \"{name}\" 吗？此操作可以在回收站中撤销。",
+      "confirm": "删除",
+      "cancel": "取消"
+    },
     "example": {
       "name": "贷款审批策略",
       "description": "基于信用评分和收入评估贷款申请的规则"

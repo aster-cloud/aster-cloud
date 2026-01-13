@@ -88,6 +88,12 @@ export default async function PolicyDetailPage({
       versionHistory: t('detail.versionHistory'),
       backToPolicies: t('detail.backToPolicies'),
     },
+    deleteDialog: {
+      title: t('deleteDialog.title'),
+      description: t('deleteDialog.description'),
+      confirm: t('deleteDialog.confirm'),
+      cancel: t('deleteDialog.cancel'),
+    },
   };
 
   return (

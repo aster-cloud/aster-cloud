@@ -648,6 +648,12 @@
       "backToPolicies": "Zurück zu Richtlinien",
       "policyNotFound": "Richtlinie nicht gefunden"
     },
+    "deleteDialog": {
+      "title": "Richtlinie löschen",
+      "description": "Möchten Sie \"{name}\" wirklich löschen? Dies kann aus dem Papierkorb rückgängig gemacht werden.",
+      "confirm": "Löschen",
+      "cancel": "Abbrechen"
+    },
     "example": {
       "name": "Kreditgenehmigungsrichtlinie",
       "description": "Regeln zur Bewertung von Kreditanträgen basierend auf Kreditwürdigkeit und Einkommen"
