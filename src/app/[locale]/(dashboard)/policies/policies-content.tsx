@@ -15,6 +15,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  pointerWithin,
+  rectIntersection,
+  CollisionDetection,
 } from '@dnd-kit/core';
 
 interface Policy {
@@ -97,6 +100,29 @@ interface Translations {
 function formatTemplate(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
 }
+
+// 自定义碰撞检测：优先选择最内层（最小）的可放置区域
+// 解决嵌套分组时无法拖放到子分组的问题
+const smallestDroppableCollision: CollisionDetection = (args) => {
+  // 首先使用 pointerWithin 获取所有包含指针的可放置区域
+  const pointerCollisions = pointerWithin(args);
+
+  if (pointerCollisions.length > 0) {
+    // 按面积排序，选择最小的（最深嵌套的）
+    const sorted = [...pointerCollisions].sort((a, b) => {
+      const rectA = args.droppableRects.get(a.id);
+      const rectB = args.droppableRects.get(b.id);
+      if (!rectA || !rectB) return 0;
+      const areaA = rectA.width * rectA.height;
+      const areaB = rectB.width * rectB.height;
+      return areaA - areaB; // 升序，最小的在前
+    });
+    return [sorted[0]]; // 返回最小的
+  }
+
+  // 如果 pointerWithin 没有结果，回退到 rectIntersection
+  return rectIntersection(args);
+};
 
 // 可拖拽的策略项
 interface DraggablePolicyItemProps {
@@ -677,6 +703,7 @@ export function PoliciesContent({
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={smallestDroppableCollision}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
