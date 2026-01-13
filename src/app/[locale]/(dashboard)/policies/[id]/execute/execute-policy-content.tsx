@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import type { ParameterInfo, TypeKind } from '@/services/policy/policy-api';
+import { initFormValuesWithSampleData, generateInputValues } from '@/lib/input-generator';
 
 interface ExecutionResult {
   executionId: string;
@@ -220,8 +221,11 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       const data: PolicySchema = await res.json();
       if (data.success && data.parameters && data.parameters.length > 0) {
         setSchema(data);
-        // 初始化表单值
-        setFormValues(initFormValues(data.parameters));
+        // 初始化表单值（使用自动生成的示例数据）
+        setFormValues(initFormValuesWithSampleData(data.parameters));
+        // 同时更新 JSON 输入区域
+        const sampleInput = generateInputValues(data.parameters);
+        setInput(JSON.stringify(sampleInput, null, 2));
       }
     } catch (err) {
       console.error('Failed to fetch schema:', err);
@@ -252,6 +256,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
         setInput(JSON.stringify(EXAMPLE_INPUTS_EN.loanApplication, null, 2));
       });
   }, [policyId, fetchSchema]);
+
+  // 重新生成示例数据
+  const regenerateSampleData = useCallback(() => {
+    if (schema?.parameters) {
+      setFormValues(initFormValuesWithSampleData(schema.parameters));
+      const sampleInput = generateInputValues(schema.parameters);
+      setInput(JSON.stringify(sampleInput, null, 2));
+    }
+  }, [schema]);
 
   // 更新表单字段值
   const updateFormField = (paramName: string, fieldName: string | null, value: unknown) => {
@@ -496,8 +509,30 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                     </button>
                   </div>
                 )}
+                {inputMode === 'form' && schema?.parameters && (
+                  <button
+                    onClick={regenerateSampleData}
+                    className="text-xs text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
+                    title={t('generateSampleData')}
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+                    </svg>
+                    {t('generateSampleData')}
+                  </button>
+                )}
                 {inputMode === 'json' && (
                   <>
+                    <button
+                      onClick={regenerateSampleData}
+                      className="text-xs text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
+                      title={t('generateSampleData')}
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+                      </svg>
+                      {t('generateSampleData')}
+                    </button>
                     <button
                       onClick={() => loadExample('loanApplication')}
                       className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"

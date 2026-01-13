@@ -664,6 +664,7 @@
       "input": "输入",
       "loanExample": "贷款示例",
       "userExample": "用户示例",
+      "generateSampleData": "生成示例",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "executeButton": "执行策略",
       "executing": "执行中...",

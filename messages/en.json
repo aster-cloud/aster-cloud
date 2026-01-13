@@ -664,6 +664,7 @@
       "input": "Input",
       "loanExample": "Loan example",
       "userExample": "User example",
+      "generateSampleData": "Generate sample",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "executeButton": "Execute Policy",
       "executing": "Executing...",

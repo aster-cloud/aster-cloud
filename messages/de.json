@@ -664,6 +664,7 @@
       "input": "Eingabe",
       "loanExample": "Kredit-Beispiel",
       "userExample": "Benutzer-Beispiel",
+      "generateSampleData": "Beispiel generieren",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "executeButton": "Richtlinie ausführen",
       "executing": "Wird ausgeführt...",
