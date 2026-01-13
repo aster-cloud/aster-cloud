@@ -5,7 +5,7 @@ import { getComplianceReport } from '@/lib/compliance';
 import { ReportDetailContent } from './report-detail-content';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
 }
 
 export default async function ReportDetailPage({ params }: PageProps) {
@@ -14,7 +14,7 @@ export default async function ReportDetailPage({ params }: PageProps) {
     redirect('/login');
   }
 
-  const { id } = await params;
+  const { id, locale } = await params;
   const t = await getTranslations('reports');
 
   // 获取报告详情
@@ -107,5 +107,5 @@ export default async function ReportDetailPage({ params }: PageProps) {
     },
   };
 
-  return <ReportDetailContent report={report} translations={translations} />;
+  return <ReportDetailContent report={report} translations={translations} locale={locale} />;
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { formatDate } from '@/lib/format';
 
 interface Member {
   id: string;
@@ -403,7 +404,7 @@ export default function TeamMembersPage() {
                     <p className="text-sm font-medium text-gray-900">{invitation.email}</p>
                     <p className="text-xs text-gray-500">
                       {t('members.expiresAt', {
-                        date: new Date(invitation.expiresAt).toLocaleDateString(),
+                        date: formatDate(invitation.expiresAt, locale),
                       })}
                     </p>
                   </div>
@@ -455,7 +456,7 @@ export default function TeamMembersPage() {
                       )}
                       <p className="text-xs text-gray-400">
                         {t('members.joinedAt', {
-                          date: new Date(member.joinedAt).toLocaleDateString(),
+                          date: formatDate(member.joinedAt, locale),
                         })}
                       </p>
                     </div>

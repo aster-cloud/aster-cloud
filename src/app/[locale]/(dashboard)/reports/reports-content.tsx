@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Link } from '@/i18n/navigation';
+import { formatDate } from '@/lib/format';
 
 interface ComplianceReport {
   id: string;
@@ -55,11 +56,13 @@ const REPORT_TYPE_IDS = ['gdpr', 'hipaa', 'soc2', 'pci_dss'] as const;
 interface ReportsContentProps {
   initialReports: ComplianceReport[];
   translations: Translations;
+  locale: string;
 }
 
 export function ReportsContent({
   initialReports,
   translations: t,
+  locale,
 }: ReportsContentProps) {
   const [reports, setReports] = useState<ComplianceReport[]>(initialReports);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -288,7 +291,7 @@ export function ReportsContent({
                       <span>{formatTemplate(t.typeTemplate, { type: report.type.toUpperCase() })}</span>
                       <span className="mx-2">|</span>
                       <span>
-                        {formatTemplate(t.createdTemplate, { date: new Date(report.createdAt).toLocaleDateString() })}
+                        {formatTemplate(t.createdTemplate, { date: formatDate(report.createdAt, locale) })}
                       </span>
                       {report.status === 'completed' && report.data && (
                         <>

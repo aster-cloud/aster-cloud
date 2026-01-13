@@ -1,6 +1,7 @@
 'use client';
 
 import { Link } from '@/i18n/navigation';
+import { formatDate } from '@/lib/format';
 
 interface ComplianceReport {
   id: string;
@@ -93,11 +94,13 @@ function formatTemplate(template: string, values: Record<string, string | number
 interface ReportDetailContentProps {
   report: ComplianceReport | null;
   translations: Translations;
+  locale: string;
 }
 
 export function ReportDetailContent({
   report,
   translations: t,
+  locale,
 }: ReportDetailContentProps) {
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
@@ -179,7 +182,7 @@ export function ReportDetailContent({
               {formatTemplate(t.typeTemplate, { type: report.type.toUpperCase() })}
             </span>
             <span className="text-sm text-gray-500">
-              {formatTemplate(t.createdTemplate, { date: new Date(report.createdAt).toLocaleDateString() })}
+              {formatTemplate(t.createdTemplate, { date: formatDate(report.createdAt, locale) })}
             </span>
           </div>
         </div>

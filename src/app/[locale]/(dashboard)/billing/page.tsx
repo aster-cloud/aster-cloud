@@ -130,6 +130,7 @@ export default async function BillingPage() {
       initialUsage={initialUsage}
       defaultCurrency={defaultCurrency}
       translations={translations}
+      locale={locale}
     />
   );
 }

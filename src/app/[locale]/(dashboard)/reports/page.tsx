@@ -4,10 +4,15 @@ import { getSession } from '@/lib/auth';
 import { getComplianceReports } from '@/lib/compliance';
 import { ReportsContent } from './reports-content';
 
-export default async function ReportsPage() {
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
+
+export default async function ReportsPage({ params }: PageProps) {
+  const { locale } = await params;
   const session = await getSession();
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect(`/${locale}/login`);
   }
 
   const t = await getTranslations('reports');
@@ -75,6 +80,7 @@ export default async function ReportsPage() {
     <ReportsContent
       initialReports={reports}
       translations={translations}
+      locale={locale}
     />
   );
 }

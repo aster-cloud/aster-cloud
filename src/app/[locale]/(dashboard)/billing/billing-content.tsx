@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { formatDate } from '@/lib/format';
 import {
   BillingInterval,
   CurrencyCode,
@@ -82,6 +83,7 @@ interface BillingContentInnerProps {
   initialUsage: Usage | null;
   defaultCurrency: CurrencyCode;
   translations: Translations;
+  locale: string;
 }
 
 function BillingContentInner({
@@ -90,6 +92,7 @@ function BillingContentInner({
   initialUsage,
   defaultCurrency,
   translations: t,
+  locale,
 }: BillingContentInnerProps) {
   const searchParams = useSearchParams();
   const [currency, setCurrency] = useState<CurrencyCode>(defaultCurrency);
@@ -206,7 +209,7 @@ function BillingContentInner({
             </span>
             {currentPlan === 'trial' && trialEndsAt && (
               <span className="ml-4 text-sm text-gray-500">
-                {formatTemplate(t.trialEndsTemplate, { date: new Date(trialEndsAt).toLocaleDateString() })}
+                {formatTemplate(t.trialEndsTemplate, { date: formatDate(trialEndsAt, locale) })}
               </span>
             )}
           </div>
@@ -494,6 +497,7 @@ interface BillingContentProps {
   initialUsage: Usage | null;
   defaultCurrency: CurrencyCode;
   translations: Translations;
+  locale: string;
 }
 
 export function BillingContent(props: BillingContentProps) {

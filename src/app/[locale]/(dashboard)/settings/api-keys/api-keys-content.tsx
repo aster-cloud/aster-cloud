@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Link } from '@/i18n/navigation';
+import { formatDate } from '@/lib/format';
 
 interface ApiKey {
   id: string;
@@ -61,11 +62,13 @@ interface Translations {
 interface ApiKeysContentProps {
   initialApiKeys: ApiKey[];
   translations: Translations;
+  locale: string;
 }
 
 export function ApiKeysContent({
   initialApiKeys,
   translations: t,
+  locale,
 }: ApiKeysContentProps) {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(initialApiKeys);
   const [isCreating, setIsCreating] = useState(false);
@@ -274,10 +277,10 @@ export function ApiKeysContent({
                         {key.prefix}...
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : t.never}
+                        {key.lastUsedAt ? formatDate(key.lastUsedAt, locale) : t.never}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(key.createdAt).toLocaleDateString()}
+                        {formatDate(key.createdAt, locale)}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-right text-sm">
                         <button

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { formatDate } from '@/lib/format';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -99,17 +100,6 @@ interface Translations {
 // 简单模板插值
 function formatTemplate(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
-}
-
-// 格式化日期，使用明确的格式避免服务端/客户端不一致导致的 hydration 错误
-function formatDate(dateString: string, locale: string): string {
-  const date = new Date(dateString);
-  // 使用明确的 locale 和格式选项，确保服务端和客户端输出一致
-  return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
 }
 
 // 自定义碰撞检测：优先选择最内层（最小）的可放置区域

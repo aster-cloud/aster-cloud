@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { listApiKeys } from '@/lib/api-keys';
@@ -12,6 +12,7 @@ export default async function ApiKeysPage() {
 
   const t = await getTranslations('settings.apiKeys');
   const tNav = await getTranslations('dashboardNav');
+  const locale = await getLocale();
 
   // 获取 API keys 列表
   const keys = await listApiKeys(session.user.id);
@@ -77,6 +78,7 @@ export default async function ApiKeysPage() {
     <ApiKeysContent
       initialApiKeys={apiKeys}
       translations={translations}
+      locale={locale}
     />
   );
 }

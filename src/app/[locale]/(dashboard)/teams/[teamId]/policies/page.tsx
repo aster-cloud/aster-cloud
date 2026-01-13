@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { formatDate } from '@/lib/format';
 
 interface Policy {
   id: string;
@@ -31,6 +32,7 @@ export default function TeamPoliciesPage() {
   const tPolicies = useTranslations('policies');
   const params = useParams();
   const teamId = params.teamId as string;
+  const locale = params.locale as string;
 
   const [team, setTeam] = useState<Team | null>(null);
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -320,7 +322,7 @@ export default function TeamPoliciesPage() {
                         </span>
                       )}
                       {t('policies.updatedAt', {
-                        date: new Date(policy.updatedAt).toLocaleDateString(),
+                        date: formatDate(policy.updatedAt, locale),
                       })}
                     </div>
                     <div className="flex items-center space-x-2">
