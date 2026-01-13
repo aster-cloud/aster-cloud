@@ -107,6 +107,8 @@ interface DraggablePolicyItemProps {
   isSelected: boolean;
   onToggleSelect: (policyId: string, event: React.MouseEvent) => void;
   selectedCount: number;
+  isMultiSelectMode: boolean;
+  isBeingDragged: boolean;
 }
 
 function DraggablePolicyItem({
@@ -117,33 +119,53 @@ function DraggablePolicyItem({
   isSelected,
   onToggleSelect,
   selectedCount,
+  isMultiSelectMode,
+  isBeingDragged,
 }: DraggablePolicyItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: policy.id,
     data: { type: 'policy', policy, isSelected, selectedCount },
   });
 
+  // 判断该项是否应显示为占位符（当前正在拖拽且被选中）
+  const showPlaceholder = isBeingDragged && isSelected;
+
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     opacity: isDragging ? 0.5 : 1,
   } : undefined;
 
+  // 如果被选中且正在拖拽，显示空白占位符
+  if (showPlaceholder) {
+    return (
+      <li ref={setNodeRef} style={style}>
+        <div className="px-4 py-4 sm:px-6 bg-gray-100 border-2 border-dashed border-gray-300 rounded-md">
+          <div className="h-12 flex items-center justify-center text-gray-400 text-sm">
+            {locale.startsWith('zh') ? '移动中...' : 'Moving...'}
+          </div>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <li ref={setNodeRef} style={style}>
       <div className={`px-4 py-4 sm:px-6 hover:bg-gray-50 group ${isSelected ? 'bg-indigo-50' : ''}`}>
         <div className="flex items-center justify-between">
-          {/* 复选框 */}
-          <div
-            className="flex-shrink-0 mr-2"
-            onClick={(e) => onToggleSelect(policy.id, e)}
-          >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => {}}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
-            />
-          </div>
+          {/* 复选框 - 仅在多选模式下显示 */}
+          {isMultiSelectMode && (
+            <div
+              className="flex-shrink-0 mr-2"
+              onClick={(e) => onToggleSelect(policy.id, e)}
+            >
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => {}}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+              />
+            </div>
+          )}
 
           {/* 拖拽手柄 */}
           <div
@@ -249,22 +271,36 @@ function DraggablePolicyItem({
   );
 }
 
-// 拖拽覆盖层显示的策略项
+// 拖拽覆盖层显示的策略项（带叠放效果）
 function DragOverlayPolicy({ policy, selectedCount }: { policy: Policy; selectedCount: number }) {
   return (
-    <div className="bg-white shadow-lg rounded-md px-4 py-3 border-2 border-indigo-500 cursor-grabbing">
-      <div className="flex items-center">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-indigo-600">{policy.name}</p>
-          {policy.description && (
-            <p className="mt-1 text-sm text-gray-500 truncate">{policy.description}</p>
+    <div className="relative">
+      {/* 叠放效果 - 显示最多2层背景卡片 */}
+      {selectedCount > 1 && (
+        <>
+          {/* 第三层（最底层） */}
+          {selectedCount > 2 && (
+            <div className="absolute top-2 left-2 w-full h-full bg-gray-200 rounded-md shadow-sm opacity-60" />
+          )}
+          {/* 第二层 */}
+          <div className="absolute top-1 left-1 w-full h-full bg-gray-100 rounded-md shadow-md opacity-80" />
+        </>
+      )}
+      {/* 顶层卡片 */}
+      <div className="relative bg-white shadow-lg rounded-md px-4 py-3 border-2 border-indigo-500 cursor-grabbing">
+        <div className="flex items-center">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-indigo-600">{policy.name}</p>
+            {policy.description && (
+              <p className="mt-1 text-sm text-gray-500 truncate">{policy.description}</p>
+            )}
+          </div>
+          {selectedCount > 1 && (
+            <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-medium">
+              {selectedCount}
+            </span>
           )}
         </div>
-        {selectedCount > 1 && (
-          <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-medium">
-            {selectedCount}
-          </span>
-        )}
       </div>
     </div>
   );
@@ -302,6 +338,7 @@ export function PoliciesContent({
 
   // 多选状态
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // 删除确认对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -674,6 +711,32 @@ export function PoliciesContent({
             <p className="mt-1 text-sm text-gray-500">{t.subtitle}</p>
           </div>
           <div className="mt-4 sm:mt-0 flex space-x-3">
+            {/* 多选/单选切换按钮 */}
+            <button
+              onClick={() => {
+                setIsMultiSelectMode((prev) => !prev);
+                if (isMultiSelectMode) {
+                  clearSelection();
+                }
+              }}
+              className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
+              {isMultiSelectMode ? (
+                <>
+                  <svg className="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {locale.startsWith('zh') ? '单选' : 'Single'}
+                </>
+              ) : (
+                <>
+                  <svg className="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {locale.startsWith('zh') ? '多选' : 'Multi'}
+                </>
+              )}
+            </button>
             <Link
               href={`/${locale}/policies/trash`}
               className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
@@ -770,6 +833,8 @@ export function PoliciesContent({
                   isSelected={selectedPolicyIds.has(policy.id)}
                   onToggleSelect={handleToggleSelect}
                   selectedCount={selectedPolicyIds.size}
+                  isMultiSelectMode={isMultiSelectMode}
+                  isBeingDragged={!!activePolicy}
                 />
               ))}
             </ul>

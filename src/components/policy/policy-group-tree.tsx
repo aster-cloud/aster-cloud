@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, MoreVertical, Pencil, Trash2, FolderPlus } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 
@@ -16,6 +16,20 @@ export interface PolicyGroup {
   _count: {
     policies: number;
   };
+}
+
+// 最大分组层级数
+const MAX_GROUP_DEPTH = 5;
+
+// 递归计算分组总策略数（包含所有子分组）
+function getTotalPoliciesCount(group: PolicyGroup): number {
+  let total = group._count.policies;
+  if (group.children) {
+    for (const child of group.children) {
+      total += getTotalPoliciesCount(child);
+    }
+  }
+  return total;
 }
 
 interface PolicyGroupTreeProps {
@@ -144,9 +158,9 @@ export function PolicyGroupTree({
           {/* Group Name */}
           <span className="flex-1 truncate">{group.name}</span>
 
-          {/* Policy Count */}
+          {/* Policy Count - 显示包含子分组的总数 */}
           <span className="text-xs text-gray-400 mr-2">
-            {group._count.policies}
+            {getTotalPoliciesCount(group)}
           </span>
 
           {/* Context Menu */}
@@ -161,7 +175,8 @@ export function PolicyGroupTree({
 
               {isMenuOpen && (
                 <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                  {onCreateGroup && (
+                  {/* 最多支持5级分组，第5级不再显示"新建子分组" */}
+                  {onCreateGroup && depth < MAX_GROUP_DEPTH - 1 && (
                     <button
                       className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={(e) => {
