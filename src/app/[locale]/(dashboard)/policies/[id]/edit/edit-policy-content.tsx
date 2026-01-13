@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useLocale } from 'next-intl';
 import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
 import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
 import { CNLSyntaxConverterDialog, CNLConvertButton } from '@/components/policy/cnl-syntax-converter-dialog';
@@ -54,14 +53,15 @@ interface Translations {
 interface EditPolicyContentProps {
   policy: Policy;
   translations: Translations;
+  locale: string;
 }
 
 export function EditPolicyContent({
   policy,
   translations: t,
+  locale,
 }: EditPolicyContentProps) {
   const router = useRouter();
-  const locale = useLocale();
   const [name, setName] = useState(policy.name);
   const [description, setDescription] = useState(policy.description || '');
   const [content, setContent] = useState(policy.content);

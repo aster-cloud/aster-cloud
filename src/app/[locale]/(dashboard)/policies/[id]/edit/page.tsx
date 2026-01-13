@@ -66,5 +66,5 @@ export default async function EditPolicyPage({ params }: PageProps) {
     },
   };
 
-  return <EditPolicyContent policy={policy} translations={translations} />;
+  return <EditPolicyContent policy={policy} translations={translations} locale={locale} />;
 }
