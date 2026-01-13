@@ -101,6 +101,17 @@ function formatTemplate(template: string, values: Record<string, string | number
   return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
 }
 
+// 格式化日期，使用明确的格式避免服务端/客户端不一致导致的 hydration 错误
+function formatDate(dateString: string, locale: string): string {
+  const date = new Date(dateString);
+  // 使用明确的 locale 和格式选项，确保服务端和客户端输出一致
+  return date.toLocaleDateString(locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+
 // 自定义碰撞检测：优先选择最内层（最小）的可放置区域
 // 解决嵌套分组时无法拖放到子分组的问题
 const smallestDroppableCollision: CollisionDetection = (args) => {
@@ -289,7 +300,7 @@ function DraggablePolicyItem({
         </div>
         <div className="mt-2 ml-8">
           <p className="text-xs text-gray-400">
-            {formatTemplate(t.updatedTemplate, { date: new Date(policy.updatedAt).toLocaleDateString() })}
+            {formatTemplate(t.updatedTemplate, { date: formatDate(policy.updatedAt, locale) })}
           </p>
         </div>
       </div>
