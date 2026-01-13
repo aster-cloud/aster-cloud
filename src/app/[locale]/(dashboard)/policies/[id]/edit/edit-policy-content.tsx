@@ -1,11 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useLocale } from 'next-intl';
 import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
+import { CNLLanguageSelector } from '@/components/policy/cnl-language-selector';
+import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
+import { CNLSyntaxConverterDialog, CNLConvertButton } from '@/components/policy/cnl-syntax-converter-dialog';
+import { type SupportedLocale, normalizeLocale } from '@/data/policy-examples';
+import { detectCNLLanguage, getDetectionSuggestion } from '@/lib/cnl-language-detector';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -66,6 +71,46 @@ export function EditPolicyContent({
   const [groupId, setGroupId] = useState<string | null>(policy.groupId);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // CNL 语言选择状态（用于编辑器语法高亮）
+  const [cnlLocale, setCnlLocale] = useState<SupportedLocale>(() => normalizeLocale(locale));
+  const [hasAutoDetected, setHasAutoDetected] = useState(false);
+
+  // 语法转换对话框状态
+  const [isConverterOpen, setIsConverterOpen] = useState(false);
+
+  // 语言检测结果
+  const detectionResult = useMemo(() => {
+    return detectCNLLanguage(content);
+  }, [content]);
+
+  const detectionSuggestion = useMemo(() => {
+    return getDetectionSuggestion(detectionResult, locale);
+  }, [detectionResult, locale]);
+
+  // 首次加载时自动检测并切换语言
+  useEffect(() => {
+    if (!hasAutoDetected && policy.content && detectionResult.confidence >= 50) {
+      setCnlLocale(detectionResult.detected);
+      setHasAutoDetected(true);
+    }
+  }, [hasAutoDetected, policy.content, detectionResult]);
+
+  // 处理 CNL 语言切换
+  const handleCnlLocaleChange = useCallback((newLocale: SupportedLocale) => {
+    setCnlLocale(newLocale);
+  }, []);
+
+  // 应用检测到的语言
+  const handleApplyDetectedLanguage = useCallback(() => {
+    setCnlLocale(detectionResult.detected);
+  }, [detectionResult.detected]);
+
+  // 应用语法转换结果
+  const handleApplyConversion = useCallback((convertedContent: string, newLocale: SupportedLocale) => {
+    setContent(convertedContent);
+    setCnlLocale(newLocale);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,14 +233,43 @@ export function EditPolicyContent({
 
             {/* Content - Monaco Editor */}
             <div className="mt-6">
-              <label id="content-label" className="block text-sm font-semibold text-gray-900">
-                {t.form.content}
-              </label>
-              <div className="mt-2" role="group" aria-labelledby="content-label">
+              <div className="flex items-center justify-between mb-2">
+                <label id="content-label" className="block text-sm font-semibold text-gray-900">
+                  {t.form.content}
+                </label>
+                <div className="flex items-center gap-2">
+                  {/* 语言检测提示 */}
+                  {detectionResult.confidence >= 50 && detectionResult.detected !== cnlLocale && (
+                    <button
+                      type="button"
+                      onClick={handleApplyDetectedLanguage}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
+                      title={detectionSuggestion}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {locale.startsWith('zh')
+                        ? `检测到 ${detectionResult.detected === 'zh-CN' ? '中文' : detectionResult.detected === 'de-DE' ? '德语' : '英语'}`
+                        : `Detected ${detectionResult.detected === 'zh-CN' ? 'Chinese' : detectionResult.detected === 'de-DE' ? 'German' : 'English'}`}
+                    </button>
+                  )}
+                  <CNLConvertButton
+                    onClick={() => setIsConverterOpen(true)}
+                    uiLocale={locale}
+                    disabled={!content.trim()}
+                  />
+                  <span className="text-sm text-gray-500">
+                    {locale.startsWith('zh') ? 'CNL 语言：' : 'CNL Language:'}
+                  </span>
+                  <CNLLanguageSelector value={cnlLocale} onChange={handleCnlLocaleChange} compact />
+                </div>
+              </div>
+              <div role="group" aria-labelledby="content-label">
                 <MonacoPolicyEditor
                   value={content}
                   onChange={setContent}
-                  locale={locale}
+                  locale={cnlLocale}
                   height="400px"
                   placeholder={t.form.contentPlaceholder}
                   policyId={policy.id}
@@ -205,6 +279,14 @@ export function EditPolicyContent({
               <p className="mt-3 text-sm text-gray-500">
                 {t.form.contentHelp}
               </p>
+
+              {/* 语法参考面板 */}
+              <CNLSyntaxReferencePanel
+                locale={cnlLocale}
+                uiLocale={locale}
+                className="mt-4"
+                defaultExpanded={false}
+              />
             </div>
 
             {/* Public toggle */}
@@ -241,6 +323,16 @@ export function EditPolicyContent({
           </button>
         </div>
       </form>
+
+      {/* 语法转换对话框 */}
+      <CNLSyntaxConverterDialog
+        isOpen={isConverterOpen}
+        onClose={() => setIsConverterOpen(false)}
+        content={content}
+        currentLocale={cnlLocale}
+        uiLocale={locale}
+        onApply={handleApplyConversion}
+      />
     </div>
   );
 }

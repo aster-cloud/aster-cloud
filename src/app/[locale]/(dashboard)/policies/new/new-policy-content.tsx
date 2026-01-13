@@ -1,18 +1,25 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import {
   POLICY_EXAMPLES,
+  CATEGORY_LABELS,
   type PolicyExample,
+  type SupportedLocale,
   getExampleName,
   getExampleDescription,
-  getCategoryLabel,
+  getExampleSource,
+  normalizeLocale,
 } from '@/data/policy-examples';
 import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
+import { CNLLanguageSelector } from '@/components/policy/cnl-language-selector';
+import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
+import { CNLSyntaxConverterDialog, CNLConvertButton } from '@/components/policy/cnl-syntax-converter-dialog';
+import { detectCNLLanguage } from '@/lib/cnl-language-detector';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -42,9 +49,15 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // CNL 语言选择状态（独立于 UI locale）
+  const [cnlLocale, setCnlLocale] = useState<SupportedLocale>(() => normalizeLocale(locale));
+
   // 示例选择器状态
   const [selectedExample, setSelectedExample] = useState<PolicyExample | null>(null);
   const [showExampleSelector, setShowExampleSelector] = useState(false);
+
+  // 语法转换对话框状态
+  const [isConverterOpen, setIsConverterOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,10 +97,45 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       setShowExampleSelector(false);
       setName(getExampleName(example, locale));
       setDescription(getExampleDescription(example, locale));
-      setContent(example.source);
+      // 使用 CNL 语言获取对应的源码
+      setContent(getExampleSource(example, cnlLocale));
     },
-    [locale]
+    [locale, cnlLocale]
   );
+
+  // 语言检测结果（仅用于非模板内容）
+  const detectionResult = useMemo(() => {
+    // 如果已选择模板，不需要检测
+    if (selectedExample) return null;
+    return detectCNLLanguage(content);
+  }, [content, selectedExample]);
+
+  // 处理 CNL 语言切换
+  const handleCnlLocaleChange = useCallback(
+    (newLocale: SupportedLocale) => {
+      setCnlLocale(newLocale);
+      // 如果已选择示例，切换到对应语言的源码
+      if (selectedExample) {
+        setContent(getExampleSource(selectedExample, newLocale));
+      }
+    },
+    [selectedExample]
+  );
+
+  // 应用检测到的语言
+  const handleApplyDetectedLanguage = useCallback(() => {
+    if (detectionResult) {
+      setCnlLocale(detectionResult.detected);
+    }
+  }, [detectionResult]);
+
+  // 应用语法转换结果
+  const handleApplyConversion = useCallback((convertedContent: string, newLocale: SupportedLocale) => {
+    setContent(convertedContent);
+    setCnlLocale(newLocale);
+    // 转换后清除模板选择状态，因为内容已经被修改
+    setSelectedExample(null);
+  }, []);
 
   // 清除选中的示例
   const handleClearExample = useCallback(() => {
@@ -108,9 +156,9 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
         </div>
       </div>
 
-      {/* 示例策略选择器 */}
+      {/* 示例策略选择器 + CNL 语言选择器 */}
       <div className="mb-6 bg-white shadow-sm sm:rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-gray-700">
               {locale.startsWith('zh') ? '从示例开始：' : 'Start from example:'}
@@ -141,13 +189,13 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 <div className="absolute z-10 mt-2 w-80 origin-top-left rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                   <div className="py-1 max-h-96 overflow-y-auto">
                     {/* 按类别分组显示 */}
-                    {(['loan', 'insurance', 'healthcare', 'verification'] as const).map((category) => {
+                    {(Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>).map((category) => {
                       const categoryExamples = POLICY_EXAMPLES.filter((e) => e.category === category);
                       if (categoryExamples.length === 0) return null;
                       return (
                         <div key={category}>
                           <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
-                            {getCategoryLabel(category, locale)}
+                            {CATEGORY_LABELS[category][normalizeLocale(locale)]}
                           </div>
                           {categoryExamples.map((example) => (
                             <button
@@ -162,9 +210,6 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                               <div className="text-xs text-gray-500 mt-0.5">
                                 {getExampleDescription(example, locale)}
                               </div>
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                {example.locale === 'zh-CN' ? '🇨🇳 中文' : example.locale === 'de-DE' ? '🇩🇪 Deutsch' : '🇺🇸 English'}
-                              </div>
                             </button>
                           ))}
                         </div>
@@ -176,19 +221,51 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
             </div>
           </div>
 
-          {/* 清除选择按钮 */}
-          {selectedExample && (
-            <button
-              type="button"
-              onClick={handleClearExample}
-              className="text-sm text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              {locale.startsWith('zh') ? '清除' : 'Clear'}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* 语言检测提示（仅在非模板模式且检测到不同语言时显示） */}
+            {!selectedExample && detectionResult && detectionResult.confidence >= 50 && detectionResult.detected !== cnlLocale && (
+              <button
+                type="button"
+                onClick={handleApplyDetectedLanguage}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {locale.startsWith('zh')
+                  ? `检测到 ${detectionResult.detected === 'zh-CN' ? '中文' : detectionResult.detected === 'de-DE' ? '德语' : '英语'}`
+                  : `Detected ${detectionResult.detected === 'zh-CN' ? 'Chinese' : detectionResult.detected === 'de-DE' ? 'German' : 'English'}`}
+              </button>
+            )}
+
+            {/* 语法转换按钮（仅在有内容且非模板模式时显示） */}
+            {!selectedExample && content.trim() && (
+              <CNLConvertButton
+                onClick={() => setIsConverterOpen(true)}
+                uiLocale={locale}
+              />
+            )}
+
+            {/* CNL 语言选择器 */}
+            <span className="text-sm font-medium text-gray-700">
+              {locale.startsWith('zh') ? 'CNL 语言：' : 'CNL Language:'}
+            </span>
+            <CNLLanguageSelector value={cnlLocale} onChange={handleCnlLocaleChange} />
+
+            {/* 清除选择按钮 */}
+            {selectedExample && (
+              <button
+                type="button"
+                onClick={handleClearExample}
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                {locale.startsWith('zh') ? '清除' : 'Clear'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 已选示例提示 */}
@@ -200,8 +277,8 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
               </svg>
               <div className="text-sm text-indigo-700">
                 {locale.startsWith('zh')
-                  ? '已加载示例模板。你可以修改名称、描述和策略内容，然后保存为你的策略。'
-                  : 'Template loaded. You can modify the name, description and policy content, then save as your policy.'}
+                  ? `已加载示例模板（${cnlLocale === 'zh-CN' ? '中文' : cnlLocale === 'de-DE' ? '德语' : '英语'}）。你可以切换 CNL 语言查看不同版本，或修改后保存为你的策略。`
+                  : `Template loaded (${cnlLocale === 'zh-CN' ? 'Chinese' : cnlLocale === 'de-DE' ? 'German' : 'English'}). You can switch CNL language to view different versions, or modify and save as your policy.`}
               </div>
             </div>
           </div>
@@ -282,7 +359,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 <MonacoPolicyEditor
                   value={content}
                   onChange={setContent}
-                  locale={locale}
+                  locale={cnlLocale}
                   height="400px"
                   placeholder={t('form.contentPlaceholder')}
                   enableLSP={true}
@@ -291,6 +368,14 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
               <p className="mt-3 text-sm text-gray-500">
                 {t('form.contentHelp')}
               </p>
+
+              {/* 语法参考面板 */}
+              <CNLSyntaxReferencePanel
+                locale={cnlLocale}
+                uiLocale={locale}
+                className="mt-4"
+                defaultExpanded={false}
+              />
             </div>
 
             {/* Public toggle */}
@@ -327,6 +412,16 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
           </button>
         </div>
       </form>
+
+      {/* 语法转换对话框 */}
+      <CNLSyntaxConverterDialog
+        isOpen={isConverterOpen}
+        onClose={() => setIsConverterOpen(false)}
+        content={content}
+        currentLocale={cnlLocale}
+        uiLocale={locale}
+        onApply={handleApplyConversion}
+      />
     </div>
   );
 }

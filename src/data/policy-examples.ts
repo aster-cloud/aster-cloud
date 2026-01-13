@@ -1,28 +1,39 @@
 /**
- * 策略示例数据
+ * 策略示例数据 - 多语言版本
  *
- * 基于 Policy API 集成测试用例，按领域分组
- * 每个示例包含：CNL 源代码、默认输入数据、分组路径
+ * 支持三种语言的 CNL 策略示例：
+ * - en-US: English
+ * - zh-CN: 简体中文
+ * - de-DE: Deutsch
+ *
+ * 每个示例都有三种语言的原生 CNL 源码
  */
+
+// ============================================
+// 类型定义
+// ============================================
+
+export type SupportedLocale = 'en-US' | 'zh-CN' | 'de-DE';
+
+export type PolicyCategory = 'loan' | 'creditcard' | 'fraud' | 'healthcare' | 'auto-insurance';
 
 export interface PolicyExampleInput {
   [key: string]: unknown;
 }
 
-export interface PolicyExample {
-  id: string;
+export interface LocalizedMetadata {
   name: string;
-  nameZh: string;
   description: string;
-  descriptionZh: string;
-  locale: 'en-US' | 'zh-CN' | 'de-DE';
-  category: PolicyCategory;
-  groupPath: string[]; // 分组路径，如 ['金融', '贷款']
-  source: string;
-  defaultInput: PolicyExampleInput;
 }
 
-export type PolicyCategory = 'loan' | 'creditcard' | 'fraud' | 'healthcare' | 'auto-insurance';
+export interface PolicyExample {
+  id: string;
+  category: PolicyCategory;
+  groupId: string; // 使用 ID 而非本地化文本
+  sources: Record<SupportedLocale, string>;
+  metadata: Record<SupportedLocale, LocalizedMetadata>;
+  defaultInput: PolicyExampleInput;
+}
 
 // ============================================
 // 分组定义
@@ -30,531 +41,761 @@ export type PolicyCategory = 'loan' | 'creditcard' | 'fraud' | 'healthcare' | 'a
 
 export interface PolicyGroupDef {
   id: string;
-  name: string;
-  nameZh: string;
+  parentId: string | null;
   icon: string;
+  names: Record<SupportedLocale, string>;
   children?: PolicyGroupDef[];
 }
 
 export const POLICY_GROUP_TREE: PolicyGroupDef[] = [
   {
     id: 'finance',
-    name: 'Finance',
-    nameZh: '金融',
+    parentId: null,
     icon: 'banknote',
+    names: { 'en-US': 'Finance', 'zh-CN': '金融', 'de-DE': 'Finanzen' },
     children: [
-      { id: 'loan', name: 'Loan', nameZh: '贷款', icon: 'landmark' },
-      { id: 'creditcard', name: 'Credit Card', nameZh: '信用卡', icon: 'credit-card' },
-      { id: 'fraud', name: 'Fraud Detection', nameZh: '欺诈检测', icon: 'shield-alert' },
+      {
+        id: 'loan',
+        parentId: 'finance',
+        icon: 'landmark',
+        names: { 'en-US': 'Loan', 'zh-CN': '贷款', 'de-DE': 'Kredit' },
+      },
+      {
+        id: 'creditcard',
+        parentId: 'finance',
+        icon: 'credit-card',
+        names: { 'en-US': 'Credit Card', 'zh-CN': '信用卡', 'de-DE': 'Kreditkarte' },
+      },
+      {
+        id: 'fraud',
+        parentId: 'finance',
+        icon: 'shield-alert',
+        names: { 'en-US': 'Fraud Detection', 'zh-CN': '欺诈检测', 'de-DE': 'Betrugserkennung' },
+      },
     ],
   },
   {
     id: 'healthcare',
-    name: 'Healthcare',
-    nameZh: '医疗',
+    parentId: null,
     icon: 'heart-pulse',
+    names: { 'en-US': 'Healthcare', 'zh-CN': '医疗', 'de-DE': 'Gesundheitswesen' },
     children: [
-      { id: 'eligibility', name: 'Eligibility', nameZh: '资格审核', icon: 'clipboard-check' },
+      {
+        id: 'eligibility',
+        parentId: 'healthcare',
+        icon: 'clipboard-check',
+        names: { 'en-US': 'Eligibility', 'zh-CN': '资格审核', 'de-DE': 'Berechtigung' },
+      },
     ],
   },
   {
     id: 'insurance',
-    name: 'Insurance',
-    nameZh: '保险',
+    parentId: null,
     icon: 'shield',
+    names: { 'en-US': 'Insurance', 'zh-CN': '保险', 'de-DE': 'Versicherung' },
     children: [
-      { id: 'auto', name: 'Auto Insurance', nameZh: '汽车保险', icon: 'car' },
+      {
+        id: 'auto',
+        parentId: 'insurance',
+        icon: 'car',
+        names: { 'en-US': 'Auto Insurance', 'zh-CN': '汽车保险', 'de-DE': 'Kfz-Versicherung' },
+      },
     ],
   },
 ];
 
 // ============================================
-// 策略源码
+// 策略源码 - 贷款审批
 // ============================================
 
-const LOAN_POLICY_SOURCE = `This module is aster.finance.loan.
+const LOAN_SOURCE_EN = `This module is finance.loan.
 
-Define LoanApplication with @NotEmpty applicantId: Text, amount: Int, @Range(min: 0, max: 600) termMonths: Int, @NotEmpty purpose: Text.
+Define Applicant with
+  id,
+  creditScore,
+  income,
+  age.
 
-Define ApplicantProfile with @Range(min: 0, max: 120) age: Int, @Range(min: 300, max: 850) creditScore: Int, annualIncome: Int, monthlyDebt: Int, @Range(min: 0, max: 50) yearsEmployed: Int.
+Define Decision with
+  approved,
+  reason,
+  rate.
 
-Define LoanDecision with approved: Bool, @NotEmpty reason: Text, approvedAmount: Int, @Range(min: 0, max: 5000) interestRateBps: Int, @Range(min: 0, max: 600) termMonths: Int.
+To evaluateLoan with applicant, produce:
+  If applicant.age less than 18:
+    Return Decision with approved = false, reason = "Underage applicant", rate = 0.
+  If applicant.creditScore less than 600:
+    Return Decision with approved = false, reason = "Credit score too low", rate = 0.
+  If applicant.creditScore greater than 750:
+    Return Decision with approved = true, reason = "Excellent credit", rate = 350.
+  If applicant.creditScore greater than 700:
+    Return Decision with approved = true, reason = "Good credit", rate = 450.
+  Return Decision with approved = true, reason = "Standard approval", rate = 550.
+`;
 
-To evaluateLoanEligibility with application: LoanApplication, applicant: ApplicantProfile, produce LoanDecision:
-  If <(applicant.age, 18),:
-    Return LoanDecision with approved = false, reason = "Age below 18", approvedAmount = 0, interestRateBps = 0, termMonths = 0.
-  If >(applicant.age, 75),:
-    Return LoanDecision with approved = false, reason = "Age above 75", approvedAmount = 0, interestRateBps = 0, termMonths = 0.
-  If <(applicant.creditScore, 650),:
-    Return LoanDecision with approved = false, reason = "Credit below 650", approvedAmount = 0, interestRateBps = 0, termMonths = 0.
-  Let rate be determineInterestRateBps(applicant.creditScore).
-  Return LoanDecision with approved = true, reason = "Approved", approvedAmount = application.amount, interestRateBps = rate, termMonths = application.termMonths.
+const LOAN_SOURCE_ZH = `【模块】金融.贷款。
 
-To determineInterestRateBps with @Range(min: 300, max: 850) creditScore: Int, produce Int:
-  If <(creditScore, 670),:
-    Return 675.
-  If <(creditScore, 740),:
-    Return 550.
-  If <(creditScore, 800),:
-    Return 425.
-  Return 350.`;
+【定义】申请人 包含
+  编号，
+  信用评分，
+  收入，
+  年龄。
 
-const HEALTHCARE_ELIGIBILITY_SOURCE = `This module is aster.healthcare.eligibility.
+【定义】决定 包含
+  批准，
+  理由，
+  利率。
 
-Define Patient with patientId: Text, age: Int, hasInsurance: Bool, insuranceType: Text, chronicConditions: Int.
+评估贷款 入参 申请人，产出：
+  若 申请人.年龄 小于 18：
+    返回 决定(批准 = 假, 理由 = 「申请人未成年」, 利率 = 0)。
+  若 申请人.信用评分 小于 600：
+    返回 决定(批准 = 假, 理由 = 「信用评分过低」, 利率 = 0)。
+  若 申请人.信用评分 大于 750：
+    返回 决定(批准 = 真, 理由 = 「信用优秀」, 利率 = 350)。
+  若 申请人.信用评分 大于 700：
+    返回 决定(批准 = 真, 理由 = 「信用良好」, 利率 = 450)。
+  返回 决定(批准 = 真, 理由 = 「标准审批」, 利率 = 550)。
+`;
 
-Define Service with serviceCode: Text, serviceName: Text, basePrice: Int, requiresPreAuth: Bool.
+const LOAN_SOURCE_DE = `Dieses Modul ist finanz.kredit.
 
-Define EligibilityCheck with eligible: Bool, reason: Text, coveragePercent: Int, estimatedCost: Int, requiresPreAuth: Bool.
+Definiere Antragsteller mit
+  kennung,
+  bonitaet,
+  einkommen,
+  alter.
 
-To checkServiceEligibility with patient: Patient, service: Service, produce EligibilityCheck:
-  If not(patient.hasInsurance),:
-    Return EligibilityCheck with eligible = false, reason = "No insurance coverage", coveragePercent = 0, estimatedCost = service.basePrice, requiresPreAuth = false.
-  If <(patient.age, 18),:
-    Let coverage be determineMinorCoverage(patient.insuranceType, service).
-    Return EligibilityCheck with eligible = true, reason = "Minor coverage", coveragePercent = coverage, estimatedCost = calculatePatientCost(service.basePrice, coverage), requiresPreAuth = service.requiresPreAuth.
-  If >(patient.age, 65),:
-    Let coverage be determineSeniorCoverage(patient.insuranceType, service).
-    Return EligibilityCheck with eligible = true, reason = "Senior coverage", coveragePercent = coverage, estimatedCost = calculatePatientCost(service.basePrice, coverage), requiresPreAuth = service.requiresPreAuth.
-  Let coverage be determineStandardCoverage(patient.insuranceType, service, patient.chronicConditions).
-  Return EligibilityCheck with eligible = true, reason = "Standard coverage", coveragePercent = coverage, estimatedCost = calculatePatientCost(service.basePrice, coverage), requiresPreAuth = service.requiresPreAuth.
+Definiere Entscheidung mit
+  genehmigt,
+  begruendung,
+  zinssatz.
 
-To determineMinorCoverage with insuranceType: Text, service: Service, produce Int:
-  If =(insuranceType, "Premium"),:
-    Return 90.
-  If =(insuranceType, "Standard"),:
-    Return 80.
-  Return 70.
-
-To determineSeniorCoverage with insuranceType: Text, service: Service, produce Int:
-  If =(insuranceType, "Medicare"),:
-    Return 85.
-  If =(insuranceType, "Premium"),:
-    Return 95.
-  If =(insuranceType, "Standard"),:
-    Return 75.
-  Return 60.
-
-To determineStandardCoverage with insuranceType: Text, service: Service, chronicConditions: Int, produce Int:
-  If =(insuranceType, "Premium"),:
-    If >(chronicConditions, 2),:
-      Return 90.
-    Return 85.
-  If =(insuranceType, "Standard"),:
-    If >(chronicConditions, 2),:
-      Return 75.
-    Return 70.
-  If =(insuranceType, "Basic"),:
-    Return 60.
-  Return 50.
-
-To calculatePatientCost with basePrice: Int, coveragePercent: Int, produce Int:
-  Let coverageAmount be *(basePrice, coveragePercent).
-  Let patientPercent be -(100, coveragePercent).
-  Let patientCost be *(basePrice, patientPercent).
-  Return patientCost.`;
-
-const AUTO_INSURANCE_SOURCE = `This module is aster.insurance.auto.
-
-Define Driver with driverId: Text, age: Int, yearsLicensed: Int, accidentCount: Int, violationCount: Int, creditScore: Int.
-
-Define Vehicle with vin: Text, year: Int, make: Text, model: Text, value: Int, safetyRating: Int.
-
-Define PolicyQuote with approved: Bool, reason: Text, monthlyPremium: Int, deductible: Int, coverageLimit: Int.
-
-To generateAutoQuote with driver: Driver, vehicle: Vehicle, coverageType: Text, produce PolicyQuote:
-  If <(driver.age, 18),:
-    Return PolicyQuote with approved = false, reason = "Driver under 18", monthlyPremium = 0, deductible = 0, coverageLimit = 0.
-  If >(driver.accidentCount, 3),:
-    Return PolicyQuote with approved = false, reason = "Too many accidents", monthlyPremium = 0, deductible = 0, coverageLimit = 0.
-  If >(driver.violationCount, 5),:
-    Return PolicyQuote with approved = false, reason = "Too many violations", monthlyPremium = 0, deductible = 0, coverageLimit = 0.
-  Let basePremium be calculateBasePremium(driver, vehicle).
-  Let riskMultiplier be calculateRiskMultiplier(driver, vehicle).
-  Let finalPremium be *(basePremium, riskMultiplier).
-  Let deductibleAmt be determineDeductible(coverageType, driver.creditScore).
-  Let coverageAmt be determineCoverageLimit(coverageType, vehicle.value).
-  Return PolicyQuote with approved = true, reason = "Quote approved", monthlyPremium = finalPremium, deductible = deductibleAmt, coverageLimit = coverageAmt.
-
-To calculateBasePremium with driver: Driver, vehicle: Vehicle, produce Int:
-  Let ageFactor be calculateAgeFactor(driver.age).
-  Let vehicleFactor be calculateVehicleFactor(vehicle).
-  Return +(ageFactor, vehicleFactor).
-
-To calculateAgeFactor with age: Int, produce Int:
-  If <(age, 25),:
-    Return 250.
-  If <(age, 35),:
-    Return 150.
-  If <(age, 55),:
-    Return 120.
-  If <(age, 70),:
-    Return 140.
-  Return 180.
-
-To calculateVehicleFactor with vehicle: Vehicle, produce Int:
-  Let currentYear be 2025.
-  Let vehicleAge be -(currentYear, vehicle.year).
-  If >(vehicleAge, 10),:
-    Return 80.
-  If >(vehicleAge, 5),:
-    Return 100.
-  Return 120.
-
-To calculateRiskMultiplier with driver: Driver, vehicle: Vehicle, produce Int:
-  Let baseMultiplier be 100.
-  If >(driver.accidentCount, 0),:
-    Let penalty be *(driver.accidentCount, 25).
-    Let baseMultiplier be +(baseMultiplier, penalty).
-  If >(driver.violationCount, 0),:
-    Let penalty be *(driver.violationCount, 15).
-    Let baseMultiplier be +(baseMultiplier, penalty).
-  If <(driver.creditScore, 650),:
-    Let baseMultiplier be +(baseMultiplier, 30).
-  If >(vehicle.safetyRating, 8),:
-    Let baseMultiplier be -(baseMultiplier, 10).
-  Return baseMultiplier.
-
-To determineDeductible with coverageType: Text, creditScore: Int, produce Int:
-  If =(coverageType, "Premium"),:
-    If >(creditScore, 750),:
-      Return 250.
-    Return 500.
-  If =(coverageType, "Standard"),:
-    If >(creditScore, 700),:
-      Return 500.
-    Return 1000.
-  Return 2000.
-
-To determineCoverageLimit with coverageType: Text, vehicleValue: Int, produce Int:
-  If =(coverageType, "Premium"),:
-    Return 500000.
-  If =(coverageType, "Standard"),:
-    Return 250000.
-  If >(vehicleValue, 30000),:
-    Return 100000.
-  Return 50000.`;
-
-const FRAUD_DETECTION_SOURCE = `This module is aster.finance.fraud.
-
-Define Transaction with transactionId: Text, accountId: Text, amount: Int, timestamp: Int.
-
-Define AccountHistory with accountId: Text, averageAmount: Int, suspiciousCount: Int, accountAge: Int, lastTimestamp: Int.
-
-Define FraudResult with isSuspicious: Bool, riskScore: Int, reason: Text.
-
-To detectFraud with transaction: Transaction, history: AccountHistory, produce FraudResult:
-  If >(transaction.amount, 1000000),:
-    Return FraudResult with isSuspicious = true, riskScore = 100, reason = "Extremely large transaction".
-  If >(history.suspiciousCount, 5),:
-    Return FraudResult with isSuspicious = true, riskScore = 85, reason = "High suspicious activity history".
-  If <(history.accountAge, 30),:
-    Return FraudResult with isSuspicious = true, riskScore = 70, reason = "New account risk".
-  Return FraudResult with isSuspicious = false, riskScore = 10, reason = "Normal transaction".`;
-
-const CREDITCARD_SOURCE = `This module is aster.finance.creditcard.
-
-Define ApplicantInfo with applicantId: Text, age: Int, annualIncome: Int, creditScore: Int, existingCreditCards: Int, monthlyRent: Int, employmentStatus: Text, yearsAtCurrentJob: Int.
-
-Define FinancialHistory with bankruptcyCount: Int, latePayments: Int, utilization: Int, accountAge: Int, hardInquiries: Int.
-
-Define CreditCardOffer with productType: Text, requestedLimit: Int, hasRewards: Bool, annualFee: Int.
-
-Define ApprovalDecision with approved: Bool, reason: Text, approvedLimit: Int, interestRateAPR: Int, monthlyFee: Int, creditLine: Int, requiresDeposit: Bool, depositAmount: Int.
-
-To evaluateCreditCardApplication with applicant: ApplicantInfo, history: FinancialHistory, offer: CreditCardOffer, produce ApprovalDecision:
-  If !=(history.bankruptcyCount, 0),:
-    Return ApprovalDecision with approved = false, reason = "Bankruptcy on record", approvedLimit = 0, interestRateAPR = 0, monthlyFee = 0, creditLine = 0, requiresDeposit = false, depositAmount = 0.
-  If <(applicant.age, 21),:
-    Return ApprovalDecision with approved = false, reason = "Age below 21", approvedLimit = 0, interestRateAPR = 0, monthlyFee = 0, creditLine = 0, requiresDeposit = false, depositAmount = 0.
-  If <(applicant.creditScore, 550),:
-    Return ApprovalDecision with approved = false, reason = "Credit score too low", approvedLimit = 0, interestRateAPR = 0, monthlyFee = 0, creditLine = 0, requiresDeposit = false, depositAmount = 0.
-  Return ApprovalDecision with approved = true, reason = "Approved", approvedLimit = offer.requestedLimit, interestRateAPR = 1899, monthlyFee = 0, creditLine = offer.requestedLimit, requiresDeposit = false, depositAmount = 0.`;
+kreditPruefen mit antragsteller, liefert:
+  Falls antragsteller.alter kleiner als 18:
+    gib zurueck Entscheidung mit genehmigt = falsch, begruendung = "Minderjaehriger Antragsteller", zinssatz = 0.
+  Falls antragsteller.bonitaet kleiner als 600:
+    gib zurueck Entscheidung mit genehmigt = falsch, begruendung = "Bonitaet zu niedrig", zinssatz = 0.
+  Falls antragsteller.bonitaet größer als 750:
+    gib zurueck Entscheidung mit genehmigt = wahr, begruendung = "Ausgezeichnete Bonitaet", zinssatz = 350.
+  Falls antragsteller.bonitaet größer als 700:
+    gib zurueck Entscheidung mit genehmigt = wahr, begruendung = "Gute Bonitaet", zinssatz = 450.
+  gib zurueck Entscheidung mit genehmigt = wahr, begruendung = "Standardgenehmigung", zinssatz = 550.
+`;
 
 // ============================================
-// 贷款示例
+// 策略源码 - 医疗资格
 // ============================================
 
-const loanApproved: PolicyExample = {
-  id: 'loan-approved',
-  name: 'Loan Application - Approved',
-  nameZh: '贷款申请 - 通过',
-  description: 'Loan application with good credit score and stable employment',
-  descriptionZh: '信用评分良好、就业稳定的贷款申请',
-  locale: 'en-US',
+const HEALTHCARE_SOURCE_EN = `This module is healthcare.eligibility.
+
+Define Patient with
+  id,
+  age,
+  hasInsurance,
+  insuranceType.
+
+Define Service with
+  code,
+  name,
+  price.
+
+Define Result with
+  eligible,
+  coverage,
+  patientCost,
+  reason.
+
+To checkEligibility with patient, service, produce:
+  If not patient.hasInsurance:
+    Return Result with eligible = false, coverage = 0, patientCost = service.price, reason = "No insurance".
+  If patient.age less than 18:
+    Return Result with eligible = true, coverage = 90, patientCost = service.price times 10 divided by 100, reason = "Minor coverage".
+  If patient.age greater than 65:
+    Return Result with eligible = true, coverage = 85, patientCost = service.price times 15 divided by 100, reason = "Senior coverage".
+  Return Result with eligible = true, coverage = 70, patientCost = service.price times 30 divided by 100, reason = "Standard coverage".
+`;
+
+const HEALTHCARE_SOURCE_ZH = `【模块】医疗.资格审核。
+
+【定义】患者 包含
+  编号，
+  年龄，
+  有保险，
+  保险类型。
+
+【定义】服务 包含
+  代码，
+  名称，
+  价格。
+
+【定义】结果 包含
+  合格，
+  覆盖率，
+  患者费用，
+  理由。
+
+检查资格 入参 患者，服务，产出：
+  若 非 患者.有保险：
+    返回 结果(合格 = 假, 覆盖率 = 0, 患者费用 = 服务.价格, 理由 = 「无保险」)。
+  若 患者.年龄 小于 18：
+    返回 结果(合格 = 真, 覆盖率 = 90, 患者费用 = 服务.价格 乘 10 除以 100, 理由 = 「未成年人覆盖」)。
+  若 患者.年龄 大于 65：
+    返回 结果(合格 = 真, 覆盖率 = 85, 患者费用 = 服务.价格 乘 15 除以 100, 理由 = 「老年人覆盖」)。
+  返回 结果(合格 = 真, 覆盖率 = 70, 患者费用 = 服务.价格 乘 30 除以 100, 理由 = 「标准覆盖」)。
+`;
+
+const HEALTHCARE_SOURCE_DE = `Dieses Modul ist gesundheit.berechtigung.
+
+Definiere Patient mit
+  kennung,
+  alter,
+  hatVersicherung,
+  versicherungstyp.
+
+Definiere Leistung mit
+  code,
+  name,
+  preis.
+
+Definiere Ergebnis mit
+  berechtigt,
+  deckung,
+  patientenkosten,
+  begruendung.
+
+berechtigungPruefen mit patient, leistung, liefert:
+  Falls nicht patient.hatVersicherung:
+    gib zurueck Ergebnis mit berechtigt = falsch, deckung = 0, patientenkosten = leistung.preis, begruendung = "Keine Versicherung".
+  Falls patient.alter kleiner als 18:
+    gib zurueck Ergebnis mit berechtigt = wahr, deckung = 90, patientenkosten = leistung.preis mal 10 geteilt durch 100, begruendung = "Minderjaehrige Deckung".
+  Falls patient.alter größer als 65:
+    gib zurueck Ergebnis mit berechtigt = wahr, deckung = 85, patientenkosten = leistung.preis mal 15 geteilt durch 100, begruendung = "Senioren Deckung".
+  gib zurueck Ergebnis mit berechtigt = wahr, deckung = 70, patientenkosten = leistung.preis mal 30 geteilt durch 100, begruendung = "Standarddeckung".
+`;
+
+// ============================================
+// 策略源码 - 汽车保险
+// ============================================
+
+const AUTO_SOURCE_EN = `This module is insurance.auto.
+
+Define Driver with
+  id,
+  age,
+  yearsLicensed,
+  accidents,
+  violations.
+
+Define Vehicle with
+  vin,
+  year,
+  value,
+  safetyRating.
+
+Define Quote with
+  approved,
+  premium,
+  deductible,
+  reason.
+
+To generateQuote with driver, vehicle, produce:
+  If driver.age less than 18:
+    Return Quote with approved = false, premium = 0, deductible = 0, reason = "Driver under 18".
+  If driver.accidents greater than 3:
+    Return Quote with approved = false, premium = 0, deductible = 0, reason = "Too many accidents".
+  Let basePremium be calculateBase with driver, vehicle.
+  Let riskFactor be calculateRisk with driver.
+  Let finalPremium be basePremium times riskFactor divided by 100.
+  Return Quote with approved = true, premium = finalPremium, deductible = 500, reason = "Approved".
+
+To calculateBase with driver, vehicle, produce:
+  If driver.age less than 25:
+    Return 300.
+  If driver.age less than 65:
+    Return 200.
+  Return 250.
+
+To calculateRisk with driver, produce:
+  Let base be 100.
+  If driver.accidents greater than 0:
+    Let base be base plus driver.accidents times 20.
+  If driver.violations greater than 0:
+    Let base be base plus driver.violations times 10.
+  Return base.
+`;
+
+const AUTO_SOURCE_ZH = `【模块】保险.汽车。
+
+【定义】驾驶员 包含
+  编号，
+  年龄，
+  驾龄，
+  事故数，
+  违章数。
+
+【定义】车辆 包含
+  车架号，
+  年份，
+  价值，
+  安全评级。
+
+【定义】报价 包含
+  批准，
+  保费，
+  免赔额，
+  理由。
+
+生成报价 入参 驾驶员，车辆，产出：
+  若 驾驶员.年龄 小于 18：
+    返回 报价(批准 = 假, 保费 = 0, 免赔额 = 0, 理由 = 「驾驶员未满18岁」)。
+  若 驾驶员.事故数 大于 3：
+    返回 报价(批准 = 假, 保费 = 0, 免赔额 = 0, 理由 = 「事故过多」)。
+  令 基础保费 为 计算基础(驾驶员, 车辆)。
+  令 风险系数 为 计算风险(驾驶员)。
+  令 最终保费 为 基础保费 乘 风险系数 除以 100。
+  返回 报价(批准 = 真, 保费 = 最终保费, 免赔额 = 500, 理由 = 「已批准」)。
+
+计算基础 入参 驾驶员，车辆，产出：
+  若 驾驶员.年龄 小于 25：
+    返回 300。
+  若 驾驶员.年龄 小于 65：
+    返回 200。
+  返回 250。
+
+计算风险 入参 驾驶员，产出：
+  令 基数 为 100。
+  若 驾驶员.事故数 大于 0：
+    令 基数 为 基数 加 驾驶员.事故数 乘 20。
+  若 驾驶员.违章数 大于 0：
+    令 基数 为 基数 加 驾驶员.违章数 乘 10。
+  返回 基数。
+`;
+
+const AUTO_SOURCE_DE = `Dieses Modul ist versicherung.kfz.
+
+Definiere Fahrer mit
+  kennung,
+  alter,
+  fuehrerscheinJahre,
+  unfaelle,
+  verstoesse.
+
+Definiere Fahrzeug mit
+  fahrgestellnummer,
+  baujahr,
+  wert,
+  sicherheitsbewertung.
+
+Definiere Angebot mit
+  genehmigt,
+  praemie,
+  selbstbeteiligung,
+  begruendung.
+
+angebotErstellen mit fahrer, fahrzeug, liefert:
+  Falls fahrer.alter kleiner als 18:
+    gib zurueck Angebot mit genehmigt = falsch, praemie = 0, selbstbeteiligung = 0, begruendung = "Fahrer unter 18".
+  Falls fahrer.unfaelle größer als 3:
+    gib zurueck Angebot mit genehmigt = falsch, praemie = 0, selbstbeteiligung = 0, begruendung = "Zu viele Unfaelle".
+  sei basisPraemie gleich basisBerechnen mit fahrer, fahrzeug.
+  sei risikoFaktor gleich risikoBerechnen mit fahrer.
+  sei endPraemie gleich basisPraemie mal risikoFaktor geteilt durch 100.
+  gib zurueck Angebot mit genehmigt = wahr, praemie = endPraemie, selbstbeteiligung = 500, begruendung = "Genehmigt".
+
+basisBerechnen mit fahrer, fahrzeug, liefert:
+  Falls fahrer.alter kleiner als 25:
+    gib zurueck 300.
+  Falls fahrer.alter kleiner als 65:
+    gib zurueck 200.
+  gib zurueck 250.
+
+risikoBerechnen mit fahrer, liefert:
+  sei basis gleich 100.
+  Falls fahrer.unfaelle größer als 0:
+    sei basis gleich basis plus fahrer.unfaelle mal 20.
+  Falls fahrer.verstoesse größer als 0:
+    sei basis gleich basis plus fahrer.verstoesse mal 10.
+  gib zurueck basis.
+`;
+
+// ============================================
+// 策略源码 - 欺诈检测
+// ============================================
+
+const FRAUD_SOURCE_EN = `This module is finance.fraud.
+
+Define Transaction with
+  id,
+  accountId,
+  amount,
+  timestamp.
+
+Define AccountHistory with
+  accountId,
+  averageAmount,
+  suspiciousCount,
+  accountAge.
+
+Define FraudResult with
+  suspicious,
+  riskScore,
+  reason.
+
+To detectFraud with transaction, history, produce:
+  If transaction.amount greater than 1000000:
+    Return FraudResult with suspicious = true, riskScore = 100, reason = "Extremely large transaction".
+  If history.suspiciousCount greater than 5:
+    Return FraudResult with suspicious = true, riskScore = 85, reason = "High suspicious activity".
+  If history.accountAge less than 30:
+    Return FraudResult with suspicious = true, riskScore = 70, reason = "New account risk".
+  If transaction.amount greater than history.averageAmount times 10:
+    Return FraudResult with suspicious = true, riskScore = 60, reason = "Unusual amount".
+  Return FraudResult with suspicious = false, riskScore = 10, reason = "Normal transaction".
+`;
+
+const FRAUD_SOURCE_ZH = `【模块】金融.欺诈。
+
+【定义】交易 包含
+  编号，
+  账户号，
+  金额，
+  时间戳。
+
+【定义】账户历史 包含
+  账户号，
+  平均金额，
+  可疑次数，
+  账龄。
+
+【定义】欺诈结果 包含
+  可疑，
+  风险评分，
+  理由。
+
+检测欺诈 入参 交易，历史，产出：
+  若 交易.金额 大于 1000000：
+    返回 欺诈结果(可疑 = 真, 风险评分 = 100, 理由 = 「超大额交易」)。
+  若 历史.可疑次数 大于 5：
+    返回 欺诈结果(可疑 = 真, 风险评分 = 85, 理由 = 「高度可疑活动」)。
+  若 历史.账龄 小于 30：
+    返回 欺诈结果(可疑 = 真, 风险评分 = 70, 理由 = 「新账户风险」)。
+  若 交易.金额 大于 历史.平均金额 乘 10：
+    返回 欺诈结果(可疑 = 真, 风险评分 = 60, 理由 = 「异常金额」)。
+  返回 欺诈结果(可疑 = 假, 风险评分 = 10, 理由 = 「正常交易」)。
+`;
+
+const FRAUD_SOURCE_DE = `Dieses Modul ist finanz.betrug.
+
+Definiere Transaktion mit
+  kennung,
+  kontoId,
+  betrag,
+  zeitstempel.
+
+Definiere KontoHistorie mit
+  kontoId,
+  durchschnittsbetrag,
+  verdaechtigeAnzahl,
+  kontoalter.
+
+Definiere BetrugsErgebnis mit
+  verdaechtig,
+  risikoBewertung,
+  begruendung.
+
+betrugErkennen mit transaktion, historie, liefert:
+  Falls transaktion.betrag größer als 1000000:
+    gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 100, begruendung = "Extrem grosse Transaktion".
+  Falls historie.verdaechtigeAnzahl größer als 5:
+    gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 85, begruendung = "Hohe verdaechtige Aktivitaet".
+  Falls historie.kontoalter kleiner als 30:
+    gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 70, begruendung = "Neues Konto Risiko".
+  Falls transaktion.betrag größer als historie.durchschnittsbetrag mal 10:
+    gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 60, begruendung = "Ungewoehnlicher Betrag".
+  gib zurueck BetrugsErgebnis mit verdaechtig = falsch, risikoBewertung = 10, begruendung = "Normale Transaktion".
+`;
+
+// ============================================
+// 策略源码 - 信用卡审批
+// ============================================
+
+const CREDITCARD_SOURCE_EN = `This module is finance.creditcard.
+
+Define Applicant with
+  id,
+  age,
+  income,
+  creditScore,
+  existingCards.
+
+Define Application with
+  requestedLimit,
+  cardType.
+
+Define Decision with
+  approved,
+  approvedLimit,
+  interestRate,
+  reason.
+
+To evaluateApplication with applicant, application, produce:
+  If applicant.age less than 21:
+    Return Decision with approved = false, approvedLimit = 0, interestRate = 0, reason = "Age below 21".
+  If applicant.creditScore less than 550:
+    Return Decision with approved = false, approvedLimit = 0, interestRate = 0, reason = "Credit score too low".
+  If applicant.existingCards greater than 5:
+    Return Decision with approved = false, approvedLimit = 0, interestRate = 0, reason = "Too many existing cards".
+  Let limit be determineLimit with applicant, application.
+  Let rate be determineRate with applicant.
+  Return Decision with approved = true, approvedLimit = limit, interestRate = rate, reason = "Approved".
+
+To determineLimit with applicant, application, produce:
+  If applicant.creditScore greater than 750:
+    Return application.requestedLimit.
+  If applicant.creditScore greater than 700:
+    Return application.requestedLimit times 80 divided by 100.
+  Return application.requestedLimit times 50 divided by 100.
+
+To determineRate with applicant, produce:
+  If applicant.creditScore greater than 750:
+    Return 1299.
+  If applicant.creditScore greater than 700:
+    Return 1599.
+  Return 1999.
+`;
+
+const CREDITCARD_SOURCE_ZH = `【模块】金融.信用卡。
+
+【定义】申请人 包含
+  编号，
+  年龄，
+  收入，
+  信用评分，
+  现有卡数。
+
+【定义】申请 包含
+  申请额度，
+  卡类型。
+
+【定义】决定 包含
+  批准，
+  批准额度，
+  利率，
+  理由。
+
+评估申请 入参 申请人，申请，产出：
+  若 申请人.年龄 小于 21：
+    返回 决定(批准 = 假, 批准额度 = 0, 利率 = 0, 理由 = 「年龄未满21岁」)。
+  若 申请人.信用评分 小于 550：
+    返回 决定(批准 = 假, 批准额度 = 0, 利率 = 0, 理由 = 「信用评分过低」)。
+  若 申请人.现有卡数 大于 5：
+    返回 决定(批准 = 假, 批准额度 = 0, 利率 = 0, 理由 = 「现有卡数过多」)。
+  令 额度 为 确定额度(申请人, 申请)。
+  令 利率 为 确定利率(申请人)。
+  返回 决定(批准 = 真, 批准额度 = 额度, 利率 = 利率, 理由 = 「已批准」)。
+
+确定额度 入参 申请人，申请，产出：
+  若 申请人.信用评分 大于 750：
+    返回 申请.申请额度。
+  若 申请人.信用评分 大于 700：
+    返回 申请.申请额度 乘 80 除以 100。
+  返回 申请.申请额度 乘 50 除以 100。
+
+确定利率 入参 申请人，产出：
+  若 申请人.信用评分 大于 750：
+    返回 1299。
+  若 申请人.信用评分 大于 700：
+    返回 1599。
+  返回 1999。
+`;
+
+const CREDITCARD_SOURCE_DE = `Dieses Modul ist finanz.kreditkarte.
+
+Definiere Antragsteller mit
+  kennung,
+  alter,
+  einkommen,
+  bonitaet,
+  vorhandeneKarten.
+
+Definiere Antrag mit
+  gewuenschtesLimit,
+  kartentyp.
+
+Definiere Entscheidung mit
+  genehmigt,
+  genehmigterLimit,
+  zinssatz,
+  begruendung.
+
+antragAuswerten mit antragsteller, antrag, liefert:
+  Falls antragsteller.alter kleiner als 21:
+    gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Alter unter 21".
+  Falls antragsteller.bonitaet kleiner als 550:
+    gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Bonitaet zu niedrig".
+  Falls antragsteller.vorhandeneKarten größer als 5:
+    gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Zu viele vorhandene Karten".
+  sei limit gleich limitBestimmen mit antragsteller, antrag.
+  sei rate gleich zinsBestimmen mit antragsteller.
+  gib zurueck Entscheidung mit genehmigt = wahr, genehmigterLimit = limit, zinssatz = rate, begruendung = "Genehmigt".
+
+limitBestimmen mit antragsteller, antrag, liefert:
+  Falls antragsteller.bonitaet größer als 750:
+    gib zurueck antrag.gewuenschtesLimit.
+  Falls antragsteller.bonitaet größer als 700:
+    gib zurueck antrag.gewuenschtesLimit mal 80 geteilt durch 100.
+  gib zurueck antrag.gewuenschtesLimit mal 50 geteilt durch 100.
+
+zinsBestimmen mit antragsteller, liefert:
+  Falls antragsteller.bonitaet größer als 750:
+    gib zurueck 1299.
+  Falls antragsteller.bonitaet größer als 700:
+    gib zurueck 1599.
+  gib zurueck 1999.
+`;
+
+// ============================================
+// 策略示例定义
+// ============================================
+
+const loanExample: PolicyExample = {
+  id: 'loan-evaluation',
   category: 'loan',
-  groupPath: ['Finance', 'Loan'],
-  source: LOAN_POLICY_SOURCE,
-  defaultInput: {
-    application: {
-      applicantId: 'APP-001',
-      amount: 50000,
-      termMonths: 36,
-      purpose: 'Home improvement',
+  groupId: 'loan',
+  sources: {
+    'en-US': LOAN_SOURCE_EN,
+    'zh-CN': LOAN_SOURCE_ZH,
+    'de-DE': LOAN_SOURCE_DE,
+  },
+  metadata: {
+    'en-US': {
+      name: 'Loan Evaluation',
+      description: 'Evaluate loan applications based on credit score and age',
     },
-    applicant: {
-      age: 35,
-      creditScore: 750,
-      annualIncome: 80000,
-      monthlyDebt: 1500,
-      yearsEmployed: 8,
+    'zh-CN': {
+      name: '贷款评估',
+      description: '根据信用评分和年龄评估贷款申请',
+    },
+    'de-DE': {
+      name: 'Kreditbewertung',
+      description: 'Kreditantraege basierend auf Bonitaet und Alter bewerten',
     },
   },
-};
-
-const loanRejectedCredit: PolicyExample = {
-  id: 'loan-rejected-credit',
-  name: 'Loan Application - Rejected (Low Credit)',
-  nameZh: '贷款申请 - 拒绝（信用不足）',
-  description: 'Loan application rejected due to low credit score',
-  descriptionZh: '因信用评分过低被拒绝的贷款申请',
-  locale: 'en-US',
-  category: 'loan',
-  groupPath: ['Finance', 'Loan'],
-  source: LOAN_POLICY_SOURCE,
   defaultInput: {
-    application: {
-      applicantId: 'APP-002',
-      amount: 30000,
-      termMonths: 24,
-      purpose: 'Debt consolidation',
-    },
     applicant: {
-      age: 28,
-      creditScore: 580,
-      annualIncome: 45000,
-      monthlyDebt: 800,
-      yearsEmployed: 3,
-    },
-  },
-};
-
-const loanRejectedAge: PolicyExample = {
-  id: 'loan-rejected-age',
-  name: 'Loan Application - Rejected (Age Limit)',
-  nameZh: '贷款申请 - 拒绝（年龄限制）',
-  description: 'Loan application rejected due to age above limit',
-  descriptionZh: '因年龄超过限制被拒绝的贷款申请',
-  locale: 'en-US',
-  category: 'loan',
-  groupPath: ['Finance', 'Loan'],
-  source: LOAN_POLICY_SOURCE,
-  defaultInput: {
-    application: {
-      applicantId: 'APP-003',
-      amount: 20000,
-      termMonths: 12,
-      purpose: 'Medical expenses',
-    },
-    applicant: {
-      age: 78,
+      id: 'APP-001',
       creditScore: 720,
-      annualIncome: 60000,
-      monthlyDebt: 500,
-      yearsEmployed: 40,
+      income: 75000,
+      age: 35,
     },
   },
 };
 
-// ============================================
-// 医疗资格示例
-// ============================================
-
-const healthcareEligibleSenior: PolicyExample = {
-  id: 'healthcare-eligible-senior',
-  name: 'Healthcare Eligibility - Senior Patient',
-  nameZh: '医疗资格 - 老年患者',
-  description: 'Eligibility check for a senior patient with Medicare',
-  descriptionZh: '持有Medicare的老年患者资格审核',
-  locale: 'en-US',
+const healthcareExample: PolicyExample = {
+  id: 'healthcare-eligibility',
   category: 'healthcare',
-  groupPath: ['Healthcare', 'Eligibility'],
-  source: HEALTHCARE_ELIGIBILITY_SOURCE,
-  defaultInput: {
-    patient: {
-      patientId: 'PAT-001',
-      age: 70,
-      hasInsurance: true,
-      insuranceType: 'Medicare',
-      chronicConditions: 2,
+  groupId: 'eligibility',
+  sources: {
+    'en-US': HEALTHCARE_SOURCE_EN,
+    'zh-CN': HEALTHCARE_SOURCE_ZH,
+    'de-DE': HEALTHCARE_SOURCE_DE,
+  },
+  metadata: {
+    'en-US': {
+      name: 'Healthcare Eligibility',
+      description: 'Check patient eligibility for medical services',
     },
-    service: {
-      serviceCode: 'SVC-001',
-      serviceName: 'Annual checkup',
-      basePrice: 500,
-      requiresPreAuth: false,
+    'zh-CN': {
+      name: '医疗资格审核',
+      description: '检查患者的医疗服务资格',
+    },
+    'de-DE': {
+      name: 'Gesundheits-Berechtigung',
+      description: 'Patientenberechtigung fuer medizinische Leistungen pruefen',
     },
   },
-};
-
-const healthcareNoInsurance: PolicyExample = {
-  id: 'healthcare-no-insurance',
-  name: 'Healthcare Eligibility - No Insurance',
-  nameZh: '医疗资格 - 无保险',
-  description: 'Eligibility check for patient without insurance',
-  descriptionZh: '无保险患者的资格审核',
-  locale: 'en-US',
-  category: 'healthcare',
-  groupPath: ['Healthcare', 'Eligibility'],
-  source: HEALTHCARE_ELIGIBILITY_SOURCE,
   defaultInput: {
     patient: {
-      patientId: 'PAT-002',
+      id: 'PAT-001',
       age: 45,
-      hasInsurance: false,
-      insuranceType: '',
-      chronicConditions: 0,
-    },
-    service: {
-      serviceCode: 'SVC-002',
-      serviceName: 'X-Ray',
-      basePrice: 300,
-      requiresPreAuth: false,
-    },
-  },
-};
-
-const healthcareEligibleMinor: PolicyExample = {
-  id: 'healthcare-eligible-minor',
-  name: 'Healthcare Eligibility - Minor Patient',
-  nameZh: '医疗资格 - 未成年患者',
-  description: 'Eligibility check for a minor patient with Standard insurance',
-  descriptionZh: '持有标准保险的未成年患者资格审核',
-  locale: 'en-US',
-  category: 'healthcare',
-  groupPath: ['Healthcare', 'Eligibility'],
-  source: HEALTHCARE_ELIGIBILITY_SOURCE,
-  defaultInput: {
-    patient: {
-      patientId: 'PAT-003',
-      age: 12,
       hasInsurance: true,
       insuranceType: 'Standard',
-      chronicConditions: 0,
     },
     service: {
-      serviceCode: 'SVC-003',
-      serviceName: 'Vaccination',
-      basePrice: 150,
-      requiresPreAuth: false,
+      code: 'SVC-001',
+      name: 'Annual Checkup',
+      price: 500,
     },
   },
 };
 
-// ============================================
-// 汽车保险示例
-// ============================================
-
-const autoInsuranceApproved: PolicyExample = {
-  id: 'auto-insurance-approved',
-  name: 'Auto Insurance Quote - Approved',
-  nameZh: '汽车保险报价 - 通过',
-  description: 'Auto insurance quote for experienced driver with clean record',
-  descriptionZh: '驾驶记录良好的老司机汽车保险报价',
-  locale: 'en-US',
+const autoInsuranceExample: PolicyExample = {
+  id: 'auto-insurance-quote',
   category: 'auto-insurance',
-  groupPath: ['Insurance', 'Auto Insurance'],
-  source: AUTO_INSURANCE_SOURCE,
+  groupId: 'auto',
+  sources: {
+    'en-US': AUTO_SOURCE_EN,
+    'zh-CN': AUTO_SOURCE_ZH,
+    'de-DE': AUTO_SOURCE_DE,
+  },
+  metadata: {
+    'en-US': {
+      name: 'Auto Insurance Quote',
+      description: 'Generate auto insurance quotes based on driver and vehicle information',
+    },
+    'zh-CN': {
+      name: '汽车保险报价',
+      description: '根据驾驶员和车辆信息生成汽车保险报价',
+    },
+    'de-DE': {
+      name: 'Kfz-Versicherungsangebot',
+      description: 'Kfz-Versicherungsangebote basierend auf Fahrer- und Fahrzeuginformationen erstellen',
+    },
+  },
   defaultInput: {
     driver: {
-      driverId: 'DRV-001',
+      id: 'DRV-001',
       age: 35,
       yearsLicensed: 15,
-      accidentCount: 0,
-      violationCount: 1,
-      creditScore: 720,
+      accidents: 0,
+      violations: 1,
     },
     vehicle: {
       vin: '1HGBH41JXMN109186',
       year: 2022,
-      make: 'Honda',
-      model: 'Accord',
       value: 28000,
       safetyRating: 9,
     },
-    coverageType: 'Standard',
   },
 };
 
-const autoInsuranceRejectedAge: PolicyExample = {
-  id: 'auto-insurance-rejected-age',
-  name: 'Auto Insurance Quote - Rejected (Underage)',
-  nameZh: '汽车保险报价 - 拒绝（未成年）',
-  description: 'Auto insurance quote rejected for underage driver',
-  descriptionZh: '未成年驾驶员的汽车保险报价被拒绝',
-  locale: 'en-US',
-  category: 'auto-insurance',
-  groupPath: ['Insurance', 'Auto Insurance'],
-  source: AUTO_INSURANCE_SOURCE,
-  defaultInput: {
-    driver: {
-      driverId: 'DRV-002',
-      age: 16,
-      yearsLicensed: 0,
-      accidentCount: 0,
-      violationCount: 0,
-      creditScore: 0,
-    },
-    vehicle: {
-      vin: '2HGBH41JXMN109187',
-      year: 2020,
-      make: 'Toyota',
-      model: 'Camry',
-      value: 25000,
-      safetyRating: 8,
-    },
-    coverageType: 'Basic',
-  },
-};
-
-const autoInsuranceRejectedAccidents: PolicyExample = {
-  id: 'auto-insurance-rejected-accidents',
-  name: 'Auto Insurance Quote - Rejected (Too Many Accidents)',
-  nameZh: '汽车保险报价 - 拒绝（事故过多）',
-  description: 'Auto insurance quote rejected due to accident history',
-  descriptionZh: '因事故记录过多被拒绝的汽车保险报价',
-  locale: 'en-US',
-  category: 'auto-insurance',
-  groupPath: ['Insurance', 'Auto Insurance'],
-  source: AUTO_INSURANCE_SOURCE,
-  defaultInput: {
-    driver: {
-      driverId: 'DRV-003',
-      age: 45,
-      yearsLicensed: 25,
-      accidentCount: 5,
-      violationCount: 3,
-      creditScore: 680,
-    },
-    vehicle: {
-      vin: '3HGBH41JXMN109188',
-      year: 2019,
-      make: 'BMW',
-      model: '3 Series',
-      value: 35000,
-      safetyRating: 7,
-    },
-    coverageType: 'Premium',
-  },
-};
-
-// ============================================
-// 欺诈检测示例
-// ============================================
-
-const fraudNormal: PolicyExample = {
-  id: 'fraud-normal',
-  name: 'Fraud Detection - Normal Transaction',
-  nameZh: '欺诈检测 - 正常交易',
-  description: 'Normal transaction from established account',
-  descriptionZh: '来自老账户的正常交易',
-  locale: 'en-US',
+const fraudExample: PolicyExample = {
+  id: 'fraud-detection',
   category: 'fraud',
-  groupPath: ['Finance', 'Fraud Detection'],
-  source: FRAUD_DETECTION_SOURCE,
+  groupId: 'fraud',
+  sources: {
+    'en-US': FRAUD_SOURCE_EN,
+    'zh-CN': FRAUD_SOURCE_ZH,
+    'de-DE': FRAUD_SOURCE_DE,
+  },
+  metadata: {
+    'en-US': {
+      name: 'Fraud Detection',
+      description: 'Detect potentially fraudulent transactions',
+    },
+    'zh-CN': {
+      name: '欺诈检测',
+      description: '检测潜在的欺诈交易',
+    },
+    'de-DE': {
+      name: 'Betrugserkennung',
+      description: 'Potenziell betruegerische Transaktionen erkennen',
+    },
+  },
   defaultInput: {
     transaction: {
-      transactionId: 'TXN-001',
+      id: 'TXN-001',
       accountId: 'ACC-001',
       amount: 500,
       timestamp: 1704067200,
@@ -564,209 +805,62 @@ const fraudNormal: PolicyExample = {
       averageAmount: 450,
       suspiciousCount: 0,
       accountAge: 365,
-      lastTimestamp: 1704060000,
     },
   },
 };
 
-const fraudSuspiciousLarge: PolicyExample = {
-  id: 'fraud-suspicious-large',
-  name: 'Fraud Detection - Large Transaction Alert',
-  nameZh: '欺诈检测 - 大额交易预警',
-  description: 'Suspicious transaction flagged due to large amount',
-  descriptionZh: '因金额过大被标记的可疑交易',
-  locale: 'en-US',
-  category: 'fraud',
-  groupPath: ['Finance', 'Fraud Detection'],
-  source: FRAUD_DETECTION_SOURCE,
-  defaultInput: {
-    transaction: {
-      transactionId: 'TXN-002',
-      accountId: 'ACC-002',
-      amount: 1500000,
-      timestamp: 1704067200,
-    },
-    history: {
-      accountId: 'ACC-002',
-      averageAmount: 1000,
-      suspiciousCount: 0,
-      accountAge: 180,
-      lastTimestamp: 1704060000,
-    },
-  },
-};
-
-const fraudSuspiciousNewAccount: PolicyExample = {
-  id: 'fraud-suspicious-new-account',
-  name: 'Fraud Detection - New Account Risk',
-  nameZh: '欺诈检测 - 新账户风险',
-  description: 'Transaction flagged due to new account risk',
-  descriptionZh: '因新账户风险被标记的交易',
-  locale: 'en-US',
-  category: 'fraud',
-  groupPath: ['Finance', 'Fraud Detection'],
-  source: FRAUD_DETECTION_SOURCE,
-  defaultInput: {
-    transaction: {
-      transactionId: 'TXN-003',
-      accountId: 'ACC-003',
-      amount: 2000,
-      timestamp: 1704067200,
-    },
-    history: {
-      accountId: 'ACC-003',
-      averageAmount: 0,
-      suspiciousCount: 0,
-      accountAge: 7,
-      lastTimestamp: 1704060000,
-    },
-  },
-};
-
-// ============================================
-// 信用卡示例
-// ============================================
-
-const creditcardApproved: PolicyExample = {
-  id: 'creditcard-approved',
-  name: 'Credit Card Application - Approved',
-  nameZh: '信用卡申请 - 通过',
-  description: 'Credit card application with good credit history',
-  descriptionZh: '信用记录良好的信用卡申请',
-  locale: 'en-US',
+const creditcardExample: PolicyExample = {
+  id: 'creditcard-application',
   category: 'creditcard',
-  groupPath: ['Finance', 'Credit Card'],
-  source: CREDITCARD_SOURCE,
+  groupId: 'creditcard',
+  sources: {
+    'en-US': CREDITCARD_SOURCE_EN,
+    'zh-CN': CREDITCARD_SOURCE_ZH,
+    'de-DE': CREDITCARD_SOURCE_DE,
+  },
+  metadata: {
+    'en-US': {
+      name: 'Credit Card Application',
+      description: 'Evaluate credit card applications and determine credit limits',
+    },
+    'zh-CN': {
+      name: '信用卡申请',
+      description: '评估信用卡申请并确定信用额度',
+    },
+    'de-DE': {
+      name: 'Kreditkartenantrag',
+      description: 'Kreditkartenantraege auswerten und Kreditlimits festlegen',
+    },
+  },
   defaultInput: {
     applicant: {
-      applicantId: 'CCA-001',
+      id: 'CCA-001',
       age: 32,
-      annualIncome: 85000,
+      income: 85000,
       creditScore: 740,
-      existingCreditCards: 2,
-      monthlyRent: 1500,
-      employmentStatus: 'Full-time',
-      yearsAtCurrentJob: 5,
+      existingCards: 2,
     },
-    history: {
-      bankruptcyCount: 0,
-      latePayments: 1,
-      utilization: 25,
-      accountAge: 8,
-      hardInquiries: 2,
-    },
-    offer: {
-      productType: 'Standard',
+    application: {
       requestedLimit: 10000,
-      hasRewards: true,
-      annualFee: 0,
-    },
-  },
-};
-
-const creditcardRejectedAge: PolicyExample = {
-  id: 'creditcard-rejected-age',
-  name: 'Credit Card Application - Rejected (Underage)',
-  nameZh: '信用卡申请 - 拒绝（年龄不足）',
-  description: 'Credit card application rejected due to age below 21',
-  descriptionZh: '因年龄未满21岁被拒绝的信用卡申请',
-  locale: 'en-US',
-  category: 'creditcard',
-  groupPath: ['Finance', 'Credit Card'],
-  source: CREDITCARD_SOURCE,
-  defaultInput: {
-    applicant: {
-      applicantId: 'CCA-002',
-      age: 19,
-      annualIncome: 25000,
-      creditScore: 680,
-      existingCreditCards: 0,
-      monthlyRent: 800,
-      employmentStatus: 'Part-time',
-      yearsAtCurrentJob: 1,
-    },
-    history: {
-      bankruptcyCount: 0,
-      latePayments: 0,
-      utilization: 0,
-      accountAge: 1,
-      hardInquiries: 1,
-    },
-    offer: {
-      productType: 'Standard',
-      requestedLimit: 5000,
-      hasRewards: false,
-      annualFee: 0,
-    },
-  },
-};
-
-const creditcardRejectedBankruptcy: PolicyExample = {
-  id: 'creditcard-rejected-bankruptcy',
-  name: 'Credit Card Application - Rejected (Bankruptcy)',
-  nameZh: '信用卡申请 - 拒绝（破产记录）',
-  description: 'Credit card application rejected due to bankruptcy on record',
-  descriptionZh: '因存在破产记录被拒绝的信用卡申请',
-  locale: 'en-US',
-  category: 'creditcard',
-  groupPath: ['Finance', 'Credit Card'],
-  source: CREDITCARD_SOURCE,
-  defaultInput: {
-    applicant: {
-      applicantId: 'CCA-003',
-      age: 45,
-      annualIncome: 65000,
-      creditScore: 550,
-      existingCreditCards: 0,
-      monthlyRent: 1200,
-      employmentStatus: 'Full-time',
-      yearsAtCurrentJob: 3,
-    },
-    history: {
-      bankruptcyCount: 1,
-      latePayments: 5,
-      utilization: 80,
-      accountAge: 2,
-      hardInquiries: 4,
-    },
-    offer: {
-      productType: 'Standard',
-      requestedLimit: 3000,
-      hasRewards: false,
-      annualFee: 0,
+      cardType: 'Standard',
     },
   },
 };
 
 // ============================================
-// 导出所有示例
+// 导出
 // ============================================
 
 export const POLICY_EXAMPLES: PolicyExample[] = [
-  // 贷款
-  loanApproved,
-  loanRejectedCredit,
-  loanRejectedAge,
-  // 医疗
-  healthcareEligibleSenior,
-  healthcareNoInsurance,
-  healthcareEligibleMinor,
-  // 汽车保险
-  autoInsuranceApproved,
-  autoInsuranceRejectedAge,
-  autoInsuranceRejectedAccidents,
-  // 欺诈检测
-  fraudNormal,
-  fraudSuspiciousLarge,
-  fraudSuspiciousNewAccount,
-  // 信用卡
-  creditcardApproved,
-  creditcardRejectedAge,
-  creditcardRejectedBankruptcy,
+  loanExample,
+  healthcareExample,
+  autoInsuranceExample,
+  fraudExample,
+  creditcardExample,
 ];
 
 // 按类别分组
-export const POLICY_EXAMPLES_BY_CATEGORY = {
+export const POLICY_EXAMPLES_BY_CATEGORY: Record<PolicyCategory, PolicyExample[]> = {
   loan: POLICY_EXAMPLES.filter((e) => e.category === 'loan'),
   creditcard: POLICY_EXAMPLES.filter((e) => e.category === 'creditcard'),
   fraud: POLICY_EXAMPLES.filter((e) => e.category === 'fraud'),
@@ -774,47 +868,91 @@ export const POLICY_EXAMPLES_BY_CATEGORY = {
   'auto-insurance': POLICY_EXAMPLES.filter((e) => e.category === 'auto-insurance'),
 };
 
-// 按语言分组
-export const POLICY_EXAMPLES_BY_LOCALE = {
-  'zh-CN': POLICY_EXAMPLES.filter((e) => e.locale === 'zh-CN'),
-  'en-US': POLICY_EXAMPLES.filter((e) => e.locale === 'en-US'),
-  'de-DE': POLICY_EXAMPLES.filter((e) => e.locale === 'de-DE'),
+// ============================================
+// 辅助函数
+// ============================================
+
+/**
+ * 获取示例的源码（根据语言）
+ */
+export function getExampleSource(example: PolicyExample, locale: SupportedLocale): string {
+  return example.sources[locale] || example.sources['en-US'];
+}
+
+/**
+ * 获取示例名称（根据语言）
+ */
+export function getExampleName(example: PolicyExample, locale: SupportedLocale | string): string {
+  const normalizedLocale = normalizeLocale(locale);
+  return example.metadata[normalizedLocale]?.name || example.metadata['en-US'].name;
+}
+
+/**
+ * 获取示例描述（根据语言）
+ */
+export function getExampleDescription(example: PolicyExample, locale: SupportedLocale | string): string {
+  const normalizedLocale = normalizeLocale(locale);
+  return example.metadata[normalizedLocale]?.description || example.metadata['en-US'].description;
+}
+
+/**
+ * 获取分组名称（根据语言）
+ */
+export function getGroupName(group: PolicyGroupDef, locale: SupportedLocale | string): string {
+  const normalizedLocale = normalizeLocale(locale);
+  return group.names[normalizedLocale] || group.names['en-US'];
+}
+
+/**
+ * 规范化 locale 字符串
+ */
+export function normalizeLocale(locale: string): SupportedLocale {
+  if (locale.startsWith('zh')) return 'zh-CN';
+  if (locale.startsWith('de')) return 'de-DE';
+  return 'en-US';
+}
+
+/**
+ * 类别标签映射
+ */
+export const CATEGORY_LABELS: Record<PolicyCategory, Record<SupportedLocale, string>> = {
+  loan: { 'en-US': 'Loan', 'zh-CN': '贷款', 'de-DE': 'Kredit' },
+  creditcard: { 'en-US': 'Credit Card', 'zh-CN': '信用卡', 'de-DE': 'Kreditkarte' },
+  fraud: { 'en-US': 'Fraud Detection', 'zh-CN': '欺诈检测', 'de-DE': 'Betrugserkennung' },
+  healthcare: { 'en-US': 'Healthcare', 'zh-CN': '医疗', 'de-DE': 'Gesundheitswesen' },
+  'auto-insurance': { 'en-US': 'Auto Insurance', 'zh-CN': '汽车保险', 'de-DE': 'Kfz-Versicherung' },
 };
 
-// 按分组路径分组
-export function getExamplesByGroupPath(groupPath: string[]): PolicyExample[] {
-  return POLICY_EXAMPLES.filter((e) => {
-    if (e.groupPath.length < groupPath.length) return false;
-    return groupPath.every((segment, i) => e.groupPath[i] === segment);
-  });
-}
-
-// 获取示例名称（根据 UI 语言）
-export function getExampleName(example: PolicyExample, uiLocale: string): string {
-  return uiLocale.startsWith('zh') ? example.nameZh : example.name;
-}
-
-// 获取示例描述（根据 UI 语言）
-export function getExampleDescription(example: PolicyExample, uiLocale: string): string {
-  return uiLocale.startsWith('zh') ? example.descriptionZh : example.description;
-}
-
-// 类别标签映射
-export const CATEGORY_LABELS: Record<PolicyCategory, { en: string; zh: string }> = {
-  loan: { en: 'Loan', zh: '贷款' },
-  creditcard: { en: 'Credit Card', zh: '信用卡' },
-  fraud: { en: 'Fraud Detection', zh: '欺诈检测' },
-  healthcare: { en: 'Healthcare', zh: '医疗' },
-  'auto-insurance': { en: 'Auto Insurance', zh: '汽车保险' },
-};
-
-export function getCategoryLabel(category: string, uiLocale: string): string {
+/**
+ * 获取类别标签
+ */
+export function getCategoryLabel(category: string, locale: SupportedLocale | string): string {
+  const normalizedLocale = normalizeLocale(locale);
   const labels = CATEGORY_LABELS[category as PolicyCategory];
   if (!labels) return category;
-  return uiLocale.startsWith('zh') ? labels.zh : labels.en;
+  return labels[normalizedLocale] || labels['en-US'];
 }
 
-// 获取分组名称（根据 UI 语言）
-export function getGroupName(group: PolicyGroupDef, uiLocale: string): string {
-  return uiLocale.startsWith('zh') ? group.nameZh : group.name;
+/**
+ * 根据分组 ID 获取示例
+ */
+export function getExamplesByGroupId(groupId: string): PolicyExample[] {
+  return POLICY_EXAMPLES.filter((e) => e.groupId === groupId);
+}
+
+/**
+ * 查找分组定义
+ */
+export function findGroupById(groupId: string): PolicyGroupDef | undefined {
+  function search(groups: PolicyGroupDef[]): PolicyGroupDef | undefined {
+    for (const group of groups) {
+      if (group.id === groupId) return group;
+      if (group.children) {
+        const found = search(group.children);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  }
+  return search(POLICY_GROUP_TREE);
 }
