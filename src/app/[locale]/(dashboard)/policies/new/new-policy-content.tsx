@@ -101,7 +101,8 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   );
 
   // 应用语法转换结果
-  const handleApplyConversion = useCallback((convertedContent: string) => {
+  const handleApplyConversion = useCallback((convertedContent: string, _newLocale: unknown) => {
+    void _newLocale; // CNL 语言已跟随页面 locale，忽略转换后的语言
     setContent(convertedContent);
     // 转换后清除模板选择状态，因为内容已经被修改
     setSelectedExample(null);
