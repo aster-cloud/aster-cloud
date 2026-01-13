@@ -93,6 +93,7 @@ export default async function DashboardPage() {
       noDescription: t('recentPolicies.noDescription'),
       runsTemplate: t.raw('recentPolicies.runs'),
       deleted: t('recentPolicies.deleted'),
+      restoreHint: t('recentPolicies.restoreHint'),
     },
   };
 

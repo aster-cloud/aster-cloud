@@ -73,7 +73,7 @@ async function getPoliciesData(userId: string) {
       },
       include: {
         _count: {
-          select: { policies: true },
+          select: { policies: { where: { deletedAt: null } } },
         },
       },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],

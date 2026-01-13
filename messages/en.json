@@ -436,7 +436,8 @@
       "createFirst": "Create your first policy",
       "noDescription": "No description",
       "runs": "{count} runs",
-      "deleted": "Deleted"
+      "deleted": "Deleted",
+      "restoreHint": "This policy has been deleted. Please restore it from the Trash to continue using it."
     }
   },
   "billing": {

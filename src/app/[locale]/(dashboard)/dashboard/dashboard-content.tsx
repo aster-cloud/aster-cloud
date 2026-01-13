@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { Link } from '@/i18n/navigation';
 import { isUnlimited } from '@/lib/plans';
 
@@ -71,6 +72,7 @@ interface Translations {
     noDescription: string;
     runsTemplate: string;
     deleted: string;
+    restoreHint: string;
   };
 }
 
@@ -92,8 +94,45 @@ export function DashboardContent({
   totalPiiFields,
   translations: t,
 }: DashboardContentProps) {
+  // 跟踪已删除策略的点击次数
+  const [deletedClickCount, setDeletedClickCount] = useState<Record<string, number>>({});
+  const [showRestoreHint, setShowRestoreHint] = useState(false);
+
+  // 处理已删除策略的点击
+  const handleDeletedPolicyClick = useCallback((policyId: string) => {
+    setDeletedClickCount((prev) => {
+      const newCount = (prev[policyId] || 0) + 1;
+      if (newCount >= 2) {
+        setShowRestoreHint(true);
+        // 3秒后自动隐藏提示
+        setTimeout(() => setShowRestoreHint(false), 3000);
+      }
+      return { ...prev, [policyId]: newCount };
+    });
+  }, []);
+
   return (
     <div>
+      {/* 恢复提示 Toast */}
+      {showRestoreHint && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3 shadow-lg">
+            <svg className="h-5 w-5 text-yellow-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <p className="text-sm text-yellow-800">{t.recentPolicies.restoreHint}</p>
+            <button
+              onClick={() => setShowRestoreHint(false)}
+              className="ml-2 text-yellow-600 hover:text-yellow-800"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="md:flex md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
@@ -332,38 +371,68 @@ export function DashboardContent({
             <ul className="divide-y divide-gray-200">
               {policies.map((policy) => (
                 <li key={policy.id}>
-                  <Link
-                    href={`/policies/${policy.id}`}
-                    className="block hover:bg-gray-50"
-                  >
-                    <div className="px-4 py-4 sm:px-6">
-                      <div className="flex items-center justify-between">
-                        <p className={`text-sm font-medium truncate ${policy.isDeleted ? 'text-gray-400 line-through' : 'text-indigo-600'}`}>
-                          {policy.name}
-                        </p>
-                        <div className="ml-2 flex-shrink-0 flex gap-2">
-                          {policy.isDeleted && (
+                  {policy.isDeleted ? (
+                    // 已删除的策略：不可点击，仅显示
+                    <div
+                      className="block cursor-not-allowed"
+                      onClick={() => handleDeletedPolicyClick(policy.id)}
+                    >
+                      <div className="px-4 py-4 sm:px-6">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium truncate text-gray-400 line-through">
+                            {policy.name}
+                          </p>
+                          <div className="ml-2 flex-shrink-0 flex gap-2">
                             <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
                               {t.recentPolicies.deleted}
                             </span>
-                          )}
-                          {policy.piiFields && policy.piiFields.length > 0 && (
-                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                              {policy.piiFields.length} PII
-                            </span>
-                          )}
+                            {policy.piiFields && policy.piiFields.length > 0 && (
+                              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                                {policy.piiFields.length} PII
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-2 flex justify-between">
+                          <p className="text-sm text-gray-500 truncate">
+                            {policy.description || t.recentPolicies.noDescription}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            {formatTemplate(t.recentPolicies.runsTemplate, { count: policy._count.executions })}
+                          </p>
                         </div>
                       </div>
-                      <div className="mt-2 flex justify-between">
-                        <p className="text-sm text-gray-500 truncate">
-                          {policy.description || t.recentPolicies.noDescription}
-                        </p>
-                        <p className="text-sm text-gray-400">
-                          {formatTemplate(t.recentPolicies.runsTemplate, { count: policy._count.executions })}
-                        </p>
-                      </div>
                     </div>
-                  </Link>
+                  ) : (
+                    // 正常策略：可点击跳转
+                    <Link
+                      href={`/policies/${policy.id}`}
+                      className="block hover:bg-gray-50"
+                    >
+                      <div className="px-4 py-4 sm:px-6">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium truncate text-indigo-600">
+                            {policy.name}
+                          </p>
+                          <div className="ml-2 flex-shrink-0 flex gap-2">
+                            {policy.piiFields && policy.piiFields.length > 0 && (
+                              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                                {policy.piiFields.length} PII
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-2 flex justify-between">
+                          <p className="text-sm text-gray-500 truncate">
+                            {policy.description || t.recentPolicies.noDescription}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            {formatTemplate(t.recentPolicies.runsTemplate, { count: policy._count.executions })}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

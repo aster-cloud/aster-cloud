@@ -46,6 +46,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const policy = await prisma.policy.findFirst({
       where: {
         id,
+        deletedAt: null, // 已删除的策略不能执行
         OR: [
           { userId: session.user.id },
           { isPublic: true },

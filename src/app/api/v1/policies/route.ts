@@ -26,10 +26,10 @@ export async function GET(req: Request) {
       );
     }
 
-    // 获取用户自己的策略和团队策略
+    // 获取用户自己的策略和团队策略（排除已删除的）
     const [ownPolicies, teamPolicies, freezeStatus] = await Promise.all([
       prisma.policy.findMany({
-        where: { userId },
+        where: { userId, deletedAt: null },
         orderBy: { updatedAt: 'desc' },
         select: {
           id: true,
@@ -45,6 +45,7 @@ export async function GET(req: Request) {
       }),
       prisma.policy.findMany({
         where: {
+          deletedAt: null,
           team: {
             members: {
               some: { userId },

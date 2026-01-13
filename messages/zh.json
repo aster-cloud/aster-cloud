@@ -436,7 +436,8 @@
       "createFirst": "创建您的第一个策略",
       "noDescription": "暂无描述",
       "runs": "{count} 次运行",
-      "deleted": "已删除"
+      "deleted": "已删除",
+      "restoreHint": "该策略已被删除，请从回收站恢复后方可继续使用。"
     }
   },
   "billing": {

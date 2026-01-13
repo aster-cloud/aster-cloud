@@ -436,7 +436,8 @@
       "createFirst": "Erstellen Sie Ihre erste Richtlinie",
       "noDescription": "Keine Beschreibung",
       "runs": "{count} Ausführungen",
-      "deleted": "Gelöscht"
+      "deleted": "Gelöscht",
+      "restoreHint": "Diese Richtlinie wurde gelöscht. Bitte stellen Sie sie aus dem Papierkorb wieder her, um sie weiter zu verwenden."
     }
   },
   "billing": {
