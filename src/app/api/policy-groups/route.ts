@@ -27,7 +27,9 @@ export async function GET() {
       },
       include: {
         _count: {
-          select: { policies: true },
+          select: {
+            policies: { where: { deletedAt: null } },
+          },
         },
       },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
@@ -129,7 +131,9 @@ export async function POST(req: Request) {
       },
       include: {
         _count: {
-          select: { policies: true },
+          select: {
+            policies: { where: { deletedAt: null } },
+          },
         },
       },
     });

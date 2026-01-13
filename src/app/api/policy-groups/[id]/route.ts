@@ -35,7 +35,11 @@ export async function GET(req: Request, { params }: RouteParams) {
         children: {
           orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
           include: {
-            _count: { select: { policies: true } },
+            _count: {
+              select: {
+                policies: { where: { deletedAt: null } },
+              },
+            },
           },
         },
         policies: {
@@ -49,7 +53,10 @@ export async function GET(req: Request, { params }: RouteParams) {
           },
         },
         _count: {
-          select: { policies: true, children: true },
+          select: {
+            policies: { where: { deletedAt: null } },
+            children: true,
+          },
         },
       },
     });
@@ -134,7 +141,9 @@ export async function PUT(req: Request, { params }: RouteParams) {
       },
       include: {
         _count: {
-          select: { policies: true },
+          select: {
+            policies: { where: { deletedAt: null } },
+          },
         },
       },
     });
@@ -176,7 +185,10 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       },
       include: {
         _count: {
-          select: { policies: true, children: true },
+          select: {
+            policies: { where: { deletedAt: null } },
+            children: true,
+          },
         },
       },
     });

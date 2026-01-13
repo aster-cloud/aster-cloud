@@ -30,7 +30,10 @@ export async function GET(req: Request, { params }: RouteParams) {
           select: { role: true },
         },
         _count: {
-          select: { members: true, policies: true },
+          select: {
+            members: true,
+            policies: { where: { deletedAt: null } },
+          },
         },
       },
     });

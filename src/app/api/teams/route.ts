@@ -24,7 +24,10 @@ export async function GET() {
           select: { role: true },
         },
         _count: {
-          select: { members: true, policies: true },
+          select: {
+            members: true,
+            policies: { where: { deletedAt: null } },
+          },
         },
       },
       orderBy: { updatedAt: 'desc' },
