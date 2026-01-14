@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { createPolicyApiClient, PolicySchemaResponse } from '@/services/policy/policy-api';
+import { compileLocally, type CNLLocale } from '@/services/policy/local-compiler';
 
 /**
  * POST /api/policies/schema
  *
  * 获取策略参数模式，用于动态表单生成
+ * 使用本地 aster-lang-ts 编译器进行解析，确保与前端一致
  */
 export async function POST(req: Request) {
   try {
@@ -36,24 +37,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Source code is required' }, { status: 400 });
     }
 
-    // 调用 Policy API 获取参数模式
-    const client = createPolicyApiClient(session.user.id, session.user.id);
-    const schemaResponse: PolicySchemaResponse = await client.getSchema(source, {
+    // 使用本地编译器提取 schema
+    const result = await compileLocally({
+      source,
+      locale: (locale || 'en-US') as CNLLocale,
       functionName,
-      locale: locale || 'en-US',
+      collectSchema: true,
     });
 
-    if (!schemaResponse.success) {
+    if (!result.success) {
+      // 格式化诊断信息
+      const errorMessages = result.diagnostics
+        ?.filter((d) => d.severity === 'error')
+        .map((d) => `行 ${d.startLine}:${d.startColumn} - ${d.message}`)
+        .join('; ');
+
       return NextResponse.json(
         {
           success: false,
-          error: schemaResponse.error || 'Failed to extract schema',
+          error: errorMessages
+            ? `CNL 语法错误: ${errorMessages}`
+            : 'Failed to parse CNL source',
         },
         { status: 400 }
       );
     }
 
-    return NextResponse.json(schemaResponse);
+    // 返回 schema 响应
+    return NextResponse.json({
+      success: true,
+      schema: result.schema,
+      moduleName: result.moduleName,
+      functionNames: result.functionNames,
+    });
   } catch (error) {
     console.error('Error getting policy schema:', error);
     return NextResponse.json(
