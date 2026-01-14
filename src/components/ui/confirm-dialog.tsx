@@ -7,7 +7,7 @@ export type ConfirmDialogVariant = 'danger' | 'warning' | 'info';
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
-  description: string;
+  description: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: ConfirmDialogVariant;
@@ -122,9 +122,9 @@ export function ConfirmDialog({
                   {title}
                 </h3>
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500" id="confirm-dialog-description">
+                  <div className="text-sm text-gray-500" id="confirm-dialog-description">
                     {description}
-                  </p>
+                  </div>
                 </div>
               </div>
             </div>

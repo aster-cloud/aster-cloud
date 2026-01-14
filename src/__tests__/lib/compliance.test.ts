@@ -18,8 +18,19 @@ vi.mock('@/lib/prisma', () => ({
 import { generateComplianceReport, getComplianceReports } from '@/lib/compliance';
 import { prisma } from '@/lib/prisma';
 
-// Cast prisma to mocked version
-const mockPrisma = vi.mocked(prisma);
+// Type-safe mock for Prisma
+type MockFn = ReturnType<typeof vi.fn>;
+const mockPrisma = {
+  complianceReport: {
+    create: prisma.complianceReport.create as unknown as MockFn,
+    update: prisma.complianceReport.update as unknown as MockFn,
+    findMany: prisma.complianceReport.findMany as unknown as MockFn,
+    findFirst: prisma.complianceReport.findFirst as unknown as MockFn,
+  },
+  policy: {
+    findMany: prisma.policy.findMany as unknown as MockFn,
+  },
+};
 
 describe('Compliance Report Generation', () => {
   beforeEach(() => {

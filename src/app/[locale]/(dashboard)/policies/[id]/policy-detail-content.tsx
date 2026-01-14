@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { PolicyVersionsTab } from '@/components/policy/policy-versions-tab';
 
 interface PolicyVersion {
   id: string;
@@ -209,31 +210,8 @@ export function PolicyDetailContent({
         </div>
       </div>
 
-      {/* Version History */}
-      {policy.versions.length > 0 && (
-        <div className="bg-white shadow sm:rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">{t.detail.versionHistory}</h3>
-            <ul className="divide-y divide-gray-200">
-              {policy.versions.map((version) => (
-                <li key={version.id} className="py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-medium text-gray-900">v{version.version}</span>
-                      {version.comment && (
-                        <span className="ml-2 text-gray-500">- {version.comment}</span>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-400">
-                      {new Date(version.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
+      {/* Version Management with Approval Workflow */}
+      <PolicyVersionsTab policyId={policy.id} />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

@@ -34,7 +34,27 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 const mockGetSession = vi.mocked(getSession);
-const mockPrisma = vi.mocked(prisma);
+
+// Type-safe mock for Prisma
+type MockFn = ReturnType<typeof vi.fn>;
+const mockPrisma = {
+  policyGroup: {
+    findMany: prisma.policyGroup.findMany as unknown as MockFn,
+    findFirst: prisma.policyGroup.findFirst as unknown as MockFn,
+    create: prisma.policyGroup.create as unknown as MockFn,
+    update: prisma.policyGroup.update as unknown as MockFn,
+    delete: prisma.policyGroup.delete as unknown as MockFn,
+    aggregate: prisma.policyGroup.aggregate as unknown as MockFn,
+    updateMany: prisma.policyGroup.updateMany as unknown as MockFn,
+  },
+  teamMember: {
+    findFirst: prisma.teamMember.findFirst as unknown as MockFn,
+  },
+  policy: {
+    updateMany: prisma.policy.updateMany as unknown as MockFn,
+  },
+  $transaction: prisma.$transaction as unknown as MockFn,
+};
 
 function createPostRequest(body: Record<string, unknown>) {
   return new Request('http://localhost/api/policy-groups', {
@@ -111,7 +131,7 @@ describe('Policy Groups API routes', () => {
           _count: { policies: 0 },
         },
       ];
-      mockPrisma.policyGroup.findMany.mockResolvedValue(mockGroups as never);
+      mockPrisma.policyGroup.findMany.mockResolvedValue(mockGroups);
 
       const response = await GET();
       const body = await response.json();
@@ -180,10 +200,10 @@ describe('Policy Groups API routes', () => {
     });
 
     it('should create a group with resolved sort order', async () => {
-      mockPrisma.policyGroup.findFirst.mockResolvedValueOnce({ id: 'parent-1' } as never);
+      mockPrisma.policyGroup.findFirst.mockResolvedValueOnce({ id: 'parent-1' });
       mockPrisma.policyGroup.aggregate.mockResolvedValue({
         _max: { sortOrder: 2 },
-      } as never);
+      });
       const createdGroup = {
         id: 'group-123',
         name: 'Projects',
@@ -194,7 +214,7 @@ describe('Policy Groups API routes', () => {
         userId: 'user-1',
         _count: { policies: 0 },
       };
-      mockPrisma.policyGroup.create.mockResolvedValue(createdGroup as never);
+      mockPrisma.policyGroup.create.mockResolvedValue(createdGroup);
 
       const response = await POST(
         createPostRequest({
@@ -277,7 +297,7 @@ describe('Policy Groups API routes', () => {
           },
         ],
       };
-      mockPrisma.policyGroup.findFirst.mockResolvedValue(mockGroup as never);
+      mockPrisma.policyGroup.findFirst.mockResolvedValue(mockGroup);
 
       const response = await GET_BY_ID(
         createRequestWithId('group-1', 'GET'),
@@ -320,7 +340,7 @@ describe('Policy Groups API routes', () => {
     });
 
     it('should block updates to system groups', async () => {
-      mockPrisma.policyGroup.findFirst.mockResolvedValue({ id: 'g1', isSystem: true } as never);
+      mockPrisma.policyGroup.findFirst.mockResolvedValue({ id: 'g1', isSystem: true });
 
       const response = await PUT(
         createRequestWithId('g1', 'PUT', { name: 'Updated' }),
@@ -337,7 +357,7 @@ describe('Policy Groups API routes', () => {
         id: 'g1',
         parentId: null,
         isSystem: false,
-      } as never);
+      });
 
       const response = await PUT(
         createRequestWithId('g1', 'PUT', { parentId: 'g1' }),
@@ -354,8 +374,8 @@ describe('Policy Groups API routes', () => {
         id: 'g1',
         parentId: null,
         isSystem: false,
-      } as never);
-      mockPrisma.policyGroup.findMany.mockResolvedValueOnce([{ id: 'child-1' }] as never);
+      });
+      mockPrisma.policyGroup.findMany.mockResolvedValueOnce([{ id: 'child-1' }]);
 
       const response = await PUT(
         createRequestWithId('g1', 'PUT', { parentId: 'child-1' }),
@@ -373,9 +393,9 @@ describe('Policy Groups API routes', () => {
         id: 'g1',
         parentId: null,
         isSystem: false,
-      } as never);
+      });
       // Mock findMany for checkIsDescendant (when parentId changes)
-      mockPrisma.policyGroup.findMany.mockResolvedValue([] as never);
+      mockPrisma.policyGroup.findMany.mockResolvedValue([]);
       const updatedGroup = {
         id: 'g1',
         name: 'Updated',
@@ -385,7 +405,7 @@ describe('Policy Groups API routes', () => {
         sortOrder: 5,
         _count: { policies: 3 },
       };
-      mockPrisma.policyGroup.update.mockResolvedValue(updatedGroup as never);
+      mockPrisma.policyGroup.update.mockResolvedValue(updatedGroup);
 
       const response = await PUT(
         createRequestWithId('g1', 'PUT', {
@@ -442,7 +462,7 @@ describe('Policy Groups API routes', () => {
     });
 
     it('should block deleting system group', async () => {
-      mockPrisma.policyGroup.findFirst.mockResolvedValue({ id: 'g1', isSystem: true } as never);
+      mockPrisma.policyGroup.findFirst.mockResolvedValue({ id: 'g1', isSystem: true });
 
       const response = await DELETE(
         createRequestWithId('g1', 'DELETE'),
@@ -460,7 +480,7 @@ describe('Policy Groups API routes', () => {
         parentId: 'parent-1',
         isSystem: false,
         _count: { policies: 2, children: 1 },
-      } as never);
+      });
 
       const response = await DELETE(
         createRequestWithId('g1', 'DELETE', {

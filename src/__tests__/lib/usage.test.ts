@@ -22,8 +22,22 @@ vi.mock('@/lib/prisma', () => ({
 import { checkUsageLimit, recordUsage, getUsageStats, hasFeatureAccess } from '@/lib/usage';
 import { prisma } from '@/lib/prisma';
 
-// Cast prisma to mocked version
-const mockPrisma = vi.mocked(prisma);
+// Type-safe mock for Prisma
+type MockFn = ReturnType<typeof vi.fn>;
+const mockPrisma = {
+  user: {
+    findUnique: prisma.user.findUnique as unknown as MockFn,
+    update: prisma.user.update as unknown as MockFn,
+  },
+  usageRecord: {
+    findUnique: prisma.usageRecord.findUnique as unknown as MockFn,
+    findMany: prisma.usageRecord.findMany as unknown as MockFn,
+    upsert: prisma.usageRecord.upsert as unknown as MockFn,
+  },
+  policy: {
+    count: prisma.policy.count as unknown as MockFn,
+  },
+};
 
 describe('Usage Tracking', () => {
   beforeEach(() => {

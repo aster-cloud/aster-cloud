@@ -224,15 +224,124 @@ model PolicyVersion {
   id       String  @id @default(cuid())
   policyId String
   version  Int
-  content  String  @db.Text
-  comment  String?
 
-  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  // 源码与哈希（安全架构扩展）
+  content    String  @db.Text    // 保留兼容性
+  source     String? @db.Text    // 新字段：策略源码
+  sourceHash String?             // SHA-256(source)
+  prevHash   String?             // 链式哈希，指向前一版本
+  comment    String?             // 保留兼容性
+
+  // 版本状态（安全架构扩展）
+  status    PolicyVersionStatus @default(DRAFT)
+  createdBy String?             // 创建者 ID
+
+  // 多版本共存支持
+  isDefault    Boolean   @default(false)  // 是否为默认执行版本
+  releaseNote  String?   @db.Text         // 版本发布说明
+  deprecatedAt DateTime?                  // 废弃时间
+  deprecatedBy String?                    // 废弃操作人
+  archivedAt   DateTime?                  // 归档时间
+  archivedBy   String?                    // 归档操作人
+
+  policy    Policy           @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  approvals PolicyApproval[]
 
   createdAt DateTime @default(now())
 
   @@unique([policyId, version])
   @@index([policyId])
+  @@index([sourceHash])
+  @@index([status])
+  @@index([policyId, status])
+  @@index([policyId, isDefault])
+}
+
+enum PolicyVersionStatus {
+  DRAFT              // 草稿 - 编辑中
+  PENDING_APPROVAL   // 待审批 - 已提交等待审批
+  APPROVED           // 已批准 - 可执行
+  REJECTED           // 已拒绝 - 不可执行
+  DEPRECATED         // 已废弃 - 仍可执行但有警告
+  ARCHIVED           // 已归档 - 不可执行，仅供审计
+}
+
+// 审批记录表（安全架构扩展）
+model PolicyApproval {
+  id         String           @id @default(cuid())
+  versionId  String
+  approverId String
+  decision   ApprovalDecision
+  comment    String?          @db.Text
+  createdAt  DateTime         @default(now())
+
+  version PolicyVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@index([approverId])
+  @@index([createdAt])
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  REQUESTED_CHANGES
+}
+
+// Nonce 表（防重放攻击）
+model UsedNonce {
+  id        String   @id @default(cuid())
+  nonce     String   @unique
+  policyId  String?  // 关联的策略 ID
+  userId    String?  // 使用者 ID
+  usedAt    DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@index([policyId])
+}
+
+// 安全事件日志
+model SecurityEvent {
+  id         String            @id @default(cuid())
+  eventType  SecurityEventType
+  severity   EventSeverity
+  policyId   String?
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  requestId  String?           // 请求追踪 ID
+  details    Json
+  createdAt  DateTime          @default(now())
+
+  @@index([eventType])
+  @@index([severity])
+  @@index([policyId])
+  @@index([createdAt])
+}
+
+enum SecurityEventType {
+  SIGNATURE_INVALID           // 签名无效
+  NONCE_REUSED                // Nonce 重放
+  TIMESTAMP_EXPIRED           // 时间戳过期
+  HASH_MISMATCH               // 哈希不匹配
+  UNAUTHORIZED_APPROVAL       // 未授权审批
+  SELF_APPROVAL_ATTEMPT       // 自审批尝试
+  POLICY_EXECUTED             // 策略执行
+  APPROVAL_DECISION           // 审批决策
+  VERSION_CREATED             // 版本创建
+  VERSION_NOT_FOUND           // 版本不存在
+  DEPRECATED_VERSION_EXECUTED // 执行已废弃版本（警告）
+  VERSION_SET_DEFAULT         // 设置默认版本
+  VERSION_DEPRECATED          // 版本被废弃
+  VERSION_ARCHIVED            // 版本被归档
+}
+
+enum EventSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
 }
 
 // Policy Recycle Bin - 存储已删除策略的快照

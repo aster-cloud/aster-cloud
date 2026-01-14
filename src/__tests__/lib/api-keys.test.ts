@@ -25,8 +25,17 @@ import {
 } from '@/lib/api-keys';
 import { prisma } from '@/lib/prisma';
 
-// Cast prisma to mocked version
-const mockPrisma = vi.mocked(prisma);
+// Type-safe mock for Prisma
+type MockFn = ReturnType<typeof vi.fn>;
+const mockPrisma = {
+  apiKey: {
+    create: prisma.apiKey.create as unknown as MockFn,
+    findUnique: prisma.apiKey.findUnique as unknown as MockFn,
+    findMany: prisma.apiKey.findMany as unknown as MockFn,
+    update: prisma.apiKey.update as unknown as MockFn,
+    updateMany: prisma.apiKey.updateMany as unknown as MockFn,
+  },
+};
 
 describe('API Keys', () => {
   beforeEach(() => {

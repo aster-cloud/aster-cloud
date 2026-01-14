@@ -6,6 +6,7 @@ const basePolicy: Policy = {
   id: 'policy-base',
   userId: 'user-1',
   teamId: null,
+  groupId: null,
   name: 'Base Policy',
   description: '用于测试的策略',
   content: '',
@@ -15,6 +16,9 @@ const basePolicy: Policy = {
   piiFields: [],
   createdAt: new Date('2024-01-01T00:00:00.000Z'),
   updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+  deletedAt: null,
+  deletedBy: null,
+  deleteReason: null,
 };
 
 function createPolicy(overrides: Partial<Policy> & { rules?: string | null }) {
@@ -95,8 +99,8 @@ describe('PolicyExecutor', () => {
 
       expect(result.metadata.policyId).toBe('policy-meta');
       expect(result.metadata.policyName).toBe('Metadata Test');
-      expect(new Date(result.metadata.evaluatedAt).toString()).not.toBe('Invalid Date');
-      expect(result.metadata.rules[0]).toMatchObject({
+      expect(new Date(result.metadata.evaluatedAt as string).toString()).not.toBe('Invalid Date');
+      expect((result.metadata.rules as { name: string; field: string; operator: string }[])[0]).toMatchObject({
         name: 'rule-1',
         field: 'amount',
         operator: 'gt',

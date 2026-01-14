@@ -33,7 +33,9 @@ vi.mock('@/lib/plans', () => ({
 
 const mockGetServerSession = vi.mocked(getServerSession);
 const mockGetPlanStripePriceId = vi.mocked(getPlanStripePriceId);
-const mockCreateCheckoutSession = vi.mocked(stripe.checkout.sessions.create);
+// Cast to mock function for proper typing
+type MockFn = ReturnType<typeof vi.fn>;
+const mockCreateCheckoutSession = stripe.checkout.sessions.create as unknown as MockFn;
 
 function createRequest(body: Record<string, unknown>) {
   return new Request('http://localhost/api/stripe/checkout', {

@@ -1,0 +1,162 @@
+/**
+ * 安全执行 API 端点
+ *
+ * 实现基于签名验证的策略执行：
+ * - 验证 HMAC-SHA256 签名
+ * - 验证时间戳有效性
+ * - 验证 Nonce 防重放
+ * - 验证哈希匹配
+ * - 执行策略（使用数据库源码）
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { executeSecurely } from '@/services/security/secure-executor';
+import type { SignedRequest } from '@/services/security/policy-security';
+import { v4 as uuidv4 } from 'uuid';
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  const requestId = uuidv4();
+
+  try {
+    // 1. 认证
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: '未授权', requestId },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+
+    // 2. 解析请求体
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: '无效的 JSON 请求体', requestId },
+        { status: 400 }
+      );
+    }
+
+    // 3. 验证请求体字段
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        { success: false, error: '请求体必须是有效对象', requestId },
+        { status: 400 }
+      );
+    }
+
+    const {
+      hash,
+      input,
+      timestamp,
+      nonce,
+      signature,
+      version,
+    } = body as Record<string, unknown>;
+
+    // 验证必填字段
+    if (
+      typeof hash !== 'string' ||
+      typeof timestamp !== 'number' ||
+      typeof nonce !== 'string' ||
+      typeof signature !== 'string'
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '缺少必填字段: hash, timestamp, nonce, signature',
+          requestId,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 验证 input 是对象
+    if (input !== undefined && (typeof input !== 'object' || input === null)) {
+      return NextResponse.json(
+        { success: false, error: 'input 必须是有效对象', requestId },
+        { status: 400 }
+      );
+    }
+
+    // 验证 version 是数字（如果提供）
+    if (version !== undefined && typeof version !== 'number') {
+      return NextResponse.json(
+        { success: false, error: 'version 必须是数字', requestId },
+        { status: 400 }
+      );
+    }
+
+    const signedRequest: SignedRequest = {
+      policyId: id,
+      hash,
+      input: input ?? {},
+      timestamp,
+      nonce,
+      signature,
+      version: typeof version === 'number' ? version : undefined,
+    };
+
+    // 4. 获取请求元数据
+    const ipAddress =
+      request.headers.get('x-forwarded-for')?.split(',')[0] ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const userAgent = request.headers.get('user-agent') || undefined;
+
+    // 5. 安全执行
+    const result = await executeSecurely({
+      request: signedRequest,
+      userId: session.user.id,
+      tenantId: (session.user as { teamId?: string }).teamId || session.user.id,
+      ipAddress,
+      userAgent,
+      requestId,
+    });
+
+    // 6. 返回结果
+    const status = result.success
+      ? 200
+      : result.errorCode === 'SIGNATURE_INVALID'
+        ? 401
+        : result.errorCode === 'HASH_MISMATCH'
+          ? 409
+          : 400;
+
+    return NextResponse.json(
+      {
+        success: result.success,
+        result: result.result,
+        error: result.error,
+        errorCode: result.errorCode,
+        executionTimeMs: result.executionTimeMs,
+        version: result.version,
+        sourceHash: result.sourceHash,
+        isDeprecated: result.isDeprecated,
+        expectedVersion: result.expectedVersion,
+        expectedHash: result.expectedHash,
+        requestId,
+      },
+      { status }
+    );
+  } catch (error) {
+    console.error(`[SecureExecute] Request ${requestId} failed:`, error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: '服务器内部错误',
+        requestId,
+      },
+      { status: 500 }
+    );
+  }
+}

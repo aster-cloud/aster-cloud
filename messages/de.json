@@ -272,6 +272,7 @@
     "policies": "Richtlinien",
     "reports": "Berichte",
     "teams": "Teams",
+    "security": "Sicherheit",
     "billing": "Abrechnung",
     "settings": "Einstellungen",
     "mobile": {
@@ -894,5 +895,9 @@
       "enabled": "Aktiviert",
       "disabled": "Deaktiviert"
     }
+  },
+  "security": {
+    "title": "Sicherheitsüberwachung",
+    "description": "Überwachen Sie Sicherheitsereignisse, Prüfprotokolle und den Systemzustand."
   }
 }

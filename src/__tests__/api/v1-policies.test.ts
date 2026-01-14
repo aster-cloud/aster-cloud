@@ -52,15 +52,25 @@ vi.mock('@/services/policy/cnl-executor', () => ({
 }));
 
 const mockAuthenticateApiRequest = vi.mocked(authenticateApiRequest);
-const mockPrisma = vi.mocked(prisma);
 const mockCheckUsageLimit = vi.mocked(checkUsageLimit);
 const mockRecordUsage = vi.mocked(recordUsage);
 const mockGetPolicyFreezeStatus = vi.mocked(getPolicyFreezeStatus);
 const mockGetBatchPolicyFreezeStatus = vi.mocked(getBatchPolicyFreezeStatus);
 const mockIsPolicyFrozen = vi.mocked(isPolicyFrozen);
 const mockCheckTeamPermission = vi.mocked(checkTeamPermission);
-const mockExecutePolicyUnified = vi.mocked(executePolicyUnified);
-const mockGetPrimaryError = vi.mocked(getPrimaryError);
+// Type-safe mock for Prisma and functions
+type MockFn = ReturnType<typeof vi.fn>;
+const mockExecutePolicyUnified = executePolicyUnified as unknown as MockFn;
+const mockGetPrimaryError = getPrimaryError as unknown as MockFn;
+const mockPrisma = {
+  policy: {
+    findMany: prisma.policy.findMany as unknown as MockFn,
+    findFirst: prisma.policy.findFirst as unknown as MockFn,
+  },
+  execution: {
+    create: prisma.execution.create as unknown as MockFn,
+  },
+};
 
 // 辅助函数：创建带 API Key 的 GET 请求
 function createGetRequest(apiKey?: string) {
@@ -98,6 +108,17 @@ function createExecuteRequest(
 // 辅助函数：创建 Next.js 15 的 async params
 function createParams(id: string): { params: Promise<{ id: string }> } {
   return { params: Promise.resolve({ id }) };
+}
+
+// 辅助函数：创建执行结果的默认 metadata
+function createExecutionResultMetadata(policyId = 'policy-1', policyName = 'Test Policy') {
+  return {
+    evaluatedAt: new Date().toISOString(),
+    policyId,
+    policyName,
+    ruleCount: 1,
+    matchedRuleCount: 1,
+  };
 }
 
 describe('V1 Policies API - 真实路由测试', () => {
@@ -271,8 +292,7 @@ describe('V1 Policies API - 真实路由测试', () => {
         success: true,
         userId: 'user-1',
         apiKeyId: 'key-1',
-        teamId: 'team-1',
-      });
+      } as Awaited<ReturnType<typeof authenticateApiRequest>>);
 
       mockCheckUsageLimit.mockResolvedValue({ allowed: true, remaining: 999 });
 
@@ -422,7 +442,7 @@ describe('V1 Policies API - 真实路由测试', () => {
         userId: 'user-1',
       });
 
-      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
       const response = await EXECUTE(
         createExecuteRequest('policy-1', { input: { score: 90 } }, 'valid-key'),
@@ -450,7 +470,7 @@ describe('V1 Policies API - 真实路由测试', () => {
         userId: 'user-1',
       });
 
-      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
       const response = await EXECUTE(
         createExecuteRequest('policy-1', { input: { score: 90 } }, 'valid-key'),
@@ -513,16 +533,17 @@ describe('V1 Policies API - 真实路由测试', () => {
       };
 
       mockPrisma.policy.findFirst.mockResolvedValue(mockPolicy);
-      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
       const executionResult = {
         allowed: true,
         approved: true,
         deniedReasons: [],
         matchedRules: ['score >= 80'],
+        metadata: createExecutionResultMetadata(),
       };
       mockExecutePolicyUnified.mockResolvedValue(executionResult);
-      mockGetPrimaryError.mockReturnValue(null);
+      mockGetPrimaryError.mockReturnValue(undefined);
 
       mockPrisma.execution.create.mockResolvedValue({
         id: 'exec-1',
@@ -568,16 +589,17 @@ describe('V1 Policies API - 真实路由测试', () => {
 
       mockPrisma.policy.findFirst.mockResolvedValue(mockPolicy);
       // Freeze check should use owner's ID
-      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
       const executionResult = {
         allowed: true,
         approved: true,
         deniedReasons: [],
         matchedRules: [],
+        metadata: createExecutionResultMetadata(),
       };
       mockExecutePolicyUnified.mockResolvedValue(executionResult);
-      mockGetPrimaryError.mockReturnValue(null);
+      mockGetPrimaryError.mockReturnValue(undefined);
 
       mockPrisma.execution.create.mockResolvedValue({ id: 'exec-1', success: true });
 
@@ -603,13 +625,14 @@ describe('V1 Policies API - 真实路由测试', () => {
       };
 
       mockPrisma.policy.findFirst.mockResolvedValue(mockPolicy);
-      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
       const executionResult = {
         allowed: false,
         approved: false,
         deniedReasons: ['Score too low'],
         matchedRules: [],
+        metadata: createExecutionResultMetadata(),
       };
       mockExecutePolicyUnified.mockResolvedValue(executionResult);
       mockGetPrimaryError.mockReturnValue('Score too low');
@@ -644,7 +667,7 @@ describe('V1 Policies API - 真实路由测试', () => {
         rules: null,
       });
 
-      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
       mockExecutePolicyUnified.mockRejectedValue(new Error('Parse error'));
 
       const response = await EXECUTE(
@@ -741,8 +764,7 @@ describe('V1 API Freeze Scenarios - 真实路由测试', () => {
         success: true,
         userId: 'user-1',
         apiKeyId: 'key-1',
-        teamId: 'team-1',
-      });
+      } as Awaited<ReturnType<typeof authenticateApiRequest>>);
 
       // Policy owned by team member
       mockPrisma.policy.findFirst.mockResolvedValue({
@@ -755,7 +777,7 @@ describe('V1 API Freeze Scenarios - 真实路由测试', () => {
       });
 
       // Check freeze for policy owner
-      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+      mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
       // Mock team permission check
       mockCheckTeamPermission.mockResolvedValue({ allowed: true });
 
@@ -764,9 +786,10 @@ describe('V1 API Freeze Scenarios - 真实路由测试', () => {
         approved: true,
         deniedReasons: [],
         matchedRules: [],
+        metadata: createExecutionResultMetadata(),
       };
       mockExecutePolicyUnified.mockResolvedValue(executionResult);
-      mockGetPrimaryError.mockReturnValue(null);
+      mockGetPrimaryError.mockReturnValue(undefined);
 
       mockPrisma.execution.create.mockResolvedValue({ id: 'exec-1', success: true });
 
@@ -802,16 +825,17 @@ describe('V1 API Edge Cases - 真实路由测试', () => {
       rules: null,
     });
 
-    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
     const executionResult = {
       allowed: true,
       approved: true,
       deniedReasons: [],
       matchedRules: ['true'],
+      metadata: createExecutionResultMetadata(),
     };
     mockExecutePolicyUnified.mockResolvedValue(executionResult);
-    mockGetPrimaryError.mockReturnValue(null);
+    mockGetPrimaryError.mockReturnValue(undefined);
 
     mockPrisma.execution.create.mockResolvedValue({ id: 'exec-1', success: true });
 
@@ -834,16 +858,17 @@ describe('V1 API Edge Cases - 真实路由测试', () => {
       rules: null,
     });
 
-    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
     const executionResult = {
       allowed: true,
       approved: true,
       deniedReasons: [],
       matchedRules: ['user.profile.age >= 18'],
+      metadata: createExecutionResultMetadata(),
     };
     mockExecutePolicyUnified.mockResolvedValue(executionResult);
-    mockGetPrimaryError.mockReturnValue(null);
+    mockGetPrimaryError.mockReturnValue(undefined);
 
     mockPrisma.execution.create.mockResolvedValue({ id: 'exec-1', success: true });
 
@@ -884,16 +909,17 @@ describe('V1 API Edge Cases - 真实路由测试', () => {
       rules: parsedRules,
     });
 
-    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
     const executionResult = {
       allowed: true,
       approved: true,
       deniedReasons: [],
       matchedRules: [],
+      metadata: createExecutionResultMetadata(),
     };
     mockExecutePolicyUnified.mockResolvedValue(executionResult);
-    mockGetPrimaryError.mockReturnValue(null);
+    mockGetPrimaryError.mockReturnValue(undefined);
 
     mockPrisma.execution.create.mockResolvedValue({ id: 'exec-1', success: true });
 
@@ -921,16 +947,17 @@ describe('V1 API Edge Cases - 真实路由测试', () => {
       rules: null,
     });
 
-    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false });
+    mockIsPolicyFrozen.mockResolvedValue({ isFrozen: false, activePoliciesLimit: 10, totalPolicies: 1, frozenCount: 0 });
 
     const executionResult = {
       allowed: true,
       approved: true,
       deniedReasons: [],
       matchedRules: [],
+      metadata: createExecutionResultMetadata(),
     };
     mockExecutePolicyUnified.mockResolvedValue(executionResult);
-    mockGetPrimaryError.mockReturnValue(null);
+    mockGetPrimaryError.mockReturnValue(undefined);
 
     mockPrisma.execution.create.mockResolvedValue({ id: 'exec-1', success: true });
 

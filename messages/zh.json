@@ -272,6 +272,7 @@
     "policies": "策略",
     "reports": "报告",
     "teams": "团队",
+    "security": "安全监控",
     "billing": "账单",
     "settings": "设置",
     "mobile": {
@@ -894,5 +895,9 @@
       "enabled": "已启用",
       "disabled": "已禁用"
     }
+  },
+  "security": {
+    "title": "安全监控",
+    "description": "监控安全事件、审计日志和系统健康状态。"
   }
 }

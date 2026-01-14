@@ -1,0 +1,413 @@
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import type { PolicyVersionStatus } from '@prisma/client';
+
+/**
+ * 版本信息
+ */
+interface PolicyVersionInfo {
+  id: string;
+  version: number;
+  sourceHash: string | null;
+  status: PolicyVersionStatus;
+  isDefault: boolean;
+  releaseNote: string | null;
+  createdBy: string;
+  createdAt: string;
+  deprecatedAt: string | null;
+  deprecatedBy: string | null;
+  archivedAt: string | null;
+  archivedBy: string | null;
+  _count?: { approvals: number };
+}
+
+/**
+ * 可执行版本信息（简化版）
+ */
+interface ExecutableVersionInfo {
+  version: number;
+  sourceHash: string | null;
+  status: PolicyVersionStatus;
+  isDefault: boolean;
+  releaseNote: string | null;
+  deprecatedAt: string | null;
+}
+
+/**
+ * Hook 选项
+ */
+interface UsePolicyVersionsOptions {
+  /** 策略 ID */
+  policyId: string;
+  /** 是否只加载可执行版本 */
+  executableOnly?: boolean;
+  /** 是否自动加载 */
+  autoLoad?: boolean;
+}
+
+/**
+ * Hook 返回类型
+ */
+interface UsePolicyVersionsResult {
+  /** 版本列表 */
+  versions: PolicyVersionInfo[] | ExecutableVersionInfo[];
+  /** 是否正在加载 */
+  loading: boolean;
+  /** 错误信息 */
+  error: string | null;
+  /** 刷新版本列表 */
+  refresh: () => Promise<void>;
+  /** 创建新版本 */
+  createVersion: (source: string, releaseNote?: string) => Promise<{
+    id: string;
+    version: number;
+    sourceHash: string;
+  } | null>;
+  /** 设置默认版本 */
+  setDefault: (version: number) => Promise<boolean>;
+  /** 废弃版本 */
+  deprecate: (version: number, reason?: string) => Promise<boolean>;
+  /** 归档版本 */
+  archive: (version: number, reason?: string) => Promise<boolean>;
+  /** 提交审批 */
+  submitForApproval: (version: number) => Promise<boolean>;
+  /** 批准版本 */
+  approve: (version: number, comment?: string) => Promise<boolean>;
+  /** 拒绝版本 */
+  reject: (version: number, comment: string) => Promise<boolean>;
+}
+
+/**
+ * 策略版本管理 Hook
+ *
+ * 提供版本的 CRUD 和状态管理功能：
+ * - 获取版本列表
+ * - 创建新版本
+ * - 设置默认版本
+ * - 废弃版本
+ * - 归档版本
+ */
+export function usePolicyVersions({
+  policyId,
+  executableOnly = false,
+  autoLoad = true,
+}: UsePolicyVersionsOptions): UsePolicyVersionsResult {
+  const [versions, setVersions] = useState<
+    PolicyVersionInfo[] | ExecutableVersionInfo[]
+  >([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 加载版本列表
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const url = executableOnly
+        ? `/api/v1/policies/${policyId}/versions?executable=true`
+        : `/api/v1/policies/${policyId}/versions`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (response.ok) {
+        setVersions(data.versions || []);
+      } else {
+        setError(data.error || '获取版本列表失败');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '未知错误');
+    } finally {
+      setLoading(false);
+    }
+  }, [policyId, executableOnly]);
+
+  // 自动加载
+  useEffect(() => {
+    if (autoLoad && policyId) {
+      refresh();
+    }
+  }, [autoLoad, policyId, refresh]);
+
+  // 创建新版本
+  const createVersion = useCallback(
+    async (
+      source: string,
+      releaseNote?: string
+    ): Promise<{ id: string; version: number; sourceHash: string } | null> => {
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/v1/policies/${policyId}/versions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source, releaseNote }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await refresh();
+          return data;
+        } else {
+          setError(data.error || '创建版本失败');
+          return null;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '未知错误');
+        return null;
+      }
+    },
+    [policyId, refresh]
+  );
+
+  // 设置默认版本
+  const setDefault = useCallback(
+    async (version: number): Promise<boolean> => {
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/v1/policies/${policyId}/versions/${version}/set-default`,
+          { method: 'POST' }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await refresh();
+          return true;
+        } else {
+          setError(data.error || '设置默认版本失败');
+          return false;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '未知错误');
+        return false;
+      }
+    },
+    [policyId, refresh]
+  );
+
+  // 废弃版本
+  const deprecate = useCallback(
+    async (version: number, reason?: string): Promise<boolean> => {
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/v1/policies/${policyId}/versions/${version}/deprecate`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await refresh();
+          return true;
+        } else {
+          setError(data.error || '废弃版本失败');
+          return false;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '未知错误');
+        return false;
+      }
+    },
+    [policyId, refresh]
+  );
+
+  // 归档版本
+  const archive = useCallback(
+    async (version: number, reason?: string): Promise<boolean> => {
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/v1/policies/${policyId}/versions/${version}/archive`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await refresh();
+          return true;
+        } else {
+          setError(data.error || '归档版本失败');
+          return false;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '未知错误');
+        return false;
+      }
+    },
+    [policyId, refresh]
+  );
+
+  // 提交审批
+  const submitForApproval = useCallback(
+    async (version: number): Promise<boolean> => {
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/v1/policies/${policyId}/versions/${version}/submit`,
+          { method: 'POST' }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await refresh();
+          return true;
+        } else {
+          setError(data.error || '提交审批失败');
+          return false;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '未知错误');
+        return false;
+      }
+    },
+    [policyId, refresh]
+  );
+
+  // 批准版本
+  const approve = useCallback(
+    async (version: number, comment?: string): Promise<boolean> => {
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/v1/policies/${policyId}/versions/${version}/approve`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comment }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await refresh();
+          return true;
+        } else {
+          setError(data.error || '批准失败');
+          return false;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '未知错误');
+        return false;
+      }
+    },
+    [policyId, refresh]
+  );
+
+  // 拒绝版本
+  const reject = useCallback(
+    async (version: number, comment: string): Promise<boolean> => {
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/v1/policies/${policyId}/versions/${version}/reject`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comment }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await refresh();
+          return true;
+        } else {
+          setError(data.error || '拒绝失败');
+          return false;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '未知错误');
+        return false;
+      }
+    },
+    [policyId, refresh]
+  );
+
+  return {
+    versions,
+    loading,
+    error,
+    refresh,
+    createVersion,
+    setDefault,
+    deprecate,
+    archive,
+    submitForApproval,
+    approve,
+    reject,
+  };
+}
+
+/**
+ * 获取默认版本信息的简化 Hook
+ */
+export function useDefaultVersion(policyId: string) {
+  const [defaultVersion, setDefaultVersion] = useState<ExecutableVersionInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!policyId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/v1/policies/${policyId}/versions?executable=true`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        const versions = data.versions as ExecutableVersionInfo[];
+        // 找到默认版本或第一个版本
+        const defaultVer =
+          versions.find((v) => v.isDefault) || versions[0] || null;
+        setDefaultVersion(defaultVer);
+      } else {
+        setError(data.error || '获取版本失败');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '未知错误');
+    } finally {
+      setLoading(false);
+    }
+  }, [policyId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { defaultVersion, loading, error, refresh };
+}
+
+export type {
+  PolicyVersionInfo,
+  ExecutableVersionInfo,
+  UsePolicyVersionsOptions,
+  UsePolicyVersionsResult,
+};

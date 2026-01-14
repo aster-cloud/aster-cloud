@@ -272,6 +272,7 @@
     "policies": "Policies",
     "reports": "Reports",
     "teams": "Teams",
+    "security": "Security",
     "billing": "Billing",
     "settings": "Settings",
     "mobile": {
@@ -894,5 +895,9 @@
       "enabled": "Enabled",
       "disabled": "Disabled"
     }
+  },
+  "security": {
+    "title": "Security Monitoring",
+    "description": "Monitor security events, audit logs, and system health."
   }
 }

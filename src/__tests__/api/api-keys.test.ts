@@ -51,8 +51,8 @@ describe('API Keys API', () => {
 
     it('should return api keys list on success', async () => {
       mockListApiKeys.mockResolvedValue([
-        { id: 'key-1', prefix: 'ak_abc', name: 'Key 1', createdAt: new Date(), lastUsedAt: null },
-        { id: 'key-2', prefix: 'ak_def', name: 'Key 2', createdAt: new Date(), lastUsedAt: new Date() },
+        { id: 'key-1', prefix: 'ak_abc', name: 'Key 1', createdAt: new Date(), lastUsedAt: null, expiresAt: null },
+        { id: 'key-2', prefix: 'ak_def', name: 'Key 2', createdAt: new Date(), lastUsedAt: new Date(), expiresAt: null },
       ]);
 
       const response = await GET();

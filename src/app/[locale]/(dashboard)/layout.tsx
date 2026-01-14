@@ -24,6 +24,7 @@ export default async function DashboardLayout({
     { href: '/policies', label: t('policies') },
     { href: '/reports', label: t('reports') },
     { href: '/teams', label: t('teams') },
+    { href: '/security', label: t('security') },
   ];
 
   const secondaryItems = [

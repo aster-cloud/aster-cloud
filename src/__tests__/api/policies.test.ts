@@ -13,9 +13,14 @@ import {
   isPolicyFrozen,
 } from '@/lib/policy-freeze';
 import { detectPII } from '@/services/pii/detector';
+import { softDeletePolicy } from '@/lib/policy-lifecycle';
 
 vi.mock('@/lib/auth', () => ({
   getSession: vi.fn(),
+}));
+
+vi.mock('@/lib/policy-lifecycle', () => ({
+  softDeletePolicy: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -55,12 +60,34 @@ vi.mock('@/services/pii/detector', () => ({
 }));
 
 const mockGetSession = vi.mocked(getSession);
-const mockPrisma = vi.mocked(prisma);
 const mockCheckUsageLimit = vi.mocked(checkUsageLimit);
 const mockRecordUsage = vi.mocked(recordUsage);
 const mockGetPolicyFreezeStatus = vi.mocked(getPolicyFreezeStatus);
 const mockIsPolicyFrozen = vi.mocked(isPolicyFrozen);
 const mockDetectPII = vi.mocked(detectPII);
+const mockSoftDeletePolicy = vi.mocked(softDeletePolicy);
+
+// Type-safe mock for Prisma
+type MockFn = ReturnType<typeof vi.fn>;
+const mockPrisma = {
+  policy: {
+    findMany: prisma.policy.findMany as unknown as MockFn,
+    findFirst: prisma.policy.findFirst as unknown as MockFn,
+    create: prisma.policy.create as unknown as MockFn,
+    update: prisma.policy.update as unknown as MockFn,
+    delete: prisma.policy.delete as unknown as MockFn,
+    count: prisma.policy.count as unknown as MockFn,
+  },
+  policyVersion: {
+    create: prisma.policyVersion.create as unknown as MockFn,
+  },
+  user: {
+    findUnique: prisma.user.findUnique as unknown as MockFn,
+  },
+  execution: {
+    create: prisma.execution.create as unknown as MockFn,
+  },
+};
 
 // 辅助函数：创建 POST 请求
 function createPostRequest(body: Record<string, unknown>) {
@@ -159,7 +186,7 @@ describe('Policies API - 真实路由测试', () => {
       expect(body.freezeInfo.limit).toBe(10);
       expect(mockPrisma.policy.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1' },
+          where: { userId: 'user-1', deletedAt: null },
         })
       );
     });
@@ -279,7 +306,7 @@ describe('Policies API - 真实路由测试', () => {
         hasPII: true,
         detectedTypes: ['email', 'phone'],
         locations: [
-          { type: 'email', match: 'user@test.com', index: 10, length: 14 },
+          { type: 'pattern', match: 'user@test.com', index: 10 },
         ],
         riskLevel: 'medium',
       });
@@ -519,7 +546,7 @@ describe('Policies API - 真实路由测试', () => {
     });
 
     it('should return 404 when policy not found or not owned', async () => {
-      mockPrisma.policy.findFirst.mockResolvedValue(null);
+      mockSoftDeletePolicy.mockResolvedValue({ success: false, policyId: 'non-existent', error: 'Policy not found' });
 
       const response = await DELETE(
         createRequestWithId('non-existent', 'DELETE'),
@@ -532,7 +559,7 @@ describe('Policies API - 真实路由测试', () => {
     });
 
     it('should delete policy even if frozen (to reduce count)', async () => {
-      mockPrisma.policy.delete.mockResolvedValue({});
+      mockSoftDeletePolicy.mockResolvedValue({ success: true, policyId: 'policy-1' });
 
       const response = await DELETE(
         createRequestWithId('policy-1', 'DELETE'),
@@ -543,13 +570,11 @@ describe('Policies API - 真实路由测试', () => {
       // 路由返回 200 和 { success: true }
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(mockPrisma.policy.delete).toHaveBeenCalledWith({
-        where: { id: 'policy-1' },
-      });
+      expect(mockSoftDeletePolicy).toHaveBeenCalledWith('policy-1', 'user-1', undefined);
     });
 
     it('should return 500 on internal error', async () => {
-      mockPrisma.policy.delete.mockRejectedValue(new Error('Database error'));
+      mockSoftDeletePolicy.mockRejectedValue(new Error('Database error'));
 
       const response = await DELETE(
         createRequestWithId('policy-1', 'DELETE'),
@@ -756,12 +781,7 @@ describe('Policy Freeze Behavior - 真实路由测试', () => {
 
   describe('DELETE /api/policies/[id] on frozen policy', () => {
     it('should allow deletion of frozen policy to reduce count', async () => {
-      mockPrisma.policy.findFirst.mockResolvedValue({
-        id: 'policy-4',
-        userId: 'user-1',
-      });
-
-      mockPrisma.policy.delete.mockResolvedValue({});
+      mockSoftDeletePolicy.mockResolvedValue({ success: true, policyId: 'policy-4' });
 
       const response = await DELETE(
         createRequestWithId('policy-4', 'DELETE'),
@@ -772,9 +792,7 @@ describe('Policy Freeze Behavior - 真实路由测试', () => {
       // 路由返回 200 和 { success: true }
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(mockPrisma.policy.delete).toHaveBeenCalledWith({
-        where: { id: 'policy-4' },
-      });
+      expect(mockSoftDeletePolicy).toHaveBeenCalledWith('policy-4', 'user-1', undefined);
     });
   });
 });
