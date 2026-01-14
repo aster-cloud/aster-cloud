@@ -663,8 +663,6 @@
       "title": "执行：{name}",
       "subtitle": "使用示例输入数据测试您的策略",
       "input": "输入",
-      "loanExample": "贷款示例",
-      "userExample": "用户示例",
       "generateSampleData": "生成示例",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "executeButton": "执行策略",
@@ -688,7 +686,10 @@
       "saving": "保存中...",
       "savedSuccessfully": "策略保存成功！",
       "saveError": "保存策略失败",
-      "policyLimitReached": "策略数量已达上限，请升级套餐。"
+      "policyLimitReached": "策略数量已达上限，请升级套餐。",
+      "schemaExtractionFailed": "无法解析策略参数",
+      "schemaExtractionFailedHint": "策略语法可能存在问题，「生成示例」功能暂不可用。您可以手动输入 JSON 数据执行策略。",
+      "viewDetails": "查看详情"
     },
     "logs": {
       "title": "执行日志",

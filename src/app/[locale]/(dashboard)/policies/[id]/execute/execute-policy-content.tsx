@@ -28,68 +28,6 @@ interface PolicySchema {
 
 type InputMode = 'form' | 'json';
 
-/**
- * CNL 策略测试数据
- *
- * 重要说明：Aster CNL 运行时期望 context 为参数值数组，按函数参数顺序传入。
- * 不需要用参数名包装数据，直接传入字段值即可。
- *
- * 例如，对于函数声明：
- *   评估贷款 入参 申请人：申请人，产出 结果：
- *
- * context 应为：
- *   [{ 编号: "A001", 信用评分: 720, ... }]
- *
- * 而不是：
- *   [{ 申请人: { 编号: "A001", ... } }]
- */
-
-// 英文策略测试数据
-const EXAMPLE_INPUTS_EN = {
-  loanApplication: {
-    id: 'A001',
-    creditScore: 720,
-    income: 85000,
-    debtToIncomeRatio: 0.35,
-    loanAmount: 50000,
-  },
-  userVerification: {
-    email: 'user@example.com',
-    phoneVerified: true,
-    documentsSubmitted: true,
-  },
-};
-
-// 中文策略测试数据（字段名与中文 CNL 类型定义匹配）
-const EXAMPLE_INPUTS_ZH = {
-  loanApplication: {
-    编号: 'A001',
-    信用评分: 720,
-    收入: 85000,
-    申请金额: 50000,
-  },
-  userVerification: {
-    邮箱: 'user@example.com',
-    手机已验证: true,
-    资料已提交: true,
-  },
-};
-
-// 德语策略测试数据（字段名与德语 CNL 类型定义匹配）
-const EXAMPLE_INPUTS_DE = {
-  loanApplication: {
-    kennung: 'A001',
-    bonitaet: 720,
-    einkommen: 85000,
-    kreditbetrag: 50000,
-  },
-  userVerification: {
-    email: 'user@example.com',
-    telefonVerifiziert: true,
-    dokumenteEingereicht: true,
-  },
-};
-
 // 检测策略语言类型
 type PolicyLocale = 'zh' | 'de' | 'en';
 
@@ -108,18 +46,6 @@ function detectPolicyLocale(content: string): PolicyLocale {
 interface ExecutePolicyContentProps {
   policyId: string;
   locale: string;
-}
-
-// 根据策略语言类型获取对应的测试数据
-function getExampleInputs(policyLocale: PolicyLocale) {
-  switch (policyLocale) {
-    case 'zh':
-      return EXAMPLE_INPUTS_ZH;
-    case 'de':
-      return EXAMPLE_INPUTS_DE;
-    default:
-      return EXAMPLE_INPUTS_EN;
-  }
 }
 
 // 默认值工厂：根据类型生成初始值
@@ -192,6 +118,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [inputMode, setInputMode] = useState<InputMode>('json');
   const [schema, setSchema] = useState<PolicySchema | null>(null);
   const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [policyContent, setPolicyContent] = useState('');
@@ -202,6 +129,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (!content) return;
 
     setSchemaLoading(true);
+    setSchemaError(null);
     try {
       const localeMap: Record<PolicyLocale, string> = {
         zh: 'zh-CN',
@@ -226,9 +154,19 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
         // 同时更新 JSON 输入区域
         const sampleInput = generateInputValues(data.parameters);
         setInput(JSON.stringify(sampleInput, null, 2));
+      } else if (!data.success && data.error) {
+        // Schema extraction failed - display error and use default empty JSON
+        console.warn('Schema extraction failed:', data.error);
+        setSchemaError(data.error);
+        setInput('{}');
+      } else {
+        // No parameters found - use default empty JSON
+        setInput('{}');
       }
     } catch (err) {
       console.error('Failed to fetch schema:', err);
+      setSchemaError(err instanceof Error ? err.message : 'Failed to fetch schema');
+      setInput('{}');
     } finally {
       setSchemaLoading(false);
     }
@@ -241,19 +179,20 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       .then((data) => {
         setPolicyName(data.name);
         setPolicyContent(data.content || '');
-        // 检测策略语言并设置对应的默认测试数据
+        // 检测策略语言
         const detectedLocale = detectPolicyLocale(data.content || '');
         setPolicyLocale(detectedLocale);
-        const examples = getExampleInputs(detectedLocale);
-        setInput(JSON.stringify(examples.loanApplication, null, 2));
-        // 获取策略参数模式
+        // 获取策略参数模式（会自动生成示例数据）
         if (data.content) {
           fetchSchema(data.content, detectedLocale);
+        } else {
+          // 无策略内容时设置空对象
+          setInput('{}');
         }
       })
       .catch(() => {
-        // 默认使用英文测试数据
-        setInput(JSON.stringify(EXAMPLE_INPUTS_EN.loanApplication, null, 2));
+        // 出错时设置空对象
+        setInput('{}');
       });
   }, [policyId, fetchSchema]);
 
@@ -331,12 +270,6 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       setIsLoading(false);
     }
   };
-
-  const loadExample = (type: 'loanApplication' | 'userVerification') => {
-    const examples = getExampleInputs(policyLocale);
-    setInput(JSON.stringify(examples[type], null, 2));
-  };
-
 
   // 渲染单个表单字段
   const renderField = (
@@ -522,30 +455,16 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                   </button>
                 )}
                 {inputMode === 'json' && (
-                  <>
-                    <button
-                      onClick={regenerateSampleData}
-                      className="text-xs text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
-                      title={t('generateSampleData')}
-                    >
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
-                      </svg>
-                      {t('generateSampleData')}
-                    </button>
-                    <button
-                      onClick={() => loadExample('loanApplication')}
-                      className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
-                    >
-                      {t('loanExample')}
-                    </button>
-                    <button
-                      onClick={() => loadExample('userVerification')}
-                      className="text-xs text-indigo-600 hover:text-indigo-500 font-medium"
-                    >
-                      {t('userExample')}
-                    </button>
-                  </>
+                  <button
+                    onClick={regenerateSampleData}
+                    className="text-xs text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
+                    title={t('generateSampleData')}
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+                    </svg>
+                    {t('generateSampleData')}
+                  </button>
                 )}
               </div>
             </div>
@@ -558,6 +477,33 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
                 Loading schema...
+              </div>
+            )}
+
+            {/* Schema Error Display */}
+            {schemaError && !schemaLoading && (
+              <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-4">
+                <div className="flex">
+                  <svg className="h-5 w-5 text-amber-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                  <div className="ml-3">
+                    <h4 className="text-sm font-medium text-amber-800">
+                      {t('schemaExtractionFailed')}
+                    </h4>
+                    <p className="mt-1 text-xs text-amber-700">
+                      {t('schemaExtractionFailedHint')}
+                    </p>
+                    <details className="mt-2">
+                      <summary className="text-xs text-amber-600 cursor-pointer hover:text-amber-800">
+                        {t('viewDetails')}
+                      </summary>
+                      <pre className="mt-2 text-xs text-amber-700 bg-amber-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                        {schemaError}
+                      </pre>
+                    </details>
+                  </div>
+                </div>
               </div>
             )}
 

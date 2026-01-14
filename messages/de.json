@@ -663,8 +663,6 @@
       "title": "Ausführen: {name}",
       "subtitle": "Testen Sie Ihre Richtlinie mit Beispieldaten",
       "input": "Eingabe",
-      "loanExample": "Kredit-Beispiel",
-      "userExample": "Benutzer-Beispiel",
       "generateSampleData": "Beispiel generieren",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "executeButton": "Richtlinie ausführen",
@@ -688,7 +686,10 @@
       "saving": "Wird gespeichert...",
       "savedSuccessfully": "Richtlinie erfolgreich gespeichert!",
       "saveError": "Richtlinie konnte nicht gespeichert werden",
-      "policyLimitReached": "Richtlinienlimit erreicht. Bitte upgraden Sie."
+      "policyLimitReached": "Richtlinienlimit erreicht. Bitte upgraden Sie.",
+      "schemaExtractionFailed": "Richtlinienparameter konnten nicht analysiert werden",
+      "schemaExtractionFailedHint": "Die Richtliniensyntax hat möglicherweise Probleme. Die Funktion \"Beispiel generieren\" ist nicht verfügbar. Sie können JSON-Daten manuell eingeben.",
+      "viewDetails": "Details anzeigen"
     },
     "logs": {
       "title": "Ausführungsprotokolle",

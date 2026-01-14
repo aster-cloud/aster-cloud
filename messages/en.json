@@ -663,8 +663,6 @@
       "title": "Execute: {name}",
       "subtitle": "Test your policy with sample input data",
       "input": "Input",
-      "loanExample": "Loan example",
-      "userExample": "User example",
       "generateSampleData": "Generate sample",
       "inputPlaceholder": "{\"key\": \"value\"}",
       "executeButton": "Execute Policy",
@@ -688,7 +686,10 @@
       "saving": "Saving...",
       "savedSuccessfully": "Policy saved successfully!",
       "saveError": "Failed to save policy",
-      "policyLimitReached": "Policy limit reached. Upgrade your plan for more."
+      "policyLimitReached": "Policy limit reached. Upgrade your plan for more.",
+      "schemaExtractionFailed": "Unable to parse policy parameters",
+      "schemaExtractionFailedHint": "The policy syntax may have issues. The \"Generate sample\" feature is unavailable. You can manually enter JSON data to execute the policy.",
+      "viewDetails": "View details"
     },
     "logs": {
       "title": "Execution Logs",
