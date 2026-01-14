@@ -23,6 +23,15 @@ export interface LocalCompilationOptions {
   collectSchema?: boolean;
 }
 
+export interface LocalSchemaFieldInfo {
+  /** Field name */
+  name: string;
+  /** Field type name */
+  type: string;
+  /** Field type category */
+  typeKind: string;
+}
+
 export interface LocalSchemaParameter {
   /** Parameter name */
   name: string;
@@ -34,6 +43,8 @@ export interface LocalSchemaParameter {
   optional: boolean;
   /** Parameter position (0-based) */
   position: number;
+  /** Struct fields (only for struct types) */
+  fields?: LocalSchemaFieldInfo[];
 }
 
 export interface LocalDiagnostic {
@@ -471,6 +482,69 @@ function extractSchema(
 }
 
 /**
+ * 结构体字段信息（用于 schema）
+ */
+interface StructFieldInfo {
+  name: string;
+  type: string;
+  typeKind: string;
+}
+
+/**
+ * 结构体定义映射
+ */
+type StructDefinitions = Map<string, StructFieldInfo[]>;
+
+/**
+ * Extract struct (Data) definitions from module
+ */
+function extractStructDefinitions(node: unknown): StructDefinitions {
+  const definitions = new Map<string, StructFieldInfo[]>();
+
+  if (!node || typeof node !== 'object') return definitions;
+  const n = node as Record<string, unknown>;
+
+  const declArrays = [n.decls, n.declarations, n.items];
+
+  for (const arr of declArrays) {
+    if (Array.isArray(arr)) {
+      for (const item of arr) {
+        if (item && typeof item === 'object') {
+          const i = item as Record<string, unknown>;
+          const kind = typeof i.kind === 'string' ? i.kind.toLowerCase() : '';
+
+          // 查找 Data 声明（结构体定义）
+          if (kind === 'data') {
+            const name = typeof i.name === 'string' ? i.name : '';
+            const fields = i.fields;
+
+            if (name && Array.isArray(fields)) {
+              const fieldInfos: StructFieldInfo[] = fields.map((field) => {
+                if (field && typeof field === 'object') {
+                  const f = field as Record<string, unknown>;
+                  const fieldName = typeof f.name === 'string' ? f.name : 'unknown';
+                  const resolved = resolveTypeNode(f.type);
+                  return {
+                    name: fieldName,
+                    type: resolved.type,
+                    typeKind: resolved.typeKind,
+                  };
+                }
+                return { name: 'unknown', type: 'unknown', typeKind: 'unknown' };
+              });
+
+              definitions.set(name, fieldInfos);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return definitions;
+}
+
+/**
  * Extract schema from a single node (Core IR or AST)
  */
 function extractSchemaFromNode(
@@ -480,9 +554,12 @@ function extractSchemaFromNode(
   if (!node || typeof node !== 'object') return undefined;
   const n = node as Record<string, unknown>;
 
+  // 首先提取所有结构体定义
+  const structDefs = extractStructDefinitions(node);
+
   // Find function declarations
   const declArrays = [n.decls, n.declarations, n.functions, n.items];
-  let functions: Record<string, unknown>[] = [];
+  const functions: Record<string, unknown>[] = [];
 
   for (const arr of declArrays) {
     if (Array.isArray(arr)) {
@@ -522,7 +599,7 @@ function extractSchemaFromNode(
   if (!targetFunc) return undefined;
 
   const functionName = extractModuleName(targetFunc) ?? targetFunctionName ?? 'evaluate';
-  const parameters = extractParameters(targetFunc);
+  const parameters = extractParameters(targetFunc, structDefs);
 
   return { functionName, parameters };
 }
@@ -530,12 +607,15 @@ function extractSchemaFromNode(
 /**
  * Extract parameters from a function node
  */
-function extractParameters(func: Record<string, unknown>): LocalSchemaParameter[] {
+function extractParameters(
+  func: Record<string, unknown>,
+  structDefs: StructDefinitions
+): LocalSchemaParameter[] {
   const params = func.params ?? func.parameters ?? func.inputs ?? func.args;
 
   if (!Array.isArray(params)) return [];
 
-  return params.map((param, index) => normalizeParameter(param, index));
+  return params.map((param, index) => normalizeParameter(param, index, structDefs));
 }
 
 /**
@@ -697,7 +777,11 @@ function resolveTypeNode(typeNode: unknown): { type: string; typeKind: string } 
 /**
  * Normalize a parameter to LocalSchemaParameter format
  */
-function normalizeParameter(param: unknown, index: number): LocalSchemaParameter {
+function normalizeParameter(
+  param: unknown,
+  index: number,
+  structDefs: StructDefinitions
+): LocalSchemaParameter {
   if (!param || typeof param !== 'object') {
     return {
       name: `arg${index + 1}`,
@@ -728,12 +812,26 @@ function normalizeParameter(param: unknown, index: number): LocalSchemaParameter
   else if (typeof p.isOptional === 'boolean') optional = p.isOptional;
   else if (typeof p.required === 'boolean') optional = !p.required;
 
+  // 如果是结构体类型，查找并包含字段信息
+  let fields: LocalSchemaFieldInfo[] | undefined;
+  if (resolved.typeKind === 'struct') {
+    const structFields = structDefs.get(resolved.type);
+    if (structFields && structFields.length > 0) {
+      fields = structFields.map((f) => ({
+        name: f.name,
+        type: f.type,
+        typeKind: f.typeKind,
+      }));
+    }
+  }
+
   return {
     name,
     type: resolved.type,
     typeKind: resolved.typeKind,
     optional,
     position: typeof p.position === 'number' ? p.position : index,
+    ...(fields && { fields }),
   };
 }
 

@@ -79,6 +79,49 @@ describe('Local Compiler Type Resolution', () => {
       expect(appParam?.typeKind).toBe('struct');
     });
 
+    it('should include struct fields in schema for struct-typed parameters', async () => {
+      // 测试结构体参数的字段提取功能
+      const source = `
+        This module is test.structFields.
+        Define Applicant with id, creditScore, income, age.
+        To evaluateLoan with applicant: Applicant, produce:
+          Return 0.
+      `;
+
+      const result = await compileLocally({
+        source,
+        locale: 'en-US',
+        collectSchema: true,
+      });
+
+      expect(result.success).toBe(true);
+
+      const appParam = result.schema?.parameters.find(p => p.name === 'applicant');
+      expect(appParam?.type).toBe('Applicant');
+      expect(appParam?.typeKind).toBe('struct');
+
+      // 验证字段信息
+      expect(appParam?.fields).toBeDefined();
+      expect(appParam?.fields).toHaveLength(4);
+
+      // 验证各字段的类型推断
+      const idField = appParam?.fields?.find(f => f.name === 'id');
+      expect(idField?.type).toBe('Text');
+      expect(idField?.typeKind).toBe('primitive');
+
+      const creditScoreField = appParam?.fields?.find(f => f.name === 'creditScore');
+      expect(creditScoreField?.type).toBe('Int');
+      expect(creditScoreField?.typeKind).toBe('primitive');
+
+      const incomeField = appParam?.fields?.find(f => f.name === 'income');
+      expect(incomeField?.type).toBe('Float');
+      expect(incomeField?.typeKind).toBe('primitive');
+
+      const ageField = appParam?.fields?.find(f => f.name === 'age');
+      expect(ageField?.type).toBe('Int');
+      expect(ageField?.typeKind).toBe('primitive');
+    });
+
     it('should correctly resolve List types', async () => {
       const source = `
         This module is test.listTypes.
