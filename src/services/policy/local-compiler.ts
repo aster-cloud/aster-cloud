@@ -539,6 +539,162 @@ function extractParameters(func: Record<string, unknown>): LocalSchemaParameter[
 }
 
 /**
+ * 基础类型白名单
+ * 用于判断 TypeName 是否为基础类型（primitive）
+ */
+const PRIMITIVE_TYPES = new Set([
+  // 英文基础类型
+  'text', 'string', 'str',
+  'int', 'integer', 'long',
+  'float', 'double', 'decimal', 'number',
+  'bool', 'boolean',
+  'date', 'time', 'datetime', 'timestamp',
+  // 中文基础类型（多语言支持）
+  '文本', '字符串',
+  '整数', '长整数',
+  '小数', '浮点数', '数值',
+  '布尔',
+  '日期', '时间',
+  // 德语基础类型
+  'zeichenkette',
+  'ganzzahl', 'langzahl',
+  'dezimal', 'gleitkommazahl',
+  'wahrheitswert',
+  'datum', 'zeit',
+]);
+
+/**
+ * 判断类型名是否为基础类型
+ */
+function isPrimitiveType(typeName: string): boolean {
+  return PRIMITIVE_TYPES.has(typeName.toLowerCase());
+}
+
+/**
+ * 解析类型节点，返回类型名称和类型种类
+ *
+ * 映射规则：
+ * - TypeName（基础类型）→ 'primitive'
+ * - TypeName（用户定义）→ 'struct'（默认，因为无法在本地判断 Data vs Enum）
+ * - List → 'list'
+ * - Map → 'map'
+ * - Option/Maybe → 'option'
+ * - Result → 'result'
+ * - FuncType → 'function'
+ * - TypeApp → 根据 base 判断
+ * - TypeVar/EffectVar/Pii → 'unknown' 或递归解析
+ */
+function resolveTypeNode(typeNode: unknown): { type: string; typeKind: string } {
+  // 字符串类型直接处理
+  if (typeof typeNode === 'string') {
+    return {
+      type: typeNode,
+      typeKind: isPrimitiveType(typeNode) ? 'primitive' : 'struct',
+    };
+  }
+
+  if (!typeNode || typeof typeNode !== 'object') {
+    return { type: 'unknown', typeKind: 'unknown' };
+  }
+
+  const t = typeNode as Record<string, unknown>;
+  const kind = typeof t.kind === 'string' ? t.kind : '';
+
+  switch (kind) {
+    case 'TypeName': {
+      const name = typeof t.name === 'string' ? t.name : 'unknown';
+      return {
+        type: name,
+        typeKind: isPrimitiveType(name) ? 'primitive' : 'struct',
+      };
+    }
+
+    case 'List': {
+      const inner = resolveTypeNode(t.type);
+      return {
+        type: `List<${inner.type}>`,
+        typeKind: 'list',
+      };
+    }
+
+    case 'Map': {
+      const keyType = resolveTypeNode(t.key);
+      const valType = resolveTypeNode(t.val);
+      return {
+        type: `Map<${keyType.type}, ${valType.type}>`,
+        typeKind: 'map',
+      };
+    }
+
+    case 'Option':
+    case 'Maybe': {
+      const inner = resolveTypeNode(t.type);
+      return {
+        type: `Option<${inner.type}>`,
+        typeKind: 'option',
+      };
+    }
+
+    case 'Result': {
+      const okType = resolveTypeNode(t.ok);
+      const errType = resolveTypeNode(t.err);
+      return {
+        type: `Result<${okType.type}, ${errType.type}>`,
+        typeKind: 'result',
+      };
+    }
+
+    case 'FuncType': {
+      return {
+        type: 'Function',
+        typeKind: 'function',
+      };
+    }
+
+    case 'TypeApp': {
+      // 泛型应用，如 LoanApplication<Int>
+      const base = typeof t.base === 'string' ? t.base : 'unknown';
+      const args = Array.isArray(t.args)
+        ? t.args.map(arg => resolveTypeNode(arg).type).join(', ')
+        : '';
+      return {
+        type: args ? `${base}<${args}>` : base,
+        typeKind: isPrimitiveType(base) ? 'primitive' : 'struct',
+      };
+    }
+
+    case 'TypePii':
+    case 'Pii': {
+      // PII 类型：递归解析基础类型
+      const baseType = resolveTypeNode(t.baseType);
+      return baseType;
+    }
+
+    case 'TypeVar':
+    case 'EffectVar': {
+      // 类型变量，无法在本地确定
+      const name = typeof t.name === 'string' ? t.name : 'T';
+      return {
+        type: name,
+        typeKind: 'unknown',
+      };
+    }
+
+    default: {
+      // 尝试从 name 或 type 属性获取
+      let typeName = 'unknown';
+      if (typeof t.name === 'string') typeName = t.name;
+      else if (typeof t.type === 'string') typeName = t.type;
+
+      return {
+        type: typeName,
+        typeKind: isPrimitiveType(typeName) ? 'primitive' : 'unknown',
+      };
+    }
+  }
+}
+
+/**
  * Normalize a parameter to LocalSchemaParameter format
  */
 function normalizeParameter(param: unknown, index: number): LocalSchemaParameter {
@@ -562,22 +718,9 @@ function normalizeParameter(param: unknown, index: number): LocalSchemaParameter
     name = (p.identifier as Record<string, unknown>).name as string;
   }
 
-  // Extract type
+  // Extract type using the new resolver
   const typeNode = p.type ?? p.valueType ?? p.annotation;
-  let type = 'unknown';
-  let typeKind = 'unknown';
-
-  if (typeof typeNode === 'string') {
-    type = typeNode;
-    typeKind = 'primitive';
-  } else if (typeNode && typeof typeNode === 'object') {
-    const t = typeNode as Record<string, unknown>;
-    if (typeof t.name === 'string') type = t.name;
-    else if (typeof t.type === 'string') type = t.type;
-
-    if (typeof t.kind === 'string') typeKind = t.kind;
-    else if (typeof t.category === 'string') typeKind = t.category;
-  }
+  const resolved = resolveTypeNode(typeNode);
 
   // Infer optional
   let optional = false;
@@ -587,8 +730,8 @@ function normalizeParameter(param: unknown, index: number): LocalSchemaParameter
 
   return {
     name,
-    type,
-    typeKind,
+    type: resolved.type,
+    typeKind: resolved.typeKind,
     optional,
     position: typeof p.position === 'number' ? p.position : index,
   };
