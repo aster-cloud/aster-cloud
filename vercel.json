@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/cleanup-nonces",
-      "schedule": "* 4 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
