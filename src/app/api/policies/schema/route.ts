@@ -63,10 +63,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // 返回 schema 响应
+    // 返回 schema 响应（扁平化结构以匹配前端 PolicySchema 接口）
     return NextResponse.json({
       success: true,
-      schema: result.schema,
+      functionName: result.schema?.functionName,
+      parameters: result.schema?.parameters,
       moduleName: result.moduleName,
       functionNames: result.functionNames,
     });
