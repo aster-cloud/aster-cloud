@@ -6,12 +6,35 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
+/**
+ * 获取数据库连接字符串
+ *
+ * 通过 USE_HYPERDRIVE 环境变量控制使用哪个数据库:
+ * - USE_HYPERDRIVE=true  → 使用 HYPERDRIVE_DATABASE_URL (k3s PostgreSQL via Cloudflare Hyperdrive)
+ * - USE_HYPERDRIVE=false → 使用 DATABASE_URL (Vercel Postgres / Prisma Accelerate)
+ *
+ * 默认使用 DATABASE_URL 以保持向后兼容
+ */
+function getDatabaseUrl(): string {
+  const useHyperdrive = process.env.USE_HYPERDRIVE === 'true';
 
-  if (!connectionString) {
+  if (useHyperdrive) {
+    const hyperdriveUrl = process.env.HYPERDRIVE_DATABASE_URL;
+    if (!hyperdriveUrl) {
+      throw new Error('HYPERDRIVE_DATABASE_URL environment variable is not set (USE_HYPERDRIVE=true)');
+    }
+    return hyperdriveUrl;
+  }
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is not set');
   }
+  return databaseUrl;
+}
+
+function createPrismaClient(): PrismaClient {
+  const connectionString = getDatabaseUrl();
 
   const pool = new Pool({ connectionString });
   const adapter = new PrismaPg(pool);
