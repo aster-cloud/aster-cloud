@@ -100,9 +100,22 @@ export function useAsterLSP({
     const lspHost = process.env.NEXT_PUBLIC_LSP_HOST;
 
     if (lspHost) {
-      // External host - use wss:// and /lsp path
-      const protocol = lspHost.startsWith('localhost') ? 'ws:' : 'wss:';
-      return `${protocol}//${lspHost}/lsp?locale=${locale}`;
+      // External host - parse URL to extract hostname
+      // Supports formats: "lsp.example.com", "https://lsp.example.com", "wss://lsp.example.com"
+      let host = lspHost;
+
+      // Remove protocol prefix if present
+      if (host.startsWith('https://') || host.startsWith('http://')) {
+        host = host.replace(/^https?:\/\//, '');
+      } else if (host.startsWith('wss://') || host.startsWith('ws://')) {
+        host = host.replace(/^wss?:\/\//, '');
+      }
+
+      // Remove trailing slash if present
+      host = host.replace(/\/$/, '');
+
+      const protocol = host.startsWith('localhost') ? 'ws:' : 'wss:';
+      return `${protocol}//${host}/lsp?locale=${locale}`;
     }
 
     // Local development - use same host with /api/lsp path
