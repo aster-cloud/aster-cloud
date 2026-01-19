@@ -141,24 +141,42 @@ export async function POST(req: Request) {
     const piiResult = detectPII(content);
 
     // Build insert values, only include groupId if it's a valid non-empty string
+    const policyId = globalThis.crypto.randomUUID();
+
+    // Log the values for debugging
+    const piiFieldsValue = piiResult.detectedTypes.length > 0 ? piiResult.detectedTypes : null;
+    console.log('Insert values:', {
+      id: policyId,
+      userId: session.user.id,
+      name,
+      description: description || null,
+      isPublic: isPublic || false,
+      piiFields: piiFieldsValue,
+      groupId: groupId || null,
+    });
+
     const insertValues: {
       id: string;
       userId: string;
       name: string;
       content: string;
-      description?: string;
+      description?: string | null;
       isPublic: boolean;
-      piiFields: string[];
+      piiFields?: string[] | null;
       groupId?: string | null;
     } = {
-      id: globalThis.crypto.randomUUID(),
+      id: policyId,
       userId: session.user.id,
       name,
       content,
-      description: description || undefined,
+      description: description || null,
       isPublic: isPublic || false,
-      piiFields: piiResult.detectedTypes,
     };
+
+    // Only add piiFields if there are detected types
+    if (piiResult.detectedTypes.length > 0) {
+      insertValues.piiFields = piiResult.detectedTypes;
+    }
 
     // Only add groupId if it's a valid UUID string
     if (groupId && typeof groupId === 'string' && groupId.trim() !== '') {
