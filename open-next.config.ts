@@ -11,7 +11,13 @@ const config: OpenNextConfig = {
       queue: "dummy",
     },
   },
-  edgeExternals: ["node:crypto"],
+  // Externalize heavy packages that are only used client-side
+  // These packages cause memory issues during bundling
+  edgeExternals: [
+    "node:crypto",
+    "monaco-editor",
+    "@monaco-editor/react",
+  ],
   middleware: {
     external: true,
     override: {

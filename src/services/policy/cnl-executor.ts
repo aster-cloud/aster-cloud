@@ -7,8 +7,10 @@
 
 import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateResponse } from './policy-api';
 import { executePolicy as executeSimplePolicy } from './executor';
-import { compileLocally, type CNLLocale, type LocalCompilationResult, type LocalDiagnostic } from './local-compiler';
 import type { Policy } from '@/lib/prisma';
+
+// CNL locale type (simplified, no longer depends on local-compiler)
+export type CNLLocale = 'en-US' | 'zh-CN' | 'de-DE';
 
 // CNL 必须特征模式 - 这些是 CNL 独有的，简单 DSL 不具备
 const CNL_REQUIRED_PATTERNS = [
@@ -94,12 +96,6 @@ export interface PolicyExecutionResult {
     executionTime?: number;
     policyVersion?: string;
     engineError?: boolean;
-    /** Local compilation validation results */
-    localValidation?: {
-      success: boolean;
-      diagnostics: LocalDiagnostic[];
-      cacheHit?: boolean;
-    };
     /** 简单规则引擎的规则详情 */
     rules?: Array<{
       name: string;
@@ -153,11 +149,8 @@ export async function executePolicyUnified(
 /**
  * 使用 Aster CNL 引擎执行策略
  *
- * 执行流程（并行）：
- * 1. 本地编译验证（并行，用于诊断）
- * 2. 远程 API 执行（并行，实际策略评估）
- *
- * 本地验证是非阻塞的，不会影响远程执行的延迟
+ * 执行流程：远程 API 执行（实际策略评估）
+ * 本地编译验证已移至 LSP（Language Server Protocol）
  */
 async function executeWithAsterEngine(
   policy: Policy,
@@ -170,22 +163,12 @@ async function executeWithAsterEngine(
   const effectiveTenantId = tenantId || policy.teamId || policy.userId;
   const apiClient = createPolicyApiClient(effectiveTenantId, userId);
 
-  // Run local validation and remote execution in parallel
-  // Local validation is fire-and-forget, won't block remote execution
-  const [localValidation, apiResult] = await Promise.all([
-    validateWithLocalCompiler(policyContent, locale),
-    apiClient
-      .evaluateSource(policyContent, input, { locale })
-      .then((response) => ({ success: true as const, response }))
-      .catch((error) => ({ success: false as const, error })),
-  ]);
-
-  // Build result based on API response
-  const result = apiResult.success
-    ? buildCNLResult(policy, apiResult.response)
-    : buildCNLErrorResult(policy, apiResult.error);
-
-  return attachLocalValidationMetadata(result, localValidation);
+  try {
+    const response = await apiClient.evaluateSource(policyContent, input, { locale });
+    return buildCNLResult(policy, response);
+  } catch (error) {
+    return buildCNLErrorResult(policy, error);
+  }
 }
 
 /**
@@ -384,56 +367,4 @@ function buildCNLErrorResult(policy: Policy, error: unknown): PolicyExecutionRes
  */
 export function getPrimaryError(result: PolicyExecutionResult): string | undefined {
   return result.deniedReasons[0];
-}
-
-/**
- * 使用本地编译器验证策略源代码
- *
- * 这是一个非阻塞操作，用于：
- * 1. 提供早期错误检测
- * 2. 收集诊断信息供 UI 展示
- * 3. 缓存编译结果避免重复解析
- *
- * 即使本地验证失败，也会继续执行远程 API 调用
- */
-async function validateWithLocalCompiler(
-  source: string,
-  locale: CNLLocale
-): Promise<LocalCompilationResult | undefined> {
-  try {
-    const validation = await compileLocally({
-      source,
-      locale,
-      collectSchema: false, // Schema not needed for validation
-    });
-
-    if (!validation.success) {
-      console.warn(
-        `[CNLExecutor] Local compiler reported ${validation.diagnostics.length} diagnostic(s) before remote execution`
-      );
-    }
-
-    return validation;
-  } catch (error) {
-    // Local validation is non-critical, log and continue
-    console.warn('[CNLExecutor] Local compiler validation failed:', error);
-    return undefined;
-  }
-}
-
-/**
- * 将本地验证结果附加到执行结果的元数据中
- */
-function attachLocalValidationMetadata(
-  result: PolicyExecutionResult,
-  validation?: LocalCompilationResult
-): PolicyExecutionResult {
-  if (validation) {
-    result.metadata.localValidation = {
-      success: validation.success,
-      diagnostics: validation.diagnostics,
-      cacheHit: validation.cacheHit,
-    };
-  }
-  return result;
 }

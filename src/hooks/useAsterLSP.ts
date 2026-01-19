@@ -32,6 +32,10 @@ export interface UseAsterLSPOptions {
   autoReconnect?: boolean;
   /** Reconnect delay in ms */
   reconnectDelay?: number;
+  /** Maximum reconnect attempts (0 = unlimited) */
+  maxReconnectAttempts?: number;
+  /** Suppress console errors for connection failures */
+  suppressErrors?: boolean;
 }
 
 export interface UseAsterLSPResult {
@@ -68,6 +72,8 @@ export function useAsterLSP({
   autoConnect = true,
   autoReconnect = true,
   reconnectDelay = 3000,
+  maxReconnectAttempts = 3,
+  suppressErrors = true,
 }: UseAsterLSPOptions): UseAsterLSPResult {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -78,6 +84,7 @@ export function useAsterLSP({
   const pendingRequestsRef = useRef<Map<number, { resolve: (r: unknown) => void; reject: (e: Error) => void }>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDisposedRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
 
   /**
    * Get the WebSocket URL for LSP connection
@@ -354,6 +361,14 @@ export function useAsterLSP({
     if (isDisposedRef.current) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
+    // Check if we've exceeded max reconnect attempts
+    if (maxReconnectAttempts > 0 && reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      if (!suppressErrors) {
+        console.warn('[LSP] Max reconnect attempts reached, giving up');
+      }
+      return;
+    }
+
     // Clear any pending reconnect
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -365,16 +380,23 @@ export function useAsterLSP({
 
     try {
       const wsUrl = getWebSocketUrl();
+      if (!wsUrl) {
+        throw new Error('LSP WebSocket URL not available');
+      }
+
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       await new Promise<void>((resolve, reject) => {
         ws.onopen = () => {
-          console.log('[LSP] WebSocket connected');
+          if (!suppressErrors) {
+            console.log('[LSP] WebSocket connected');
+          }
+          reconnectAttemptsRef.current = 0; // Reset on successful connection
           resolve();
         };
 
-        ws.onerror = (event) => {
+        ws.onerror = () => {
           reject(new Error('WebSocket connection failed'));
         };
 
@@ -387,7 +409,9 @@ export function useAsterLSP({
       };
 
       ws.onclose = (event) => {
-        console.log('[LSP] WebSocket closed:', event.code, event.reason);
+        if (!suppressErrors) {
+          console.log('[LSP] WebSocket closed:', event.code, event.reason);
+        }
         setConnected(false);
 
         // Clear pending requests
@@ -398,35 +422,47 @@ export function useAsterLSP({
 
         // Auto-reconnect if enabled and not disposed
         if (autoReconnect && !isDisposedRef.current && event.code !== 1000) {
-          console.log(`[LSP] Will reconnect in ${reconnectDelay}ms`);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, reconnectDelay);
+          reconnectAttemptsRef.current++;
+          if (maxReconnectAttempts === 0 || reconnectAttemptsRef.current < maxReconnectAttempts) {
+            if (!suppressErrors) {
+              console.log(`[LSP] Will reconnect in ${reconnectDelay}ms (attempt ${reconnectAttemptsRef.current})`);
+            }
+            reconnectTimeoutRef.current = setTimeout(() => {
+              connect();
+            }, reconnectDelay);
+          }
         }
       };
 
-      ws.onerror = (event) => {
-        console.error('[LSP] WebSocket error:', event);
+      ws.onerror = () => {
+        if (!suppressErrors) {
+          console.error('[LSP] WebSocket error');
+        }
         setError('WebSocket error');
       };
 
       // Initialize LSP protocol
       await initializeLSP();
     } catch (e) {
-      console.error('[LSP] Connection failed:', e);
+      reconnectAttemptsRef.current++;
+      if (!suppressErrors) {
+        console.error('[LSP] Connection failed:', e);
+      }
       setError(e instanceof Error ? e.message : 'Connection failed');
       setConnected(false);
 
-      // Auto-reconnect on failure
+      // Auto-reconnect on failure (with limit)
       if (autoReconnect && !isDisposedRef.current) {
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, reconnectDelay);
+        if (maxReconnectAttempts === 0 || reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect();
+          }, reconnectDelay);
+        }
       }
     } finally {
       setConnecting(false);
     }
-  }, [getWebSocketUrl, handleMessage, initializeLSP, autoReconnect, reconnectDelay]);
+  }, [getWebSocketUrl, handleMessage, initializeLSP, autoReconnect, reconnectDelay, maxReconnectAttempts, suppressErrors]);
 
   /**
    * Disconnect from the LSP server
@@ -437,6 +473,9 @@ export function useAsterLSP({
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
+
+    // Reset reconnect attempts
+    reconnectAttemptsRef.current = 0;
 
     // Close WebSocket
     if (wsRef.current) {

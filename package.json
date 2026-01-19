@@ -6,11 +6,11 @@
     "dev": "next dev",
     "dev:lsp": "tsx server.ts",
     "build": "next build",
-    "build:worker": "opennextjs-cloudflare build",
+    "build:worker": "next build && npx opennextjs-cloudflare build --skipNextBuild",
     "start": "next start",
     "start:lsp": "node --import tsx server.ts",
     "preview": "wrangler dev",
-    "deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "deploy": "next build && npx opennextjs-cloudflare build --skipNextBuild && wrangler deploy",
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
@@ -23,7 +23,6 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@aster-cloud/aster-lang-ts": "0.0.5",
     "@auth/drizzle-adapter": "^1.11.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
