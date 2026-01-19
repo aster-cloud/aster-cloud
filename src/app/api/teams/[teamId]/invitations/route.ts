@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import crypto from 'crypto';
+
 import { getSession } from '@/lib/auth';
 import { db, teams, teamMembers, teamInvitations, users } from '@/lib/prisma';
 import { eq, and, gt, desc } from 'drizzle-orm';
@@ -154,7 +154,7 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     // 创建邀请
     const token = generateInvitationToken();
-    const invitationId = crypto.randomUUID();
+    const invitationId = globalThis.crypto.randomUUID();
 
     const [invitation] = await db
       .insert(teamInvitations)

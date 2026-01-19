@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, passwordResetTokens, users } from '@/lib/prisma';
 import { sendPasswordResetEmail } from '@/lib/resend';
-import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
+
+// Generate secure random bytes using Web Crypto API (works in both Node.js and Cloudflare Workers)
+function randomBytes(length: number): string {
+  const bytes = new Uint8Array(length);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +35,7 @@ export async function POST(request: NextRequest) {
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.email, email.toLowerCase()));
 
     // Generate a secure token
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = randomBytes(32);
 
     // Token expires in 1 hour
     const expires = new Date();
@@ -37,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     // Save token to database
     await db.insert(passwordResetTokens).values({
-      id: crypto.randomUUID(),
+      id: globalThis.crypto.randomUUID(),
       email: email.toLowerCase(),
       token,
       expires,

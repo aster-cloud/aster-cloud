@@ -6,7 +6,6 @@ import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
 import { detectPII } from '@/services/pii/detector';
 import { addFreezeStatusToPolicies, getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { eq, isNull, desc, sql, and } from 'drizzle-orm';
-import crypto from 'crypto';
 
 // GET /api/policies - List user's policies
 export async function GET() {
@@ -144,7 +143,7 @@ export async function POST(req: Request) {
     const [policy] = await db
       .insert(policies)
       .values({
-        id: crypto.randomUUID(),
+        id: globalThis.crypto.randomUUID(),
         userId: session.user.id,
         name,
         content,
@@ -157,7 +156,7 @@ export async function POST(req: Request) {
 
     // Create initial version
     await db.insert(policyVersions).values({
-      id: crypto.randomUUID(),
+      id: globalThis.crypto.randomUUID(),
       policyId: policy.id,
       version: 1,
       content,

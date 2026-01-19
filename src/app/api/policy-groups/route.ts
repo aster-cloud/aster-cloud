@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policyGroups, policies, teams, teamMembers } from '@/lib/prisma';
 import { eq, and, or, isNull, sql, desc, asc } from 'drizzle-orm';
-import crypto from 'crypto';
+
 
 // GET /api/policy-groups - 获取用户的策略分组树
 export async function GET() {
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
     const [group] = await db
       .insert(policyGroups)
       .values({
-        id: crypto.randomUUID(),
+        id: globalThis.crypto.randomUUID(),
         name,
         description: description || null,
         icon: icon || null,

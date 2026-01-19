@@ -4,7 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { db, users, auditLogs } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
-import crypto from 'crypto';
+
 
 export async function POST(req: Request) {
   // Validate webhook secret is configured
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
 
           // Create audit log
           await db.insert(auditLogs).values({
-            id: crypto.randomUUID(),
+            id: globalThis.crypto.randomUUID(),
             userId: user.id,
             action: 'subscription.cancelled',
             resource: 'subscription',
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         if (user) {
           // Create audit log for payment
           await db.insert(auditLogs).values({
-            id: crypto.randomUUID(),
+            id: globalThis.crypto.randomUUID(),
             userId: user.id,
             action: 'payment.succeeded',
             resource: 'invoice',
@@ -204,7 +204,7 @@ export async function POST(req: Request) {
 
           // Create audit log
           await db.insert(auditLogs).values({
-            id: crypto.randomUUID(),
+            id: globalThis.crypto.randomUUID(),
             userId: user.id,
             action: 'payment.failed',
             resource: 'invoice',

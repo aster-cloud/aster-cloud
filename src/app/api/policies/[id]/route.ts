@@ -5,7 +5,7 @@ import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { softDeletePolicy } from '@/lib/policy-lifecycle';
-import crypto from 'crypto';
+
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -157,7 +157,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     if (newVersion) {
       await db.insert(policyVersions).values({
-        id: crypto.randomUUID(),
+        id: globalThis.crypto.randomUUID(),
         policyId: id,
         version: policy.version,
         content,

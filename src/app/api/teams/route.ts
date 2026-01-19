@@ -4,7 +4,7 @@ import { db, teams, teamMembers, policies } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { hasFeatureAccess } from '@/lib/usage';
 import { validateTeamName, validateSlug } from '@/lib/validation';
-import crypto from 'crypto';
+
 
 // GET /api/teams - 列出用户的团队
 export async function GET() {
@@ -107,8 +107,8 @@ export async function POST(req: Request) {
     }
 
     // 创建团队和所有者成员关系（使用事务）
-    const teamId = crypto.randomUUID();
-    const memberId = crypto.randomUUID();
+    const teamId = globalThis.crypto.randomUUID();
+    const memberId = globalThis.crypto.randomUUID();
 
     await db.transaction(async (tx) => {
       await tx.insert(teams).values({

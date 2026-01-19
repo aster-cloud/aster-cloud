@@ -6,7 +6,7 @@ import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
-import crypto from 'crypto';
+
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -134,7 +134,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const durationMs = Date.now() - startTime;
 
     const [execution] = await db.insert(executions).values({
-      id: crypto.randomUUID(),
+      id: globalThis.crypto.randomUUID(),
       userId: session.user.id,
       policyId: id,
       input: validatedInput as object,

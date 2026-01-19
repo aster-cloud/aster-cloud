@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth';
 import { db, policies, executions, users } from '@/lib/prisma';
 import { eq, isNull, desc, sql } from 'drizzle-orm';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
-import crypto from 'crypto';
+
 
 type RouteParams = { params: Promise<{ teamId: string }> };
 
@@ -145,7 +145,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: '策略内容不能为空' }, { status: 400 });
     }
 
-    const newPolicyId = crypto.randomUUID();
+    const newPolicyId = globalThis.crypto.randomUUID();
     const [newPolicy] = await db
       .insert(policies)
       .values({

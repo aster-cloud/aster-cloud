@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, teamInvitations, teamMembers, teams, users } from '@/lib/prisma';
 import { eq, and } from 'drizzle-orm';
-import crypto from 'crypto';
+
 
 // POST /api/teams/invitations/accept - 接受邀请
 export async function POST(req: Request) {
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     // 使用事务创建成员并删除邀请
     await db.transaction(async (tx) => {
       await tx.insert(teamMembers).values({
-        id: crypto.randomUUID(),
+        id: globalThis.crypto.randomUUID(),
         teamId: invitation.teamId,
         userId: session.user.id,
         role: invitation.role,
