@@ -183,19 +183,42 @@ export async function POST(req: Request) {
       insertValues.groupId = groupId;
     }
 
-    const [policy] = await db
-      .insert(policies)
-      .values(insertValues)
-      .returning();
+    // Test raw SQL to see if connection works
+    try {
+      const testResult = await db.execute(sql`SELECT 1 as test`);
+      console.log('DB connection test:', testResult);
+    } catch (connErr) {
+      console.error('DB connection test failed:', connErr);
+      throw new Error(`Database connection failed: ${connErr instanceof Error ? connErr.message : String(connErr)}`);
+    }
+
+    let policy;
+    try {
+      const result = await db
+        .insert(policies)
+        .values(insertValues)
+        .returning();
+      policy = result[0];
+      console.log('Policy insert succeeded:', policy?.id);
+    } catch (insertErr) {
+      console.error('Policy insert failed:', JSON.stringify(insertErr, Object.getOwnPropertyNames(insertErr as object)));
+      throw insertErr;
+    }
 
     // Create initial version
-    await db.insert(policyVersions).values({
-      id: globalThis.crypto.randomUUID(),
-      policyId: policy.id,
-      version: 1,
-      content,
-      comment: 'Initial version',
-    });
+    try {
+      await db.insert(policyVersions).values({
+        id: globalThis.crypto.randomUUID(),
+        policyId: policy.id,
+        version: 1,
+        content,
+        comment: 'Initial version',
+      });
+      console.log('PolicyVersion insert succeeded');
+    } catch (versionErr) {
+      console.error('PolicyVersion insert failed:', versionErr);
+      throw versionErr;
+    }
 
     return NextResponse.json(policy, { status: 201 });
   } catch (error: unknown) {
