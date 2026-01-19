@@ -1,0 +1,42 @@
+# Cloudflare Workers 配置
+# 用于 aster-cloud Next.js 应用（通过 OpenNext 适配）
+
+name = "aster-cloud"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 主入口点（自定义 worker wrapper，包装 OpenNext 生成的 handler）
+# 用于处理根路径重定向，解决 Next.js 15 middleware 不被编译的问题
+main = "worker.js"
+
+# 资源目录
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
+
+# Hyperdrive 绑定 - PostgreSQL 连接池
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "b712d2c83ffe41f0b4d0ec615314a935"
+
+# 环境变量（公开的，非敏感信息）
+[vars]
+NODE_ENV = "production"
+NEXT_PUBLIC_APP_URL = "https://aster-lang.cloud"
+
+# 敏感环境变量需要通过 wrangler secret 设置：
+#
+# 必须配置（认证相关）：
+# wrangler secret put NEXTAUTH_SECRET    # NextAuth JWT 签名密钥，可用 `openssl rand -base64 32` 生成
+# wrangler secret put NEXTAUTH_URL       # 设置为 https://aster-lang.cloud
+#
+# OAuth 提供者（至少配置一个）：
+# wrangler secret put GITHUB_CLIENT_ID
+# wrangler secret put GITHUB_CLIENT_SECRET
+# wrangler secret put GOOGLE_CLIENT_ID
+# wrangler secret put GOOGLE_CLIENT_SECRET
+#
+# 支付（可选）：
+# wrangler secret put STRIPE_SECRET_KEY
+# wrangler secret put STRIPE_WEBHOOK_SECRET
+#
+# 邮件（可选）：
+# wrangler secret put RESEND_API_KEY

@@ -1,7 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teams, teamMembers, policies } from '@/lib/prisma';
+import { eq, desc, sql } from 'drizzle-orm';
 import { hasFeatureAccess } from '@/lib/usage';
 import { TeamsContent } from './teams-content';
 
@@ -16,7 +17,7 @@ export default async function TeamsPage() {
   // 检查团队功能访问权限
   const hasAccess = await hasFeatureAccess(session.user.id, 'teamFeatures');
 
-  let teams: {
+  let teamsResult: {
     id: string;
     name: string;
     slug: string;
@@ -27,33 +28,51 @@ export default async function TeamsPage() {
   }[] = [];
 
   if (hasAccess) {
-    const teamsData = await prisma.team.findMany({
-      where: {
-        members: {
-          some: { userId: session.user.id },
-        },
-      },
-      include: {
-        members: {
-          where: { userId: session.user.id },
-          select: { role: true },
-        },
-        _count: {
-          select: { members: true, policies: true },
-        },
-      },
-      orderBy: { updatedAt: 'desc' },
+    // 首先获取用户所在的团队 ID
+    const userTeamMemberships = await db.query.teamMembers.findMany({
+      where: eq(teamMembers.userId, session.user.id),
+      columns: { teamId: true, role: true },
     });
 
-    teams = teamsData.map((team) => ({
-      id: team.id,
-      name: team.name,
-      slug: team.slug,
-      role: team.members[0]?.role || 'member',
-      memberCount: team._count.members,
-      policyCount: team._count.policies,
-      createdAt: team.createdAt.toISOString(),
-    }));
+    if (userTeamMemberships.length > 0) {
+      // 获取这些团队的详细信息
+      const teamsData = await db.query.teams.findMany({
+        where: sql`${teams.id} IN ${sql.raw(
+          `(${userTeamMemberships.map((m) => `'${m.teamId}'`).join(',')})`
+        )}`,
+        orderBy: desc(teams.updatedAt),
+      });
+
+      // 为每个团队获取成员数和策略数
+      teamsResult = await Promise.all(
+        teamsData.map(async (team) => {
+          const membership = userTeamMemberships.find((m) => m.teamId === team.id);
+
+          const [{ memberCount }, { policyCount }] = await Promise.all([
+            db
+              .select({ memberCount: sql<number>`count(*)::int` })
+              .from(teamMembers)
+              .where(eq(teamMembers.teamId, team.id))
+              .then((r) => r[0]),
+            db
+              .select({ policyCount: sql<number>`count(*)::int` })
+              .from(policies)
+              .where(eq(policies.teamId, team.id))
+              .then((r) => r[0]),
+          ]);
+
+          return {
+            id: team.id,
+            name: team.name,
+            slug: team.slug,
+            role: membership?.role || 'member',
+            memberCount,
+            policyCount,
+            createdAt: team.createdAt.toISOString(),
+          };
+        })
+      );
+    }
   }
 
   // 预渲染所有翻译字符串
@@ -81,7 +100,7 @@ export default async function TeamsPage() {
 
   return (
     <TeamsContent
-      initialTeams={teams}
+      initialTeams={teamsResult}
       needsUpgrade={!hasAccess}
       translations={translations}
     />

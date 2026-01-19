@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teamMembers } from '@/lib/prisma';
+import { eq, and } from 'drizzle-orm';
 import {
   checkTeamAccess,
   checkTeamPermission,
@@ -39,11 +40,11 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     // 获取目标成员
-    const targetMember = await prisma.teamMember.findUnique({
-      where: { id: memberId },
+    const targetMember = await db.query.teamMembers.findFirst({
+      where: and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)),
     });
 
-    if (!targetMember || targetMember.teamId !== teamId) {
+    if (!targetMember) {
       return NextResponse.json({ error: '成员不存在' }, { status: 404 });
     }
 
@@ -66,12 +67,17 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     // 更新角色
-    const updatedMember = await prisma.teamMember.update({
-      where: { id: memberId },
-      data: { role: newRole },
-      include: {
+    await db
+      .update(teamMembers)
+      .set({ role: newRole })
+      .where(eq(teamMembers.id, memberId));
+
+    // 重新查询获取完整信息
+    const updatedMember = await db.query.teamMembers.findFirst({
+      where: eq(teamMembers.id, memberId),
+      with: {
         user: {
-          select: {
+          columns: {
             id: true,
             name: true,
             email: true,
@@ -79,6 +85,10 @@ export async function PUT(req: Request, { params }: RouteParams) {
         },
       },
     });
+
+    if (!updatedMember) {
+      throw new Error('Failed to update member');
+    }
 
     return NextResponse.json({
       id: updatedMember.id,
@@ -110,11 +120,11 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     // 获取目标成员
-    const targetMember = await prisma.teamMember.findUnique({
-      where: { id: memberId },
+    const targetMember = await db.query.teamMembers.findFirst({
+      where: and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)),
     });
 
-    if (!targetMember || targetMember.teamId !== teamId) {
+    if (!targetMember) {
       return NextResponse.json({ error: '成员不存在' }, { status: 404 });
     }
 
@@ -139,7 +149,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     // 移除成员
-    await prisma.teamMember.delete({ where: { id: memberId } });
+    await db.delete(teamMembers).where(eq(teamMembers.id, memberId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

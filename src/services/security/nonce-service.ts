@@ -5,7 +5,8 @@
  * 每个 Nonce 只能使用一次，过期后自动清理。
  */
 
-import { prisma } from '@/lib/prisma';
+import { db, usedNonces } from '@/lib/prisma';
+import { lt, sql } from 'drizzle-orm';
 
 const NONCE_EXPIRY_MS = 10 * 60 * 1000; // 10 分钟
 
@@ -36,18 +37,17 @@ export async function checkAndRecordNonce(
 
   try {
     // 尝试创建 Nonce 记录（唯一约束保证原子性）
-    await prisma.usedNonce.create({
-      data: {
-        nonce,
-        policyId,
-        userId,
-        expiresAt,
-      },
+    await db.insert(usedNonces).values({
+      id: crypto.randomUUID(),
+      nonce,
+      policyId,
+      userId,
+      expiresAt,
     });
     return { valid: true };
   } catch (error: unknown) {
     // 唯一约束冲突 = Nonce 已被使用
-    if (isPrismaUniqueConstraintError(error)) {
+    if (isUniqueConstraintError(error)) {
       return { valid: false, reason: 'ALREADY_USED' };
     }
     throw error;
@@ -61,14 +61,11 @@ export async function checkAndRecordNonce(
  * 返回清理的记录数。
  */
 export async function cleanupExpiredNonces(): Promise<number> {
-  const result = await prisma.usedNonce.deleteMany({
-    where: {
-      expiresAt: {
-        lt: new Date(),
-      },
-    },
-  });
-  return result.count;
+  const result = await db.delete(usedNonces)
+    .where(lt(usedNonces.expiresAt, new Date()))
+    .returning();
+
+  return result.length;
 }
 
 /**
@@ -81,14 +78,15 @@ export async function getNonceStats(): Promise<{
 }> {
   const now = new Date();
 
-  const [total, expired] = await Promise.all([
-    prisma.usedNonce.count(),
-    prisma.usedNonce.count({
-      where: {
-        expiresAt: { lt: now },
-      },
-    }),
+  const [totalResult, expiredResult] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(usedNonces),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(usedNonces)
+      .where(lt(usedNonces.expiresAt, now)),
   ]);
+
+  const total = totalResult[0]?.count || 0;
+  const expired = expiredResult[0]?.count || 0;
 
   return {
     total,
@@ -98,13 +96,13 @@ export async function getNonceStats(): Promise<{
 }
 
 /**
- * 检查是否为 Prisma 唯一约束错误
+ * 检查是否为唯一约束错误 (PostgreSQL error code 23505)
  */
-function isPrismaUniqueConstraintError(error: unknown): boolean {
+function isUniqueConstraintError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    (error as { code: string }).code === 'P2002'
+    (error as { code: string }).code === '23505'
   );
 }

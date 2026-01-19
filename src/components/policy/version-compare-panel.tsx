@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { PolicyVersionStatus } from '@prisma/client';
+import type { PolicyVersionStatus } from '@/lib/prisma';
 
 interface VersionSummary {
   version: number;

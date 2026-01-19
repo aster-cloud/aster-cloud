@@ -1,4 +1,5 @@
-import { prisma } from '@/lib/prisma';
+import { db, teamMembers } from '@/lib/prisma';
+import { eq, and } from 'drizzle-orm';
 
 // 权限定义
 export const TeamPermission = {
@@ -67,11 +68,9 @@ export type PermissionCheckResult =
 
 // 获取用户在团队中的角色
 export async function getTeamMemberRole(userId: string, teamId: string): Promise<TeamRole | null> {
-  const membership = await prisma.teamMember.findUnique({
-    where: {
-      teamId_userId: { teamId, userId },
-    },
-    select: { role: true },
+  const membership = await db.query.teamMembers.findFirst({
+    where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)),
+    columns: { role: true },
   });
   return (membership?.role as TeamRole) ?? null;
 }

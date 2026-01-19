@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { db, policies } from '@/lib/prisma';
+import { eq, and, isNull } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 import { queryExecutionLogs, getExecutionStats } from '@/lib/policy-execution-log';
 import { LogsContent } from './logs-content';
@@ -8,13 +9,13 @@ import { LogsContent } from './logs-content';
 async function getInitialLogsData(userId: string, policyId: string) {
   // 并行获取策略信息、日志和统计
   const [policy, logsResult, stats] = await Promise.all([
-    prisma.policy.findFirst({
-      where: {
-        id: policyId,
-        userId,
-        deletedAt: null,
-      },
-      select: {
+    db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, policyId),
+        eq(policies.userId, userId),
+        isNull(policies.deletedAt)
+      ),
+      columns: {
         id: true,
         name: true,
       },

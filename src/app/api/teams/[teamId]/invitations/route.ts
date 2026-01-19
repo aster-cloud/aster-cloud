@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
+import crypto from 'crypto';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teams, teamMembers, teamInvitations, users } from '@/lib/prisma';
+import { eq, and, gt, desc } from 'drizzle-orm';
 import {
   checkTeamAccess,
   checkTeamPermission,
@@ -46,12 +48,9 @@ export async function GET(req: Request, { params }: RouteParams) {
     }
 
     // 获取未过期的邀请
-    const invitations = await prisma.teamInvitation.findMany({
-      where: {
-        teamId,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
+    const invitations = await db.query.teamInvitations.findMany({
+      where: and(eq(teamInvitations.teamId, teamId), gt(teamInvitations.expiresAt, new Date())),
+      orderBy: desc(teamInvitations.createdAt),
     });
 
     return NextResponse.json({
@@ -114,25 +113,28 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: inviteCheck.error }, { status: inviteCheck.status });
     }
 
-    // 检查用户是否已是成员
-    const existingMember = await prisma.teamMember.findFirst({
-      where: {
-        teamId,
-        user: { email },
-      },
+    // 检查用户是否已是成员（通过 user.email 关联）
+    const userWithEmail = await db.query.users.findFirst({
+      where: eq(users.email, email),
     });
 
-    if (existingMember) {
-      return NextResponse.json({ error: '此用户已是团队成员' }, { status: 400 });
+    if (userWithEmail) {
+      const existingMember = await db.query.teamMembers.findFirst({
+        where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userWithEmail.id)),
+      });
+
+      if (existingMember) {
+        return NextResponse.json({ error: '此用户已是团队成员' }, { status: 400 });
+      }
     }
 
     // 检查是否已有待处理的邀请
-    const existingInvitation = await prisma.teamInvitation.findFirst({
-      where: {
-        teamId,
-        email,
-        expiresAt: { gt: new Date() },
-      },
+    const existingInvitation = await db.query.teamInvitations.findFirst({
+      where: and(
+        eq(teamInvitations.teamId, teamId),
+        eq(teamInvitations.email, email),
+        gt(teamInvitations.expiresAt, new Date())
+      ),
     });
 
     if (existingInvitation) {
@@ -140,27 +142,35 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     // 获取团队和邀请者信息
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      select: { name: true },
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+      columns: { name: true },
     });
 
-    const inviter = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { name: true },
+    const inviter = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { name: true },
     });
 
     // 创建邀请
     const token = generateInvitationToken();
-    const invitation = await prisma.teamInvitation.create({
-      data: {
+    const invitationId = crypto.randomUUID();
+
+    const [invitation] = await db
+      .insert(teamInvitations)
+      .values({
+        id: invitationId,
         teamId,
         email,
         role,
         token,
         expiresAt: getInvitationExpiryDate(),
-      },
-    });
+      })
+      .returning();
+
+    if (!invitation) {
+      throw new Error('Failed to create invitation');
+    }
 
     // 发送邀请邮件
     const emailResult = await sendTeamInvitationEmail(

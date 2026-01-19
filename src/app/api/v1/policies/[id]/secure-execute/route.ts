@@ -10,8 +10,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/auth';
+
 import { executeSecurely } from '@/services/security/secure-executor';
 import type { SignedRequest } from '@/services/security/policy-security';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   try {
     // 1. 认证
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: '未授权', requestId },

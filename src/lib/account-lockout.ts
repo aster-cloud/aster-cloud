@@ -5,7 +5,8 @@
  * 使用渐进式锁定策略：失败次数越多，锁定时间越长。
  */
 
-import { prisma } from './prisma';
+import { db, users } from './prisma';
+import { eq } from 'drizzle-orm';
 
 /**
  * 锁定配置
@@ -56,9 +57,9 @@ export async function checkAccountLockout(email: string): Promise<LockoutStatus>
   const now = new Date();
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: {
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, normalizedEmail),
+      columns: {
         failedLoginAttempts: true,
         lastFailedLoginAt: true,
         lockedUntil: true,
@@ -116,9 +117,9 @@ export async function recordFailedAttempt(email: string): Promise<FailedAttemptR
   const now = new Date();
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: {
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, normalizedEmail),
+      columns: {
         id: true,
         failedLoginAttempts: true,
         lastFailedLoginAt: true,
@@ -150,15 +151,14 @@ export async function recordFailedAttempt(email: string): Promise<FailedAttemptR
       );
       const lockedUntil = new Date(now.getTime() + lockoutDuration);
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
+      await db.update(users)
+        .set({
           failedLoginAttempts: newFailedAttempts,
           lastFailedLoginAt: now,
           lockedUntil,
           lockoutCount: lockoutCount + 1,
-        },
-      });
+        })
+        .where(eq(users.id, user.id));
 
       return {
         nowLocked: true,
@@ -169,13 +169,12 @@ export async function recordFailedAttempt(email: string): Promise<FailedAttemptR
     }
 
     // 更新失败计数
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
+    await db.update(users)
+      .set({
         failedLoginAttempts: newFailedAttempts,
         lastFailedLoginAt: now,
-      },
-    });
+      })
+      .where(eq(users.id, user.id));
 
     return {
       nowLocked: false,
@@ -199,15 +198,14 @@ export async function resetFailedAttempts(email: string): Promise<void> {
   const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    await prisma.user.update({
-      where: { email: normalizedEmail },
-      data: {
+    await db.update(users)
+      .set({
         failedLoginAttempts: 0,
         lastFailedLoginAt: null,
         lockedUntil: null,
         // 注意：不重置 lockoutCount，保留历史记录
-      },
-    });
+      })
+      .where(eq(users.email, normalizedEmail));
   } catch (error) {
     // 用户可能不存在，忽略错误
     console.warn('[AccountLockout] 重置失败计数失败（可能用户不存在）:', error);
@@ -223,15 +221,14 @@ export async function unlockAccount(email: string): Promise<boolean> {
   const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    await prisma.user.update({
-      where: { email: normalizedEmail },
-      data: {
+    await db.update(users)
+      .set({
         failedLoginAttempts: 0,
         lastFailedLoginAt: null,
         lockedUntil: null,
         lockoutCount: 0,
-      },
-    });
+      })
+      .where(eq(users.email, normalizedEmail));
     return true;
   } catch {
     return false;

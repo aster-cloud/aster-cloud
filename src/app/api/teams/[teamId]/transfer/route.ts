@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teams, teamMembers } from '@/lib/prisma';
+import { eq, and } from 'drizzle-orm';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
@@ -32,13 +33,8 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     // 检查新所有者是否为团队成员
-    const newOwnerMembership = await prisma.teamMember.findUnique({
-      where: {
-        teamId_userId: {
-          teamId,
-          userId: newOwnerId,
-        },
-      },
+    const newOwnerMembership = await db.query.teamMembers.findFirst({
+      where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, newOwnerId)),
     });
 
     if (!newOwnerMembership) {
@@ -51,33 +47,22 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     // 使用事务更新所有权
-    await prisma.$transaction([
+    await db.transaction(async (tx) => {
       // 更新团队的 ownerId
-      prisma.team.update({
-        where: { id: teamId },
-        data: { ownerId: newOwnerId },
-      }),
+      await tx.update(teams).set({ ownerId: newOwnerId }).where(eq(teams.id, teamId));
+
       // 将新所有者角色更新为 owner
-      prisma.teamMember.update({
-        where: {
-          teamId_userId: {
-            teamId,
-            userId: newOwnerId,
-          },
-        },
-        data: { role: 'owner' },
-      }),
+      await tx
+        .update(teamMembers)
+        .set({ role: 'owner' })
+        .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, newOwnerId)));
+
       // 将原所有者角色降级为 admin
-      prisma.teamMember.update({
-        where: {
-          teamId_userId: {
-            teamId,
-            userId: session.user.id,
-          },
-        },
-        data: { role: 'admin' },
-      }),
-    ]);
+      await tx
+        .update(teamMembers)
+        .set({ role: 'admin' })
+        .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, session.user.id)));
+    });
 
     return NextResponse.json({
       success: true,

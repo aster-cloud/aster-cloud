@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policies, policyVersions, executions, teamMembers } from '@/lib/prisma';
+import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { softDeletePolicy } from '@/lib/policy-lifecycle';
+import crypto from 'crypto';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -19,36 +21,52 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     const { id } = await params;
 
-    const policy = await prisma.policy.findFirst({
-      where: {
-        id,
-        deletedAt: null, // 排除已删除的策略
-        OR: [
-          { userId: session.user.id },
-          { isPublic: true },
-          {
-            team: {
-              members: {
-                some: { userId: session.user.id },
-              },
+    // 先查用户自己的策略或公开策略
+    let policy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, id),
+        isNull(policies.deletedAt),
+        sql`(${policies.userId} = ${session.user.id} OR ${policies.isPublic} = true)`
+      ),
+    });
+
+    // 如果不是用户自己的策略,检查是否是团队策略
+    if (!policy || (policy.userId !== session.user.id && !policy.isPublic)) {
+      const teamPolicy = await db.query.policies.findFirst({
+        where: and(
+          eq(policies.id, id),
+          isNull(policies.deletedAt)
+        ),
+        with: {
+          team: {
+            with: {
+              members: true,
             },
           },
-        ],
-      },
-      include: {
-        versions: {
-          orderBy: { version: 'desc' },
-          take: 10,
         },
-        _count: {
-          select: { executions: true },
-        },
-      },
-    });
+      });
+
+      if (teamPolicy?.team?.members.some(m => m.userId === session.user.id)) {
+        policy = teamPolicy;
+      }
+    }
 
     if (!policy) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
     }
+
+    // 获取版本列表
+    const versions = await db.query.policyVersions.findMany({
+      where: eq(policyVersions.policyId, id),
+      orderBy: desc(policyVersions.version),
+      limit: 10,
+    });
+
+    // 获取执行次数
+    const [{ count: executionCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(executions)
+      .where(eq(executions.policyId, id));
 
     // 检查策略是否被冻结（只对策略所有者检查）
     let freezeInfo = null;
@@ -58,6 +76,8 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     return NextResponse.json({
       ...policy,
+      versions,
+      _count: { executions: executionCount },
       isFrozen: freezeInfo?.isFrozen ?? false,
       freezeInfo: freezeInfo
         ? {
@@ -86,12 +106,12 @@ export async function PUT(req: Request, { params }: RouteParams) {
     const { name, content, description, isPublic, groupId } = await req.json();
 
     // Check ownership (exclude deleted policies)
-    const existingPolicy = await prisma.policy.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-        deletedAt: null,
-      },
+    const existingPolicy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, id),
+        eq(policies.userId, session.user.id),
+        isNull(policies.deletedAt)
+      ),
     });
 
     if (!existingPolicy) {
@@ -112,35 +132,35 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     // Update policy and create new version if content changed
-    // Only consider it a new version if content is explicitly provided and different
     const newVersion = content !== undefined && content !== existingPolicy.content;
 
     const piiResult = newVersion ? detectPII(content) : null;
 
-    // Build update data, only including fields that are explicitly provided
+    // Build update data
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (content !== undefined) updateData.content = content;
     if (description !== undefined) updateData.description = description;
     if (isPublic !== undefined) updateData.isPublic = isPublic;
     if (groupId !== undefined) updateData.groupId = groupId || null;
+
     if (newVersion) {
-      updateData.version = { increment: 1 };
+      updateData.version = existingPolicy.version + 1;
       updateData.piiFields = piiResult?.detectedTypes;
     }
 
-    const policy = await prisma.policy.update({
-      where: { id },
-      data: updateData,
-    });
+    const [policy] = await db
+      .update(policies)
+      .set(updateData)
+      .where(eq(policies.id, id))
+      .returning();
 
     if (newVersion) {
-      await prisma.policyVersion.create({
-        data: {
-          policyId: id,
-          version: policy.version,
-          content,
-        },
+      await db.insert(policyVersions).values({
+        id: crypto.randomUUID(),
+        policyId: id,
+        version: policy.version,
+        content,
       });
     }
 

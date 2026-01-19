@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policyGroups, policies, teamMembers } from '@/lib/prisma';
+import { eq, and, inArray, isNull, sql } from 'drizzle-orm';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -22,37 +23,38 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     // 验证分组存在且用户有权限
-    const group = await prisma.policyGroup.findFirst({
-      where: {
-        id: groupId,
-        OR: [
-          { userId: session.user.id },
-          {
-            team: {
-              members: {
-                some: { userId: session.user.id },
-              },
-            },
-          },
-        ],
-      },
+    let group = await db.query.policyGroups.findFirst({
+      where: eq(policyGroups.id, groupId),
     });
 
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
 
+    // 检查用户权限
+    const hasPermission = group.userId === session.user.id ||
+      (group.teamId && await db.query.teamMembers.findFirst({
+        where: and(
+          eq(teamMembers.teamId, group.teamId),
+          eq(teamMembers.userId, session.user.id)
+        ),
+      }));
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
+
     // 验证所有策略都属于当前用户
-    const policies = await prisma.policy.findMany({
-      where: {
-        id: { in: policyIds },
-        userId: session.user.id,
-        deletedAt: null,
-      },
-      select: { id: true },
+    const userPolicies = await db.query.policies.findMany({
+      where: and(
+        inArray(policies.id, policyIds),
+        eq(policies.userId, session.user.id),
+        isNull(policies.deletedAt)
+      ),
+      columns: { id: true },
     });
 
-    const foundIds = new Set(policies.map((p) => p.id));
+    const foundIds = new Set(userPolicies.map((p) => p.id));
     const notFoundIds = policyIds.filter((id: string) => !foundIds.has(id));
 
     if (notFoundIds.length > 0) {
@@ -63,13 +65,13 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     // 批量更新策略的分组
-    await prisma.policy.updateMany({
-      where: {
-        id: { in: policyIds },
-        userId: session.user.id,
-      },
-      data: { groupId },
-    });
+    await db
+      .update(policies)
+      .set({ groupId })
+      .where(and(
+        inArray(policies.id, policyIds),
+        eq(policies.userId, session.user.id)
+      ));
 
     return NextResponse.json({
       success: true,
@@ -97,35 +99,36 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     // 验证分组存在且用户有权限
-    const group = await prisma.policyGroup.findFirst({
-      where: {
-        id: groupId,
-        OR: [
-          { userId: session.user.id },
-          {
-            team: {
-              members: {
-                some: { userId: session.user.id },
-              },
-            },
-          },
-        ],
-      },
+    let group = await db.query.policyGroups.findFirst({
+      where: eq(policyGroups.id, groupId),
     });
 
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
 
+    // 检查用户权限
+    const hasPermission = group.userId === session.user.id ||
+      (group.teamId && await db.query.teamMembers.findFirst({
+        where: and(
+          eq(teamMembers.teamId, group.teamId),
+          eq(teamMembers.userId, session.user.id)
+        ),
+      }));
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
+
     // 批量移除策略的分组关联（设为 null）
-    await prisma.policy.updateMany({
-      where: {
-        id: { in: policyIds },
-        userId: session.user.id,
-        groupId,
-      },
-      data: { groupId: null },
-    });
+    await db
+      .update(policies)
+      .set({ groupId: null })
+      .where(and(
+        inArray(policies.id, policyIds),
+        eq(policies.userId, session.user.id),
+        eq(policies.groupId, groupId)
+      ));
 
     return NextResponse.json({
       success: true,

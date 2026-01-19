@@ -9,33 +9,30 @@
  *   npx dotenv -e .env.local -- npx tsx scripts/fix-policy-comments.ts
  */
 
-import { prisma } from '../src/lib/prisma';
+import { eq, like } from 'drizzle-orm';
+import { db, policies } from '../src/lib/prisma';
 
 async function main() {
   console.log('查找包含 // 注释的策略...\n');
 
   // 查找所有内容以 // 开头的策略
-  const policies = await prisma.policy.findMany({
-    where: {
-      content: {
-        startsWith: '//',
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      content: true,
-    },
-  });
+  const policiesWithComments = await db
+    .select({
+      id: policies.id,
+      name: policies.name,
+      content: policies.content,
+    })
+    .from(policies)
+    .where(like(policies.content, '//%'));
 
-  if (policies.length === 0) {
+  if (policiesWithComments.length === 0) {
     console.log('没有找到需要修复的策略。');
     return;
   }
 
-  console.log(`找到 ${policies.length} 个需要修复的策略:\n`);
+  console.log(`找到 ${policiesWithComments.length} 个需要修复的策略:\n`);
 
-  for (const policy of policies) {
+  for (const policy of policiesWithComments) {
     console.log(`- ${policy.name} (${policy.id})`);
 
     // 移除开头的 // 注释行
@@ -57,15 +54,15 @@ async function main() {
     const newContent = filteredLines.join('\n');
 
     // 更新策略
-    await prisma.policy.update({
-      where: { id: policy.id },
-      data: { content: newContent },
-    });
+    await db
+      .update(policies)
+      .set({ content: newContent })
+      .where(eq(policies.id, policy.id));
 
     console.log(`  ✓ 已修复\n`);
   }
 
-  console.log(`\n完成！共修复 ${policies.length} 个策略。`);
+  console.log(`\n完成！共修复 ${policiesWithComments.length} 个策略。`);
 }
 
 main()

@@ -1,8 +1,11 @@
 // src/lib/policy-execution-log.ts
 // 策略执行日志服务：查询、分页、统计
 
-import { prisma } from '@/lib/prisma';
-import { ExecutionSource } from '@prisma/client';
+import { db, executions, policies } from '@/lib/prisma';
+import { eq, and, gte, lte, isNull, desc, lt, sql } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
+
+type ExecutionSource = InferSelectModel<typeof executions>['source'];
 
 export interface ExecutionLogItem {
   id: string;
@@ -61,46 +64,43 @@ export interface ExecutionStats {
 export async function queryExecutionLogs(query: ExecutionLogQuery): Promise<ExecutionLogResult> {
   const { userId, policyId, success, source, startDate, endDate, page = 1, pageSize = 20 } = query;
 
-  const where: {
-    userId: string;
-    policyId?: string;
-    success?: boolean;
-    source?: ExecutionSource;
-    createdAt?: { gte?: Date; lte?: Date };
-    policy?: { deletedAt: null };
-  } = {
-    userId,
-    policy: { deletedAt: null }, // 排除已删除策略的执行记录
-  };
+  // Build where conditions
+  const conditions = [eq(executions.userId, userId)];
+  if (policyId) conditions.push(eq(executions.policyId, policyId));
+  if (success !== undefined) conditions.push(eq(executions.success, success));
+  if (source) conditions.push(eq(executions.source, source));
+  if (startDate) conditions.push(gte(executions.createdAt, startDate));
+  if (endDate) conditions.push(lte(executions.createdAt, endDate));
 
-  if (policyId) where.policyId = policyId;
-  if (success !== undefined) where.success = success;
-  if (source) where.source = source;
-  if (startDate || endDate) {
-    where.createdAt = {};
-    if (startDate) where.createdAt.gte = startDate;
-    if (endDate) where.createdAt.lte = endDate;
-  }
+  const whereClause = and(...conditions);
 
-  const [items, total] = await Promise.all([
-    prisma.execution.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
+  const [items, totalResult] = await Promise.all([
+    db.query.executions.findMany({
+      where: whereClause,
+      orderBy: [desc(executions.createdAt)],
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
+      with: {
         policy: {
-          select: {
+          columns: {
             name: true,
+            deletedAt: true,
           },
         },
       },
     }),
-    prisma.execution.count({ where }),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(executions)
+      .where(whereClause),
   ]);
 
+  const total = totalResult[0]?.count || 0;
+
+  // Filter out executions with deleted policies
+  const filteredItems = items.filter(item => !item.policy.deletedAt);
+
   return {
-    items: items.map((item) => ({
+    items: filteredItems.map((item) => ({
       id: item.id,
       policyId: item.policyId,
       policyName: item.policy.name,
@@ -128,14 +128,14 @@ export async function getExecutionLogDetail(
   executionId: string,
   userId: string
 ): Promise<ExecutionLogItem | null> {
-  const item = await prisma.execution.findFirst({
-    where: {
-      id: executionId,
-      userId,
-    },
-    include: {
+  const item = await db.query.executions.findFirst({
+    where: and(
+      eq(executions.id, executionId),
+      eq(executions.userId, userId)
+    ),
+    with: {
       policy: {
-        select: {
+        columns: {
           name: true,
         },
       },
@@ -171,44 +171,57 @@ export async function getExecutionStats(
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  const where: {
-    userId: string;
-    policyId?: string;
-    createdAt: { gte: Date };
-    policy?: { deletedAt: null };
-  } = {
-    userId,
-    createdAt: { gte: startDate },
-    policy: { deletedAt: null },
-  };
+  // Build where conditions
+  const conditions = [
+    eq(executions.userId, userId),
+    gte(executions.createdAt, startDate),
+  ];
+  if (policyId) conditions.push(eq(executions.policyId, policyId));
 
-  if (policyId) where.policyId = policyId;
+  const whereClause = and(...conditions);
+  const whereWithSuccess = and(...conditions, eq(executions.success, true));
 
   // 基础统计
-  const [totalExecutions, successCount, executions] = await Promise.all([
-    prisma.execution.count({ where }),
-    prisma.execution.count({ where: { ...where, success: true } }),
-    prisma.execution.findMany({
-      where,
-      select: {
+  const [totalResult, successResult, executionsList] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(executions)
+      .where(whereClause),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(executions)
+      .where(whereWithSuccess),
+    db.query.executions.findMany({
+      where: whereClause,
+      columns: {
         success: true,
         durationMs: true,
         source: true,
         createdAt: true,
       },
+      with: {
+        policy: {
+          columns: {
+            deletedAt: true,
+          },
+        },
+      },
     }),
   ]);
+
+  const totalExecutions = totalResult[0]?.count || 0;
+  const successCount = successResult[0]?.count || 0;
+  // Filter out executions with deleted policies
+  const executionData = executionsList.filter(e => !e.policy.deletedAt);
 
   const failureCount = totalExecutions - successCount;
   const successRate = totalExecutions > 0 ? (successCount / totalExecutions) * 100 : 0;
   const avgDurationMs =
-    executions.length > 0
-      ? executions.reduce((sum, e) => sum + e.durationMs, 0) / executions.length
+    executionData.length > 0
+      ? executionData.reduce((sum, e) => sum + e.durationMs, 0) / executionData.length
       : 0;
 
   // 按来源统计
   const sourceStats = new Map<ExecutionSource, number>();
-  for (const exec of executions) {
+  for (const exec of executionData) {
     sourceStats.set(exec.source, (sourceStats.get(exec.source) || 0) + 1);
   }
   const bySource = Array.from(sourceStats.entries()).map(([source, count]) => ({
@@ -227,7 +240,7 @@ export async function getExecutionStats(
     trendMap.set(dateStr, { successCount: 0, failureCount: 0 });
   }
 
-  for (const exec of executions) {
+  for (const exec of executionData) {
     const dateStr = exec.createdAt.toISOString().slice(0, 10);
     if (trendMap.has(dateStr)) {
       const trend = trendMap.get(dateStr)!;
@@ -265,16 +278,16 @@ export async function getRecentExecutions(
   userId: string,
   limit: number = 10
 ): Promise<ExecutionLogItem[]> {
-  const items = await prisma.execution.findMany({
-    where: {
-      policyId,
-      userId,
-    },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-    include: {
+  const items = await db.query.executions.findMany({
+    where: and(
+      eq(executions.policyId, policyId),
+      eq(executions.userId, userId)
+    ),
+    orderBy: [desc(executions.createdAt)],
+    limit,
+    with: {
       policy: {
-        select: {
+        columns: {
           name: true,
         },
       },
@@ -318,21 +331,20 @@ export async function createExecutionLog(data: {
     [key: string]: unknown;
   };
 }): Promise<string> {
-  const execution = await prisma.execution.create({
-    data: {
-      userId: data.userId,
-      policyId: data.policyId,
-      policyVersion: data.policyVersion,
-      input: data.input as object,
-      output: data.output as object | undefined,
-      error: data.error,
-      success: data.success,
-      durationMs: data.durationMs,
-      source: data.source,
-      apiKeyId: data.metadata?.apiKeyId as string | undefined,
-      metadata: data.metadata as object | undefined,
-    },
-  });
+  const [execution] = await db.insert(executions).values({
+    id: crypto.randomUUID(),
+    userId: data.userId,
+    policyId: data.policyId,
+    policyVersion: data.policyVersion ?? null,
+    input: data.input as object,
+    output: (data.output as object | null) ?? null,
+    error: data.error ?? null,
+    success: data.success,
+    durationMs: data.durationMs,
+    source: data.source,
+    apiKeyId: (data.metadata?.apiKeyId as string | null) ?? null,
+    metadata: (data.metadata as object | null) ?? null,
+  }).returning();
 
   return execution.id;
 }
@@ -347,11 +359,9 @@ export async function cleanupOldExecutionLogs(
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-  const result = await prisma.execution.deleteMany({
-    where: {
-      createdAt: { lt: cutoffDate },
-    },
-  });
+  const result = await db.delete(executions)
+    .where(lt(executions.createdAt, cutoffDate))
+    .returning();
 
-  return { deletedCount: result.count };
+  return { deletedCount: result.length };
 }

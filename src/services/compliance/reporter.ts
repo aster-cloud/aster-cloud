@@ -1,4 +1,6 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Database } from '@/lib/prisma';
+import { db as defaultDb, policies, executions } from '@/lib/prisma';
+import { eq, inArray, desc, sql } from 'drizzle-orm';
 import { ComplianceScorer } from './scorer';
 import type {
   ComplianceAggregate,
@@ -18,7 +20,7 @@ type PolicyRecord = {
 
 export class ComplianceReporter {
   constructor(
-    private readonly db: PrismaClient,
+    private readonly db: Database = defaultDb,
     private readonly scorer: ComplianceScorer
   ) {}
 
@@ -55,24 +57,40 @@ export class ComplianceReporter {
   }
 
   private async fetchComplianceData(userId: string, options: ReportOptions): Promise<PolicyRecord[]> {
-    return this.db.policy.findMany({
-      where: {
-        userId,
-        ...(options.policyIds && options.policyIds.length > 0
-          ? { id: { in: options.policyIds } }
-          : {}),
-      },
-      include: {
-        _count: {
-          select: { executions: true },
-        },
+    const whereClause = options.policyIds && options.policyIds.length > 0
+      ? sql`${eq(policies.userId, userId)} AND ${inArray(policies.id, options.policyIds)}`
+      : eq(policies.userId, userId);
+
+    const policyList = await this.db.query.policies.findMany({
+      where: whereClause,
+      with: {
         executions: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { createdAt: true },
+          orderBy: [desc(executions.createdAt)],
+          limit: 1,
+          columns: { createdAt: true },
         },
       },
     });
+
+    // 获取每个策略的执行数量
+    const result: PolicyRecord[] = await Promise.all(
+      policyList.map(async (policy) => {
+        const countResult = await this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(executions)
+          .where(eq(executions.policyId, policy.id));
+
+        return {
+          id: policy.id,
+          name: policy.name,
+          piiFields: policy.piiFields,
+          _count: { executions: countResult[0]?.count || 0 },
+          executions: policy.executions,
+        };
+      })
+    );
+
+    return result;
   }
 
   private mapPolicies(policies: PolicyRecord[]): PolicyInfo[] {

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policies, executions, teamMembers } from '@/lib/prisma';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
+import crypto from 'crypto';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -43,23 +45,35 @@ export async function POST(req: Request, { params }: RouteParams) {
     // 通过验证后，安全地断言类型
     const validatedInput = input as Record<string, unknown>;
 
-    const policy = await prisma.policy.findFirst({
-      where: {
-        id,
-        deletedAt: null, // 已删除的策略不能执行
-        OR: [
-          { userId: session.user.id },
-          { isPublic: true },
-          {
-            team: {
-              members: {
-                some: { userId: session.user.id },
-              },
+    // 先查用户自己的策略或公开策略
+    let policy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, id),
+        isNull(policies.deletedAt),
+        sql`(${policies.userId} = ${session.user.id} OR ${policies.isPublic} = true)`
+      ),
+    });
+
+    // 如果不是用户自己的策略,检查是否是团队策略
+    if (!policy || (policy.userId !== session.user.id && !policy.isPublic)) {
+      const teamPolicy = await db.query.policies.findFirst({
+        where: and(
+          eq(policies.id, id),
+          isNull(policies.deletedAt)
+        ),
+        with: {
+          team: {
+            with: {
+              members: true,
             },
           },
-        ],
-      },
-    });
+        },
+      });
+
+      if (teamPolicy?.team?.members.some(m => m.userId === session.user.id)) {
+        policy = teamPolicy;
+      }
+    }
 
     if (!policy) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
@@ -119,18 +133,17 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     const durationMs = Date.now() - startTime;
 
-    const execution = await prisma.execution.create({
-      data: {
-        userId: session.user.id,
-        policyId: id,
-        input: validatedInput as object,
-        output: executionResult as object,
-        error: primaryError,
-        durationMs,
-        success: executionResult.allowed ?? false,
-        source: 'dashboard',
-      },
-    });
+    const [execution] = await db.insert(executions).values({
+      id: crypto.randomUUID(),
+      userId: session.user.id,
+      policyId: id,
+      input: validatedInput as object,
+      output: executionResult as object,
+      error: primaryError,
+      durationMs,
+      success: executionResult.allowed ?? false,
+      source: 'dashboard',
+    }).returning();
 
     await recordUsage(session.user.id, 'execution');
 

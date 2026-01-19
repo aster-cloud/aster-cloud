@@ -1,66 +1,40 @@
-import { PrismaClient } from '@prisma/client';
-import { Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
+/**
+ * 数据库访问层 - Drizzle ORM
+ * 此文件保持 'prisma' 导出名称以减少迁移工作量
+ * 实际使用 Drizzle ORM 连接 PostgreSQL
+ *
+ * Cloudflare Workers 兼容性说明：
+ * - 在 Cloudflare Workers 中，Hyperdrive binding 只在请求处理期间可用
+ * - getDb() 已更新为自动检测 Cloudflare 环境
+ * - 在 API 路由和服务器组件中，调用发生在请求处理期间，所以可以正常工作
+ */
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+import { getDb, getDbAsync, createDb, type Database } from '@/db';
 
 /**
- * 获取数据库连接字符串
+ * 获取数据库实例
+ * 在 Cloudflare Workers 中会自动检测并使用 Hyperdrive
+ * 在本地开发环境使用 DATABASE_URL
  *
- * 通过 USE_HYPERDRIVE 环境变量控制使用哪个数据库:
- * - USE_HYPERDRIVE=true  → 使用 HYPERDRIVE_DATABASE_URL (k3s PostgreSQL via Cloudflare Hyperdrive)
- * - USE_HYPERDRIVE=false → 使用 DATABASE_URL (Vercel Postgres / Prisma Accelerate)
- *
- * 默认使用 DATABASE_URL 以保持向后兼容
+ * 注意：这是一个 getter，每次调用都会检测环境
+ * 这确保在 Cloudflare Workers 中正确获取 Hyperdrive binding
  */
-function getDatabaseUrl(): string {
-  const useHyperdrive = process.env.USE_HYPERDRIVE === 'true';
-
-  if (useHyperdrive) {
-    const hyperdriveUrl = process.env.HYPERDRIVE_DATABASE_URL;
-    if (!hyperdriveUrl) {
-      throw new Error('HYPERDRIVE_DATABASE_URL environment variable is not set (USE_HYPERDRIVE=true)');
-    }
-    return hyperdriveUrl;
-  }
-
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-  return databaseUrl;
-}
-
-function createPrismaClient(): PrismaClient {
-  const connectionString = getDatabaseUrl();
-
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
-
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-}
-
-// Lazy initialization to avoid build-time errors
-let prismaInstance: PrismaClient | null = null;
-
-function getPrisma(): PrismaClient {
-  if (!prismaInstance) {
-    prismaInstance = globalForPrisma.prisma ?? createPrismaClient();
-    if (process.env.NODE_ENV !== 'production') {
-      globalForPrisma.prisma = prismaInstance;
-    }
-  }
-  return prismaInstance;
-}
-
-// Proxy for lazy initialization
-export const prisma = new Proxy({} as PrismaClient, {
-  get(_, prop) {
-    return getPrisma()[prop as keyof PrismaClient];
+export const db = new Proxy({} as Database, {
+  get(_target, prop, _receiver) {
+    // 每次属性访问时动态获取 db 实例
+    const actualDb = getDb();
+    return Reflect.get(actualDb, prop, actualDb);
   },
 });
+
+// 导出 getDb 函数用于需要显式控制的场景
+export { getDb, getDbAsync };
+
+// 导出类型
+export type { Database };
+
+// 导出 createDb 用于需要手动传递 env 的场景
+export { createDb };
+
+// 重新导出 schema 以便查询使用
+export * from '@/db/schema';

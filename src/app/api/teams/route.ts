@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teams, teamMembers, policies } from '@/lib/prisma';
+import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { hasFeatureAccess } from '@/lib/usage';
 import { validateTeamName, validateSlug } from '@/lib/validation';
+import crypto from 'crypto';
 
 // GET /api/teams - 列出用户的团队
 export async function GET() {
@@ -12,37 +14,52 @@ export async function GET() {
       return NextResponse.json({ error: '未授权' }, { status: 401 });
     }
 
-    const teams = await prisma.team.findMany({
-      where: {
-        members: {
-          some: { userId: session.user.id },
-        },
-      },
-      include: {
-        members: {
-          where: { userId: session.user.id },
-          select: { role: true },
-        },
-        _count: {
-          select: {
-            members: true,
-            policies: { where: { deletedAt: null } },
+    // 查询用户所属的团队（通过 teamMembers 关联）
+    const userTeams = await db.query.teamMembers.findMany({
+      where: eq(teamMembers.userId, session.user.id),
+      with: {
+        team: {
+          with: {
+            members: {
+              where: eq(teamMembers.userId, session.user.id),
+            },
           },
         },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: desc(teams.updatedAt),
     });
 
+    // 并行获取每个团队的统计信息
+    const teamsWithStats = await Promise.all(
+      userTeams.map(async (userTeam) => {
+        const team = userTeam.team;
+
+        // 获取成员总数
+        const [memberCountResult] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(teamMembers)
+          .where(eq(teamMembers.teamId, team.id));
+
+        // 获取策略总数（排除已删除）
+        const [policyCountResult] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(policies)
+          .where(and(eq(policies.teamId, team.id), isNull(policies.deletedAt)));
+
+        return {
+          id: team.id,
+          name: team.name,
+          slug: team.slug,
+          role: userTeam.role,
+          memberCount: memberCountResult.count,
+          policyCount: policyCountResult.count,
+          createdAt: team.createdAt.toISOString(),
+        };
+      })
+    );
+
     return NextResponse.json({
-      teams: teams.map((team) => ({
-        id: team.id,
-        name: team.name,
-        slug: team.slug,
-        role: team.members[0]?.role,
-        memberCount: team._count.members,
-        policyCount: team._count.policies,
-        createdAt: team.createdAt.toISOString(),
-      })),
+      teams: teamsWithStats,
     });
   } catch (error) {
     console.error('Error listing teams:', error);
@@ -82,25 +99,41 @@ export async function POST(req: Request) {
     }
 
     // 检查 slug 唯一性
-    const existingTeam = await prisma.team.findUnique({ where: { slug } });
+    const existingTeam = await db.query.teams.findFirst({
+      where: eq(teams.slug, slug),
+    });
     if (existingTeam) {
       return NextResponse.json({ error: '此 slug 已被使用' }, { status: 400 });
     }
 
-    // 创建团队和所有者成员关系
-    const team = await prisma.team.create({
-      data: {
+    // 创建团队和所有者成员关系（使用事务）
+    const teamId = crypto.randomUUID();
+    const memberId = crypto.randomUUID();
+
+    await db.transaction(async (tx) => {
+      await tx.insert(teams).values({
+        id: teamId,
         name,
         slug,
         ownerId: session.user.id,
-        members: {
-          create: {
-            userId: session.user.id,
-            role: 'owner',
-          },
-        },
-      },
+      });
+
+      await tx.insert(teamMembers).values({
+        id: memberId,
+        teamId,
+        userId: session.user.id,
+        role: 'owner',
+      });
     });
+
+    // 查询新创建的团队
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+
+    if (!team) {
+      throw new Error('Failed to create team');
+    }
 
     return NextResponse.json(
       {

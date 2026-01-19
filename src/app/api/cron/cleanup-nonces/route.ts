@@ -1,18 +1,12 @@
 /**
  * Nonce 清理 API 端点
  *
- * 由 Vercel Cron 或其他调度系统调用。
+ * 由 Cloudflare Cron Triggers 或其他调度系统调用。
  * 使用 CRON_SECRET 环境变量进行认证。
  *
- * Vercel Cron 配置示例 (vercel.json):
- * {
- *   "crons": [
- *     {
- *       "path": "/api/cron/cleanup-nonces",
- *       "schedule": "*​/5 * * * *"
- *     }
- *   ]
- * }
+ * Cloudflare Cron 配置 (wrangler.toml):
+ * [triggers]
+ * crons = ["0 6 * * *"]  # 每天早上 6 点执行
  */
 
 import { NextRequest, NextResponse } from 'next/server';

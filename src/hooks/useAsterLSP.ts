@@ -227,7 +227,7 @@ export function useAsterLSP({
 
     // Handle potentially concatenated JSON messages
     // This can happen when the server sends multiple messages in rapid succession
-    let remaining = data.trim();
+    const remaining = data.trim();
     let depth = 0;
     let start = 0;
 

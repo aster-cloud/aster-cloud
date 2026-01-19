@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -42,7 +41,6 @@ export default async function LocaleLayout({ children, params }: Props) {
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthProvider>{children}</AuthProvider>
         </NextIntlClientProvider>
-        <SpeedInsights />
       </body>
     </html>
   );

@@ -1,23 +1,18 @@
 import { getSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { db, policies, policyVersions, executions } from '@/lib/prisma';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 import { PolicyDetailContent } from './policy-detail-content';
 
 // 服务端数据获取
 async function getPolicyData(userId: string, policyId: string) {
-  const policy = await prisma.policy.findFirst({
-    where: {
-      id: policyId,
-      userId,
-    },
-    include: {
+  const policy = await db.query.policies.findFirst({
+    where: and(eq(policies.id, policyId), eq(policies.userId, userId)),
+    with: {
       versions: {
-        orderBy: { version: 'desc' },
-        take: 10,
-      },
-      _count: {
-        select: { executions: true },
+        orderBy: (versions) => desc(versions.version),
+        limit: 10,
       },
     },
   });
@@ -25,6 +20,12 @@ async function getPolicyData(userId: string, policyId: string) {
   if (!policy) {
     return null;
   }
+
+  // 获取执行次数
+  const [{ count: executionCount }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(executions)
+    .where(eq(executions.policyId, policyId));
 
   return {
     id: policy.id,
@@ -44,7 +45,7 @@ async function getPolicyData(userId: string, policyId: string) {
       comment: v.comment,
       createdAt: v.createdAt.toISOString(),
     })),
-    _count: { executions: policy._count.executions },
+    _count: { executions: executionCount },
   };
 }
 

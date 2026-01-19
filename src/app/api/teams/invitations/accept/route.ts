@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teamInvitations, teamMembers, teams, users } from '@/lib/prisma';
+import { eq, and } from 'drizzle-orm';
+import crypto from 'crypto';
 
 // POST /api/teams/invitations/accept - 接受邀请
 export async function POST(req: Request) {
@@ -17,11 +19,15 @@ export async function POST(req: Request) {
     }
 
     // 查找邀请
-    const invitation = await prisma.teamInvitation.findUnique({
-      where: { token },
-      include: {
+    const invitation = await db.query.teamInvitations.findFirst({
+      where: eq(teamInvitations.token, token),
+      with: {
         team: {
-          select: { id: true, name: true, slug: true },
+          columns: {
+            id: true,
+            name: true,
+            slug: true,
+          },
         },
       },
     });
@@ -33,51 +39,49 @@ export async function POST(req: Request) {
     // 检查邀请是否过期
     if (invitation.expiresAt < new Date()) {
       // 删除过期邀请
-      await prisma.teamInvitation.delete({ where: { id: invitation.id } });
+      await db.delete(teamInvitations).where(eq(teamInvitations.id, invitation.id));
       return NextResponse.json({ error: '邀请已过期' }, { status: 400 });
     }
 
     // 获取当前用户的邮箱
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { email: true },
+    const currentUser = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { email: true },
     });
 
     // 检查邀请邮箱是否匹配（安全要求：必须严格匹配）
-    if (!currentUser?.email || currentUser.email.toLowerCase() !== invitation.email.toLowerCase()) {
-      return NextResponse.json(
-        { error: '此邀请仅限指定邮箱使用' },
-        { status: 403 }
-      );
+    if (
+      !currentUser?.email ||
+      currentUser.email.toLowerCase() !== invitation.email.toLowerCase()
+    ) {
+      return NextResponse.json({ error: '此邀请仅限指定邮箱使用' }, { status: 403 });
     }
 
     // 检查用户是否已是成员
-    const existingMember = await prisma.teamMember.findUnique({
-      where: {
-        teamId_userId: {
-          teamId: invitation.teamId,
-          userId: session.user.id,
-        },
-      },
+    const existingMember = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, invitation.teamId),
+        eq(teamMembers.userId, session.user.id)
+      ),
     });
 
     if (existingMember) {
       // 删除邀请
-      await prisma.teamInvitation.delete({ where: { id: invitation.id } });
+      await db.delete(teamInvitations).where(eq(teamInvitations.id, invitation.id));
       return NextResponse.json({ error: '你已是此团队的成员' }, { status: 400 });
     }
 
     // 使用事务创建成员并删除邀请
-    await prisma.$transaction([
-      prisma.teamMember.create({
-        data: {
-          teamId: invitation.teamId,
-          userId: session.user.id,
-          role: invitation.role,
-        },
-      }),
-      prisma.teamInvitation.delete({ where: { id: invitation.id } }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.insert(teamMembers).values({
+        id: crypto.randomUUID(),
+        teamId: invitation.teamId,
+        userId: session.user.id,
+        role: invitation.role,
+      });
+
+      await tx.delete(teamInvitations).where(eq(teamInvitations.id, invitation.id));
+    });
 
     return NextResponse.json({
       success: true,

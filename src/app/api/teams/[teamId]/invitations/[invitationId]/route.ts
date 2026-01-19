@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teamInvitations } from '@/lib/prisma';
+import { eq, and } from 'drizzle-orm';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 
 type RouteParams = { params: Promise<{ teamId: string; invitationId: string }> };
@@ -26,16 +27,16 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     // 获取邀请
-    const invitation = await prisma.teamInvitation.findUnique({
-      where: { id: invitationId },
+    const invitation = await db.query.teamInvitations.findFirst({
+      where: and(eq(teamInvitations.id, invitationId), eq(teamInvitations.teamId, teamId)),
     });
 
-    if (!invitation || invitation.teamId !== teamId) {
+    if (!invitation) {
       return NextResponse.json({ error: '邀请不存在' }, { status: 404 });
     }
 
     // 删除邀请
-    await prisma.teamInvitation.delete({ where: { id: invitationId } });
+    await db.delete(teamInvitations).where(eq(teamInvitations.id, invitationId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

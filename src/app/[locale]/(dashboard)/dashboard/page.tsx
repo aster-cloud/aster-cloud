@@ -1,7 +1,8 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getUsageStats } from '@/lib/usage';
-import { prisma } from '@/lib/prisma';
+import { db, policies, executions } from '@/lib/prisma';
+import { eq, desc, sql } from 'drizzle-orm';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { getTranslations } from 'next-intl/server';
 import { DashboardContent } from './dashboard-content';
@@ -10,31 +11,37 @@ import { DashboardContent } from './dashboard-content';
 async function getDashboardData(userId: string) {
   const [stats, policiesData, freezeStatus] = await Promise.all([
     getUsageStats(userId),
-    prisma.policy.findMany({
-      where: { userId },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        _count: {
-          select: { executions: true },
-        },
-      },
-      take: 20, // 只获取最近的20个用于排序
+    db.query.policies.findMany({
+      where: eq(policies.userId, userId),
+      orderBy: desc(policies.updatedAt),
+      limit: 20, // 只获取最近的20个用于排序
     }),
     getPolicyFreezeStatus(userId),
   ]);
 
+  // 为每个策略获取执行次数
+  const policiesWithCount = await Promise.all(
+    policiesData.map(async (p) => {
+      const [{ count: executionCount }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(executions)
+        .where(eq(executions.policyId, p.id));
+
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        piiFields: p.piiFields as string[] | null,
+        updatedAt: p.updatedAt.toISOString(),
+        _count: { executions: executionCount },
+        isFrozen: freezeStatus.frozenPolicyIds.has(p.id),
+        isDeleted: p.deletedAt !== null,
+      };
+    })
+  );
+
   // 按执行次数排序，取前5个（包括已删除的策略，显示已删除标记）
-  const topPolicies = policiesData
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      piiFields: p.piiFields as string[] | null,
-      updatedAt: p.updatedAt.toISOString(),
-      _count: { executions: p._count.executions },
-      isFrozen: freezeStatus.frozenPolicyIds.has(p.id),
-      isDeleted: p.deletedAt !== null,
-    }))
+  const topPolicies = policiesWithCount
     .sort((a, b) => b._count.executions - a._count.executions)
     .slice(0, 5);
 

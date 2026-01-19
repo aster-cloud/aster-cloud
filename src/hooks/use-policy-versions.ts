@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import type { PolicyVersionStatus } from '@prisma/client';
+import type { PolicyVersionStatus } from '@/lib/prisma';
 
 /**
  * 版本信息

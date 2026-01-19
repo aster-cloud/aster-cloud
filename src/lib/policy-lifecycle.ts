@@ -1,8 +1,11 @@
 // src/lib/policy-lifecycle.ts
 // 策略生命周期管理：软删除、恢复、定时清理
 
-import { prisma } from '@/lib/prisma';
-import { Policy } from '@prisma/client';
+import { db, policies, policyRecycleBins } from '@/lib/prisma';
+import { eq, isNotNull, isNull, not, and, desc, asc, lte, sql } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
+
+type Policy = InferSelectModel<typeof policies>;
 
 // 回收站保留天数
 const RECYCLE_BIN_RETENTION_DAYS = 30;
@@ -44,12 +47,12 @@ export async function softDeletePolicy(
 ): Promise<SoftDeleteResult> {
   try {
     // 检查策略是否存在且属于该用户
-    const policy = await prisma.policy.findFirst({
-      where: {
-        id: policyId,
-        userId,
-        deletedAt: null, // 未被删除的策略
-      },
+    const policy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, policyId),
+        eq(policies.userId, userId),
+        isNull(policies.deletedAt) // 未被删除的策略
+      ),
     });
 
     if (!policy) {
@@ -64,39 +67,38 @@ export async function softDeletePolicy(
     const expiresAt = new Date(now.getTime() + RECYCLE_BIN_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
     // 创建快照和标记删除（事务）
-    await prisma.$transaction([
+    await db.transaction(async (tx) => {
       // 创建回收站快照
-      prisma.policyRecycleBin.create({
-        data: {
-          policyId,
-          userId,
-          snapshot: {
-            id: policy.id,
-            name: policy.name,
-            description: policy.description,
-            content: policy.content,
-            version: policy.version,
-            isPublic: policy.isPublic,
-            shareSlug: policy.shareSlug,
-            piiFields: policy.piiFields,
-            teamId: policy.teamId,
-            createdAt: policy.createdAt.toISOString(),
-            updatedAt: policy.updatedAt.toISOString(),
-          },
-          deletedBy: userId,
-          expiresAt,
+      await tx.insert(policyRecycleBins).values({
+        id: crypto.randomUUID(),
+        policyId,
+        userId,
+        snapshot: {
+          id: policy.id,
+          name: policy.name,
+          description: policy.description,
+          content: policy.content,
+          version: policy.version,
+          isPublic: policy.isPublic,
+          shareSlug: policy.shareSlug,
+          piiFields: policy.piiFields,
+          teamId: policy.teamId,
+          createdAt: policy.createdAt.toISOString(),
+          updatedAt: policy.updatedAt.toISOString(),
         },
-      }),
+        deletedBy: userId,
+        expiresAt,
+      });
+
       // 标记策略为已删除
-      prisma.policy.update({
-        where: { id: policyId },
-        data: {
+      await tx.update(policies)
+        .set({
           deletedAt: now,
           deletedBy: userId,
           deleteReason: reason || null,
-        },
-      }),
-    ]);
+        })
+        .where(eq(policies.id, policyId));
+    });
 
     return { success: true, policyId };
   } catch (error) {
@@ -119,13 +121,13 @@ export async function softDeletePolicy(
 export async function restorePolicy(policyId: string, userId: string): Promise<RestoreResult> {
   try {
     // 检查策略是否在回收站中
-    const policy = await prisma.policy.findFirst({
-      where: {
-        id: policyId,
-        userId,
-        deletedAt: { not: null }, // 已被删除的策略
-      },
-      include: {
+    const policy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, policyId),
+        eq(policies.userId, userId),
+        isNotNull(policies.deletedAt) // 已被删除的策略
+      ),
+      with: {
         recycleBin: true,
       },
     });
@@ -139,13 +141,13 @@ export async function restorePolicy(policyId: string, userId: string): Promise<R
     }
 
     // 检查名称冲突（与现有未删除策略）
-    const existingPolicy = await prisma.policy.findFirst({
-      where: {
-        userId,
-        name: policy.name,
-        deletedAt: null,
-        id: { not: policyId },
-      },
+    const existingPolicy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.userId, userId),
+        eq(policies.name, policy.name),
+        isNull(policies.deletedAt),
+        not(eq(policies.id, policyId))
+      ),
     });
 
     let newName = policy.name;
@@ -159,22 +161,21 @@ export async function restorePolicy(policyId: string, userId: string): Promise<R
     }
 
     // 恢复策略（事务）
-    await prisma.$transaction([
+    await db.transaction(async (tx) => {
       // 清除软删除标记并更新名称（如有冲突）
-      prisma.policy.update({
-        where: { id: policyId },
-        data: {
+      await tx.update(policies)
+        .set({
           deletedAt: null,
           deletedBy: null,
           deleteReason: null,
           name: newName,
-        },
-      }),
+        })
+        .where(eq(policies.id, policyId));
+
       // 删除回收站记录
-      prisma.policyRecycleBin.delete({
-        where: { policyId },
-      }),
-    ]);
+      await tx.delete(policyRecycleBins)
+        .where(eq(policyRecycleBins.policyId, policyId));
+    });
 
     return {
       success: true,
@@ -201,12 +202,12 @@ export async function permanentDeletePolicy(
 ): Promise<SoftDeleteResult> {
   try {
     // 检查策略是否在回收站中
-    const policy = await prisma.policy.findFirst({
-      where: {
-        id: policyId,
-        userId,
-        deletedAt: { not: null },
-      },
+    const policy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, policyId),
+        eq(policies.userId, userId),
+        isNotNull(policies.deletedAt)
+      ),
     });
 
     if (!policy) {
@@ -218,9 +219,8 @@ export async function permanentDeletePolicy(
     }
 
     // 永久删除（级联删除会清理关联记录）
-    await prisma.policy.delete({
-      where: { id: policyId },
-    });
+    await db.delete(policies)
+      .where(eq(policies.id, policyId));
 
     return { success: true, policyId };
   } catch (error) {
@@ -237,12 +237,12 @@ export async function permanentDeletePolicy(
  * 获取用户的回收站列表
  */
 export async function getTrashItems(userId: string): Promise<TrashItem[]> {
-  const recycleBinItems = await prisma.policyRecycleBin.findMany({
-    where: { userId },
-    orderBy: { deletedAt: 'desc' },
-    include: {
+  const recycleBinItems = await db.query.policyRecycleBins.findMany({
+    where: eq(policyRecycleBins.userId, userId),
+    orderBy: [desc(policyRecycleBins.deletedAt)],
+    with: {
       policy: {
-        select: {
+        columns: {
           id: true,
           name: true,
           description: true,
@@ -286,19 +286,16 @@ export async function cleanupExpiredTrashItems(): Promise<{
 
   try {
     // 查找所有过期的回收站项目
-    const expiredItems = await prisma.policyRecycleBin.findMany({
-      where: {
-        expiresAt: { lte: now },
-      },
-      select: { policyId: true },
+    const expiredItems = await db.query.policyRecycleBins.findMany({
+      where: lte(policyRecycleBins.expiresAt, now),
+      columns: { policyId: true },
     });
 
     // 永久删除过期策略
     for (const item of expiredItems) {
       try {
-        await prisma.policy.delete({
-          where: { id: item.policyId },
-        });
+        await db.delete(policies)
+          .where(eq(policies.id, item.policyId));
         deletedCount++;
       } catch (err) {
         errors.push(`Failed to delete policy ${item.policyId}: ${err}`);
@@ -319,19 +316,23 @@ export async function getTrashStats(userId: string): Promise<{
   oldestExpiresAt: Date | null;
   newestDeletedAt: Date | null;
 }> {
-  const [count, oldest, newest] = await Promise.all([
-    prisma.policyRecycleBin.count({ where: { userId } }),
-    prisma.policyRecycleBin.findFirst({
-      where: { userId },
-      orderBy: { expiresAt: 'asc' },
-      select: { expiresAt: true },
+  const [countResult, oldest, newest] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(policyRecycleBins)
+      .where(eq(policyRecycleBins.userId, userId)),
+    db.query.policyRecycleBins.findFirst({
+      where: eq(policyRecycleBins.userId, userId),
+      orderBy: [asc(policyRecycleBins.expiresAt)],
+      columns: { expiresAt: true },
     }),
-    prisma.policyRecycleBin.findFirst({
-      where: { userId },
-      orderBy: { deletedAt: 'desc' },
-      select: { deletedAt: true },
+    db.query.policyRecycleBins.findFirst({
+      where: eq(policyRecycleBins.userId, userId),
+      orderBy: [desc(policyRecycleBins.deletedAt)],
+      columns: { deletedAt: true },
     }),
   ]);
+
+  const count = countResult[0]?.count || 0;
 
   return {
     count,
@@ -352,17 +353,16 @@ export async function emptyTrash(userId: string): Promise<{
 
   try {
     // 查找用户所有回收站项目
-    const trashItems = await prisma.policyRecycleBin.findMany({
-      where: { userId },
-      select: { policyId: true },
+    const trashItems = await db.query.policyRecycleBins.findMany({
+      where: eq(policyRecycleBins.userId, userId),
+      columns: { policyId: true },
     });
 
     // 永久删除所有
     for (const item of trashItems) {
       try {
-        await prisma.policy.delete({
-          where: { id: item.policyId },
-        });
+        await db.delete(policies)
+          .where(eq(policies.id, item.policyId));
         deletedCount++;
       } catch (err) {
         errors.push(`Failed to delete policy ${item.policyId}: ${err}`);

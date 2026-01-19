@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { db, policies, policyGroups, executions } from '@/lib/prisma';
+import { eq, and, desc, isNull, or, sql, asc } from 'drizzle-orm';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { getTranslations } from 'next-intl/server';
 import { PoliciesContent } from './policies-content';
@@ -45,56 +46,73 @@ function buildGroupTree(groups: RawGroup[]): PolicyGroup[] {
 
 // 服务端数据获取
 async function getPoliciesData(userId: string) {
-  const [policies, freezeStatus, groups] = await Promise.all([
-    prisma.policy.findMany({
-      where: { userId, deletedAt: null },
-      orderBy: { updatedAt: 'desc' },
-      include: {
+  const [policiesData, freezeStatus, groups] = await Promise.all([
+    db.query.policies.findMany({
+      where: and(eq(policies.userId, userId), isNull(policies.deletedAt)),
+      orderBy: desc(policies.updatedAt),
+      with: {
         group: {
-          select: {
+          columns: {
             id: true,
             name: true,
             icon: true,
             parentId: true,
           },
         },
-        _count: {
-          select: { executions: true },
-        },
       },
     }),
     getPolicyFreezeStatus(userId),
-    prisma.policyGroup.findMany({
-      where: {
-        OR: [
-          { userId },
-          { isSystem: true },
-        ],
-      },
-      include: {
-        _count: {
-          select: { policies: { where: { deletedAt: null } } },
-        },
-      },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    db.query.policyGroups.findMany({
+      where: or(eq(policyGroups.userId, userId), eq(policyGroups.isSystem, true)),
+      orderBy: [asc(policyGroups.sortOrder), asc(policyGroups.name)],
     }),
   ]);
 
-  // 添加冻结状态到每个策略
-  const policiesWithFreeze = policies.map((policy) => ({
-    id: policy.id,
-    name: policy.name,
-    description: policy.description,
-    content: policy.content,
-    isPublic: policy.isPublic,
-    piiFields: policy.piiFields as string[] | null,
-    groupId: policy.groupId,
-    group: policy.group,
-    createdAt: policy.createdAt.toISOString(),
-    updatedAt: policy.updatedAt.toISOString(),
-    isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
-    _count: { executions: policy._count.executions },
-  }));
+  // 为每个策略获取执行次数
+  const policiesWithCount = await Promise.all(
+    policiesData.map(async (policy) => {
+      const [{ count: executionCount }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(executions)
+        .where(eq(executions.policyId, policy.id));
+
+      return {
+        id: policy.id,
+        name: policy.name,
+        description: policy.description,
+        content: policy.content,
+        isPublic: policy.isPublic,
+        piiFields: policy.piiFields as string[] | null,
+        groupId: policy.groupId,
+        group: policy.group,
+        createdAt: policy.createdAt.toISOString(),
+        updatedAt: policy.updatedAt.toISOString(),
+        isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
+        _count: { executions: executionCount },
+      };
+    })
+  );
+
+  // 为每个分组获取策略数量
+  const groupsWithCount = await Promise.all(
+    groups.map(async (group) => {
+      const [{ count: policyCount }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(policies)
+        .where(and(eq(policies.groupId, group.id), isNull(policies.deletedAt)));
+
+      return {
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        icon: group.icon,
+        parentId: group.parentId,
+        isSystem: group.isSystem,
+        sortOrder: group.sortOrder,
+        _count: { policies: policyCount },
+      };
+    })
+  );
 
   const freezeInfo = {
     limit: freezeStatus.limit,
@@ -103,9 +121,9 @@ async function getPoliciesData(userId: string) {
   };
 
   // 构建分组树
-  const groupTree = buildGroupTree(groups);
+  const groupTree = buildGroupTree(groupsWithCount);
 
-  return { policies: policiesWithFreeze, freezeInfo, groups: groupTree };
+  return { policies: policiesWithCount, freezeInfo, groups: groupTree };
 }
 
 export default async function PoliciesPage({

@@ -8,7 +8,7 @@
 import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateResponse } from './policy-api';
 import { executePolicy as executeSimplePolicy } from './executor';
 import { compileLocally, type CNLLocale, type LocalCompilationResult, type LocalDiagnostic } from './local-compiler';
-import type { Policy } from '@prisma/client';
+import type { Policy } from '@/lib/prisma';
 
 // CNL 必须特征模式 - 这些是 CNL 独有的，简单 DSL 不具备
 const CNL_REQUIRED_PATTERNS = [

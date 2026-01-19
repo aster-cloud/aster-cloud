@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teamMembers, users } from '@/lib/prisma';
+import { eq, asc, sql } from 'drizzle-orm';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
@@ -33,12 +34,12 @@ export async function GET(req: Request, { params }: RouteParams) {
     }
 
     // 并行查询成员列表和总数
-    const [members, total] = await Promise.all([
-      prisma.teamMember.findMany({
-        where: { teamId },
-        include: {
+    const [members, totalResult] = await Promise.all([
+      db.query.teamMembers.findMany({
+        where: eq(teamMembers.teamId, teamId),
+        with: {
           user: {
-            select: {
+            columns: {
               id: true,
               name: true,
               email: true,
@@ -46,15 +47,17 @@ export async function GET(req: Request, { params }: RouteParams) {
             },
           },
         },
-        orderBy: [
-          { role: 'asc' }, // owner 在前
-          { createdAt: 'asc' },
-        ],
-        take: limit,
-        skip: offset,
+        orderBy: [asc(teamMembers.role), asc(teamMembers.createdAt)],
+        limit,
+        offset,
       }),
-      prisma.teamMember.count({ where: { teamId } }),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(teamMembers)
+        .where(eq(teamMembers.teamId, teamId)),
     ]);
+
+    const [{ count: total }] = totalResult;
 
     return NextResponse.json({
       members: members.map((member) => ({

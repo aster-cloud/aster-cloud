@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Policy } from '@prisma/client';
+import type { Policy } from '@/lib/prisma';
 import { executePolicy } from '@/services/policy/executor';
 
 const basePolicy: Policy = {

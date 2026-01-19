@@ -1,7 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { redirect, notFound } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policies } from '@/lib/prisma';
+import { eq, and } from 'drizzle-orm';
 import { EditPolicyContent } from './edit-policy-content';
 
 interface PageProps {
@@ -17,12 +18,9 @@ export default async function EditPolicyPage({ params }: PageProps) {
   const t = await getTranslations('policies');
 
   // 获取策略详情（只能编辑自己的策略）
-  const policyData = await prisma.policy.findFirst({
-    where: {
-      id,
-      userId: session.user.id,
-    },
-    select: {
+  const policyData = await db.query.policies.findFirst({
+    where: and(eq(policies.id, id), eq(policies.userId, session.user.id)),
+    columns: {
       id: true,
       name: true,
       description: true,

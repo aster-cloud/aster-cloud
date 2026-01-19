@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policies } from '@/lib/prisma';
+import { eq, and, isNull } from 'drizzle-orm';
 import { queryExecutionLogs, getExecutionStats, getRecentExecutions } from '@/lib/policy-execution-log';
-import { ExecutionSource } from '@prisma/client';
+import type { ExecutionSource } from '@/lib/prisma';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,13 +21,13 @@ export async function GET(req: Request, { params }: RouteParams) {
     const { searchParams } = new URL(req.url);
 
     // 验证策略归属
-    const policy = await prisma.policy.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-        deletedAt: null,
-      },
-      select: { id: true, name: true },
+    const policy = await db.query.policies.findFirst({
+      where: and(
+        eq(policies.id, id),
+        eq(policies.userId, session.user.id),
+        isNull(policies.deletedAt)
+      ),
+      columns: { id: true, name: true },
     });
 
     if (!policy) {

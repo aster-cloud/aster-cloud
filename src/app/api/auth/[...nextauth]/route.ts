@@ -1,6 +1,8 @@
-import NextAuth from 'next-auth';
-import { authOptions } from '@/lib/auth';
+/**
+ * Auth.js v5 Route Handler
+ *
+ * Auth.js v5 简化了路由处理，只需导出 handlers
+ */
+import { handlers } from '@/auth';
 
-const handler = NextAuth(authOptions);
-
-export { handler as GET, handler as POST };
+export const { GET, POST } = handlers;

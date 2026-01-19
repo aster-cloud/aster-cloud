@@ -1,5 +1,6 @@
 import { randomBytes, createHash } from 'crypto';
-import { prisma } from '@/lib/prisma';
+import { db, apiKeys } from '@/lib/prisma';
+import { eq, desc, isNull, and, lt } from 'drizzle-orm';
 
 // Generate a new API key
 export function generateApiKey(): { key: string; hash: string; prefix: string } {
@@ -31,14 +32,13 @@ export async function createApiKey(userId: string, name: string): Promise<{
 }> {
   const { key, hash, prefix } = generateApiKey();
 
-  const apiKey = await prisma.apiKey.create({
-    data: {
-      userId,
-      name,
-      key: hash,
-      prefix,
-    },
-  });
+  const [apiKey] = await db.insert(apiKeys).values({
+    id: crypto.randomUUID(),
+    userId,
+    name,
+    key: hash,
+    prefix,
+  }).returning();
 
   // Return the raw key only once - it cannot be retrieved later
   return {
@@ -63,11 +63,11 @@ export async function validateApiKey(key: string): Promise<{
 
   const hash = hashApiKey(key);
 
-  const apiKey = await prisma.apiKey.findUnique({
-    where: { key: hash },
-    include: {
+  const apiKey = await db.query.apiKeys.findFirst({
+    where: eq(apiKeys.key, hash),
+    with: {
       user: {
-        select: {
+        columns: {
           id: true,
           plan: true,
           trialEndsAt: true,
@@ -104,10 +104,9 @@ export async function validateApiKey(key: string): Promise<{
   }
 
   // Update last used timestamp
-  await prisma.apiKey.update({
-    where: { id: apiKey.id },
-    data: { lastUsedAt: new Date() },
-  });
+  await db.update(apiKeys)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(apiKeys.id, apiKey.id));
 
   return {
     valid: true,
@@ -118,12 +117,9 @@ export async function validateApiKey(key: string): Promise<{
 
 // List API keys for a user (without the actual key)
 export async function listApiKeys(userId: string) {
-  const keys = await prisma.apiKey.findMany({
-    where: {
-      userId,
-      revokedAt: null,
-    },
-    select: {
+  const keys = await db.query.apiKeys.findMany({
+    where: and(eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)),
+    columns: {
       id: true,
       name: true,
       prefix: true,
@@ -131,7 +127,7 @@ export async function listApiKeys(userId: string) {
       expiresAt: true,
       createdAt: true,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [desc(apiKeys.createdAt)],
   });
 
   return keys;
@@ -139,18 +135,20 @@ export async function listApiKeys(userId: string) {
 
 // Revoke an API key
 export async function revokeApiKey(userId: string, keyId: string): Promise<boolean> {
-  const result = await prisma.apiKey.updateMany({
-    where: {
-      id: keyId,
-      userId,
-      revokedAt: null,
-    },
-    data: {
+  const result = await db.update(apiKeys)
+    .set({
       revokedAt: new Date(),
-    },
-  });
+    })
+    .where(
+      and(
+        eq(apiKeys.id, keyId),
+        eq(apiKeys.userId, userId),
+        isNull(apiKeys.revokedAt)
+      )
+    )
+    .returning();
 
-  return result.count > 0;
+  return result.length > 0;
 }
 
 // API 认证结果类型

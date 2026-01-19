@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { db, policies } from '@/lib/prisma';
+import { eq, and } from 'drizzle-orm';
 import { ExecutePolicyContent } from './execute-policy-content';
 
 interface PageProps {
@@ -15,12 +16,9 @@ export default async function ExecutePolicyPage({ params }: PageProps) {
   }
 
   // 验证策略存在且属于当前用户
-  const policy = await prisma.policy.findFirst({
-    where: {
-      id,
-      userId: session.user.id,
-    },
-    select: { id: true },
+  const policy = await db.query.policies.findFirst({
+    where: and(eq(policies.id, id), eq(policies.userId, session.user.id)),
+    columns: { id: true },
   });
 
   if (!policy) {

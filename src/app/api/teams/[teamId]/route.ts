@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teams, teamMembers, teamInvitations, policies, policyGroups } from '@/lib/prisma';
+import { eq, and, isNull, not, sql } from 'drizzle-orm';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { validateTeamName, validateSlug } from '@/lib/validation';
 
@@ -22,25 +23,33 @@ export async function GET(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: permission.error }, { status: permission.status });
     }
 
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      include: {
-        members: {
-          where: { userId: session.user.id },
-          select: { role: true },
-        },
-        _count: {
-          select: {
-            members: true,
-            policies: { where: { deletedAt: null } },
-          },
-        },
-      },
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
     });
 
     if (!team) {
       return NextResponse.json({ error: '团队不存在' }, { status: 404 });
     }
+
+    // 获取用户角色
+    const userMember = await db.query.teamMembers.findFirst({
+      where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, session.user.id)),
+    });
+
+    // 并行获取成员和策略总数
+    const [memberCountResult, policyCountResult] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(teamMembers)
+        .where(eq(teamMembers.teamId, teamId)),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(policies)
+        .where(and(eq(policies.teamId, teamId), isNull(policies.deletedAt))),
+    ]);
+
+    const [memberCount] = memberCountResult;
+    const [policyCount] = policyCountResult;
 
     return NextResponse.json({
       team: {
@@ -48,12 +57,12 @@ export async function GET(req: Request, { params }: RouteParams) {
         name: team.name,
         slug: team.slug,
         ownerId: team.ownerId,
-        memberCount: team._count.members,
-        policyCount: team._count.policies,
+        memberCount: memberCount.count,
+        policyCount: policyCount.count,
         createdAt: team.createdAt.toISOString(),
         updatedAt: team.updatedAt.toISOString(),
       },
-      role: team.members[0]?.role,
+      role: userMember?.role,
     });
   } catch (error) {
     console.error('Error getting team:', error);
@@ -101,8 +110,8 @@ export async function PUT(req: Request, { params }: RouteParams) {
       }
 
       // 检查 slug 唯一性（排除当前团队）
-      const existingTeam = await prisma.team.findFirst({
-        where: { slug, id: { not: teamId } },
+      const existingTeam = await db.query.teams.findFirst({
+        where: and(eq(teams.slug, slug), not(eq(teams.id, teamId))),
       });
       if (existingTeam) {
         return NextResponse.json({ error: '此 slug 已被使用' }, { status: 400 });
@@ -114,10 +123,15 @@ export async function PUT(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: '没有提供要更新的字段' }, { status: 400 });
     }
 
-    const team = await prisma.team.update({
-      where: { id: teamId },
-      data: updateData,
-    });
+    const [team] = await db
+      .update(teams)
+      .set(updateData)
+      .where(eq(teams.id, teamId))
+      .returning();
+
+    if (!team) {
+      throw new Error('Failed to update team');
+    }
 
     return NextResponse.json({
       team: {
@@ -153,8 +167,26 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: permission.error }, { status: permission.status });
     }
 
-    // 删除团队（级联删除成员和邀请）
-    await prisma.team.delete({ where: { id: teamId } });
+    // 删除团队（手动级联删除关联记录）
+    await db.transaction(async (tx) => {
+      // 删除团队成员
+      await tx.delete(teamMembers).where(eq(teamMembers.teamId, teamId));
+
+      // 删除团队邀请
+      await tx.delete(teamInvitations).where(eq(teamInvitations.teamId, teamId));
+
+      // 删除团队策略分组
+      await tx.delete(policyGroups).where(eq(policyGroups.teamId, teamId));
+
+      // 注意：不删除 policies，只清除 teamId（保留个人归属）
+      await tx
+        .update(policies)
+        .set({ teamId: null })
+        .where(eq(policies.teamId, teamId));
+
+      // 最后删除团队本身
+      await tx.delete(teams).where(eq(teams.id, teamId));
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

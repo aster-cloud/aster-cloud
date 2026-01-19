@@ -10,10 +10,14 @@
  * - ARCHIVED: 已归档，不可执行
  */
 
-import { prisma } from '@/lib/prisma';
-import type { PolicyVersionStatus } from '@prisma/client';
+import { db, policyVersions, policyApprovals } from '@/lib/prisma';
+import { eq, and, inArray, desc, sql } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
 import { computeChainedHash, computeSourceHash } from '../security/policy-security';
 import { logSecurityEvent } from '../security/security-event-service';
+
+type PolicyVersion = InferSelectModel<typeof policyVersions>;
+type PolicyVersionStatus = PolicyVersion['status'];
 
 export interface CreateVersionParams {
   policyId: string;
@@ -39,29 +43,28 @@ export async function createVersion(
   const { policyId, source, createdBy, releaseNote } = params;
 
   // 获取最新版本号和哈希
-  const latestVersion = await prisma.policyVersion.findFirst({
-    where: { policyId },
-    orderBy: { version: 'desc' },
-    select: { version: true, sourceHash: true },
+  const latestVersion = await db.query.policyVersions.findFirst({
+    where: eq(policyVersions.policyId, policyId),
+    orderBy: [desc(policyVersions.version)],
+    columns: { version: true, sourceHash: true },
   });
 
   const newVersionNumber = (latestVersion?.version ?? 0) + 1;
   const prevHash = latestVersion?.sourceHash ?? null;
   const sourceHash = computeChainedHash(source, prevHash);
 
-  const created = await prisma.policyVersion.create({
-    data: {
-      policyId,
-      version: newVersionNumber,
-      source,
-      content: source, // 兼容旧字段
-      sourceHash,
-      prevHash,
-      createdBy,
-      releaseNote,
-      status: 'DRAFT' as PolicyVersionStatus,
-    },
-  });
+  const [created] = await db.insert(policyVersions).values({
+    id: crypto.randomUUID(),
+    policyId,
+    version: newVersionNumber,
+    source,
+    content: source, // 兼容旧字段
+    sourceHash,
+    prevHash,
+    createdBy,
+    releaseNote,
+    status: 'DRAFT',
+  }).returning();
 
   await logSecurityEvent({
     eventType: 'VERSION_CREATED',
@@ -89,12 +92,12 @@ export async function updateVersionSource(params: {
 }): Promise<{ sourceHash: string }> {
   const { policyId, version, source, userId } = params;
 
-  const targetVersion = await prisma.policyVersion.findFirst({
-    where: {
-      policyId,
-      version,
-      status: 'DRAFT' as PolicyVersionStatus,
-    },
+  const targetVersion = await db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version),
+      eq(policyVersions.status, 'DRAFT')
+    ),
   });
 
   if (!targetVersion) {
@@ -105,14 +108,13 @@ export async function updateVersionSource(params: {
   const prevHash = targetVersion.prevHash;
   const sourceHash = computeChainedHash(source, prevHash);
 
-  await prisma.policyVersion.update({
-    where: { id: targetVersion.id },
-    data: {
+  await db.update(policyVersions)
+    .set({
       source,
       content: source, // 兼容旧字段
       sourceHash,
-    },
-  });
+    })
+    .where(eq(policyVersions.id, targetVersion.id));
 
   return { sourceHash };
 }
@@ -127,22 +129,21 @@ export async function submitForApproval(params: {
 }): Promise<void> {
   const { policyId, version, userId } = params;
 
-  const targetVersion = await prisma.policyVersion.findFirst({
-    where: {
-      policyId,
-      version,
-      status: { in: ['DRAFT', 'REJECTED'] as PolicyVersionStatus[] },
-    },
+  const targetVersion = await db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version),
+      inArray(policyVersions.status, ['DRAFT', 'REJECTED'])
+    ),
   });
 
   if (!targetVersion) {
     throw new Error(`版本 v${version} 不存在或状态不允许提交审批`);
   }
 
-  await prisma.policyVersion.update({
-    where: { id: targetVersion.id },
-    data: { status: 'PENDING_APPROVAL' as PolicyVersionStatus },
-  });
+  await db.update(policyVersions)
+    .set({ status: 'PENDING_APPROVAL' })
+    .where(eq(policyVersions.id, targetVersion.id));
 
   await logSecurityEvent({
     eventType: 'APPROVAL_DECISION',
@@ -165,12 +166,12 @@ export async function approveVersion(params: {
 }): Promise<void> {
   const { policyId, version, approverId, decision, comment } = params;
 
-  const targetVersion = await prisma.policyVersion.findFirst({
-    where: {
-      policyId,
-      version,
-      status: 'PENDING_APPROVAL' as PolicyVersionStatus,
-    },
+  const targetVersion = await db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version),
+      eq(policyVersions.status, 'PENDING_APPROVAL')
+    ),
   });
 
   if (!targetVersion) {
@@ -190,13 +191,12 @@ export async function approveVersion(params: {
   }
 
   // 创建审批记录
-  await prisma.policyApproval.create({
-    data: {
-      versionId: targetVersion.id,
-      approverId,
-      decision,
-      comment,
-    },
+  await db.insert(policyApprovals).values({
+    id: crypto.randomUUID(),
+    versionId: targetVersion.id,
+    approverId,
+    decision,
+    comment,
   });
 
   // 更新版本状态
@@ -213,10 +213,9 @@ export async function approveVersion(params: {
       break;
   }
 
-  await prisma.policyVersion.update({
-    where: { id: targetVersion.id },
-    data: { status: newStatus },
-  });
+  await db.update(policyVersions)
+    .set({ status: newStatus })
+    .where(eq(policyVersions.id, targetVersion.id));
 
   await logSecurityEvent({
     eventType: 'APPROVAL_DECISION',
@@ -238,12 +237,12 @@ export async function setDefaultVersion(params: {
   const { policyId, version, userId } = params;
 
   // 验证目标版本存在且已批准
-  const targetVersion = await prisma.policyVersion.findFirst({
-    where: {
-      policyId,
-      version,
-      status: 'APPROVED' as PolicyVersionStatus,
-    },
+  const targetVersion = await db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version),
+      eq(policyVersions.status, 'APPROVED')
+    ),
   });
 
   if (!targetVersion) {
@@ -251,16 +250,18 @@ export async function setDefaultVersion(params: {
   }
 
   // 原子操作：清除旧默认 + 设置新默认
-  await prisma.$transaction([
-    prisma.policyVersion.updateMany({
-      where: { policyId, isDefault: true },
-      data: { isDefault: false },
-    }),
-    prisma.policyVersion.update({
-      where: { id: targetVersion.id },
-      data: { isDefault: true },
-    }),
-  ]);
+  await db.transaction(async (tx) => {
+    await tx.update(policyVersions)
+      .set({ isDefault: false })
+      .where(and(
+        eq(policyVersions.policyId, policyId),
+        eq(policyVersions.isDefault, true)
+      ));
+
+    await tx.update(policyVersions)
+      .set({ isDefault: true })
+      .where(eq(policyVersions.id, targetVersion.id));
+  });
 
   await logSecurityEvent({
     eventType: 'VERSION_SET_DEFAULT',
@@ -282,12 +283,12 @@ export async function deprecateVersion(params: {
 }): Promise<void> {
   const { policyId, version, userId, reason } = params;
 
-  const targetVersion = await prisma.policyVersion.findFirst({
-    where: {
-      policyId,
-      version,
-      status: 'APPROVED' as PolicyVersionStatus,
-    },
+  const targetVersion = await db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version),
+      eq(policyVersions.status, 'APPROVED')
+    ),
   });
 
   if (!targetVersion) {
@@ -299,14 +300,13 @@ export async function deprecateVersion(params: {
     throw new Error(`版本 v${version} 是默认版本，请先设置其他版本为默认`);
   }
 
-  await prisma.policyVersion.update({
-    where: { id: targetVersion.id },
-    data: {
-      status: 'DEPRECATED' as PolicyVersionStatus,
+  await db.update(policyVersions)
+    .set({
+      status: 'DEPRECATED',
       deprecatedAt: new Date(),
       deprecatedBy: userId,
-    },
-  });
+    })
+    .where(eq(policyVersions.id, targetVersion.id));
 
   await logSecurityEvent({
     eventType: 'VERSION_DEPRECATED',
@@ -328,12 +328,12 @@ export async function archiveVersion(params: {
 }): Promise<void> {
   const { policyId, version, userId, reason } = params;
 
-  const targetVersion = await prisma.policyVersion.findFirst({
-    where: {
-      policyId,
-      version,
-      status: { in: ['APPROVED', 'DEPRECATED'] as PolicyVersionStatus[] },
-    },
+  const targetVersion = await db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version),
+      inArray(policyVersions.status, ['APPROVED', 'DEPRECATED'])
+    ),
   });
 
   if (!targetVersion) {
@@ -345,14 +345,13 @@ export async function archiveVersion(params: {
     throw new Error(`版本 v${version} 是默认版本，请先设置其他版本为默认`);
   }
 
-  await prisma.policyVersion.update({
-    where: { id: targetVersion.id },
-    data: {
-      status: 'ARCHIVED' as PolicyVersionStatus,
+  await db.update(policyVersions)
+    .set({
+      status: 'ARCHIVED',
       archivedAt: new Date(),
       archivedBy: userId,
-    },
-  });
+    })
+    .where(eq(policyVersions.id, targetVersion.id));
 
   await logSecurityEvent({
     eventType: 'VERSION_ARCHIVED',
@@ -367,10 +366,10 @@ export async function archiveVersion(params: {
  * 获取策略的所有版本
  */
 export async function listVersions(policyId: string) {
-  return prisma.policyVersion.findMany({
-    where: { policyId },
-    orderBy: { version: 'desc' },
-    select: {
+  const versions = await db.query.policyVersions.findMany({
+    where: eq(policyVersions.policyId, policyId),
+    orderBy: [desc(policyVersions.version)],
+    columns: {
       id: true,
       version: true,
       sourceHash: true,
@@ -383,22 +382,38 @@ export async function listVersions(policyId: string) {
       deprecatedBy: true,
       archivedAt: true,
       archivedBy: true,
-      _count: { select: { approvals: true } },
     },
   });
+
+  // 获取每个版本的审批数量
+  const versionsWithCount = await Promise.all(
+    versions.map(async (v) => {
+      const approvalCount = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(policyApprovals)
+        .where(eq(policyApprovals.versionId, v.id));
+
+      return {
+        ...v,
+        _count: { approvals: approvalCount[0]?.count || 0 },
+      };
+    })
+  );
+
+  return versionsWithCount;
 }
 
 /**
  * 获取可执行版本列表
  */
 export async function listExecutableVersions(policyId: string) {
-  return prisma.policyVersion.findMany({
-    where: {
-      policyId,
-      status: { in: ['APPROVED', 'DEPRECATED'] as PolicyVersionStatus[] },
-    },
-    orderBy: { version: 'desc' },
-    select: {
+  return db.query.policyVersions.findMany({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      inArray(policyVersions.status, ['APPROVED', 'DEPRECATED'])
+    ),
+    orderBy: [desc(policyVersions.version)],
+    columns: {
       version: true,
       sourceHash: true,
       status: true,
@@ -418,11 +433,14 @@ export async function getVersionDetail(params: {
 }) {
   const { policyId, version } = params;
 
-  return prisma.policyVersion.findFirst({
-    where: { policyId, version },
-    include: {
+  return db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version)
+    ),
+    with: {
       approvals: {
-        orderBy: { createdAt: 'desc' },
+        orderBy: [desc(policyApprovals.createdAt)],
       },
     },
   });
@@ -437,9 +455,12 @@ export async function getVersionSource(params: {
 }): Promise<{ source: string; sourceHash: string } | null> {
   const { policyId, version } = params;
 
-  const result = await prisma.policyVersion.findFirst({
-    where: { policyId, version },
-    select: {
+  const result = await db.query.policyVersions.findFirst({
+    where: and(
+      eq(policyVersions.policyId, policyId),
+      eq(policyVersions.version, version)
+    ),
+    columns: {
       source: true,
       content: true, // 兼容旧字段
       sourceHash: true,

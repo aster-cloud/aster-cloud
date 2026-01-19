@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db, passwordResetTokens, users } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +22,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the token
-    const resetToken = await prisma.passwordResetToken.findUnique({
-      where: { token },
+    const resetToken = await db.query.passwordResetTokens.findFirst({
+      where: eq(passwordResetTokens.token, token),
     });
 
     if (!resetToken) {
@@ -35,9 +36,7 @@ export async function POST(request: NextRequest) {
     // Check if token has expired
     if (resetToken.expires < new Date()) {
       // Clean up expired token
-      await prisma.passwordResetToken.delete({
-        where: { id: resetToken.id },
-      });
+      await db.delete(passwordResetTokens).where(eq(passwordResetTokens.id, resetToken.id));
       return NextResponse.json(
         { error: 'Reset token has expired' },
         { status: 400 }
@@ -45,8 +44,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the user
-    const user = await prisma.user.findUnique({
-      where: { email: resetToken.email },
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, resetToken.email),
     });
 
     if (!user) {
@@ -60,15 +59,10 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(password);
 
     // Update user password
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash },
-    });
+    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
 
     // Delete the used token
-    await prisma.passwordResetToken.delete({
-      where: { id: resetToken.id },
-    });
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.id, resetToken.id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policyGroups, policies, teams, teamMembers } from '@/lib/prisma';
+import { eq, and, or, isNull, sql, desc, asc } from 'drizzle-orm';
+import crypto from 'crypto';
 
 // GET /api/policy-groups - 获取用户的策略分组树
 export async function GET() {
@@ -11,29 +13,60 @@ export async function GET() {
     }
 
     // 获取用户的所有分组（包括个人和团队的）
-    const groups = await prisma.policyGroup.findMany({
-      where: {
-        OR: [
-          { userId: session.user.id },
-          { isSystem: true }, // 系统预设分组对所有用户可见
-          {
-            team: {
-              members: {
-                some: { userId: session.user.id },
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        _count: {
-          select: {
-            policies: { where: { deletedAt: null } },
-          },
-        },
-      },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    // Drizzle 的复杂 OR 查询需要分步处理
+    const userGroups = await db.query.policyGroups.findMany({
+      where: eq(policyGroups.userId, session.user.id),
+      orderBy: [asc(policyGroups.sortOrder), asc(policyGroups.name)],
     });
+
+    const systemGroups = await db.query.policyGroups.findMany({
+      where: eq(policyGroups.isSystem, true),
+      orderBy: [asc(policyGroups.sortOrder), asc(policyGroups.name)],
+    });
+
+    // 查询用户所在团队的分组
+    const userTeamMemberships = await db.query.teamMembers.findMany({
+      where: eq(teamMembers.userId, session.user.id),
+      columns: { teamId: true },
+    });
+
+    const teamIds = userTeamMemberships.map(m => m.teamId);
+    const teamGroups = teamIds.length > 0
+      ? await db.query.policyGroups.findMany({
+          where: sql`${policyGroups.teamId} IN (${sql.join(teamIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`,
+          orderBy: [asc(policyGroups.sortOrder), asc(policyGroups.name)],
+        })
+      : [];
+
+    // 合并去重
+    const groupsMap = new Map();
+    [...userGroups, ...systemGroups, ...teamGroups].forEach(g => {
+      if (!groupsMap.has(g.id)) {
+        groupsMap.set(g.id, g);
+      }
+    });
+
+    const allGroups = Array.from(groupsMap.values());
+
+    // 获取每个分组的策略计数
+    const groupsWithCount = await Promise.all(
+      allGroups.map(async (group) => {
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(policies)
+          .where(and(
+            eq(policies.groupId, group.id),
+            isNull(policies.deletedAt)
+          ));
+
+        return {
+          ...group,
+          _count: { policies: count },
+        };
+      })
+    );
+
+    const groups = groupsWithCount;
 
     // 构建树形结构
     const groupMap = new Map(groups.map((g) => [g.id, { ...g, children: [] as typeof groups }]));
@@ -76,21 +109,31 @@ export async function POST(req: Request) {
 
     // 如果指定了父分组，验证其存在且用户有权限
     if (parentId) {
-      const parentGroup = await prisma.policyGroup.findFirst({
-        where: {
-          id: parentId,
-          OR: [
-            { userId: session.user.id },
-            {
-              team: {
-                members: {
-                  some: { userId: session.user.id },
-                },
-              },
-            },
-          ],
-        },
+      // 先查用户自己的分组
+      let parentGroup = await db.query.policyGroups.findFirst({
+        where: and(
+          eq(policyGroups.id, parentId),
+          eq(policyGroups.userId, session.user.id)
+        ),
       });
+
+      // 如果不是用户的分组,检查是否是团队分组
+      if (!parentGroup) {
+        const userTeams = await db.query.teamMembers.findMany({
+          where: eq(teamMembers.userId, session.user.id),
+          columns: { teamId: true },
+        });
+
+        if (userTeams.length > 0) {
+          const memberTeamIds = userTeams.map(m => m.teamId);
+          parentGroup = await db.query.policyGroups.findFirst({
+            where: and(
+              eq(policyGroups.id, parentId),
+              sql`${policyGroups.teamId} IN (${sql.join(memberTeamIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`
+            ),
+          });
+        }
+      }
 
       if (!parentGroup) {
         return NextResponse.json({ error: 'Parent group not found' }, { status: 404 });
@@ -99,11 +142,11 @@ export async function POST(req: Request) {
 
     // 如果指定了团队，验证用户是团队成员
     if (teamId) {
-      const membership = await prisma.teamMember.findFirst({
-        where: {
-          teamId,
-          userId: session.user.id,
-        },
+      const membership = await db.query.teamMembers.findFirst({
+        where: and(
+          eq(teamMembers.teamId, teamId),
+          eq(teamMembers.userId, session.user.id)
+        ),
       });
 
       if (!membership) {
@@ -112,33 +155,40 @@ export async function POST(req: Request) {
     }
 
     // 获取同级分组的最大排序值
-    const maxSortOrder = await prisma.policyGroup.aggregate({
-      where: {
-        parentId: parentId || null,
-        ...(teamId ? { teamId } : { userId: session.user.id }),
-      },
-      _max: { sortOrder: true },
-    });
+    const maxResult = await db
+      .select({ max: sql<number | null>`MAX(${policyGroups.sortOrder})` })
+      .from(policyGroups)
+      .where(and(
+        parentId ? eq(policyGroups.parentId, parentId) : isNull(policyGroups.parentId),
+        teamId ? eq(policyGroups.teamId, teamId) : eq(policyGroups.userId, session.user.id)
+      ));
 
-    const group = await prisma.policyGroup.create({
-      data: {
+    const maxSortOrder = maxResult[0]?.max ?? 0;
+
+    const [group] = await db
+      .insert(policyGroups)
+      .values({
+        id: crypto.randomUUID(),
         name,
-        description,
-        icon,
-        parentId,
-        sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
-        ...(teamId ? { teamId } : { userId: session.user.id }),
-      },
-      include: {
-        _count: {
-          select: {
-            policies: { where: { deletedAt: null } },
-          },
-        },
-      },
-    });
+        description: description || null,
+        icon: icon || null,
+        parentId: parentId || null,
+        sortOrder: maxSortOrder + 1,
+        teamId: teamId || null,
+        userId: teamId ? null : session.user.id,
+      })
+      .returning();
 
-    return NextResponse.json(group, { status: 201 });
+    // 获取策略计数
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(and(
+        eq(policies.groupId, group.id),
+        isNull(policies.deletedAt)
+      ));
+
+    return NextResponse.json({ ...group, _count: { policies: count } }, { status: 201 });
   } catch (error) {
     console.error('Error creating policy group:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,4 +1,5 @@
-import { prisma } from '@/lib/prisma';
+import { db, users, usageRecords, policies } from '@/lib/prisma';
+import { eq, and, sql } from 'drizzle-orm';
 import {
   PLANS,
   getPlanConfig,
@@ -43,9 +44,9 @@ export async function checkUsageLimit(
   userId: string,
   type: UsageType
 ): Promise<{ allowed: boolean; remaining?: number; limit?: number; message?: string }> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: {
       plan: true,
       trialEndsAt: true,
     },
@@ -59,10 +60,9 @@ export async function checkUsageLimit(
   const { plan: effectivePlan, downgraded } = resolvePlan(normalizedPlan, user.trialEndsAt);
 
   if (downgraded) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { plan: effectivePlan },
-    });
+    await db.update(users)
+      .set({ plan: effectivePlan })
+      .where(eq(users.id, userId));
   }
 
   const limitKey = USAGE_LIMIT_MAPPING[type];
@@ -76,14 +76,12 @@ export async function checkUsageLimit(
   }
 
   const period = getCurrentPeriod();
-  const usage = await prisma.usageRecord.findUnique({
-    where: {
-      userId_type_period: {
-        userId,
-        type,
-        period,
-      },
-    },
+  const usage = await db.query.usageRecords.findFirst({
+    where: and(
+      eq(usageRecords.userId, userId),
+      eq(usageRecords.type, type),
+      eq(usageRecords.period, period)
+    ),
   });
 
   const currentCount = usage?.count || 0;
@@ -108,51 +106,46 @@ export async function checkUsageLimit(
 export async function recordUsage(userId: string, type: UsageType, count = 1): Promise<void> {
   const period = getCurrentPeriod();
 
-  await prisma.usageRecord.upsert({
-    where: {
-      userId_type_period: {
-        userId,
-        type,
-        period,
-      },
-    },
-    update: {
-      count: { increment: count },
-    },
-    create: {
+  await db.insert(usageRecords)
+    .values({
+      id: crypto.randomUUID(),
       userId,
       type,
       period,
       count,
-    },
-  });
+    })
+    .onConflictDoUpdate({
+      target: [usageRecords.userId, usageRecords.type, usageRecords.period],
+      set: { count: sql`${usageRecords.count} + ${count}` },
+    });
 }
 
 // 获取用户用量统计
 export async function getUsageStats(userId: string) {
   const period = getCurrentPeriod();
 
-  const [user, usageRecords, policyCount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true, trialEndsAt: true },
+  const [user, usageRecordsData, policyCountResult] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { plan: true, trialEndsAt: true },
     }),
-    prisma.usageRecord.findMany({
-      where: { userId, period },
+    db.query.usageRecords.findMany({
+      where: and(eq(usageRecords.userId, userId), eq(usageRecords.period, period)),
     }),
-    prisma.policy.count({
-      where: { userId },
-    }),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(eq(policies.userId, userId)),
   ]);
+
+  const policyCount = policyCountResult[0]?.count || 0;
 
   const normalizedPlan = normalizePlan(user?.plan || 'free');
   const { plan: effectivePlan, downgraded } = resolvePlan(normalizedPlan, user?.trialEndsAt ?? null);
 
   if (downgraded) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { plan: effectivePlan },
-    });
+    await db.update(users)
+      .set({ plan: effectivePlan })
+      .where(eq(users.id, userId));
   }
 
   const planConfig = getPlanConfig(effectivePlan);
@@ -166,7 +159,7 @@ export async function getUsageStats(userId: string) {
   }
 
   const usageByType: Record<string, number> = {};
-  for (const record of usageRecords) {
+  for (const record of usageRecordsData) {
     usageByType[record.type] = record.count;
   }
 
@@ -199,9 +192,9 @@ export async function hasFeatureAccess(
   userId: string,
   feature: keyof PlanCapabilities
 ): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, trialEndsAt: true },
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { plan: true, trialEndsAt: true },
   });
 
   if (!user) return false;
@@ -210,10 +203,9 @@ export async function hasFeatureAccess(
   const { plan: effectivePlan, downgraded } = resolvePlan(normalizedPlan, user.trialEndsAt);
 
   if (downgraded) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { plan: effectivePlan },
-    });
+    await db.update(users)
+      .set({ plan: effectivePlan })
+      .where(eq(users.id, userId));
   }
 
   const capabilities = getPlanConfig(effectivePlan).capabilities as PlanCapabilities;

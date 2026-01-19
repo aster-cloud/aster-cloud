@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policies, executions, users } from '@/lib/prisma';
+import { eq, isNull, desc, sql } from 'drizzle-orm';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
+import crypto from 'crypto';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
 
@@ -25,39 +27,48 @@ export async function GET(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: permission.error }, { status: permission.status });
     }
 
-    const policies = await prisma.policy.findMany({
-      where: { teamId },
-      include: {
-        _count: {
-          select: { executions: true },
-        },
+    const teamPolicies = await db.query.policies.findMany({
+      where: eq(policies.teamId, teamId),
+      with: {
         user: {
-          select: {
+          columns: {
             id: true,
             name: true,
           },
         },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: desc(policies.updatedAt),
     });
 
+    // 并行获取每个策略的执行次数
+    const policiesWithCounts = await Promise.all(
+      teamPolicies.map(async (policy) => {
+        const [executionCountResult] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(executions)
+          .where(eq(executions.policyId, policy.id));
+
+        return {
+          id: policy.id,
+          name: policy.name,
+          description: policy.description,
+          version: policy.version,
+          piiFields: policy.piiFields,
+          createdBy: policy.user
+            ? {
+                id: policy.user.id,
+                name: policy.user.name,
+              }
+            : null,
+          executionCount: executionCountResult.count,
+          createdAt: policy.createdAt.toISOString(),
+          updatedAt: policy.updatedAt.toISOString(),
+        };
+      })
+    );
+
     return NextResponse.json({
-      policies: policies.map((policy) => ({
-        id: policy.id,
-        name: policy.name,
-        description: policy.description,
-        version: policy.version,
-        piiFields: policy.piiFields,
-        createdBy: policy.user
-          ? {
-              id: policy.user.id,
-              name: policy.user.name,
-            }
-          : null,
-        executionCount: policy._count.executions,
-        createdAt: policy.createdAt.toISOString(),
-        updatedAt: policy.updatedAt.toISOString(),
-      })),
+      policies: policiesWithCounts,
     });
   } catch (error) {
     console.error('Error listing team policies:', error);
@@ -90,14 +101,11 @@ export async function POST(req: Request, { params }: RouteParams) {
     // 如果提供了 policyId，将现有策略分配给团队
     if (policyId) {
       // 获取策略信息
-      const existingPolicy = await prisma.policy.findFirst({
-        where: {
-          id: policyId,
-          teamId: null, // 只能分配个人策略
-        },
+      const existingPolicy = await db.query.policies.findFirst({
+        where: eq(policies.id, policyId),
       });
 
-      if (!existingPolicy) {
+      if (!existingPolicy || existingPolicy.teamId !== null) {
         return NextResponse.json(
           { error: '策略不存在或已分配给其他团队' },
           { status: 404 }
@@ -107,17 +115,19 @@ export async function POST(req: Request, { params }: RouteParams) {
       // 安全检查：只允许策略所有者本人导入自己的策略到团队
       // 防止未经授权泄露他人策略内容
       if (existingPolicy.userId !== session.user.id) {
-        return NextResponse.json(
-          { error: '只能导入自己的策略' },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: '只能导入自己的策略' }, { status: 403 });
       }
 
       // 分配策略到团队
-      const updatedPolicy = await prisma.policy.update({
-        where: { id: policyId },
-        data: { teamId },
-      });
+      const [updatedPolicy] = await db
+        .update(policies)
+        .set({ teamId })
+        .where(eq(policies.id, policyId))
+        .returning();
+
+      if (!updatedPolicy) {
+        throw new Error('Failed to update policy');
+      }
 
       return NextResponse.json({
         id: updatedPolicy.id,
@@ -135,15 +145,22 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: '策略内容不能为空' }, { status: 400 });
     }
 
-    const newPolicy = await prisma.policy.create({
-      data: {
+    const newPolicyId = crypto.randomUUID();
+    const [newPolicy] = await db
+      .insert(policies)
+      .values({
+        id: newPolicyId,
         name,
         content,
         description: description || null,
         userId: session.user.id,
         teamId,
-      },
-    });
+      })
+      .returning();
+
+    if (!newPolicy) {
+      throw new Error('Failed to create policy');
+    }
 
     return NextResponse.json(
       {

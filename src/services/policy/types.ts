@@ -1,4 +1,4 @@
-import type { Policy } from '@prisma/client';
+import type { Policy } from '@/lib/prisma';
 
 export type RuleOperator =
   | 'eq'

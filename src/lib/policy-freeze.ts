@@ -1,7 +1,8 @@
 // src/lib/policy-freeze.ts
 // 策略冻结逻辑：当用户降级后，超出限制的策略将被冻结（只读，不可执行/编辑）
 
-import { prisma } from '@/lib/prisma';
+import { db, users, policies } from '@/lib/prisma';
+import { eq, desc, asc, inArray, sql } from 'drizzle-orm';
 import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
 
 export interface PolicyFreezeInfo {
@@ -29,9 +30,9 @@ export async function getPolicyFreezeStatus(
   frozenCount: number;
   frozenPolicyIds: Set<string>;
 }> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, trialEndsAt: true },
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { plan: true, trialEndsAt: true },
   });
 
   if (!user) {
@@ -47,24 +48,27 @@ export async function getPolicyFreezeStatus(
 
   // 无限制套餐不冻结，但仍返回真实策略数以供仪表盘展示
   if (isUnlimited(limit)) {
-    const totalPolicies = await prisma.policy.count({ where: { userId } });
+    const countResult = await db.select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(eq(policies.userId, userId));
+    const totalPolicies = countResult[0]?.count || 0;
     return { limit: -1, totalPolicies, frozenCount: 0, frozenPolicyIds: new Set() };
   }
 
   // 获取所有策略，按更新时间降序，id 作为次级排序保证确定性
-  const policies = await prisma.policy.findMany({
-    where: { userId },
-    orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-    select: { id: true },
+  const policyList = await db.query.policies.findMany({
+    where: eq(policies.userId, userId),
+    orderBy: [desc(policies.updatedAt), asc(policies.id)],
+    columns: { id: true },
   });
 
-  const totalPolicies = policies.length;
+  const totalPolicies = policyList.length;
 
   // 超出限制的策略 ID
   const frozenPolicyIds = new Set<string>();
   if (totalPolicies > limit) {
     for (let i = limit; i < totalPolicies; i++) {
-      frozenPolicyIds.add(policies[i].id);
+      frozenPolicyIds.add(policyList[i].id);
     }
   }
 
@@ -81,9 +85,9 @@ export async function getPolicyFreezeStatus(
  * 优化版本：仅查询 limit 条活跃策略，避免全量扫描
  */
 export async function isPolicyFrozen(userId: string, policyId: string): Promise<PolicyFreezeInfo> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, trialEndsAt: true },
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { plan: true, trialEndsAt: true },
   });
 
   if (!user) {
@@ -103,7 +107,10 @@ export async function isPolicyFrozen(userId: string, policyId: string): Promise<
 
   // 无限制套餐不冻结，但仍返回真实策略数以供仪表盘展示
   if (isUnlimited(limit)) {
-    const totalPolicies = await prisma.policy.count({ where: { userId } });
+    const countResult = await db.select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(eq(policies.userId, userId));
+    const totalPolicies = countResult[0]?.count || 0;
     return {
       isFrozen: false,
       activePoliciesLimit: -1,
@@ -113,15 +120,20 @@ export async function isPolicyFrozen(userId: string, policyId: string): Promise<
   }
 
   // 快速路径：仅获取策略总数和前 limit 条活跃策略 ID
-  const [totalPolicies, activePolicies] = await Promise.all([
-    prisma.policy.count({ where: { userId } }),
-    prisma.policy.findMany({
-      where: { userId },
-      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-      take: limit,
-      select: { id: true },
+  const [totalPoliciesResult, activePoliciesList] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(eq(policies.userId, userId)),
+    db.query.policies.findMany({
+      where: eq(policies.userId, userId),
+      orderBy: [desc(policies.updatedAt), asc(policies.id)],
+      limit,
+      columns: { id: true },
     }),
   ]);
+
+  const totalPolicies = totalPoliciesResult[0]?.count || 0;
+  const activePolicies = activePoliciesList;
 
   // 如果总数未超限，无冻结
   if (totalPolicies <= limit) {
@@ -180,9 +192,9 @@ export async function getBatchPolicyFreezeStatus(
   const uniqueUserIds = [...new Set(userIds)];
 
   // 批量获取所有用户的套餐信息
-  const users = await prisma.user.findMany({
-    where: { id: { in: uniqueUserIds } },
-    select: { id: true, plan: true, trialEndsAt: true },
+  const usersList = await db.query.users.findMany({
+    where: inArray(users.id, uniqueUserIds),
+    columns: { id: true, plan: true, trialEndsAt: true },
   });
 
   // 初始化结果，先计算每个用户的有效限制
@@ -190,7 +202,7 @@ export async function getBatchPolicyFreezeStatus(
   const limitedUserIds: string[] = [];
   const userLimits = new Map<string, number>();
 
-  for (const user of users) {
+  for (const user of usersList) {
     const plan = (user.plan && user.plan in PLANS ? user.plan : 'free') as PlanType;
     const trialExpired = plan === 'trial' && user.trialEndsAt && user.trialEndsAt < new Date();
     const effectivePlan = trialExpired ? 'free' : plan;
@@ -207,15 +219,15 @@ export async function getBatchPolicyFreezeStatus(
 
   // 仅对有限制的用户查询策略，id 作为次级排序保证确定性
   if (limitedUserIds.length > 0) {
-    const limitedPolicies = await prisma.policy.findMany({
-      where: { userId: { in: limitedUserIds } },
-      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-      select: { id: true, userId: true },
+    const limitedPoliciesList = await db.query.policies.findMany({
+      where: inArray(policies.userId, limitedUserIds),
+      orderBy: [desc(policies.updatedAt), asc(policies.id)],
+      columns: { id: true, userId: true },
     });
 
     // 按用户分组策略
     const policiesByUser = new Map<string, string[]>();
-    for (const policy of limitedPolicies) {
+    for (const policy of limitedPoliciesList) {
       const userPolicies = policiesByUser.get(policy.userId) || [];
       userPolicies.push(policy.id);
       policiesByUser.set(policy.userId, userPolicies);

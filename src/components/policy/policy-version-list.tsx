@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { PolicyVersionStatus } from '@prisma/client';
+import type { PolicyVersionStatus } from '@/lib/prisma';
 import { VersionStatusBadge } from './version-status-badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 

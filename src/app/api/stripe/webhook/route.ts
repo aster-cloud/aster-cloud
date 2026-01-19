@@ -1,8 +1,10 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { prisma } from '@/lib/prisma';
+import { db, users, auditLogs } from '@/lib/prisma';
+import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
+import crypto from 'crypto';
 
 export async function POST(req: Request) {
   // Validate webhook secret is configured
@@ -47,9 +49,9 @@ export async function POST(req: Request) {
         const plan = session.metadata?.plan as 'pro' | 'team';
 
         if (userId && customerId && subscriptionId) {
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
+          await db
+            .update(users)
+            .set({
               plan: plan || 'pro',
               stripeCustomerId: customerId,
               subscriptionId: subscriptionId,
@@ -57,8 +59,8 @@ export async function POST(req: Request) {
               // Clear trial dates when subscribing
               trialStartedAt: null,
               trialEndsAt: null,
-            },
-          });
+            })
+            .where(eq(users.id, userId));
           console.log(`User ${userId} upgraded to ${plan}`);
         }
         break;
@@ -68,18 +70,26 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
-        const user = await prisma.user.findUnique({
-          where: { stripeCustomerId: customerId },
+        const user = await db.query.users.findFirst({
+          where: eq(users.stripeCustomerId, customerId),
         });
 
         if (user) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
+          await db
+            .update(users)
+            .set({
               subscriptionId: subscription.id,
-              subscriptionStatus: subscription.status as 'active' | 'past_due' | 'canceled',
-            },
-          });
+              subscriptionStatus: subscription.status as
+                | 'active'
+                | 'past_due'
+                | 'canceled'
+                | 'incomplete'
+                | 'incomplete_expired'
+                | 'trialing'
+                | 'unpaid'
+                | 'paused',
+            })
+            .where(eq(users.id, user.id));
         }
         break;
       }
@@ -88,8 +98,8 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
-        const user = await prisma.user.findUnique({
-          where: { stripeCustomerId: customerId },
+        const user = await db.query.users.findFirst({
+          where: eq(users.stripeCustomerId, customerId),
         });
 
         if (user) {
@@ -101,13 +111,21 @@ export async function POST(req: Request) {
             plan = 'team';
           }
 
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
+          await db
+            .update(users)
+            .set({
               plan: subscription.status === 'active' ? plan : 'free',
-              subscriptionStatus: subscription.status as 'active' | 'past_due' | 'canceled',
-            },
-          });
+              subscriptionStatus: subscription.status as
+                | 'active'
+                | 'past_due'
+                | 'canceled'
+                | 'incomplete'
+                | 'incomplete_expired'
+                | 'trialing'
+                | 'unpaid'
+                | 'paused',
+            })
+            .where(eq(users.id, user.id));
         }
         break;
       }
@@ -116,28 +134,27 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
-        const user = await prisma.user.findUnique({
-          where: { stripeCustomerId: customerId },
+        const user = await db.query.users.findFirst({
+          where: eq(users.stripeCustomerId, customerId),
         });
 
         if (user) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
+          await db
+            .update(users)
+            .set({
               plan: 'free',
               subscriptionId: null,
               subscriptionStatus: 'canceled',
-            },
-          });
+            })
+            .where(eq(users.id, user.id));
 
           // Create audit log
-          await prisma.auditLog.create({
-            data: {
-              userId: user.id,
-              action: 'subscription.cancelled',
-              resource: 'subscription',
-              resourceId: subscription.id,
-            },
+          await db.insert(auditLogs).values({
+            id: crypto.randomUUID(),
+            userId: user.id,
+            action: 'subscription.cancelled',
+            resource: 'subscription',
+            resourceId: subscription.id,
           });
         }
         break;
@@ -147,22 +164,21 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
 
-        const user = await prisma.user.findUnique({
-          where: { stripeCustomerId: customerId },
+        const user = await db.query.users.findFirst({
+          where: eq(users.stripeCustomerId, customerId),
         });
 
         if (user) {
           // Create audit log for payment
-          await prisma.auditLog.create({
-            data: {
-              userId: user.id,
-              action: 'payment.succeeded',
-              resource: 'invoice',
-              resourceId: invoice.id,
-              metadata: {
-                amount: invoice.amount_paid,
-                currency: invoice.currency,
-              },
+          await db.insert(auditLogs).values({
+            id: crypto.randomUUID(),
+            userId: user.id,
+            action: 'payment.succeeded',
+            resource: 'invoice',
+            resourceId: invoice.id,
+            metadata: {
+              amount: invoice.amount_paid,
+              currency: invoice.currency,
             },
           });
         }
@@ -173,27 +189,26 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
 
-        const user = await prisma.user.findUnique({
-          where: { stripeCustomerId: customerId },
+        const user = await db.query.users.findFirst({
+          where: eq(users.stripeCustomerId, customerId),
         });
 
         if (user) {
           // Update subscription status
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
+          await db
+            .update(users)
+            .set({
               subscriptionStatus: 'past_due',
-            },
-          });
+            })
+            .where(eq(users.id, user.id));
 
           // Create audit log
-          await prisma.auditLog.create({
-            data: {
-              userId: user.id,
-              action: 'payment.failed',
-              resource: 'invoice',
-              resourceId: invoice.id,
-            },
+          await db.insert(auditLogs).values({
+            id: crypto.randomUUID(),
+            userId: user.id,
+            action: 'payment.failed',
+            resource: 'invoice',
+            resourceId: invoice.id,
           });
 
           // TODO: Send payment failed email

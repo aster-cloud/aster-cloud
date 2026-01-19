@@ -5,8 +5,13 @@
  * 事件记录失败不会影响主业务流程。
  */
 
-import { prisma } from '@/lib/prisma';
-import type { SecurityEventType, EventSeverity, Prisma } from '@prisma/client';
+import { db, securityEvents } from '@/lib/prisma';
+import { eq, and, gte, lte, inArray, lt, desc, sql } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
+
+type SecurityEvent = InferSelectModel<typeof securityEvents>;
+type SecurityEventType = SecurityEvent['eventType'];
+type EventSeverity = SecurityEvent['severity'];
 
 export interface SecurityEventData {
   eventType: SecurityEventType;
@@ -38,17 +43,16 @@ export interface SecurityEventQueryOptions {
  */
 export async function logSecurityEvent(data: SecurityEventData): Promise<void> {
   try {
-    await prisma.securityEvent.create({
-      data: {
-        eventType: data.eventType,
-        severity: data.severity,
-        policyId: data.policyId,
-        userId: data.userId,
-        ipAddress: data.ipAddress,
-        userAgent: data.userAgent,
-        requestId: data.requestId,
-        details: data.details as Prisma.InputJsonValue,
-      },
+    await db.insert(securityEvents).values({
+      id: crypto.randomUUID(),
+      eventType: data.eventType,
+      severity: data.severity,
+      policyId: data.policyId,
+      userId: data.userId,
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
+      requestId: data.requestId,
+      details: data.details,
     });
   } catch (error) {
     // 安全事件记录失败不应影响主流程
@@ -68,8 +72,9 @@ export async function logSecurityEventsBatch(
   let failed = 0;
 
   try {
-    const result = await prisma.securityEvent.createMany({
-      data: events.map((e) => ({
+    await db.insert(securityEvents).values(
+      events.map((e) => ({
+        id: crypto.randomUUID(),
         eventType: e.eventType,
         severity: e.severity,
         policyId: e.policyId,
@@ -77,10 +82,10 @@ export async function logSecurityEventsBatch(
         ipAddress: e.ipAddress,
         userAgent: e.userAgent,
         requestId: e.requestId,
-        details: e.details as Prisma.InputJsonValue,
-      })),
-    });
-    success = result.count;
+        details: e.details,
+      }))
+    );
+    success = events.length;
   } catch (error) {
     console.error('[SecurityEvent] Batch insert failed:', error);
     failed = events.length;
@@ -95,48 +100,45 @@ export async function logSecurityEventsBatch(
 export async function getSecurityEvents(
   options: SecurityEventQueryOptions
 ): Promise<{
-  events: Awaited<ReturnType<typeof prisma.securityEvent.findMany>>;
+  events: SecurityEvent[];
   total: number;
 }> {
-  const where: Record<string, unknown> = {};
+  const conditions = [];
 
-  if (options.startDate || options.endDate) {
-    where.createdAt = {};
-    if (options.startDate) {
-      (where.createdAt as Record<string, unknown>).gte = options.startDate;
-    }
-    if (options.endDate) {
-      (where.createdAt as Record<string, unknown>).lte = options.endDate;
-    }
+  if (options.startDate) {
+    conditions.push(gte(securityEvents.createdAt, options.startDate));
   }
-
+  if (options.endDate) {
+    conditions.push(lte(securityEvents.createdAt, options.endDate));
+  }
   if (options.eventTypes?.length) {
-    where.eventType = { in: options.eventTypes };
+    conditions.push(inArray(securityEvents.eventType, options.eventTypes));
   }
-
   if (options.severities?.length) {
-    where.severity = { in: options.severities };
+    conditions.push(inArray(securityEvents.severity, options.severities));
   }
-
   if (options.policyId) {
-    where.policyId = options.policyId;
+    conditions.push(eq(securityEvents.policyId, options.policyId));
   }
-
   if (options.userId) {
-    where.userId = options.userId;
+    conditions.push(eq(securityEvents.userId, options.userId));
   }
 
-  const [events, total] = await Promise.all([
-    prisma.securityEvent.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: options.limit ?? 100,
-      skip: options.offset ?? 0,
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [events, totalResult] = await Promise.all([
+    db.query.securityEvents.findMany({
+      where: whereClause,
+      orderBy: [desc(securityEvents.createdAt)],
+      limit: options.limit ?? 100,
+      offset: options.offset ?? 0,
     }),
-    prisma.securityEvent.count({ where }),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(securityEvents)
+      .where(whereClause ?? sql`true`),
   ]);
 
-  return { events, total };
+  return { events, total: totalResult[0]?.count || 0 };
 }
 
 /**
@@ -152,30 +154,38 @@ export async function getSecurityEventStats(options: {
   byType: Record<string, number>;
   errorRate: number;
 }> {
-  const where: Record<string, unknown> = {
-    createdAt: {
-      gte: options.startDate,
-      lte: options.endDate,
-    },
-  };
+  const conditions = [
+    gte(securityEvents.createdAt, options.startDate),
+    lte(securityEvents.createdAt, options.endDate),
+  ];
 
   if (options.policyId) {
-    where.policyId = options.policyId;
+    conditions.push(eq(securityEvents.policyId, options.policyId));
   }
 
-  const [total, bySeverityData, byTypeData] = await Promise.all([
-    prisma.securityEvent.count({ where }),
-    prisma.securityEvent.groupBy({
-      by: ['severity'],
-      where,
-      _count: { severity: true },
-    }),
-    prisma.securityEvent.groupBy({
-      by: ['eventType'],
-      where,
-      _count: { eventType: true },
-    }),
+  const whereClause = and(...conditions);
+
+  const [totalResult, bySeverityData, byTypeData] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(securityEvents)
+      .where(whereClause),
+    db.select({
+      severity: securityEvents.severity,
+      count: sql<number>`count(*)::int`,
+    })
+      .from(securityEvents)
+      .where(whereClause)
+      .groupBy(securityEvents.severity),
+    db.select({
+      eventType: securityEvents.eventType,
+      count: sql<number>`count(*)::int`,
+    })
+      .from(securityEvents)
+      .where(whereClause)
+      .groupBy(securityEvents.eventType),
   ]);
+
+  const total = totalResult[0]?.count || 0;
 
   const bySeverity = {
     INFO: 0,
@@ -185,12 +195,12 @@ export async function getSecurityEventStats(options: {
   } as Record<EventSeverity, number>;
 
   for (const item of bySeverityData) {
-    bySeverity[item.severity] = item._count.severity;
+    bySeverity[item.severity] = item.count;
   }
 
   const byType: Record<string, number> = {};
   for (const item of byTypeData) {
-    byType[item.eventType] = item._count.eventType;
+    byType[item.eventType] = item.count;
   }
 
   const errorCount = bySeverity.ERROR + bySeverity.CRITICAL;
@@ -212,12 +222,9 @@ export async function getSecurityEventStats(options: {
 export async function cleanupOldSecurityEvents(
   olderThan: Date
 ): Promise<number> {
-  const result = await prisma.securityEvent.deleteMany({
-    where: {
-      createdAt: {
-        lt: olderThan,
-      },
-    },
-  });
-  return result.count;
+  const result = await db.delete(securityEvents)
+    .where(lt(securityEvents.createdAt, olderThan))
+    .returning();
+
+  return result.length;
 }

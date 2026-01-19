@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/auth';
+
 import { stripe } from '@/lib/stripe';
 import {
   CurrencyCode,
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     // 验证并默认货币为 USD
     const currency: CurrencyCode = isValidCurrency(rawCurrency) ? rawCurrency : 'USD';
 
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id || !session.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, policyGroups, policies, teamMembers } from '@/lib/prisma';
+import { eq, and, isNull, sql, desc } from 'drizzle-orm';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -16,56 +17,98 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     const { id } = await params;
 
-    const group = await prisma.policyGroup.findFirst({
-      where: {
-        id,
-        OR: [
-          { userId: session.user.id },
-          { isSystem: true },
-          {
-            team: {
-              members: {
-                some: { userId: session.user.id },
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        children: {
-          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-          include: {
-            _count: {
-              select: {
-                policies: { where: { deletedAt: null } },
-              },
-            },
-          },
-        },
-        policies: {
-          where: { deletedAt: null },
-          orderBy: { updatedAt: 'desc' },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            updatedAt: true,
-          },
-        },
-        _count: {
-          select: {
-            policies: { where: { deletedAt: null } },
-            children: true,
-          },
-        },
-      },
+    // 先查用户自己的分组或系统分组
+    let group = await db.query.policyGroups.findFirst({
+      where: and(
+        eq(policyGroups.id, id),
+        sql`(${policyGroups.userId} = ${session.user.id} OR ${policyGroups.isSystem} = true)`
+      ),
     });
+
+    // 如果不是用户的分组,检查是否是团队分组
+    if (!group) {
+      const userTeams = await db.query.teamMembers.findMany({
+        where: eq(teamMembers.userId, session.user.id),
+        columns: { teamId: true },
+      });
+
+      if (userTeams.length > 0) {
+        const teamIds = userTeams.map(m => m.teamId);
+        group = await db.query.policyGroups.findFirst({
+          where: and(
+            eq(policyGroups.id, id),
+            sql`${policyGroups.teamId} IN (${sql.join(teamIds.map(tid => sql.raw(`'${tid}'`)), sql.raw(', '))})`
+          ),
+        });
+      }
+    }
 
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
 
-    return NextResponse.json(group);
+    // 获取子分组
+    const children = await db.query.policyGroups.findMany({
+      where: eq(policyGroups.parentId, id),
+      orderBy: [sql`${policyGroups.sortOrder} ASC`, sql`${policyGroups.name} ASC`],
+    });
+
+    // 为每个子分组获取策略计数
+    const childrenWithCount = await Promise.all(
+      children.map(async (child) => {
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(policies)
+          .where(and(
+            eq(policies.groupId, child.id),
+            isNull(policies.deletedAt)
+          ));
+
+        return {
+          ...child,
+          _count: { policies: count },
+        };
+      })
+    );
+
+    // 获取当前分组的策略
+    const groupPolicies = await db.query.policies.findMany({
+      where: and(
+        eq(policies.groupId, id),
+        isNull(policies.deletedAt)
+      ),
+      orderBy: desc(policies.updatedAt),
+      columns: {
+        id: true,
+        name: true,
+        description: true,
+        updatedAt: true,
+      },
+    });
+
+    // 获取计数
+    const [policyCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(and(
+        eq(policies.groupId, id),
+        isNull(policies.deletedAt)
+      ));
+
+    const [childrenCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(policyGroups)
+      .where(eq(policyGroups.parentId, id));
+
+    return NextResponse.json({
+      ...group,
+      children: childrenWithCount,
+      policies: groupPolicies,
+      _count: {
+        policies: policyCount.count,
+        children: childrenCount.count,
+      },
+    });
   } catch (error) {
     console.error('Error fetching policy group:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -84,24 +127,34 @@ export async function PUT(req: Request, { params }: RouteParams) {
     const { name, description, icon, parentId, sortOrder } = await req.json();
 
     // 验证分组存在且用户有权限
-    const existingGroup = await prisma.policyGroup.findFirst({
-      where: {
-        id,
-        OR: [
-          { userId: session.user.id },
-          {
-            team: {
-              members: {
-                some: {
-                  userId: session.user.id,
-                  role: { in: ['owner', 'admin'] }, // 只有 owner 和 admin 可以修改
-                },
-              },
-            },
-          },
-        ],
-      },
+    // 先查用户自己的分组
+    let existingGroup = await db.query.policyGroups.findFirst({
+      where: and(
+        eq(policyGroups.id, id),
+        eq(policyGroups.userId, session.user.id)
+      ),
     });
+
+    // 如果不是用户的分组,检查团队权限(owner/admin)
+    if (!existingGroup) {
+      const adminTeams = await db.query.teamMembers.findMany({
+        where: and(
+          eq(teamMembers.userId, session.user.id),
+          sql`${teamMembers.role} IN ('owner', 'admin')`
+        ),
+        columns: { teamId: true },
+      });
+
+      if (adminTeams.length > 0) {
+        const adminTeamIds = adminTeams.map(t => t.teamId);
+        existingGroup = await db.query.policyGroups.findFirst({
+          where: and(
+            eq(policyGroups.id, id),
+            sql`${policyGroups.teamId} IN (${sql.join(adminTeamIds.map(tid => sql.raw(`'${tid}'`)), sql.raw(', '))})`
+          ),
+        });
+      }
+    }
 
     if (!existingGroup) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
@@ -130,25 +183,30 @@ export async function PUT(req: Request, { params }: RouteParams) {
       }
     }
 
-    const group = await prisma.policyGroup.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(description !== undefined && { description }),
-        ...(icon !== undefined && { icon }),
-        ...(parentId !== undefined && { parentId }),
-        ...(sortOrder !== undefined && { sortOrder }),
-      },
-      include: {
-        _count: {
-          select: {
-            policies: { where: { deletedAt: null } },
-          },
-        },
-      },
-    });
+    // 构建更新数据
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (icon !== undefined) updateData.icon = icon;
+    if (parentId !== undefined) updateData.parentId = parentId || null;
+    if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
 
-    return NextResponse.json(group);
+    const [group] = await db
+      .update(policyGroups)
+      .set(updateData)
+      .where(eq(policyGroups.id, id))
+      .returning();
+
+    // 获取策略计数
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(and(
+        eq(policies.groupId, group.id),
+        isNull(policies.deletedAt)
+      ));
+
+    return NextResponse.json({ ...group, _count: { policies: count } });
   } catch (error) {
     console.error('Error updating policy group:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -166,32 +224,33 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     const { id } = await params;
 
     // 验证分组存在且用户有权限
-    const group = await prisma.policyGroup.findFirst({
-      where: {
-        id,
-        OR: [
-          { userId: session.user.id },
-          {
-            team: {
-              members: {
-                some: {
-                  userId: session.user.id,
-                  role: { in: ['owner', 'admin'] },
-                },
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        _count: {
-          select: {
-            policies: { where: { deletedAt: null } },
-            children: true,
-          },
-        },
-      },
+    let group = await db.query.policyGroups.findFirst({
+      where: and(
+        eq(policyGroups.id, id),
+        eq(policyGroups.userId, session.user.id)
+      ),
     });
+
+    // 如果不是用户的分组,检查团队权限
+    if (!group) {
+      const adminTeams = await db.query.teamMembers.findMany({
+        where: and(
+          eq(teamMembers.userId, session.user.id),
+          sql`${teamMembers.role} IN ('owner', 'admin')`
+        ),
+        columns: { teamId: true },
+      });
+
+      if (adminTeams.length > 0) {
+        const adminTeamIds = adminTeams.map(t => t.teamId);
+        group = await db.query.policyGroups.findFirst({
+          where: and(
+            eq(policyGroups.id, id),
+            sql`${policyGroups.teamId} IN (${sql.join(adminTeamIds.map(tid => sql.raw(`'${tid}'`)), sql.raw(', '))})`
+          ),
+        });
+      }
+    }
 
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
@@ -201,6 +260,20 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     if (group.isSystem) {
       return NextResponse.json({ error: 'Cannot delete system group' }, { status: 403 });
     }
+
+    // 获取计数
+    const [policyCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(policies)
+      .where(and(
+        eq(policies.groupId, id),
+        isNull(policies.deletedAt)
+      ));
+
+    const [childrenCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(policyGroups)
+      .where(eq(policyGroups.parentId, id));
 
     // 解析请求体，获取删除选项
     let movePoliciesToParent = true;
@@ -214,27 +287,25 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     // 使用事务处理删除
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // 处理策略：移动到父分组或取消分组
-      if (group._count.policies > 0) {
-        await tx.policy.updateMany({
-          where: { groupId: id },
-          data: { groupId: movePoliciesToParent ? group.parentId : null },
-        });
+      if (policyCount.count > 0) {
+        await tx
+          .update(policies)
+          .set({ groupId: movePoliciesToParent ? group.parentId : null })
+          .where(eq(policies.groupId, id));
       }
 
       // 处理子分组：移动到父分组或提升为顶级分组
-      if (group._count.children > 0) {
-        await tx.policyGroup.updateMany({
-          where: { parentId: id },
-          data: { parentId: moveChildrenToParent ? group.parentId : null },
-        });
+      if (childrenCount.count > 0) {
+        await tx
+          .update(policyGroups)
+          .set({ parentId: moveChildrenToParent ? group.parentId : null })
+          .where(eq(policyGroups.parentId, id));
       }
 
       // 删除分组
-      await tx.policyGroup.delete({
-        where: { id },
-      });
+      await tx.delete(policyGroups).where(eq(policyGroups.id, id));
     });
 
     return NextResponse.json({
@@ -249,9 +320,9 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
 // 辅助函数：检查 targetId 是否是 sourceId 的子孙节点
 async function checkIsDescendant(sourceId: string, targetId: string): Promise<boolean> {
-  const children = await prisma.policyGroup.findMany({
-    where: { parentId: sourceId },
-    select: { id: true },
+  const children = await db.query.policyGroups.findMany({
+    where: eq(policyGroups.parentId, sourceId),
+    columns: { id: true },
   });
 
   for (const child of children) {

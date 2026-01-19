@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateApiRequest } from '@/lib/api-keys';
-import { prisma } from '@/lib/prisma';
+import { db, policies, executions, teamMembers } from '@/lib/prisma';
+import { eq, and, isNull, desc, sql, ne } from 'drizzle-orm';
 import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { getPolicyFreezeStatus, getBatchPolicyFreezeStatus } from '@/lib/policy-freeze';
 
@@ -26,93 +27,114 @@ export async function GET(req: Request) {
       );
     }
 
-    // 获取用户自己的策略和团队策略（排除已删除的）
-    const [ownPolicies, teamPolicies, freezeStatus] = await Promise.all([
-      prisma.policy.findMany({
-        where: { userId, deletedAt: null },
-        orderBy: { updatedAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          isPublic: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: {
-            select: { executions: true },
+    // 获取用户自己的策略
+    const ownPolicies = await db.query.policies.findMany({
+      where: and(
+        eq(policies.userId, userId),
+        isNull(policies.deletedAt)
+      ),
+      orderBy: desc(policies.updatedAt),
+      columns: {
+        id: true,
+        name: true,
+        description: true,
+        isPublic: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // 获取用户所在团队的策略(排除自己拥有的)
+    const userTeams = await db.query.teamMembers.findMany({
+      where: eq(teamMembers.userId, userId),
+      columns: { teamId: true },
+    });
+
+    const teamIds = userTeams.map(m => m.teamId);
+    const teamPolicies = teamIds.length > 0
+      ? await db.query.policies.findMany({
+          where: and(
+            isNull(policies.deletedAt),
+            ne(policies.userId, userId),
+            sql`${policies.teamId} IN (${sql.join(teamIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`
+          ),
+          orderBy: desc(policies.updatedAt),
+          columns: {
+            id: true,
+            name: true,
+            description: true,
+            isPublic: true,
+            createdAt: true,
+            updatedAt: true,
+            userId: true,
+            teamId: true,
           },
-        },
-      }),
-      prisma.policy.findMany({
-        where: {
-          deletedAt: null,
-          team: {
-            members: {
-              some: { userId },
+          with: {
+            team: {
+              columns: {
+                id: true,
+                name: true,
+              },
             },
           },
-          userId: { not: userId }, // 排除自己拥有的（已在 ownPolicies 中）
-        },
-        orderBy: { updatedAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          isPublic: true,
-          createdAt: true,
-          updatedAt: true,
-          userId: true,
-          teamId: true,
-          team: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          _count: {
-            select: { executions: true },
-          },
-        },
-      }),
-      getPolicyFreezeStatus(userId),
-    ]);
+        })
+      : [];
+
+    // 获取冻结状态
+    const freezeStatus = await getPolicyFreezeStatus(userId);
 
     // 获取团队策略所有者的冻结状态（批量查询优化，避免 N+1 问题）
     const ownerIds = [...new Set(teamPolicies.map((p) => p.userId))];
     const ownerFreezeMap = await getBatchPolicyFreezeStatus(ownerIds);
 
-    // 添加冻结状态和来源信息到每个策略
-    const ownPoliciesWithFreeze = ownPolicies.map((policy) => ({
-      id: policy.id,
-      name: policy.name,
-      description: policy.description,
-      isPublic: policy.isPublic,
-      isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
-      executionCount: policy._count.executions,
-      createdAt: policy.createdAt.toISOString(),
-      updatedAt: policy.updatedAt.toISOString(),
-      source: 'own' as const,
-    }));
+    // 获取每个策略的执行次数
+    const ownPoliciesWithCount = await Promise.all(
+      ownPolicies.map(async (policy) => {
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(executions)
+          .where(eq(executions.policyId, policy.id));
 
-    const teamPoliciesWithInfo = teamPolicies.map((policy) => {
-      // 根据策略所有者的冻结状态判断
-      const ownerFrozenIds = ownerFreezeMap.get(policy.userId) || new Set();
-      return {
-        id: policy.id,
-        name: policy.name,
-        description: policy.description,
-        isPublic: policy.isPublic,
-        isFrozen: ownerFrozenIds.has(policy.id),
-        executionCount: policy._count.executions,
-        createdAt: policy.createdAt.toISOString(),
-        updatedAt: policy.updatedAt.toISOString(),
-        source: 'team' as const,
-        teamId: policy.teamId,
-        teamName: policy.team?.name,
-      };
-    });
+        return {
+          id: policy.id,
+          name: policy.name,
+          description: policy.description,
+          isPublic: policy.isPublic,
+          isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
+          executionCount: count,
+          createdAt: policy.createdAt.toISOString(),
+          updatedAt: policy.updatedAt.toISOString(),
+          source: 'own' as const,
+        };
+      })
+    );
 
-    const policiesWithFreeze = [...ownPoliciesWithFreeze, ...teamPoliciesWithInfo];
+    const teamPoliciesWithInfo = await Promise.all(
+      teamPolicies.map(async (policy) => {
+        const [{ count }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(executions)
+          .where(eq(executions.policyId, policy.id));
+
+        // 根据策略所有者的冻结状态判断
+        const ownerFrozenIds = ownerFreezeMap.get(policy.userId) || new Set();
+        return {
+          id: policy.id,
+          name: policy.name,
+          description: policy.description,
+          isPublic: policy.isPublic,
+          isFrozen: ownerFrozenIds.has(policy.id),
+          executionCount: count,
+          createdAt: policy.createdAt.toISOString(),
+          updatedAt: policy.updatedAt.toISOString(),
+          source: 'team' as const,
+          teamId: policy.teamId,
+          teamName: policy.team?.name,
+        };
+      })
+    );
+
+    const policiesWithFreeze = [...ownPoliciesWithCount, ...teamPoliciesWithInfo];
 
     // 记录 API 调用
     await recordUsage(userId, 'api_call');

@@ -1,6 +1,6 @@
 'use client';
 
-import type { PolicyVersionStatus } from '@prisma/client';
+import type { PolicyVersionStatus } from '@/lib/prisma';
 
 interface VersionStatusBadgeProps {
   status: PolicyVersionStatus;

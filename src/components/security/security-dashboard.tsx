@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { SecurityEventType, EventSeverity } from '@prisma/client';
+import type { SecurityEventType, EventSeverity } from '@/lib/prisma';
 
 interface SecurityStats {
   total: number;

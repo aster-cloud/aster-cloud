@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { db, teams, users } from '@/lib/prisma';
+import { eq } from 'drizzle-orm';
 
 // DELETE /api/user/delete - Delete current user's account
 export async function DELETE() {
@@ -14,22 +15,18 @@ export async function DELETE() {
 
     // Delete user and all related data (cascading delete handles most relations)
     // Note: Team ownership needs special handling
-    const ownedTeams = await prisma.team.findMany({
-      where: { ownerId: userId },
-      select: { id: true },
+    const ownedTeams = await db.query.teams.findMany({
+      where: eq(teams.ownerId, userId),
+      columns: { id: true },
     });
 
     // Delete owned teams first (this will cascade to team members, invitations, etc.)
     if (ownedTeams.length > 0) {
-      await prisma.team.deleteMany({
-        where: { ownerId: userId },
-      });
+      await db.delete(teams).where(eq(teams.ownerId, userId));
     }
 
     // Delete the user (cascades to accounts, sessions, policies, executions, etc.)
-    await prisma.user.delete({
-      where: { id: userId },
-    });
+    await db.delete(users).where(eq(users.id, userId));
 
     return NextResponse.json({ success: true });
   } catch (error) {
