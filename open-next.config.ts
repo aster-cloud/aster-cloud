@@ -15,6 +15,7 @@ const config: OpenNextConfig = {
   // These packages cause memory issues during bundling
   edgeExternals: [
     "node:crypto",
+    "node:async_hooks",
     "monaco-editor",
     "@monaco-editor/react",
   ],
