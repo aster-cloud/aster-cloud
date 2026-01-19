@@ -145,6 +145,7 @@ export async function POST(req: Request) {
 
     // Log the values for debugging
     const piiFieldsValue = piiResult.detectedTypes.length > 0 ? piiResult.detectedTypes : null;
+    const now = new Date();
     console.log('Insert values:', {
       id: policyId,
       userId: session.user.id,
@@ -153,8 +154,9 @@ export async function POST(req: Request) {
       isPublic: isPublic || false,
       piiFields: piiFieldsValue,
       groupId: groupId || null,
+      createdAt: now,
+      updatedAt: now,
     });
-
     const insertValues: {
       id: string;
       userId: string;
@@ -164,6 +166,8 @@ export async function POST(req: Request) {
       isPublic: boolean;
       piiFields?: string[] | null;
       groupId?: string | null;
+      createdAt: Date;
+      updatedAt: Date;
     } = {
       id: policyId,
       userId: session.user.id,
@@ -171,6 +175,8 @@ export async function POST(req: Request) {
       content,
       description: description || null,
       isPublic: isPublic || false,
+      createdAt: now,
+      updatedAt: now,
     };
 
     // Only add piiFields if there are detected types
@@ -213,6 +219,7 @@ export async function POST(req: Request) {
         version: 1,
         content,
         comment: 'Initial version',
+        createdAt: new Date(),
       });
       console.log('PolicyVersion insert succeeded');
     } catch (versionErr) {

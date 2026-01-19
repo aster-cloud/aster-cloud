@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# open-next
+.open-next
+
 # IDEs and editors
 .vscode/
 .idea/

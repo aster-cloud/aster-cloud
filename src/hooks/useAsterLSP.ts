@@ -180,8 +180,6 @@ export function useAsterLSP({
     (method: string, params: unknown) => {
       switch (method) {
         case 'textDocument/publishDiagnostics': {
-          // Diagnostics are handled by Monaco's language client
-          // This is a fallback for manual handling if needed
           const diagnosticParams = params as {
             uri: string;
             diagnostics: Array<{
@@ -191,6 +189,28 @@ export function useAsterLSP({
             }>;
           };
           console.log('[LSP] Diagnostics received:', diagnosticParams.diagnostics.length);
+
+          // Apply diagnostics to Monaco editor as markers
+          if (editor) {
+            const model = editor.getModel();
+            if (model) {
+              // Dynamic import monaco to get access to MarkerSeverity
+              import('monaco-editor').then((monaco) => {
+                const markers = diagnosticParams.diagnostics.map((d) => ({
+                  severity: d.severity === 1 ? monaco.MarkerSeverity.Error
+                    : d.severity === 2 ? monaco.MarkerSeverity.Warning
+                    : d.severity === 3 ? monaco.MarkerSeverity.Info
+                    : monaco.MarkerSeverity.Hint,
+                  message: d.message,
+                  startLineNumber: d.range.start.line + 1, // LSP is 0-based, Monaco is 1-based
+                  startColumn: d.range.start.character + 1,
+                  endLineNumber: d.range.end.line + 1,
+                  endColumn: d.range.end.character + 1,
+                }));
+                monaco.editor.setModelMarkers(model, 'aster-lsp', markers);
+              });
+            }
+          }
           break;
         }
         case 'window/logMessage':
@@ -204,7 +224,7 @@ export function useAsterLSP({
           console.log('[LSP] Notification:', method);
       }
     },
-    []
+    [editor]
   );
 
   /**
@@ -331,6 +351,9 @@ export function useAsterLSP({
           workspace: {
             workspaceFolders: false,
             didChangeConfiguration: {
+              dynamicRegistration: true,
+            },
+            didChangeWatchedFiles: {
               dynamicRegistration: true,
             },
           },
