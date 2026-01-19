@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:lsp": "tsx server.ts",
-    "build": "next build",
-    "build:worker": "next build && npx opennextjs-cloudflare build --skipNextBuild",
+    "build": "next build && npx opennextjs-cloudflare build --skipNextBuild",
+    "build:next": "next build",
     "start": "next start",
     "start:lsp": "node --import tsx server.ts",
     "preview": "wrangler dev",
