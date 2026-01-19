@@ -164,17 +164,24 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(policy, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating policy:', error);
     // Return detailed error info for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+    // Try to extract postgres-specific error details
+    const pgError = error as { code?: string; detail?: string; hint?: string; severity?: string; cause?: unknown };
     return NextResponse.json({
       error: 'Internal server error',
       debug: {
         message: errorMessage,
         stack: errorStack,
         name: error instanceof Error ? error.name : typeof error,
+        pgCode: pgError?.code,
+        pgDetail: pgError?.detail,
+        pgHint: pgError?.hint,
+        pgSeverity: pgError?.severity,
+        cause: pgError?.cause instanceof Error ? pgError.cause.message : String(pgError?.cause),
       }
     }, { status: 500 });
   }
