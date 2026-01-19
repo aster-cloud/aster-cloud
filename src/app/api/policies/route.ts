@@ -166,6 +166,16 @@ export async function POST(req: Request) {
     return NextResponse.json(policy, { status: 201 });
   } catch (error) {
     console.error('Error creating policy:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Return detailed error info for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    return NextResponse.json({
+      error: 'Internal server error',
+      debug: {
+        message: errorMessage,
+        stack: errorStack,
+        name: error instanceof Error ? error.name : typeof error,
+      }
+    }, { status: 500 });
   }
 }
