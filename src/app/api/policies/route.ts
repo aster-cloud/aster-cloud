@@ -140,18 +140,34 @@ export async function POST(req: Request) {
 
     const piiResult = detectPII(content);
 
+    // Build insert values, only include groupId if it's a valid non-empty string
+    const insertValues: {
+      id: string;
+      userId: string;
+      name: string;
+      content: string;
+      description?: string;
+      isPublic: boolean;
+      piiFields: string[];
+      groupId?: string | null;
+    } = {
+      id: globalThis.crypto.randomUUID(),
+      userId: session.user.id,
+      name,
+      content,
+      description: description || undefined,
+      isPublic: isPublic || false,
+      piiFields: piiResult.detectedTypes,
+    };
+
+    // Only add groupId if it's a valid UUID string
+    if (groupId && typeof groupId === 'string' && groupId.trim() !== '') {
+      insertValues.groupId = groupId;
+    }
+
     const [policy] = await db
       .insert(policies)
-      .values({
-        id: globalThis.crypto.randomUUID(),
-        userId: session.user.id,
-        name,
-        content,
-        description,
-        isPublic: isPublic || false,
-        piiFields: piiResult.detectedTypes,
-        groupId: groupId || null,
-      })
+      .values(insertValues)
       .returning();
 
     // Create initial version
