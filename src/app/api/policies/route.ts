@@ -203,19 +203,26 @@ export async function POST(req: Request) {
     // Return detailed error info for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
-    // Try to extract postgres-specific error details
-    const pgError = error as { code?: string; detail?: string; hint?: string; severity?: string; cause?: unknown };
+    // Try to extract postgres-specific error details (postgres.js uses different error structure)
+    const err = error as Record<string, unknown>;
     return NextResponse.json({
       error: 'Internal server error',
       debug: {
         message: errorMessage,
         stack: errorStack,
         name: error instanceof Error ? error.name : typeof error,
-        pgCode: pgError?.code,
-        pgDetail: pgError?.detail,
-        pgHint: pgError?.hint,
-        pgSeverity: pgError?.severity,
-        cause: pgError?.cause instanceof Error ? pgError.cause.message : String(pgError?.cause),
+        // postgres.js error fields
+        code: err?.code,
+        severity: err?.severity,
+        detail: err?.detail,
+        hint: err?.hint,
+        position: err?.position,
+        constraint: err?.constraint,
+        table: err?.table,
+        column: err?.column,
+        dataType: err?.dataType,
+        // Full error keys for debugging
+        errorKeys: Object.keys(err || {}),
       }
     }, { status: 500 });
   }
