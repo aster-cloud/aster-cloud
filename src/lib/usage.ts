@@ -105,6 +105,7 @@ export async function checkUsageLimit(
 // 记录用量计数
 export async function recordUsage(userId: string, type: UsageType, count = 1): Promise<void> {
   const period = getCurrentPeriod();
+  const now = new Date();
 
   await db.insert(usageRecords)
     .values({
@@ -113,10 +114,15 @@ export async function recordUsage(userId: string, type: UsageType, count = 1): P
       type,
       period,
       count,
+      createdAt: now,
+      updatedAt: now,
     })
     .onConflictDoUpdate({
       target: [usageRecords.userId, usageRecords.type, usageRecords.period],
-      set: { count: sql`${usageRecords.count} + ${count}` },
+      set: {
+        count: sql`${usageRecords.count} + ${count}`,
+        updatedAt: now,
+      },
     });
 }
 
