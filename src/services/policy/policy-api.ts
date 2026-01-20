@@ -7,8 +7,8 @@
 
 // 环境变量配置
 const getApiConfig = () => ({
-  baseUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.cloud',
-  wsUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_WS_URL || 'wss://policy.aster-lang.cloud/ws/preview',
+  baseUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev',
+  wsUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_WS_URL || 'wss://policy.aster-lang.dev/ws/preview',
   timeout: parseInt(process.env.ASTER_POLICY_API_TIMEOUT || '30000', 10),
 });
 
