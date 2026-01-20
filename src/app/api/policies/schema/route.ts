@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { PolicyApiClient } from '@/services/policy/policy-api';
+import { createPolicyApiClient, PolicyApiError } from '@/services/policy/policy-api';
 
 /**
  * POST /api/policies/schema
  *
- * 代理请求到远程策略 API 获取策略参数模式
- * 用于动态表单生成
+ * 获取策略参数模式，用于动态表单生成
+ * 调用远程 Policy API 进行解析，避免在 Worker 中加载重型编译器
  */
 export async function POST(req: Request) {
   try {
@@ -37,16 +37,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Source code is required' }, { status: 400 });
     }
 
-    // 使用远程 API 获取 schema
-    const client = new PolicyApiClient('default', session.user.id);
-    const result = await client.getSchema(source, {
+    // 使用远程 Policy API 提取 schema
+    const apiClient = createPolicyApiClient('default', session.user.id);
+    const result = await apiClient.getSchema(source, {
       functionName,
       locale: locale || 'en-US',
     });
 
-    return NextResponse.json(result);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error || 'Failed to parse CNL source',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 返回 schema 响应（扁平化结构以匹配前端 PolicySchema 接口）
+    return NextResponse.json({
+      success: true,
+      functionName: result.functionName,
+      parameters: result.parameters,
+      moduleName: result.moduleName,
+    });
   } catch (error) {
     console.error('Error getting policy schema:', error);
+
+    if (error instanceof PolicyApiError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: error.statusCode }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
