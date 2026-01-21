@@ -10,12 +10,17 @@
  * - Hover information
  * - Go to definition
  * - Find references
+ * - Document symbols
+ * - Signature help
+ * - Code actions
+ * - Rename symbol
+ * - Document formatting
  */
 
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { editor } from 'monaco-editor';
+import type { editor, languages, IDisposable, Position, CancellationToken } from 'monaco-editor';
 
 export type CNLLocale = 'en-US' | 'zh-CN' | 'de-DE';
 
@@ -62,6 +67,115 @@ interface LSPMessage {
   error?: { code: number; message: string; data?: unknown };
 }
 
+// LSP types
+interface LSPPosition {
+  line: number;
+  character: number;
+}
+
+interface LSPRange {
+  start: LSPPosition;
+  end: LSPPosition;
+}
+
+interface LSPLocation {
+  uri: string;
+  range: LSPRange;
+}
+
+interface LSPTextEdit {
+  range: LSPRange;
+  newText: string;
+}
+
+interface LSPHover {
+  contents: string | { kind: string; value: string } | Array<string | { kind: string; value: string }>;
+  range?: LSPRange;
+}
+
+interface LSPCompletionItem {
+  label: string;
+  kind?: number;
+  detail?: string;
+  documentation?: string | { kind: string; value: string };
+  insertText?: string;
+  insertTextFormat?: number;
+  textEdit?: LSPTextEdit;
+  additionalTextEdits?: LSPTextEdit[];
+}
+
+interface LSPSignatureHelp {
+  signatures: Array<{
+    label: string;
+    documentation?: string | { kind: string; value: string };
+    parameters?: Array<{
+      label: string | [number, number];
+      documentation?: string | { kind: string; value: string };
+    }>;
+  }>;
+  activeSignature?: number;
+  activeParameter?: number;
+}
+
+interface LSPSymbolInformation {
+  name: string;
+  kind: number;
+  location: LSPLocation;
+  containerName?: string;
+}
+
+interface LSPDocumentSymbol {
+  name: string;
+  detail?: string;
+  kind: number;
+  range: LSPRange;
+  selectionRange: LSPRange;
+  children?: LSPDocumentSymbol[];
+}
+
+interface LSPCodeAction {
+  title: string;
+  kind?: string;
+  diagnostics?: Array<{ range: LSPRange; message: string; severity?: number }>;
+  isPreferred?: boolean;
+  edit?: {
+    changes?: Record<string, LSPTextEdit[]>;
+    documentChanges?: Array<{ textDocument: { uri: string }; edits: LSPTextEdit[] }>;
+  };
+  command?: { title: string; command: string; arguments?: unknown[] };
+}
+
+interface LSPWorkspaceEdit {
+  changes?: Record<string, LSPTextEdit[]>;
+  documentChanges?: Array<{ textDocument: { uri: string }; edits: LSPTextEdit[] }>;
+}
+
+/**
+ * Convert LSP position to Monaco position
+ */
+function lspPositionToMonaco(pos: LSPPosition): { lineNumber: number; column: number } {
+  return { lineNumber: pos.line + 1, column: pos.character + 1 };
+}
+
+/**
+ * Convert Monaco position to LSP position
+ */
+function monacoPositionToLsp(pos: { lineNumber: number; column: number }): LSPPosition {
+  return { line: pos.lineNumber - 1, character: pos.column - 1 };
+}
+
+/**
+ * Convert LSP range to Monaco range
+ */
+function lspRangeToMonaco(range: LSPRange): { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number } {
+  return {
+    startLineNumber: range.start.line + 1,
+    startColumn: range.start.character + 1,
+    endLineNumber: range.end.line + 1,
+    endColumn: range.end.character + 1,
+  };
+}
+
 /**
  * Hook for integrating Aster CNL Language Server with Monaco editor
  */
@@ -85,43 +199,33 @@ export function useAsterLSP({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDisposedRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
+  const providerDisposablesRef = useRef<IDisposable[]>([]);
   // Use ref for editor to avoid stale closures in callbacks
   const editorRef = useRef(editor);
   editorRef.current = editor;
+  const documentUriRef = useRef(documentUri);
+  documentUriRef.current = documentUri;
 
   /**
    * Get the WebSocket URL for LSP connection
-   *
-   * In production: Connect to external LSP service (NEXT_PUBLIC_LSP_HOST)
-   * In development: Connect to local WebSocket server (/api/lsp)
    */
   const getWebSocketUrl = useCallback((): string => {
     if (typeof window === 'undefined') return '';
 
-    // Check for external LSP host (production)
-    // Note: NEXT_PUBLIC_* variables are inlined at build time
     const lspHost = process.env.NEXT_PUBLIC_LSP_HOST;
 
     if (lspHost) {
-      // External host - parse URL to extract hostname
-      // Supports formats: "lsp.example.com", "https://lsp.example.com", "wss://lsp.example.com"
       let host = lspHost;
-
-      // Remove protocol prefix if present
       if (host.startsWith('https://') || host.startsWith('http://')) {
         host = host.replace(/^https?:\/\//, '');
       } else if (host.startsWith('wss://') || host.startsWith('ws://')) {
         host = host.replace(/^wss?:\/\//, '');
       }
-
-      // Remove trailing slash if present
       host = host.replace(/\/$/, '');
-
       const protocol = host.startsWith('localhost') ? 'ws:' : 'wss:';
       return `${protocol}//${host}/lsp?locale=${locale}`;
     }
 
-    // Local development - use same host with /api/lsp path
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}/api/lsp?locale=${locale}`;
   }, [locale]);
@@ -186,19 +290,17 @@ export function useAsterLSP({
           const diagnosticParams = params as {
             uri: string;
             diagnostics: Array<{
-              range: { start: { line: number; character: number }; end: { line: number; character: number } };
+              range: LSPRange;
               message: string;
               severity?: number;
             }>;
           };
-          console.log('[LSP] Diagnostics received:', diagnosticParams.diagnostics.length, diagnosticParams.diagnostics);
+          console.log('[LSP] Diagnostics received:', diagnosticParams.diagnostics.length);
 
-          // Apply diagnostics to Monaco editor as markers
           const currentEditor = editorRef.current;
           if (currentEditor) {
             const model = currentEditor.getModel();
             if (model) {
-              // Dynamic import monaco to get access to MarkerSeverity
               import('monaco-editor').then((monaco) => {
                 const markers = diagnosticParams.diagnostics.map((d) => ({
                   severity: d.severity === 1 ? monaco.MarkerSeverity.Error
@@ -206,19 +308,15 @@ export function useAsterLSP({
                     : d.severity === 3 ? monaco.MarkerSeverity.Info
                     : monaco.MarkerSeverity.Hint,
                   message: d.message,
-                  startLineNumber: d.range.start.line + 1, // LSP is 0-based, Monaco is 1-based
+                  startLineNumber: d.range.start.line + 1,
                   startColumn: d.range.start.character + 1,
                   endLineNumber: d.range.end.line + 1,
                   endColumn: d.range.end.character + 1,
                 }));
-                console.log('[LSP] Setting Monaco markers:', markers.length, markers);
+                console.log('[LSP] Setting Monaco markers:', markers.length);
                 monaco.editor.setModelMarkers(model, 'aster-lsp', markers);
               });
-            } else {
-              console.warn('[LSP] No model available for editor');
             }
-          } else {
-            console.warn('[LSP] No editor available for diagnostics');
           }
           break;
         }
@@ -233,14 +331,13 @@ export function useAsterLSP({
           console.log('[LSP] Notification:', method);
       }
     },
-    [] // No dependencies needed since we use refs
+    []
   );
 
   /**
    * Process a single parsed LSP message
    */
   const processMessage = useCallback((message: LSPMessage) => {
-    // Handle response to a request
     if (message.id !== undefined && (message.result !== undefined || message.error !== undefined)) {
       const pending = pendingRequestsRef.current.get(message.id as number);
       if (pending) {
@@ -254,7 +351,6 @@ export function useAsterLSP({
       return;
     }
 
-    // Handle server notifications
     if (message.method) {
       handleServerNotification(message.method, message.params);
     }
@@ -262,20 +358,16 @@ export function useAsterLSP({
 
   /**
    * Handle incoming LSP messages
-   * Supports both single JSON messages and concatenated JSON messages
    */
   const handleMessage = useCallback((data: string) => {
-    // Try parsing as a single JSON message first (most common case)
     try {
       const message: LSPMessage = JSON.parse(data);
       processMessage(message);
       return;
     } catch {
-      // If single parse fails, try splitting concatenated JSON
+      // Handle concatenated JSON
     }
 
-    // Handle potentially concatenated JSON messages
-    // This can happen when the server sends multiple messages in rapid succession
     const remaining = data.trim();
     let depth = 0;
     let start = 0;
@@ -288,7 +380,6 @@ export function useAsterLSP({
       } else if (char === '}') {
         depth--;
         if (depth === 0) {
-          // Found a complete JSON object
           const jsonStr = remaining.slice(start, i + 1);
           try {
             const message: LSPMessage = JSON.parse(jsonStr);
@@ -302,13 +393,326 @@ export function useAsterLSP({
   }, [processMessage]);
 
   /**
+   * Register Monaco language providers for LSP features
+   */
+  const registerProviders = useCallback(async () => {
+    const monaco = await import('monaco-editor');
+    const languageId = 'aster-cnl';
+
+    // Dispose existing providers
+    providerDisposablesRef.current.forEach(d => d.dispose());
+    providerDisposablesRef.current = [];
+
+    // Helper to make LSP requests with proper parameters
+    const makeTextDocumentPositionParams = (position: Position) => ({
+      textDocument: { uri: documentUriRef.current },
+      position: monacoPositionToLsp(position),
+    });
+
+    // Hover Provider
+    const hoverProvider = monaco.languages.registerHoverProvider(languageId, {
+      provideHover: async (model, position): Promise<languages.Hover | null> => {
+        try {
+          const result = await sendRequest<LSPHover | null>('textDocument/hover', makeTextDocumentPositionParams(position));
+          if (!result) return null;
+
+          let contents: { value: string }[];
+          if (typeof result.contents === 'string') {
+            contents = [{ value: result.contents }];
+          } else if (Array.isArray(result.contents)) {
+            contents = result.contents.map(c => typeof c === 'string' ? { value: c } : { value: c.value });
+          } else {
+            contents = [{ value: result.contents.value }];
+          }
+
+          return {
+            contents,
+            range: result.range ? lspRangeToMonaco(result.range) : undefined,
+          };
+        } catch (e) {
+          console.error('[LSP] Hover error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(hoverProvider);
+
+    // Definition Provider
+    const definitionProvider = monaco.languages.registerDefinitionProvider(languageId, {
+      provideDefinition: async (model, position): Promise<languages.Definition | null> => {
+        try {
+          const result = await sendRequest<LSPLocation | LSPLocation[] | null>('textDocument/definition', makeTextDocumentPositionParams(position));
+          if (!result) return null;
+
+          const locations = Array.isArray(result) ? result : [result];
+          return locations.map(loc => ({
+            uri: monaco.Uri.parse(loc.uri),
+            range: lspRangeToMonaco(loc.range),
+          }));
+        } catch (e) {
+          console.error('[LSP] Definition error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(definitionProvider);
+
+    // References Provider
+    const referencesProvider = monaco.languages.registerReferenceProvider(languageId, {
+      provideReferences: async (model, position, context): Promise<languages.Location[] | null> => {
+        try {
+          const result = await sendRequest<LSPLocation[] | null>('textDocument/references', {
+            ...makeTextDocumentPositionParams(position),
+            context: { includeDeclaration: context.includeDeclaration },
+          });
+          if (!result) return null;
+
+          return result.map(loc => ({
+            uri: monaco.Uri.parse(loc.uri),
+            range: lspRangeToMonaco(loc.range),
+          }));
+        } catch (e) {
+          console.error('[LSP] References error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(referencesProvider);
+
+    // Document Symbol Provider
+    const documentSymbolProvider = monaco.languages.registerDocumentSymbolProvider(languageId, {
+      provideDocumentSymbols: async (model): Promise<languages.DocumentSymbol[] | null> => {
+        try {
+          const result = await sendRequest<LSPDocumentSymbol[] | LSPSymbolInformation[] | null>('textDocument/documentSymbol', {
+            textDocument: { uri: documentUriRef.current },
+          });
+          if (!result || result.length === 0) return null;
+
+          // Convert LSP symbols to Monaco symbols
+          const convertSymbol = (sym: LSPDocumentSymbol): languages.DocumentSymbol => ({
+            name: sym.name,
+            detail: sym.detail || '',
+            kind: sym.kind as languages.SymbolKind,
+            range: lspRangeToMonaco(sym.range),
+            selectionRange: lspRangeToMonaco(sym.selectionRange),
+            children: sym.children?.map(convertSymbol),
+            tags: [],
+          });
+
+          // Check if it's DocumentSymbol or SymbolInformation format
+          if ('range' in result[0] && 'selectionRange' in result[0]) {
+            return (result as LSPDocumentSymbol[]).map(convertSymbol);
+          } else {
+            // Convert SymbolInformation to DocumentSymbol
+            return (result as LSPSymbolInformation[]).map(sym => ({
+              name: sym.name,
+              detail: sym.containerName || '',
+              kind: sym.kind as languages.SymbolKind,
+              range: lspRangeToMonaco(sym.location.range),
+              selectionRange: lspRangeToMonaco(sym.location.range),
+              tags: [],
+            }));
+          }
+        } catch (e) {
+          console.error('[LSP] DocumentSymbol error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(documentSymbolProvider);
+
+    // Signature Help Provider
+    const signatureHelpProvider = monaco.languages.registerSignatureHelpProvider(languageId, {
+      signatureHelpTriggerCharacters: ['(', ','],
+      signatureHelpRetriggerCharacters: [',', ')'],
+      provideSignatureHelp: async (model, position): Promise<languages.SignatureHelpResult | null> => {
+        try {
+          const result = await sendRequest<LSPSignatureHelp | null>('textDocument/signatureHelp', makeTextDocumentPositionParams(position));
+          if (!result || result.signatures.length === 0) return null;
+
+          return {
+            value: {
+              signatures: result.signatures.map(sig => ({
+                label: sig.label,
+                documentation: typeof sig.documentation === 'string'
+                  ? sig.documentation
+                  : sig.documentation?.value,
+                parameters: sig.parameters?.map(param => ({
+                  label: param.label,
+                  documentation: typeof param.documentation === 'string'
+                    ? param.documentation
+                    : param.documentation?.value,
+                })) || [],
+              })),
+              activeSignature: result.activeSignature ?? 0,
+              activeParameter: result.activeParameter ?? 0,
+            },
+            dispose: () => {},
+          };
+        } catch (e) {
+          console.error('[LSP] SignatureHelp error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(signatureHelpProvider);
+
+    // Code Action Provider
+    const codeActionProvider = monaco.languages.registerCodeActionProvider(languageId, {
+      provideCodeActions: async (model, range, context): Promise<languages.CodeActionList | null> => {
+        try {
+          const result = await sendRequest<LSPCodeAction[] | null>('textDocument/codeAction', {
+            textDocument: { uri: documentUriRef.current },
+            range: {
+              start: monacoPositionToLsp({ lineNumber: range.startLineNumber, column: range.startColumn }),
+              end: monacoPositionToLsp({ lineNumber: range.endLineNumber, column: range.endColumn }),
+            },
+            context: {
+              diagnostics: context.markers.map(m => ({
+                range: {
+                  start: { line: m.startLineNumber - 1, character: m.startColumn - 1 },
+                  end: { line: m.endLineNumber - 1, character: m.endColumn - 1 },
+                },
+                message: m.message,
+                severity: m.severity === monaco.MarkerSeverity.Error ? 1
+                  : m.severity === monaco.MarkerSeverity.Warning ? 2
+                  : m.severity === monaco.MarkerSeverity.Info ? 3
+                  : 4,
+              })),
+            },
+          });
+          if (!result || result.length === 0) return null;
+
+          return {
+            actions: result.map(action => ({
+              title: action.title,
+              kind: action.kind,
+              isPreferred: action.isPreferred,
+              edit: action.edit ? {
+                edits: Object.entries(action.edit.changes || {}).flatMap(([uri, edits]) =>
+                  edits.map(edit => ({
+                    resource: monaco.Uri.parse(uri),
+                    textEdit: {
+                      range: lspRangeToMonaco(edit.range),
+                      text: edit.newText,
+                    },
+                    versionId: undefined,
+                  }))
+                ),
+              } : undefined,
+            })),
+            dispose: () => {},
+          };
+        } catch (e) {
+          console.error('[LSP] CodeAction error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(codeActionProvider);
+
+    // Rename Provider
+    const renameProvider = monaco.languages.registerRenameProvider(languageId, {
+      provideRenameEdits: async (model, position, newName): Promise<languages.WorkspaceEdit | null> => {
+        try {
+          const result = await sendRequest<LSPWorkspaceEdit | null>('textDocument/rename', {
+            ...makeTextDocumentPositionParams(position),
+            newName,
+          });
+          if (!result) return null;
+
+          const edits: languages.IWorkspaceTextEdit[] = [];
+          if (result.changes) {
+            for (const [uri, textEdits] of Object.entries(result.changes)) {
+              for (const edit of textEdits) {
+                edits.push({
+                  resource: monaco.Uri.parse(uri),
+                  textEdit: {
+                    range: lspRangeToMonaco(edit.range),
+                    text: edit.newText,
+                  },
+                  versionId: undefined,
+                });
+              }
+            }
+          }
+          return { edits };
+        } catch (e) {
+          console.error('[LSP] Rename error:', e);
+          return null;
+        }
+      },
+      resolveRenameLocation: async (model, position): Promise<languages.RenameLocation | null> => {
+        try {
+          const result = await sendRequest<{ range: LSPRange; placeholder: string } | null>('textDocument/prepareRename', makeTextDocumentPositionParams(position));
+          if (!result) return null;
+
+          return {
+            range: lspRangeToMonaco(result.range),
+            text: result.placeholder,
+          };
+        } catch (e) {
+          console.error('[LSP] PrepareRename error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(renameProvider);
+
+    // Document Formatting Provider
+    const formattingProvider = monaco.languages.registerDocumentFormattingEditProvider(languageId, {
+      provideDocumentFormattingEdits: async (model, options): Promise<languages.TextEdit[] | null> => {
+        try {
+          const result = await sendRequest<LSPTextEdit[] | null>('textDocument/formatting', {
+            textDocument: { uri: documentUriRef.current },
+            options: {
+              tabSize: options.tabSize,
+              insertSpaces: options.insertSpaces,
+            },
+          });
+          if (!result) return null;
+
+          return result.map(edit => ({
+            range: lspRangeToMonaco(edit.range),
+            text: edit.newText,
+          }));
+        } catch (e) {
+          console.error('[LSP] Formatting error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(formattingProvider);
+
+    // Document Highlight Provider
+    const highlightProvider = monaco.languages.registerDocumentHighlightProvider(languageId, {
+      provideDocumentHighlights: async (model, position): Promise<languages.DocumentHighlight[] | null> => {
+        try {
+          const result = await sendRequest<Array<{ range: LSPRange; kind?: number }> | null>('textDocument/documentHighlight', makeTextDocumentPositionParams(position));
+          if (!result) return null;
+
+          return result.map(h => ({
+            range: lspRangeToMonaco(h.range),
+            kind: h.kind as languages.DocumentHighlightKind ?? monaco.languages.DocumentHighlightKind.Text,
+          }));
+        } catch (e) {
+          console.error('[LSP] DocumentHighlight error:', e);
+          return null;
+        }
+      },
+    });
+    providerDisposablesRef.current.push(highlightProvider);
+
+    console.log('[LSP] Monaco providers registered');
+  }, [sendRequest]);
+
+  /**
    * Initialize LSP connection
    */
   const initializeLSP = useCallback(async () => {
     if (!editor) return;
 
     try {
-      // Send initialize request
       const initResult = await sendRequest('initialize', {
         processId: null,
         rootUri: null,
@@ -334,6 +738,9 @@ export function useAsterLSP({
             },
             signatureHelp: {
               dynamicRegistration: true,
+              signatureInformation: {
+                documentationFormat: ['markdown', 'plaintext'],
+              },
             },
             definition: {
               dynamicRegistration: true,
@@ -346,12 +753,22 @@ export function useAsterLSP({
             },
             documentSymbol: {
               dynamicRegistration: true,
+              hierarchicalDocumentSymbolSupport: true,
             },
             formatting: {
               dynamicRegistration: true,
             },
             codeAction: {
               dynamicRegistration: true,
+              codeActionLiteralSupport: {
+                codeActionKind: {
+                  valueSet: ['quickfix', 'refactor', 'source'],
+                },
+              },
+            },
+            rename: {
+              dynamicRegistration: true,
+              prepareSupport: true,
             },
             publishDiagnostics: {
               relatedInformation: true,
@@ -374,10 +791,11 @@ export function useAsterLSP({
 
       console.log('[LSP] Initialized:', initResult);
 
-      // Send initialized notification
       sendNotification('initialized', {});
 
-      // Open the current document
+      // Register Monaco providers after LSP is initialized
+      await registerProviders();
+
       const model = editor.getModel();
       if (model) {
         sendNotification('textDocument/didOpen', {
@@ -397,7 +815,7 @@ export function useAsterLSP({
       setError(e instanceof Error ? e.message : 'LSP initialization failed');
       setConnected(false);
     }
-  }, [editor, documentUri, locale, sendRequest, sendNotification]);
+  }, [editor, documentUri, locale, sendRequest, sendNotification, registerProviders]);
 
   /**
    * Connect to the LSP server
@@ -406,7 +824,6 @@ export function useAsterLSP({
     if (isDisposedRef.current) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    // Check if we've exceeded max reconnect attempts
     if (maxReconnectAttempts > 0 && reconnectAttemptsRef.current >= maxReconnectAttempts) {
       if (!suppressErrors) {
         console.warn('[LSP] Max reconnect attempts reached, giving up');
@@ -414,7 +831,6 @@ export function useAsterLSP({
       return;
     }
 
-    // Clear any pending reconnect
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -437,7 +853,7 @@ export function useAsterLSP({
           if (!suppressErrors) {
             console.log('[LSP] WebSocket connected');
           }
-          reconnectAttemptsRef.current = 0; // Reset on successful connection
+          reconnectAttemptsRef.current = 0;
           resolve();
         };
 
@@ -445,7 +861,6 @@ export function useAsterLSP({
           reject(new Error('WebSocket connection failed'));
         };
 
-        // Timeout after 10 seconds
         setTimeout(() => reject(new Error('Connection timeout')), 10000);
       });
 
@@ -459,13 +874,11 @@ export function useAsterLSP({
         }
         setConnected(false);
 
-        // Clear pending requests
         for (const [, pending] of pendingRequestsRef.current) {
           pending.reject(new Error('Connection closed'));
         }
         pendingRequestsRef.current.clear();
 
-        // Auto-reconnect if enabled and not disposed
         if (autoReconnect && !isDisposedRef.current && event.code !== 1000) {
           reconnectAttemptsRef.current++;
           if (maxReconnectAttempts === 0 || reconnectAttemptsRef.current < maxReconnectAttempts) {
@@ -486,7 +899,6 @@ export function useAsterLSP({
         setError('WebSocket error');
       };
 
-      // Initialize LSP protocol
       await initializeLSP();
     } catch (e) {
       reconnectAttemptsRef.current++;
@@ -496,7 +908,6 @@ export function useAsterLSP({
       setError(e instanceof Error ? e.message : 'Connection failed');
       setConnected(false);
 
-      // Auto-reconnect on failure (with limit)
       if (autoReconnect && !isDisposedRef.current) {
         if (maxReconnectAttempts === 0 || reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -513,22 +924,22 @@ export function useAsterLSP({
    * Disconnect from the LSP server
    */
   const disconnect = useCallback(() => {
-    // Clear reconnect timeout
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
 
-    // Reset reconnect attempts
     reconnectAttemptsRef.current = 0;
 
-    // Close WebSocket
+    // Dispose providers
+    providerDisposablesRef.current.forEach(d => d.dispose());
+    providerDisposablesRef.current = [];
+
     if (wsRef.current) {
       wsRef.current.close(1000, 'Client disconnect');
       wsRef.current = null;
     }
 
-    // Clear pending requests
     for (const [, pending] of pendingRequestsRef.current) {
       pending.reject(new Error('Disconnected'));
     }
@@ -548,7 +959,6 @@ export function useAsterLSP({
 
   // Auto-connect on mount
   useEffect(() => {
-    // Reset disposed flag on mount/remount (important for React Strict Mode)
     isDisposedRef.current = false;
 
     if (autoConnect && editor) {
