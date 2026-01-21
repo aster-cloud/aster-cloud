@@ -4,10 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@aster-cloud/aster-lang-ts': link:../aster-lang-ts
+
 importers:
 
   .:
     dependencies:
+      '@aster-cloud/aster-lang-ts':
+        specifier: link:../aster-lang-ts
+        version: link:../aster-lang-ts
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.1

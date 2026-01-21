@@ -85,6 +85,9 @@ export function useAsterLSP({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDisposedRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
+  // Use ref for editor to avoid stale closures in callbacks
+  const editorRef = useRef(editor);
+  editorRef.current = editor;
 
   /**
    * Get the WebSocket URL for LSP connection
@@ -188,11 +191,12 @@ export function useAsterLSP({
               severity?: number;
             }>;
           };
-          console.log('[LSP] Diagnostics received:', diagnosticParams.diagnostics.length);
+          console.log('[LSP] Diagnostics received:', diagnosticParams.diagnostics.length, diagnosticParams.diagnostics);
 
           // Apply diagnostics to Monaco editor as markers
-          if (editor) {
-            const model = editor.getModel();
+          const currentEditor = editorRef.current;
+          if (currentEditor) {
+            const model = currentEditor.getModel();
             if (model) {
               // Dynamic import monaco to get access to MarkerSeverity
               import('monaco-editor').then((monaco) => {
@@ -207,9 +211,14 @@ export function useAsterLSP({
                   endLineNumber: d.range.end.line + 1,
                   endColumn: d.range.end.character + 1,
                 }));
+                console.log('[LSP] Setting Monaco markers:', markers.length, markers);
                 monaco.editor.setModelMarkers(model, 'aster-lsp', markers);
               });
+            } else {
+              console.warn('[LSP] No model available for editor');
             }
+          } else {
+            console.warn('[LSP] No editor available for diagnostics');
           }
           break;
         }
@@ -224,7 +233,7 @@ export function useAsterLSP({
           console.log('[LSP] Notification:', method);
       }
     },
-    [editor]
+    [] // No dependencies needed since we use refs
   );
 
   /**

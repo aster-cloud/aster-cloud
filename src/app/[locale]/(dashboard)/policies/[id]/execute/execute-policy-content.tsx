@@ -3,8 +3,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import type { ParameterInfo, TypeKind } from '@/services/policy/policy-api';
-import { initFormValuesWithSampleData, generateInputValues } from '@/lib/input-generator';
+import { initFormValuesWithSampleData } from '@/lib/input-generator';
+import {
+  extractSchema,
+  generateInputValues,
+  EN_US,
+  ZH_CN,
+  DE_DE,
+  type ParameterInfo,
+  type SchemaResult,
+  type Lexicon,
+} from '@aster-cloud/aster-lang-ts/browser';
+
+// Map policy locale to CNL Lexicon objects
+type PolicyLocale = 'zh' | 'de' | 'en';
+type TypeKind = 'primitive' | 'struct' | 'enum' | 'list' | 'map' | 'option' | 'result' | 'function' | 'unknown';
+
+const LEXICON_MAP: Record<PolicyLocale, Lexicon> = {
+  zh: ZH_CN,
+  de: DE_DE,
+  en: EN_US,
+};
 
 interface ExecutionResult {
   executionId: string;
@@ -18,19 +37,12 @@ interface ExecutionResult {
   durationMs: number;
 }
 
-interface PolicySchema {
-  success: boolean;
-  moduleName?: string;
-  functionName?: string;
-  parameters?: ParameterInfo[];
-  error?: string;
-}
+// Use SchemaResult as PolicySchema (same interface)
+type PolicySchema = SchemaResult;
 
 type InputMode = 'form' | 'json';
 
 // 检测策略语言类型
-type PolicyLocale = 'zh' | 'de' | 'en';
-
 function detectPolicyLocale(content: string): PolicyLocale {
   const chinesePatterns = [/【模块】/, /【定义】/, /入参.*产出/, /模块\s+\S+。/, /定义\s+\S+\s+包含/];
   if (chinesePatterns.some((p) => p.test(content))) {
@@ -124,29 +136,17 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [policyContent, setPolicyContent] = useState('');
 
 
-  // 获取策略参数模式
-  const fetchSchema = useCallback(async (content: string, detectedLocale: PolicyLocale) => {
+  // 获取策略参数模式（本地编译，无需 API 调用）
+  const fetchSchema = useCallback((content: string, detectedLocale: PolicyLocale) => {
     if (!content) return;
 
     setSchemaLoading(true);
     setSchemaError(null);
     try {
-      const localeMap: Record<PolicyLocale, string> = {
-        zh: 'zh-CN',
-        de: 'de-DE',
-        en: 'en-US',
-      };
+      // 使用本地编译提取 schema
+      const lexicon = LEXICON_MAP[detectedLocale];
+      const data = extractSchema(content, { lexicon });
 
-      const res = await fetch('/api/policies/schema', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: content,
-          locale: localeMap[detectedLocale],
-        }),
-      });
-
-      const data: PolicySchema = await res.json();
       if (data.success && data.parameters && data.parameters.length > 0) {
         setSchema(data);
         // 初始化表单值（使用自动生成的示例数据）
@@ -164,8 +164,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
         setInput('{}');
       }
     } catch (err) {
-      console.error('Failed to fetch schema:', err);
-      setSchemaError(err instanceof Error ? err.message : 'Failed to fetch schema');
+      console.error('Failed to extract schema:', err);
+      setSchemaError(err instanceof Error ? err.message : 'Failed to extract schema');
       setInput('{}');
     } finally {
       setSchemaLoading(false);
