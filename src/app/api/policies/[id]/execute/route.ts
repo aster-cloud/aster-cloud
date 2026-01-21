@@ -156,6 +156,12 @@ export async function POST(req: Request, { params }: RouteParams) {
     });
   } catch (error) {
     console.error('Error executing policy:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Return detailed error for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({
+      error: 'Internal server error',
+      message: errorMessage,
+      debug: process.env.NODE_ENV !== 'production' ? String(error) : undefined,
+    }, { status: 500 });
   }
 }

@@ -21,7 +21,7 @@ Aster Cloud is the commercial platform for managing business policies with built
 - **Framework**: Next.js 15 (App Router)
 - **Styling**: Tailwind CSS
 - **Auth**: NextAuth.js
-- **Database**: PostgreSQL (Prisma ORM)
+- **Database**: PostgreSQL (Drizzle)
 - **Payments**: Stripe
 - **Email**: Resend
 - **Analytics**: Mixpanel

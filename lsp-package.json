@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@aster-cloud/aster-lang-ts": "0.0.5",
+    "@aster-cloud/aster-lang-ts": "0.0.8",
     "ws": "^8.19.0"
   }
 }
