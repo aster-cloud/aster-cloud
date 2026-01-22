@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { MonacoPolicyEditor } from '@/components/policy/monaco-policy-editor';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Monaco editor to prevent SSR issues
+const MonacoPolicyEditor = dynamic(
+  () => import('@/components/policy/monaco-policy-editor').then((mod) => mod.MonacoPolicyEditor),
+  { ssr: false, loading: () => <div className="h-[400px] bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg" /> }
+);
 
 const TEST_CODE = `This module is test.hello.
 
