@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import {
   compile,
-  validateSyntax,
+  compileAndTypecheck,
   extractSchema,
   generateInputValues,
   EN_US,
@@ -30,6 +30,7 @@ import {
   type SchemaResult,
   type ParameterInfo,
   type Lexicon,
+  type TypecheckDiagnostic,
 } from '@aster-cloud/aster-lang-ts/browser';
 
 export type CNLLocale = 'en-US' | 'zh-CN' | 'de-DE';
@@ -44,6 +45,8 @@ const LEXICON_MAP: Record<CNLLocale, Lexicon> = {
 export interface UseAsterCompilerOptions {
   /** Monaco editor instance */
   editor: editor.IStandaloneCodeEditor | null;
+  /** Monaco instance (from @monaco-editor/react) */
+  monaco: typeof import('monaco-editor') | null;
   /** CNL language locale */
   locale?: CNLLocale;
   /** Debounce delay for validation in ms */
@@ -59,10 +62,12 @@ export interface UseAsterCompilerResult {
   compiling: boolean;
   /** Validation errors (for display) */
   errors: string[];
+  /** Type check diagnostics with position information */
+  diagnostics: TypecheckDiagnostic[];
   /** Manually compile the current source */
   compileSource: () => CompileResult | null;
-  /** Manually validate the current source */
-  validate: () => string[];
+  /** Manually validate the current source (includes type checking) */
+  validate: () => TypecheckDiagnostic[];
   /** Clear all errors */
   clearErrors: () => void;
   /** Extract schema from source (for dynamic form generation) */
@@ -90,6 +95,7 @@ export interface UseAsterCompilerResult {
  */
 export function useAsterCompiler({
   editor,
+  monaco,
   locale = 'en-US',
   debounceDelay = 300,
   enableValidation = true,
@@ -97,10 +103,13 @@ export function useAsterCompiler({
   const [compileResult, setCompileResult] = useState<CompileResult | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [diagnostics, setDiagnostics] = useState<TypecheckDiagnostic[]>([]);
 
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef(editor);
   editorRef.current = editor;
+  const monacoRef = useRef(monaco);
+  monacoRef.current = monaco;
 
   const lexicon = LEXICON_MAP[locale];
 
@@ -116,54 +125,116 @@ export function useAsterCompiler({
   }, []);
 
   /**
-   * Apply diagnostics to Monaco editor as markers
+   * Apply diagnostics to Monaco editor as markers with proper position info
    */
   const applyDiagnostics = useCallback(
-    async (diagnosticErrors: string[]) => {
+    (typecheckDiagnostics: TypecheckDiagnostic[]) => {
       const currentEditor = editorRef.current;
-      if (!currentEditor) return;
+      const currentMonaco = monacoRef.current;
 
-      const model = currentEditor.getModel();
-      if (!model) return;
-
-      // Dynamic import to avoid SSR issues
-      const monaco = await import('monaco-editor');
-
-      if (diagnosticErrors.length === 0) {
-        // Clear markers
-        monaco.editor.setModelMarkers(model, 'aster-compiler', []);
+      if (!currentEditor || !currentMonaco) {
         return;
       }
 
-      // Convert error messages to Monaco markers
-      // For now, show errors at line 1 since we don't have position info
-      // TODO: Parse error messages to extract line/column info
-      const markers = diagnosticErrors.map((message, index) => ({
-        severity: monaco.MarkerSeverity.Error,
-        message,
-        startLineNumber: 1,
-        startColumn: 1,
-        endLineNumber: 1,
-        endColumn: model.getLineMaxColumn(1),
-        // Use index to make markers unique
-        source: `aster-compiler-${index}`,
-      }));
+      const model = currentEditor.getModel();
+      if (!model) {
+        return;
+      }
 
-      monaco.editor.setModelMarkers(model, 'aster-compiler', markers);
+      if (typecheckDiagnostics.length === 0) {
+        // Clear markers
+        currentMonaco.editor.setModelMarkers(model, 'aster-compiler', []);
+        return;
+      }
+
+      // Convert TypecheckDiagnostic to Monaco markers with proper positions
+      const markers = typecheckDiagnostics.map((diag) => {
+        // Get severity
+        const severity =
+          diag.severity === 'error'
+            ? currentMonaco.MarkerSeverity.Error
+            : diag.severity === 'warning'
+              ? currentMonaco.MarkerSeverity.Warning
+              : currentMonaco.MarkerSeverity.Info;
+
+        // Extract position from span (1-indexed for Monaco)
+        // Aster uses 1-indexed positions, which matches Monaco
+        const hasSpan = diag.span && diag.span.start && diag.span.end;
+        const startLine = hasSpan ? diag.span!.start.line : 1;
+        const startCol = hasSpan ? diag.span!.start.col : 1;
+        const endLine = hasSpan ? diag.span!.end.line : startLine;
+        const endCol = hasSpan ? diag.span!.end.col : model.getLineMaxColumn(startLine);
+
+        return {
+          severity,
+          message: diag.message,
+          startLineNumber: startLine,
+          startColumn: startCol,
+          endLineNumber: endLine,
+          endColumn: endCol,
+          code: diag.code,
+          source: 'aster-compiler',
+        };
+      });
+
+      currentMonaco.editor.setModelMarkers(model, 'aster-compiler', markers);
     },
     []
   );
 
   /**
-   * Validate the current source
+   * Validate the current source (compile + typecheck)
    */
-  const validate = useCallback((): string[] => {
+  const validate = useCallback((): TypecheckDiagnostic[] => {
     const source = getSource();
     if (!source) return [];
 
-    const validationErrors = validateSyntax(source, lexicon);
-    setErrors(validationErrors);
-    return validationErrors;
+    try {
+      const result = compileAndTypecheck(source, { lexicon });
+
+      // Collect all diagnostics
+      const allDiagnostics: TypecheckDiagnostic[] = [];
+
+      // Add parse errors as diagnostics (without position for now)
+      if (result.parseErrors && result.parseErrors.length > 0) {
+        for (const err of result.parseErrors) {
+          allDiagnostics.push({
+            severity: 'error',
+            code: 'E000' as import('@aster-cloud/aster-lang-ts/browser').TypecheckDiagnostic['code'],
+            message: err,
+          });
+        }
+      }
+
+      // Add lowering errors as diagnostics
+      if (result.loweringErrors && result.loweringErrors.length > 0) {
+        for (const err of result.loweringErrors) {
+          allDiagnostics.push({
+            severity: 'error',
+            code: 'E000' as import('@aster-cloud/aster-lang-ts/browser').TypecheckDiagnostic['code'],
+            message: err,
+          });
+        }
+      }
+
+      // Add type check diagnostics (these have proper span info)
+      if (result.typeErrors && result.typeErrors.length > 0) {
+        allDiagnostics.push(...result.typeErrors);
+      }
+
+      setDiagnostics(allDiagnostics);
+      setErrors(allDiagnostics.map((d) => d.message));
+      return allDiagnostics;
+    } catch (error) {
+      const errorDiag: TypecheckDiagnostic = {
+        severity: 'error',
+        code: 'E000' as import('@aster-cloud/aster-lang-ts/browser').TypecheckDiagnostic['code'],
+        message: error instanceof Error ? error.message : String(error),
+      };
+      setDiagnostics([errorDiag]);
+      setErrors([errorDiag.message]);
+      return [errorDiag];
+    }
   }, [getSource, lexicon]);
 
   /**
@@ -175,15 +246,41 @@ export function useAsterCompiler({
 
     setCompiling(true);
     try {
-      const result = compile(source, { lexicon });
+      const result = compileAndTypecheck(source, { lexicon });
       setCompileResult(result);
 
-      // Extract errors from result
-      const allErrors = [
-        ...(result.parseErrors || []),
-        ...(result.loweringErrors || []),
-      ];
-      setErrors(allErrors);
+      // Collect all diagnostics
+      const allDiagnostics: TypecheckDiagnostic[] = [];
+
+      // Add parse errors
+      if (result.parseErrors && result.parseErrors.length > 0) {
+        for (const err of result.parseErrors) {
+          allDiagnostics.push({
+            severity: 'error',
+            code: 'E000' as import('@aster-cloud/aster-lang-ts/browser').TypecheckDiagnostic['code'],
+            message: err,
+          });
+        }
+      }
+
+      // Add lowering errors
+      if (result.loweringErrors && result.loweringErrors.length > 0) {
+        for (const err of result.loweringErrors) {
+          allDiagnostics.push({
+            severity: 'error',
+            code: 'E000' as import('@aster-cloud/aster-lang-ts/browser').TypecheckDiagnostic['code'],
+            message: err,
+          });
+        }
+      }
+
+      // Add type check diagnostics
+      if (result.typeErrors && result.typeErrors.length > 0) {
+        allDiagnostics.push(...result.typeErrors);
+      }
+
+      setDiagnostics(allDiagnostics);
+      setErrors(allDiagnostics.map((d) => d.message));
 
       return result;
     } finally {
@@ -196,6 +293,7 @@ export function useAsterCompiler({
    */
   const clearErrors = useCallback(() => {
     setErrors([]);
+    setDiagnostics([]);
     applyDiagnostics([]);
   }, [applyDiagnostics]);
 
@@ -234,8 +332,8 @@ export function useAsterCompiler({
     }
 
     debounceTimeoutRef.current = setTimeout(() => {
-      const validationErrors = validate();
-      applyDiagnostics(validationErrors);
+      const validationDiagnostics = validate();
+      applyDiagnostics(validationDiagnostics);
     }, debounceDelay);
   }, [validate, applyDiagnostics, debounceDelay]);
 
@@ -276,6 +374,7 @@ export function useAsterCompiler({
     compileResult,
     compiling,
     errors,
+    diagnostics,
     compileSource,
     validate,
     clearErrors,

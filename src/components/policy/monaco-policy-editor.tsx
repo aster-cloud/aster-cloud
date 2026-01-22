@@ -10,6 +10,7 @@ import {
   type LexiconConfig,
 } from '@/config/aster-lang-lexicons';
 import { useAsterLSP, type CNLLocale } from '@/hooks/useAsterLSP';
+import { useAsterCompiler, type CNLLocale as CompilerLocale } from '@/hooks/useAsterCompiler';
 
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
@@ -273,6 +274,7 @@ export function MonacoPolicyEditor({
 
   // Map locale string to CNLLocale type
   const lspLocale: CNLLocale = locale === 'zh' ? 'zh-CN' : locale === 'de' ? 'de-DE' : 'en-US';
+  const compilerLocale: CompilerLocale = lspLocale;
 
   // LSP integration (only when enabled and policyId provided)
   const { connected: lspConnected } = useAsterLSP({
@@ -281,6 +283,16 @@ export function MonacoPolicyEditor({
     locale: lspLocale,
     autoConnect: enableLSP,
     autoReconnect: enableLSP,
+  });
+
+  // Local compiler (fallback when LSP is not enabled)
+  // Provides real-time validation with proper error positions
+  useAsterCompiler({
+    editor: isEditorReady && !enableLSP ? editorRef.current : null,
+    monaco: isEditorReady && !enableLSP ? monacoRef.current : null,
+    locale: compilerLocale,
+    debounceDelay: 300,
+    enableValidation: !enableLSP, // Only enable when LSP is not used
   });
 
   // 编辑器挂载回调
