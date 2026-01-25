@@ -4,13 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@aster-cloud/aster-lang-ts': link:../aster-lang-ts
+
 importers:
 
   .:
     dependencies:
       '@aster-cloud/aster-lang-ts':
-        specifier: 0.0.13
-        version: 0.0.13(ws@8.19.0)(zod@4.3.5)
+        specifier: 0.0.16
+        version: 0.0.16(ws@8.19.0)(zod@3.25.76)
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.1
@@ -221,8 +224,8 @@ packages:
     resolution: {integrity: sha512-tq6nO/8KwUF/mHuk1ECaAOSOlz2OB/PmygnvprJzyAHGRVzdcffblaOOWe90M9sGz5MAasXoF+PTcayQj9TKKA==}
     engines: {node: '>= 10'}
 
-  '@aster-cloud/aster-lang-ts@0.0.13':
-    resolution: {integrity: sha512-IvjP8oDYbpx+Eap0H+Oj8/CQK7ssDSRCBEfb0NbQXXuyLA8r85QLFhly7jTa//nOLXxpog8jN3pP+YXpHkPciA==}
+  '@aster-cloud/aster-lang-ts@0.0.16':
+    resolution: {integrity: sha512-OGXdkV7QvdieRYG6GoAiDiIrHwY3a2akJmLVFiw1zA6dgO56tfYvbEHH7te9tI+gOaPGb/nxxQB8Fdtygjp+fw==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
@@ -5481,9 +5484,6 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.3.5:
-    resolution: {integrity: sha512-k7Nwx6vuWx1IJ9Bjuf4Zt1PEllcwe7cls3VNzm4CQ1/hgtFUK2bRNG3rvnpPUhFjmqJKAKtjV576KnUkHocg/g==}
-
 snapshots:
 
   '@acemir/cssom@0.9.31': {}
@@ -5492,11 +5492,11 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@anthropic-ai/sdk@0.71.2(zod@4.3.5)':
+  '@anthropic-ai/sdk@0.71.2(zod@3.25.76)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 4.3.5
+      zod: 3.25.76
 
   '@asamuzakjp/css-color@4.1.1':
     dependencies:
@@ -5555,12 +5555,12 @@ snapshots:
       '@ast-grep/napi-win32-ia32-msvc': 0.40.0
       '@ast-grep/napi-win32-x64-msvc': 0.40.0
 
-  '@aster-cloud/aster-lang-ts@0.0.13(ws@8.19.0)(zod@4.3.5)':
+  '@aster-cloud/aster-lang-ts@0.0.16(ws@8.19.0)(zod@3.25.76)':
     dependencies:
-      '@anthropic-ai/sdk': 0.71.2(zod@4.3.5)
+      '@anthropic-ai/sdk': 0.71.2(zod@3.25.76)
       '@types/semver': 7.7.1
       cac: 6.7.14
-      openai: 6.16.0(ws@8.19.0)(zod@4.3.5)
+      openai: 6.16.0(ws@8.19.0)(zod@3.25.76)
       ora: 9.1.0
       p-limit: 7.2.0
       semver: 7.7.3
@@ -10560,10 +10560,10 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@6.16.0(ws@8.19.0)(zod@4.3.5):
+  openai@6.16.0(ws@8.19.0)(zod@3.25.76):
     optionalDependencies:
       ws: 8.19.0
-      zod: 4.3.5
+      zod: 3.25.76
 
   optionator@0.9.4:
     dependencies:
@@ -11556,6 +11556,3 @@ snapshots:
       youch-core: 0.3.3
 
   zod@3.25.76: {}
-
-  zod@4.3.5:
-    optional: true
