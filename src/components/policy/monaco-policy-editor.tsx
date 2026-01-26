@@ -269,7 +269,8 @@ export function MonacoPolicyEditor({
   const lexicon = getLexicon(locale);
 
   // Map locale string to CNLLocale type for compiler
-  const compilerLocale: CNLLocale = locale === 'zh' ? 'zh-CN' : locale === 'de' ? 'de-DE' : 'en-US';
+  // Handle both short ('zh', 'de') and full ('zh-CN', 'de-DE') locale formats
+  const compilerLocale: CNLLocale = locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
 
   // Local compiler for real-time validation with accurate error positions
   useAsterCompiler({
