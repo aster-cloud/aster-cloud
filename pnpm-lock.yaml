@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@aster-cloud/aster-lang-ts':
-        specifier: 0.0.21
-        version: 0.0.21(ws@8.19.0)(zod@3.25.76)
+        specifier: 0.0.22
+        version: 0.0.22(ws@8.19.0)(zod@3.25.76)
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.1
@@ -221,8 +221,8 @@ packages:
     resolution: {integrity: sha512-tq6nO/8KwUF/mHuk1ECaAOSOlz2OB/PmygnvprJzyAHGRVzdcffblaOOWe90M9sGz5MAasXoF+PTcayQj9TKKA==}
     engines: {node: '>= 10'}
 
-  '@aster-cloud/aster-lang-ts@0.0.21':
-    resolution: {integrity: sha512-MyYE8uIUVVSAeTrhKXlQjsv6kBwMWFCQ/tDCLvw+YY/9nr/YFm5QCZM3wKqs4IlnnLpDp8i2XbjQd8LNmXR8GA==}
+  '@aster-cloud/aster-lang-ts@0.0.22':
+    resolution: {integrity: sha512-HP7tFlMtjOaU4d3xjdXzunchfsFw0+JzQL0tTgq2jNOWazbZshmQgBmp5EJ1ouROmStCg8W1uAZEht+OpPpzlg==}
     engines: {node: '>=24.0.0'}
     hasBin: true
 
@@ -5555,7 +5555,7 @@ snapshots:
       '@ast-grep/napi-win32-ia32-msvc': 0.40.0
       '@ast-grep/napi-win32-x64-msvc': 0.40.0
 
-  '@aster-cloud/aster-lang-ts@0.0.21(ws@8.19.0)(zod@3.25.76)':
+  '@aster-cloud/aster-lang-ts@0.0.22(ws@8.19.0)(zod@3.25.76)':
     dependencies:
       '@anthropic-ai/sdk': 0.71.2(zod@3.25.76)
       '@types/semver': 7.7.1
