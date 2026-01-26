@@ -23,7 +23,7 @@ const CNL_REQUIRED_PATTERNS = [
   // 中文方括号语法变体
   /【模块】/m, // 【模块】金融.贷款
   /【定义】/m, // 【定义】申请人 包含
-  /入参\s+\S+.*产出/m, // funcName 入参 params，产出：
+  /【函数】\S+\s+包含.*产出/m, // 【函数】funcName 包含 params，产出：
   // 德语语法变体
   /Dieses Modul ist/im, // Dieses Modul ist finanz.kredit
   /Definiere\s+\w+\s+mit/im, // Definiere Antragsteller mit

@@ -47,7 +47,7 @@ const CHINESE_KEYWORDS: LanguageKeywords = {
   locale: 'zh-CN',
   moduleKeywords: ['【模块】'],
   defineKeywords: ['【定义】', '包含'],
-  functionKeywords: ['入参', '产出：', '产出:'],
+  functionKeywords: ['【函数】', '包含', '产出：', '产出:'],
   controlFlowKeywords: ['如果', '否则', '返回'],
   variableKeywords: ['令', '为'],
   operatorKeywords: ['等于', '大于', '小于', '加', '减', '乘', '除以', '非'],

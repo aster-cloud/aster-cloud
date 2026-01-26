@@ -198,7 +198,7 @@ export const ZH_CN_LEXICON: LexiconConfig = {
     [SemanticTokenKind.TYPE_DEF]: '【定义】',
     [SemanticTokenKind.TYPE_WITH]: '包含',
     [SemanticTokenKind.TYPE_ONE_OF]: '为以下之一',
-    [SemanticTokenKind.FUNC_TO]: '入参',
+    [SemanticTokenKind.FUNC_TO]: '【函数】',
     [SemanticTokenKind.FUNC_PRODUCE]: '产出',
     [SemanticTokenKind.FUNC_PERFORMS]: '执行',
     [SemanticTokenKind.IF]: '如果',
