@@ -311,7 +311,6 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                   locale={cnlLocale}
                   height="400px"
                   placeholder={t('form.contentPlaceholder')}
-                  enableLSP={true}
                 />
               </div>
               <p className="mt-3 text-sm text-gray-500">

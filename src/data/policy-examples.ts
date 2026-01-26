@@ -172,13 +172,13 @@ Definiere Entscheidung mit
   zinssatz.
 
 kreditPruefen mit antragsteller, liefert:
-  Falls antragsteller.alter kleiner als 18:
+  wenn antragsteller.alter kleiner als 18:
     gib zurueck Entscheidung mit genehmigt = falsch, begruendung = "Minderjaehriger Antragsteller", zinssatz = 0.
-  Falls antragsteller.bonitaet kleiner als 600:
+  wenn antragsteller.bonitaet kleiner als 600:
     gib zurueck Entscheidung mit genehmigt = falsch, begruendung = "Bonitaet zu niedrig", zinssatz = 0.
-  Falls antragsteller.bonitaet größer als 750:
+  wenn antragsteller.bonitaet groesser als 750:
     gib zurueck Entscheidung mit genehmigt = wahr, begruendung = "Ausgezeichnete Bonitaet", zinssatz = 350.
-  Falls antragsteller.bonitaet größer als 700:
+  wenn antragsteller.bonitaet groesser als 700:
     gib zurueck Entscheidung mit genehmigt = wahr, begruendung = "Gute Bonitaet", zinssatz = 450.
   gib zurueck Entscheidung mit genehmigt = wahr, begruendung = "Standardgenehmigung", zinssatz = 550.
 `;
@@ -265,11 +265,11 @@ Definiere Ergebnis mit
   begruendung.
 
 berechtigungPruefen mit patient, leistung, liefert:
-  Falls nicht patient.hatVersicherung:
+  wenn nicht patient.hatVersicherung:
     gib zurueck Ergebnis mit berechtigt = falsch, deckung = 0, patientenkosten = leistung.preis, begruendung = "Keine Versicherung".
-  Falls patient.alter kleiner als 18:
+  wenn patient.alter kleiner als 18:
     gib zurueck Ergebnis mit berechtigt = wahr, deckung = 90, patientenkosten = leistung.preis mal 10 geteilt durch 100, begruendung = "Minderjaehrige Deckung".
-  Falls patient.alter größer als 65:
+  wenn patient.alter groesser als 65:
     gib zurueck Ergebnis mit berechtigt = wahr, deckung = 85, patientenkosten = leistung.preis mal 15 geteilt durch 100, begruendung = "Senioren Deckung".
   gib zurueck Ergebnis mit berechtigt = wahr, deckung = 70, patientenkosten = leistung.preis mal 30 geteilt durch 100, begruendung = "Standarddeckung".
 `;
@@ -394,9 +394,9 @@ Definiere Angebot mit
   begruendung.
 
 angebotErstellen mit fahrer, fahrzeug, liefert:
-  Falls fahrer.alter kleiner als 18:
+  wenn fahrer.alter kleiner als 18:
     gib zurueck Angebot mit genehmigt = falsch, praemie = 0, selbstbeteiligung = 0, begruendung = "Fahrer unter 18".
-  Falls fahrer.unfaelle größer als 3:
+  wenn fahrer.unfaelle groesser als 3:
     gib zurueck Angebot mit genehmigt = falsch, praemie = 0, selbstbeteiligung = 0, begruendung = "Zu viele Unfaelle".
   sei basisPraemie gleich basisBerechnen mit fahrer, fahrzeug.
   sei risikoFaktor gleich risikoBerechnen mit fahrer.
@@ -404,17 +404,17 @@ angebotErstellen mit fahrer, fahrzeug, liefert:
   gib zurueck Angebot mit genehmigt = wahr, praemie = endPraemie, selbstbeteiligung = 500, begruendung = "Genehmigt".
 
 basisBerechnen mit fahrer, fahrzeug, liefert:
-  Falls fahrer.alter kleiner als 25:
+  wenn fahrer.alter kleiner als 25:
     gib zurueck 300.
-  Falls fahrer.alter kleiner als 65:
+  wenn fahrer.alter kleiner als 65:
     gib zurueck 200.
   gib zurueck 250.
 
 risikoBerechnen mit fahrer, liefert:
   sei basis gleich 100.
-  Falls fahrer.unfaelle größer als 0:
+  wenn fahrer.unfaelle groesser als 0:
     sei basis gleich basis plus fahrer.unfaelle mal 20.
-  Falls fahrer.verstoesse größer als 0:
+  wenn fahrer.verstoesse groesser als 0:
     sei basis gleich basis plus fahrer.verstoesse mal 10.
   gib zurueck basis.
 `;
@@ -505,13 +505,13 @@ Definiere BetrugsErgebnis mit
   begruendung.
 
 betrugErkennen mit transaktion, historie, liefert:
-  Falls transaktion.betrag größer als 1000000:
+  wenn transaktion.betrag groesser als 1000000:
     gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 100, begruendung = "Extrem grosse Transaktion".
-  Falls historie.verdaechtigeAnzahl größer als 5:
+  wenn historie.verdaechtigeAnzahl groesser als 5:
     gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 85, begruendung = "Hohe verdaechtige Aktivitaet".
-  Falls historie.kontoalter kleiner als 30:
+  wenn historie.kontoalter kleiner als 30:
     gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 70, begruendung = "Neues Konto Risiko".
-  Falls transaktion.betrag größer als historie.durchschnittsbetrag mal 10:
+  wenn transaktion.betrag groesser als historie.durchschnittsbetrag mal 10:
     gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 60, begruendung = "Ungewoehnlicher Betrag".
   gib zurueck BetrugsErgebnis mit verdaechtig = falsch, risikoBewertung = 10, begruendung = "Normale Transaktion".
 `;
@@ -630,27 +630,27 @@ Definiere Entscheidung mit
   begruendung.
 
 antragAuswerten mit antragsteller, antrag, liefert:
-  Falls antragsteller.alter kleiner als 21:
+  wenn antragsteller.alter kleiner als 21:
     gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Alter unter 21".
-  Falls antragsteller.bonitaet kleiner als 550:
+  wenn antragsteller.bonitaet kleiner als 550:
     gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Bonitaet zu niedrig".
-  Falls antragsteller.vorhandeneKarten größer als 5:
+  wenn antragsteller.vorhandeneKarten groesser als 5:
     gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Zu viele vorhandene Karten".
   sei limit gleich limitBestimmen mit antragsteller, antrag.
   sei rate gleich zinsBestimmen mit antragsteller.
   gib zurueck Entscheidung mit genehmigt = wahr, genehmigterLimit = limit, zinssatz = rate, begruendung = "Genehmigt".
 
 limitBestimmen mit antragsteller, antrag, liefert:
-  Falls antragsteller.bonitaet größer als 750:
+  wenn antragsteller.bonitaet groesser als 750:
     gib zurueck antrag.gewuenschtesLimit.
-  Falls antragsteller.bonitaet größer als 700:
+  wenn antragsteller.bonitaet groesser als 700:
     gib zurueck antrag.gewuenschtesLimit mal 80 geteilt durch 100.
   gib zurueck antrag.gewuenschtesLimit mal 50 geteilt durch 100.
 
 zinsBestimmen mit antragsteller, liefert:
-  Falls antragsteller.bonitaet größer als 750:
+  wenn antragsteller.bonitaet groesser als 750:
     gib zurueck 1299.
-  Falls antragsteller.bonitaet größer als 700:
+  wenn antragsteller.bonitaet groesser als 700:
     gib zurueck 1599.
   gib zurueck 1999.
 `;

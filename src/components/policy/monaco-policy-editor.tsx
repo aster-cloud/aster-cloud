@@ -9,8 +9,7 @@ import {
   getKeywordsByCategory,
   type LexiconConfig,
 } from '@/config/aster-lang-lexicons';
-import { useAsterLSP, type CNLLocale } from '@/hooks/useAsterLSP';
-import { useAsterCompiler, type CNLLocale as CompilerLocale } from '@/hooks/useAsterCompiler';
+import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
 
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
@@ -25,10 +24,8 @@ interface MonacoPolicyEditorProps {
   height?: string;
   readOnly?: boolean;
   placeholder?: string;
-  /** Policy ID for LSP document URI */
-  policyId?: string;
-  /** Enable LSP features (diagnostics, completion, etc.) */
-  enableLSP?: boolean;
+  /** Debounce delay for validation in ms (default: 300) */
+  debounceDelay?: number;
 }
 
 // 注册 Aster Lang 语言
@@ -261,8 +258,7 @@ export function MonacoPolicyEditor({
   height = '400px',
   readOnly = false,
   placeholder,
-  policyId,
-  enableLSP = false,
+  debounceDelay = 300,
 }: MonacoPolicyEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
@@ -272,27 +268,16 @@ export function MonacoPolicyEditor({
   const isDark = resolvedTheme === 'dark';
   const lexicon = getLexicon(locale);
 
-  // Map locale string to CNLLocale type
-  const lspLocale: CNLLocale = locale === 'zh' ? 'zh-CN' : locale === 'de' ? 'de-DE' : 'en-US';
-  const compilerLocale: CompilerLocale = lspLocale;
+  // Map locale string to CNLLocale type for compiler
+  const compilerLocale: CNLLocale = locale === 'zh' ? 'zh-CN' : locale === 'de' ? 'de-DE' : 'en-US';
 
-  // LSP integration (only when enabled and policyId provided)
-  const { connected: lspConnected } = useAsterLSP({
-    editor: isEditorReady ? editorRef.current : null,
-    documentUri: policyId ? `file:///policies/${policyId}.aster` : 'file:///untitled.aster',
-    locale: lspLocale,
-    autoConnect: enableLSP,
-    autoReconnect: enableLSP,
-  });
-
-  // Local compiler (fallback when LSP is not enabled)
-  // Provides real-time validation with proper error positions
+  // Local compiler for real-time validation with accurate error positions
   useAsterCompiler({
-    editor: isEditorReady && !enableLSP ? editorRef.current : null,
-    monaco: isEditorReady && !enableLSP ? monacoRef.current : null,
+    editor: isEditorReady ? editorRef.current : null,
+    monaco: isEditorReady ? monacoRef.current : null,
     locale: compilerLocale,
-    debounceDelay: 300,
-    enableValidation: !enableLSP, // Only enable when LSP is not used
+    debounceDelay,
+    enableValidation: true,
   });
 
   // 编辑器挂载回调
@@ -337,14 +322,7 @@ export function MonacoPolicyEditor({
   );
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-      {/* LSP Status Indicator - Only show when connected */}
-      {enableLSP && lspConnected && (
-        <div className="absolute top-2 right-2 z-10">
-          <span className="w-2 h-2 rounded-full bg-green-500 block" />
-        </div>
-      )}
-
+    <div className="relative rounded-lg border border-gray-300 dark:border-gray-600 [&_.monaco-editor]:rounded-lg">
       <Editor
         height={height}
         language={ASTER_LANG_ID}
@@ -373,6 +351,8 @@ export function MonacoPolicyEditor({
             showKeywords: true,
             showSnippets: true,
           },
+          // 修复 hover tooltip 超出边界被裁剪的问题
+          fixedOverflowWidgets: true,
         }}
         loading={
           <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400">

@@ -1,162 +1,248 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, policies, executions, teamMembers } from '@/lib/prisma';
-import { eq, and, isNull, sql } from 'drizzle-orm';
-import { checkUsageLimit, recordUsage } from '@/lib/usage';
-import { isPolicyFrozen } from '@/lib/policy-freeze';
+import { db, policies, executions, users, usageRecords, teamMembers } from '@/lib/prisma';
+import { eq, and, isNull, sql, desc, asc } from 'drizzle-orm';
+import { PLANS, PlanType } from '@/lib/plans';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
-
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// 获取当前周期字符串（YYYY-MM）
+function getCurrentPeriod(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// 单个 SQL 查询结果类型
+type UnifiedQueryResult = {
+  // Policy fields
+  policy_id: string | null;
+  policy_name: string | null;
+  policy_content: string | null;
+  policy_user_id: string | null;
+  policy_team_id: string | null;
+  policy_is_public: boolean | null;
+  // User fields
+  user_plan: string | null;
+  user_trial_ends_at: Date | null;
+  // Usage count
+  usage_count: number | null;
+  // Team membership (for non-owner access)
+  is_team_member: boolean;
+  [key: string]: unknown;
+}
+
 export async function POST(req: Request, { params }: RouteParams) {
   const startTime = Date.now();
+  const timings: Record<string, number> = {};
 
   try {
-    const session = await getSession();
+    // 阶段1：并行获取初始数据
+    const t1 = Date.now();
+    const [session, { id }, bodyResult] = await Promise.all([
+      getSession(),
+      params,
+      req.json().catch(() => null),
+    ]);
+    timings.auth = Date.now() - t1;
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
-
-    // 安全解析 JSON body，避免无效 JSON 返回 500
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-
-    // 校验 body 是有效对象（非 null、非数组）
-    if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    if (bodyResult === null || typeof bodyResult !== 'object' || Array.isArray(bodyResult)) {
       return NextResponse.json({ error: 'Request body must be a valid object' }, { status: 400 });
     }
 
-    const { input } = body as { input?: unknown };
-
+    const { input } = bodyResult as { input?: unknown };
     if (!input || typeof input !== 'object' || Array.isArray(input)) {
       return NextResponse.json({ error: 'Input must be a valid object' }, { status: 400 });
     }
 
-    // 通过验证后，安全地断言类型
     const validatedInput = input as Record<string, unknown>;
+    const userId = session.user.id;
+    const period = getCurrentPeriod();
 
-    // 先查用户自己的策略或公开策略
-    let policy = await db.query.policies.findFirst({
-      where: and(
-        eq(policies.id, id),
-        isNull(policies.deletedAt),
-        sql`(${policies.userId} = ${session.user.id} OR ${policies.isPublic} = true)`
-      ),
-    });
+    // 阶段2：单个统一 SQL 查询获取所有数据
+    const t2 = Date.now();
+    const result = await db.execute<UnifiedQueryResult>(sql`
+      SELECT
+        p.id AS policy_id,
+        p.name AS policy_name,
+        p.content AS policy_content,
+        p."userId" AS policy_user_id,
+        p."teamId" AS policy_team_id,
+        p."isPublic" AS policy_is_public,
+        u.plan AS user_plan,
+        u."trialEndsAt" AS user_trial_ends_at,
+        ur.count AS usage_count,
+        CASE WHEN tm.id IS NOT NULL THEN true ELSE false END AS is_team_member
+      FROM "Policy" p
+      CROSS JOIN "User" u
+      LEFT JOIN "UsageRecord" ur ON ur."userId" = ${userId}
+        AND ur.type = 'execution'
+        AND ur.period = ${period}
+      LEFT JOIN "TeamMember" tm ON tm."userId" = ${userId}
+        AND tm."teamId" = p."teamId"
+      WHERE p.id = ${id}
+        AND p."deletedAt" IS NULL
+        AND u.id = ${userId}
+      LIMIT 1
+    `);
+    timings.dbQueries = Date.now() - t2;
 
-    // 如果不是用户自己的策略,检查是否是团队策略
-    if (!policy || (policy.userId !== session.user.id && !policy.isPublic)) {
-      const teamPolicy = await db.query.policies.findFirst({
-        where: and(
-          eq(policies.id, id),
-          isNull(policies.deletedAt)
-        ),
-        with: {
-          team: {
-            with: {
-              members: true,
-            },
-          },
-        },
-      });
+    // postgres-js returns an array directly
+    const rows = result as unknown as UnifiedQueryResult[];
+    const row = rows[0];
 
-      if (teamPolicy?.team?.members.some(m => m.userId === session.user.id)) {
-        policy = teamPolicy;
-      }
-    }
+    // 解构查询结果
+    const policy = row?.policy_id ? {
+      id: row.policy_id,
+      name: row.policy_name!,
+      content: row.policy_content!,
+      userId: row.policy_user_id!,
+      teamId: row.policy_team_id,
+      isPublic: row.policy_is_public ?? false,
+    } : null;
+
+    const userData = row ? {
+      plan: row.user_plan,
+      trialEndsAt: row.user_trial_ends_at,
+    } : null;
+
+    const usageData = row?.usage_count !== null ? { count: row.usage_count } : null;
+    const isTeamMember = row?.is_team_member ?? false;
 
     if (!policy) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
     }
 
-    // 检查团队策略的执行权限（viewer 角色没有执行权限）
-    if (policy.teamId && policy.userId !== session.user.id) {
-      const permCheck = await checkTeamPermission(
-        session.user.id,
-        policy.teamId,
-        TeamPermission.POLICY_EXECUTE
-      );
-      if (!permCheck.allowed) {
-        return NextResponse.json({ error: permCheck.error }, { status: permCheck.status });
-      }
+    // 权限检查（快速路径：所有者或公开策略）
+    const isOwner = policy.userId === userId;
+    const isPublic = policy.isPublic;
+
+    // 权限验证（团队成员资格已在 SQL 查询中获取）
+    if (!isOwner && !isPublic && !isTeamMember) {
+      return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
     }
 
-    // 检查策略是否被冻结（基于策略所有者，而非调用者）
-    const freezeInfo = await isPolicyFrozen(policy.userId, id);
-    if (freezeInfo.isFrozen) {
-      const isOwner = policy.userId === session.user.id;
-      return NextResponse.json(
-        {
-          error: 'Policy is frozen',
-          message: isOwner
-            ? `This policy is frozen because your plan allows ${freezeInfo.activePoliciesLimit} policies but you have ${freezeInfo.totalPolicies}. Delete some policies or upgrade your plan.`
-            : `This policy is frozen because the owner's plan limit has been exceeded. Please contact the policy owner.`,
-          frozen: true,
-          upgrade: isOwner,
-        },
-        { status: 403 }
-      );
-    }
+    // 阶段3：乐观执行 - 尽早启动 API 调用
+    const t3 = Date.now();
+    const executionPromise = executePolicyUnified({
+      policy: policy as Parameters<typeof executePolicyUnified>[0]['policy'],
+      input: validatedInput,
+      userId,
+      tenantId: policy.teamId || policy.userId,
+    });
 
-    const limitCheck = await checkUsageLimit(session.user.id, 'execution');
-    if (!limitCheck.allowed) {
+    // 配额检查
+    const rawPlan = userData?.plan;
+    const plan: PlanType = (rawPlan && rawPlan in PLANS ? rawPlan : 'free') as PlanType;
+    const trialExpired = plan === 'trial' && userData?.trialEndsAt && userData.trialEndsAt < new Date();
+    const effectivePlan: PlanType = trialExpired ? 'free' : plan;
+    const limits = PLANS[effectivePlan].limits;
+
+    const currentUsage = usageData?.count || 0;
+    if (limits.executions !== -1 && currentUsage >= limits.executions) {
       return NextResponse.json(
-        {
-          error: 'Usage limit exceeded',
-          message: limitCheck.message,
-          upgrade: true,
-        },
+        { error: 'Usage limit exceeded', message: `You've reached your monthly limit of ${limits.executions} executions.`, upgrade: true },
         { status: 429 }
       );
     }
 
-    // 使用统一的策略执行服务
-    // 租户 ID 使用策略所有者，确保与 API v1 一致
-    const executionResult = await executePolicyUnified({
-      policy,
-      input: validatedInput,
-      userId: session.user.id,
-      tenantId: policy.teamId || policy.userId,
-    });
+    // 仅非所有者需要额外检查
+    if (!isOwner) {
+      const t4 = Date.now();
+      if (policy.teamId) {
+        const permCheck = await checkTeamPermission(userId, policy.teamId, TeamPermission.POLICY_EXECUTE);
+        if (!permCheck.allowed) {
+          return NextResponse.json({ error: permCheck.error }, { status: permCheck.status });
+        }
+      }
+
+      // 策略冻结检查
+      const ownerData = await db.query.users.findFirst({
+        where: eq(users.id, policy.userId),
+        columns: { plan: true, trialEndsAt: true },
+      });
+
+      if (ownerData) {
+        const ownerPlan: PlanType = (ownerData.plan && ownerData.plan in PLANS ? ownerData.plan : 'free') as PlanType;
+        const ownerTrialExpired = ownerPlan === 'trial' && ownerData.trialEndsAt && ownerData.trialEndsAt < new Date();
+        const ownerEffectivePlan: PlanType = ownerTrialExpired ? 'free' : ownerPlan;
+        const ownerPolicyLimit = PLANS[ownerEffectivePlan].limits.policies;
+
+        if (ownerPolicyLimit !== -1) {
+          const activePolicies = await db.query.policies.findMany({
+            where: eq(policies.userId, policy.userId),
+            orderBy: [desc(policies.updatedAt), asc(policies.id)],
+            limit: ownerPolicyLimit,
+            columns: { id: true },
+          });
+          if (!activePolicies.some(p => p.id === id)) {
+            return NextResponse.json(
+              { error: 'Policy is frozen', message: `This policy is frozen because the owner's plan limit has been exceeded.`, frozen: true },
+              { status: 403 }
+            );
+          }
+        }
+      }
+      timings.permChecks = Date.now() - t4;
+    }
+
+    // 阶段4：等待乐观执行结果
+    const t5 = Date.now();
+    const executionResult = await executionPromise;
+    timings.executionWait = Date.now() - t5;
+    timings.executionTotal = Date.now() - t3;
 
     const primaryError = getPrimaryError(executionResult);
-
     const durationMs = Date.now() - startTime;
+    const executionId = globalThis.crypto.randomUUID();
 
-    const [execution] = await db.insert(executions).values({
-      id: globalThis.crypto.randomUUID(),
-      userId: session.user.id,
-      policyId: id,
-      input: validatedInput as object,
-      output: executionResult as object,
-      error: primaryError,
-      durationMs,
-      success: executionResult.allowed ?? false,
-      source: 'dashboard',
-    }).returning();
+    // 异步写入（fire-and-forget）
+    const now = new Date();
+    const writePromise = Promise.all([
+      db.insert(executions).values({
+        id: executionId,
+        userId,
+        policyId: id,
+        input: validatedInput as object,
+        output: executionResult as object,
+        error: primaryError,
+        durationMs,
+        success: executionResult.allowed ?? false,
+        source: 'dashboard',
+      }),
+      db.insert(usageRecords)
+        .values({ id: crypto.randomUUID(), userId, type: 'execution', period, count: 1, createdAt: now, updatedAt: now })
+        .onConflictDoUpdate({
+          target: [usageRecords.userId, usageRecords.type, usageRecords.period],
+          set: { count: sql`${usageRecords.count} + 1`, updatedAt: now },
+        }),
+    ]).catch(err => console.error('Failed to record execution:', err));
 
-    await recordUsage(session.user.id, 'execution');
+    if (typeof globalThis !== 'undefined' && 'EdgeRuntime' in globalThis) {
+      // @ts-expect-error - waitUntil is available in Edge Runtime
+      globalThis.waitUntil?.(writePromise);
+    } else {
+      void writePromise;
+    }
 
     return NextResponse.json({
-      executionId: execution.id,
+      executionId,
       success: executionResult.allowed,
       output: executionResult,
       error: primaryError,
       durationMs,
+      // 临时添加 timings 用于调试
+      _timings: timings,
     });
   } catch (error) {
     console.error('Error executing policy:', error);
-    // Return detailed error for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({
       error: 'Internal server error',
