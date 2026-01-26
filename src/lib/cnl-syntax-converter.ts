@@ -54,16 +54,16 @@ const KEYWORD_MAPPINGS: KeywordMapping[] = [
 
   // 函数定义关键字
   {
-    id: 'function-to',
+    id: 'function-decl',
     'en-US': 'To ',
-    'zh-CN': '', // 中文函数名直接开头
+    'zh-CN': '【函数】',
     'de-DE': '',
     priority: 80,
   },
   {
     id: 'function-params',
     'en-US': ' with ',
-    'zh-CN': ' 入参 ',
+    'zh-CN': ' 包含 ',
     'de-DE': ' mit ',
     priority: 75,
   },
@@ -79,7 +79,7 @@ const KEYWORD_MAPPINGS: KeywordMapping[] = [
   {
     id: 'if',
     'en-US': 'If ',
-    'zh-CN': '若 ',
+    'zh-CN': '如果 ',
     'de-DE': 'Falls ',
     priority: 60,
   },
@@ -109,7 +109,7 @@ const KEYWORD_MAPPINGS: KeywordMapping[] = [
   {
     id: 'be',
     'en-US': ' be ',
-    'zh-CN': ' 为 ',
+    'zh-CN': ' 为',
     'de-DE': ' gleich ',
     priority: 45,
   },
@@ -325,19 +325,18 @@ function convertLine(
 
 /**
  * 处理中文函数定义的特殊情况
- * 中文: "funcName 入参 params，产出：" -> 英文: "To funcName with params, produce:"
+ * 中文: "【函数】funcName 包含 params，产出：" -> 英文: "To funcName with params, produce:"
  */
 function handleChineseFunctionDefinition(
   content: string,
   toLocale: SupportedLocale
 ): string {
   if (toLocale === 'zh-CN') {
-    // 英文/德文 -> 中文：移除 "To " 前缀
-    return content.replace(/^To\s+/gm, '');
+    // 英文/德文 -> 中文：将 "To funcName" 替换为 "【函数】funcName"
+    return content.replace(/^To\s+(\S+)/gm, '【函数】$1');
   } else if (toLocale === 'en-US') {
-    // 中文 -> 英文：在函数定义行添加 "To " 前缀
-    // 匹配：行首 + 标识符 + " 入参 " 或 " with "
-    return content.replace(/^(\S+)(\s+入参\s+|\s+with\s+)/gm, 'To $1$2');
+    // 中文 -> 英文：将 "【函数】funcName" 替换为 "To funcName"
+    return content.replace(/^【函数】(\S+)/gm, 'To $1');
   }
   return content;
 }

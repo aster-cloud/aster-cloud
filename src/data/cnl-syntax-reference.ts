@@ -140,7 +140,7 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
     category: 'function',
     keywords: {
       'en-US': ['To', 'produce:'],
-      'zh-CN': ['入参', '产出：'],
+      'zh-CN': ['【函数】', '包含', '产出：'],
       'de-DE': ['liefert:'],
     },
     description: {
@@ -151,7 +151,7 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
     example: {
       'en-US': `To calculateTotal with order, produce:
   Return order.price times order.quantity.`,
-      'zh-CN': `计算总额 入参 订单，产出：
+      'zh-CN': `【函数】计算总额 包含 订单，产出：
   返回 订单.价格 乘 订单.数量。`,
       'de-DE': `berechneSumme mit bestellung, liefert:
   gib zurueck bestellung.preis mal bestellung.menge.`,
@@ -163,7 +163,7 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
     category: 'control-flow',
     keywords: {
       'en-US': ['If', 'Otherwise'],
-      'zh-CN': ['若', '否则'],
+      'zh-CN': ['如果', '否则'],
       'de-DE': ['Falls', 'Sonst'],
     },
     description: {
@@ -176,7 +176,7 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
   Return "Minor".
 Otherwise:
   Return "Adult".`,
-      'zh-CN': `若 用户.年龄 小于 18：
+      'zh-CN': `如果 用户.年龄 小于 18：
   返回 「未成年」。
 否则：
   返回 「成年」。`,
@@ -222,7 +222,7 @@ Sonst:
     },
     example: {
       'en-US': 'Let total be price times quantity.',
-      'zh-CN': '令 总额 为 价格 乘 数量。',
+      'zh-CN': '令 总额 为价格 乘 数量。',
       'de-DE': 'sei summe gleich preis mal menge.',
     },
   },
@@ -245,9 +245,9 @@ Sonst:
   Return "A".
 If score equals 0:
   Return "F".`,
-      'zh-CN': `若 分数 大于 90：
+      'zh-CN': `如果 分数 大于 90：
   返回 「A」。
-若 分数 等于 0：
+如果 分数 等于 0：
   返回 「F」。`,
       'de-DE': `Falls punkte größer als 90:
   gib zurueck "A".
@@ -271,7 +271,7 @@ Falls punkte gleich 0:
     },
     example: {
       'en-US': 'Let result be a plus b times c divided by d.',
-      'zh-CN': '令 结果 为 a 加 b 乘 c 除以 d。',
+      'zh-CN': '令 结果 为a 加 b 乘 c 除以 d。',
       'de-DE': 'sei ergebnis gleich a plus b mal c geteilt durch d.',
     },
   },
@@ -351,7 +351,7 @@ Falls punkte gleich 0:
     },
     example: {
       'en-US': 'Let name be user.firstName.',
-      'zh-CN': '令 姓名 为 用户.名字。',
+      'zh-CN': '令 姓名 为用户.名字。',
       'de-DE': 'sei name gleich benutzer.vorname.',
     },
   },
@@ -371,7 +371,7 @@ Falls punkte gleich 0:
     },
     example: {
       'en-US': 'Let result be calculateTotal with order.',
-      'zh-CN': '令 结果 为 计算总额(订单)。',
+      'zh-CN': '令 结果 为计算总额(订单)。',
       'de-DE': 'sei ergebnis gleich berechneSumme mit bestellung.',
     },
   },

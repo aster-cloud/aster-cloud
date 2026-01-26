@@ -23,7 +23,7 @@ const CNL_REQUIRED_PATTERNS = [
   // 中文方括号语法变体
   /【模块】/m, // 【模块】金融.贷款
   /【定义】/m, // 【定义】申请人 包含
-  /入参\s+\S+.*产出/m, // 入参 申请人：申请人，产出 文本
+  /【函数】.*产出/m, // 【函数】评估贷款 包含 申请人，产出：
   // 德语语法变体
   /Dieses Modul ist/im, // Dieses Modul ist finanz.kredit
   /Definiere\s+\w+\s+mit/im, // Definiere Antragsteller mit
@@ -31,7 +31,7 @@ const CNL_REQUIRED_PATTERNS = [
 ];
 
 // 中文 CNL 关键字
-const CHINESE_KEYWORDS = ['模块', '类型', '函数', '当', '则', '如果', '那么', '并且', '或者', '定义', '入参', '产出', '若', '返回'];
+const CHINESE_KEYWORDS = ['模块', '类型', '函数', '当', '则', '如果', '那么', '并且', '或者', '定义', '包含', '产出', '返回', '令', '为', '若'];
 
 // 德语 CNL 关键字
 const GERMAN_KEYWORDS = ['Modul', 'Definiere', 'Falls', 'Sonst', 'Gib zurück', 'erzeuge', 'größer als', 'kleiner als', 'Ganzzahl', 'Dezimal'];
