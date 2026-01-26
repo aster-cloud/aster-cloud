@@ -217,19 +217,25 @@ export async function compileLocally(options: LocalCompilationOptions): Promise<
     // Stage 2: Lex
     const tokens = runStage('lex', () => Compiler.lex(canonicalSource, lexicon));
 
-    // Stage 2.5: Keyword Translation (for non-English locales)
-    // Translate Chinese/German keywords to English before parsing
-    // (parser uses hardcoded English keyword recognition)
-    let translatedTokens = tokens;
-    if (locale !== 'en-US' && lexicon && Compiler.needsKeywordTranslation && Compiler.createKeywordTranslator) {
-      if (Compiler.needsKeywordTranslation(lexicon)) {
-        const translator = Compiler.createKeywordTranslator(lexicon);
-        translatedTokens = translator.translateTokens(tokens);
+    // Stage 3: Parse (with lexicon for multi-language support)
+    // v0.0.22+ uses parseWithLexicon to directly parse non-English keywords
+    const ast = runStage('parse', () => {
+      if (Compiler.parseWithLexicon && lexicon) {
+        // Use new parseWithLexicon API for multi-language support
+        return Compiler.parseWithLexicon(tokens, lexicon);
+      } else {
+        // Fallback: Keyword Translation (for older versions or missing lexicon)
+        // Translate Chinese/German keywords to English before parsing
+        let translatedTokens = tokens;
+        if (locale !== 'en-US' && lexicon && Compiler.needsKeywordTranslation && Compiler.createKeywordTranslator) {
+          if (Compiler.needsKeywordTranslation(lexicon)) {
+            const translator = Compiler.createKeywordTranslator(lexicon);
+            translatedTokens = translator.translateTokens(tokens);
+          }
+        }
+        return Compiler.parse(translatedTokens);
       }
-    }
-
-    // Stage 3: Parse
-    const ast = runStage('parse', () => Compiler.parse(translatedTokens));
+    });
 
     // Stage 4: Lower to Core IR
     const coreModule = runStage('lower', () => Compiler.lowerModule(ast));
