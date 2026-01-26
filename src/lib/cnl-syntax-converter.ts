@@ -56,14 +56,14 @@ const KEYWORD_MAPPINGS: KeywordMapping[] = [
   {
     id: 'function-decl',
     'en-US': 'To ',
-    'zh-CN': '【函数】',
+    'zh-CN': '', // 中文函数名直接开头，没有前缀
     'de-DE': '',
     priority: 80,
   },
   {
     id: 'function-params',
     'en-US': ' with ',
-    'zh-CN': ' 包含 ',
+    'zh-CN': ' 入参 ',
     'de-DE': ' mit ',
     priority: 75,
   },
@@ -325,18 +325,19 @@ function convertLine(
 
 /**
  * 处理中文函数定义的特殊情况
- * 中文: "【函数】funcName 包含 params，产出：" -> 英文: "To funcName with params, produce:"
+ * 中文: "funcName 入参 params，产出：" -> 英文: "To funcName with params, produce:"
  */
 function handleChineseFunctionDefinition(
   content: string,
   toLocale: SupportedLocale
 ): string {
   if (toLocale === 'zh-CN') {
-    // 英文/德文 -> 中文：将 "To funcName" 替换为 "【函数】funcName"
-    return content.replace(/^To\s+(\S+)/gm, '【函数】$1');
+    // 英文/德文 -> 中文：移除 "To " 前缀
+    return content.replace(/^To\s+/gm, '');
   } else if (toLocale === 'en-US') {
-    // 中文 -> 英文：将 "【函数】funcName" 替换为 "To funcName"
-    return content.replace(/^【函数】(\S+)/gm, 'To $1');
+    // 中文 -> 英文：在函数定义行添加 "To " 前缀
+    // 匹配：行首 + 标识符 + " 入参 " 或 " with "
+    return content.replace(/^(\S+)(\s+入参\s+|\s+with\s+)/gm, 'To $1$2');
   }
   return content;
 }

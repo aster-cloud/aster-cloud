@@ -140,7 +140,7 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
     category: 'function',
     keywords: {
       'en-US': ['To', 'produce:'],
-      'zh-CN': ['【函数】', '包含', '产出：'],
+      'zh-CN': ['入参', '产出：'],
       'de-DE': ['liefert:'],
     },
     description: {
@@ -151,7 +151,7 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
     example: {
       'en-US': `To calculateTotal with order, produce:
   Return order.price times order.quantity.`,
-      'zh-CN': `【函数】计算总额 包含 订单，产出：
+      'zh-CN': `计算总额 入参 订单，产出：
   返回 订单.价格 乘 订单.数量。`,
       'de-DE': `berechneSumme mit bestellung, liefert:
   gib zurueck bestellung.preis mal bestellung.menge.`,
