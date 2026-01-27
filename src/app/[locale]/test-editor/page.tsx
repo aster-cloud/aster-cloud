@@ -30,15 +30,15 @@ bewerteAntrag mit antrag Kreditantrag, liefert Bool:
     gib zurueck falsch.
 `;
 
-const TEST_CODE_ZH = `【模块】信用评估。
+const TEST_CODE_ZH = `【模块】信用评估.
 
-【定义】贷款申请 包含 信用评分：整数，贷款金额：小数，贷款期限：整数。
+【定义】贷款申请 包含 信用评分: 整数, 贷款金额: 小数, 贷款期限: 整数.
 
-【函数】评估申请 包含 申请，产出：
-  如果 申请.信用评分 大于 700：
-    返回 真。
-  否则：
-    返回 假。
+【函数】评估申请 包含 申请: 贷款申请, 产出 布尔:
+  如果 申请.信用评分 大于 700:
+    返回 真.
+  否则:
+    返回 假.
 `;
 
 function getTestCode(locale: string): string {
