@@ -195,13 +195,16 @@ export function useAsterCompiler({
       // Collect all diagnostics
       const allDiagnostics: TypecheckDiagnostic[] = [];
 
-      // Add parse errors as diagnostics (without position for now)
+      // Add parse errors as diagnostics (now with position info)
       if (result.parseErrors && result.parseErrors.length > 0) {
         for (const err of result.parseErrors) {
+          // ParseError is now an object with message and optional span
+          const parseError = err as { message: string; span?: { start: { line: number; col: number }; end: { line: number; col: number } } };
           allDiagnostics.push({
             severity: 'error',
             code: 'E000' as import('@aster-cloud/aster-lang-ts/browser').TypecheckDiagnostic['code'],
-            message: err,
+            message: parseError.message,
+            span: parseError.span,
           });
         }
       }
@@ -252,13 +255,16 @@ export function useAsterCompiler({
       // Collect all diagnostics
       const allDiagnostics: TypecheckDiagnostic[] = [];
 
-      // Add parse errors
+      // Add parse errors (now with position info)
       if (result.parseErrors && result.parseErrors.length > 0) {
         for (const err of result.parseErrors) {
+          // ParseError is now an object with message and optional span
+          const parseError = err as { message: string; span?: { start: { line: number; col: number }; end: { line: number; col: number } } };
           allDiagnostics.push({
             severity: 'error',
             code: 'E000' as import('@aster-cloud/aster-lang-ts/browser').TypecheckDiagnostic['code'],
-            message: err,
+            message: parseError.message,
+            span: parseError.span,
           });
         }
       }
