@@ -231,10 +231,13 @@ export async function POST(req: Request, { params }: RouteParams) {
         }),
     ]).catch(err => console.error('Failed to record execution:', err));
 
-    if (typeof globalThis !== 'undefined' && 'EdgeRuntime' in globalThis) {
-      // @ts-expect-error - waitUntil is available in Edge Runtime
-      globalThis.waitUntil?.(writePromise);
-    } else {
+    // 使用 OpenNext 的 getCloudflareContext 获取 ctx.waitUntil
+    try {
+      const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+      const { ctx } = await getCloudflareContext({ async: true });
+      ctx.waitUntil(writePromise);
+    } catch {
+      // 非 Cloudflare 环境，直接执行（不阻塞响应）
       void writePromise;
     }
 
