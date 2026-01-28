@@ -12,16 +12,12 @@ main = "worker.js"
 # 资源目录
 assets = { directory = ".open-next/assets", binding = "ASSETS" }
 
-# Smart Placement - 自动将 Worker 放置在靠近后端的位置
-# 由于本应用调用外部 API (policy.aster-lang.dev) 和数据库 (Hyperdrive)，
-# 启用 Smart Placement 可将延迟降低 4-8 倍
+# Smart Placement - 将 Worker 放置在墨尔本区域
+# policy.aster-lang.dev 和 PostgreSQL 数据库都部署在墨尔本 OCI
+# 使用 GCP australia-southeast2 (墨尔本) 区域配置，将 Worker 放置在最靠近后端的位置
 # 参考: https://developers.cloudflare.com/workers/configuration/smart-placement/
-# 地理位置提示 - 将 Worker 放置在靠近墨尔本的位置
-# policy.aster-lang.dev 部署在墨尔本，指定 OC (大洋洲) 可减少 API 调用延迟
-# 参考: https://developers.cloudflare.com/workers/configuration/smart-placement/#location-hints
 [placement]
-mode = "smart"
-hint = "oc"  # Oceania - 包括澳大利亚墨尔本
+region = "gcp:australia-southeast2"
 
 # CPU 时间限制（毫秒）
 # 默认限制较低（~10-50ms），策略执行需要更多 CPU 时间用于：

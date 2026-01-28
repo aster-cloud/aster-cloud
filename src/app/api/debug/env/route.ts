@@ -4,10 +4,26 @@ import { NextResponse } from 'next/server';
  * 调试端点：检查环境变量
  * 警告：仅用于调试，生产环境应删除
  */
-export async function GET() {
+export async function GET(request: Request) {
+  // 获取 Cloudflare 信息
+  let cfInfo: Record<string, unknown> = {};
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const context = await getCloudflareContext({ async: true });
+    cfInfo = {
+      colo: (context.cf as Record<string, unknown>)?.colo,
+      country: (context.cf as Record<string, unknown>)?.country,
+      city: (context.cf as Record<string, unknown>)?.city,
+      region: (context.cf as Record<string, unknown>)?.region,
+    };
+  } catch {
+    cfInfo = { error: 'Not in Cloudflare environment' };
+  }
+
   return NextResponse.json({
     timestamp: new Date().toISOString(),
     authVersion: 'Auth.js v5',
+    cloudflare: cfInfo,
     environment: {
       hasGithubClientId: !!process.env.GITHUB_CLIENT_ID,
       hasGithubClientSecret: !!process.env.GITHUB_CLIENT_SECRET,
