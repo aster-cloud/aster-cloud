@@ -243,13 +243,24 @@ async function executeWithSimpleEngine(
  * 对于字符串格式，通过关键字匹配判断批准状态
  */
 function parseApprovalFromResult(result: unknown): { approved: boolean; message: string } {
-  // 对象格式：直接提取 approved 字段
-  if (result && typeof result === 'object' && 'approved' in result) {
-    const obj = result as { approved: boolean; reason?: string };
-    return {
-      approved: obj.approved === true,
-      message: obj.reason || (obj.approved ? 'Approved' : 'Denied'),
-    };
+  // 对象格式：支持多语言字段名
+  if (result && typeof result === 'object') {
+    const obj = result as Record<string, unknown>;
+
+    // 支持的批准字段名（英/中/德）
+    const approvalFields = ['approved', '批准', 'genehmigt'];
+    // 支持的理由字段名（英/中/德）
+    const reasonFields = ['reason', '理由', 'begruendung'];
+
+    // 查找批准字段
+    const approvalField = approvalFields.find(f => f in obj);
+    if (approvalField) {
+      const approved = obj[approvalField] === true;
+      // 查找理由字段
+      const reasonField = reasonFields.find(f => f in obj);
+      const reason = reasonField ? String(obj[reasonField]) : (approved ? 'Approved' : 'Denied');
+      return { approved, message: reason };
+    }
   }
 
   // 字符串格式：通过关键字判断
