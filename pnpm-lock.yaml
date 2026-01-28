@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@aster-cloud/aster-lang-ts':
-        specifier: ^0.0.27
-        version: 0.0.27(ws@8.19.0)(zod@3.25.76)
+        specifier: ^0.0.28
+        version: 0.0.28(ws@8.19.0)(zod@3.25.76)
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.1
@@ -221,8 +221,8 @@ packages:
     resolution: {integrity: sha512-tq6nO/8KwUF/mHuk1ECaAOSOlz2OB/PmygnvprJzyAHGRVzdcffblaOOWe90M9sGz5MAasXoF+PTcayQj9TKKA==}
     engines: {node: '>= 10'}
 
-  '@aster-cloud/aster-lang-ts@0.0.27':
-    resolution: {integrity: sha512-zlnEgeumeE3BydO+1oOo+iNBXECyjXyGblbns9Xa2t3UNuW4EuFWCEDuQEXf3VtZ7r3xYl+E5/PipNqncmncGg==}
+  '@aster-cloud/aster-lang-ts@0.0.28':
+    resolution: {integrity: sha512-GqC0dHPX5mzy7WDdVLV9GvAGzB6xxDzujePLV8XrwCDwfUc50Comda6lYGcGd8r3l6Ed75LCJWURCXszKl0DGg==}
     engines: {node: '>=24.0.0'}
     hasBin: true
 
@@ -5059,6 +5059,7 @@ packages:
   tar@7.5.6:
     resolution: {integrity: sha512-xqUeu2JAIJpXyvskvU3uvQW8PAmHrtXp2KDuMJwQqW8Sqq0CaZBAQ+dKS3RBXVhU4wC5NjAdKrmh84241gO9cA==}
     engines: {node: '>=18'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me
 
   terser@5.16.9:
     resolution: {integrity: sha512-HPa/FdTB9XGI2H1/keLFZHxl6WNvAI4YalHGtDQTlMnJcoqSab1UwL4l1hGEhs6/GmLHBZIg/YgB++jcbzoOEg==}
@@ -5555,7 +5556,7 @@ snapshots:
       '@ast-grep/napi-win32-ia32-msvc': 0.40.0
       '@ast-grep/napi-win32-x64-msvc': 0.40.0
 
-  '@aster-cloud/aster-lang-ts@0.0.27(ws@8.19.0)(zod@3.25.76)':
+  '@aster-cloud/aster-lang-ts@0.0.28(ws@8.19.0)(zod@3.25.76)':
     dependencies:
       '@anthropic-ai/sdk': 0.71.2(zod@3.25.76)
       '@types/semver': 7.7.1
