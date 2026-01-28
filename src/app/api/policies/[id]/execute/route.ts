@@ -6,6 +6,12 @@ import { PLANS, PlanType } from '@/lib/plans';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
 
+// Use Node.js runtime for policy execution to avoid Cloudflare Workers CPU limits
+// Edge runtime has strict 10-50ms CPU time limits which are exceeded by:
+// 1. Complex SQL queries with multiple JOINs
+// 2. External HTTP calls to aster-api backend
+export const runtime = 'nodejs';
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
