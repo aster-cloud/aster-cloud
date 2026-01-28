@@ -5,6 +5,7 @@ import { eq, and, isNull, sql, desc, asc } from 'drizzle-orm';
 import { PLANS, PlanType } from '@/lib/plans';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
+import { getCachedPolicyMeta, cachePolicyMeta, type CachedPolicyMeta } from '@/lib/cache';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -66,9 +67,41 @@ export async function POST(req: Request, { params }: RouteParams) {
     const userId = session.user.id;
     const period = getCurrentPeriod();
 
-    // 阶段2：单个统一 SQL 查询获取所有数据
+    // 阶段2：尝试从 KV 缓存获取策略元数据
     const t2 = Date.now();
-    const result = await db.execute<UnifiedQueryResult>(sql`
+    let policy: CachedPolicyMeta | null = null;
+    let cacheHit = false;
+
+    const cachedPolicy = await getCachedPolicyMeta(id);
+    if (cachedPolicy) {
+      policy = cachedPolicy;
+      cacheHit = true;
+      timings.cacheHit = Date.now() - t2;
+    }
+
+    // 获取用户数据、使用量和团队成员状态
+    const tDb = Date.now();
+    const result = await db.execute<UnifiedQueryResult>(cacheHit ? sql`
+      SELECT
+        NULL::text AS policy_id,
+        NULL::text AS policy_name,
+        NULL::text AS policy_content,
+        NULL::text AS policy_user_id,
+        NULL::text AS policy_team_id,
+        NULL::boolean AS policy_is_public,
+        u.plan AS user_plan,
+        u."trialEndsAt" AS user_trial_ends_at,
+        ur.count AS usage_count,
+        CASE WHEN tm.id IS NOT NULL THEN true ELSE false END AS is_team_member
+      FROM "User" u
+      LEFT JOIN "UsageRecord" ur ON ur."userId" = ${userId}
+        AND ur.type = 'execution'
+        AND ur.period = ${period}
+      LEFT JOIN "TeamMember" tm ON tm."userId" = ${userId}
+        AND tm."teamId" = ${policy!.teamId}
+      WHERE u.id = ${userId}
+      LIMIT 1
+    ` : sql`
       SELECT
         p.id AS policy_id,
         p.name AS policy_name,
@@ -92,21 +125,27 @@ export async function POST(req: Request, { params }: RouteParams) {
         AND u.id = ${userId}
       LIMIT 1
     `);
-    timings.dbQueries = Date.now() - t2;
+    timings.dbQueries = Date.now() - tDb;
 
     // postgres-js returns an array directly
     const rows = result as unknown as UnifiedQueryResult[];
     const row = rows[0];
 
-    // 解构查询结果
-    const policy = row?.policy_id ? {
-      id: row.policy_id,
-      name: row.policy_name!,
-      content: row.policy_content!,
-      userId: row.policy_user_id!,
-      teamId: row.policy_team_id,
-      isPublic: row.policy_is_public ?? false,
-    } : null;
+    // 如果缓存未命中，从数据库结果构建策略对象
+    if (!cacheHit && row?.policy_id) {
+      policy = {
+        id: row.policy_id,
+        name: row.policy_name!,
+        content: row.policy_content!,
+        userId: row.policy_user_id!,
+        teamId: row.policy_team_id,
+        isPublic: row.policy_is_public ?? false,
+      };
+      // 异步写入缓存（不阻塞响应）
+      cachePolicyMeta(id, policy).catch(err =>
+        console.warn('[Cache] Failed to cache policy:', err)
+      );
+    }
 
     const userData = row ? {
       plan: row.user_plan,
@@ -239,7 +278,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       error: primaryError,
       durationMs,
       // 临时添加 timings 用于调试
-      _timings: timings,
+      _timings: { ...timings, cacheHit },
     });
   } catch (error) {
     console.error('Error executing policy:', error);

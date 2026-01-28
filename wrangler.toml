@@ -30,6 +30,12 @@ mode = "smart"
 [limits]
 cpu_ms = 5000
 
+# KV 缓存 - 用于缓存策略内容、会话数据等
+# 减少数据库查询，提升响应速度
+[[kv_namespaces]]
+binding = "CACHE"
+id = "250b39f14c014a5e8e636799c23bb120"
+
 # Hyperdrive 绑定 - PostgreSQL 连接池
 [[hyperdrive]]
 binding = "HYPERDRIVE"

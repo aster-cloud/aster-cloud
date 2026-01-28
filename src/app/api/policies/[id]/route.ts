@@ -5,6 +5,7 @@ import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { softDeletePolicy } from '@/lib/policy-lifecycle';
+import { invalidatePolicyCache } from '@/lib/cache';
 
 
 interface RouteParams {
@@ -164,6 +165,11 @@ export async function PUT(req: Request, { params }: RouteParams) {
       });
     }
 
+    // 失效策略缓存（异步，不阻塞响应）
+    invalidatePolicyCache(id).catch(err =>
+      console.warn('[Cache] Failed to invalidate policy cache:', err)
+    );
+
     return NextResponse.json(policy);
   } catch (error) {
     console.error('Error updating policy:', error);
@@ -196,6 +202,11 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 404 });
     }
+
+    // 失效策略缓存（异步，不阻塞响应）
+    invalidatePolicyCache(id).catch(err =>
+      console.warn('[Cache] Failed to invalidate policy cache:', err)
+    );
 
     return NextResponse.json({
       success: true,
