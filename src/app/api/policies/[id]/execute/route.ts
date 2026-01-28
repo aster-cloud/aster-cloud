@@ -152,7 +152,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       trialEndsAt: row.user_trial_ends_at,
     } : null;
 
-    const usageData = row?.usage_count !== null ? { count: row.usage_count } : null;
+    const usageData = row && row.usage_count !== null ? { count: row.usage_count } : null;
     const isTeamMember = row?.is_team_member ?? false;
 
     if (!policy) {

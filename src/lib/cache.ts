@@ -14,10 +14,9 @@ interface KVNamespace {
   delete(key: string): Promise<void>;
 }
 
-// 全局 KV 绑定（由 Cloudflare Workers 运行时注入）
-declare global {
-  // eslint-disable-next-line no-var
-  var CACHE: KVNamespace | undefined;
+// Cloudflare 环境类型
+interface CloudflareEnv {
+  CACHE?: KVNamespace;
 }
 
 // 缓存键前缀
@@ -37,14 +36,25 @@ const DEFAULT_TTL = {
 } as const;
 
 /**
+ * 尝试从 OpenNext 获取 Cloudflare 上下文
+ */
+async function getCloudflareEnv(): Promise<CloudflareEnv | null> {
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const context = await getCloudflareContext({ async: true });
+    return context.env as CloudflareEnv;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 获取 KV 命名空间
  * 在非 Cloudflare 环境返回 null
  */
-function getKV(): KVNamespace | null {
-  if (typeof globalThis !== 'undefined' && globalThis.CACHE) {
-    return globalThis.CACHE;
-  }
-  return null;
+async function getKV(): Promise<KVNamespace | null> {
+  const env = await getCloudflareEnv();
+  return env?.CACHE ?? null;
 }
 
 /**
@@ -55,7 +65,7 @@ export async function cachePolicyContent(
   content: string,
   ttl: number = DEFAULT_TTL.POLICY_CONTENT
 ): Promise<void> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return;
 
   try {
@@ -71,7 +81,7 @@ export async function cachePolicyContent(
  * 获取缓存的策略内容
  */
 export async function getCachedPolicyContent(policyId: string): Promise<string | null> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return null;
 
   try {
@@ -99,7 +109,7 @@ export async function cachePolicyMeta(
   meta: CachedPolicyMeta,
   ttl: number = DEFAULT_TTL.POLICY
 ): Promise<void> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return;
 
   try {
@@ -115,7 +125,7 @@ export async function cachePolicyMeta(
  * 获取缓存的策略元数据
  */
 export async function getCachedPolicyMeta(policyId: string): Promise<CachedPolicyMeta | null> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return null;
 
   try {
@@ -132,7 +142,7 @@ export async function getCachedPolicyMeta(policyId: string): Promise<CachedPolic
  * 失效策略缓存（更新或删除策略时调用）
  */
 export async function invalidatePolicyCache(policyId: string): Promise<void> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return;
 
   try {
@@ -158,7 +168,7 @@ export async function cacheUserData(
   data: CachedUserData,
   ttl: number = DEFAULT_TTL.USER
 ): Promise<void> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return;
 
   try {
@@ -174,7 +184,7 @@ export async function cacheUserData(
  * 获取缓存的用户数据
  */
 export async function getCachedUserData(userId: string): Promise<CachedUserData | null> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return null;
 
   try {
@@ -191,7 +201,7 @@ export async function getCachedUserData(userId: string): Promise<CachedUserData 
  * 失效用户缓存
  */
 export async function invalidateUserCache(userId: string): Promise<void> {
-  const kv = getKV();
+  const kv = await getKV();
   if (!kv) return;
 
   try {
@@ -211,7 +221,7 @@ export async function withCache<T>(
   fetcher: () => Promise<T>,
   ttl: number = 300
 ): Promise<T> {
-  const kv = getKV();
+  const kv = await getKV();
 
   // 如果没有 KV，直接调用 fetcher
   if (!kv) {
