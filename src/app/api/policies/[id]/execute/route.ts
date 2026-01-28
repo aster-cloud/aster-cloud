@@ -132,6 +132,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const row = rows[0];
 
     // 如果缓存未命中，从数据库结果构建策略对象
+    let cacheWritePromise: Promise<void> | null = null;
     if (!cacheHit && row?.policy_id) {
       policy = {
         id: row.policy_id,
@@ -141,8 +142,8 @@ export async function POST(req: Request, { params }: RouteParams) {
         teamId: row.policy_team_id,
         isPublic: row.policy_is_public ?? false,
       };
-      // 异步写入缓存（不阻塞响应）
-      cachePolicyMeta(id, policy).catch(err =>
+      // 保存缓存写入 Promise，稍后通过 waitUntil 执行
+      cacheWritePromise = cachePolicyMeta(id, policy).catch(err =>
         console.warn('[Cache] Failed to cache policy:', err)
       );
     }
@@ -244,7 +245,7 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     // 异步写入（fire-and-forget）
     const now = new Date();
-    const writePromise = Promise.all([
+    const dbWritePromise = Promise.all([
       db.insert(executions).values({
         id: executionId,
         userId,
@@ -264,11 +265,16 @@ export async function POST(req: Request, { params }: RouteParams) {
         }),
     ]).catch(err => console.error('Failed to record execution:', err));
 
+    // 合并所有后台任务（包括 KV 缓存写入）
+    const backgroundTasks = cacheWritePromise
+      ? Promise.all([dbWritePromise, cacheWritePromise])
+      : dbWritePromise;
+
     if (typeof globalThis !== 'undefined' && 'EdgeRuntime' in globalThis) {
       // @ts-expect-error - waitUntil is available in Edge Runtime
-      globalThis.waitUntil?.(writePromise);
+      globalThis.waitUntil?.(backgroundTasks);
     } else {
-      void writePromise;
+      void backgroundTasks;
     }
 
     return NextResponse.json({
