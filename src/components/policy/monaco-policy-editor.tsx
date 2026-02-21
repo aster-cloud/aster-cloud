@@ -7,8 +7,8 @@ import { useTheme } from 'next-themes';
 import {
   getLexicon,
   getKeywordsByCategory,
-  type LexiconConfig,
-} from '@/config/aster-lang-lexicons';
+  type Lexicon,
+} from '@/lib/aster-lexicon';
 import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
 
 // Monaco 语言 ID
@@ -31,7 +31,7 @@ interface MonacoPolicyEditorProps {
 // 注册 Aster Lang 语言
 function registerAsterLanguage(
   monaco: typeof import('monaco-editor'),
-  lexicon: LexiconConfig
+  lexicon: Lexicon
 ) {
   // 只注册一次语言
   if (!languageRegistered) {
