@@ -33,9 +33,9 @@ interface LanguageKeywords {
 
 const ENGLISH_KEYWORDS: LanguageKeywords = {
   locale: 'en-US',
-  moduleKeywords: ['This module is'],
-  defineKeywords: ['Define', 'with'],
-  functionKeywords: ['To', 'produce:', 'produce:'],
+  moduleKeywords: ['Module '],
+  defineKeywords: ['Define', 'has'],
+  functionKeywords: ['Rule', 'given', 'produce:'],
   controlFlowKeywords: ['If', 'Otherwise', 'Return'],
   variableKeywords: ['Let', 'be'],
   operatorKeywords: ['equals', 'greater than', 'less than', 'plus', 'minus', 'times', 'divided by', 'not'],
@@ -45,9 +45,9 @@ const ENGLISH_KEYWORDS: LanguageKeywords = {
 
 const CHINESE_KEYWORDS: LanguageKeywords = {
   locale: 'zh-CN',
-  moduleKeywords: ['【模块】'],
-  defineKeywords: ['【定义】', '包含'],
-  functionKeywords: ['【函数】', '包含', '产出：', '产出:'],
+  moduleKeywords: ['模块 '],
+  defineKeywords: ['定义', '包含'],
+  functionKeywords: ['规则', '给定', '产出'],
   controlFlowKeywords: ['如果', '否则', '返回'],
   variableKeywords: ['令', '为'],
   operatorKeywords: ['等于', '大于', '小于', '加', '减', '乘', '除以', '非'],
@@ -57,9 +57,9 @@ const CHINESE_KEYWORDS: LanguageKeywords = {
 
 const GERMAN_KEYWORDS: LanguageKeywords = {
   locale: 'de-DE',
-  moduleKeywords: ['Dieses Modul ist'],
-  defineKeywords: ['Definiere', 'mit'],
-  functionKeywords: ['liefert:', 'liefert:'],
+  moduleKeywords: ['Modul '],
+  defineKeywords: ['Definiere', 'hat'],
+  functionKeywords: ['Regel', 'gegeben'],
   controlFlowKeywords: ['Falls', 'Sonst', 'gib zurueck'],
   variableKeywords: ['sei', 'gleich'],
   operatorKeywords: ['gleich', 'größer als', 'kleiner als', 'plus', 'minus', 'mal', 'geteilt durch', 'nicht'],

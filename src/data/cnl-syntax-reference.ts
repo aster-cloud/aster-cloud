@@ -90,9 +90,9 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
   {
     category: 'module',
     keywords: {
-      'en-US': ['This module is'],
-      'zh-CN': ['【模块】'],
-      'de-DE': ['Dieses Modul ist'],
+      'en-US': ['Module'],
+      'zh-CN': ['模块'],
+      'de-DE': ['Modul'],
     },
     description: {
       'en-US': 'Declares the module namespace for the policy',
@@ -100,9 +100,9 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
       'de-DE': 'Deklariert den Modul-Namensraum fuer die Policy',
     },
     example: {
-      'en-US': 'This module is finance.loan.',
-      'zh-CN': '【模块】金融.贷款。',
-      'de-DE': 'Dieses Modul ist finanz.kredit.',
+      'en-US': 'Module finance.loan.',
+      'zh-CN': '模块 金融.贷款。',
+      'de-DE': 'Modul finanz.kredit.',
     },
   },
 
@@ -110,9 +110,9 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
   {
     category: 'definition',
     keywords: {
-      'en-US': ['Define', 'with'],
-      'zh-CN': ['【定义】', '包含'],
-      'de-DE': ['Definiere', 'mit'],
+      'en-US': ['Define', 'has'],
+      'zh-CN': ['定义', '包含'],
+      'de-DE': ['Definiere', 'hat'],
     },
     description: {
       'en-US': 'Defines a new data type (struct) with fields',
@@ -120,15 +120,15 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
       'de-DE': 'Definiert einen neuen Datentyp (Struct) mit Feldern',
     },
     example: {
-      'en-US': `Define Person with
+      'en-US': `Define Person has
   name,
   age,
   email.`,
-      'zh-CN': `【定义】人员 包含
+      'zh-CN': `定义 人员 包含
   姓名，
   年龄，
   邮箱。`,
-      'de-DE': `Definiere Person mit
+      'de-DE': `Definiere Person hat
   name,
   alter,
   email.`,
@@ -139,9 +139,9 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
   {
     category: 'function',
     keywords: {
-      'en-US': ['To', 'produce:'],
-      'zh-CN': ['【函数】', '包含', '产出：'],
-      'de-DE': ['liefert:'],
+      'en-US': ['Rule', 'given', 'produce:'],
+      'zh-CN': ['规则', '给定', '产出：'],
+      'de-DE': ['Regel', 'gegeben'],
     },
     description: {
       'en-US': 'Defines a function with parameters and return value',
@@ -149,11 +149,11 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
       'de-DE': 'Definiert eine Funktion mit Parametern und Rueckgabewert',
     },
     example: {
-      'en-US': `To calculateTotal with order, produce:
+      'en-US': `Rule calculateTotal given order:
   Return order.price times order.quantity.`,
-      'zh-CN': `【函数】计算总额 包含 订单，产出：
+      'zh-CN': `规则 计算总额 给定 订单：
   返回 订单.价格 乘 订单.数量。`,
-      'de-DE': `berechneSumme mit bestellung, liefert:
+      'de-DE': `Regel berechneSumme gegeben bestellung:
   gib zurueck bestellung.preis mal bestellung.menge.`,
     },
   },

@@ -108,20 +108,20 @@ export const POLICY_GROUP_TREE: PolicyGroupDef[] = [
 // 策略源码 - 贷款审批
 // ============================================
 
-const LOAN_SOURCE_EN = `This module is finance.loan.
+const LOAN_SOURCE_EN = `Module finance.loan.
 
-Define Applicant with
+Define Applicant has
   id,
   creditScore,
   income,
   age.
 
-Define Decision with
+Define Decision has
   approved,
   reason,
   rate.
 
-To evaluateLoan with applicant, produce:
+Rule evaluateLoan given applicant:
   If applicant.age less than 18:
     Return Decision with approved = false, reason = "Underage applicant", rate = 0.
   If applicant.creditScore less than 600:
@@ -133,20 +133,20 @@ To evaluateLoan with applicant, produce:
   Return Decision with approved = true, reason = "Standard approval", rate = 550.
 `;
 
-const LOAN_SOURCE_ZH = `【模块】金融.贷款。
+const LOAN_SOURCE_ZH = `模块 金融.贷款。
 
-【定义】申请人 包含
+定义 申请人 包含
   编号，
   信用评分，
   收入，
   年龄。
 
-【定义】决定 包含
+定义 决定 包含
   批准，
   理由，
   利率。
 
-【函数】评估贷款 包含 申请人，产出：
+规则 评估贷款 给定 申请人：
   如果 申请人.年龄 小于 18：
     返回 决定 包含 批准 = 假, 理由 = 「申请人未成年」, 利率 = 0。
   如果 申请人.信用评分 小于 600：
@@ -158,20 +158,20 @@ const LOAN_SOURCE_ZH = `【模块】金融.贷款。
   返回 决定 包含 批准 = 真, 理由 = 「标准审批」, 利率 = 550。
 `;
 
-const LOAN_SOURCE_DE = `Dieses Modul ist finanz.kredit.
+const LOAN_SOURCE_DE = `Modul finanz.kredit.
 
-Definiere Antragsteller mit
+Definiere Antragsteller hat
   kennung,
   bonitaet,
   einkommen,
   alter.
 
-Definiere Entscheidung mit
+Definiere Entscheidung hat
   genehmigt,
   begruendung,
   zinssatz.
 
-kreditPruefen mit antragsteller, liefert:
+Regel kreditPruefen gegeben antragsteller:
   wenn antragsteller.alter kleiner als 18:
     gib zurueck Entscheidung mit genehmigt = falsch, begruendung = "Minderjaehriger Antragsteller", zinssatz = 0.
   wenn antragsteller.bonitaet kleiner als 600:
@@ -187,26 +187,26 @@ kreditPruefen mit antragsteller, liefert:
 // 策略源码 - 医疗资格
 // ============================================
 
-const HEALTHCARE_SOURCE_EN = `This module is healthcare.eligibility.
+const HEALTHCARE_SOURCE_EN = `Module healthcare.eligibility.
 
-Define Patient with
+Define Patient has
   id,
   age,
   hasInsurance,
   insuranceType.
 
-Define Service with
+Define Service has
   code,
   name,
   price.
 
-Define Result with
+Define Result has
   eligible,
   coverage,
   patientCost,
   reason.
 
-To checkEligibility with patient, service, produce:
+Rule checkEligibility given patient, service:
   If not patient.hasInsurance:
     Return Result with eligible = false, coverage = 0, patientCost = service.price, reason = "No insurance".
   If patient.age less than 18:
@@ -216,26 +216,26 @@ To checkEligibility with patient, service, produce:
   Return Result with eligible = true, coverage = 70, patientCost = service.price times 30 divided by 100, reason = "Standard coverage".
 `;
 
-const HEALTHCARE_SOURCE_ZH = `【模块】医疗.资格审核。
+const HEALTHCARE_SOURCE_ZH = `模块 医疗.资格审核。
 
-【定义】患者 包含
+定义 患者 包含
   编号，
   年龄，
   有保险，
   保险类型。
 
-【定义】服务 包含
+定义 服务 包含
   代码，
   名称，
   价格。
 
-【定义】审核结果 包含
+定义 审核结果 包含
   合格，
   覆盖率，
   患者费用，
   理由。
 
-【函数】检查资格 包含 患者，服务，产出：
+规则 检查资格 给定 患者，服务：
   如果 非 患者.有保险：
     返回 审核结果 包含 合格 = 假, 覆盖率 = 0, 患者费用 = 服务.价格, 理由 = 「无保险」。
   如果 患者.年龄 小于 18：
@@ -245,26 +245,26 @@ const HEALTHCARE_SOURCE_ZH = `【模块】医疗.资格审核。
   返回 审核结果 包含 合格 = 真, 覆盖率 = 70, 患者费用 = 服务.价格 乘 30 除以 100, 理由 = 「标准覆盖」。
 `;
 
-const HEALTHCARE_SOURCE_DE = `Dieses Modul ist gesundheit.berechtigung.
+const HEALTHCARE_SOURCE_DE = `Modul gesundheit.berechtigung.
 
-Definiere Patient mit
+Definiere Patient hat
   kennung,
   alter,
   hatVersicherung,
   versicherungstyp.
 
-Definiere Leistung mit
+Definiere Leistung hat
   code,
   name,
   preis.
 
-Definiere Ergebnis mit
+Definiere Ergebnis hat
   berechtigt,
   deckung,
   patientenkosten,
   begruendung.
 
-berechtigungPruefen mit patient, leistung, liefert:
+Regel berechtigungPruefen gegeben patient, leistung:
   wenn nicht patient.hatVersicherung:
     gib zurueck Ergebnis mit berechtigt = falsch, deckung = 0, patientenkosten = leistung.preis, begruendung = "Keine Versicherung".
   wenn patient.alter kleiner als 18:
@@ -278,28 +278,28 @@ berechtigungPruefen mit patient, leistung, liefert:
 // 策略源码 - 汽车保险
 // ============================================
 
-const AUTO_SOURCE_EN = `This module is insurance.auto.
+const AUTO_SOURCE_EN = `Module insurance.auto.
 
-Define Driver with
+Define Driver has
   id,
   age,
   yearsLicensed,
   accidents,
   violations.
 
-Define Vehicle with
+Define Vehicle has
   vin,
   year,
   value,
   safetyRating.
 
-Define Quote with
+Define Quote has
   approved,
   premium,
   deductible,
   reason.
 
-To generateQuote with driver, vehicle, produce:
+Rule generateQuote given driver, vehicle:
   If driver.age less than 18:
     Return Quote with approved = false, premium = 0, deductible = 0, reason = "Driver under 18".
   If driver.accidents greater than 3:
@@ -309,14 +309,14 @@ To generateQuote with driver, vehicle, produce:
   Let finalPremium be basePremium times riskFactor divided by 100.
   Return Quote with approved = true, premium = finalPremium, deductible = 500, reason = "Approved".
 
-To calculateBase with driver, vehicle, produce:
+Rule calculateBase given driver, vehicle:
   If driver.age less than 25:
     Return 300.
   If driver.age less than 65:
     Return 200.
   Return 250.
 
-To calculateRisk with driver, produce:
+Rule calculateRisk given driver:
   Let base be 100.
   If driver.accidents greater than 0:
     Let base be base plus driver.accidents times 20.
@@ -325,28 +325,28 @@ To calculateRisk with driver, produce:
   Return base.
 `;
 
-const AUTO_SOURCE_ZH = `【模块】保险.汽车。
+const AUTO_SOURCE_ZH = `模块 保险.汽车。
 
-【定义】驾驶员 包含
+定义 驾驶员 包含
   编号，
   年龄，
   驾龄，
   事故数，
   违章数。
 
-【定义】车辆 包含
+定义 车辆 包含
   车架号，
   年份，
   价值，
   安全评级。
 
-【定义】报价 包含
+定义 报价 包含
   批准，
   保费，
   免赔额，
   理由。
 
-【函数】生成报价 包含 驾驶员，车辆，产出：
+规则 生成报价 给定 驾驶员，车辆：
   如果 驾驶员.年龄 小于 18：
     返回 报价 包含 批准 = 假, 保费 = 0, 免赔额 = 0, 理由 = 「驾驶员未满18岁」。
   如果 驾驶员.事故数 大于 3：
@@ -356,14 +356,14 @@ const AUTO_SOURCE_ZH = `【模块】保险.汽车。
   令 最终保费 为 基础保费 乘 风险系数 除以 100。
   返回 报价 包含 批准 = 真, 保费 = 最终保费, 免赔额 = 500, 理由 = 「已批准」。
 
-【函数】计算基础 包含 驾驶员，车辆，产出：
+规则 计算基础 给定 驾驶员，车辆：
   如果 驾驶员.年龄 小于 25：
     返回 300。
   如果 驾驶员.年龄 小于 65：
     返回 200。
   返回 250。
 
-【函数】计算风险 包含 驾驶员，产出：
+规则 计算风险 给定 驾驶员：
   令 基数 为 100。
   如果 驾驶员.事故数 大于 0：
     令 基数 为 基数 加 驾驶员.事故数 乘 20。
@@ -372,28 +372,28 @@ const AUTO_SOURCE_ZH = `【模块】保险.汽车。
   返回 基数。
 `;
 
-const AUTO_SOURCE_DE = `Dieses Modul ist versicherung.kfz.
+const AUTO_SOURCE_DE = `Modul versicherung.kfz.
 
-Definiere Fahrer mit
+Definiere Fahrer hat
   kennung,
   alter,
   fuehrerscheinJahre,
   unfaelle,
   verstoesse.
 
-Definiere Fahrzeug mit
+Definiere Fahrzeug hat
   fahrgestellnummer,
   baujahr,
   wert,
   sicherheitsbewertung.
 
-Definiere Angebot mit
+Definiere Angebot hat
   genehmigt,
   praemie,
   selbstbeteiligung,
   begruendung.
 
-angebotErstellen mit fahrer, fahrzeug, liefert:
+Regel angebotErstellen gegeben fahrer, fahrzeug:
   wenn fahrer.alter kleiner als 18:
     gib zurueck Angebot mit genehmigt = falsch, praemie = 0, selbstbeteiligung = 0, begruendung = "Fahrer unter 18".
   wenn fahrer.unfaelle groesser als 3:
@@ -403,14 +403,14 @@ angebotErstellen mit fahrer, fahrzeug, liefert:
   sei endPraemie gleich basisPraemie mal risikoFaktor geteilt durch 100.
   gib zurueck Angebot mit genehmigt = wahr, praemie = endPraemie, selbstbeteiligung = 500, begruendung = "Genehmigt".
 
-basisBerechnen mit fahrer, fahrzeug, liefert:
+Regel basisBerechnen gegeben fahrer, fahrzeug:
   wenn fahrer.alter kleiner als 25:
     gib zurueck 300.
   wenn fahrer.alter kleiner als 65:
     gib zurueck 200.
   gib zurueck 250.
 
-risikoBerechnen mit fahrer, liefert:
+Regel risikoBerechnen gegeben fahrer:
   sei basis gleich 100.
   wenn fahrer.unfaelle groesser als 0:
     sei basis gleich basis plus fahrer.unfaelle mal 20.
@@ -423,26 +423,26 @@ risikoBerechnen mit fahrer, liefert:
 // 策略源码 - 欺诈检测
 // ============================================
 
-const FRAUD_SOURCE_EN = `This module is finance.fraud.
+const FRAUD_SOURCE_EN = `Module finance.fraud.
 
-Define Transaction with
+Define Transaction has
   id,
   accountId,
   amount,
   timestamp.
 
-Define AccountHistory with
+Define AccountHistory has
   accountId,
   averageAmount,
   suspiciousCount,
   accountAge.
 
-Define FraudResult with
+Define FraudResult has
   suspicious,
   riskScore,
   reason.
 
-To detectFraud with transaction, history, produce:
+Rule detectFraud given transaction, history:
   If transaction.amount greater than 1000000:
     Return FraudResult with suspicious = true, riskScore = 100, reason = "Extremely large transaction".
   If history.suspiciousCount greater than 5:
@@ -454,26 +454,26 @@ To detectFraud with transaction, history, produce:
   Return FraudResult with suspicious = false, riskScore = 10, reason = "Normal transaction".
 `;
 
-const FRAUD_SOURCE_ZH = `【模块】金融.欺诈。
+const FRAUD_SOURCE_ZH = `模块 金融.欺诈。
 
-【定义】交易 包含
+定义 交易 包含
   编号，
   账户号，
   金额，
   时间戳。
 
-【定义】账户历史 包含
+定义 账户历史 包含
   账户号，
   平均金额，
   可疑次数，
   账龄。
 
-【定义】欺诈结果 包含
+定义 欺诈结果 包含
   可疑，
   风险评分，
   理由。
 
-【函数】检测欺诈 包含 交易，历史，产出：
+规则 检测欺诈 给定 交易，历史：
   如果 交易.金额 大于 1000000：
     返回 欺诈结果 包含 可疑 = 真, 风险评分 = 100, 理由 = 「超大额交易」。
   如果 历史.可疑次数 大于 5：
@@ -485,26 +485,26 @@ const FRAUD_SOURCE_ZH = `【模块】金融.欺诈。
   返回 欺诈结果 包含 可疑 = 假, 风险评分 = 10, 理由 = 「正常交易」。
 `;
 
-const FRAUD_SOURCE_DE = `Dieses Modul ist finanz.betrug.
+const FRAUD_SOURCE_DE = `Modul finanz.betrug.
 
-Definiere Transaktion mit
+Definiere Transaktion hat
   kennung,
   kontoId,
   betrag,
   zeitstempel.
 
-Definiere KontoHistorie mit
+Definiere KontoHistorie hat
   kontoId,
   durchschnittsbetrag,
   verdaechtigeAnzahl,
   kontoalter.
 
-Definiere BetrugsErgebnis mit
+Definiere BetrugsErgebnis hat
   verdaechtig,
   risikoBewertung,
   begruendung.
 
-betrugErkennen mit transaktion, historie, liefert:
+Regel betrugErkennen gegeben transaktion, historie:
   wenn transaktion.betrag groesser als 1000000:
     gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 100, begruendung = "Extrem grosse Transaktion".
   wenn historie.verdaechtigeAnzahl groesser als 5:
@@ -520,26 +520,26 @@ betrugErkennen mit transaktion, historie, liefert:
 // 策略源码 - 信用卡审批
 // ============================================
 
-const CREDITCARD_SOURCE_EN = `This module is finance.creditcard.
+const CREDITCARD_SOURCE_EN = `Module finance.creditcard.
 
-Define Applicant with
+Define Applicant has
   id,
   age,
   income,
   creditScore,
   existingCards.
 
-Define Application with
+Define Application has
   requestedLimit,
   cardType.
 
-Define Decision with
+Define Decision has
   approved,
   approvedLimit,
   interestRate,
   reason.
 
-To evaluateApplication with applicant, application, produce:
+Rule evaluateApplication given applicant, application:
   If applicant.age less than 21:
     Return Decision with approved = false, approvedLimit = 0, interestRate = 0, reason = "Age below 21".
   If applicant.creditScore less than 550:
@@ -550,14 +550,14 @@ To evaluateApplication with applicant, application, produce:
   Let rate be determineRate with applicant.
   Return Decision with approved = true, approvedLimit = limit, interestRate = rate, reason = "Approved".
 
-To determineLimit with applicant, application, produce:
+Rule determineLimit given applicant, application:
   If applicant.creditScore greater than 750:
     Return application.requestedLimit.
   If applicant.creditScore greater than 700:
     Return application.requestedLimit times 80 divided by 100.
   Return application.requestedLimit times 50 divided by 100.
 
-To determineRate with applicant, produce:
+Rule determineRate given applicant:
   If applicant.creditScore greater than 750:
     Return 1299.
   If applicant.creditScore greater than 700:
@@ -565,26 +565,26 @@ To determineRate with applicant, produce:
   Return 1999.
 `;
 
-const CREDITCARD_SOURCE_ZH = `【模块】金融.信用卡。
+const CREDITCARD_SOURCE_ZH = `模块 金融.信用卡。
 
-【定义】申请人 包含
+定义 申请人 包含
   编号，
   年龄，
   收入，
   信用评分，
   现有卡数。
 
-【定义】申请 包含
+定义 申请 包含
   申请额度，
   卡类型。
 
-【定义】决定 包含
+定义 决定 包含
   批准，
   批准额度，
   利率，
   理由。
 
-【函数】评估申请 包含 申请人，申请，产出：
+规则 评估申请 给定 申请人，申请：
   如果 申请人.年龄 小于 21：
     返回 决定 包含 批准 = 假, 批准额度 = 0, 利率 = 0, 理由 = 「年龄未满21岁」。
   如果 申请人.信用评分 小于 550：
@@ -595,14 +595,14 @@ const CREDITCARD_SOURCE_ZH = `【模块】金融.信用卡。
   令 利率值 为 确定利率(申请人)。
   返回 决定 包含 批准 = 真, 批准额度 = 额度, 利率 = 利率值, 理由 = 「已批准」。
 
-【函数】确定额度 包含 申请人，申请，产出：
+规则 确定额度 给定 申请人，申请：
   如果 申请人.信用评分 大于 750：
     返回 申请.申请额度。
   如果 申请人.信用评分 大于 700：
     返回 申请.申请额度 乘 80 除以 100。
   返回 申请.申请额度 乘 50 除以 100。
 
-【函数】确定利率 包含 申请人，产出：
+规则 确定利率 给定 申请人：
   如果 申请人.信用评分 大于 750：
     返回 1299。
   如果 申请人.信用评分 大于 700：
@@ -610,26 +610,26 @@ const CREDITCARD_SOURCE_ZH = `【模块】金融.信用卡。
   返回 1999。
 `;
 
-const CREDITCARD_SOURCE_DE = `Dieses Modul ist finanz.kreditkarte.
+const CREDITCARD_SOURCE_DE = `Modul finanz.kreditkarte.
 
-Definiere Antragsteller mit
+Definiere Antragsteller hat
   kennung,
   alter,
   einkommen,
   bonitaet,
   vorhandeneKarten.
 
-Definiere Antrag mit
+Definiere Antrag hat
   gewuenschtesLimit,
   kartentyp.
 
-Definiere Entscheidung mit
+Definiere Entscheidung hat
   genehmigt,
   genehmigterLimit,
   zinssatz,
   begruendung.
 
-antragAuswerten mit antragsteller, antrag, liefert:
+Regel antragAuswerten gegeben antragsteller, antrag:
   wenn antragsteller.alter kleiner als 21:
     gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Alter unter 21".
   wenn antragsteller.bonitaet kleiner als 550:
@@ -640,14 +640,14 @@ antragAuswerten mit antragsteller, antrag, liefert:
   sei rate gleich zinsBestimmen mit antragsteller.
   gib zurueck Entscheidung mit genehmigt = wahr, genehmigterLimit = limit, zinssatz = rate, begruendung = "Genehmigt".
 
-limitBestimmen mit antragsteller, antrag, liefert:
+Regel limitBestimmen gegeben antragsteller, antrag:
   wenn antragsteller.bonitaet groesser als 750:
     gib zurueck antrag.gewuenschtesLimit.
   wenn antragsteller.bonitaet groesser als 700:
     gib zurueck antrag.gewuenschtesLimit mal 80 geteilt durch 100.
   gib zurueck antrag.gewuenschtesLimit mal 50 geteilt durch 100.
 
-zinsBestimmen mit antragsteller, liefert:
+Regel zinsBestimmen gegeben antragsteller:
   wenn antragsteller.bonitaet groesser als 750:
     gib zurueck 1299.
   wenn antragsteller.bonitaet groesser als 700:

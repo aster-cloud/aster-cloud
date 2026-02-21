@@ -44,11 +44,11 @@ type InputMode = 'form' | 'json';
 
 // 检测策略语言类型
 function detectPolicyLocale(content: string): PolicyLocale {
-  const chinesePatterns = [/【模块】/, /【定义】/, /【函数】.*包含.*产出/, /模块\s+\S+。/, /定义\s+\S+\s+包含/];
+  const chinesePatterns = [/模块\s+\S+。/, /定义\s+\S+\s+包含/, /规则\s+\S+\s+给定/];
   if (chinesePatterns.some((p) => p.test(content))) {
     return 'zh';
   }
-  const germanPatterns = [/Dieses Modul ist/i, /Definiere\s+\w+\s+mit/i, /Falls\s+/i, /Gib zurück/i];
+  const germanPatterns = [/Modul\s+\w+/i, /Definiere\s+\w+\s+hat/i, /Regel\s+\w+\s+gegeben/i, /Gib zurück/i];
   if (germanPatterns.some((p) => p.test(content))) {
     return 'de';
   }

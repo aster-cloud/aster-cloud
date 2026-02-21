@@ -15,19 +15,19 @@ export type CNLLocale = 'en-US' | 'zh-CN' | 'de-DE';
 // CNL 必须特征模式 - 这些是 CNL 独有的，简单 DSL 不具备
 const CNL_REQUIRED_PATTERNS = [
   // 英文语法变体
-  /This module is\s+\S+/im, // This module is finance.loan.
-  /Define\s+\w+\s+with/im, // Define Applicant with
-  /To\s+\w+.*produce\s+\w+/im, // To evaluateLoan with ... produce Text:
+  /Module\s+\S+/im, // Module finance.loan.
+  /Define\s+\w+\s+has/im, // Define Applicant has
+  /Rule\s+\w+.*given/im, // Rule evaluateLoan given ...
   /^\s*capability\s+\w+/m, // capability 声明
   /^\s*use\s+\w+/m, // use 导入
-  // 中文方括号语法变体
-  /【模块】/m, // 【模块】金融.贷款
-  /【定义】/m, // 【定义】申请人 包含
-  /【函数】\S+\s+包含.*产出/m, // 【函数】funcName 包含 params，产出：
+  // 中文关键词语法变体
+  /模块\s+\S+/m, // 模块 金融.贷款
+  /定义\s+\S+\s+包含/m, // 定义 申请人 包含
+  /规则\s+\S+\s+给定/m, // 规则 funcName 给定 params
   // 德语语法变体
-  /Dieses Modul ist/im, // Dieses Modul ist finanz.kredit
-  /Definiere\s+\w+\s+mit/im, // Definiere Antragsteller mit
-  /Um\s+\w+\s+mit.*erzeuge/im, // Um kreditPruefen mit ... erzeuge
+  /Modul\s+\S+/im, // Modul finanz.kredit
+  /Definiere\s+\w+\s+hat/im, // Definiere Antragsteller hat
+  /Regel\s+\w+\s+gegeben/im, // Regel kreditPruefen gegeben
 ];
 
 // 中文 CNL 关键字

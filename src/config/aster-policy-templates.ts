@@ -5,15 +5,15 @@
  */
 
 export const ASTER_POLICY_TEMPLATES = {
-  'en-US': `This module is finance.loan.
+  'en-US': `Module finance.loan.
 
-Define Applicant with
+Define Applicant has
   id: Text,
   creditScore: Int,
   income: Float,
   requestedAmount: Float.
 
-To evaluateLoan with applicant: Applicant, produce Text:
+Rule evaluateLoan given applicant: Applicant, produce Text:
   If applicant.creditScore greater than 750:
     Return "Approved with premium rate".
   Otherwise:
@@ -22,15 +22,15 @@ To evaluateLoan with applicant: Applicant, produce Text:
     Otherwise:
       Return "Requires manual review".
 `,
-  'zh-CN': `【模块】金融.贷款。
+  'zh-CN': `模块 金融.贷款。
 
-【定义】申请人 包含
+定义 申请人 包含
   编号，
   信用评分，
   收入，
   申请金额。
 
-【函数】评估贷款 包含 申请人，产出：
+规则 评估贷款 给定 申请人：
   如果 申请人.信用评分 大于 750：
     返回「批准，优惠利率」。
   否则：
@@ -39,15 +39,15 @@ To evaluateLoan with applicant: Applicant, produce Text:
     否则：
       返回「需要人工审核」。
 `,
-  'de-DE': `Dieses Modul ist finanz.kredit.
+  'de-DE': `Modul finanz.kredit.
 
-Definiere Antragsteller mit
+Definiere Antragsteller hat
   kennung: Text,
   bonitaet: Ganzzahl,
   einkommen: Dezimal,
   kreditbetrag: Dezimal.
 
-Um kreditPruefen mit antragsteller: Antragsteller, erzeuge Text:
+Regel kreditPruefen gegeben antragsteller: Antragsteller:
   Falls antragsteller.bonitaet größer als 750:
     Gib zurück "Genehmigt mit Vorzugszins".
   Sonst:

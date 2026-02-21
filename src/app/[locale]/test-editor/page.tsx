@@ -10,35 +10,35 @@ const MonacoPolicyEditor = dynamic(
   { ssr: false, loading: () => <div className="h-[400px] bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg" /> }
 );
 
-const TEST_CODE_EN = `This module is test.hello.
+const TEST_CODE_EN = `Module test.hello.
 
-To sayHello with name, produce:
+Rule sayHello given name:
   Return "Hello, " plus name.
 
-To invalidFunction, produce:
+Rule invalidFunction given:
   Return undefinedVariable.
 `;
 
-const TEST_CODE_DE = `Dieses Modul ist kredit.
+const TEST_CODE_DE = `Modul kredit.
 
-Definiere Kreditantrag mit bonitaet Int, betrag Float, laufzeit Int.
+Definiere Kreditantrag hat bonitaet Int, betrag Float, laufzeit Int.
 
-bewerteAntrag mit antrag Kreditantrag, liefert Bool:
+Regel bewerteAntrag gegeben antrag Kreditantrag:
   wenn antrag.bonitaet groesser als 700:
     gib zurueck wahr.
   sonst:
     gib zurueck falsch.
 `;
 
-const TEST_CODE_ZH = `【模块】信用评估.
+const TEST_CODE_ZH = `模块 信用评估。
 
-【定义】贷款申请 包含 信用评分: 整数, 贷款金额: 小数, 贷款期限: 整数.
+定义 贷款申请 包含 信用评分：整数，贷款金额：小数，贷款期限：整数。
 
-【函数】评估申请 包含 申请: 贷款申请, 产出 布尔:
-  如果 申请.信用评分 大于 700:
-    返回 真.
-  否则:
-    返回 假.
+规则 评估申请 给定 申请：贷款申请：
+  如果 申请.信用评分 大于 700：
+    返回 真。
+  否则：
+    返回 假。
 `;
 
 function getTestCode(locale: string): string {

@@ -63,9 +63,6 @@ function registerAsterLanguage(
         [/\/\/.*$/, 'comment'],
         [/#.*$/, 'comment'],
 
-        // 中文方括号标记 (如【模块】【定义】)
-        [/【[^】]+】/, 'keyword.module'],
-
         // 字符串 (支持多种引号)
         [/"([^"\\]|\\.)*$/, 'string.invalid'], // 未闭合的字符串
         [/"/, 'string', '@string_double'],
@@ -100,7 +97,6 @@ function registerAsterLanguage(
         ],
 
         // 多词关键词匹配
-        [/this module is/i, 'keyword.module'],
         [/as one of/i, 'keyword.type'],
         [/it performs/i, 'keyword.function'],
         [/for each/i, 'keyword.control'],

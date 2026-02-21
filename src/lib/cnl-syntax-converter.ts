@@ -30,9 +30,9 @@ const KEYWORD_MAPPINGS: KeywordMapping[] = [
   // 模块声明（最高优先级）
   {
     id: 'module',
-    'en-US': 'This module is',
-    'zh-CN': '【模块】',
-    'de-DE': 'Dieses Modul ist',
+    'en-US': 'Module',
+    'zh-CN': '模块',
+    'de-DE': 'Modul',
     priority: 100,
   },
 
@@ -40,31 +40,31 @@ const KEYWORD_MAPPINGS: KeywordMapping[] = [
   {
     id: 'define',
     'en-US': 'Define',
-    'zh-CN': '【定义】',
+    'zh-CN': '定义',
     'de-DE': 'Definiere',
     priority: 90,
   },
   {
     id: 'with-fields',
-    'en-US': ' with',
+    'en-US': ' has',
     'zh-CN': ' 包含',
-    'de-DE': ' mit',
+    'de-DE': ' hat',
     priority: 85,
   },
 
   // 函数定义关键字
   {
     id: 'function-decl',
-    'en-US': 'To ',
-    'zh-CN': '', // 中文函数名直接开头，没有前缀
-    'de-DE': '',
+    'en-US': 'Rule ',
+    'zh-CN': '规则 ',
+    'de-DE': 'Regel ',
     priority: 80,
   },
   {
     id: 'function-params',
-    'en-US': ' with ',
-    'zh-CN': ' 入参 ',
-    'de-DE': ' mit ',
+    'en-US': ' given ',
+    'zh-CN': ' 给定 ',
+    'de-DE': ' gegeben ',
     priority: 75,
   },
   {
@@ -325,20 +325,13 @@ function convertLine(
 
 /**
  * 处理中文函数定义的特殊情况
- * 中文: "funcName 入参 params，产出：" -> 英文: "To funcName with params, produce:"
+ * 关键词映射已处理大部分场景，此函数处理特殊转换逻辑
  */
 function handleChineseFunctionDefinition(
   content: string,
   toLocale: SupportedLocale
 ): string {
-  if (toLocale === 'zh-CN') {
-    // 英文/德文 -> 中文：移除 "To " 前缀
-    return content.replace(/^To\s+/gm, '');
-  } else if (toLocale === 'en-US') {
-    // 中文 -> 英文：在函数定义行添加 "To " 前缀
-    // 匹配：行首 + 标识符 + " 入参 " 或 " with "
-    return content.replace(/^(\S+)(\s+入参\s+|\s+with\s+)/gm, 'To $1$2');
-  }
+  // 新语法使用统一的 Rule/规则/Regel 前缀，无需特殊处理
   return content;
 }
 
