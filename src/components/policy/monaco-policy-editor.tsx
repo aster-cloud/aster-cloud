@@ -18,6 +18,9 @@ import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
 
+// 模块级初始化内置词汇表（幂等，仅执行一次）
+initBuiltinVocabularies();
+
 // 语言注册状态
 let languageRegistered = false;
 
@@ -241,8 +244,8 @@ function defineAsterTheme(monaco: typeof import('monaco-editor'), isDark: boolea
       // 标识符
       { token: 'identifier', foreground: isDark ? '9CDCFE' : '001080' },
 
-      // 领域术语
-      { token: 'variable.domain', foreground: isDark ? 'DCDCAA' : '795E26', fontStyle: 'italic' },
+      // 领域术语（青绿色斜体，与函数色 DCDCAA/795E26 区分）
+      { token: 'variable.domain', foreground: isDark ? '4EC9B0' : '267F99', fontStyle: 'italic' },
 
       // 运算符和分隔符
       { token: 'operator', foreground: isDark ? 'D4D4D4' : '000000' },
@@ -284,8 +287,7 @@ export function MonacoPolicyEditor({
   // Handle both short ('zh', 'de') and full ('zh-CN', 'de-DE') locale formats
   const compilerLocale: CNLLocale = locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
 
-  // 初始化内置词汇表并获取领域词汇表
-  initBuiltinVocabularies();
+  // 获取领域词汇表
   const vocabulary = domain ? getVocabulary(domain, compilerLocale) : undefined;
 
   // Local compiler for real-time validation with accurate error positions
@@ -293,6 +295,7 @@ export function MonacoPolicyEditor({
     editor: isEditorReady ? editorRef.current : null,
     monaco: isEditorReady ? monacoRef.current : null,
     locale: compilerLocale,
+    domain,
     debounceDelay,
     enableValidation: true,
   });

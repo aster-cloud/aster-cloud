@@ -49,6 +49,8 @@ export interface UseAsterCompilerOptions {
   monaco: typeof import('monaco-editor') | null;
   /** CNL language locale */
   locale?: CNLLocale;
+  /** 领域标识符（如 'insurance.auto'），启用领域标识符翻译 */
+  domain?: string;
   /** Debounce delay for validation in ms */
   debounceDelay?: number;
   /** Enable real-time validation */
@@ -97,6 +99,7 @@ export function useAsterCompiler({
   editor,
   monaco,
   locale = 'en-US',
+  domain,
   debounceDelay = 300,
   enableValidation = true,
 }: UseAsterCompilerOptions): UseAsterCompilerResult {
@@ -190,7 +193,7 @@ export function useAsterCompiler({
     if (!source) return [];
 
     try {
-      const result = compileAndTypecheck(source, { lexicon });
+      const result = compileAndTypecheck(source, { lexicon, domain });
 
       // Collect all diagnostics
       const allDiagnostics: TypecheckDiagnostic[] = [];
@@ -238,7 +241,7 @@ export function useAsterCompiler({
       setErrors([errorDiag.message]);
       return [errorDiag];
     }
-  }, [getSource, lexicon]);
+  }, [getSource, lexicon, domain]);
 
   /**
    * Compile the current source
@@ -249,7 +252,7 @@ export function useAsterCompiler({
 
     setCompiling(true);
     try {
-      const result = compileAndTypecheck(source, { lexicon });
+      const result = compileAndTypecheck(source, { lexicon, domain });
       setCompileResult(result);
 
       // Collect all diagnostics
@@ -292,7 +295,7 @@ export function useAsterCompiler({
     } finally {
       setCompiling(false);
     }
-  }, [getSource, lexicon]);
+  }, [getSource, lexicon, domain]);
 
   /**
    * Clear all errors
