@@ -4,7 +4,7 @@
  * 使用 aster-lang-ts 的类型推断引擎，根据字段名和类型自动生成有意义的示例输入值。
  */
 
-import type { ParameterInfo, FieldInfo, TypeKind } from '@/services/policy/policy-api';
+import type { ParameterInfo, TypeKind } from '@/services/policy/policy-api';
 
 /**
  * 值生成规则接口

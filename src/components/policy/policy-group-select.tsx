@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Folder, FolderOpen, Check, X } from 'lucide-react';
+import { ChevronDown, Folder, Check, X } from 'lucide-react';
 
 interface PolicyGroup {
   id: string;

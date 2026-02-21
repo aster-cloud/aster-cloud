@@ -90,7 +90,7 @@ export async function updateVersionSource(params: {
   source: string;
   userId: string;
 }): Promise<{ sourceHash: string }> {
-  const { policyId, version, source, userId } = params;
+  const { policyId, version, source, userId: _userId } = params;
 
   const targetVersion = await db.query.policyVersions.findFirst({
     where: and(

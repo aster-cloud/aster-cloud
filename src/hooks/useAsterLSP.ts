@@ -20,7 +20,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { editor, languages, IDisposable, Position, CancellationToken } from 'monaco-editor';
+import type { editor, languages, IDisposable, Position } from 'monaco-editor';
 
 export type CNLLocale = 'en-US' | 'zh-CN' | 'de-DE';
 
@@ -93,17 +93,6 @@ interface LSPHover {
   range?: LSPRange;
 }
 
-interface LSPCompletionItem {
-  label: string;
-  kind?: number;
-  detail?: string;
-  documentation?: string | { kind: string; value: string };
-  insertText?: string;
-  insertTextFormat?: number;
-  textEdit?: LSPTextEdit;
-  additionalTextEdits?: LSPTextEdit[];
-}
-
 interface LSPSignatureHelp {
   signatures: Array<{
     label: string;
@@ -153,10 +142,6 @@ interface LSPWorkspaceEdit {
 /**
  * Convert LSP position to Monaco position
  */
-function lspPositionToMonaco(pos: LSPPosition): { lineNumber: number; column: number } {
-  return { lineNumber: pos.line + 1, column: pos.character + 1 };
-}
-
 /**
  * Convert Monaco position to LSP position
  */
@@ -481,7 +466,7 @@ export function useAsterLSP({
 
     // Document Symbol Provider
     const documentSymbolProvider = monaco.languages.registerDocumentSymbolProvider(languageId, {
-      provideDocumentSymbols: async (model): Promise<languages.DocumentSymbol[] | null> => {
+      provideDocumentSymbols: async (_model): Promise<languages.DocumentSymbol[] | null> => {
         try {
           const result = await sendRequest<LSPDocumentSymbol[] | LSPSymbolInformation[] | null>('textDocument/documentSymbol', {
             textDocument: { uri: documentUriRef.current },

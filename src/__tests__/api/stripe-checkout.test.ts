@@ -1,15 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/stripe/checkout/route';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
 import { getPlanStripePriceId } from '@/lib/plans';
 import { stripe } from '@/lib/stripe';
 
-vi.mock('next-auth', () => ({
-  getServerSession: vi.fn(),
-}));
-
-vi.mock('@/lib/auth', () => ({
-  authOptions: {},
+vi.mock('@/auth', () => ({
+  auth: vi.fn(),
 }));
 
 vi.mock('@/lib/stripe', () => ({
@@ -31,7 +27,7 @@ vi.mock('@/lib/plans', () => ({
   },
 }));
 
-const mockGetServerSession = vi.mocked(getServerSession);
+const mockAuth = vi.mocked(auth);
 const mockGetPlanStripePriceId = vi.mocked(getPlanStripePriceId);
 // Cast to mock function for proper typing
 type MockFn = ReturnType<typeof vi.fn>;
@@ -52,14 +48,14 @@ describe('Stripe Checkout API', () => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com';
     mockGetPlanStripePriceId.mockReturnValue('price_123');
-    mockGetServerSession.mockResolvedValue({
+    mockAuth.mockResolvedValue({
       user: { id: 'user-1', email: 'user@example.com' },
-    } as Awaited<ReturnType<typeof getServerSession>>);
+    } as Awaited<ReturnType<typeof auth>>);
   });
 
   describe('认证校验', () => {
     it('should return 401 when not authenticated', async () => {
-      mockGetServerSession.mockResolvedValue(null);
+      mockAuth.mockResolvedValue(null);
 
       const response = await POST(
         createRequest({

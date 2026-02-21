@@ -1,8 +1,8 @@
 // src/lib/policy-execution-log.ts
 // 策略执行日志服务：查询、分页、统计
 
-import { db, executions, policies } from '@/lib/prisma';
-import { eq, and, gte, lte, isNull, desc, lt, sql } from 'drizzle-orm';
+import { db, executions } from '@/lib/prisma';
+import { eq, and, gte, lte, desc, lt, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 
 type ExecutionSource = InferSelectModel<typeof executions>['source'];

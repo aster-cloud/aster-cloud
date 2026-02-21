@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, policyGroups, policies, teams, teamMembers } from '@/lib/prisma';
-import { eq, and, or, isNull, sql, desc, asc } from 'drizzle-orm';
+import { db, policyGroups, policies, teamMembers } from '@/lib/prisma';
+import { eq, and, isNull, sql, asc } from 'drizzle-orm';
 
 
 // GET /api/policy-groups - 获取用户的策略分组树

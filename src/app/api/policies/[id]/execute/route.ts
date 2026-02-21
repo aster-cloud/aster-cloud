@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, policies, executions, users, usageRecords, teamMembers } from '@/lib/prisma';
-import { eq, and, isNull, sql, desc, asc } from 'drizzle-orm';
+import { db, policies, executions, users, usageRecords } from '@/lib/prisma';
+import { eq, sql, desc, asc } from 'drizzle-orm';
 import { PLANS, PlanType } from '@/lib/plans';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';

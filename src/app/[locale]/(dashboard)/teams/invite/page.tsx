@@ -20,7 +20,7 @@ export default function AcceptInvitePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAccepting, setIsAccepting] = useState(false);
   const [error, setError] = useState('');
-  const [invitationInfo, setInvitationInfo] = useState<InvitationInfo | null>(null);
+  const [_invitationInfo, _setInvitationInfo] = useState<InvitationInfo | null>(null);
 
   useEffect(() => {
     if (!token) {

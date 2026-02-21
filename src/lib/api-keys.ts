@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from 'crypto';
 import { db, apiKeys } from '@/lib/prisma';
-import { eq, desc, isNull, and, lt } from 'drizzle-orm';
+import { eq, desc, isNull, and } from 'drizzle-orm';
 
 // Generate a new API key
 export function generateApiKey(): { key: string; hash: string; prefix: string } {

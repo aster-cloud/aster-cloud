@@ -16,7 +16,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   PolicyApiClient,
-  PolicyApiError,
   createPolicyApiClient,
 } from '@/services/policy/policy-api';
 import {

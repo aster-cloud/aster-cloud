@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, policies, policyVersions, executions, teamMembers } from '@/lib/prisma';
+import { db, policies, policyVersions, executions } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
 import { isPolicyFrozen } from '@/lib/policy-freeze';

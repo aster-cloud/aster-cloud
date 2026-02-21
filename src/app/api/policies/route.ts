@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policies, executions, policyGroups, users, policyVersions } from '@/lib/prisma';
-import { checkUsageLimit } from '@/lib/usage';
 import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
 import { detectPII } from '@/services/pii/detector';
-import { addFreezeStatusToPolicies, getPolicyFreezeStatus } from '@/lib/policy-freeze';
+import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { eq, isNull, desc, sql, and } from 'drizzle-orm';
 
 // GET /api/policies - List user's policies

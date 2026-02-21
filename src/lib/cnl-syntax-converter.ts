@@ -329,7 +329,7 @@ function convertLine(
  */
 function handleChineseFunctionDefinition(
   content: string,
-  toLocale: SupportedLocale
+  _toLocale: SupportedLocale
 ): string {
   // 新语法使用统一的 Rule/规则/Regel 前缀，无需特殊处理
   return content;

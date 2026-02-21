@@ -60,31 +60,6 @@ interface ExecutePolicyContentProps {
   locale: string;
 }
 
-// 默认值工厂：根据类型生成初始值
-function getDefaultValue(typeKind: TypeKind, typeName: string): unknown {
-  switch (typeKind) {
-    case 'primitive':
-      if (['int', 'integer', 'long', '整数', '长整数', 'ganzzahl', 'langzahl'].some(t => typeName.toLowerCase().includes(t))) {
-        return 0;
-      }
-      if (['double', 'float', 'decimal', '小数', '浮点数', 'dezimal'].some(t => typeName.toLowerCase().includes(t))) {
-        return 0.0;
-      }
-      if (['bool', 'boolean', '布尔', 'wahrheitswert'].some(t => typeName.toLowerCase().includes(t))) {
-        return false;
-      }
-      return '';
-    case 'struct':
-      return {};
-    case 'list':
-      return [];
-    case 'option':
-      return null;
-    default:
-      return '';
-  }
-}
-
 // 从表单值构建命名上下文
 function buildNamedContext(
   formValues: Record<string, Record<string, unknown>>,
@@ -100,23 +75,6 @@ function buildNamedContext(
   return context;
 }
 
-// 初始化表单值
-function initFormValues(parameters: ParameterInfo[]): Record<string, Record<string, unknown>> {
-  const values: Record<string, Record<string, unknown>> = {};
-  for (const param of parameters) {
-    if (param.typeKind === 'struct' && param.fields) {
-      const structValue: Record<string, unknown> = {};
-      for (const field of param.fields) {
-        structValue[field.name] = getDefaultValue(field.typeKind, field.type);
-      }
-      values[param.name] = structValue;
-    } else {
-      values[param.name] = getDefaultValue(param.typeKind, param.type) as Record<string, unknown>;
-    }
-  }
-  return values;
-}
-
 export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentProps) {
   const t = useTranslations('policies.execute');
   const [input, setInput] = useState('');
@@ -124,7 +82,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [policyName, setPolicyName] = useState('');
-  const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
+  const [_policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
 
   // 新增状态：动态表单
   const [inputMode, setInputMode] = useState<InputMode>('json');

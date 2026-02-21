@@ -10,7 +10,7 @@ import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
-import { getDb, users, accounts } from '@/lib/prisma';
+import { getDb, users } from '@/lib/prisma';
 import { DrizzleAdapter } from '@/db/adapter';
 import { sendWelcomeEmail } from '@/lib/resend';
 import { checkAccountLockout, recordFailedAttempt, resetFailedAttempts } from '@/lib/account-lockout';
@@ -172,7 +172,7 @@ const config: NextAuthConfig = {
       return session;
     },
 
-    async signIn({ user, account, profile }) {
+    async signIn({ user: _user, account, profile: _profile }) {
       // Prevent automatic account linking when user is already signed in
       if (account?.provider && account.provider !== 'credentials') {
         const db = getDb();

@@ -428,7 +428,7 @@ export function searchSyntax(query: string, locale: SupportedLocale): SyntaxItem
 /**
  * 获取快速参考卡片数据
  */
-export function getQuickReferenceCards(locale: SupportedLocale): {
+export function getQuickReferenceCards(_locale: SupportedLocale): {
   category: SyntaxCategoryDef;
   items: SyntaxItem[];
 }[] {

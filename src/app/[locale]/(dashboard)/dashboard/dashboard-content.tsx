@@ -95,7 +95,7 @@ export function DashboardContent({
   translations: t,
 }: DashboardContentProps) {
   // 跟踪已删除策略的点击次数
-  const [deletedClickCount, setDeletedClickCount] = useState<Record<string, number>>({});
+  const [_deletedClickCount, setDeletedClickCount] = useState<Record<string, number>>({});
   const [showRestoreHint, setShowRestoreHint] = useState(false);
 
   // 处理已删除策略的点击

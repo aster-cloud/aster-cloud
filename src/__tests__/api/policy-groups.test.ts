@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, vi, beforeEach } from 'vitest';
 
 // TODO: 完整迁移到 Drizzle ORM mock
 // 当前状态：

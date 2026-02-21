@@ -19,7 +19,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import {
-  compile,
   compileAndTypecheck,
   extractSchema,
   generateInputValues,
@@ -28,7 +27,6 @@ import {
   DE_DE,
   type CompileResult,
   type SchemaResult,
-  type ParameterInfo,
   type Lexicon,
   type TypecheckDiagnostic,
 } from '@aster-cloud/aster-lang-ts/browser';

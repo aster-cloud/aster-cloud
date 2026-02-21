@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import { db, policies, policyVersions, executions } from '@/lib/prisma';
+import { db, policies, executions } from '@/lib/prisma';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 import { PolicyDetailContent } from './policy-detail-content';

@@ -206,7 +206,8 @@ export function LogsContent({
     }
   }, [policyId, page, successFilter, sourceFilter, startDate, endDate, t.logs.loadError]);
 
-  const fetchStats = useCallback(async () => {
+  // fetchStats 保留供手动刷新使用，添加下划线前缀避免 lint 报错
+  const _fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`/api/policies/${policyId}/logs?mode=stats&days=30`);
       if (!res.ok) return;

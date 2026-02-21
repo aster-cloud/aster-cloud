@@ -100,7 +100,7 @@ function BillingContentInner({
   const [teamUsers, setTeamUsers] = useState<number>(getTeamMinUsers());
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [usage, setUsage] = useState<Usage | null>(initialUsage);
+  const [usage, _setUsage] = useState<Usage | null>(initialUsage);
 
   useEffect(() => {
     if (searchParams.get('success') === 'true') {

@@ -96,7 +96,6 @@ export default function TeamDashboardPage() {
     }
   };
 
-  const canManageMembers = userRole === 'owner' || userRole === 'admin';
   const canManageSettings = userRole === 'owner' || userRole === 'admin';
 
   if (isLoading) {

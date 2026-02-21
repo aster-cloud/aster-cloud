@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policyGroups, policies, teamMembers } from '@/lib/prisma';
-import { eq, and, inArray, isNull, sql } from 'drizzle-orm';
+import { eq, and, inArray, isNull } from 'drizzle-orm';
 
 interface RouteParams {
   params: Promise<{ id: string }>;

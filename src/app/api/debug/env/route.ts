@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
  * 调试端点：检查环境变量
  * 警告：仅用于调试，生产环境应删除
  */
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   // 获取 Cloudflare 信息
   let cfInfo: Record<string, unknown> = {};
   try {

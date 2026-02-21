@@ -3,10 +3,6 @@
 
 import { db, policies, policyRecycleBins } from '@/lib/prisma';
 import { eq, isNotNull, isNull, not, and, desc, asc, lte, sql } from 'drizzle-orm';
-import type { InferSelectModel } from 'drizzle-orm';
-
-type Policy = InferSelectModel<typeof policies>;
-
 // 回收站保留天数
 const RECYCLE_BIN_RETENTION_DAYS = 30;
 

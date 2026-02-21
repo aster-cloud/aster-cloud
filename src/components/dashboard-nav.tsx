@@ -222,10 +222,7 @@ export function MobileNav({
 export function DashboardNavClient({
   navItems,
   secondaryItems,
-  userMenuLabels,
   mobileMenuLabels,
-  userName,
-  userEmail,
 }: DashboardNavClientProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, teamMembers, users } from '@/lib/prisma';
+import { db, teamMembers } from '@/lib/prisma';
 import { eq, asc, sql } from 'drizzle-orm';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 

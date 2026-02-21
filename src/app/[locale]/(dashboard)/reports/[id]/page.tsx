@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { redirect, notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { getComplianceReport } from '@/lib/compliance';
 import { ReportDetailContent } from './report-detail-content';
