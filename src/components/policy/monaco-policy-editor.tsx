@@ -375,13 +375,13 @@ export function MonacoPolicyEditor({
           fixedOverflowWidgets: true,
         }}
         loading={
-          <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400">
+          <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
             Loading editor...
           </div>
         }
       />
       {!value && placeholder && (
-        <div className="absolute top-3 left-14 text-gray-500 pointer-events-none text-sm font-mono">
+        <div aria-hidden="true" className="absolute top-3 left-14 text-gray-500 pointer-events-none text-sm font-mono">
           {placeholder}
         </div>
       )}
