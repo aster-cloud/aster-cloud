@@ -7,7 +7,11 @@ import { useTheme } from 'next-themes';
 import {
   getLexicon,
   getKeywordsByCategory,
+  getVocabulary,
+  extractVocabularyTerms,
+  initBuiltinVocabularies,
   type Lexicon,
+  type DomainVocabulary,
 } from '@/lib/aster-lexicon';
 import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
 
@@ -21,6 +25,8 @@ interface MonacoPolicyEditorProps {
   value: string;
   onChange: (value: string) => void;
   locale?: string;
+  /** 领域标识符（如 'insurance.auto'），启用领域术语补全和高亮 */
+  domain?: string;
   height?: string;
   readOnly?: boolean;
   placeholder?: string;
@@ -31,7 +37,8 @@ interface MonacoPolicyEditorProps {
 // 注册 Aster Lang 语言
 function registerAsterLanguage(
   monaco: typeof import('monaco-editor'),
-  lexicon: Lexicon
+  lexicon: Lexicon,
+  vocabulary?: DomainVocabulary
 ) {
   // 只注册一次语言
   if (!languageRegistered) {
@@ -40,6 +47,9 @@ function registerAsterLanguage(
   }
 
   const keywords = getKeywordsByCategory(lexicon);
+
+  // 提取领域词汇表术语
+  const domainTerms = vocabulary ? extractVocabularyTerms(vocabulary) : [];
 
   // 设置语言的 Token 规则
   monaco.languages.setMonarchTokensProvider(ASTER_LANG_ID, {
@@ -55,6 +65,7 @@ function registerAsterLanguage(
     primitiveTypeKeywords: keywords.primitiveType,
     workflowKeywords: keywords.workflow,
     asyncKeywords: keywords.async,
+    domainTerms,
 
     // Token 化规则
     tokenizer: {
@@ -91,6 +102,7 @@ function registerAsterLanguage(
               '@primitiveTypeKeywords': 'type',
               '@workflowKeywords': 'keyword.workflow',
               '@asyncKeywords': 'keyword.async',
+              '@domainTerms': 'variable.domain',
               '@default': 'identifier',
             },
           },
@@ -229,6 +241,9 @@ function defineAsterTheme(monaco: typeof import('monaco-editor'), isDark: boolea
       // 标识符
       { token: 'identifier', foreground: isDark ? '9CDCFE' : '001080' },
 
+      // 领域术语
+      { token: 'variable.domain', foreground: isDark ? 'DCDCAA' : '795E26', fontStyle: 'italic' },
+
       // 运算符和分隔符
       { token: 'operator', foreground: isDark ? 'D4D4D4' : '000000' },
       { token: 'delimiter', foreground: isDark ? 'D4D4D4' : '000000' },
@@ -251,6 +266,7 @@ export function MonacoPolicyEditor({
   value,
   onChange,
   locale = 'en',
+  domain,
   height = '400px',
   readOnly = false,
   placeholder,
@@ -268,6 +284,10 @@ export function MonacoPolicyEditor({
   // Handle both short ('zh', 'de') and full ('zh-CN', 'de-DE') locale formats
   const compilerLocale: CNLLocale = locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
 
+  // 初始化内置词汇表并获取领域词汇表
+  initBuiltinVocabularies();
+  const vocabulary = domain ? getVocabulary(domain, compilerLocale) : undefined;
+
   // Local compiler for real-time validation with accurate error positions
   useAsterCompiler({
     editor: isEditorReady ? editorRef.current : null,
@@ -284,7 +304,7 @@ export function MonacoPolicyEditor({
       monacoRef.current = monaco;
 
       // 注册 Aster Lang 语言
-      registerAsterLanguage(monaco, lexicon);
+      registerAsterLanguage(monaco, lexicon, vocabulary);
 
       // 定义并应用主题
       const themeName = defineAsterTheme(monaco, isDark);
@@ -292,7 +312,7 @@ export function MonacoPolicyEditor({
 
       setIsEditorReady(true);
     },
-    [lexicon, isDark]
+    [lexicon, isDark, vocabulary]
   );
 
   // 主题切换时更新
@@ -303,12 +323,12 @@ export function MonacoPolicyEditor({
     }
   }, [isDark, isEditorReady]);
 
-  // 语言切换时更新词法
+  // 语言或领域切换时更新词法
   useEffect(() => {
     if (monacoRef.current && isEditorReady) {
-      registerAsterLanguage(monacoRef.current, lexicon);
+      registerAsterLanguage(monacoRef.current, lexicon, vocabulary);
     }
-  }, [locale, lexicon, isEditorReady]);
+  }, [locale, lexicon, domain, vocabulary, isEditorReady]);
 
   // 内容变更回调
   const handleChange: OnChange = useCallback(

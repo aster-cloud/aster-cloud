@@ -6,13 +6,20 @@
  */
 
 import type { Lexicon } from '@aster-cloud/aster-lang-ts/lexicons/types';
+import type { DomainVocabulary, IdentifierIndex } from '@aster-cloud/aster-lang-ts/lexicons/identifiers/types';
 import { EN_US } from '@aster-cloud/aster-lang-ts/lexicons/en-US';
 import { ZH_CN } from '@aster-cloud/aster-lang-ts/lexicons/zh-CN';
 import { DE_DE } from '@aster-cloud/aster-lang-ts/lexicons/de-DE';
 import { SemanticTokenKind } from '@aster-cloud/aster-lang-ts/token-kind';
+import {
+  vocabularyRegistry,
+  initBuiltinVocabularies,
+} from '@aster-cloud/aster-lang-ts/lexicons/identifiers/registry';
+import { buildIdentifierIndex } from '@aster-cloud/aster-lang-ts/lexicons/identifiers/types';
 
-export type { Lexicon };
+export type { Lexicon, DomainVocabulary, IdentifierIndex };
 export { EN_US, ZH_CN, DE_DE, SemanticTokenKind };
+export { vocabularyRegistry, initBuiltinVocabularies, buildIdentifierIndex };
 
 /**
  * 根据 locale 获取词法配置。
@@ -36,6 +43,46 @@ export function extractMonarchKeywords(lexicon: Lexicon): string[] {
     }
   }
   return [...words];
+}
+
+/**
+ * 获取指定领域+语言的词汇表。
+ */
+export function getVocabulary(domain: string, locale: string): DomainVocabulary | undefined {
+  return vocabularyRegistry.get(domain, locale)?.vocabulary;
+}
+
+/**
+ * 获取指定领域+语言的标识符索引。
+ */
+export function getVocabularyIndex(domain: string, locale: string): IdentifierIndex | undefined {
+  return vocabularyRegistry.getIndex(domain, locale);
+}
+
+/**
+ * 从词汇表提取所有本地化术语（用于 Monaco Monarch 高亮）。
+ */
+export function extractVocabularyTerms(vocabulary: DomainVocabulary): string[] {
+  const terms = new Set<string>();
+
+  for (const m of vocabulary.structs) {
+    terms.add(m.localized);
+    m.aliases?.forEach(a => terms.add(a));
+  }
+  for (const m of vocabulary.fields) {
+    terms.add(m.localized);
+    m.aliases?.forEach(a => terms.add(a));
+  }
+  for (const m of vocabulary.functions) {
+    terms.add(m.localized);
+    m.aliases?.forEach(a => terms.add(a));
+  }
+  for (const m of vocabulary.enumValues ?? []) {
+    terms.add(m.localized);
+    m.aliases?.forEach(a => terms.add(a));
+  }
+
+  return [...terms];
 }
 
 /**
