@@ -1,0 +1,49 @@
+name: Auto Upgrade aster-lang-ts
+
+on:
+  repository_dispatch:
+    types: [lang-ts-released]
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Upgrade to specific version
+        run: |
+          VERSION="${{ github.event.client_payload.version }}"
+          pnpm add @aster-cloud/aster-lang-ts@${VERSION#v}
+
+      - run: pnpm test:run
+      - run: pnpm run build:next
+
+      - name: Create upgrade PR
+        run: |
+          VERSION="${{ github.event.client_payload.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b deps/aster-lang-ts-${VERSION}
+          git add package.json pnpm-lock.yaml
+          git commit -m "chore(deps): upgrade @aster-cloud/aster-lang-ts to ${VERSION}"
+          git push origin deps/aster-lang-ts-${VERSION}
+          gh pr create \
+            --title "chore(deps): upgrade aster-lang-ts to ${VERSION}" \
+            --body "Automatically triggered by aster-lang-ts release. CI tests passed." \
+            --base main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
