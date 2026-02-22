@@ -8,18 +8,18 @@ export const ASTER_POLICY_TEMPLATES = {
   'en-US': `Module finance.loan.
 
 Define Applicant has
-  id: Text,
-  creditScore: Int,
-  income: Float,
-  requestedAmount: Float.
+  id as Text,
+  creditScore as Int,
+  income as Float,
+  requestedAmount as Float.
 
-Rule evaluateLoan given applicant: Applicant, produce Text:
-  If applicant.creditScore greater than 750:
+Rule evaluateLoan given applicant as Applicant, produce Text:
+  If applicant.creditScore greater than 750
     Return "Approved with premium rate".
-  Otherwise:
-    If applicant.creditScore greater than 650:
+  Otherwise
+    If applicant.creditScore greater than 650
       Return "Approved with standard rate".
-    Otherwise:
+    Otherwise
       Return "Requires manual review".
 `,
   'zh-CN': `模块 金融.贷款。
@@ -31,29 +31,29 @@ Rule evaluateLoan given applicant: Applicant, produce Text:
   申请金额。
 
 规则 评估贷款 给定 申请人：
-  如果 申请人.信用评分 大于 750：
+  如果 申请人.信用评分 大于 750
     返回「批准，优惠利率」。
-  否则：
-    如果 申请人.信用评分 大于 650：
+  否则
+    如果 申请人.信用评分 大于 650
       返回「批准，标准利率」。
-    否则：
+    否则
       返回「需要人工审核」。
 `,
   'de-DE': `Modul finanz.kredit.
 
 Definiere Antragsteller hat
-  kennung: Text,
-  bonitaet: Ganzzahl,
-  einkommen: Dezimal,
-  kreditbetrag: Dezimal.
+  kennung as Text,
+  bonitaet as Ganzzahl,
+  einkommen as Dezimal,
+  kreditbetrag as Dezimal.
 
-Regel kreditPruefen gegeben antragsteller: Antragsteller:
-  Falls antragsteller.bonitaet größer als 750:
+Regel kreditPruefen gegeben antragsteller as Antragsteller:
+  Falls antragsteller.bonitaet größer als 750
     Gib zurück "Genehmigt mit Vorzugszins".
-  Sonst:
-    Falls antragsteller.bonitaet größer als 650:
+  Sonst
+    Falls antragsteller.bonitaet größer als 650
       Gib zurück "Genehmigt mit Standardzins".
-    Sonst:
+    Sonst
       Gib zurück "Erfordert manuelle Prüfung".
 `,
 };

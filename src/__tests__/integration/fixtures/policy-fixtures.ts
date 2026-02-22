@@ -27,28 +27,28 @@ export interface PolicyFixture<TContext = Record<string, unknown>, TExpected = u
 export const LOAN_POLICY = {
   source: `Module aster.finance.loan.
 
-Define LoanApplication has applicantId: Text, amount: Int, termMonths: Int, purpose: Text.
+Define LoanApplication has applicantId as Text, amount as Int, termMonths as Int, purpose as Text.
 
-Define ApplicantProfile has age: Int, creditScore: Int, annualIncome: Int, monthlyDebt: Int, yearsEmployed: Int.
+Define ApplicantProfile has age as Int, creditScore as Int, annualIncome as Int, monthlyDebt as Int, yearsEmployed as Int.
 
-Define LoanDecision has approved: Bool, reason: Text, approvedAmount: Int, interestRateBps: Int, termMonths: Int.
+Define LoanDecision has approved as Bool, reason as Text, approvedAmount as Int, interestRateBps as Int, termMonths as Int.
 
-Rule evaluateLoanEligibility given application: LoanApplication, applicant: ApplicantProfile:
-  If <(applicant.age, 18),:
-    Return LoanDecision with approved = false, reason = "Age below 18", approvedAmount = 0, interestRateBps = 0, termMonths = 0.
-  If >(applicant.age, 75),:
-    Return LoanDecision with approved = false, reason = "Age above 75", approvedAmount = 0, interestRateBps = 0, termMonths = 0.
-  If <(applicant.creditScore, 650),:
-    Return LoanDecision with approved = false, reason = "Credit below 650", approvedAmount = 0, interestRateBps = 0, termMonths = 0.
+Rule evaluateLoanEligibility given application as LoanApplication, applicant as ApplicantProfile:
+  If <(applicant.age, 18),
+    Return LoanDecision with approved set to false, reason set to "Age below 18", approvedAmount set to 0, interestRateBps set to 0, termMonths set to 0.
+  If >(applicant.age, 75),
+    Return LoanDecision with approved set to false, reason set to "Age above 75", approvedAmount set to 0, interestRateBps set to 0, termMonths set to 0.
+  If <(applicant.creditScore, 650),
+    Return LoanDecision with approved set to false, reason set to "Credit below 650", approvedAmount set to 0, interestRateBps set to 0, termMonths set to 0.
   Let rate be determineInterestRateBps(applicant.creditScore).
-  Return LoanDecision with approved = true, reason = "Approved", approvedAmount = application.amount, interestRateBps = rate, termMonths = application.termMonths.
+  Return LoanDecision with approved set to true, reason set to "Approved", approvedAmount set to application.amount, interestRateBps set to rate, termMonths set to application.termMonths.
 
-Rule determineInterestRateBps given creditScore: Int:
-  If <(creditScore, 670),:
+Rule determineInterestRateBps given creditScore as Int:
+  If <(creditScore, 670),
     Return 675.
-  If <(creditScore, 740),:
+  If <(creditScore, 740),
     Return 550.
-  If <(creditScore, 800),:
+  If <(creditScore, 800),
     Return 425.
   Return 350.
 `,
@@ -230,38 +230,38 @@ Rule determineInterestRateBps given creditScore: Int:
 export const AUTO_INSURANCE_POLICY = {
   source: `Module aster.insurance.auto.
 
-Define Driver has age: Int, yearsLicensed: Int, accidentsLast5Years: Int, violations: Int.
+Define Driver has age as Int, yearsLicensed as Int, accidentsLast5Years as Int, violations as Int.
 
-Define Vehicle has year: Int, value: Int, safetyRating: Int.
+Define Vehicle has year as Int, value as Int, safetyRating as Int.
 
-Define Quote has approved: Bool, monthlyPremium: Int, riskLevel: Text.
+Define Quote has approved as Bool, monthlyPremium as Int, riskLevel as Text.
 
-Rule calculateQuote given driver: Driver, vehicle: Vehicle:
-  If <(driver.age, 16),:
-    Return Quote with approved = false, monthlyPremium = 0, riskLevel = "Ineligible".
-  If <(driver.yearsLicensed, 1),:
-    Return Quote with approved = false, monthlyPremium = 0, riskLevel = "Ineligible".
+Rule calculateQuote given driver as Driver, vehicle as Vehicle:
+  If <(driver.age, 16),
+    Return Quote with approved set to false, monthlyPremium set to 0, riskLevel set to "Ineligible".
+  If <(driver.yearsLicensed, 1),
+    Return Quote with approved set to false, monthlyPremium set to 0, riskLevel set to "Ineligible".
   Let basePremium be /(vehicle.value, 100).
   Let ageFactor be calculateAgeFactor(driver.age).
   Let riskFactor be calculateRiskFactor(driver.accidentsLast5Years, driver.violations).
   Let premium be *(basePremium, /(+(ageFactor, riskFactor), 200)).
   Let risk be determineRisk(riskFactor).
-  Return Quote with approved = true, monthlyPremium = premium, riskLevel = risk.
+  Return Quote with approved set to true, monthlyPremium set to premium, riskLevel set to risk.
 
-Rule calculateAgeFactor given age: Int:
-  If <(age, 25),:
+Rule calculateAgeFactor given age as Int:
+  If <(age, 25),
     Return 150.
-  If <(age, 65),:
+  If <(age, 65),
     Return 100.
   Return 120.
 
-Rule calculateRiskFactor given accidents: Int, violations: Int:
+Rule calculateRiskFactor given accidents as Int, violations as Int:
   Return +(*(accidents, 50), *(violations, 25)).
 
-Rule determineRisk given factor: Int:
-  If <(factor, 50),:
+Rule determineRisk given factor as Int:
+  If <(factor, 50),
     Return "Low".
-  If <(factor, 100),:
+  If <(factor, 100),
     Return "Medium".
   Return "High".
 `,
@@ -418,32 +418,32 @@ Rule determineRisk given factor: Int:
 export const FRAUD_DETECTION_POLICY = {
   source: `Module aster.fraud.detection.
 
-Define Transaction has amount: Int, merchantCategory: Text, isInternational: Bool, hourOfDay: Int.
+Define Transaction has amount as Int, merchantCategory as Text, isInternational as Bool, hourOfDay as Int.
 
-Define UserProfile has accountAge: Int, avgTransactionAmount: Int, recentTransactions: Int.
+Define UserProfile has accountAge as Int, avgTransactionAmount as Int, recentTransactions as Int.
 
-Define FraudResult has blocked: Bool, riskScore: Int, riskLevel: Text.
+Define FraudResult has blocked as Bool, riskScore as Int, riskLevel as Text.
 
-Rule detectFraud given transaction: Transaction, user: UserProfile:
+Rule detectFraud given transaction as Transaction, user as UserProfile:
   Let score be 0.
-  If >(transaction.amount, *(user.avgTransactionAmount, 5)),:
+  If >(transaction.amount, *(user.avgTransactionAmount, 5)),
     Let score be +(score, 30).
-  If transaction.isInternational,:
+  If transaction.isInternational,
     Let score be +(score, 20).
-  If <(user.accountAge, 30),:
+  If <(user.accountAge, 30),
     Let score be +(score, 25).
-  If >(transaction.hourOfDay, 22),:
+  If >(transaction.hourOfDay, 22),
     Let score be +(score, 15).
-  If <(transaction.hourOfDay, 6),:
+  If <(transaction.hourOfDay, 6),
     Let score be +(score, 15).
   Let level be classifyRisk(score).
   Let blocked be >(score, 70).
-  Return FraudResult with blocked = blocked, riskScore = score, riskLevel = level.
+  Return FraudResult with blocked set to blocked, riskScore set to score, riskLevel set to level.
 
-Rule classifyRisk given score: Int:
-  If <(score, 30),:
+Rule classifyRisk given score as Int:
+  If <(score, 30),
     Return "LOW".
-  If <(score, 60),:
+  If <(score, 60),
     Return "MEDIUM".
   Return "HIGH".
 `,
@@ -562,10 +562,10 @@ export const SIMPLE_POLICIES = {
   ageCheck: {
     source: `Module test.validation.
 
-Rule checkAge given age: Int:
-  If <(age, 18),:
+Rule checkAge given age as Int:
+  If <(age, 18),
     Return false.
-  If >(age, 65),:
+  If >(age, 65),
     Return false.
   Return true.
 `,
@@ -582,9 +582,9 @@ Rule checkAge given age: Int:
   creditScore: {
     source: `Module test.credit.
 
-Define ScoreInput has baseScore: Int, bonus: Int.
+Define ScoreInput has baseScore as Int, bonus as Int.
 
-Rule calculateScore given input: ScoreInput:
+Rule calculateScore given input as ScoreInput:
   Return +(input.baseScore, input.bonus).
 `,
     locale: 'en-US',
@@ -606,12 +606,12 @@ export const CHINESE_POLICY = {
 定义 申请人 包含 编号：文本，信用评分：整数，收入：小数，申请金额：小数。
 
 规则 评估贷款 给定 申请人：
-  如果 申请人.信用评分 大于 750：
+  如果 申请人.信用评分 大于 750
     返回「批准，优惠利率」。
-  否则：
-    如果 申请人.信用评分 大于 650：
+  否则
+    如果 申请人.信用评分 大于 650
       返回「批准，标准利率」。
-    否则：
+    否则
       返回「需要人工审核」。
 `,
   locale: 'zh-CN',

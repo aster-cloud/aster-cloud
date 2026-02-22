@@ -85,9 +85,9 @@ const KEYWORD_MAPPINGS: KeywordMapping[] = [
   },
   {
     id: 'otherwise',
-    'en-US': 'Otherwise:',
-    'zh-CN': '否则：',
-    'de-DE': 'Sonst:',
+    'en-US': 'Otherwise',
+    'zh-CN': '否则',
+    'de-DE': 'Sonst',
     priority: 60,
   },
   {

@@ -172,17 +172,17 @@ export const SYNTAX_REFERENCE: SyntaxItem[] = [
       'de-DE': 'Bedingte Verzweigung fuer Entscheidungslogik',
     },
     example: {
-      'en-US': `If user.age less than 18:
+      'en-US': `If user.age less than 18
   Return "Minor".
-Otherwise:
+Otherwise
   Return "Adult".`,
-      'zh-CN': `如果 用户.年龄 小于 18：
+      'zh-CN': `如果 用户.年龄 小于 18
   返回 「未成年」。
-否则：
+否则
   返回 「成年」。`,
-      'de-DE': `Falls benutzer.alter kleiner als 18:
+      'de-DE': `Falls benutzer.alter kleiner als 18
   gib zurueck "Minderjaehrig".
-Sonst:
+Sonst
   gib zurueck "Erwachsen".`,
     },
   },
@@ -201,9 +201,9 @@ Sonst:
       'de-DE': 'Gibt einen Wert aus einer Funktion zurueck',
     },
     example: {
-      'en-US': 'Return Result with status = "approved", amount = 1000.',
-      'zh-CN': '返回 结果(状态 = 「已批准」, 金额 = 1000)。',
-      'de-DE': 'gib zurueck Ergebnis mit status = "genehmigt", betrag = 1000.',
+      'en-US': 'Return Result with status set to "approved", amount set to 1000.',
+      'zh-CN': '返回 结果 包含 状态 将 设为 「已批准」, 金额 将 设为 1000。',
+      'de-DE': 'gib zurueck Ergebnis mit status setze auf "genehmigt", betrag setze auf 1000.',
     },
   },
 
@@ -241,17 +241,17 @@ Sonst:
       'de-DE': 'Vergleichsoperatoren fuer Bedingungen',
     },
     example: {
-      'en-US': `If score greater than 90:
+      'en-US': `If score greater than 90
   Return "A".
-If score equals 0:
+If score equals 0
   Return "F".`,
-      'zh-CN': `如果 分数 大于 90：
+      'zh-CN': `如果 分数 大于 90
   返回 「A」。
-如果 分数 等于 0：
+如果 分数 等于 0
   返回 「F」。`,
-      'de-DE': `Falls punkte größer als 90:
+      'de-DE': `Falls punkte größer als 90
   gib zurueck "A".
-Falls punkte gleich 0:
+Falls punkte gleich 0
   gib zurueck "F".`,
     },
   },
@@ -290,9 +290,9 @@ Falls punkte gleich 0:
       'de-DE': 'Boolesche Literalwerte',
     },
     example: {
-      'en-US': 'Return Decision with approved = true, rejected = false.',
-      'zh-CN': '返回 决定(批准 = 真, 拒绝 = 假)。',
-      'de-DE': 'gib zurueck Entscheidung mit genehmigt = wahr, abgelehnt = falsch.',
+      'en-US': 'Return Decision with approved set to true, rejected set to false.',
+      'zh-CN': '返回 决定 包含 批准 将 设为 真, 拒绝 将 设为 假。',
+      'de-DE': 'gib zurueck Entscheidung mit genehmigt setze auf wahr, abgelehnt setze auf falsch.',
     },
   },
 
@@ -330,9 +330,9 @@ Falls punkte gleich 0:
       'de-DE': 'Erstellt eine Instanz eines definierten Typs',
     },
     example: {
-      'en-US': 'Return Person with name = "John", age = 30.',
-      'zh-CN': '返回 人员(姓名 = 「张三」, 年龄 = 30)。',
-      'de-DE': 'gib zurueck Person mit name = "Hans", alter = 30.',
+      'en-US': 'Return Person with name set to "John", age set to 30.',
+      'zh-CN': '返回 人员 包含 姓名 将 设为 「张三」, 年龄 将 设为 30。',
+      'de-DE': 'gib zurueck Person mit name setze auf "Hans", alter setze auf 30.',
     },
   },
 
