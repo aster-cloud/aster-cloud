@@ -255,7 +255,8 @@ function parseApprovalFromResult(result: unknown): { approved: boolean; message:
     // 查找批准字段
     const approvalField = approvalFields.find(f => f in obj);
     if (approvalField) {
-      const approved = obj[approvalField] === true;
+      const val = obj[approvalField];
+      const approved = val === true || val === 'true';
       // 查找理由字段
       const reasonField = reasonFields.find(f => f in obj);
       const reason = reasonField ? String(obj[reasonField]) : (approved ? 'Approved' : 'Denied');
