@@ -121,7 +121,7 @@ Define Decision has
   reason,
   rate.
 
-Rule evaluateLoan given applicant:
+Rule evaluateLoan given applicant, produce:
   If applicant.age less than 18:
     Return Decision with approved = false, reason = "Underage applicant", rate = 0.
   If applicant.creditScore less than 600:
@@ -146,7 +146,7 @@ const LOAN_SOURCE_ZH = `模块 金融.贷款。
   理由，
   利率。
 
-规则 评估贷款 给定 申请人：
+规则 评估贷款 给定 申请人，产出：
   如果 申请人.年龄 小于 18：
     返回 决定 包含 批准 = 假, 理由 = 「申请人未成年」, 利率 = 0。
   如果 申请人.信用评分 小于 600：
@@ -171,7 +171,7 @@ Definiere Entscheidung hat
   begruendung,
   zinssatz.
 
-Regel kreditPruefen gegeben antragsteller:
+Regel kreditPruefen gegeben antragsteller, liefert:
   wenn antragsteller.alter kleiner als 18:
     gib zurueck Entscheidung mit genehmigt = falsch, begruendung = "Minderjaehriger Antragsteller", zinssatz = 0.
   wenn antragsteller.bonitaet kleiner als 600:
@@ -206,7 +206,7 @@ Define Result has
   patientCost,
   reason.
 
-Rule checkEligibility given patient, service:
+Rule checkEligibility given patient, service, produce:
   If not patient.hasInsurance:
     Return Result with eligible = false, coverage = 0, patientCost = service.price, reason = "No insurance".
   If patient.age less than 18:
@@ -235,7 +235,7 @@ const HEALTHCARE_SOURCE_ZH = `模块 医疗.资格审核。
   患者费用，
   理由。
 
-规则 检查资格 给定 患者，服务：
+规则 检查资格 给定 患者，服务，产出：
   如果 非 患者.有保险：
     返回 审核结果 包含 合格 = 假, 覆盖率 = 0, 患者费用 = 服务.价格, 理由 = 「无保险」。
   如果 患者.年龄 小于 18：
@@ -264,7 +264,7 @@ Definiere Ergebnis hat
   patientenkosten,
   begruendung.
 
-Regel berechtigungPruefen gegeben patient, leistung:
+Regel berechtigungPruefen gegeben patient, leistung, liefert:
   wenn nicht patient.hatVersicherung:
     gib zurueck Ergebnis mit berechtigt = falsch, deckung = 0, patientenkosten = leistung.preis, begruendung = "Keine Versicherung".
   wenn patient.alter kleiner als 18:
@@ -299,24 +299,24 @@ Define Quote has
   deductible,
   reason.
 
-Rule generateQuote given driver, vehicle:
+Rule generateQuote given driver, vehicle, produce:
   If driver.age less than 18:
     Return Quote with approved = false, premium = 0, deductible = 0, reason = "Driver under 18".
   If driver.accidents greater than 3:
     Return Quote with approved = false, premium = 0, deductible = 0, reason = "Too many accidents".
-  Let basePremium be calculateBase with driver, vehicle.
-  Let riskFactor be calculateRisk with driver.
+  Let basePremium be calculateBase(driver, vehicle).
+  Let riskFactor be calculateRisk(driver).
   Let finalPremium be basePremium times riskFactor divided by 100.
   Return Quote with approved = true, premium = finalPremium, deductible = 500, reason = "Approved".
 
-Rule calculateBase given driver, vehicle:
+Rule calculateBase given driver, vehicle, produce:
   If driver.age less than 25:
     Return 300.
   If driver.age less than 65:
     Return 200.
   Return 250.
 
-Rule calculateRisk given driver:
+Rule calculateRisk given driver, produce:
   Let base be 100.
   If driver.accidents greater than 0:
     Let base be base plus driver.accidents times 20.
@@ -346,7 +346,7 @@ const AUTO_SOURCE_ZH = `模块 保险.汽车。
   免赔额，
   理由。
 
-规则 生成报价 给定 驾驶员，车辆：
+规则 生成报价 给定 驾驶员，车辆，产出：
   如果 驾驶员.年龄 小于 18：
     返回 报价 包含 批准 = 假, 保费 = 0, 免赔额 = 0, 理由 = 「驾驶员未满18岁」。
   如果 驾驶员.事故数 大于 3：
@@ -356,14 +356,14 @@ const AUTO_SOURCE_ZH = `模块 保险.汽车。
   令 最终保费 为 基础保费 乘 风险系数 除以 100。
   返回 报价 包含 批准 = 真, 保费 = 最终保费, 免赔额 = 500, 理由 = 「已批准」。
 
-规则 计算基础 给定 驾驶员，车辆：
+规则 计算基础 给定 驾驶员，车辆，产出：
   如果 驾驶员.年龄 小于 25：
     返回 300。
   如果 驾驶员.年龄 小于 65：
     返回 200。
   返回 250。
 
-规则 计算风险 给定 驾驶员：
+规则 计算风险 给定 驾驶员，产出：
   令 基数 为 100。
   如果 驾驶员.事故数 大于 0：
     令 基数 为 基数 加 驾驶员.事故数 乘 20。
@@ -393,24 +393,24 @@ Definiere Angebot hat
   selbstbeteiligung,
   begruendung.
 
-Regel angebotErstellen gegeben fahrer, fahrzeug:
+Regel angebotErstellen gegeben fahrer, fahrzeug, liefert:
   wenn fahrer.alter kleiner als 18:
     gib zurueck Angebot mit genehmigt = falsch, praemie = 0, selbstbeteiligung = 0, begruendung = "Fahrer unter 18".
   wenn fahrer.unfaelle groesser als 3:
     gib zurueck Angebot mit genehmigt = falsch, praemie = 0, selbstbeteiligung = 0, begruendung = "Zu viele Unfaelle".
-  sei basisPraemie gleich basisBerechnen mit fahrer, fahrzeug.
-  sei risikoFaktor gleich risikoBerechnen mit fahrer.
+  sei basisPraemie gleich basisBerechnen(fahrer, fahrzeug).
+  sei risikoFaktor gleich risikoBerechnen(fahrer).
   sei endPraemie gleich basisPraemie mal risikoFaktor geteilt durch 100.
   gib zurueck Angebot mit genehmigt = wahr, praemie = endPraemie, selbstbeteiligung = 500, begruendung = "Genehmigt".
 
-Regel basisBerechnen gegeben fahrer, fahrzeug:
+Regel basisBerechnen gegeben fahrer, fahrzeug, liefert:
   wenn fahrer.alter kleiner als 25:
     gib zurueck 300.
   wenn fahrer.alter kleiner als 65:
     gib zurueck 200.
   gib zurueck 250.
 
-Regel risikoBerechnen gegeben fahrer:
+Regel risikoBerechnen gegeben fahrer, liefert:
   sei basis gleich 100.
   wenn fahrer.unfaelle groesser als 0:
     sei basis gleich basis plus fahrer.unfaelle mal 20.
@@ -442,7 +442,7 @@ Define FraudResult has
   riskScore,
   reason.
 
-Rule detectFraud given transaction, history:
+Rule detectFraud given transaction, history, produce:
   If transaction.amount greater than 1000000:
     Return FraudResult with suspicious = true, riskScore = 100, reason = "Extremely large transaction".
   If history.suspiciousCount greater than 5:
@@ -473,7 +473,7 @@ const FRAUD_SOURCE_ZH = `模块 金融.欺诈。
   风险评分，
   理由。
 
-规则 检测欺诈 给定 交易，历史：
+规则 检测欺诈 给定 交易，历史，产出：
   如果 交易.金额 大于 1000000：
     返回 欺诈结果 包含 可疑 = 真, 风险评分 = 100, 理由 = 「超大额交易」。
   如果 历史.可疑次数 大于 5：
@@ -504,7 +504,7 @@ Definiere BetrugsErgebnis hat
   risikoBewertung,
   begruendung.
 
-Regel betrugErkennen gegeben transaktion, historie:
+Regel betrugErkennen gegeben transaktion, historie, liefert:
   wenn transaktion.betrag groesser als 1000000:
     gib zurueck BetrugsErgebnis mit verdaechtig = wahr, risikoBewertung = 100, begruendung = "Extrem grosse Transaktion".
   wenn historie.verdaechtigeAnzahl groesser als 5:
@@ -539,25 +539,25 @@ Define Decision has
   interestRate,
   reason.
 
-Rule evaluateApplication given applicant, application:
+Rule evaluateApplication given applicant, application, produce:
   If applicant.age less than 21:
     Return Decision with approved = false, approvedLimit = 0, interestRate = 0, reason = "Age below 21".
   If applicant.creditScore less than 550:
     Return Decision with approved = false, approvedLimit = 0, interestRate = 0, reason = "Credit score too low".
   If applicant.existingCards greater than 5:
     Return Decision with approved = false, approvedLimit = 0, interestRate = 0, reason = "Too many existing cards".
-  Let limit be determineLimit with applicant, application.
-  Let rate be determineRate with applicant.
+  Let limit be determineLimit(applicant, application).
+  Let rate be determineRate(applicant).
   Return Decision with approved = true, approvedLimit = limit, interestRate = rate, reason = "Approved".
 
-Rule determineLimit given applicant, application:
+Rule determineLimit given applicant, application, produce:
   If applicant.creditScore greater than 750:
     Return application.requestedLimit.
   If applicant.creditScore greater than 700:
     Return application.requestedLimit times 80 divided by 100.
   Return application.requestedLimit times 50 divided by 100.
 
-Rule determineRate given applicant:
+Rule determineRate given applicant, produce:
   If applicant.creditScore greater than 750:
     Return 1299.
   If applicant.creditScore greater than 700:
@@ -584,7 +584,7 @@ const CREDITCARD_SOURCE_ZH = `模块 金融.信用卡。
   利率，
   理由。
 
-规则 评估申请 给定 申请人，申请：
+规则 评估申请 给定 申请人，申请，产出：
   如果 申请人.年龄 小于 21：
     返回 决定 包含 批准 = 假, 批准额度 = 0, 利率 = 0, 理由 = 「年龄未满21岁」。
   如果 申请人.信用评分 小于 550：
@@ -595,14 +595,14 @@ const CREDITCARD_SOURCE_ZH = `模块 金融.信用卡。
   令 利率值 为 确定利率(申请人)。
   返回 决定 包含 批准 = 真, 批准额度 = 额度, 利率 = 利率值, 理由 = 「已批准」。
 
-规则 确定额度 给定 申请人，申请：
+规则 确定额度 给定 申请人，申请，产出：
   如果 申请人.信用评分 大于 750：
     返回 申请.申请额度。
   如果 申请人.信用评分 大于 700：
     返回 申请.申请额度 乘 80 除以 100。
   返回 申请.申请额度 乘 50 除以 100。
 
-规则 确定利率 给定 申请人：
+规则 确定利率 给定 申请人，产出：
   如果 申请人.信用评分 大于 750：
     返回 1299。
   如果 申请人.信用评分 大于 700：
@@ -629,25 +629,25 @@ Definiere Entscheidung hat
   zinssatz,
   begruendung.
 
-Regel antragAuswerten gegeben antragsteller, antrag:
+Regel antragAuswerten gegeben antragsteller, antrag, liefert:
   wenn antragsteller.alter kleiner als 21:
     gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Alter unter 21".
   wenn antragsteller.bonitaet kleiner als 550:
     gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Bonitaet zu niedrig".
   wenn antragsteller.vorhandeneKarten groesser als 5:
     gib zurueck Entscheidung mit genehmigt = falsch, genehmigterLimit = 0, zinssatz = 0, begruendung = "Zu viele vorhandene Karten".
-  sei limit gleich limitBestimmen mit antragsteller, antrag.
-  sei rate gleich zinsBestimmen mit antragsteller.
+  sei limit gleich limitBestimmen(antragsteller, antrag).
+  sei rate gleich zinsBestimmen(antragsteller).
   gib zurueck Entscheidung mit genehmigt = wahr, genehmigterLimit = limit, zinssatz = rate, begruendung = "Genehmigt".
 
-Regel limitBestimmen gegeben antragsteller, antrag:
+Regel limitBestimmen gegeben antragsteller, antrag, liefert:
   wenn antragsteller.bonitaet groesser als 750:
     gib zurueck antrag.gewuenschtesLimit.
   wenn antragsteller.bonitaet groesser als 700:
     gib zurueck antrag.gewuenschtesLimit mal 80 geteilt durch 100.
   gib zurueck antrag.gewuenschtesLimit mal 50 geteilt durch 100.
 
-Regel zinsBestimmen gegeben antragsteller:
+Regel zinsBestimmen gegeben antragsteller, liefert:
   wenn antragsteller.bonitaet groesser als 750:
     gib zurueck 1299.
   wenn antragsteller.bonitaet groesser als 700:
