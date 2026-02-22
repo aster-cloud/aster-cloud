@@ -46,6 +46,7 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "15.5.9",
     "@opennextjs/cloudflare": "1.15.1",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
@@ -55,10 +56,14 @@
     "@types/react-dom": "^19.1.7",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "8.54.0",
+    "@typescript-eslint/parser": "8.54.0",
     "@vitejs/plugin-react": "^5.1.2",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "eslint-config-next": "15.5.9",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "5.2.0",
     "jsdom": "^27.4.0",
     "lucide-react": "^0.562.0",
     "tailwindcss": "^4.1.18",
