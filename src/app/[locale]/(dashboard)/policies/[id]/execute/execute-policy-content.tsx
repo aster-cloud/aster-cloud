@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { initFormValuesWithSampleData } from '@/lib/input-generator';
 import {
   extractSchema,
+  generateFieldValue,
   generateInputValues,
   EN_US,
   ZH_CN,
@@ -75,6 +75,30 @@ function buildNamedContext(
   return context;
 }
 
+// 初始化表单值（带自动生成的示例数据）
+// TODO: aster-lang-ts 发布含 lexicon 参数的版本后，此处传入 lexicon 启用本地化输入生成
+function initFormValuesWithSampleData(
+  parameters: ParameterInfo[],
+): Record<string, Record<string, unknown>> {
+  const values: Record<string, Record<string, unknown>> = {};
+  for (const param of parameters) {
+    if (param.typeKind === 'struct' && param.fields) {
+      const structValue: Record<string, unknown> = {};
+      for (const field of param.fields) {
+        structValue[field.name] = generateFieldValue(field.name, field.type, field.typeKind);
+      }
+      values[param.name] = structValue;
+    } else {
+      values[param.name] = generateFieldValue(
+        param.name,
+        param.type,
+        param.typeKind,
+      ) as Record<string, unknown>;
+    }
+  }
+  return values;
+}
+
 export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentProps) {
   const t = useTranslations('policies.execute');
   const [input, setInput] = useState('');
@@ -82,7 +106,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [policyName, setPolicyName] = useState('');
-  const [_policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
 
   // 新增状态：动态表单
   const [inputMode, setInputMode] = useState<InputMode>('json');
@@ -155,6 +180,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   }, [policyId, fetchSchema]);
 
   // 重新生成示例数据
+  // TODO: aster-lang-ts 发布含 lexicon 参数的版本后，传入 LEXICON_MAP[policyLocale] 启用本地化
   const regenerateSampleData = useCallback(() => {
     if (schema?.parameters) {
       setFormValues(initFormValuesWithSampleData(schema.parameters));

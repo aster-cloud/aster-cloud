@@ -325,6 +325,7 @@ export function useAsterCompiler({
       const schema = getSchema(functionName);
       if (!schema?.success || !schema.parameters) return null;
 
+      // TODO: aster-lang-ts 发布含 lexicon 参数的版本后，传入 lexicon 启用本地化输入生成
       return generateInputValues(schema.parameters);
     },
     [getSchema]
