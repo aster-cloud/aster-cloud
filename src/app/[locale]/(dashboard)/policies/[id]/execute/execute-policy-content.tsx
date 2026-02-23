@@ -7,6 +7,7 @@ import {
   extractSchema,
   generateFieldValue,
   generateInputValues,
+  getLspUiTexts,
   EN_US,
   ZH_CN,
   DE_DE,
@@ -497,7 +498,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                 {schema.functionName && (
                   <div className="text-sm text-gray-500 mb-2">
-                    Function: <span className="font-mono text-gray-700">{schema.functionName}</span>
+                    {getLspUiTexts(LEXICON_MAP[policyLocale]).functionLabel}: <span className="font-mono text-gray-700">{schema.functionName}</span>
                   </div>
                 )}
                 {schema.parameters.map((param) => renderParameterForm(param))}

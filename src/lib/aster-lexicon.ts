@@ -21,6 +21,10 @@ export type { Lexicon, DomainVocabulary, IdentifierIndex };
 export { EN_US, ZH_CN, DE_DE, SemanticTokenKind };
 export { vocabularyRegistry, initBuiltinVocabularies, buildIdentifierIndex };
 
+// LSP UI 本地化文本（函数/类型/枚举等标签）
+export { getLspUiTexts } from '@aster-cloud/aster-lang-ts/browser';
+export type { LspUiTexts } from '@aster-cloud/aster-lang-ts/browser';
+
 /**
  * 根据 locale 获取词法配置。
  */
