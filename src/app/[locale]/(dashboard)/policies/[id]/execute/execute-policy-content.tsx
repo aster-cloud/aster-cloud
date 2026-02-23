@@ -76,16 +76,16 @@ function buildNamedContext(
 }
 
 // 初始化表单值（带自动生成的示例数据）
-// TODO: aster-lang-ts 发布含 lexicon 参数的版本后，此处传入 lexicon 启用本地化输入生成
 function initFormValuesWithSampleData(
   parameters: ParameterInfo[],
+  lexicon?: Lexicon,
 ): Record<string, Record<string, unknown>> {
   const values: Record<string, Record<string, unknown>> = {};
   for (const param of parameters) {
     if (param.typeKind === 'struct' && param.fields) {
       const structValue: Record<string, unknown> = {};
       for (const field of param.fields) {
-        structValue[field.name] = generateFieldValue(field.name, field.type, field.typeKind);
+        structValue[field.name] = generateFieldValue(field.name, field.type, field.typeKind, lexicon);
       }
       values[param.name] = structValue;
     } else {
@@ -93,6 +93,7 @@ function initFormValuesWithSampleData(
         param.name,
         param.type,
         param.typeKind,
+        lexicon,
       ) as Record<string, unknown>;
     }
   }
@@ -132,10 +133,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
 
       if (data.success && data.parameters && data.parameters.length > 0) {
         setSchema(data);
-        // 初始化表单值（使用自动生成的示例数据）
-        setFormValues(initFormValuesWithSampleData(data.parameters));
+        // 初始化表单值（使用自动生成的示例数据，传入 lexicon 启用本地化）
+        setFormValues(initFormValuesWithSampleData(data.parameters, lexicon));
         // 同时更新 JSON 输入区域
-        const sampleInput = generateInputValues(data.parameters);
+        const sampleInput = generateInputValues(data.parameters, lexicon);
         setInput(JSON.stringify(sampleInput, null, 2));
       } else if (!data.success && data.error) {
         // Schema extraction failed - display error and use default empty JSON
@@ -179,15 +180,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       });
   }, [policyId, fetchSchema]);
 
-  // 重新生成示例数据
-  // TODO: aster-lang-ts 发布含 lexicon 参数的版本后，传入 LEXICON_MAP[policyLocale] 启用本地化
+  // 重新生成示例数据（使用检测到的策略语言生成本地化示例值）
   const regenerateSampleData = useCallback(() => {
     if (schema?.parameters) {
-      setFormValues(initFormValuesWithSampleData(schema.parameters));
-      const sampleInput = generateInputValues(schema.parameters);
+      const lexicon = LEXICON_MAP[policyLocale];
+      setFormValues(initFormValuesWithSampleData(schema.parameters, lexicon));
+      const sampleInput = generateInputValues(schema.parameters, lexicon);
       setInput(JSON.stringify(sampleInput, null, 2));
     }
-  }, [schema]);
+  }, [schema, policyLocale]);
 
   // 更新表单字段值
   const updateFormField = (paramName: string, fieldName: string | null, value: unknown) => {
