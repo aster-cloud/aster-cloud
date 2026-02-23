@@ -117,9 +117,9 @@ Define Applicant has
   age.
 
 Define Decision has
-  approved,
+  approved as Bool,
   reason,
-  rate.
+  rate as Int.
 
 Rule evaluateLoan given applicant, produce:
   If applicant.age less than 18
@@ -142,9 +142,9 @@ const LOAN_SOURCE_ZH = `模块 金融.贷款。
   年龄。
 
 定义 决定 包含
-  批准，
+  批准 as 布尔，
   理由，
-  利率。
+  利率 as 整数。
 
 规则 评估贷款 给定 申请人，产出：
   如果 申请人.年龄 小于 18
@@ -167,9 +167,9 @@ Definiere Antragsteller hat
   alter.
 
 Definiere Entscheidung hat
-  genehmigt,
+  genehmigt as Boolesch,
   begruendung,
-  zinssatz.
+  zinssatz as Ganzzahl.
 
 Regel kreditPruefen gegeben antragsteller, liefert:
   wenn antragsteller.alter kleiner als 18
@@ -201,9 +201,9 @@ Define Service has
   price.
 
 Define Result has
-  eligible,
-  coverage,
-  patientCost,
+  eligible as Bool,
+  coverage as Int,
+  patientCost as Int,
   reason.
 
 Rule checkEligibility given patient, service, produce:
@@ -230,9 +230,9 @@ const HEALTHCARE_SOURCE_ZH = `模块 医疗.资格审核。
   价格。
 
 定义 审核结果 包含
-  合格，
-  覆盖率，
-  患者费用，
+  合格 as 布尔，
+  覆盖率 as 整数，
+  患者费用 as 整数，
   理由。
 
 规则 检查资格 给定 患者，服务，产出：
@@ -259,9 +259,9 @@ Definiere Leistung hat
   preis.
 
 Definiere Ergebnis hat
-  berechtigt,
-  deckung,
-  patientenkosten,
+  berechtigt as Boolesch,
+  deckung as Ganzzahl,
+  patientenkosten as Ganzzahl,
   begruendung.
 
 Regel berechtigungPruefen gegeben patient, leistung, liefert:
@@ -294,9 +294,9 @@ Define Vehicle has
   safetyRating.
 
 Define Quote has
-  approved,
-  premium,
-  deductible,
+  approved as Bool,
+  premium as Int,
+  deductible as Int,
   reason.
 
 Rule generateQuote given driver, vehicle, produce:
@@ -341,9 +341,9 @@ const AUTO_SOURCE_ZH = `模块 保险.汽车。
   安全评级。
 
 定义 报价 包含
-  批准，
-  保费，
-  免赔额，
+  批准 as 布尔，
+  保费 as 整数，
+  免赔额 as 整数，
   理由。
 
 规则 生成报价 给定 驾驶员，车辆，产出：
@@ -388,9 +388,9 @@ Definiere Fahrzeug hat
   sicherheitsbewertung.
 
 Definiere Angebot hat
-  genehmigt,
-  praemie,
-  selbstbeteiligung,
+  genehmigt as Boolesch,
+  praemie as Ganzzahl,
+  selbstbeteiligung as Ganzzahl,
   begruendung.
 
 Regel angebotErstellen gegeben fahrer, fahrzeug, liefert:
@@ -438,8 +438,8 @@ Define AccountHistory has
   accountAge.
 
 Define FraudResult has
-  suspicious,
-  riskScore,
+  suspicious as Bool,
+  riskScore as Int,
   reason.
 
 Rule detectFraud given transaction, history, produce:
@@ -469,8 +469,8 @@ const FRAUD_SOURCE_ZH = `模块 金融.欺诈。
   账龄。
 
 定义 欺诈结果 包含
-  可疑，
-  风险评分，
+  可疑 as 布尔，
+  风险评分 as 整数，
   理由。
 
 规则 检测欺诈 给定 交易，历史，产出：
@@ -500,8 +500,8 @@ Definiere KontoHistorie hat
   kontoalter.
 
 Definiere BetrugsErgebnis hat
-  verdaechtig,
-  risikoBewertung,
+  verdaechtig as Boolesch,
+  risikoBewertung as Ganzzahl,
   begruendung.
 
 Regel betrugErkennen gegeben transaktion, historie, liefert:
@@ -534,9 +534,9 @@ Define Application has
   cardType.
 
 Define Decision has
-  approved,
-  approvedLimit,
-  interestRate,
+  approved as Bool,
+  approvedLimit as Int,
+  interestRate as Int,
   reason.
 
 Rule evaluateApplication given applicant, application, produce:
@@ -579,9 +579,9 @@ const CREDITCARD_SOURCE_ZH = `模块 金融.信用卡。
   卡类型。
 
 定义 决定 包含
-  批准，
-  批准额度，
-  利率，
+  批准 as 布尔，
+  批准额度 as 整数，
+  利率 as 整数，
   理由。
 
 规则 评估申请 给定 申请人，申请，产出：
@@ -624,9 +624,9 @@ Definiere Antrag hat
   kartentyp.
 
 Definiere Entscheidung hat
-  genehmigt,
-  genehmigterLimit,
-  zinssatz,
+  genehmigt as Boolesch,
+  genehmigterLimit as Ganzzahl,
+  zinssatz as Ganzzahl,
   begruendung.
 
 Regel antragAuswerten gegeben antragsteller, antrag, liefert:
