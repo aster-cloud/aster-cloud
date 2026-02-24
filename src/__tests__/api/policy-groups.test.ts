@@ -9,7 +9,7 @@ const {
   mockWhereUpdate,
   mockSetUpdate,
   mockUpdate,
-  mockWhereDelete,
+  mockWhereDelete: _mockWhereDelete,
   mockDelete,
   mockSelect,
   mockTransactionFn,
@@ -274,9 +274,9 @@ describe('Policy Groups API - Drizzle Migration', () => {
 
     beforeEach(() => {
       // Multiple count queries
-      let callCount = 0;
+      let _callCount = 0;
       mockSelect.mockImplementation(() => {
-        callCount++;
+        _callCount++;
         const count = 0;
         const where = vi.fn().mockResolvedValue([{ count }]);
         const from = vi.fn().mockReturnValue({ where });
@@ -406,9 +406,9 @@ describe('Policy Groups API - Drizzle Migration', () => {
       const existingGroup = mockPolicyGroup();
       vi.mocked(db.query.policyGroups.findFirst).mockResolvedValue(existingGroup);
       // Policy count and children count both 0
-      let selectCallCount = 0;
+      let _selectCallCount = 0;
       mockSelect.mockImplementation(() => {
-        selectCallCount++;
+        _selectCallCount++;
         const where = vi.fn().mockResolvedValue([{ count: 0 }]);
         const from = vi.fn().mockReturnValue({ where });
         return { from };

@@ -395,7 +395,7 @@ describe('V1 Policies API - Drizzle Migration', () => {
         makeRequest('http://localhost/api/v1/policies/p1/execute', 'POST', validBody),
         mockParams
       );
-      const body = await response.json();
+      const _body = await response.json();
 
       expect(response.status).toBe(404);
     });

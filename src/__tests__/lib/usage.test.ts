@@ -286,7 +286,7 @@ describe('Usage Tracking', () => {
     });
 
     it('should default to free plan when user has unknown plan', async () => {
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'unknown_plan' as any }));
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'unknown_plan' as string }));
       vi.mocked(db.query.usageRecords.findMany).mockResolvedValue([]);
       setupSelectCount(0);
 

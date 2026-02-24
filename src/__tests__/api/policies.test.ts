@@ -9,7 +9,7 @@ const {
   mockWhereUpdate,
   mockSetUpdate,
   mockUpdate,
-  mockWhereDelete,
+  mockWhereDelete: _mockWhereDelete,
   mockDelete,
   mockSelectExec,
 } = vi.hoisted(() => {

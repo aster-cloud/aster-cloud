@@ -111,7 +111,6 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [policyName, setPolicyName] = useState('');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
 
   // 新增状态：动态表单
