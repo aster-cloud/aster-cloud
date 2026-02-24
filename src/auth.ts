@@ -219,6 +219,18 @@ const config: NextAuthConfig = {
   },
 
   trustHost: true,
+  debug: true,
+  logger: {
+    error(code, ...message) {
+      console.error('[Auth.js ERROR]', code, ...message);
+    },
+    warn(code) {
+      console.warn('[Auth.js WARN]', code);
+    },
+    debug(code, ...message) {
+      console.log('[Auth.js DEBUG]', code, ...message);
+    },
+  },
 };
 
 // 导出 auth 函数和 handlers
