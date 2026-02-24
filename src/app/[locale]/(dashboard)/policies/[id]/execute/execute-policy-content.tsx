@@ -7,7 +7,6 @@ import {
   extractSchema,
   generateFieldValue,
   generateInputValues,
-  getLspUiTexts,
   EN_US,
   ZH_CN,
   DE_DE,
@@ -15,6 +14,12 @@ import {
   type SchemaResult,
   type Lexicon,
 } from '@aster-cloud/aster-lang-ts/browser';
+
+const FUNCTION_LABEL: Record<string, string> = {
+  'en-US': 'Function',
+  'zh-CN': '函数',
+  'de-DE': 'Funktion',
+};
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
 
@@ -496,7 +501,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                 {schema.functionName && (
                   <div className="text-sm text-gray-500 mb-2">
-                    {getLspUiTexts(LEXICON_MAP[policyLocale]).functionLabel}: <span className="font-mono text-gray-700">{schema.functionName}</span>
+                    {FUNCTION_LABEL[policyLocale] ?? 'Function'}: <span className="font-mono text-gray-700">{schema.functionName}</span>
                   </div>
                 )}
                 {schema.parameters.map((param) => renderParameterForm(param))}
