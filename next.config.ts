@@ -26,14 +26,14 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://static.cloudflareinsights.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.stripe.com https://policy.aster-lang.dev wss://policy.aster-lang.dev",
+              "connect-src 'self' https://api.stripe.com https://policy.aster-lang.dev wss://policy.aster-lang.dev https://static.cloudflareinsights.com",
               "frame-src https://js.stripe.com",
+              "form-action 'self' https://github.com https://accounts.google.com",
               "worker-src 'self' blob:",
-              "report-uri /api/csp-report",
             ].join('; '),
           },
           {
