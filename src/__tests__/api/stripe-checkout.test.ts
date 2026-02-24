@@ -50,12 +50,12 @@ describe('Stripe Checkout API', () => {
     mockGetPlanStripePriceId.mockReturnValue('price_123');
     mockAuth.mockResolvedValue({
       user: { id: 'user-1', email: 'user@example.com' },
-    } as Awaited<ReturnType<typeof auth>>);
+    } as unknown as Awaited<ReturnType<typeof auth>>);
   });
 
   describe('认证校验', () => {
     it('should return 401 when not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
+      mockAuth.mockResolvedValue(null as unknown as Awaited<ReturnType<typeof auth>>);
 
       const response = await POST(
         createRequest({

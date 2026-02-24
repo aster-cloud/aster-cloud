@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import Editor, { OnMount, OnChange } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import {
   getLexicon,
   getKeywordsByCategory,
@@ -14,6 +15,7 @@ import {
   type DomainVocabulary,
 } from '@/lib/aster-lexicon';
 import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
+import type { TypecheckDiagnostic } from '@aster-cloud/aster-lang-ts/browser';
 
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
@@ -278,7 +280,9 @@ export function MonacoPolicyEditor({
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
   const { resolvedTheme } = useTheme();
+  const t = useTranslations('diagnostics');
   const [isEditorReady, setIsEditorReady] = useState(false);
+  const [showProblems, setShowProblems] = useState(false);
 
   const isDark = resolvedTheme === 'dark';
   const lexicon = getLexicon(locale);
@@ -291,7 +295,7 @@ export function MonacoPolicyEditor({
   const vocabulary = domain ? getVocabulary(domain, compilerLocale) : undefined;
 
   // Local compiler for real-time validation with accurate error positions
-  useAsterCompiler({
+  const { diagnostics } = useAsterCompiler({
     editor: isEditorReady ? editorRef.current : null,
     monaco: isEditorReady ? monacoRef.current : null,
     locale: compilerLocale,
@@ -299,6 +303,26 @@ export function MonacoPolicyEditor({
     debounceDelay,
     enableValidation: true,
   });
+
+  const { errorCount, warningCount } = useMemo(() => {
+    let errors = 0;
+    let warnings = 0;
+    for (const d of diagnostics) {
+      if (d.severity === 'error') errors++;
+      else if (d.severity === 'warning') warnings++;
+    }
+    return { errorCount: errors, warningCount: warnings };
+  }, [diagnostics]);
+
+  const revealDiagnostic = useCallback((diag: TypecheckDiagnostic) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const line = diag.span?.start?.line ?? 1;
+    const col = diag.span?.start?.col ?? 1;
+    ed.revealLineInCenter(line);
+    ed.setPosition({ lineNumber: line, column: col });
+    ed.focus();
+  }, []);
 
   // 编辑器挂载回调
   const handleEditorMount: OnMount = useCallback(
@@ -384,6 +408,59 @@ export function MonacoPolicyEditor({
         <div aria-hidden="true" className="absolute top-3 left-14 text-gray-500 pointer-events-none text-sm font-mono">
           {placeholder}
         </div>
+      )}
+      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center gap-2" role="status" aria-live="polite">
+          {errorCount > 0 && (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-200">
+              {t('errors', { count: errorCount })}
+            </span>
+          )}
+          {warningCount > 0 && (
+            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+              {t('warnings', { count: warningCount })}
+            </span>
+          )}
+          {errorCount === 0 && warningCount === 0 && (
+            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/40 dark:text-green-200">
+              {t('noIssues')}
+            </span>
+          )}
+        </div>
+        {(errorCount > 0 || warningCount > 0) && (
+          <button
+            type="button"
+            onClick={() => setShowProblems(prev => !prev)}
+            aria-expanded={showProblems}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+          >
+            {showProblems ? t('hideProblems') : t('viewProblems')}
+          </button>
+        )}
+      </div>
+      {showProblems && diagnostics.length > 0 && (
+        <ul role="list" className="mt-2 rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:divide-gray-800">
+          {diagnostics
+            .filter(d => d.severity === 'error' || d.severity === 'warning')
+            .map((diag, i) => (
+              <li key={`${diag.message}-${i}`}>
+                <button
+                  type="button"
+                  onClick={() => revealDiagnostic(diag)}
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  <span
+                    className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${diag.severity === 'error' ? 'bg-red-500' : 'bg-amber-500'}`}
+                    aria-hidden="true"
+                  />
+                  <span className="flex-1">{diag.message}</span>
+                  <span className="shrink-0 text-gray-400">
+                    L{diag.span?.start?.line ?? 1}:{diag.span?.start?.col ?? 1}
+                  </span>
+                </button>
+              </li>
+            ))}
+        </ul>
       )}
     </div>
   );

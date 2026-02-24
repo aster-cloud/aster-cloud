@@ -900,5 +900,32 @@
   "security": {
     "title": "Security Monitoring",
     "description": "Monitor security events, audit logs, and system health."
+  },
+  "decisionTrace": {
+    "title": "Decision Trace",
+    "empty": "No trace data",
+    "ariaLabel": "Decision trace",
+    "node": {
+      "rule": "Rule",
+      "if": "If",
+      "match": "Match",
+      "branch": "Branch",
+      "expr": "Expression"
+    },
+    "outcome": {
+      "true": "True",
+      "false": "False",
+      "matched": "Matched",
+      "notMatched": "Not matched",
+      "unknown": "Unknown"
+    },
+    "duration": "{ms}ms"
+  },
+  "diagnostics": {
+    "errors": "{count, plural, one {# error} other {# errors}}",
+    "warnings": "{count, plural, one {# warning} other {# warnings}}",
+    "noIssues": "No issues",
+    "viewProblems": "View problems",
+    "hideProblems": "Hide problems"
   }
 }

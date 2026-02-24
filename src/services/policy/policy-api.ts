@@ -5,6 +5,9 @@
  * 支持 REST 和 WebSocket 两种调用方式。
  */
 
+import { signRequest } from '@/lib/api-signing';
+import { API_ENDPOINTS } from '@/config/api-versions';
+
 // 环境变量配置
 const getApiConfig = () => ({
   baseUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev',
@@ -158,7 +161,8 @@ export class PolicyApiClient {
 
   constructor(
     private readonly tenantId: string,
-    private readonly userId: string
+    private readonly userId: string,
+    private readonly userRole: string = 'member'
   ) {
     const config = getApiConfig();
     this.baseUrl = config.baseUrl;
@@ -174,6 +178,7 @@ export class PolicyApiClient {
       'Content-Type': 'application/json',
       'X-Tenant-Id': this.tenantId,
       'X-User-Id': this.userId,
+      'X-User-Role': this.userRole,
     };
   }
 
@@ -189,10 +194,21 @@ export class PolicyApiClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(`${this.baseUrl}${path}`, {
+      const url = `${this.baseUrl}${path}`;
+      const bodyStr = body ? JSON.stringify(body) : undefined;
+      const headers: Record<string, string> = {
+        ...this.getHeaders() as Record<string, string>,
+      };
+
+      if (process.env.ASTER_HMAC_SECRET) {
+        const sigHeaders = await signRequest(method, url, bodyStr);
+        Object.assign(headers, sigHeaders);
+      }
+
+      const response = await fetch(url, {
         method,
-        headers: this.getHeaders(),
-        body: body ? JSON.stringify(body) : undefined,
+        headers,
+        body: bodyStr,
         signal: controller.signal,
       });
 
@@ -227,36 +243,31 @@ export class PolicyApiClient {
    * 评估单个策略
    */
   async evaluate(request: PolicyEvaluateRequest): Promise<PolicyEvaluateResponse> {
-    return this.request<PolicyEvaluateResponse>('POST', '/api/policies/evaluate', request);
+    return this.request<PolicyEvaluateResponse>('POST', API_ENDPOINTS.evaluate, request);
   }
 
   /**
    * 批量评估策略
    */
   async evaluateBatch(request: PolicyEvaluateBatchRequest): Promise<PolicyEvaluateResponse[]> {
-    return this.request<PolicyEvaluateResponse[]>('POST', '/api/policies/evaluate/batch', request);
+    return this.request<PolicyEvaluateResponse[]>('POST', API_ENDPOINTS.evaluateBatch, request);
   }
 
   /**
    * 编译策略 (验证语法)
    */
   async compile(request: PolicyCompileRequest): Promise<PolicyCompileResponse> {
-    return this.request<PolicyCompileResponse>('POST', '/api/policies/compile', request);
+    return this.request<PolicyCompileResponse>('POST', API_ENDPOINTS.compile, request);
   }
 
   /**
    * 获取策略参数模式
-   * 从 CNL 源代码提取函数参数的结构化模式信息，用于动态表单生成
-   *
-   * @param source - CNL 源代码
-   * @param options - 可选参数（函数名、语言）
-   * @returns 参数模式响应
    */
   async getSchema(
     source: string,
     options?: { functionName?: string; locale?: string }
   ): Promise<PolicySchemaResponse> {
-    return this.request<PolicySchemaResponse>('POST', '/api/policies/schema', {
+    return this.request<PolicySchemaResponse>('POST', API_ENDPOINTS.schema, {
       source,
       functionName: options?.functionName,
       locale: options?.locale || 'en-US',
@@ -265,24 +276,15 @@ export class PolicyApiClient {
 
   /**
    * 直接评估策略源代码
-   * 编译并执行 CNL 源代码，适用于 Dashboard 执行场景
-   *
-   * 支持两种上下文格式：
-   * 1. 命名格式: { "申请": {...}, "年龄": 25 } - 参数名与函数定义匹配
-   * 2. 位置格式: [{...}, 25] - 按位置顺序传参
-   *
-   * @param source - CNL 源代码
-   * @param context - 评估上下文（命名对象或位置数组）
-   * @param options - 可选参数（语言、函数名）
    */
   async evaluateSource(
     source: string,
     context: Record<string, unknown> | unknown[],
     options?: { locale?: string; functionName?: string }
   ): Promise<PolicyEvaluateResponse> {
-    return this.request<PolicyEvaluateResponse>('POST', '/api/policies/evaluate-source', {
+    return this.request<PolicyEvaluateResponse>('POST', API_ENDPOINTS.evaluateSource, {
       source,
-      context,  // 直接传递，让后端处理命名/位置映射
+      context,
       locale: options?.locale || 'en-US',
       functionName: options?.functionName || 'evaluate',
     });
@@ -292,14 +294,14 @@ export class PolicyApiClient {
    * 健康检查
    */
   async healthCheck(): Promise<HealthCheckResponse> {
-    return this.request<HealthCheckResponse>('GET', '/q/health/live');
+    return this.request<HealthCheckResponse>('GET', API_ENDPOINTS.healthLive);
   }
 
   /**
    * 就绪检查
    */
   async readinessCheck(): Promise<HealthCheckResponse> {
-    return this.request<HealthCheckResponse>('GET', '/q/health/ready');
+    return this.request<HealthCheckResponse>('GET', API_ENDPOINTS.healthReady);
   }
 
   /**
@@ -403,8 +405,8 @@ export class PolicyApiError extends Error {
 /**
  * 创建 Policy API 客户端 (服务端使用)
  */
-export function createPolicyApiClient(tenantId: string, userId: string): PolicyApiClient {
-  return new PolicyApiClient(tenantId, userId);
+export function createPolicyApiClient(tenantId: string, userId: string, userRole?: string): PolicyApiClient {
+  return new PolicyApiClient(tenantId, userId, userRole);
 }
 
 /**

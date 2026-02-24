@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policyGroups, policies, teamMembers } from '@/lib/prisma';
-import { eq, and, isNull, sql, asc } from 'drizzle-orm';
+import { eq, and, isNull, sql, asc, inArray } from 'drizzle-orm';
 
 
 // GET /api/policy-groups - 获取用户的策略分组树
@@ -33,7 +33,7 @@ export async function GET() {
     const teamIds = userTeamMemberships.map(m => m.teamId);
     const teamGroups = teamIds.length > 0
       ? await db.query.policyGroups.findMany({
-          where: sql`${policyGroups.teamId} IN (${sql.join(teamIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`,
+          where: inArray(policyGroups.teamId, teamIds),
           orderBy: [asc(policyGroups.sortOrder), asc(policyGroups.name)],
         })
       : [];
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
           parentGroup = await db.query.policyGroups.findFirst({
             where: and(
               eq(policyGroups.id, parentId),
-              sql`${policyGroups.teamId} IN (${sql.join(memberTeamIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`
+              inArray(policyGroups.teamId, memberTeamIds)
             ),
           });
         }

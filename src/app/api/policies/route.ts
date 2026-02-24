@@ -4,7 +4,7 @@ import { db, policies, executions, policyGroups, users, policyVersions } from '@
 import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
 import { detectPII } from '@/services/pii/detector';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
-import { eq, isNull, desc, sql, and } from 'drizzle-orm';
+import { eq, isNull, desc, sql, and, inArray } from 'drizzle-orm';
 
 // GET /api/policies - List user's policies
 export async function GET() {
@@ -32,21 +32,26 @@ export async function GET() {
       getPolicyFreezeStatus(session.user.id),
     ]);
 
-    // 获取每个 policy 的执行次数
-    // TODO: 优化为单次查询（使用 SQL GROUP BY 子查询）
-    const policiesWithCount = await Promise.all(
-      policiesData.map(async (policy) => {
-        const [{ count }] = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(executions)
-          .where(eq(executions.policyId, policy.id));
-
-        return {
-          ...policy,
-          _count: { executions: count },
-        };
-      })
-    );
+    // 单次查询获取所有 policy 的执行次数
+    const policyIds = policiesData.map((p) => p.id);
+    const executionCounts: Record<string, number> = {};
+    if (policyIds.length > 0) {
+      const counts = await db
+        .select({
+          policyId: executions.policyId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(executions)
+        .where(inArray(executions.policyId, policyIds))
+        .groupBy(executions.policyId);
+      for (const row of counts) {
+        executionCounts[row.policyId] = row.count;
+      }
+    }
+    const policiesWithCount = policiesData.map((policy) => ({
+      ...policy,
+      _count: { executions: executionCounts[policy.id] ?? 0 },
+    }));
 
     // 添加冻结状态到每个策略
     const policiesWithFreeze = policiesWithCount.map((policy) => ({

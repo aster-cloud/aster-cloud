@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       ? await db.query.policyGroups.findMany({
           where: and(
             inArray(policyGroups.id, groupIds),
-            sql`${policyGroups.teamId} IN (${sql.join(adminTeamIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`
+            inArray(policyGroups.teamId, adminTeamIds)
           ),
           columns: { id: true, isSystem: true },
         })

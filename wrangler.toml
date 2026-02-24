@@ -45,6 +45,7 @@ id = "b712d2c83ffe41f0b4d0ec615314a935"
 [vars]
 NODE_ENV = "production"
 NEXT_PUBLIC_APP_URL = "https://aster-lang.cloud"
+AUTH_TRUST_HOST = "true"
 
 # 敏感环境变量需要通过 wrangler secret 设置：
 #

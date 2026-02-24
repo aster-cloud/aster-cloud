@@ -115,6 +115,25 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   });
 }
 
+export async function sendPaymentFailedEmail(email: string, name: string) {
+  if (!resend) return;
+
+  const safeName = escapeHtml(name);
+
+  await resend.emails.send({
+    from: `Aster Cloud <${FROM_EMAIL}>`,
+    to: email,
+    subject: 'Payment failed - action required',
+    html: `
+      <h1>Hi ${safeName},</h1>
+      <p>We were unable to process your latest payment for Aster Cloud.</p>
+      <p>Please update your payment method to avoid service interruption.</p>
+      <p><a href="${APP_URL}/billing" style="display: inline-block; padding: 12px 24px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 6px;">Update Payment Method</a></p>
+      <p>If you believe this is an error, please contact our support team.</p>
+    `,
+  });
+}
+
 export async function sendTeamInvitationEmail(
   email: string,
   teamName: string,

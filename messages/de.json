@@ -900,5 +900,32 @@
   "security": {
     "title": "Sicherheitsüberwachung",
     "description": "Überwachen Sie Sicherheitsereignisse, Prüfprotokolle und den Systemzustand."
+  },
+  "decisionTrace": {
+    "title": "Entscheidungsprotokoll",
+    "empty": "Keine Trace-Daten",
+    "ariaLabel": "Entscheidungsprotokoll",
+    "node": {
+      "rule": "Regel",
+      "if": "Wenn",
+      "match": "Abgleich",
+      "branch": "Zweig",
+      "expr": "Ausdruck"
+    },
+    "outcome": {
+      "true": "Wahr",
+      "false": "Falsch",
+      "matched": "Getroffen",
+      "notMatched": "Nicht getroffen",
+      "unknown": "Unbekannt"
+    },
+    "duration": "{ms} ms"
+  },
+  "diagnostics": {
+    "errors": "{count, plural, one {# Fehler} other {# Fehler}}",
+    "warnings": "{count, plural, one {# Warnung} other {# Warnungen}}",
+    "noIssues": "Keine Probleme",
+    "viewProblems": "Probleme anzeigen",
+    "hideProblems": "Probleme ausblenden"
   }
 }

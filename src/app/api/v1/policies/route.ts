@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateApiRequest } from '@/lib/api-keys';
 import { db, policies, executions, teamMembers } from '@/lib/prisma';
-import { eq, and, isNull, desc, sql, ne } from 'drizzle-orm';
+import { eq, and, isNull, desc, sql, ne, inArray } from 'drizzle-orm';
 import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { getPolicyFreezeStatus, getBatchPolicyFreezeStatus } from '@/lib/policy-freeze';
 
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
           where: and(
             isNull(policies.deletedAt),
             ne(policies.userId, userId),
-            sql`${policies.teamId} IN (${sql.join(teamIds.map(id => sql.raw(`'${id}'`)), sql.raw(', '))})`
+            inArray(policies.teamId, teamIds)
           ),
           orderBy: desc(policies.updatedAt),
           columns: {

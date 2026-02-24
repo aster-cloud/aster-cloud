@@ -50,11 +50,15 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
   const handleComplete = async () => {
     setIsLoading(true);
 
-    // TODO: Save onboarding preferences to user profile
-    // await fetch('/api/user/onboarding', {
-    //   method: 'POST',
-    //   body: JSON.stringify({ useCase: selectedUseCase, goals: selectedGoals }),
-    // });
+    try {
+      await fetch('/api/user/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ useCase: selectedUseCase, goals: selectedGoals }),
+      });
+    } catch {
+      // 即使保存失败也继续导航
+    }
 
     router.push('/dashboard');
   };

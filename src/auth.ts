@@ -218,8 +218,7 @@ const config: NextAuthConfig = {
     },
   },
 
-  // Cloudflare Workers 中自动检测 trustHost
-  trustHost: true,
+  trustHost: process.env.AUTH_TRUST_HOST === 'true',
 };
 
 // 导出 auth 函数和 handlers

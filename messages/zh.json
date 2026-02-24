@@ -900,5 +900,32 @@
   "security": {
     "title": "安全监控",
     "description": "监控安全事件、审计日志和系统健康状态。"
+  },
+  "decisionTrace": {
+    "title": "决策轨迹",
+    "empty": "暂无轨迹数据",
+    "ariaLabel": "决策轨迹",
+    "node": {
+      "rule": "规则",
+      "if": "条件",
+      "match": "匹配",
+      "branch": "分支",
+      "expr": "表达式"
+    },
+    "outcome": {
+      "true": "为真",
+      "false": "为假",
+      "matched": "匹配",
+      "notMatched": "未匹配",
+      "unknown": "未知"
+    },
+    "duration": "{ms}毫秒"
+  },
+  "diagnostics": {
+    "errors": "{count} 个错误",
+    "warnings": "{count} 个警告",
+    "noIssues": "无问题",
+    "viewProblems": "查看问题",
+    "hideProblems": "隐藏问题"
   }
 }

@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db, users, auditLogs } from '@/lib/prisma';
+import { sendPaymentFailedEmail } from '@/lib/resend';
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
 
@@ -211,8 +212,9 @@ export async function POST(req: Request) {
             resourceId: invoice.id,
           });
 
-          // TODO: Send payment failed email
-          console.log(`Payment failed for user ${user.email}`);
+          if (user.email) {
+            await sendPaymentFailedEmail(user.email, user.name || 'there');
+          }
         }
         break;
       }

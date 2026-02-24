@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { formatDate } from '@/lib/format';
+import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 
 interface ComplianceReport {
   id: string;
@@ -240,6 +241,11 @@ export function ReportsContent({
       </div>
 
       {/* Reports List */}
+      {isGenerating && (
+        <div aria-live="polite" className="mb-4">
+          <LoadingSkeleton lines={3} className="bg-white shadow sm:rounded-lg p-6" />
+        </div>
+      )}
       {reports.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <svg

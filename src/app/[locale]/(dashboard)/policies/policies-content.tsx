@@ -6,6 +6,8 @@ import { formatDate } from '@/lib/format';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
+import { ErrorState } from '@/components/feedback/error-state';
 import { Folder, GripVertical } from 'lucide-react';
 import {
   DndContext,
@@ -162,14 +164,15 @@ function DraggablePolicyItem({
     opacity: isDragging ? 0.5 : 1,
   } : undefined;
 
-  // 如果被选中且正在拖拽，显示空白占位符
+  // 如果被选中且正在拖拽，显示带无障碍标注的骨架占位符
   if (showPlaceholder) {
     return (
       <li ref={setNodeRef} style={style}>
-        <div className="px-4 py-4 sm:px-6 bg-gray-100 border-2 border-dashed border-gray-300 rounded-md">
-          <div className="h-12 flex items-center justify-center text-gray-400 text-sm">
-            {locale.startsWith('zh') ? '移动中...' : 'Moving...'}
-          </div>
+        <div
+          className="px-4 py-4 sm:px-6 bg-gray-100 border-2 border-dashed border-gray-300 rounded-md"
+          aria-live="polite"
+        >
+          <LoadingSkeleton lines={1} className="mx-4 my-2" />
         </div>
       </li>
     );
@@ -787,9 +790,7 @@ export function PoliciesContent({
         </div>
 
         {error && (
-          <div className="mt-4 rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
+          <ErrorState error={error} onRetry={() => setError('')} className="mt-4" />
         )}
 
         {/* Freeze Warning Banner */}

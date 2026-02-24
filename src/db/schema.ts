@@ -201,6 +201,11 @@ export const users = pgTable(
     trialStartedAt: timestamp('trialStartedAt', { mode: 'date' }),
     trialEndsAt: timestamp('trialEndsAt', { mode: 'date' }),
 
+    // Onboarding
+    onboardingUseCase: text('onboardingUseCase'),
+    onboardingGoals: text('onboardingGoals').array(),
+    onboardingCompletedAt: timestamp('onboardingCompletedAt', { mode: 'date' }),
+
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },

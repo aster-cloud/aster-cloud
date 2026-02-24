@@ -23,3 +23,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm test:run
       - run: pnpm run build:next
+
+      - name: Check Drizzle schema drift
+        run: |
+          pnpm db:generate 2>/dev/null || true
+          if [ -n "$(git diff --name-only drizzle/)" ]; then
+            echo "::error::Drizzle schema drift detected. Run 'pnpm db:generate' and commit the migration files."
+            git diff drizzle/
+            exit 1
+          fi

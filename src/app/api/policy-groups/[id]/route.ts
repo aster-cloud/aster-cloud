@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policyGroups, policies, teamMembers } from '@/lib/prisma';
-import { eq, and, isNull, sql, desc } from 'drizzle-orm';
+import { eq, and, isNull, sql, desc, inArray } from 'drizzle-orm';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -37,7 +37,7 @@ export async function GET(req: Request, { params }: RouteParams) {
         group = await db.query.policyGroups.findFirst({
           where: and(
             eq(policyGroups.id, id),
-            sql`${policyGroups.teamId} IN (${sql.join(teamIds.map(tid => sql.raw(`'${tid}'`)), sql.raw(', '))})`
+            inArray(policyGroups.teamId, teamIds)
           ),
         });
       }
@@ -150,7 +150,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
         existingGroup = await db.query.policyGroups.findFirst({
           where: and(
             eq(policyGroups.id, id),
-            sql`${policyGroups.teamId} IN (${sql.join(adminTeamIds.map(tid => sql.raw(`'${tid}'`)), sql.raw(', '))})`
+            inArray(policyGroups.teamId, adminTeamIds)
           ),
         });
       }
@@ -246,7 +246,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
         group = await db.query.policyGroups.findFirst({
           where: and(
             eq(policyGroups.id, id),
-            sql`${policyGroups.teamId} IN (${sql.join(adminTeamIds.map(tid => sql.raw(`'${tid}'`)), sql.raw(', '))})`
+            inArray(policyGroups.teamId, adminTeamIds)
           ),
         });
       }

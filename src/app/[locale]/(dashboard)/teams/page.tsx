@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db, teams, teamMembers, policies } from '@/lib/prisma';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, inArray } from 'drizzle-orm';
 import { hasFeatureAccess } from '@/lib/usage';
 import { TeamsContent } from './teams-content';
 
@@ -36,10 +36,9 @@ export default async function TeamsPage() {
 
     if (userTeamMemberships.length > 0) {
       // 获取这些团队的详细信息
+      const teamIds = userTeamMemberships.map((m) => m.teamId);
       const teamsData = await db.query.teams.findMany({
-        where: sql`${teams.id} IN ${sql.raw(
-          `(${userTeamMemberships.map((m) => `'${m.teamId}'`).join(',')})`
-        )}`,
+        where: inArray(teams.id, teamIds),
         orderBy: desc(teams.updatedAt),
       });
 
