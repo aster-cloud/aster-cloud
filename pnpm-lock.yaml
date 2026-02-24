@@ -18,8 +18,8 @@ importers:
   .:
     dependencies:
       '@aster-cloud/aster-lang-ts':
-        specifier: ^0.1.0
-        version: 0.1.0(ws@8.19.0)(zod@3.25.76)
+        specifier: ^0.1.1
+        version: 0.1.1(ws@8.19.0)(zod@3.25.76)
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.1
@@ -245,8 +245,8 @@ packages:
     resolution: {integrity: sha512-hJA62OeBKUQT68DD2gDyhOqJxZxycqg8wLxbqjgqSzYttCMSDL9tiAQ9abgekBYNHudbJosm9sWOEbmCDfpX2A==}
     engines: {node: '>= 10'}
 
-  '@aster-cloud/aster-lang-ts@0.1.0':
-    resolution: {integrity: sha512-m1QPIisXlGdD1fJ5a4wUZTy1TF9ekBS0HZWq/sApe6YojLDxk2cDe+UihdeHCcBirbsnIMK0Fdg/ZSN46cFk7g==}
+  '@aster-cloud/aster-lang-ts@0.1.1':
+    resolution: {integrity: sha512-R1kmYvQslZdy7whpWISuqWQh2AbNuFmNGMzOHyYYc5pp0jRtZRHz7j1K6u+rFj5yAAe+wpVTB/u2dFF5/Vofeg==}
     engines: {node: '>=24.0.0'}
     hasBin: true
 
@@ -5079,6 +5079,7 @@ snapshots:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
       zod: 3.25.76
+    optional: true
 
   '@asamuzakjp/css-color@4.1.1':
     dependencies:
@@ -5137,12 +5138,10 @@ snapshots:
       '@ast-grep/napi-win32-ia32-msvc': 0.40.5
       '@ast-grep/napi-win32-x64-msvc': 0.40.5
 
-  '@aster-cloud/aster-lang-ts@0.1.0(ws@8.19.0)(zod@3.25.76)':
+  '@aster-cloud/aster-lang-ts@0.1.1(ws@8.19.0)(zod@3.25.76)':
     dependencies:
-      '@anthropic-ai/sdk': 0.71.2(zod@3.25.76)
       '@types/semver': 7.7.1
       cac: 6.7.14
-      openai: 6.16.0(ws@8.19.0)(zod@3.25.76)
       ora: 9.1.0
       p-limit: 7.2.0
       semver: 7.7.3
@@ -5150,6 +5149,9 @@ snapshots:
       vscode-languageserver: 9.0.1
       vscode-languageserver-textdocument: 1.0.12
       vscode-languageserver-types: 3.17.5
+    optionalDependencies:
+      '@anthropic-ai/sdk': 0.71.2(zod@3.25.76)
+      openai: 6.16.0(ws@8.19.0)(zod@3.25.76)
     transitivePeerDependencies:
       - ws
       - zod
@@ -9120,6 +9122,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.6
       ts-algebra: 2.0.0
+    optional: true
 
   json-schema-traverse@0.4.1: {}
 
@@ -9465,6 +9468,7 @@ snapshots:
     optionalDependencies:
       ws: 8.19.0
       zod: 3.25.76
+    optional: true
 
   optionator@0.9.4:
     dependencies:
@@ -10059,7 +10063,8 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  ts-algebra@2.0.0: {}
+  ts-algebra@2.0.0:
+    optional: true
 
   ts-api-utils@2.4.0(typescript@5.9.3):
     dependencies:
