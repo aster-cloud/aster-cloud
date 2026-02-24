@@ -218,7 +218,7 @@ const config: NextAuthConfig = {
     },
   },
 
-  trustHost: process.env.AUTH_TRUST_HOST === 'true',
+  trustHost: true,
 };
 
 // 导出 auth 函数和 handlers
