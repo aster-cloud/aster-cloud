@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 
 export async function GET(_request: Request) {
-  if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
 
   let cfInfo: Record<string, unknown> = {};
   try {
