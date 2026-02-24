@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 
 export async function GET(_request: Request) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   let cfInfo: Record<string, unknown> = {};
   try {
@@ -16,21 +19,10 @@ export async function GET(_request: Request) {
     cfInfo = { error: 'Not in Cloudflare environment' };
   }
 
-  // Test auth import
-  let authTest: Record<string, unknown> = {};
-  try {
-    const { auth } = await import('@/auth');
-    const session = await auth();
-    authTest = { status: 'ok', hasSession: !!session };
-  } catch (e) {
-    authTest = { status: 'error', message: (e as Error).message, stack: (e as Error).stack?.split('\n').slice(0, 5) };
-  }
-
   return NextResponse.json({
     timestamp: new Date().toISOString(),
     authVersion: 'Auth.js v5',
     cloudflare: cfInfo,
-    authTest,
     environment: {
       hasGithubClientId: !!process.env.GITHUB_CLIENT_ID,
       hasGithubClientSecret: !!process.env.GITHUB_CLIENT_SECRET,
