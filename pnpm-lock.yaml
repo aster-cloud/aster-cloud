@@ -18,7 +18,7 @@ importers:
   .:
     dependencies:
       '@aster-cloud/aster-lang-ts':
-        specifier: ^0.1.0
+        specifier: 0.1.0
         version: 0.1.0(ws@8.19.0)(zod@3.25.76)
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
