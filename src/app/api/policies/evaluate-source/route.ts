@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { createPolicyApiClient, PolicyEvaluateResponse } from '@/services/policy/policy-api';
+import {
+  checkRateLimit,
+  getClientIp,
+  getRateLimitHeaders,
+  RateLimitPresets,
+} from '@/lib/rate-limit';
 
 /**
  * POST /api/policies/evaluate-source
@@ -14,16 +20,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 限流检查：基于用户ID（已认证用户）+ IP 双重标识
+    const ip = getClientIp(req);
+    const rateLimitKey = `evaluate-source:${session.user.id}`;
+    const result = checkRateLimit(rateLimitKey, RateLimitPresets.EVALUATE_SOURCE);
+    const rateLimitHeaders = getRateLimitHeaders(result, RateLimitPresets.EVALUATE_SOURCE);
+
+    if (!result.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          retryAfter: result.retryAfterSeconds,
+        },
+        { status: 429, headers: rateLimitHeaders }
+      );
+    }
+
     // 解析请求体
     let body: unknown;
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400, headers: rateLimitHeaders });
     }
 
     if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-      return NextResponse.json({ error: 'Request body must be a valid object' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Request body must be a valid object' },
+        { status: 400, headers: rateLimitHeaders }
+      );
     }
 
     const { source, context, locale, functionName } = body as {
@@ -34,11 +59,17 @@ export async function POST(req: Request) {
     };
 
     if (!source || typeof source !== 'string') {
-      return NextResponse.json({ error: 'Source code is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Source code is required' },
+        { status: 400, headers: rateLimitHeaders }
+      );
     }
 
     if (context === undefined || context === null) {
-      return NextResponse.json({ error: 'Context is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Context is required' },
+        { status: 400, headers: rateLimitHeaders }
+      );
     }
 
     // 调用 Policy API 执行源代码
@@ -64,22 +95,25 @@ export async function POST(req: Request) {
           error: apiResponse.error,
           executionTimeMs: apiResponse.executionTimeMs,
         },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     // 转换响应格式以匹配前端期望
-    return NextResponse.json({
-      executionId: `exec-${Date.now()}`,
-      success: true,
-      output: {
-        matchedRules: [],
-        actions: [],
-        approved: Boolean(apiResponse.result),
+    return NextResponse.json(
+      {
+        executionId: `exec-${Date.now()}`,
+        success: true,
+        output: {
+          matchedRules: [],
+          actions: [],
+          approved: Boolean(apiResponse.result),
+        },
+        result: apiResponse.result,
+        durationMs: apiResponse.executionTimeMs || 0,
       },
-      result: apiResponse.result,
-      durationMs: apiResponse.executionTimeMs || 0,
-    });
+      { headers: rateLimitHeaders }
+    );
   } catch (error) {
     console.error('Error evaluating policy source:', error);
     return NextResponse.json(

@@ -38,6 +38,7 @@ export const RateLimitPresets = {
   API: { windowMs: 60_000, maxRequests: 60 },
   API_RELAXED: { windowMs: 60_000, maxRequests: 120 },
   POLICY_EXECUTE: { windowMs: 60_000, maxRequests: 30 },
+  EVALUATE_SOURCE: { windowMs: 60_000, maxRequests: 20 },
 } as const;
 
 export interface RateLimitResult {
