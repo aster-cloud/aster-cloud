@@ -56,13 +56,6 @@ export function getVocabulary(domain: string, locale: string): DomainVocabulary 
 }
 
 /**
- * 获取指定领域+语言的标识符索引。
- */
-export function getVocabularyIndex(domain: string, locale: string): IdentifierIndex | undefined {
-  return vocabularyRegistry.getIndex(domain, locale);
-}
-
-/**
  * 从词汇表提取所有本地化术语（用于 Monaco Monarch 高亮）。
  */
 export function extractVocabularyTerms(vocabulary: DomainVocabulary): string[] {

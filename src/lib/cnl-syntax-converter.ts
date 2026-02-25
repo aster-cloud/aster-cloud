@@ -324,18 +324,6 @@ function convertLine(
 }
 
 /**
- * 处理中文函数定义的特殊情况
- * 关键词映射已处理大部分场景，此函数处理特殊转换逻辑
- */
-function handleChineseFunctionDefinition(
-  content: string,
-  _toLocale: SupportedLocale
-): string {
-  // 新语法使用统一的 Rule/规则/Regel 前缀，无需特殊处理
-  return content;
-}
-
-/**
  * 后处理：修复转换后可能出现的问题
  */
 function postProcess(content: string, toLocale: SupportedLocale): string {
@@ -412,17 +400,10 @@ export function convertCNLSyntax(
     );
     let converted = convertedLines.join('\n');
 
-    // 4. 处理函数定义的特殊情况
-    if (fromLocale === 'zh-CN' && toLocale === 'en-US') {
-      converted = handleChineseFunctionDefinition(converted, toLocale);
-    } else if (fromLocale === 'en-US' && toLocale === 'zh-CN') {
-      converted = handleChineseFunctionDefinition(converted, toLocale);
-    }
-
-    // 5. 还原字符串字面量
+    // 4. 还原字符串字面量
     converted = restoreStrings(converted, strings, toLocale);
 
-    // 6. 后处理
+    // 5. 后处理
     converted = postProcess(converted, toLocale);
 
     return {

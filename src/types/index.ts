@@ -15,17 +15,6 @@ export interface User {
 
 export type Plan = PlanType;
 
-export interface UserSession {
-  user: {
-    id: string;
-    email: string;
-    name: string | null;
-    image: string | null;
-    plan: Plan;
-  };
-  expires: string;
-}
-
 // Policy types
 export interface Policy {
   id: string;
@@ -47,14 +36,6 @@ export interface Execution {
   output: Record<string, unknown>;
   durationMs: number;
   createdAt: Date;
-}
-
-// Usage tracking
-export interface UsageLimits {
-  userId: string;
-  dailyExecutions: number;
-  monthlyExecutions: number;
-  lastResetAt: Date;
 }
 
 // Feature gates
