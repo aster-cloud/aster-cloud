@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.stripe.com https://policy.aster-lang.dev wss://policy.aster-lang.dev https://static.cloudflareinsights.com",
+              "connect-src 'self' https://api.stripe.com https://policy.aster-lang.dev wss://policy.aster-lang.dev https://static.cloudflareinsights.com https://cdn.jsdelivr.net",
               "frame-src https://js.stripe.com",
               "form-action 'self' https://github.com https://accounts.google.com",
               "worker-src 'self' blob:",
