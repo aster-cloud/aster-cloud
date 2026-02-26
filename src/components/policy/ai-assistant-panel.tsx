@@ -22,7 +22,6 @@ export function AIAssistantPanel({
 }: AIAssistantPanelProps) {
   const t = useTranslations('ai');
   const [prompt, setPrompt] = useState('');
-  const [showDiff, setShowDiff] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const {
     streaming,
@@ -52,7 +51,7 @@ export function AIAssistantPanel({
       },
       tenantId,
     );
-    setShowDiff(true);
+
   }, [prompt, monacoEditor, locale, tenantId, generate]);
 
   const handleApply = useCallback(() => {
@@ -71,19 +70,19 @@ export function AIAssistantPanel({
       }
     }
     onApply(content);
-    setShowDiff(false);
+
     reset();
   }, [content, monacoEditor, onApply, reset]);
 
   const handleRetry = useCallback(() => {
     reset();
-    setShowDiff(false);
+
     handleGenerate();
   }, [reset, handleGenerate]);
 
   const handleReject = useCallback(() => {
     reset();
-    setShowDiff(false);
+
   }, [reset]);
 
   const handleKeyDown = useCallback(
