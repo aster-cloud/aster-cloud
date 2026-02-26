@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     // 限流检查：基于用户ID（已认证用户）+ IP 双重标识
-    const ip = getClientIp(req);
+    const _ip = getClientIp(req);
     const rateLimitKey = `evaluate-source:${session.user.id}`;
     const result = checkRateLimit(rateLimitKey, RateLimitPresets.EVALUATE_SOURCE);
     const rateLimitHeaders = getRateLimitHeaders(result, RateLimitPresets.EVALUATE_SOURCE);
