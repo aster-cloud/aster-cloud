@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
   aiGenerate: `${prefix}/ai/generate`,
   aiExplain: `${prefix}/ai/explain`,
   aiComplete: `${prefix}/ai/complete`,
+  aiSuggest: `${prefix}/ai/suggest`,
 } as const;
 
 export type ApiEndpoint = keyof typeof API_ENDPOINTS;

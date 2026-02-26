@@ -39,7 +39,22 @@ interface MonacoPolicyEditorProps {
   debounceDelay?: number;
   /** 编辑器挂载回调，暴露 editor 实例供外部使用（如 AI Panel） */
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
+  /** 启用 AI inline 补全（需要后端 /api/v1/ai/complete 端点） */
+  enableAICompletion?: boolean;
+  /** 租户 ID（AI 补全请求使用） */
+  tenantId?: string;
+  /** AI Panel 切换回调（Ctrl+Shift+G 触发） */
+  onToggleAIPanel?: () => void;
+  /** AI 解释选中代码回调（Ctrl+Shift+E 触发） */
+  onExplainSelection?: (selectedText: string) => void;
 }
+
+const AI_COMPLETE_API_URL = process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
+
+// inline 补全请求的 debounce 计时器
+let inlineCompletionTimer: ReturnType<typeof setTimeout> | null = null;
+// inline 补全提供者注册状态
+let inlineProviderDisposable: { dispose: () => void } | null = null;
 
 // 注册 Aster Lang 语言
 function registerAsterLanguage(
@@ -279,6 +294,10 @@ export function MonacoPolicyEditor({
   placeholder,
   debounceDelay = 300,
   onEditorReady,
+  enableAICompletion = false,
+  tenantId,
+  onToggleAIPanel,
+  onExplainSelection,
 }: MonacoPolicyEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
@@ -340,10 +359,120 @@ export function MonacoPolicyEditor({
       const themeName = defineAsterTheme(monaco, isDark);
       monaco.editor.setTheme(themeName);
 
+      // 注册快捷键：Ctrl+Shift+G / Cmd+Shift+G → 切换 AI Panel
+      if (onToggleAIPanel) {
+        editor.addAction({
+          id: 'ai-toggle-panel',
+          label: 'Toggle AI Assistant Panel',
+          keybindings: [
+            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyG,
+          ],
+          run: () => onToggleAIPanel(),
+        });
+      }
+
+      // 注册快捷键：Ctrl+Shift+E / Cmd+Shift+E → 解释选中代码
+      if (onExplainSelection) {
+        editor.addAction({
+          id: 'ai-explain-selection',
+          label: 'AI Explain Selected Code',
+          keybindings: [
+            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyE,
+          ],
+          precondition: 'editorHasSelection',
+          run: (ed) => {
+            const selection = ed.getSelection();
+            if (selection) {
+              const selectedText = ed.getModel()?.getValueInRange(selection) ?? '';
+              if (selectedText.trim()) {
+                onExplainSelection(selectedText);
+              }
+            }
+          },
+        });
+      }
+
+      // 注册 AI inline 补全 provider
+      if (enableAICompletion) {
+        inlineProviderDisposable?.dispose();
+        inlineProviderDisposable = monaco.languages.registerInlineCompletionsProvider(ASTER_LANG_ID, {
+          provideInlineCompletions: async (model: editor.ITextModel, position: import('monaco-editor').Position, _context: import('monaco-editor').languages.InlineCompletionContext, token: import('monaco-editor').CancellationToken) => {
+            // 取消前一个 debounce
+            if (inlineCompletionTimer) clearTimeout(inlineCompletionTimer);
+
+            // 仅在输入暂停 500ms 后触发
+            return new Promise((resolve) => {
+              inlineCompletionTimer = setTimeout(async () => {
+                if (token.isCancellationRequested) {
+                  resolve({ items: [] });
+                  return;
+                }
+
+                const prefix = model.getValueInRange({
+                  startLineNumber: Math.max(1, position.lineNumber - 10),
+                  startColumn: 1,
+                  endLineNumber: position.lineNumber,
+                  endColumn: position.column,
+                });
+
+                if (!prefix.trim()) {
+                  resolve({ items: [] });
+                  return;
+                }
+
+                try {
+                  const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                  };
+                  if (tenantId) headers['X-Tenant-Id'] = tenantId;
+
+                  const abortCtrl = new AbortController();
+                  token.onCancellationRequested(() => abortCtrl.abort());
+
+                  const resp = await fetch(`${AI_COMPLETE_API_URL}/api/v1/ai/complete`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ prefix, locale }),
+                    signal: abortCtrl.signal,
+                  });
+
+                  if (!resp.ok || token.isCancellationRequested) {
+                    resolve({ items: [] });
+                    return;
+                  }
+
+                  const data = await resp.json();
+                  const completion = data.completion;
+                  if (!completion) {
+                    resolve({ items: [] });
+                    return;
+                  }
+
+                  resolve({
+                    items: [{
+                      insertText: completion,
+                      range: {
+                        startLineNumber: position.lineNumber,
+                        startColumn: position.column,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column,
+                      },
+                    }],
+                  });
+                } catch {
+                  resolve({ items: [] });
+                }
+              }, 500);
+            });
+          },
+          freeInlineCompletions: () => {},
+        });
+      }
+
       setIsEditorReady(true);
       onEditorReady?.(editor);
     },
-    [lexicon, isDark, vocabulary, onEditorReady]
+    [lexicon, isDark, vocabulary, onEditorReady, enableAICompletion, tenantId, locale, onToggleAIPanel, onExplainSelection]
   );
 
   // 主题切换时更新

@@ -335,6 +335,8 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                   height="400px"
                   placeholder={t('form.contentPlaceholder')}
                   onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
+                  enableAICompletion
+                  onToggleAIPanel={() => setShowAIPanel(prev => !prev)}
                 />
               </div>
 

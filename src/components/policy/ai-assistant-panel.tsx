@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
+import { AIDiffPreview } from './ai-diff-preview';
 import type { editor } from 'monaco-editor';
 
 interface AIAssistantPanelProps {
@@ -22,6 +23,8 @@ export function AIAssistantPanel({
 }: AIAssistantPanelProps) {
   const t = useTranslations('ai');
   const [prompt, setPrompt] = useState('');
+  const [showDiffPreview, setShowDiffPreview] = useState(false);
+  const [originalSource, setOriginalSource] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const {
     streaming,
@@ -30,6 +33,7 @@ export function AIAssistantPanel({
     validationError,
     completed,
     generate,
+    suggest,
     cancel,
     reset,
   } = useAIAssistant();
@@ -42,7 +46,8 @@ export function AIAssistantPanel({
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) return;
 
-    const existingSource = monacoEditor?.getValue() || undefined;
+    const existingSource = monacoEditor?.getValue() || '';
+    setOriginalSource(existingSource);
     await generate(
       {
         goal: prompt.trim(),
@@ -54,11 +59,25 @@ export function AIAssistantPanel({
 
   }, [prompt, monacoEditor, locale, tenantId, generate]);
 
+  const handleSuggest = useCallback(async () => {
+    const source = monacoEditor?.getValue();
+    if (!source?.trim()) return;
+
+    await suggest(
+      { source, locale },
+      tenantId,
+    );
+  }, [monacoEditor, locale, tenantId, suggest]);
+
+  const handleShowDiff = useCallback(() => {
+    if (!content) return;
+    setShowDiffPreview(true);
+  }, [content]);
+
   const handleApply = useCallback(() => {
     if (!content) return;
 
     if (monacoEditor) {
-      // 作为单个 edit operation，支持 Ctrl+Z 撤销
       const model = monacoEditor.getModel();
       if (model) {
         monacoEditor.executeEdits('ai-assistant', [
@@ -70,7 +89,7 @@ export function AIAssistantPanel({
       }
     }
     onApply(content);
-
+    setShowDiffPreview(false);
     reset();
   }, [content, monacoEditor, onApply, reset]);
 
@@ -81,8 +100,8 @@ export function AIAssistantPanel({
   }, [reset, handleGenerate]);
 
   const handleReject = useCallback(() => {
+    setShowDiffPreview(false);
     reset();
-
   }, [reset]);
 
   const handleKeyDown = useCallback(
@@ -156,17 +175,30 @@ export function AIAssistantPanel({
                 {t('stop')}
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={!prompt.trim()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                {t('generate')}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleSuggest}
+                  disabled={!monacoEditor?.getValue()?.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                  {t('suggest')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={!prompt.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  {t('generate')}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -225,18 +257,31 @@ export function AIAssistantPanel({
           )}
 
           {/* 操作按钮 */}
-          {completed && content && !streaming && (
+          {completed && content && !streaming && !showDiffPreview && (
             <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleApply}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
-              >
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-                {t('apply')}
-              </button>
+              {originalSource ? (
+                <button
+                  type="button"
+                  onClick={handleShowDiff}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                  </svg>
+                  {t('diffPreview')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  {t('apply')}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleRetry}
@@ -257,6 +302,18 @@ export function AIAssistantPanel({
                 </svg>
                 {t('reject')}
               </button>
+            </div>
+          )}
+
+          {/* Diff 预览 */}
+          {showDiffPreview && content && (
+            <div className="mt-3">
+              <AIDiffPreview
+                original={originalSource}
+                generated={content}
+                onAccept={handleApply}
+                onReject={handleReject}
+              />
             </div>
           )}
         </div>

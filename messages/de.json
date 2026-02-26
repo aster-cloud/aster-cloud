@@ -943,6 +943,15 @@
     "validationFailed": "Kompilierung fehlgeschlagen, wird repariert",
     "errorGeneric": "KI-Dienst voruebergehend nicht verfuegbar",
     "shortcutHint": "Strg+Enter zum Generieren",
-    "toggleAI": "KI-Assistent"
+    "toggleAI": "KI-Assistent",
+    "suggest": "Optimierungsvorschlaege",
+    "suggesting": "Analyse laeuft...",
+    "suggestPlaceholder": "KI analysiert Ihre Richtlinie und schlaegt Verbesserungen vor",
+    "diffPreview": "Aenderungen anzeigen",
+    "diffOriginal": "Original",
+    "diffGenerated": "Generiert",
+    "acceptDiff": "Aenderungen uebernehmen",
+    "rejectDiff": "Aenderungen verwerfen",
+    "inlineCompletionLoading": "KI-Vervollstaendigung wird geladen..."
   }
 }

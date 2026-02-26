@@ -21,6 +21,13 @@ export interface ExplainOptions {
   traceData?: unknown;
 }
 
+export interface SuggestOptions {
+  source: string;
+  locale: string;
+  focus?: string;
+  model?: string;
+}
+
 export interface UseAIAssistantResult {
   streaming: boolean;
   content: string;
@@ -29,6 +36,7 @@ export interface UseAIAssistantResult {
   completed: boolean;
   generate: (options: GenerateOptions, tenantId?: string) => Promise<void>;
   explain: (options: ExplainOptions, tenantId?: string) => Promise<void>;
+  suggest: (options: SuggestOptions, tenantId?: string) => Promise<void>;
   cancel: () => void;
   reset: () => void;
 }
@@ -70,6 +78,23 @@ export function useAIAssistant(): UseAIAssistantResult {
     );
   }, [sse]);
 
+  const suggest = useCallback(async (options: SuggestOptions, tenantId?: string) => {
+    const baseUrl = getApiBaseUrl();
+    const headers: Record<string, string> = {};
+    if (tenantId) headers['X-Tenant-Id'] = tenantId;
+
+    await sse.startStream(
+      `${baseUrl}${API_ENDPOINTS.aiSuggest}`,
+      {
+        source: options.source,
+        locale: options.locale,
+        focus: options.focus,
+        model: options.model,
+      },
+      headers,
+    );
+  }, [sse]);
+
   return {
     streaming: sse.streaming,
     content: sse.content,
@@ -78,6 +103,7 @@ export function useAIAssistant(): UseAIAssistantResult {
     completed: sse.completed,
     generate,
     explain,
+    suggest,
     cancel: sse.cancel,
     reset: sse.reset,
   };

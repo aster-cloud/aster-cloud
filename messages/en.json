@@ -943,6 +943,15 @@
     "validationFailed": "Compilation failed, repairing",
     "errorGeneric": "AI service temporarily unavailable",
     "shortcutHint": "Ctrl+Enter to generate",
-    "toggleAI": "AI Assistant"
+    "toggleAI": "AI Assistant",
+    "suggest": "Suggest Optimizations",
+    "suggesting": "Analyzing...",
+    "suggestPlaceholder": "AI will analyze your policy and suggest improvements",
+    "diffPreview": "Preview Changes",
+    "diffOriginal": "Original",
+    "diffGenerated": "Generated",
+    "acceptDiff": "Accept Changes",
+    "rejectDiff": "Reject Changes",
+    "inlineCompletionLoading": "Fetching AI completion..."
   }
 }
