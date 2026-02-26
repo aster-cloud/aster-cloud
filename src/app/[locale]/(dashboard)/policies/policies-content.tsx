@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/format';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
@@ -351,6 +351,10 @@ export function PoliciesContent({
   translations: t,
   locale,
 }: PoliciesContentProps) {
+  // 延迟挂载 DndContext，避免 @dnd-kit aria 属性导致的 hydration mismatch (#418)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
   const [groups, setGroups] = useState<PolicyGroup[]>(initialGroups);
   const [freezeInfo, setFreezeInfo] = useState<FreezeInfo>(initialFreezeInfo);
@@ -703,6 +707,11 @@ export function PoliciesContent({
     }
     await Promise.all([refreshGroups(), refreshPolicies()]);
   }, [editingGroup, selectedGroupId, refreshGroups, refreshPolicies]);
+
+  if (!mounted) {
+    // SSR / 首次渲染：不渲染 DndContext，避免 aria live region hydration mismatch
+    return <div className="flex h-[calc(100vh-8rem)]" />;
+  }
 
   return (
     <DndContext
