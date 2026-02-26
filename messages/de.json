@@ -927,5 +927,22 @@
     "noIssues": "Keine Probleme",
     "viewProblems": "Probleme anzeigen",
     "hideProblems": "Probleme ausblenden"
+  },
+  "ai": {
+    "panelTitle": "KI-Assistent",
+    "promptPlaceholder": "Beschreiben Sie die gewuenschte Richtlinie...",
+    "generate": "Generieren",
+    "stop": "Stopp",
+    "apply": "Anwenden",
+    "reject": "Verwerfen",
+    "retry": "Wiederholen",
+    "close": "Schliessen",
+    "explain": "KI-Erklaerung",
+    "generating": "Wird generiert...",
+    "validationPassed": "Kompilierung bestanden",
+    "validationFailed": "Kompilierung fehlgeschlagen, wird repariert",
+    "errorGeneric": "KI-Dienst voruebergehend nicht verfuegbar",
+    "shortcutHint": "Strg+Enter zum Generieren",
+    "toggleAI": "KI-Assistent"
   }
 }

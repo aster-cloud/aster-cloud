@@ -1,0 +1,84 @@
+'use client';
+
+import { useCallback } from 'react';
+import { useSSEStream } from './useSSEStream';
+import { API_ENDPOINTS } from '@/config/api-versions';
+
+const getApiBaseUrl = () =>
+  process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
+
+export interface GenerateOptions {
+  goal: string;
+  locale: string;
+  existingSource?: string;
+  schema?: unknown;
+  model?: string;
+}
+
+export interface ExplainOptions {
+  source: string;
+  locale: string;
+  traceData?: unknown;
+}
+
+export interface UseAIAssistantResult {
+  streaming: boolean;
+  content: string;
+  error: string | null;
+  validationError: string | null;
+  completed: boolean;
+  generate: (options: GenerateOptions, tenantId?: string) => Promise<void>;
+  explain: (options: ExplainOptions, tenantId?: string) => Promise<void>;
+  cancel: () => void;
+  reset: () => void;
+}
+
+export function useAIAssistant(): UseAIAssistantResult {
+  const sse = useSSEStream();
+
+  const generate = useCallback(async (options: GenerateOptions, tenantId?: string) => {
+    const baseUrl = getApiBaseUrl();
+    const headers: Record<string, string> = {};
+    if (tenantId) headers['X-Tenant-Id'] = tenantId;
+
+    await sse.startStream(
+      `${baseUrl}${API_ENDPOINTS.aiGenerate}`,
+      {
+        goal: options.goal,
+        locale: options.locale,
+        existingSource: options.existingSource,
+        schema: options.schema,
+        model: options.model,
+      },
+      headers,
+    );
+  }, [sse]);
+
+  const explain = useCallback(async (options: ExplainOptions, tenantId?: string) => {
+    const baseUrl = getApiBaseUrl();
+    const headers: Record<string, string> = {};
+    if (tenantId) headers['X-Tenant-Id'] = tenantId;
+
+    await sse.startStream(
+      `${baseUrl}${API_ENDPOINTS.aiExplain}`,
+      {
+        source: options.source,
+        locale: options.locale,
+        traceData: options.traceData,
+      },
+      headers,
+    );
+  }, [sse]);
+
+  return {
+    streaming: sse.streaming,
+    content: sse.content,
+    error: sse.error,
+    validationError: sse.validationError,
+    completed: sse.completed,
+    generate,
+    explain,
+    cancel: sse.cancel,
+    reset: sse.reset,
+  };
+}

@@ -37,6 +37,8 @@ interface MonacoPolicyEditorProps {
   placeholder?: string;
   /** Debounce delay for validation in ms (default: 300) */
   debounceDelay?: number;
+  /** 编辑器挂载回调，暴露 editor 实例供外部使用（如 AI Panel） */
+  onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
 }
 
 // 注册 Aster Lang 语言
@@ -276,6 +278,7 @@ export function MonacoPolicyEditor({
   readOnly = false,
   placeholder,
   debounceDelay = 300,
+  onEditorReady,
 }: MonacoPolicyEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
@@ -338,8 +341,9 @@ export function MonacoPolicyEditor({
       monaco.editor.setTheme(themeName);
 
       setIsEditorReady(true);
+      onEditorReady?.(editor);
     },
-    [lexicon, isDark, vocabulary]
+    [lexicon, isDark, vocabulary, onEditorReady]
   );
 
   // 主题切换时更新

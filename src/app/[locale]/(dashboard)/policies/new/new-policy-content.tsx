@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import type { editor } from 'monaco-editor';
 import dynamic from 'next/dynamic';
 import {
   POLICY_EXAMPLES,
@@ -17,6 +18,7 @@ import {
 import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
 import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
 import { CNLSyntaxConverterDialog, CNLConvertButton } from '@/components/policy/cnl-syntax-converter-dialog';
+import { AIAssistantPanel } from '@/components/policy/ai-assistant-panel';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -55,6 +57,11 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
 
   // 语法转换对话框状态
   const [isConverterOpen, setIsConverterOpen] = useState(false);
+
+  // AI 助手面板状态
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const editorInstanceRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const tAI = useTranslations('ai');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,6 +200,22 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* AI 助手切换按钮 */}
+            <button
+              type="button"
+              onClick={() => setShowAIPanel(prev => !prev)}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition-colors ${
+                showAIPanel
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              {tAI('toggleAI')}
+            </button>
+
             {/* 语法转换按钮（仅在有内容且非模板模式时显示） */}
             {!selectedExample && content.trim() && (
               <CNLConvertButton
@@ -311,8 +334,24 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                   locale={cnlLocale}
                   height="400px"
                   placeholder={t('form.contentPlaceholder')}
+                  onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
                 />
               </div>
+
+              {/* AI 助手面板 */}
+              {showAIPanel && (
+                <div className="mt-3">
+                  <AIAssistantPanel
+                    editor={editorInstanceRef.current}
+                    locale={cnlLocale}
+                    onApply={(source) => {
+                      setContent(source);
+                      setShowAIPanel(false);
+                    }}
+                    onClose={() => setShowAIPanel(false)}
+                  />
+                </div>
+              )}
               <p className="mt-3 text-sm text-gray-500">
                 {t('form.contentHelp')}
               </p>

@@ -927,5 +927,22 @@
     "noIssues": "无问题",
     "viewProblems": "查看问题",
     "hideProblems": "隐藏问题"
+  },
+  "ai": {
+    "panelTitle": "AI 助手",
+    "promptPlaceholder": "描述你想要的策略...",
+    "generate": "生成",
+    "stop": "停止",
+    "apply": "应用",
+    "reject": "丢弃",
+    "retry": "重试",
+    "close": "关闭",
+    "explain": "AI 解释",
+    "generating": "正在生成...",
+    "validationPassed": "编译校验通过",
+    "validationFailed": "编译校验失败，正在修复",
+    "errorGeneric": "AI 服务暂时不可用",
+    "shortcutHint": "Ctrl+Enter 生成",
+    "toggleAI": "AI 助手"
   }
 }

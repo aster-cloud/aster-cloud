@@ -927,5 +927,22 @@
     "noIssues": "No issues",
     "viewProblems": "View problems",
     "hideProblems": "Hide problems"
+  },
+  "ai": {
+    "panelTitle": "AI Assistant",
+    "promptPlaceholder": "Describe the policy you want to generate...",
+    "generate": "Generate",
+    "stop": "Stop",
+    "apply": "Apply",
+    "reject": "Discard",
+    "retry": "Retry",
+    "close": "Close",
+    "explain": "AI Explain",
+    "generating": "Generating...",
+    "validationPassed": "Compilation passed",
+    "validationFailed": "Compilation failed, repairing",
+    "errorGeneric": "AI service temporarily unavailable",
+    "shortcutHint": "Ctrl+Enter to generate",
+    "toggleAI": "AI Assistant"
   }
 }

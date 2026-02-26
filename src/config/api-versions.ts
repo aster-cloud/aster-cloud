@@ -26,6 +26,11 @@ export const API_ENDPOINTS = {
 
   // Workflow
   workflows: `${prefix}/workflows`,
+
+  // AI Assistant
+  aiGenerate: `${prefix}/ai/generate`,
+  aiExplain: `${prefix}/ai/explain`,
+  aiComplete: `${prefix}/ai/complete`,
 } as const;
 
 export type ApiEndpoint = keyof typeof API_ENDPOINTS;
