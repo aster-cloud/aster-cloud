@@ -2,12 +2,13 @@
 
 import { useCallback, useRef, useState } from 'react';
 
-export type SSEEventType = 'delta' | 'validation_error' | 'final' | 'error';
+export type SSEEventType = 'delta' | 'validation_error' | 'repair_start' | 'final' | 'error';
 
 export interface SSEEvent {
   type: SSEEventType;
   data?: string;
   error?: string;
+  validated?: boolean;
 }
 
 export interface UseSSEStreamResult {
@@ -16,6 +17,10 @@ export interface UseSSEStreamResult {
   error: string | null;
   validationError: string | null;
   completed: boolean;
+  /** 编译是否通过（final 事件携带） */
+  validated: boolean;
+  /** 当前修复尝试次数（如 "2/5"） */
+  repairProgress: string | null;
   startStream: (url: string, body: object, headers?: Record<string, string>) => Promise<void>;
   cancel: () => void;
   reset: () => void;
@@ -51,6 +56,8 @@ export function useSSEStream(): UseSSEStreamResult {
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [validated, setValidated] = useState(false);
+  const [repairProgress, setRepairProgress] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
@@ -58,6 +65,8 @@ export function useSSEStream(): UseSSEStreamResult {
     setError(null);
     setValidationError(null);
     setCompleted(false);
+    setValidated(false);
+    setRepairProgress(null);
     setStreaming(false);
   }, []);
 
@@ -72,6 +81,8 @@ export function useSSEStream(): UseSSEStreamResult {
     setError(null);
     setValidationError(null);
     setCompleted(false);
+    setValidated(false);
+    setRepairProgress(null);
     setStreaming(true);
 
     const controller = new AbortController();
@@ -125,10 +136,17 @@ export function useSSEStream(): UseSSEStreamResult {
                 setContent(prev => prev + event.data);
               }
               break;
+            case 'repair_start':
+              // 新的修复尝试开始：清空已有内容，显示进度
+              setContent('');
+              setValidationError(null);
+              setRepairProgress(event.data ?? null);
+              break;
             case 'final':
               if (event.data) {
                 setContent(event.data);
               }
+              setValidated(event.validated === true);
               setCompleted(true);
               break;
             case 'validation_error':
@@ -145,9 +163,15 @@ export function useSSEStream(): UseSSEStreamResult {
       if (buffer.trim()) {
         const event = parseSSELine(buffer);
         if (event) {
-          if (event.type === 'final' && event.data) setContent(event.data);
-          else if (event.type === 'delta' && event.data) setContent(prev => prev + event.data);
-          else if (event.type === 'error') setError(event.error ?? event.data ?? 'Unknown error');
+          if (event.type === 'final' && event.data) {
+            setContent(event.data);
+            setValidated(event.validated === true);
+            setCompleted(true);
+          } else if (event.type === 'delta' && event.data) {
+            setContent(prev => prev + event.data);
+          } else if (event.type === 'error') {
+            setError(event.error ?? event.data ?? 'Unknown error');
+          }
         }
       }
 
@@ -163,5 +187,5 @@ export function useSSEStream(): UseSSEStreamResult {
     }
   }, [completed]);
 
-  return { streaming, content, error, validationError, completed, startStream, cancel, reset };
+  return { streaming, content, error, validationError, completed, validated, repairProgress, startStream, cancel, reset };
 }

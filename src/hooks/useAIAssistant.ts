@@ -34,6 +34,10 @@ export interface UseAIAssistantResult {
   error: string | null;
   validationError: string | null;
   completed: boolean;
+  /** 编译是否通过（final 事件携带） */
+  validated: boolean;
+  /** 修复进度（如 "2/5"） */
+  repairProgress: string | null;
   generate: (options: GenerateOptions, tenantId?: string) => Promise<void>;
   explain: (options: ExplainOptions, tenantId?: string) => Promise<void>;
   suggest: (options: SuggestOptions, tenantId?: string) => Promise<void>;
@@ -101,6 +105,8 @@ export function useAIAssistant(): UseAIAssistantResult {
     error: sse.error,
     validationError: sse.validationError,
     completed: sse.completed,
+    validated: sse.validated,
+    repairProgress: sse.repairProgress,
     generate,
     explain,
     suggest,

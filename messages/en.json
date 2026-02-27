@@ -940,6 +940,8 @@
     "explain": "AI Explain",
     "generating": "Generating...",
     "validationPassed": "Compilation passed",
+    "autoApplied": "Compilation passed — applied to editor",
+    "repairing": "Repairing",
     "validationFailed": "Compilation failed, repairing",
     "errorGeneric": "AI service temporarily unavailable",
     "shortcutHint": "Ctrl+Enter to generate",

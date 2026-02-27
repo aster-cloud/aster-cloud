@@ -939,6 +939,8 @@
     "close": "关闭",
     "explain": "AI 解释",
     "generating": "正在生成...",
+    "autoApplied": "编译通过，已自动填充到编辑器",
+    "repairing": "修复中",
     "validationPassed": "编译校验通过",
     "validationFailed": "编译校验失败，正在修复",
     "errorGeneric": "AI 服务暂时不可用",

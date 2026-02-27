@@ -939,6 +939,8 @@
     "close": "Schliessen",
     "explain": "KI-Erklaerung",
     "generating": "Wird generiert...",
+    "autoApplied": "Kompilierung bestanden — im Editor angewendet",
+    "repairing": "Wird repariert",
     "validationPassed": "Kompilierung bestanden",
     "validationFailed": "Kompilierung fehlgeschlagen, wird repariert",
     "errorGeneric": "KI-Dienst voruebergehend nicht verfuegbar",

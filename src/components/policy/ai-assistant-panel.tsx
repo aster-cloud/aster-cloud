@@ -25,6 +25,7 @@ export function AIAssistantPanel({
   const [prompt, setPrompt] = useState('');
   const [showDiffPreview, setShowDiffPreview] = useState(false);
   const [originalSource, setOriginalSource] = useState('');
+  const [autoApplied, setAutoApplied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const {
     streaming,
@@ -32,6 +33,8 @@ export function AIAssistantPanel({
     error,
     validationError,
     completed,
+    validated,
+    repairProgress,
     generate,
     suggest,
     cancel,
@@ -43,9 +46,29 @@ export function AIAssistantPanel({
     textareaRef.current?.focus();
   }, []);
 
+  // 编译通过时自动填充到编辑器
+  useEffect(() => {
+    if (completed && validated && content && !autoApplied) {
+      setAutoApplied(true);
+      if (monacoEditor) {
+        const model = monacoEditor.getModel();
+        if (model) {
+          monacoEditor.executeEdits('ai-assistant', [
+            {
+              range: model.getFullModelRange(),
+              text: content,
+            },
+          ]);
+        }
+      }
+      onApply(content);
+    }
+  }, [completed, validated, content, autoApplied, monacoEditor, onApply]);
+
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) return;
 
+    setAutoApplied(false);
     const existingSource = monacoEditor?.getValue() || '';
     setOriginalSource(existingSource);
     await generate(
@@ -63,6 +86,7 @@ export function AIAssistantPanel({
     const source = monacoEditor?.getValue();
     if (!source?.trim()) return;
 
+    setAutoApplied(false);
     await suggest(
       { source, locale },
       tenantId,
@@ -94,6 +118,7 @@ export function AIAssistantPanel({
   }, [content, monacoEditor, onApply, reset]);
 
   const handleRetry = useCallback(() => {
+    setAutoApplied(false);
     reset();
 
     handleGenerate();
@@ -101,6 +126,7 @@ export function AIAssistantPanel({
 
   const handleReject = useCallback(() => {
     setShowDiffPreview(false);
+    setAutoApplied(false);
     reset();
   }, [reset]);
 
@@ -216,7 +242,10 @@ export function AIAssistantPanel({
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:150ms]" />
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:300ms]" />
                 </div>
-                {t('generating')}
+                {repairProgress
+                  ? `${t('repairing')} (${repairProgress})`
+                  : t('generating')
+                }
               </div>
             )}
 
@@ -227,22 +256,33 @@ export function AIAssistantPanel({
             </pre>
           </div>
 
-          {/* 校验状态 */}
-          {validationError && (
+          {/* 修复中校验错误（流式过程中短暂显示） */}
+          {validationError && streaming && (
+            <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 p-2 text-xs text-amber-700 dark:text-amber-300">
+              <svg className="h-4 w-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <span>{t('validationFailed')}</span>
+            </div>
+          )}
+
+          {/* 编译通过 + 自动填充 */}
+          {completed && validated && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 p-2 text-xs text-green-700 dark:text-green-300">
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{t('autoApplied')}</span>
+            </div>
+          )}
+
+          {/* 编译未通过（修复用尽） */}
+          {completed && !validated && !error && validationError && (
             <div className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 p-2 text-xs text-amber-700 dark:text-amber-300">
               <svg className="h-4 w-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
               </svg>
               <span>{t('validationFailed')}: {validationError}</span>
-            </div>
-          )}
-
-          {completed && !error && !validationError && (
-            <div className="mt-2 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 p-2 text-xs text-green-700 dark:text-green-300">
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{t('validationPassed')}</span>
             </div>
           )}
 
@@ -256,8 +296,8 @@ export function AIAssistantPanel({
             </div>
           )}
 
-          {/* 操作按钮 */}
-          {completed && content && !streaming && !showDiffPreview && (
+          {/* 操作按钮：仅在编译未通过或需要手动操作时显示 */}
+          {completed && content && !streaming && !showDiffPreview && !autoApplied && (
             <div className="mt-3 flex items-center gap-2">
               {originalSource ? (
                 <button
