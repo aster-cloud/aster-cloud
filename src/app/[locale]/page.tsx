@@ -6,8 +6,6 @@ import {
   getCurrencyForLocale,
   formatPrice,
   getProPrice,
-  getTeamPerUserPrice,
-  getTeamMinUsers,
   PLANS,
 } from '@/lib/plans';
 
@@ -28,8 +26,6 @@ function HomeContent({ locale }: { locale: string }) {
 
   // 价格计算
   const proMonthlyPrice = formatPrice(getProPrice(currency, 'monthly'), currency);
-  const teamPerUserPrice = formatPrice(getTeamPerUserPrice(currency, 'monthly'), currency);
-  const teamMinUsers = getTeamMinUsers();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex flex-col">
@@ -90,81 +86,81 @@ function HomeContent({ locale }: { locale: string }) {
             {t('features.title')}
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Feature 1 - PII Protection */}
+            {/* Feature 1 — Native-language CNL */}
             <div className="p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.piiProtection.title')}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.nativeLanguage.title')}</h3>
               <p className="text-gray-600">
-                {t('features.piiProtection.description')}
+                {t('features.nativeLanguage.description')}
               </p>
             </div>
 
-            {/* Feature 2 - Compliance Reports */}
+            {/* Feature 2 — AI drafts, humans approve */}
             <div className="p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.complianceReports.title')}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.aiDraftHumanReview.title')}</h3>
               <p className="text-gray-600">
-                {t('features.complianceReports.description')}
+                {t('features.aiDraftHumanReview.description')}
               </p>
             </div>
 
-            {/* Feature 3 - Team Collaboration */}
+            {/* Feature 3 — Hash-chained tamper-evident audit */}
             <div className="p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.teamCollaboration.title')}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.hashChainAudit.title')}</h3>
               <p className="text-gray-600">
-                {t('features.teamCollaboration.description')}
+                {t('features.hashChainAudit.description')}
               </p>
             </div>
 
-            {/* Feature 4 - Real-time Execution */}
+            {/* Feature 4 — Dual-engine semantics */}
             <div className="p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.realTimeExecution.title')}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.dualEngineSemantics.title')}</h3>
               <p className="text-gray-600">
-                {t('features.realTimeExecution.description')}
+                {t('features.dualEngineSemantics.description')}
               </p>
             </div>
 
-            {/* Feature 5 - API Access */}
+            {/* Feature 5 — Multi-language packs */}
             <div className="p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.apiAccess.title')}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.multiLanguagePacks.title')}</h3>
               <p className="text-gray-600">
-                {t('features.apiAccess.description')}
+                {t('features.multiLanguagePacks.description')}
               </p>
             </div>
 
-            {/* Feature 6 - Version History */}
+            {/* Feature 6 — Self-host on K3S */}
             <div className="p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.versionHistory.title')}</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('features.selfHostable.title')}</h3>
               <p className="text-gray-600">
-                {t('features.versionHistory.description')}
+                {t('features.selfHostable.description')}
               </p>
             </div>
           </div>
@@ -234,16 +230,14 @@ function HomeContent({ locale }: { locale: string }) {
               </Link>
             </div>
 
-            {/* Team Plan */}
+            {/* Enterprise Plan */}
             <div className="p-8 rounded-2xl border border-gray-200 bg-white flex flex-col">
-              <h3 className="text-lg font-semibold text-gray-900">{t('billing.plans.names.team')}</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('billing.plans.names.enterprise')}</h3>
               <div className="mt-4 flex items-baseline">
-                <span className="text-4xl font-bold">{teamPerUserPrice}</span>
-                <span className="ml-1 text-gray-500">{t('pricing.perUser')}{t('pricing.perMonth')}</span>
+                <span className="text-2xl font-semibold text-gray-700">{t('common.contactSales')}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{t('billing.minUsers', { count: teamMinUsers })}</p>
               <ul className="mt-6 space-y-3 text-sm text-gray-600 flex-1">
-                {PLANS.team.featureKeys.map((featureKey) => (
+                {PLANS.enterprise.featureKeys.map((featureKey) => (
                   <li key={featureKey} className="flex items-center">
                     <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -253,7 +247,7 @@ function HomeContent({ locale }: { locale: string }) {
                 ))}
               </ul>
               <Link
-                href="/signup"
+                href="mailto:sales@aster-lang.cloud"
                 className="mt-8 block w-full text-center py-2 px-4 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
               >
                 {t('common.contactSales')}

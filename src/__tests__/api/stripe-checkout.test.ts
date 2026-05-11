@@ -152,8 +152,8 @@ describe('Stripe Checkout API', () => {
     });
   });
 
-  describe('Team 计划数量处理', () => {
-    it('should enforce minimum 3 users for team plan', async () => {
+  describe('Pro 计划数量处理（PM v1.1：起步 1 席）', () => {
+    it('should default quantity to 1 when not specified', async () => {
       mockCreateCheckoutSession.mockResolvedValue({
         id: 'cs_test',
         url: 'https://stripe.test/session',
@@ -161,9 +161,8 @@ describe('Stripe Checkout API', () => {
 
       const response = await POST(
         createRequest({
-          plan: 'team',
+          plan: 'pro',
           interval: 'monthly',
-          quantity: 1, // 少于最低要求
         })
       );
 
@@ -172,14 +171,14 @@ describe('Stripe Checkout API', () => {
         expect.objectContaining({
           line_items: [
             expect.objectContaining({
-              quantity: 3, // 应该被强制为最小值 3
+              quantity: 1,
             }),
           ],
         })
       );
     });
 
-    it('should accept quantity >= 3 for team plan', async () => {
+    it('should accept arbitrary quantity for pro plan (multi-seat purchase)', async () => {
       mockCreateCheckoutSession.mockResolvedValue({
         id: 'cs_test',
         url: 'https://stripe.test/session',
@@ -187,7 +186,7 @@ describe('Stripe Checkout API', () => {
 
       const response = await POST(
         createRequest({
-          plan: 'team',
+          plan: 'pro',
           interval: 'monthly',
           quantity: 10,
         })

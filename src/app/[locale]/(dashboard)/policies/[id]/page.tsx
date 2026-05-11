@@ -91,7 +91,7 @@ export default async function PolicyDetailPage({
     },
     deleteDialog: {
       title: t('deleteDialog.title'),
-      description: t('deleteDialog.description'),
+      description: t('deleteDialog.description', { name: policy.name }),
       confirm: t('deleteDialog.confirm'),
       cancel: t('deleteDialog.cancel'),
     },

@@ -172,11 +172,9 @@ const config: NextAuthConfig = {
       return session;
     },
 
-    async signIn({ user: _user, account, profile: _profile }) {
-      // Prevent automatic account linking when user is already signed in
+    async signIn({ user, account, profile: _profile }) {
       if (account?.provider && account.provider !== 'credentials') {
         const db = getDb();
-        // Check if this OAuth account already exists
         const existingAccount = await db.query.accounts.findFirst({
           where: (accounts, { and, eq }) => and(
             eq(accounts.provider, account.provider),
@@ -184,9 +182,59 @@ const config: NextAuthConfig = {
           ),
         });
 
-        // If account exists, allow sign in
         if (existingAccount) {
           return true;
+        }
+
+        // 反多重注册 + 一次性邮箱 + IP 限流
+        if (user.email) {
+          const [
+            { normalizeEmail },
+            { isDisposableEmail },
+            { checkSignupRateLimit, recordSignupAttempt },
+          ] = await Promise.all([
+            import('@/lib/email-normalize'),
+            import('@/lib/email-disposable'),
+            import('@/lib/signup-rate-limit'),
+          ]);
+
+          // 取请求 IP（仅在 signIn 触发的请求上下文中可用）
+          let clientIp: string | null = null;
+          try {
+            const { headers } = await import('next/headers');
+            const h = await headers();
+            clientIp =
+              h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+              h.get('x-real-ip') ||
+              h.get('cf-connecting-ip') ||
+              null;
+          } catch {
+            // headers() 在某些上下文不可用，不影响其他守卫
+          }
+
+          if (isDisposableEmail(user.email)) {
+            await recordSignupAttempt(clientIp, false);
+            return false;
+          }
+
+          const normalized = normalizeEmail(user.email);
+          const dup = await db.query.users.findFirst({
+            where: (u, { eq }) => eq(u.emailNormalized, normalized),
+            columns: { id: true },
+          });
+          if (dup) {
+            await recordSignupAttempt(clientIp, false);
+            return false;
+          }
+
+          const allowed = await checkSignupRateLimit(clientIp);
+          if (!allowed) {
+            await recordSignupAttempt(clientIp, false);
+            return false;
+          }
+
+          // 通过所有守卫；signIn 返回 true 后由 createUser event 记录成功
+          await recordSignupAttempt(clientIp, true);
         }
       }
 

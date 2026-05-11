@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mockUser } from '@/__tests__/helpers/mock-user';
 
 // Use vi.hoisted so variables can be referenced in vi.mock factories
 const {
@@ -100,34 +101,6 @@ const mockExecutePolicyUnified = vi.mocked(executePolicyUnified);
 const mockGetPrimaryError = vi.mocked(getPrimaryError);
 const mockCheckTeamPermission = vi.mocked(checkTeamPermission);
 
-/** 构建完整的 User mock 对象，所有字段均有合理默认值 */
-function mockUser(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'user-1',
-    name: 'Test User',
-    email: 'test@example.com',
-    emailVerified: null,
-    image: null,
-    passwordHash: null,
-    failedLoginAttempts: 0,
-    lastFailedLoginAt: null,
-    lockedUntil: null,
-    lockoutCount: 0,
-    plan: 'pro' as const,
-    stripeCustomerId: null,
-    subscriptionId: null,
-    subscriptionStatus: null,
-    trialStartedAt: null,
-    trialEndsAt: null,
-    onboardingUseCase: null,
-    onboardingGoals: null,
-    onboardingCompletedAt: null,
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01'),
-    ...overrides,
-  };
-}
-
 /** 构建完整的 Policy mock 对象，所有字段均有合理默认值 */
 function mockPolicy(overrides: Record<string, unknown> = {}) {
   return {
@@ -228,7 +201,7 @@ describe('V1 Policies API - Drizzle Migration', () => {
       expect(body.error).toBe('Invalid API key');
     });
 
-    it('should return 429 when API call limit is exceeded', async () => {
+    it('should return 429 with upgrade contract when API call limit is exceeded', async () => {
       mockCheckUsageLimit.mockResolvedValue({
         allowed: false,
         limit: 1000,
@@ -239,8 +212,12 @@ describe('V1 Policies API - Drizzle Migration', () => {
       const response = await GET(makeRequest('http://localhost/api/v1/policies'));
       const body = await response.json();
 
+      // F3 v1.1：保留 429 状态码（与现有客户端行为一致），body 改用 upgradeResponse 统一格式
       expect(response.status).toBe(429);
-      expect(body.error).toBe('API call limit exceeded');
+      expect(body.upgrade).toBe(true);
+      expect(body.reason).toBe('evaluations');
+      expect(body.recommendedPlan).toBe('pro');
+      expect(typeof body.message).toBe('string');
     });
 
     it('should return own policies list with freeze status', async () => {
@@ -400,7 +377,7 @@ describe('V1 Policies API - Drizzle Migration', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 429 when API call limit is exceeded', async () => {
+    it('should return 429 with upgrade contract when API call limit is exceeded', async () => {
       setupExecuteRow({ api_usage_count: 5000 }); // pro plan apiCalls=5000, at limit
 
       const response = await POST(
@@ -409,12 +386,18 @@ describe('V1 Policies API - Drizzle Migration', () => {
       );
       const body = await response.json();
 
+      // F3 v1.1：upgradeResponse('evaluations') 统一格式
       expect(response.status).toBe(429);
-      expect(body.error).toBe('API call limit exceeded');
+      expect(body.upgrade).toBe(true);
+      expect(body.reason).toBe('evaluations');
+      expect(body.recommendedPlan).toBe('pro');
+      expect(body.usage).toBeGreaterThanOrEqual(5000);
+      expect(body.limit).toBe(5000);
     });
 
-    it('should return 429 when execution limit is exceeded', async () => {
-      setupExecuteRow({ exec_usage_count: 5000 }); // pro plan executions=5000, at limit
+    it('should return 429 with upgrade contract when execution limit is exceeded', async () => {
+      // PM v1.1: pro plan evaluations=50_000
+      setupExecuteRow({ exec_usage_count: 50000 });
 
       const response = await POST(
         makeRequest('http://localhost/api/v1/policies/p1/execute', 'POST', validBody),
@@ -423,7 +406,11 @@ describe('V1 Policies API - Drizzle Migration', () => {
       const body = await response.json();
 
       expect(response.status).toBe(429);
-      expect(body.error).toBe('Execution limit exceeded');
+      expect(body.upgrade).toBe(true);
+      expect(body.reason).toBe('evaluations');
+      expect(body.recommendedPlan).toBe('pro');
+      expect(body.usage).toBeGreaterThanOrEqual(50000);
+      expect(body.limit).toBe(50000);
     });
 
     it('should return execution result on success', async () => {

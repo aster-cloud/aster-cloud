@@ -24,12 +24,32 @@ export function DrizzleAdapter(dbOrGetter: DbOrGetter): Adapter {
       const db = resolveDb(dbOrGetter);
       const id = crypto.randomUUID();
       const now = new Date();
+      const { normalizeEmail } = await import('@/lib/email-normalize');
+      const emailNormalized = data.email ? normalizeEmail(data.email) : null;
+
+      // 抓取注册 IP hash（用于反多重注册聚类检测）
+      let signupIpHash: string | null = null;
+      try {
+        const { headers } = await import('next/headers');
+        const { hashIp } = await import('@/lib/signup-rate-limit');
+        const h = await headers();
+        const ip =
+          h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+          h.get('x-real-ip') ||
+          h.get('cf-connecting-ip');
+        if (ip) signupIpHash = hashIp(ip);
+      } catch {
+        // headers() 可能在测试或非请求上下文中不可用
+      }
+
       await db.insert(users).values({
         id,
         email: data.email,
+        emailNormalized,
         emailVerified: data.emailVerified,
         name: data.name,
         image: data.image,
+        signupIpHash,
         createdAt: now,
         updatedAt: now,
       });

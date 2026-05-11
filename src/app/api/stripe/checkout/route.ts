@@ -31,8 +31,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate quantity for team plan (minimum 3 users)
-    const itemQuantity = plan === 'team' ? Math.max(3, quantity || 3) : 1;
+    // PM v1.1：Pro 起步 1 席（启用审批流需 ≥2 席，由 plan-quota 在业务路径强制）
+    const itemQuantity = Math.max(1, quantity || 1);
 
     // 验证并默认货币为 USD
     const currency: CurrencyCode = isValidCurrency(rawCurrency) ? rawCurrency : 'USD';

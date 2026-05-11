@@ -1,38 +1,46 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
-import { db, users, auditLogs } from '@/lib/prisma';
-import { sendPaymentFailedEmail } from '@/lib/resend';
-import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
+import { stripe } from '@/lib/stripe';
+import { handleCheckoutCompleted } from './handlers/checkout-completed';
+import { handleSubscriptionCreated } from './handlers/subscription-created';
+import { handleSubscriptionUpdated } from './handlers/subscription-updated';
+import { handleSubscriptionTrialWillEnd } from './handlers/subscription-trial-will-end';
+import { handleSubscriptionDeleted } from './handlers/subscription-deleted';
+import { handleInvoicePaymentSucceeded } from './handlers/invoice-payment-succeeded';
+import { handleInvoicePaymentFailed } from './handlers/invoice-payment-failed';
 
+// Re-export for backward compatibility with tests that import these from `route`.
+export { buildPersonalTeamSlug } from './handlers/_shared';
+
+type AnyHandler = (data: Stripe.Event.Data.Object, ctx: object) => Promise<void>;
+
+const handlers: Record<string, AnyHandler> = {
+  'checkout.session.completed': handleCheckoutCompleted as AnyHandler,
+  'customer.subscription.created': handleSubscriptionCreated as AnyHandler,
+  'customer.subscription.updated': handleSubscriptionUpdated as AnyHandler,
+  'customer.subscription.trial_will_end': handleSubscriptionTrialWillEnd as AnyHandler,
+  'customer.subscription.deleted': handleSubscriptionDeleted as AnyHandler,
+  'invoice.payment_succeeded': handleInvoicePaymentSucceeded as AnyHandler,
+  'invoice.payment_failed': handleInvoicePaymentFailed as AnyHandler,
+};
 
 export async function POST(req: Request) {
-  // Validate webhook secret is configured
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error('STRIPE_WEBHOOK_SECRET is not configured');
-    return NextResponse.json(
-      { error: 'Webhook not configured' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
   }
 
   const body = await req.text();
   const headersList = await headers();
   const signature = headersList.get('stripe-signature');
-
-  // Validate signature header exists
   if (!signature) {
     console.error('Missing stripe-signature header');
-    return NextResponse.json(
-      { error: 'Missing signature' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
   }
 
   let event: Stripe.Event;
-
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
@@ -41,194 +49,15 @@ export async function POST(req: Request) {
   }
 
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.client_reference_id;
-        const customerId = session.customer as string;
-        const subscriptionId = session.subscription as string;
-        const plan = session.metadata?.plan as 'pro' | 'team';
-
-        if (userId && customerId && subscriptionId) {
-          await db
-            .update(users)
-            .set({
-              plan: plan || 'pro',
-              stripeCustomerId: customerId,
-              subscriptionId: subscriptionId,
-              subscriptionStatus: 'active',
-              // Clear trial dates when subscribing
-              trialStartedAt: null,
-              trialEndsAt: null,
-            })
-            .where(eq(users.id, userId));
-          console.log(`User ${userId} upgraded to ${plan}`);
-        }
-        break;
-      }
-
-      case 'customer.subscription.created': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-
-        const user = await db.query.users.findFirst({
-          where: eq(users.stripeCustomerId, customerId),
-        });
-
-        if (user) {
-          await db
-            .update(users)
-            .set({
-              subscriptionId: subscription.id,
-              subscriptionStatus: subscription.status as
-                | 'active'
-                | 'past_due'
-                | 'canceled'
-                | 'incomplete'
-                | 'incomplete_expired'
-                | 'trialing'
-                | 'unpaid'
-                | 'paused',
-            })
-            .where(eq(users.id, user.id));
-        }
-        break;
-      }
-
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-
-        const user = await db.query.users.findFirst({
-          where: eq(users.stripeCustomerId, customerId),
-        });
-
-        if (user) {
-          // Determine plan from price ID
-          const priceId = subscription.items.data[0]?.price.id;
-          let plan: 'pro' | 'team' = 'pro';
-
-          if (priceId?.includes('team')) {
-            plan = 'team';
-          }
-
-          await db
-            .update(users)
-            .set({
-              plan: subscription.status === 'active' ? plan : 'free',
-              subscriptionStatus: subscription.status as
-                | 'active'
-                | 'past_due'
-                | 'canceled'
-                | 'incomplete'
-                | 'incomplete_expired'
-                | 'trialing'
-                | 'unpaid'
-                | 'paused',
-            })
-            .where(eq(users.id, user.id));
-        }
-        break;
-      }
-
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-
-        const user = await db.query.users.findFirst({
-          where: eq(users.stripeCustomerId, customerId),
-        });
-
-        if (user) {
-          await db
-            .update(users)
-            .set({
-              plan: 'free',
-              subscriptionId: null,
-              subscriptionStatus: 'canceled',
-            })
-            .where(eq(users.id, user.id));
-
-          // Create audit log
-          await db.insert(auditLogs).values({
-            id: globalThis.crypto.randomUUID(),
-            userId: user.id,
-            action: 'subscription.cancelled',
-            resource: 'subscription',
-            resourceId: subscription.id,
-          });
-        }
-        break;
-      }
-
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
-
-        const user = await db.query.users.findFirst({
-          where: eq(users.stripeCustomerId, customerId),
-        });
-
-        if (user) {
-          // Create audit log for payment
-          await db.insert(auditLogs).values({
-            id: globalThis.crypto.randomUUID(),
-            userId: user.id,
-            action: 'payment.succeeded',
-            resource: 'invoice',
-            resourceId: invoice.id,
-            metadata: {
-              amount: invoice.amount_paid,
-              currency: invoice.currency,
-            },
-          });
-        }
-        break;
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
-
-        const user = await db.query.users.findFirst({
-          where: eq(users.stripeCustomerId, customerId),
-        });
-
-        if (user) {
-          // Update subscription status
-          await db
-            .update(users)
-            .set({
-              subscriptionStatus: 'past_due',
-            })
-            .where(eq(users.id, user.id));
-
-          // Create audit log
-          await db.insert(auditLogs).values({
-            id: globalThis.crypto.randomUUID(),
-            userId: user.id,
-            action: 'payment.failed',
-            resource: 'invoice',
-            resourceId: invoice.id,
-          });
-
-          if (user.email) {
-            await sendPaymentFailedEmail(user.email, user.name || 'there');
-          }
-        }
-        break;
-      }
-
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
+    const handler = handlers[event.type];
+    if (handler) {
+      await handler(event.data.object, {});
+    } else {
+      console.log(`Unhandled event type: ${event.type}`);
     }
-
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error('Webhook handler error:', err);
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }

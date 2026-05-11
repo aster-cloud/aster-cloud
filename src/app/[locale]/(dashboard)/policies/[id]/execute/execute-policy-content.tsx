@@ -11,6 +11,7 @@ import {
   ZH_CN,
   DE_DE,
   type ParameterInfo,
+  type FieldInfo,
   type SchemaResult,
   type Lexicon,
 } from '@aster-cloud/aster-lang-ts/browser';
@@ -84,6 +85,10 @@ function buildNamedContext(
   return context;
 }
 
+// 扩展字段信息（包含枚举变体，兼容未发布的 FieldInfo 类型）
+type FieldInfoWithEnum = FieldInfo & { enumVariants?: string[] };
+type ParameterInfoWithEnum = ParameterInfo & { enumVariants?: string[] };
+
 // 初始化表单值（带自动生成的示例数据）
 function initFormValuesWithSampleData(
   parameters: ParameterInfo[],
@@ -91,17 +96,25 @@ function initFormValuesWithSampleData(
 ): Record<string, Record<string, unknown>> {
   const values: Record<string, Record<string, unknown>> = {};
   for (const param of parameters) {
-    if (param.typeKind === 'struct' && param.fields) {
+    const p = param as ParameterInfoWithEnum;
+    if (p.typeKind === 'struct' && p.fields) {
       const structValue: Record<string, unknown> = {};
-      for (const field of param.fields) {
-        structValue[field.name] = generateFieldValue(field.name, field.type, field.typeKind, lexicon);
+      for (const field of p.fields) {
+        const f = field as FieldInfoWithEnum;
+        if (f.typeKind === 'enum' && f.enumVariants && f.enumVariants.length > 0) {
+          structValue[f.name] = f.enumVariants[0];
+        } else {
+          structValue[f.name] = generateFieldValue(f.name, f.type, f.typeKind, lexicon);
+        }
       }
-      values[param.name] = structValue;
+      values[p.name] = structValue;
+    } else if (p.typeKind === 'enum' && p.enumVariants && p.enumVariants.length > 0) {
+      values[p.name] = p.enumVariants[0] as unknown as Record<string, unknown>;
     } else {
-      values[param.name] = generateFieldValue(
-        param.name,
-        param.type,
-        param.typeKind,
+      values[p.name] = generateFieldValue(
+        p.name,
+        p.type,
+        p.typeKind,
         lexicon,
       ) as Record<string, unknown>;
     }
@@ -270,10 +283,32 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     fieldName: string | null,
     typeName: string,
     typeKind: TypeKind,
-    value: unknown
+    value: unknown,
+    enumVariants?: string[]
   ) => {
     const id = fieldName ? `${paramName}-${fieldName}` : paramName;
     const label = fieldName || paramName;
+
+    // 枚举类型：渲染下拉选择框
+    if (typeKind === 'enum' && enumVariants && enumVariants.length > 0) {
+      return (
+        <div key={id}>
+          <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
+            {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
+          </label>
+          <select
+            id={id}
+            value={String(value ?? enumVariants[0])}
+            onChange={(e) => updateFormField(paramName, fieldName, e.target.value)}
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+          >
+            {enumVariants.map((variant) => (
+              <option key={variant} value={variant}>{variant}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
 
     // 根据类型渲染不同的输入控件
     if (['bool', 'boolean', '布尔', 'wahrheitswert'].some(t => typeName.toLowerCase().includes(t))) {
@@ -368,7 +403,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                 field.name,
                 field.type,
                 field.typeKind,
-                (paramValue as Record<string, unknown>)?.[field.name]
+                (paramValue as Record<string, unknown>)?.[field.name],
+                (field as FieldInfoWithEnum).enumVariants
               )
             )}
           </div>
@@ -376,10 +412,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       );
     }
 
-    // 基本类型：直接渲染
+    // 基本类型或枚举：直接渲染
     return (
       <div key={param.name} className="mb-4">
-        {renderField(param.name, null, param.type, param.typeKind, paramValue)}
+        {renderField(param.name, null, param.type, param.typeKind, paramValue, (param as ParameterInfoWithEnum).enumVariants)}
       </div>
     );
   };

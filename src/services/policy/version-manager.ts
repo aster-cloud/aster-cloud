@@ -15,6 +15,7 @@ import { eq, and, inArray, desc, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 import { computeChainedHash, computeSourceHash } from '../security/policy-security';
 import { logSecurityEvent } from '../security/security-event-service';
+import { recordAhaMomentIfFirst } from '@/lib/metrics/aha-detection';
 
 type PolicyVersion = InferSelectModel<typeof policyVersions>;
 type PolicyVersionStatus = PolicyVersion['status'];
@@ -224,6 +225,18 @@ export async function approveVersion(params: {
     userId: approverId,
     details: { version, decision, comment },
   });
+
+  // PM 02 north-star: detect AHA moment (author's first approved version).
+  // Fire-and-forget — failure must NOT break the approval flow.
+  if (decision === 'APPROVED' && targetVersion.createdBy) {
+    recordAhaMomentIfFirst({
+      userId: targetVersion.createdBy,
+      policyVersionId: targetVersion.id,
+      approvedAt: new Date(),
+    }).catch((err) => {
+      console.error('[AHA detection] failed (non-blocking):', err);
+    });
+  }
 }
 
 /**

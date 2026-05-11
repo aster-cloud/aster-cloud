@@ -11,6 +11,7 @@ import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-referenc
 import { CNLSyntaxConverterDialog, CNLConvertButton } from '@/components/policy/cnl-syntax-converter-dialog';
 import { AIAssistantPanel } from '@/components/policy/ai-assistant-panel';
 import { normalizeLocale } from '@/data/policy-examples';
+import { track, Events, levenshtein } from '@/lib/mixpanel';
 
 // 动态导入 Monaco 编辑器以避免 SSR 问题
 const MonacoPolicyEditor = dynamic(
@@ -95,11 +96,20 @@ export function EditPolicyContent({
     setIsSaving(true);
     setError('');
 
+    // NSM 埋点准备：判定本次保存是否基于 AI 草稿（详见 03-telemetry-spec.md）
+    const aiDraft = typeof window !== 'undefined' ? window.__asterAiDraft : undefined;
+    const isFromAiDraft = !!aiDraft && aiDraft.content !== content; // 草稿被改过
+    const sourceKind: 'manual' | 'ai_draft' | 'ai_draft_edited' =
+      !aiDraft ? 'manual' : isFromAiDraft ? 'ai_draft_edited' : 'ai_draft';
+
     try {
       const res = await fetch(`/api/policies/${policy.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, content, isPublic, groupId }),
+        body: JSON.stringify({
+          name, description, content, isPublic, groupId,
+          metadata: { source_kind: sourceKind },
+        }),
       });
 
       if (!res.ok) {
@@ -112,6 +122,31 @@ export function EditPolicyContent({
           setError(errorMessage);
         }
         return;
+      }
+
+      // NSM 埋点：草稿被人工修改保存
+      if (aiDraft && isFromAiDraft) {
+        const editDistance = levenshtein(aiDraft.content, content);
+        const maxLen = Math.max(aiDraft.content.length, content.length, 1);
+        track(Events.DRAFT_EDITED, {
+          draft_id: policy.id,
+          prompt_id: aiDraft.promptId,
+          edit_distance: editDistance,
+          edit_ratio: editDistance / maxLen,
+          time_spent_sec: Math.round((Date.now() - aiDraft.generatedAt) / 1000),
+          repair_count: aiDraft.repairCount,
+        });
+      }
+      // NSM 埋点：草稿发布（保存即视作 published，符合本产品的 publish 语义）
+      track(Events.DRAFT_PUBLISHED, {
+        draft_id: policy.id,
+        source_kind: sourceKind,
+        tenant_id: undefined, // 由 server-side 补齐更可靠，前端尽力而为
+      });
+
+      // 清理本会话 AI 草稿上下文，避免污染下一次保存
+      if (typeof window !== 'undefined') {
+        delete window.__asterAiDraft;
       }
 
       router.push(`/${locale}/policies/${policy.id}`);

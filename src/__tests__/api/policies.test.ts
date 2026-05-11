@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mockUser } from '@/__tests__/helpers/mock-user';
 
 // Use vi.hoisted so variables can be referenced in vi.mock factories
 const {
@@ -164,34 +165,6 @@ function mockPolicy(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// 部分用户对象
-function mockUser(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'user-1',
-    name: 'Test User',
-    email: 'test@example.com',
-    emailVerified: null,
-    image: null,
-    passwordHash: null,
-    failedLoginAttempts: 0,
-    lastFailedLoginAt: null,
-    lockedUntil: null,
-    lockoutCount: 0,
-    plan: 'pro' as const,
-    stripeCustomerId: null,
-    subscriptionId: null,
-    subscriptionStatus: null,
-    trialStartedAt: null,
-    trialEndsAt: null,
-    onboardingUseCase: null,
-    onboardingGoals: null,
-    onboardingCompletedAt: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  };
-}
-
 // 部分策略版本对象
 function mockPolicyVersion(overrides: Record<string, unknown> = {}) {
   return {
@@ -343,17 +316,22 @@ describe('Policies API - Drizzle Migration', () => {
       expect(body.error).toContain('required');
     });
 
-    it('should return 403 when policy limit is reached for free user', async () => {
+    it('should return 402 with upgrade contract when policy limit is reached for free user', async () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'free' }));
-      // free plan limit = 3, current count = 3
-      setupCountSelect(3);
+      // PM v1.1 free plan limit = 5, current count = 5
+      setupCountSelect(5);
 
       const response = await POST(makeRequest('http://localhost/api/policies', 'POST', validBody));
       const body = await response.json();
 
-      expect(response.status).toBe(403);
-      expect(body.error).toBe('Policy limit reached');
+      // F3 v1.1：统一 upgrade JSON 格式（详见 src/lib/plan-quota.ts）
+      expect(response.status).toBe(402);
       expect(body.upgrade).toBe(true);
+      expect(body.reason).toBe('published_rules');
+      expect(body.recommendedPlan).toBe('pro');
+      expect(body.usage).toBeGreaterThanOrEqual(5);
+      expect(body.limit).toBe(5);
+      expect(typeof body.message).toBe('string');
     });
 
     it('should return 404 when specified groupId does not belong to user', async () => {

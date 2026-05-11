@@ -11,36 +11,36 @@
     "brand": "Aster Cloud"
   },
   "hero": {
-    "title": "Richtlinienverwaltung",
-    "titleHighlight": "einfach gemacht",
-    "description": "Erstellen, testen und implementieren Sie Geschäftsrichtlinien mit integriertem PII-Schutz, Compliance-Überwachung und Teamzusammenarbeit. Starten Sie Ihre 14-tägige kostenlose Testversion.",
-    "noCreditCard": "Keine Kreditkarte erforderlich. 14 Tage kostenlos testen."
+    "title": "Policy-as-Code in Ihrer Muttersprache",
+    "titleHighlight": "(English / 中文 / Deutsch)",
+    "description": "Schreiben Sie Geschäftsregeln in Ihrer Muttersprache. KI entwirft, Menschen genehmigen, GraalVM führt aus. Manipulationssicheres Audit inklusive.",
+    "noCreditCard": "Keine Kreditkarte erforderlich."
   },
   "features": {
-    "title": "Alles, was Sie für die Richtlinienverwaltung brauchen",
-    "piiProtection": {
-      "title": "PII-Schutz",
-      "description": "Automatische Erkennung und Schutz personenbezogener Daten in Ihren Richtlinien."
+    "title": "Gemacht für regelkonformen Policy-Betrieb",
+    "nativeLanguage": {
+      "title": "CNL in Muttersprache",
+      "description": "Regeln auf English, 中文 oder Deutsch — identische Semantik über alle drei Lexikon-Pakete."
     },
-    "complianceReports": {
-      "title": "Compliance-Berichte",
-      "description": "Erstellen Sie DSGVO-, HIPAA-, SOC2- und PCI-DSS-Compliance-Berichte mit einem Klick."
+    "aiDraftHumanReview": {
+      "title": "KI entwirft, Menschen genehmigen",
+      "description": "KI erstellt den Erstentwurf; jede veröffentlichte Version benötigt eine Freigabe durch einen Reviewer (≠ Autor)."
     },
-    "teamCollaboration": {
-      "title": "Teamzusammenarbeit",
-      "description": "Teilen Sie Richtlinien, verwalten Sie Berechtigungen und arbeiten Sie in Echtzeit mit Ihrem Team zusammen."
+    "hashChainAudit": {
+      "title": "Manipulationssicheres Audit",
+      "description": "SHA-256-Hash-Kette über jede Entscheidung. Jede historische Auswertung byte-genau wiederholbar."
     },
-    "realTimeExecution": {
-      "title": "Echtzeit-Ausführung",
-      "description": "Testen und führen Sie Richtlinien sofort aus mit detaillierten Ergebnissen und Prüfprotokollen."
+    "dualEngineSemantics": {
+      "title": "Zwei Engines, eine Semantik",
+      "description": "Truffle-Backend und Browser-TypeScript-Engine liefern identische Ergebnisse — kein semantisches Drift."
     },
-    "apiAccess": {
-      "title": "API-Zugang",
-      "description": "Integrieren Sie Richtlinien in Ihre Anwendungen mit unserer RESTful-API und SDKs."
+    "multiLanguagePacks": {
+      "title": "Mehrsprachige Lexikon-Pakete",
+      "description": "English / 中文 / Deutsch in jedem Plan; branchenspezifische Lexika auf Enterprise."
     },
-    "versionHistory": {
-      "title": "Versionshistorie",
-      "description": "Verfolgen Sie Änderungen, kehren Sie zu früheren Versionen zurück und führen Sie ein vollständiges Prüfprotokoll."
+    "selfHostable": {
+      "title": "Selbst hosten auf K3S",
+      "description": "Helm-Chart, K3S, ArgoCD GitOps. Ihre Daten bleiben in Ihrem Perimeter."
     }
   },
   "pricing": {
@@ -286,7 +286,17 @@
   "teams": {
     "title": "Teams",
     "subtitle": "Verwalten Sie Ihre Team-Arbeitsbereiche und arbeiten Sie an Richtlinien zusammen",
-    "createTeam": "Team erstellen",
+    "createTeam": {
+      "title": "Neues Team erstellen",
+      "subtitle": "Richten Sie einen Arbeitsbereich für die Zusammenarbeit ein.",
+      "nameLabel": "Team-Name",
+      "namePlaceholder": "z. B. Risiko-Team",
+      "nameHint": "Wählen Sie einen Namen, den Ihre Kolleginnen sofort erkennen.",
+      "slugLabel": "Team-URL",
+      "slugPlaceholder": "risk-team",
+      "slugHint": "Nur Kleinbuchstaben, Zahlen und Bindestriche.",
+      "submitButton": "Team erstellen"
+    },
     "newTeam": "Neues Team",
     "noTeams": "Noch keine Teams",
     "noTeamsDesc": "Erstellen Sie ein Team, um mit anderen zusammenzuarbeiten",
@@ -332,7 +342,20 @@
       "title": "Team-Richtlinien",
       "noPolicies": "Noch keine Team-Richtlinien",
       "assignPolicy": "Richtlinie zuweisen",
-      "createNew": "Neue Richtlinie erstellen"
+      "createNew": "Neue Richtlinie erstellen",
+      "newPolicy": "Neue Richtlinie",
+      "createTitle": "Team-Richtlinie erstellen",
+      "create": "Richtlinie erstellen",
+      "createFailed": "Richtlinie konnte nicht erstellt werden",
+      "createdBy": "Erstellt von {name}",
+      "updatedAt": "Aktualisiert {date}",
+      "getStarted": "Fügen Sie eine Richtlinie hinzu, um zu starten",
+      "nameLabel": "Richtlinien-Name",
+      "namePlaceholder": "z. B. Kreditprüfung",
+      "descriptionLabel": "Beschreibung",
+      "descriptionPlaceholder": "Optionale kurze Beschreibung",
+      "contentLabel": "Richtlinien-Quelltext",
+      "contentPlaceholder": "Module example.policy.\\nRule decide given input:\\n  ..."
     },
     "memberCount": "{count} Mitglieder",
     "policyCount": "{count} Richtlinien",
@@ -366,7 +389,11 @@
       "policies": "Richtlinien",
       "settings": "Einstellungen",
       "recentActivity": "Letzte Aktivitäten",
-      "noActivity": "Keine aktuellen Aktivitäten"
+      "noActivity": "Keine aktuellen Aktivitäten",
+      "manageTeam": "Team verwalten",
+      "pendingInvitations": "Offene Einladungen",
+      "recentMembers": "Letzte Mitglieder",
+      "recentPolicies": "Letzte Richtlinien"
     },
     "invite": {
       "title": "Team-Mitglied einladen",
@@ -391,7 +418,31 @@
       "sso": "Single Sign-On (SSO)",
       "ssoComingSoon": "SSO-Konfiguration demnächst verfügbar",
       "auditLogs": "Prüfprotokolle",
-      "auditLogsComingSoon": "Prüfprotokolle demnächst verfügbar"
+      "auditLogsComingSoon": "Prüfprotokolle demnächst verfügbar",
+      "title": "Team-Einstellungen",
+      "generalTitle": "Allgemein",
+      "generalSubtitle": "Team-Grunddaten und Bezeichner.",
+      "nameLabel": "Team-Name",
+      "slugLabel": "Team-URL",
+      "slugHint": "Nur Kleinbuchstaben, Zahlen und Bindestriche.",
+      "saveChanges": "Änderungen speichern",
+      "saveSuccess": "Einstellungen gespeichert.",
+      "saveFailed": "Einstellungen konnten nicht gespeichert werden",
+      "noPermission": "Sie haben keine Berechtigung, diese Einstellungen zu ändern.",
+      "typeToConfirm": "Tippen Sie {value} zur Bestätigung",
+      "ssoTitle": "Single Sign-On (SSO)",
+      "ssoDescription": "SSO-Konfiguration ist im Enterprise-Plan verfügbar.",
+      "auditLogsTitle": "Audit-Logs",
+      "auditLogsDescription": "Manipulationssicheres Audit-Log entspricht Ihrem Plan-Limit.",
+      "dangerZoneSubtitle": "Unwiderrufliche Aktionen, die das gesamte Team betreffen.",
+      "deleteTeamTitle": "Team löschen",
+      "deleteTeamDescription": "Das Team und alle Daten werden dauerhaft gelöscht.",
+      "deleteFailed": "Team konnte nicht gelöscht werden",
+      "confirmDeleteTitle": "Dieses Team löschen?",
+      "confirmDeleteWarning": "Diese Aktion ist unumkehrbar. Tippen Sie den Team-Namen zur Bestätigung.",
+      "deleteWarning1": "Alle Richtlinien, Mitglieder und Einladungen werden entfernt.",
+      "deleteWarning2": "Audit-Logs werden gemäß Plan aufbewahrt, sind aber nicht mehr von diesem Team erreichbar.",
+      "deleteWarning3": "Aktive Abo-Plätze werden freigegeben und zur nächsten Rechnung anteilig erstattet."
     },
     "acceptInvite": {
       "title": "Team-Einladung",
@@ -401,7 +452,19 @@
       "expired": "Diese Einladung ist abgelaufen",
       "invalid": "Ungültige Einladung",
       "alreadyMember": "Sie sind bereits Mitglied dieses Teams"
-    }
+    },
+    "backToTeam": "← Zum Team",
+    "backToTeams": "← Zu allen Teams",
+    "cancel": "Abbrechen",
+    "comingSoon": "Bald verfügbar",
+    "creating": "Wird erstellt...",
+    "deleting": "Wird gelöscht...",
+    "executions": "Auswertungen",
+    "failedToCreate": "Team konnte nicht erstellt werden",
+    "saving": "Wird gespeichert...",
+    "teamNotFound": "Team nicht gefunden",
+    "viewAll": "Alle ansehen",
+    "viewDetails": "Details ansehen"
   },
   "dashboard": {
     "welcomeBack": "Willkommen zurück, {name}!",
@@ -439,6 +502,43 @@
       "runs": "{count} Ausführungen",
       "deleted": "Gelöscht",
       "restoreHint": "Diese Richtlinie wurde gelöscht. Bitte stellen Sie sie aus dem Papierkorb wieder her, um sie weiter zu verwenden."
+    },
+    "aiUsage": {
+      "title": "AI-Nutzung diesen Monat",
+      "byokActive": "Eigener API-Key aktiv",
+      "byokUsage": "{tokens} Tokens via eigenen Key verbraucht",
+      "manageKeys": "Keys verwalten",
+      "bannedTitle": "AI vorübergehend deaktiviert",
+      "bannedUntil": "Wird automatisch um {date} wiederhergestellt",
+      "costThisMonth": "Kosten: ${dollars}",
+      "plan": "{plan}-Plan",
+      "warningHighUsage": "{remaining} Aufrufe diesen Monat übrig.",
+      "upgrade": "Upgraden",
+      "or": "oder",
+      "byok": "Eigenen Key nutzen",
+      "emailUnverifiedTitle": "E-Mail bestätigen, um AI freizuschalten",
+      "emailUnverifiedHint": "Kostenlose Konten benötigen eine bestätigte E-Mail-Adresse für AI-Funktionen.",
+      "verifyNow": "Jetzt bestätigen"
+    },
+    "apiUsage": {
+      "title": "Policy Execution API",
+      "locked": "Nicht enthalten",
+      "lockedHint": "Policy Execution API ist im Free-Plan nicht enthalten. Auf Pro/Team upgraden oder 14-Tage-Trial starten.",
+      "latencyP50": "p50: {ms}ms",
+      "latencyP95": "p95: {ms}ms",
+      "plan": "{plan}-Plan",
+      "warningHighUsage": "{remaining} Aufrufe diesen Monat übrig.",
+      "warningOverage": "Über Quota ({percent}%) — Soft-Mode, Hart-Stopp bei 200%.",
+      "upgrade": "Upgraden"
+    },
+    "dunning": {
+      "paymentFailedTitle": "Zahlung fehlgeschlagen.",
+      "paymentFailedHint": "Konto wird in {days} Tagen auf Free herabgestuft, sofern nicht behoben.",
+      "downgradedTitle": "Konto auf Free herabgestuft.",
+      "downgradedHint": "Reaktivieren Sie innerhalb von {days} Tagen, um Pro/Team-Funktionen und Daten wiederherzustellen.",
+      "updatePayment": "Zahlungsmethode aktualisieren",
+      "reactivate": "Reaktivieren",
+      "opening": "Öffne..."
     }
   },
   "billing": {
@@ -543,26 +643,29 @@
         "enterprise": "Enterprise"
       },
       "features": {
-        "policies3": "3 gespeicherte Richtlinien",
-        "executions100": "100 Ausführungen/Monat",
-        "basicPii": "Basis-PII-Erkennung",
-        "policies25": "25 Richtlinien",
-        "executions5000": "5.000 Ausführungen/Monat",
-        "allComplianceReports": "DSGVO/HIPAA/SOC2/PCI Berichte",
-        "apiAccess": "API-Zugang",
-        "apiCalls1000": "1.000 API-Aufrufe/Monat",
-        "apiCalls5000": "5.000 API-Aufrufe/Monat",
-        "unlimitedPolicies": "Unbegrenzte Richtlinien",
-        "apiCalls50000": "50.000 API-Aufrufe/Monat",
-        "executions50000": "50.000 Ausführungen/Monat",
-        "teamCollaboration": "Teamzusammenarbeit",
-        "ssoRbac": "SSO & rollenbasierter Zugriff",
-        "prioritySupport": "Prioritäts-Support",
-        "unlimitedApiCalls": "Unbegrenzte API-Aufrufe",
+        "rules5": "5 veröffentlichte Regeln",
+        "evaluations1k": "1.000 Auswertungen / Monat",
+        "aiDrafts20": "20 KI-Entwürfe / Monat (gpt-4o-mini)",
+        "allLanguagePacks": "Alle Sprachpakete (en / zh / de)",
+        "audit7days": "7-Tage-Audit-Log",
+        "unlimitedTeamMembers": "Unbegrenzte Team-Mitglieder",
+        "rules100": "100 veröffentlichte Regeln",
+        "evaluations50k": "50.000 Auswertungen / Monat",
+        "aiDrafts500": "500 KI-Entwürfe / Sitz / Monat (gpt-5.2)",
+        "audit90days": "90-Tage-Audit-Log",
+        "inviteReviewersPaidSeat": "Reviewer einladen — jeder Sitz ¥299 / Monat",
+        "reviewerNotAuthor": "Reviewer ≠ Autor (ab 2 Sitzen erzwungen)",
+        "soxCompliant": "SOX-konforme Funktionstrennung",
+        "stripeBilling": "Stripe-Abrechnung, monatlich oder jährlich",
+        "multiTeamCustomApprovals": "Mehrere Teams, individuelle Freigabegruppen",
+        "unlimitedRulesEvaluations": "Unbegrenzte Regeln und Auswertungen",
+        "unlimitedAiDraftsByok": "Unbegrenzte KI-Entwürfe via BYOK (eigener OpenAI / Anthropic / Vertex Key)",
+        "customIndustryLexicons": "Branchenspezifische Lexika",
+        "hashChainAuditSignature": "Hash-Ketten-Audit + digitale Signatur",
+        "ssoSamlOidc": "SSO (SAML / OIDC / Authentik)",
         "customDeployment": "Individuelle Bereitstellung",
         "slaGuarantee": "SLA-Garantie",
-        "dedicatedSupport": "Dedizierter Support",
-        "customIntegrations": "Individuelle Integrationen"
+        "dedicatedSupport": "Dedizierter Support"
       }
     }
   },
@@ -664,7 +767,7 @@
       "subtitle": "Testen Sie Ihre Richtlinie mit Beispieldaten",
       "input": "Eingabe",
       "generateSampleData": "Beispiel generieren",
-      "inputPlaceholder": "{\"key\": \"value\"}",
+      "inputPlaceholder": "'{'\"key\": \"value\"'}'",
       "executeButton": "Richtlinie ausführen",
       "executing": "Wird ausgeführt...",
       "result": "Ergebnis",
@@ -955,5 +1058,121 @@
     "acceptDiff": "Aenderungen uebernehmen",
     "rejectDiff": "Aenderungen verwerfen",
     "inlineCompletionLoading": "KI-Vervollstaendigung wird geladen..."
+  },
+  "upgradeBlocker": {
+    "viewPlans": "Pläne ansehen",
+    "dismiss": "Später",
+    "published_rules": {
+      "title": "Free ist auf {limit} veröffentlichte Regeln begrenzt",
+      "body": "Mit Pro veröffentlichen Sie bis zu 100 Regeln pro Projekt, inklusive Team-Review und Audit-Historie."
+    },
+    "evaluations": {
+      "title": "Monatliches Auswertungslimit erreicht",
+      "body": "Free umfasst {limit} Auswertungen/Monat. Pro hebt das auf 50.000 mit Überlauf-Abrechnung an."
+    },
+    "audit_retention": {
+      "title": "Free behält Audit-Logs 7 Tage",
+      "body": "Enterprise bietet unbegrenzte Aufbewahrung mit Hash-Ketten-Audit und digitalen Signaturen — geeignet für SOX / HIPAA / PCI."
+    },
+    "sso": {
+      "title": "SSO ist eine Enterprise-Funktion",
+      "body": "SAML 2.0, OIDC und Authentik-Integration sind Teil des Enterprise-Plans."
+    },
+    "data_residency": {
+      "title": "Daten-Residenz erfordert Enterprise",
+      "body": "Wählen Sie Ihre Region (EU / US / China / individuell) im Enterprise-Plan via VPC oder selbst gehostetem K3S."
+    },
+    "reviewer_required": {
+      "title": "Freigabe benötigt ein 2-Personen-Team",
+      "body": "Pro aktiviert SOX-konforme Funktionstrennung: Autor und Prüfer müssen unterschiedlich sein. Upgrade auf Pro, um einen Prüfer einzuladen."
+    },
+    "team_member_invite": {
+      "title": "Free ist Einzelplatz",
+      "body": "Pro ermöglicht das Einladen von Teamkollegen mit rollenbasierter Zugriffskontrolle. Upgraden Sie, um Mitglieder hinzuzufügen."
+    }
+  },
+  "pricingPage": {
+    "seo": {
+      "title": "Preise — Aster Lang",
+      "description": "Policy-as-Code auf Deutsch (auch English / 中文). Free für Einzelpersonen. Pro für Teams. Enterprise für regulierte Branchen."
+    },
+    "hero": {
+      "title": "Klare Preise für ernsthafte Policy-Arbeit",
+      "subtitle": "Kostenlos starten. Bezahlen, wenn Ihr Team Funktionstrennung braucht."
+    },
+    "toggle": {
+      "monthly": "Monatlich",
+      "yearly": "Jährlich (-20%)"
+    },
+    "tiers": {
+      "free": {
+        "name": "Free",
+        "tagline": "Selbst schreiben, selbst veröffentlichen",
+        "priceSuffix": "/für immer",
+        "cta": "Kostenlos starten",
+        "features": [
+          "1 Nutzer",
+          "5 veröffentlichte Regeln",
+          "1.000 Auswertungen / Monat",
+          "20 KI-Entwürfe / Monat (gpt-4o-mini)",
+          "Alle Sprachpakete (en / zh / de)",
+          "7-Tage-Audit-Log",
+          "✗ Keine Prüfer-Rolle",
+          "✗ Nicht SOX-konform"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Freigabe und Funktionstrennung",
+        "priceSuffix": "/Platz / Monat",
+        "priceSuffixYearly": "/Platz / Jahr",
+        "cta": "Auf Pro upgraden",
+        "highlight": "Beliebt",
+        "features": [
+          "Unbegrenzte Team-Mitglieder",
+          "100 veröffentlichte Regeln",
+          "50.000 Auswertungen / Monat",
+          "500 KI-Entwürfe / Sitz / Monat (gpt-5.2)",
+          "Alle Sprachpakete (en / zh / de)",
+          "90-Tage-Audit-Log",
+          "Reviewer einladen — jeder Sitz ¥299 / Monat",
+          "Prüfer ≠ Autor (ab 2 Sitzen erzwungen)",
+          "SOX-konforme Funktionstrennung",
+          "Stripe-Abrechnung, monatlich oder jährlich"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "tagline": "Multi-Team, mehrstufige Freigabe",
+        "priceSuffix": "Kontakt aufnehmen",
+        "cta": "Vertrieb kontaktieren",
+        "features": [
+          "Mehrere Teams, individuelle Freigabegruppen",
+          "Unbegrenzte Regeln und Auswertungen",
+          "Unbegrenzte KI-Entwürfe via BYOK (eigener OpenAI / Anthropic / Vertex Key)",
+          "Branchenspezifische Lexika",
+          "Hash-Ketten-Audit + digitale Signatur",
+          "SSO (SAML / OIDC / Authentik)",
+          "Daten-Residenz: EU / US / China / individuell",
+          "K3S selbst gehostet, ArgoCD GitOps",
+          "Erfüllt SOX, PCI, HIPAA, GDPR"
+        ]
+      }
+    },
+    "comparison": {
+      "title": "Was sich zwischen den Plänen ändert",
+      "rows": {
+        "users": "Nutzer",
+        "rules": "Veröffentlichte Regeln",
+        "evaluations": "Monatliche Auswertungen",
+        "aiDrafts": "KI-Entwurf-Kontingent",
+        "lexicon": "Sprachpakete",
+        "audit": "Audit-Aufbewahrung",
+        "approval": "Freigabe-Workflow",
+        "sso": "SSO",
+        "residency": "Daten-Residenz",
+        "deployment": "Bereitstellung"
+      }
+    }
   }
 }

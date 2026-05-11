@@ -4,6 +4,7 @@ import { db, policies, executions, teamMembers } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql, ne, inArray } from 'drizzle-orm';
 import { checkUsageLimit, recordUsage } from '@/lib/usage';
 import { getPolicyFreezeStatus, getBatchPolicyFreezeStatus } from '@/lib/policy-freeze';
+import { upgradeResponse } from '@/lib/plan-quota';
 
 // GET /api/v1/policies - List user's policies via API
 export async function GET(req: Request) {
@@ -19,10 +20,7 @@ export async function GET(req: Request) {
     const apiLimitCheck = await checkUsageLimit(userId, 'api_call');
     if (!apiLimitCheck.allowed) {
       return NextResponse.json(
-        {
-          error: 'API call limit exceeded',
-          message: apiLimitCheck.message,
-        },
+        upgradeResponse('evaluations', { message: apiLimitCheck.message }),
         { status: 429 }
       );
     }

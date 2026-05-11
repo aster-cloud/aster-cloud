@@ -21,8 +21,22 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm exec tsc --noEmit
       - run: pnpm test:run
+      # 仅在 coverage provider 已安装时跑（可选，不阻塞 CI）
+      - name: Coverage (optional)
+        run: pnpm test:coverage --reporter=verbose || echo "::warning::Coverage skipped (install @vitest/coverage-v8 to enable)"
+        continue-on-error: true
       - run: pnpm run build:next
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
+        continue-on-error: true
 
       - name: Check Drizzle schema drift
         run: |
@@ -32,3 +46,13 @@ jobs:
             git diff drizzle/
             exit 1
           fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aster-cloud-test-results
+          path: |
+            test-results/
+            coverage/
+          if-no-files-found: ignore

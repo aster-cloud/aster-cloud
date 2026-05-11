@@ -30,6 +30,10 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
+  const [inviteModal, setInviteModal] = useState<
+    | { open: false }
+    | { open: true; message: string; cta: { label: string; href: string } }
+  >({ open: false });
 
   const handleViewSource = useCallback((version: number) => {
     setSelectedVersion(version);
@@ -86,12 +90,25 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
   const handleApprove = useCallback(
     async (versionId: string, comment?: string) => {
       const ver = (versions as PolicyVersionInfo[]).find((v) => v.id === versionId);
-      if (ver) {
-        await approve(ver.version, comment);
+      if (!ver) return;
+
+      const result = await approve(ver.version, comment);
+      if (result.ok) return;
+
+      if (result.errorCode === 'invite_reviewer_required') {
+        setInviteModal({
+          open: true,
+          message:
+            result.message ??
+            'Approval requires a separate reviewer. Invite a teammate to your workspace.',
+          cta: result.cta ?? { label: 'Invite a teammate', href: '/teams/new' },
+        });
       }
     },
     [versions, approve]
   );
+
+  const closeInviteModal = useCallback(() => setInviteModal({ open: false }), []);
 
   const handleReject = useCallback(
     async (versionId: string, comment?: string) => {
@@ -172,6 +189,61 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
             onClose={handleCloseCompare}
           />
         )}
+      </div>
+
+      {inviteModal.open && (
+        <InviteReviewerModal
+          message={inviteModal.message}
+          cta={inviteModal.cta}
+          onClose={closeInviteModal}
+        />
+      )}
+    </div>
+  );
+}
+
+function InviteReviewerModal({
+  message,
+  cta,
+  onClose,
+}: {
+  message: string;
+  cta: { label: string; href: string };
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Invite a reviewer
+        </h3>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{message}</p>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          SOX Segregation of Duties requires a different person to approve.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <a
+            href={cta.href}
+            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+          >
+            {cta.label}
+          </a>
+        </div>
       </div>
     </div>
   );

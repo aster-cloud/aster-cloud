@@ -11,36 +11,36 @@
     "brand": "Aster Cloud"
   },
   "hero": {
-    "title": "Policy Management",
-    "titleHighlight": "Made Simple",
-    "description": "Create, test, and deploy business policies with built-in PII protection, compliance monitoring, and team collaboration. Start your 14-day free trial.",
-    "noCreditCard": "No credit card required. 14-day free trial."
+    "title": "Policy-as-Code in plain English",
+    "titleHighlight": "(and 中文 / Deutsch)",
+    "description": "Write business rules in your native language. AI drafts, humans approve, GraalVM executes. Hash-chained audit included.",
+    "noCreditCard": "No credit card required."
   },
   "features": {
-    "title": "Everything you need for policy management",
-    "piiProtection": {
-      "title": "PII Protection",
-      "description": "Automatic detection and protection of personally identifiable information in your policies."
+    "title": "Built for compliant policy operations",
+    "nativeLanguage": {
+      "title": "Native-language CNL",
+      "description": "Write rules in English, 中文, or Deutsch — same semantics across all three lexicon packs."
     },
-    "complianceReports": {
-      "title": "Compliance Reports",
-      "description": "Generate GDPR, HIPAA, SOC2, and PCI-DSS compliance reports with a single click."
+    "aiDraftHumanReview": {
+      "title": "AI drafts, humans approve",
+      "description": "Let AI generate the first cut. Reviewers, not authors, approve every published version."
     },
-    "teamCollaboration": {
-      "title": "Team Collaboration",
-      "description": "Share policies, manage permissions, and collaborate with your team in real-time."
+    "hashChainAudit": {
+      "title": "Tamper-evident audit",
+      "description": "SHA-256 hash chain over every decision. Replay any historical evaluation byte-for-byte."
     },
-    "realTimeExecution": {
-      "title": "Real-time Execution",
-      "description": "Test and execute policies instantly with detailed results and audit trails."
+    "dualEngineSemantics": {
+      "title": "Java + TypeScript dual engine",
+      "description": "Identical results from the Truffle backend and the in-browser TypeScript engine. No semantic drift."
     },
-    "apiAccess": {
-      "title": "API Access",
-      "description": "Integrate policies into your applications with our RESTful API and SDKs."
+    "multiLanguagePacks": {
+      "title": "Multi-language lexicon packs",
+      "description": "English, 中文, Deutsch ship in every plan. Custom industry lexicons available on Enterprise."
     },
-    "versionHistory": {
-      "title": "Version History",
-      "description": "Track changes, rollback to previous versions, and maintain a complete audit log."
+    "selfHostable": {
+      "title": "Self-host on your cluster",
+      "description": "Helm chart, K3S, ArgoCD GitOps. Your data stays inside your perimeter."
     }
   },
   "pricing": {
@@ -286,7 +286,17 @@
   "teams": {
     "title": "Teams",
     "subtitle": "Manage your team workspaces and collaborate on policies",
-    "createTeam": "Create Team",
+    "createTeam": {
+      "title": "Create a New Team",
+      "subtitle": "Set up a workspace to collaborate with your teammates.",
+      "nameLabel": "Team name",
+      "namePlaceholder": "e.g., Engineering Team",
+      "nameHint": "Choose a descriptive name your teammates will recognize.",
+      "slugLabel": "Team URL",
+      "slugPlaceholder": "engineering-team",
+      "slugHint": "Lowercase letters, numbers, and hyphens only.",
+      "submitButton": "Create team"
+    },
     "newTeam": "New Team",
     "noTeams": "No teams yet",
     "noTeamsDesc": "Create a team to start collaborating with others",
@@ -332,7 +342,20 @@
       "title": "Team Policies",
       "noPolicies": "No team policies yet",
       "assignPolicy": "Assign Policy",
-      "createNew": "Create New Policy"
+      "createNew": "Create New Policy",
+      "newPolicy": "New policy",
+      "createTitle": "Create team policy",
+      "create": "Create policy",
+      "createFailed": "Failed to create policy",
+      "createdBy": "Created by {name}",
+      "updatedAt": "Updated {date}",
+      "getStarted": "Add a policy to get started",
+      "nameLabel": "Policy name",
+      "namePlaceholder": "e.g., Loan Eligibility",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional short description",
+      "contentLabel": "Policy source",
+      "contentPlaceholder": "Module example.policy.\\nRule decide given input:\\n  ..."
     },
     "memberCount": "{count} members",
     "policyCount": "{count} policies",
@@ -366,7 +389,11 @@
       "policies": "Policies",
       "settings": "Settings",
       "recentActivity": "Recent Activity",
-      "noActivity": "No recent activity"
+      "noActivity": "No recent activity",
+      "manageTeam": "Manage team",
+      "pendingInvitations": "Pending invitations",
+      "recentMembers": "Recent members",
+      "recentPolicies": "Recent policies"
     },
     "invite": {
       "title": "Invite Team Member",
@@ -391,7 +418,31 @@
       "sso": "Single Sign-On (SSO)",
       "ssoComingSoon": "SSO configuration coming soon",
       "auditLogs": "Audit Logs",
-      "auditLogsComingSoon": "Audit logs coming soon"
+      "auditLogsComingSoon": "Audit logs coming soon",
+      "title": "Team settings",
+      "generalTitle": "General",
+      "generalSubtitle": "Basic team profile and identifiers.",
+      "nameLabel": "Team name",
+      "slugLabel": "Team URL",
+      "slugHint": "Lowercase letters, numbers, and hyphens only.",
+      "saveChanges": "Save changes",
+      "saveSuccess": "Settings saved.",
+      "saveFailed": "Failed to save settings",
+      "noPermission": "You do not have permission to change these settings.",
+      "typeToConfirm": "Type {value} to confirm",
+      "ssoTitle": "Single Sign-On (SSO)",
+      "ssoDescription": "SSO configuration is available on Enterprise plans.",
+      "auditLogsTitle": "Audit logs",
+      "auditLogsDescription": "Tamper-evident audit log retention follows your plan limit.",
+      "dangerZoneSubtitle": "Irreversible actions affecting the entire team.",
+      "deleteTeamTitle": "Delete team",
+      "deleteTeamDescription": "Permanently delete this team and all its data.",
+      "deleteFailed": "Failed to delete team",
+      "confirmDeleteTitle": "Delete this team?",
+      "confirmDeleteWarning": "This action cannot be undone. Please type the team name to confirm.",
+      "deleteWarning1": "All policies, members, and invitations in this team will be removed.",
+      "deleteWarning2": "Audit logs will be retained according to your plan, but no longer accessible from this team.",
+      "deleteWarning3": "Active subscription seats will be released and prorated on the next invoice."
     },
     "acceptInvite": {
       "title": "Team Invitation",
@@ -401,7 +452,19 @@
       "expired": "This invitation has expired",
       "invalid": "Invalid invitation",
       "alreadyMember": "You're already a member of this team"
-    }
+    },
+    "backToTeam": "← Back to team",
+    "backToTeams": "← Back to teams",
+    "cancel": "Cancel",
+    "comingSoon": "Coming soon",
+    "creating": "Creating...",
+    "deleting": "Deleting...",
+    "executions": "Executions",
+    "failedToCreate": "Failed to create team",
+    "saving": "Saving...",
+    "teamNotFound": "Team not found",
+    "viewAll": "View all",
+    "viewDetails": "View details"
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {name}!",
@@ -439,6 +502,43 @@
       "runs": "{count} runs",
       "deleted": "Deleted",
       "restoreHint": "This policy has been deleted. Please restore it from the Trash to continue using it."
+    },
+    "aiUsage": {
+      "title": "AI usage this month",
+      "byokActive": "Using your own key",
+      "byokUsage": "{tokens} tokens consumed via your own key",
+      "manageKeys": "Manage keys",
+      "bannedTitle": "AI temporarily disabled",
+      "bannedUntil": "Auto-resumes at {date}",
+      "costThisMonth": "Cost: ${dollars}",
+      "plan": "{plan} plan",
+      "warningHighUsage": "{remaining} calls left this month.",
+      "upgrade": "Upgrade",
+      "or": "or",
+      "byok": "Bring your own key",
+      "emailUnverifiedTitle": "Verify your email to unlock AI",
+      "emailUnverifiedHint": "Free accounts need a verified email before using AI features.",
+      "verifyNow": "Verify now"
+    },
+    "apiUsage": {
+      "title": "Policy Execution API",
+      "locked": "Not included",
+      "lockedHint": "Policy Execution API is not available on Free. Upgrade to Pro/Team or start a 14-day Trial.",
+      "latencyP50": "p50: {ms}ms",
+      "latencyP95": "p95: {ms}ms",
+      "plan": "{plan} plan",
+      "warningHighUsage": "{remaining} calls left this month.",
+      "warningOverage": "Over quota ({percent}%) — soft mode, will hard-stop at 200%.",
+      "upgrade": "Upgrade"
+    },
+    "dunning": {
+      "paymentFailedTitle": "Payment failed.",
+      "paymentFailedHint": "Service will be downgraded to Free in {days} days unless resolved.",
+      "downgradedTitle": "Account downgraded to Free.",
+      "downgradedHint": "Reactivate within {days} days to restore your Pro/Team features and data.",
+      "updatePayment": "Update Payment Method",
+      "reactivate": "Reactivate",
+      "opening": "Opening..."
     }
   },
   "billing": {
@@ -543,26 +643,29 @@
         "enterprise": "Enterprise"
       },
       "features": {
-        "policies3": "3 saved policies",
-        "executions100": "100 executions/month",
-        "basicPii": "Basic PII detection",
-        "policies25": "25 policies",
-        "executions5000": "5,000 executions/month",
-        "allComplianceReports": "GDPR/HIPAA/SOC2/PCI reports",
-        "apiAccess": "API access",
-        "apiCalls1000": "1,000 API calls/month",
-        "apiCalls5000": "5,000 API calls/month",
-        "unlimitedPolicies": "Unlimited policies",
-        "apiCalls50000": "50,000 API calls/month",
-        "executions50000": "50,000 executions/month",
-        "teamCollaboration": "Team collaboration",
-        "ssoRbac": "SSO & role-based access",
-        "prioritySupport": "Priority support",
-        "unlimitedApiCalls": "Unlimited API calls",
+        "rules5": "5 published rules",
+        "evaluations1k": "1,000 evaluations / month",
+        "aiDrafts20": "20 AI drafts / month (gpt-4o-mini)",
+        "allLanguagePacks": "All language packs (en / zh / de)",
+        "audit7days": "7-day audit log",
+        "unlimitedTeamMembers": "Unlimited team members",
+        "rules100": "100 published rules",
+        "evaluations50k": "50,000 evaluations / month",
+        "aiDrafts500": "500 AI drafts / seat / month (gpt-5.2)",
+        "audit90days": "90-day audit log",
+        "inviteReviewersPaidSeat": "Invite reviewers — each seat ¥299 / month",
+        "reviewerNotAuthor": "Reviewer ≠ author (enforced for ≥ 2 seats)",
+        "soxCompliant": "Meets SOX Segregation of Duties",
+        "stripeBilling": "Stripe billing, monthly or yearly",
+        "multiTeamCustomApprovals": "Multi-team, custom approval groups",
+        "unlimitedRulesEvaluations": "Unlimited rules and evaluations",
+        "unlimitedAiDraftsByok": "Unlimited AI drafts via BYOK",
+        "customIndustryLexicons": "Custom industry lexicons",
+        "hashChainAuditSignature": "Hash-chained audit + digital signature",
+        "ssoSamlOidc": "SSO (SAML / OIDC / Authentik)",
         "customDeployment": "Custom deployment",
         "slaGuarantee": "SLA guarantee",
-        "dedicatedSupport": "Dedicated support",
-        "customIntegrations": "Custom integrations"
+        "dedicatedSupport": "Dedicated support"
       }
     }
   },
@@ -664,7 +767,7 @@
       "subtitle": "Test your policy with sample input data",
       "input": "Input",
       "generateSampleData": "Generate sample",
-      "inputPlaceholder": "{\"key\": \"value\"}",
+      "inputPlaceholder": "'{'\"key\": \"value\"'}'",
       "executeButton": "Execute Policy",
       "executing": "Executing...",
       "result": "Result",
@@ -955,5 +1058,121 @@
     "acceptDiff": "Accept Changes",
     "rejectDiff": "Reject Changes",
     "inlineCompletionLoading": "Fetching AI completion..."
+  },
+  "upgradeBlocker": {
+    "viewPlans": "View plans",
+    "dismiss": "Not now",
+    "published_rules": {
+      "title": "Free plan is limited to {limit} published rules",
+      "body": "Upgrade to Pro to publish up to 100 rules per project, with team review and audit history."
+    },
+    "evaluations": {
+      "title": "Monthly evaluation limit reached",
+      "body": "Free includes {limit} evaluations / month. Pro raises this to 50,000, with overage billing."
+    },
+    "audit_retention": {
+      "title": "Free retains audit logs for 7 days",
+      "body": "Enterprise gives you unlimited retention with hash-chained audit and digital signatures, suitable for SOX / HIPAA / PCI."
+    },
+    "sso": {
+      "title": "SSO is an Enterprise feature",
+      "body": "SAML 2.0, OIDC, and Authentik integration are part of the Enterprise plan."
+    },
+    "data_residency": {
+      "title": "Data residency requires Enterprise",
+      "body": "Choose your jurisdiction (EU / US / China / custom) on the Enterprise plan via VPC or self-hosted K3S deployment."
+    },
+    "reviewer_required": {
+      "title": "Approval requires a 2-person team",
+      "body": "Pro enables SOX Segregation of Duties: the author and reviewer must be different. Upgrade to Pro to invite a reviewer."
+    },
+    "team_member_invite": {
+      "title": "Free is single-seat",
+      "body": "Pro lets you invite teammates with role-based access. Upgrade to add a member."
+    }
+  },
+  "pricingPage": {
+    "seo": {
+      "title": "Pricing — Aster Lang",
+      "description": "Policy-as-Code in plain English (and 中文 / Deutsch). Free for individuals. Pro for teams. Enterprise for regulated industries."
+    },
+    "hero": {
+      "title": "Simple pricing for serious policy work",
+      "subtitle": "Free to try. Pay when your team needs separation of duties."
+    },
+    "toggle": {
+      "monthly": "Monthly",
+      "yearly": "Yearly (-20%)"
+    },
+    "tiers": {
+      "free": {
+        "name": "Free",
+        "tagline": "Self-write, self-publish",
+        "priceSuffix": "/forever",
+        "cta": "Start free",
+        "features": [
+          "1 user",
+          "5 published rules",
+          "1,000 evaluations / month",
+          "20 AI drafts / month (gpt-4o-mini)",
+          "All language packs (en / zh / de)",
+          "7-day audit log",
+          "✗ No reviewer role",
+          "✗ Not SOX-compliant"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "Approval and separation of duties",
+        "priceSuffix": "/seat / month",
+        "priceSuffixYearly": "/seat / year",
+        "cta": "Upgrade to Pro",
+        "highlight": "Most popular",
+        "features": [
+          "Unlimited team members",
+          "100 published rules",
+          "50,000 evaluations / month",
+          "500 AI drafts / seat / month (gpt-5.2)",
+          "All language packs (en / zh / de)",
+          "90-day audit log",
+          "Invite reviewers — each seat ¥299 / month",
+          "Reviewer ≠ author (enforced for ≥ 2 seats)",
+          "Meets SOX Segregation of Duties",
+          "Stripe billing, monthly or yearly"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "tagline": "Multi-team, multi-stage approval",
+        "priceSuffix": "Contact us",
+        "cta": "Talk to sales",
+        "features": [
+          "Multi-team, custom approval groups",
+          "Unlimited rules and evaluations",
+          "Unlimited AI drafts via BYOK (your OpenAI / Anthropic / Vertex key)",
+          "Custom industry lexicons",
+          "Hash-chained audit + digital signature",
+          "SSO (SAML / OIDC / Authentik)",
+          "Data residency: EU / US / China / custom",
+          "K3S self-hosted, ArgoCD GitOps",
+          "Meets SOX, PCI, HIPAA, GDPR"
+        ]
+      }
+    },
+    "comparison": {
+      "title": "What changes between plans",
+      "rows": {
+        "users": "Users",
+        "rules": "Published rules",
+        "evaluations": "Monthly evaluations",
+        "aiDrafts": "AI drafts",
+        "lexicon": "Language packs",
+        "audit": "Audit retention",
+        "approval": "Approval workflow",
+        "sso": "SSO",
+        "residency": "Data residency",
+        "deployment": "Deployment"
+      }
+    }
   }
 }

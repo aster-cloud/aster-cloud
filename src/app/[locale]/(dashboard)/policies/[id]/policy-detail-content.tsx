@@ -219,7 +219,7 @@ export function PolicyDetailContent({
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
         title={t.deleteDialog.title}
-        description={t.deleteDialog.description.replace('{name}', policy.name)}
+        description={t.deleteDialog.description}
         confirmLabel={t.deleteDialog.confirm}
         cancelLabel={t.deleteDialog.cancel}
         variant="danger"

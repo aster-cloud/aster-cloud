@@ -4,7 +4,26 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
 import { AIDiffPreview } from './ai-diff-preview';
+import { track, Events } from '@/lib/mixpanel';
 import type { editor } from 'monaco-editor';
+
+// NSM/WAADR 埋点会话上下文：将 ai_draft_generated 与后续 draft_edited 关联
+// 使用全局 window 对象传递，避免穿透多层组件
+declare global {
+  interface Window {
+    __asterAiDraft?: {
+      promptId: string;
+      content: string;
+      generatedAt: number;
+      lang: string;
+      model: string;
+      repairCount: number;
+    };
+  }
+}
+
+const genPromptId = () =>
+  `pd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 
 interface AIAssistantPanelProps {
   editor: editor.IStandaloneCodeEditor | null;
@@ -27,6 +46,7 @@ export function AIAssistantPanel({
   const [originalSource, setOriginalSource] = useState('');
   const [autoApplied, setAutoApplied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const generationCtxRef = useRef<{ promptId: string; startedAt: number; goal: string } | null>(null);
   const {
     streaming,
     content,
@@ -50,6 +70,33 @@ export function AIAssistantPanel({
   useEffect(() => {
     if (completed && validated && content && !autoApplied) {
       setAutoApplied(true);
+
+      // NSM 埋点：AI 草稿生成完成
+      const ctx = generationCtxRef.current;
+      if (ctx) {
+        const latencyMs = Date.now() - ctx.startedAt;
+        track(Events.AI_DRAFT_GENERATED, {
+          prompt_id: ctx.promptId,
+          lang: locale,
+          model: 'gpt-5.2',
+          latency_ms: latencyMs,
+          char_count: content.length,
+          validated: true,
+          auto_applied: true,
+        });
+        // 写入会话上下文，供后续 draft_edited 事件使用
+        if (typeof window !== 'undefined') {
+          window.__asterAiDraft = {
+            promptId: ctx.promptId,
+            content,
+            generatedAt: Date.now(),
+            lang: locale,
+            model: 'gpt-5.2',
+            repairCount: 0,
+          };
+        }
+      }
+
       if (monacoEditor) {
         const model = monacoEditor.getModel();
         if (model) {
@@ -63,7 +110,7 @@ export function AIAssistantPanel({
       }
       onApply(content);
     }
-  }, [completed, validated, content, autoApplied, monacoEditor, onApply]);
+  }, [completed, validated, content, autoApplied, monacoEditor, onApply, locale]);
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -71,6 +118,14 @@ export function AIAssistantPanel({
     setAutoApplied(false);
     const existingSource = monacoEditor?.getValue() || '';
     setOriginalSource(existingSource);
+
+    // NSM 埋点：记录生成会话起点（promptId 关联 draft_edited）
+    generationCtxRef.current = {
+      promptId: genPromptId(),
+      startedAt: Date.now(),
+      goal: prompt.trim(),
+    };
+
     await generate(
       {
         goal: prompt.trim(),

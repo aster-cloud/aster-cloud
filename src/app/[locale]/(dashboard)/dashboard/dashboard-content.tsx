@@ -3,6 +3,10 @@
 import { useState, useCallback } from 'react';
 import { Link } from '@/i18n/navigation';
 import { isUnlimited } from '@/lib/plans';
+import { AiUsageCard } from '@/components/dashboard/ai-usage-card';
+import { ApiUsageCard } from '@/components/dashboard/api-usage-card';
+import { AhaStatusCard } from '@/components/dashboard/aha-status-card';
+import { DunningBanner } from '@/components/dashboard/dunning-banner';
 
 interface DashboardStats {
   plan: string;
@@ -86,6 +90,7 @@ interface DashboardContentProps {
   policies: Policy[];
   totalPiiFields: number;
   translations: Translations;
+  locale: string;
 }
 
 export function DashboardContent({
@@ -93,6 +98,7 @@ export function DashboardContent({
   policies,
   totalPiiFields,
   translations: t,
+  locale,
 }: DashboardContentProps) {
   // 跟踪已删除策略的点击次数
   const [_deletedClickCount, setDeletedClickCount] = useState<Record<string, number>>({});
@@ -113,6 +119,8 @@ export function DashboardContent({
 
   return (
     <div>
+      <DunningBanner />
+
       {/* 恢复提示 Toast */}
       {showRestoreHint && (
         <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -283,6 +291,17 @@ export function DashboardContent({
             </p>
           )}
         </div>
+      </div>
+
+      {/* AHA Moment status (PM 02 NSM leading indicator) */}
+      <div className="mt-6">
+        <AhaStatusCard locale={locale} />
+      </div>
+
+      {/* AI / API Usage Cards (PM v1.1) */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <AiUsageCard locale={locale} />
+        <ApiUsageCard locale={locale} />
       </div>
 
       {/* Quick Actions */}

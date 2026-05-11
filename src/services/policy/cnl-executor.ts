@@ -242,25 +242,59 @@ async function executeWithSimpleEngine(
  *
  * 对于字符串格式，通过关键字匹配判断批准状态
  */
-function parseApprovalFromResult(result: unknown): { approved: boolean; message: string } {
-  // 对象格式：支持多语言字段名
+// Bug-4 修复：导出供单测验证 isEligible 等字段被正确识别
+export function parseApprovalFromResult(result: unknown): { approved: boolean; message: string } {
+  // 布尔值：直接使用
+  if (typeof result === 'boolean') {
+    return { approved: result, message: result ? 'Approved' : 'Denied' };
+  }
+
+  // 数值：非零视为成功（计算类策略返回数值结果）
+  if (typeof result === 'number') {
+    return { approved: true, message: String(result) };
+  }
+
+  // 对象格式：支持多语言字段名和通用结果格式
   if (result && typeof result === 'object') {
     const obj = result as Record<string, unknown>;
 
-    // 支持的批准字段名（英/中/德）
-    const approvalFields = ['approved', '批准', 'genehmigt'];
+    // 支持的批准字段名（英/中/德）及通用成功标志
+    // Bug-4 修复：补 isEligible（loan eligibility / KYC 类 policy 常用），并保留语义对齐
+    const approvalFields = [
+      'approved', 'isApproved', 'allowed', 'isAllowed',
+      'isEligible', 'eligible',
+      'isSuccess', 'success',
+      '批准', 'genehmigt',
+    ];
     // 支持的理由字段名（英/中/德）
-    const reasonFields = ['reason', '理由', 'begruendung'];
+    const reasonFields = ['reason', '理由', 'begruendung', 'message', 'errorMessage', 'description'];
+    // 支持的结果值字段名（计算类策略）
+    const valueFields = ['result', 'resultAmount', 'value', 'amount', 'total', 'output'];
 
-    // 查找批准字段
+    // 查找批准/成功字段
     const approvalField = approvalFields.find(f => f in obj);
     if (approvalField) {
       const val = obj[approvalField];
       const approved = val === true || val === 'true';
       // 查找理由字段
-      const reasonField = reasonFields.find(f => f in obj);
-      const reason = reasonField ? String(obj[reasonField]) : (approved ? 'Approved' : 'Denied');
+      const reasonField = reasonFields.find(f => f in obj && obj[f] !== '');
+      // 查找结果值字段（用于构造有意义的消息）
+      const valueField = valueFields.find(f => f in obj);
+      const reason = reasonField ? String(obj[reasonField])
+        : valueField ? `Result: ${JSON.stringify(obj[valueField])}`
+        : (approved ? 'Approved' : 'Denied');
       return { approved, message: reason };
+    }
+
+    // 没有明确的批准字段但有结果值 → 视为成功的计算结果
+    const valueField = valueFields.find(f => f in obj);
+    if (valueField) {
+      return { approved: true, message: `Result: ${JSON.stringify(obj[valueField])}` };
+    }
+
+    // 有 _type 字段的结构化结果 → 视为成功执行
+    if ('_type' in obj) {
+      return { approved: true, message: JSON.stringify(result) };
     }
   }
 

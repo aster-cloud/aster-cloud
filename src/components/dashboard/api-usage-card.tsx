@@ -1,0 +1,108 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+
+interface ApiUsage {
+  plan: string;
+  period: string;
+  monthly: { used: number; limit: number; remaining: number; percent: number };
+  latency: { p50: number; p95: number; sampleCount: number };
+  trend: Array<{ day: string; calls: number }>;
+}
+
+/**
+ * 用户 dashboard Policy Execution API 用量卡片
+ * 显示：本月用量进度条 / p50/p95 延迟 / 升级 CTA
+ *
+ * Free 计划（limit=0）显示锁定状态
+ * Enterprise（limit=-1）显示无限符号 + 仅延迟
+ */
+export function ApiUsageCard({ locale }: { locale: string }) {
+  const t = useTranslations('dashboard.apiUsage');
+  const [data, setData] = useState<ApiUsage | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/user/api-usage')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="h-32 animate-pulse rounded-lg bg-gray-100" />;
+  }
+  if (!data) return null;
+
+  // Free 计划 — 锁定状态 + 升级 CTA
+  if (data.monthly.limit === 0) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">{t('title')}</h3>
+          <span className="rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+            {t('locked')}
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-gray-500">{t('lockedHint')}</p>
+        <Link
+          href={`/${locale}/pricing`}
+          className="mt-3 inline-block text-xs font-medium text-indigo-600 hover:underline"
+        >
+          {t('upgrade')} →
+        </Link>
+      </div>
+    );
+  }
+
+  const percent = data.monthly.percent;
+  const barColor = percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-yellow-500' : 'bg-indigo-500';
+  const textColor = percent >= 100 ? 'text-red-700' : percent >= 80 ? 'text-yellow-700' : 'text-gray-700';
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-gray-700">{t('title')}</h3>
+        <span className={`text-xs font-medium ${textColor}`}>
+          {data.monthly.used.toLocaleString()} / {data.monthly.limit === -1 ? '∞' : data.monthly.limit.toLocaleString()}
+        </span>
+      </div>
+
+      {data.monthly.limit !== -1 && (
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+          <div
+            className={`h-full ${barColor} transition-all`}
+            style={{ width: `${Math.min(percent, 100)}%` }}
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+        <span>{t('latencyP50', { ms: data.latency.p50 })}</span>
+        <span>{t('latencyP95', { ms: data.latency.p95 })}</span>
+        <span>{t('plan', { plan: data.plan })}</span>
+      </div>
+
+      {percent >= 80 && data.monthly.limit !== -1 && (
+        <div className="mt-3 rounded bg-yellow-50 p-2 text-xs text-yellow-800">
+          {percent >= 100
+            ? t('warningOverage', { percent })
+            : t('warningHighUsage', { remaining: data.monthly.remaining })}
+          <Link
+            href={`/${locale}/pricing`}
+            className="ml-2 font-medium text-indigo-600 hover:underline"
+          >
+            {t('upgrade')} →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}

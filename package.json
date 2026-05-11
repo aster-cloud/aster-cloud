@@ -17,10 +17,12 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "seed:usability": "tsx src/scripts/seed-usability-tenant.ts"
   },
   "dependencies": {
     "@aster-cloud/aster-lang-ts": "^0.1.5",
@@ -30,7 +32,9 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@monaco-editor/react": "^4.7.0",
     "bcryptjs": "^3.0.3",
+    "disposable-email-domains": "^1.0.62",
     "drizzle-orm": "^0.45.1",
+    "ioredis": "^5.10.1",
     "mixpanel-browser": "^2.73.0",
     "monaco-editor": "^0.55.1",
     "next": "15.5.12",
@@ -51,6 +55,7 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
+    "@types/jsdom": "^28.0.1",
     "@types/node": "^24.10.9",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.1.7",

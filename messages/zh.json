@@ -11,36 +11,36 @@
     "brand": "Aster Cloud"
   },
   "hero": {
-    "title": "策略管理",
-    "titleHighlight": "化繁为简",
-    "description": "创建、测试和部署业务策略，内置PII保护、合规监控和团队协作功能。开始14天免费试用。",
-    "noCreditCard": "无需信用卡。14天免费试用。"
+    "title": "用母语写策略",
+    "titleHighlight": "（English / 中文 / Deutsch）",
+    "description": "用母语撰写业务规则。AI 起草，人工审核，GraalVM 执行。哈希链审计开箱即用。",
+    "noCreditCard": "无需信用卡。"
   },
   "features": {
-    "title": "策略管理所需的一切",
-    "piiProtection": {
-      "title": "PII 保护",
-      "description": "自动检测和保护策略中的个人身份信息。"
+    "title": "为合规策略运营而生",
+    "nativeLanguage": {
+      "title": "母语 CNL",
+      "description": "用 English / 中文 / Deutsch 任意一种撰写规则——三套词典语义完全一致。"
     },
-    "complianceReports": {
-      "title": "合规报告",
-      "description": "一键生成 GDPR、HIPAA、SOC2 和 PCI-DSS 合规报告。"
+    "aiDraftHumanReview": {
+      "title": "AI 写草稿，人审上线",
+      "description": "让 AI 生成初稿；每个发布版本必须由审阅者（≠ 提交人）签字。"
     },
-    "teamCollaboration": {
-      "title": "团队协作",
-      "description": "共享策略、管理权限，与团队实时协作。"
+    "hashChainAudit": {
+      "title": "哈希链审计与重放",
+      "description": "每条决策入 SHA-256 哈希链；任意历史评估可逐字节重放。"
     },
-    "realTimeExecution": {
-      "title": "实时执行",
-      "description": "即时测试和执行策略，获得详细结果和审计记录。"
+    "dualEngineSemantics": {
+      "title": "双引擎一致语义",
+      "description": "Truffle 后端与浏览器内 TypeScript 引擎结果完全一致，零语义漂移。"
     },
-    "apiAccess": {
-      "title": "API 访问",
-      "description": "通过 RESTful API 和 SDK 将策略集成到您的应用程序中。"
+    "multiLanguagePacks": {
+      "title": "多语种 lexicon 全档可用",
+      "description": "English / 中文 / Deutsch 所有套餐均可用；Enterprise 提供行业自定义词典。"
     },
-    "versionHistory": {
-      "title": "版本历史",
-      "description": "跟踪更改、回滚到之前版本，保持完整的审计日志。"
+    "selfHostable": {
+      "title": "自托管 K3S + ArgoCD",
+      "description": "Helm Chart、K3S、ArgoCD GitOps 一键部署，数据不出公司边界。"
     }
   },
   "pricing": {
@@ -286,7 +286,17 @@
   "teams": {
     "title": "团队",
     "subtitle": "管理团队工作区，协作编辑策略",
-    "createTeam": "创建团队",
+    "createTeam": {
+      "title": "创建新团队",
+      "subtitle": "建立工作区，与同事协作策略治理。",
+      "nameLabel": "团队名称",
+      "namePlaceholder": "例如：风控团队",
+      "nameHint": "取一个同事一眼能认出的名字。",
+      "slugLabel": "团队 URL",
+      "slugPlaceholder": "risk-control",
+      "slugHint": "仅小写字母、数字和连字符。",
+      "submitButton": "创建团队"
+    },
     "newTeam": "新建团队",
     "noTeams": "暂无团队",
     "noTeamsDesc": "创建一个团队开始与他人协作",
@@ -332,7 +342,20 @@
       "title": "团队策略",
       "noPolicies": "暂无团队策略",
       "assignPolicy": "分配策略",
-      "createNew": "创建新策略"
+      "createNew": "创建新策略",
+      "newPolicy": "新建策略",
+      "createTitle": "创建团队策略",
+      "create": "创建策略",
+      "createFailed": "创建策略失败",
+      "createdBy": "由 {name} 创建",
+      "updatedAt": "更新于 {date}",
+      "getStarted": "添加一条策略开始使用",
+      "nameLabel": "策略名称",
+      "namePlaceholder": "例如：贷款资格判定",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "可选的简短描述",
+      "contentLabel": "策略源码",
+      "contentPlaceholder": "Module example.policy.\\nRule decide given input:\\n  ..."
     },
     "memberCount": "{count} 位成员",
     "policyCount": "{count} 个策略",
@@ -366,7 +389,11 @@
       "policies": "策略",
       "settings": "设置",
       "recentActivity": "最近活动",
-      "noActivity": "暂无最近活动"
+      "noActivity": "暂无最近活动",
+      "manageTeam": "管理团队",
+      "pendingInvitations": "待接受邀请",
+      "recentMembers": "最近成员",
+      "recentPolicies": "最近策略"
     },
     "invite": {
       "title": "邀请团队成员",
@@ -391,7 +418,31 @@
       "sso": "单点登录 (SSO)",
       "ssoComingSoon": "SSO 配置即将推出",
       "auditLogs": "审计日志",
-      "auditLogsComingSoon": "审计日志即将推出"
+      "auditLogsComingSoon": "审计日志即将推出",
+      "title": "团队设置",
+      "generalTitle": "常规",
+      "generalSubtitle": "团队基本信息和标识。",
+      "nameLabel": "团队名称",
+      "slugLabel": "团队 URL",
+      "slugHint": "仅小写字母、数字和连字符。",
+      "saveChanges": "保存更改",
+      "saveSuccess": "设置已保存。",
+      "saveFailed": "保存设置失败",
+      "noPermission": "您没有修改这些设置的权限。",
+      "typeToConfirm": "输入 {value} 确认",
+      "ssoTitle": "单点登录 (SSO)",
+      "ssoDescription": "SSO 配置仅在企业版可用。",
+      "auditLogsTitle": "审计日志",
+      "auditLogsDescription": "哈希链审计日志保留期由您的套餐决定。",
+      "dangerZoneSubtitle": "不可逆操作，影响整个团队。",
+      "deleteTeamTitle": "删除团队",
+      "deleteTeamDescription": "永久删除该团队及其全部数据。",
+      "deleteFailed": "删除团队失败",
+      "confirmDeleteTitle": "删除此团队？",
+      "confirmDeleteWarning": "此操作不可撤销。请输入团队名称确认。",
+      "deleteWarning1": "团队下的所有策略、成员、邀请都会被移除。",
+      "deleteWarning2": "审计日志会按套餐保留，但不再可从此团队访问。",
+      "deleteWarning3": "活动订阅席位将被释放，下个账单按比例退款。"
     },
     "acceptInvite": {
       "title": "团队邀请",
@@ -401,7 +452,19 @@
       "expired": "此邀请已过期",
       "invalid": "无效的邀请",
       "alreadyMember": "您已是此团队的成员"
-    }
+    },
+    "backToTeam": "← 返回团队",
+    "backToTeams": "← 返回团队列表",
+    "cancel": "取消",
+    "comingSoon": "即将推出",
+    "creating": "创建中...",
+    "deleting": "删除中...",
+    "executions": "调用次数",
+    "failedToCreate": "创建团队失败",
+    "saving": "保存中...",
+    "teamNotFound": "未找到团队",
+    "viewAll": "查看全部",
+    "viewDetails": "查看详情"
   },
   "dashboard": {
     "welcomeBack": "欢迎回来，{name}！",
@@ -439,6 +502,43 @@
       "runs": "{count} 次运行",
       "deleted": "已删除",
       "restoreHint": "该策略已被删除，请从回收站恢复后方可继续使用。"
+    },
+    "aiUsage": {
+      "title": "本月 AI 用量",
+      "byokActive": "已绑定自己的 key",
+      "byokUsage": "通过自己的 key 消耗 {tokens} tokens",
+      "manageKeys": "管理 key",
+      "bannedTitle": "AI 临时停用",
+      "bannedUntil": "{date} 自动恢复",
+      "costThisMonth": "成本：${dollars}",
+      "plan": "{plan} 套餐",
+      "warningHighUsage": "本月剩余 {remaining} 次。",
+      "upgrade": "升级",
+      "or": "或",
+      "byok": "绑定自己的 key",
+      "emailUnverifiedTitle": "验证邮箱以解锁 AI",
+      "emailUnverifiedHint": "免费账户需要先验证邮箱才能使用 AI 功能。",
+      "verifyNow": "立即验证"
+    },
+    "apiUsage": {
+      "title": "Policy 执行 API",
+      "locked": "未包含",
+      "lockedHint": "Free 计划不含 Policy 执行 API。升级到 Pro/Team 或开始 14 天 Trial。",
+      "latencyP50": "p50:{ms}ms",
+      "latencyP95": "p95:{ms}ms",
+      "plan": "{plan} 套餐",
+      "warningHighUsage": "本月剩余 {remaining} 次。",
+      "warningOverage": "已超额（{percent}%）— 软模式继续，达 200% 后停服。",
+      "upgrade": "升级"
+    },
+    "dunning": {
+      "paymentFailedTitle": "支付失败。",
+      "paymentFailedHint": "若 {days} 天内未解决，账户将自动降级到 Free。",
+      "downgradedTitle": "账户已降级到 Free。",
+      "downgradedHint": "{days} 天内重新付款即可恢复 Pro/Team 功能与数据。",
+      "updatePayment": "更新支付方式",
+      "reactivate": "重新激活",
+      "opening": "打开中..."
     }
   },
   "billing": {
@@ -543,26 +643,29 @@
         "enterprise": "企业版"
       },
       "features": {
-        "policies3": "3 个策略",
-        "executions100": "每月 100 次执行",
-        "basicPii": "基础 PII 检测",
-        "policies25": "25 个策略",
-        "executions5000": "每月 5,000 次执行",
-        "allComplianceReports": "GDPR/HIPAA/SOC2/PCI 报告",
-        "apiAccess": "API 访问",
-        "apiCalls1000": "每月 1,000 次 API 调用",
-        "apiCalls5000": "每月 5,000 次 API 调用",
-        "unlimitedPolicies": "无限策略",
-        "apiCalls50000": "每月 50,000 次 API 调用",
-        "executions50000": "每月 50,000 次执行",
-        "teamCollaboration": "团队协作",
-        "ssoRbac": "SSO 与角色权限控制",
-        "prioritySupport": "优先支持",
-        "unlimitedApiCalls": "无限 API 调用",
+        "rules5": "5 条已发布规则",
+        "evaluations1k": "每月 1,000 次评估",
+        "aiDrafts20": "每月 20 次 AI 草稿（gpt-4o-mini）",
+        "allLanguagePacks": "全语言包（en / zh / de）",
+        "audit7days": "审计日志保留 7 天",
+        "unlimitedTeamMembers": "无限团队成员",
+        "rules100": "100 条已发布规则",
+        "evaluations50k": "每月 50,000 次评估",
+        "aiDrafts500": "每席每月 500 次 AI 草稿（gpt-5.2）",
+        "audit90days": "审计日志保留 90 天",
+        "inviteReviewersPaidSeat": "邀请审阅者——每席 ¥299 / 月",
+        "reviewerNotAuthor": "Reviewer ≠ 提交人（≥ 2 席强制）",
+        "soxCompliant": "满足 SOX 职责分离合规",
+        "stripeBilling": "Stripe 计费，月付或年付",
+        "multiTeamCustomApprovals": "多团队、自定义审批组",
+        "unlimitedRulesEvaluations": "规则与评估无限",
+        "unlimitedAiDraftsByok": "BYOK 无限 AI 草稿（自带 OpenAI / Anthropic / Vertex 密钥）",
+        "customIndustryLexicons": "行业自定义 lexicon",
+        "hashChainAuditSignature": "哈希链审计 + 数字签名",
+        "ssoSamlOidc": "SSO（SAML / OIDC / Authentik）",
         "customDeployment": "定制部署",
         "slaGuarantee": "SLA 保障",
-        "dedicatedSupport": "专属支持",
-        "customIntegrations": "定制集成"
+        "dedicatedSupport": "专属支持"
       }
     }
   },
@@ -664,7 +767,7 @@
       "subtitle": "使用示例输入数据测试您的策略",
       "input": "输入",
       "generateSampleData": "生成示例",
-      "inputPlaceholder": "{\"key\": \"value\"}",
+      "inputPlaceholder": "'{'\"key\": \"value\"'}'",
       "executeButton": "执行策略",
       "executing": "执行中...",
       "result": "结果",
@@ -955,5 +1058,121 @@
     "acceptDiff": "接受变更",
     "rejectDiff": "拒绝变更",
     "inlineCompletionLoading": "正在获取 AI 补全..."
+  },
+  "upgradeBlocker": {
+    "viewPlans": "查看套餐",
+    "dismiss": "稍后再说",
+    "published_rules": {
+      "title": "Free 仅支持 {limit} 条已发布规则",
+      "body": "升级到 Pro 即可在每个项目发布最多 100 条规则，附带团队审批与审计历史。"
+    },
+    "evaluations": {
+      "title": "本月评估次数已达上限",
+      "body": "Free 每月 {limit} 次评估，Pro 提升到 50,000 次，可按量超额计费。"
+    },
+    "audit_retention": {
+      "title": "Free 仅保留 7 天审计日志",
+      "body": "Enterprise 提供无限期留存 + 哈希链审计 + 数字签名，满足 SOX / HIPAA / PCI 合规。"
+    },
+    "sso": {
+      "title": "SSO 是 Enterprise 功能",
+      "body": "SAML 2.0、OIDC、Authentik 集成属于 Enterprise 套餐。"
+    },
+    "data_residency": {
+      "title": "数据驻留需 Enterprise",
+      "body": "Enterprise 套餐支持选择数据驻留区域（欧盟 / 美国 / 中国 / 自定义），通过 VPC 单租户或 K3S 私有化部署实现。"
+    },
+    "reviewer_required": {
+      "title": "审批需要至少 2 人团队",
+      "body": "Pro 启用 SOX 职责分离合规审批流：作者与审批人必须不同。升级 Pro 即可邀请审批人。"
+    },
+    "team_member_invite": {
+      "title": "Free 仅支持 1 人",
+      "body": "Pro 支持邀请团队成员、按角色分配权限。升级 Pro 即可加人。"
+    }
+  },
+  "pricingPage": {
+    "seo": {
+      "title": "套餐 — Aster Lang",
+      "description": "用中文（也支持英文 / 德语）写可执行的业务规则。Free 个人版、Pro 团队版、Enterprise 受监管行业版。"
+    },
+    "hero": {
+      "title": "面向认真做策略治理的团队",
+      "subtitle": "免费试用。当团队需要职责分离时再付费。"
+    },
+    "toggle": {
+      "monthly": "按月",
+      "yearly": "按年（-20%）"
+    },
+    "tiers": {
+      "free": {
+        "name": "Free",
+        "tagline": "自己写自己发",
+        "priceSuffix": "/永久",
+        "cta": "免费开始",
+        "features": [
+          "1 人",
+          "5 条已发布规则",
+          "1,000 次评估 / 月",
+          "每月 20 次 AI 草稿（gpt-4o-mini）",
+          "全语言包（en / zh / de）",
+          "审计日志 7 天",
+          "✗ 没有 reviewer 角色",
+          "✗ 不符合 SOX 合规"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "tagline": "审批权限分离",
+        "priceSuffix": "/席位 / 月",
+        "priceSuffixYearly": "/席位 / 年",
+        "cta": "升级 Pro",
+        "highlight": "最受欢迎",
+        "features": [
+          "无限团队成员",
+          "100 条已发布规则",
+          "50,000 次评估 / 月",
+          "每席每月 500 次 AI 草稿（gpt-5.2）",
+          "全语言包（en / zh / de）",
+          "审计日志 90 天",
+          "邀请 reviewer——每席 ¥299 / 月",
+          "Reviewer ≠ 提交人（≥ 2 席强制）",
+          "满足 SOX 职责分离",
+          "Stripe 月付 / 年付"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "tagline": "多团队 · 分级审批",
+        "priceSuffix": "联系我们",
+        "cta": "联系销售",
+        "features": [
+          "多团队、自定义审批组",
+          "规则与评估无限",
+          "BYOK 无限 AI 草稿（自带 OpenAI / Anthropic / Vertex 密钥）",
+          "行业自定义 lexicon",
+          "哈希链审计 + 数字签名",
+          "SSO（SAML / OIDC / Authentik）",
+          "数据驻留：欧盟 / 美国 / 中国 / 自定义",
+          "K3S 私有化部署 + ArgoCD GitOps",
+          "满足 SOX、PCI、HIPAA、GDPR"
+        ]
+      }
+    },
+    "comparison": {
+      "title": "三档对比",
+      "rows": {
+        "users": "用户席位",
+        "rules": "已发布规则数",
+        "evaluations": "月评估次数",
+        "aiDrafts": "AI 草稿配额",
+        "lexicon": "语言包",
+        "audit": "审计留存",
+        "approval": "审批流",
+        "sso": "SSO",
+        "residency": "数据驻留",
+        "deployment": "部署模式"
+      }
+    }
   }
 }

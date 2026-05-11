@@ -181,6 +181,11 @@ export const users = pgTable(
     id: text('id').primaryKey().notNull(),
     name: text('name'),
     email: text('email').unique(),
+    /**
+     * 反多重注册去重键（gmail+xxx 剥离、点号去除、toLowerCase）
+     * 详见 lib/email-normalize.ts
+     */
+    emailNormalized: text('emailNormalized'),
     emailVerified: timestamp('emailVerified', { mode: 'date' }),
     image: text('image'),
     passwordHash: text('passwordHash'),
@@ -196,10 +201,42 @@ export const users = pgTable(
     stripeCustomerId: text('stripeCustomerId').unique(),
     subscriptionId: text('subscriptionId').unique(),
     subscriptionStatus: subscriptionStatusEnum('subscriptionStatus'),
+    // 老用户保护：首次锁定价格的时间，决定走 LEGACY_PLAN_LIMITS 还是 PM_PLAN_LIMITS_V2
+    priceLockedAt: timestamp('priceLockedAt', { mode: 'date' }),
+    // 遗留档位标记：grandfather Team 客户用（plan='pro' + legacyTier='team' = 老 Team 客户，UI 显示 Pro）
+    legacyTier: text('legacyTier'),
 
     // Trial
     trialStartedAt: timestamp('trialStartedAt', { mode: 'date' }),
     trialEndsAt: timestamp('trialEndsAt', { mode: 'date' }),
+    // F2.5 trial 邮件发送幂等标记：避免 webhook 重投导致重复发邮件
+    trialEndingEmailSentAt: timestamp('trialEndingEmailSentAt', { mode: 'date' }),
+
+    // AI 防盗刷自动封禁（v1.0 详见 07-ai-billing.md L3 异常检测）
+    aiBannedUntil: timestamp('aiBannedUntil', { mode: 'date' }),
+    aiBanReason: text('aiBanReason'),
+    /**
+     * 注册时的 SHA256(ip+salt) 前 16 字符（GDPR 数据最小化）
+     * 用于反多重注册聚类检测：同 hash 24h 内 ≥5 个新账号有 LLM 调用 → 全部冻结
+     */
+    signupIpHash: text('signupIpHash'),
+
+    // API 配额警告邮件幂等标记（避免 cron 重复发送，按 periodMonth 重置）
+    apiQuotaWarn80SentAt: timestamp('apiQuotaWarn80SentAt', { mode: 'date' }),
+    apiQuotaWarn100SentAt: timestamp('apiQuotaWarn100SentAt', { mode: 'date' }),
+    apiQuotaWarn200SentAt: timestamp('apiQuotaWarn200SentAt', { mode: 'date' }),
+
+    // Dunning 催收（详见 aster-deploy/docs/pm/08-dunning.md）
+    /** 首次支付失败的时间戳；用于判断 grace period 起点 */
+    gracePeriodStartsAt: timestamp('gracePeriodStartsAt', { mode: 'date' }),
+    /** Grace period 截止日（now + 21d）；超过此日期 + 仍未付款 → auto-downgrade */
+    gracePeriodEndsAt: timestamp('gracePeriodEndsAt', { mode: 'date' }),
+    /** 已发送的催收邮件次数（0..4），用于幂等控制 */
+    dunningEmailsSentCount: integer('dunningEmailsSentCount').default(0).notNull(),
+    /** 上次催收邮件发送时间（避免一天发多封） */
+    lastDunningEmailSentAt: timestamp('lastDunningEmailSentAt', { mode: 'date' }),
+    /** 自动降级到 Free 的时间；30 天内重新付款可恢复，之后由 GDPR cleanup 清理 */
+    downgradedAt: timestamp('downgradedAt', { mode: 'date' }),
 
     // Onboarding
     onboardingUseCase: text('onboardingUseCase'),
@@ -212,6 +249,7 @@ export const users = pgTable(
   (table) => [
     index('User_email_idx').on(table.email),
     index('User_stripeCustomerId_idx').on(table.stripeCustomerId),
+    uniqueIndex('User_emailNormalized_unique').on(table.emailNormalized),
   ]
 );
 
@@ -371,6 +409,71 @@ export const usedNonces = pgTable(
   (table) => [
     index('UsedNonce_expiresAt_idx').on(table.expiresAt),
     index('UsedNonce_policyId_idx').on(table.policyId),
+  ]
+);
+
+// ============================================
+// Signup Attempts（注册限流：IP/24h ≤ 3）
+// ============================================
+
+/**
+ * 注册尝试记录：用 SHA256(ip+salt) 而非明文 IP（GDPR 数据最小化）
+ * cron 每天清理 createdAt < now()-24h 的记录
+ */
+export const signupAttempts = pgTable(
+  'SignupAttempt',
+  {
+    id: text('id').primaryKey().notNull(),
+    /** SHA256(ip + SIGNUP_IP_SALT) hex 前 16 字符 */
+    ipHash: text('ipHash').notNull(),
+    /** 是否最终成功（用于区分尝试 vs. 实际注册） */
+    succeeded: boolean('succeeded').default(false).notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('SignupAttempt_ipHash_createdAt_idx').on(table.ipHash, table.createdAt),
+    index('SignupAttempt_createdAt_idx').on(table.createdAt),
+  ]
+);
+
+// ============================================
+// API Call Records（Policy Execution API 配额计数）
+// ============================================
+
+/**
+ * Policy 执行 API 的调用记录
+ *
+ * 与 aiUsageRecords（LLM 调用）不同——这里记的是用户编译后的 policy 被
+ * 当作 endpoint 调用的次数，按月度配额（plans.ts limits.apiCalls）扣减。
+ *
+ * 设计：
+ *   - userId / tenantId 双索引：tenant=team 时按 team owner 聚合
+ *   - 不存请求/响应 body（policy 输入输出可能含 PII；不在此层做内容审计）
+ *   - status: success / quota_exhausted / rate_limited / api_error
+ *   - 保留 90 天滚动删除（cron 清理）
+ */
+export const apiCallRecords = pgTable(
+  'ApiCallRecord',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId').notNull(),
+    tenantId: text('tenantId'),
+    apiKeyId: text('apiKeyId'),
+    /** 'YYYY-MM' 用于按月聚合查询 */
+    periodMonth: text('periodMonth').notNull(),
+    /** /api/policies/evaluate / evaluate-json / evaluate-source / evaluate/batch */
+    endpointPath: text('endpointPath').notNull(),
+    /** 调用结果：success / quota_exhausted / rate_limited / api_error */
+    status: text('status').notNull(),
+    /** 端到端耗时，毫秒 */
+    latencyMs: integer('latencyMs').notNull().default(0),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('ApiCall_userId_period_idx').on(table.userId, table.periodMonth),
+    index('ApiCall_tenantId_createdAt_idx').on(table.tenantId, table.createdAt),
+    index('ApiCall_apiKeyId_createdAt_idx').on(table.apiKeyId, table.createdAt),
+    index('ApiCall_createdAt_retention_idx').on(table.createdAt),
   ]
 );
 
@@ -679,6 +782,116 @@ export const demoAuditLogs = pgTable(
     index('DemoAuditLog_action_idx').on(table.action),
   ]
 );
+
+// ============================================
+// AI 计费 / 防盗刷（v1.0 详见 aster-deploy/docs/pm/07-ai-billing.md）
+// ============================================
+
+/**
+ * AI 调用记录（细粒度 token 消耗）
+ *
+ * 每次成功 / 失败 / 拒绝的 LLM 调用都记一行。
+ * 月度配额由 SUM(promptTokens + completionTokens) WHERE periodMonth=YYYY-MM 算出。
+ *
+ * 设计意图：
+ *   - 只记 token 数 + 成本（USD 分）+ 是否走 BYOK，不记 prompt/response 内容（隐私）
+ *   - 有租户 / 月份 索引，让 quota 检查 < 50ms
+ *   - 异常检测扫描"最近 1h 重复 prompt hash"等用 promptHash 字段
+ */
+export const aiUsageRecords = pgTable(
+  'AiUsageRecord',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId').notNull(),
+    teamId: text('teamId'),
+    /** 'YYYY-MM' 用于按月聚合查询 */
+    periodMonth: text('periodMonth').notNull(),
+    /** completion / explain / suggest / repair */
+    callKind: text('callKind').notNull(),
+    model: text('model').notNull(),
+    promptTokens: integer('promptTokens').notNull().default(0),
+    completionTokens: integer('completionTokens').notNull().default(0),
+    /** 估算成本（美分），用 INT 避免浮点精度问题 */
+    costCents: integer('costCents').notNull().default(0),
+    /** 是否使用了用户绑定的 BYOK key（true 则不计入平台配额） */
+    usedByok: boolean('usedByok').notNull().default(false),
+    /** 调用结果：success / quota_exhausted / rate_limited / banned / api_error */
+    status: text('status').notNull(),
+    /** 用于异常检测：prompt 内容的 SHA-256 前缀（不含原文） */
+    promptHash: text('promptHash'),
+    /**
+     * 加密后的原始 prompt（pgp_sym_encrypt 输出 bytea，用 text 列简化）
+     * 主密钥独立于 BYOK：env AI_AUDIT_ENCRYPTION_SECRET（Vault 注入）
+     * 保留期 180 天，cron 删除
+     */
+    encryptedPrompt: text('encryptedPrompt'),
+    /** 加密后的 LLM 输出，同上 */
+    encryptedCompletion: text('encryptedCompletion'),
+    /**
+     * PII 脱敏后的 prompt 明文（邮箱/手机/卡号等已替换为 [REDACTED:TYPE]）
+     * 永久保留：合规要求 + 内容安全分析 + 异常检测训练样本
+     */
+    redactedPrompt: text('redactedPrompt'),
+    /**
+     * 内容安全标记
+     * { jailbreak_attempt: bool, pii_detected: bool, toxic: bool, blocked_reason?: string }
+     * 永久保留，参与 anomaly detection
+     */
+    safetyFlags: json('safetyFlags').$type<{
+      jailbreak_attempt?: boolean;
+      pii_detected?: boolean;
+      toxic?: boolean;
+      blocked_reason?: string;
+    }>(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('AiUsage_userId_period_idx').on(table.userId, table.periodMonth),
+    index('AiUsage_userId_createdAt_idx').on(table.userId, table.createdAt),
+    index('AiUsage_teamId_period_idx').on(table.teamId, table.periodMonth),
+    index('AiUsage_promptHash_idx').on(table.promptHash, table.userId),
+    index('AiUsage_createdAt_retention_idx').on(table.createdAt),
+  ]
+);
+
+/**
+ * 用户 BYOK key 绑定（pgcrypto 加密存储）
+ *
+ * 安全约束：
+ *   - 字段名不暴露 provider（aiK1 而非 openAiKey），防 SQL dump 推断
+ *   - 加密用 pgp_sym_encrypt，主密钥来自 env AI_KEY_ENCRYPTION_SECRET（Vault 注入）
+ *   - keyHint 仅存后 4 位明文，UI 显示时用
+ */
+export const aiKeyBindings = pgTable(
+  'AiKeyBinding',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId').notNull(),
+    /** openai / anthropic / vertex */
+    provider: text('provider').notNull(),
+    /** 加密后的 key（pgp_sym_encrypt 输出 bytea，Drizzle 用 customType 映射；这里用 text 简化）*/
+    encryptedKey: text('encryptedKey').notNull(),
+    /** 后 4 位明文，UI 显示用 */
+    keyHint: text('keyHint').notNull(),
+    /** 是否启用（用户可临时停用而不删除） */
+    active: boolean('active').notNull().default(true),
+    /** 上次成功调用时间（健康检查） */
+    lastUsedAt: timestamp('lastUsedAt', { mode: 'date' }),
+    /** 上次失败原因（如 401 → 用户 key 已被 OpenAI 撤销） */
+    lastErrorAt: timestamp('lastErrorAt', { mode: 'date' }),
+    lastError: text('lastError'),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('AiKey_userId_provider_idx').on(table.userId, table.provider),
+    index('AiKey_active_idx').on(table.active),
+  ]
+);
+
+// users 表 v1.2 加禁用字段（防盗刷自动封禁用）
+// 注意：因为不想破坏已有 users 表 schema，把禁用字段直接加在 users 同一文件
+// 在现有 users 表定义末尾追加（已在 priceLockedAt / legacyTier 旁边）
 
 // ============================================
 // Relations

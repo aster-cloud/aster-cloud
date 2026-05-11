@@ -51,10 +51,8 @@ interface MonacoPolicyEditorProps {
 
 const AI_COMPLETE_API_URL = process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
 
-// inline 补全请求的 debounce 计时器
-let inlineCompletionTimer: ReturnType<typeof setTimeout> | null = null;
-// inline 补全提供者注册状态
-let inlineProviderDisposable: { dispose: () => void } | null = null;
+// NOTE: inlineCompletionTimer and inlineProviderDisposable are managed as
+// component-scoped refs inside MonacoPolicyEditor to avoid cross-instance leaks.
 
 // 注册 Aster Lang 语言
 function registerAsterLanguage(
@@ -301,6 +299,8 @@ export function MonacoPolicyEditor({
 }: MonacoPolicyEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
+  const inlineProviderDisposableRef = useRef<{ dispose: () => void } | null>(null);
+  const inlineCompletionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { resolvedTheme } = useTheme();
   const t = useTranslations('diagnostics');
   const [isEditorReady, setIsEditorReady] = useState(false);
@@ -394,15 +394,15 @@ export function MonacoPolicyEditor({
 
       // 注册 AI inline 补全 provider
       if (enableAICompletion) {
-        inlineProviderDisposable?.dispose();
-        inlineProviderDisposable = monaco.languages.registerInlineCompletionsProvider(ASTER_LANG_ID, {
+        inlineProviderDisposableRef.current?.dispose();
+        inlineProviderDisposableRef.current = monaco.languages.registerInlineCompletionsProvider(ASTER_LANG_ID, {
           provideInlineCompletions: async (model: editor.ITextModel, position: import('monaco-editor').Position, _context: import('monaco-editor').languages.InlineCompletionContext, token: import('monaco-editor').CancellationToken) => {
             // 取消前一个 debounce
-            if (inlineCompletionTimer) clearTimeout(inlineCompletionTimer);
+            if (inlineCompletionTimerRef.current) clearTimeout(inlineCompletionTimerRef.current);
 
             // 仅在输入暂停 500ms 后触发
             return new Promise((resolve) => {
-              inlineCompletionTimer = setTimeout(async () => {
+              inlineCompletionTimerRef.current = setTimeout(async () => {
                 if (token.isCancellationRequested) {
                   resolve({ items: [] });
                   return;
@@ -489,6 +489,14 @@ export function MonacoPolicyEditor({
       registerAsterLanguage(monacoRef.current, lexicon, vocabulary);
     }
   }, [locale, lexicon, domain, vocabulary, isEditorReady]);
+
+  // 组件卸载时释放 inline 补全 provider 及 timer，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (inlineCompletionTimerRef.current) clearTimeout(inlineCompletionTimerRef.current);
+      inlineProviderDisposableRef.current?.dispose();
+    };
+  }, []);
 
   // 内容变更回调
   const handleChange: OnChange = useCallback(

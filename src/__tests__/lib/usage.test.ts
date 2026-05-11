@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mockUser, type MockUser } from '@/__tests__/helpers/mock-user';
 
 // Use vi.hoisted to define mocks that need to be referenced inside vi.mock factories
 const {
@@ -61,32 +62,7 @@ function setupSelectCount(count: number) {
   mockSelect.mockReturnValue({ from: mockFrom });
 }
 
-function mockUser(overrides: Partial<Record<string, unknown>> = {}) {
-  return {
-    id: 'user-1',
-    name: 'Test User',
-    email: 'test@example.com',
-    emailVerified: null,
-    image: null,
-    passwordHash: null,
-    failedLoginAttempts: 0,
-    lastFailedLoginAt: null,
-    lockedUntil: null,
-    lockoutCount: 0,
-    plan: 'free' as const,
-    stripeCustomerId: null,
-    subscriptionId: null,
-    subscriptionStatus: null,
-    trialStartedAt: null,
-    trialEndsAt: null,
-    onboardingUseCase: null,
-    onboardingGoals: null,
-    onboardingCompletedAt: null,
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01'),
-    ...overrides,
-  };
-}
+// mockUser 已从 helpers 模块 import（顶部）
 
 function mockUsageRecord(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -135,38 +111,37 @@ describe('Usage Tracking', () => {
 
     it('should return allowed with remaining count when under limit', async () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser());
-      vi.mocked(db.query.usageRecords.findFirst).mockResolvedValue(mockUsageRecord({ count: 50 }));
+      vi.mocked(db.query.usageRecords.findFirst).mockResolvedValue(mockUsageRecord({ count: 500 }));
 
       const result = await checkUsageLimit('user-1', 'execution');
 
-      // free plan: 100 executions limit, 50 used
+      // PM v1.1 free plan: 1,000 evaluations limit, 500 used
       expect(result.allowed).toBe(true);
-      expect(result.limit).toBe(100);
-      expect(result.remaining).toBe(50);
+      expect(result.limit).toBe(1000);
+      expect(result.remaining).toBe(500);
     });
 
     it('should return not allowed with message when at limit', async () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser());
-      vi.mocked(db.query.usageRecords.findFirst).mockResolvedValue(mockUsageRecord({ count: 100 }));
+      vi.mocked(db.query.usageRecords.findFirst).mockResolvedValue(mockUsageRecord({ count: 1000 }));
 
       const result = await checkUsageLimit('user-1', 'execution');
 
       expect(result.allowed).toBe(false);
-      expect(result.limit).toBe(100);
+      expect(result.limit).toBe(1000);
       expect(result.remaining).toBe(0);
-      expect(result.message).toContain('100');
+      expect(result.message).toContain('1000');
     });
 
     it('should treat expired trial as free plan', async () => {
       const pastDate = new Date('2020-01-01');
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'trial', trialEndsAt: pastDate }));
-      // free plan: 100 executions
       vi.mocked(db.query.usageRecords.findFirst).mockResolvedValue(mockUsageRecord({ count: 0 }));
 
       const result = await checkUsageLimit('user-1', 'execution');
 
       expect(result.allowed).toBe(true);
-      expect(result.limit).toBe(100); // free plan limit, not trial (5000)
+      expect(result.limit).toBe(1000); // PM v1.1 free plan limit
       // Also verify user plan was downgraded
       expect(db.update).toHaveBeenCalled();
     });
@@ -188,7 +163,7 @@ describe('Usage Tracking', () => {
       const result = await checkUsageLimit('user-1', 'execution');
 
       expect(result.allowed).toBe(true);
-      expect(result.remaining).toBe(100);
+      expect(result.remaining).toBe(1000); // PM v1.1 free plan: 1,000 evaluations
     });
 
     it('should return not allowed for api_call when free plan has 0 api quota', async () => {
@@ -254,8 +229,10 @@ describe('Usage Tracking', () => {
       expect(result.usage.executions).toBe(100);
       expect(result.usage.apiCalls).toBe(50);
       expect(result.usage.policies).toBe(10);
-      expect(result.usage.policiesLimit).toBe(25); // pro plan limit
-      expect(result.usage.executionsLimit).toBe(5000);
+      // PM v1.1：用户没 priceLockedAt（=null）→ getEffectiveLimits 走 PM_PLAN_LIMITS_V2
+      // pro 档：publishedRules=100, evaluations=50000
+      expect(result.usage.policiesLimit).toBe(100);
+      expect(result.usage.executionsLimit).toBe(50000);
       expect(result.features.apiAccess).toBe(true);
     });
 
@@ -286,7 +263,10 @@ describe('Usage Tracking', () => {
     });
 
     it('should default to free plan when user has unknown plan', async () => {
-      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'unknown_plan' as string }));
+      // 故意传入非法 plan 值，验证 fallback；用 unknown 双层 cast 绕过类型系统（测试 only）
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(
+        mockUser({ plan: 'unknown_plan' as unknown as MockUser['plan'] })
+      );
       vi.mocked(db.query.usageRecords.findMany).mockResolvedValue([]);
       setupSelectCount(0);
 

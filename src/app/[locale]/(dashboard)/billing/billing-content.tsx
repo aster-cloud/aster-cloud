@@ -9,15 +9,14 @@ import {
   formatPrice,
   getPlanPrice,
   getPlanStripePriceId,
-  getTeamMinUsers,
-  getTeamPerUserPrice,
   isUnlimited,
   PLANS,
   PlanType,
 } from '@/lib/plans';
 import FAQSection from './FAQSection';
 
-const DISPLAY_PLANS = (Object.keys(PLANS) as PlanType[]).filter((plan) => plan !== 'trial');
+// PM v1.1：Pricing 页只展示 Free / Pro / Enterprise 三档
+const DISPLAY_PLANS: PlanType[] = ['free', 'pro', 'enterprise'];
 const AVAILABLE_CURRENCIES: CurrencyCode[] = ['USD', 'CNY', 'EUR'];
 
 // Currency display names
@@ -97,7 +96,6 @@ function BillingContentInner({
   const searchParams = useSearchParams();
   const [currency, setCurrency] = useState<CurrencyCode>(defaultCurrency);
   const [interval, setInterval] = useState<BillingInterval>('monthly');
-  const [teamUsers, setTeamUsers] = useState<number>(getTeamMinUsers());
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [usage, _setUsage] = useState<Usage | null>(initialUsage);
@@ -130,7 +128,7 @@ function BillingContentInner({
           plan,
           interval,
           currency,
-          quantity: plan === 'team' ? teamUsers : 1,
+          quantity: 1,
         }),
       });
 
@@ -335,24 +333,10 @@ function BillingContentInner({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {DISPLAY_PLANS.map((planKey) => {
           const plan = PLANS[planKey];
-          const isTeamPlan = planKey === 'team';
           const isCurrentPlan = currentPlan === planKey;
           const canCheckout = Boolean(getPlanStripePriceId(planKey, interval, currency));
           const isFeatured = planKey === 'pro';
-
-          // Calculate price based on plan type
-          let priceValue: number | null;
-          let priceLabel: string;
-
-          if (isTeamPlan) {
-            const perUserPrice = getTeamPerUserPrice(currency, interval);
-            priceValue = perUserPrice * teamUsers;
-            priceLabel = `${formatPrice(perUserPrice, currency)}/${t.perUser}`;
-          } else {
-            priceValue = getPlanPrice(planKey, currency)[interval];
-            priceLabel = '';
-          }
-
+          const priceValue = getPlanPrice(planKey, currency)[interval];
           const showInterval = typeof priceValue === 'number' && priceValue > 0;
 
           return (
@@ -386,49 +370,6 @@ function BillingContentInner({
                 )}
               </div>
 
-              {/* Per user price for Team plan */}
-              {isTeamPlan && priceLabel && (
-                <p className="mt-1 text-sm text-gray-500">{priceLabel}</p>
-              )}
-
-              {/* Team users selector */}
-              {isTeamPlan && (
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t.teamUsers}
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => setTeamUsers(Math.max(getTeamMinUsers(), teamUsers - 1))}
-                      disabled={teamUsers <= getTeamMinUsers()}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      min={getTeamMinUsers()}
-                      max={100}
-                      value={teamUsers}
-                      onChange={(e) => setTeamUsers(Math.max(getTeamMinUsers(), Math.min(100, parseInt(e.target.value) || getTeamMinUsers())))}
-                      className="w-16 text-center border border-gray-300 rounded-md py-1 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setTeamUsers(Math.min(100, teamUsers + 1))}
-                      disabled={teamUsers >= 100}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {formatTemplate(t.minUsersTemplate, { count: getTeamMinUsers() })}
-                  </p>
-                </div>
-              )}
-
               <ul className="mt-6 space-y-3 flex-1">
                 {plan.featureKeys.map((featureKey) => (
                   <li key={featureKey} className="flex items-center text-sm text-gray-600">
@@ -439,7 +380,7 @@ function BillingContentInner({
                         clipRule="evenodd"
                       />
                     </svg>
-                    {t.plans.features[featureKey]}
+                    {t.plans.features[featureKey] ?? featureKey}
                   </li>
                 ))}
               </ul>

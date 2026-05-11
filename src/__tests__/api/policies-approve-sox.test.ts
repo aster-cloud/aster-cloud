@@ -1,0 +1,176 @@
+// SOX 守护防回归测试（PM v1.1）
+// 5 场景：
+//   1. Free 自审 → 200（不强制）
+//   2. Pro 自审单 seat → 403 invite_reviewer_required + cta
+//   3. Pro 自审多 seat → 403 segregation_of_duties
+//   4. Pro 他审多 seat → 200 approved
+//   5. Enterprise 自审单 seat → 403 invite_reviewer_required
+//   6. Pro 自审无 owner team → 403 引导 /teams/new
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const prismaMocks = vi.hoisted(() => ({
+  usersFindFirst: vi.fn(),
+  teamsFindFirst: vi.fn(),
+  policyVersionsFindFirst: vi.fn(),
+  selectChain: vi.fn(),
+}));
+
+vi.mock('@/auth', () => ({ auth: vi.fn() }));
+vi.mock('@/services/policy/version-manager', () => ({
+  approveVersion: vi.fn(),
+}));
+vi.mock('@/lib/prisma', () => ({
+  db: {
+    query: {
+      users: { findFirst: prismaMocks.usersFindFirst },
+      teams: { findFirst: prismaMocks.teamsFindFirst },
+      policyVersions: { findFirst: prismaMocks.policyVersionsFindFirst },
+    },
+    select: prismaMocks.selectChain,
+  },
+  users: {},
+  teams: {},
+  teamMembers: {},
+  policyVersions: {},
+}));
+
+import { POST } from '@/app/api/v1/policies/[id]/versions/[version]/approve/route';
+import { auth } from '@/auth';
+import { approveVersion } from '@/services/policy/version-manager';
+import type { NextRequest } from 'next/server';
+
+const mockAuth = vi.mocked(auth);
+const mockApprove = vi.mocked(approveVersion);
+
+function makeRequest(): NextRequest {
+  return new Request('http://localhost/api/v1/policies/p1/versions/1/approve', {
+    method: 'POST',
+    body: JSON.stringify({ comment: 'lgtm' }),
+    headers: { 'content-type': 'application/json' },
+  }) as unknown as NextRequest;
+}
+
+const params = Promise.resolve({ id: 'p1', version: '1' });
+
+interface UserStub {
+  plan: 'free' | 'pro' | 'enterprise';
+  priceLockedAt: Date | null;
+  legacyTier: string | null;
+}
+
+function setupMocks(opts: {
+  user: UserStub;
+  versionAuthor: string;
+  team?: { id: string };
+  seatCount?: number;
+}) {
+  prismaMocks.usersFindFirst.mockResolvedValueOnce(opts.user);
+  prismaMocks.policyVersionsFindFirst.mockResolvedValueOnce({ createdBy: opts.versionAuthor });
+  prismaMocks.teamsFindFirst.mockResolvedValueOnce(opts.team);
+  prismaMocks.selectChain.mockReturnValueOnce({
+    from: () => ({
+      where: () => Promise.resolve([{ count: opts.seatCount ?? 1 }]),
+    }),
+  });
+}
+
+describe('POST /api/v1/policies/[id]/versions/[version]/approve — SOX 守护', () => {
+  beforeEach(() => {
+    prismaMocks.usersFindFirst.mockReset();
+    prismaMocks.teamsFindFirst.mockReset();
+    prismaMocks.policyVersionsFindFirst.mockReset();
+    prismaMocks.selectChain.mockReset();
+    mockApprove.mockReset();
+    mockAuth.mockReset();
+    mockAuth.mockResolvedValue({
+      user: { id: 'u1', email: 'u1@example.com' },
+    } as unknown as Awaited<ReturnType<typeof auth>>);
+  });
+
+  it('Free 计划自审 → 200（不强制 SOX）', async () => {
+    setupMocks({
+      user: { plan: 'free', priceLockedAt: null, legacyTier: null },
+      versionAuthor: 'u1',
+    });
+    mockApprove.mockResolvedValueOnce(undefined);
+
+    const res = await POST(makeRequest(), { params });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(mockApprove).toHaveBeenCalled();
+  });
+
+  it('Pro 自审 + 单 seat → 403 invite_reviewer_required + cta', async () => {
+    setupMocks({
+      user: { plan: 'pro', priceLockedAt: null, legacyTier: null },
+      versionAuthor: 'u1',
+      team: { id: 't1' },
+      seatCount: 1,
+    });
+
+    const res = await POST(makeRequest(), { params });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('invite_reviewer_required');
+    expect(data.cta?.href).toBe('/teams/t1/invite');
+    expect(mockApprove).not.toHaveBeenCalled();
+  });
+
+  it('Pro 自审 + 2 seat → 403 segregation_of_duties', async () => {
+    setupMocks({
+      user: { plan: 'pro', priceLockedAt: null, legacyTier: null },
+      versionAuthor: 'u1',
+      team: { id: 't1' },
+      seatCount: 2,
+    });
+
+    const res = await POST(makeRequest(), { params });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('segregation_of_duties');
+    expect(mockApprove).not.toHaveBeenCalled();
+  });
+
+  it('Pro 他审 → 200 approved', async () => {
+    setupMocks({
+      user: { plan: 'pro', priceLockedAt: null, legacyTier: null },
+      versionAuthor: 'someone-else',
+    });
+    mockApprove.mockResolvedValueOnce(undefined);
+
+    const res = await POST(makeRequest(), { params });
+    expect(res.status).toBe(200);
+    expect(mockApprove).toHaveBeenCalled();
+  });
+
+  it('Enterprise 自审 + 单 seat → 403 invite_reviewer_required', async () => {
+    setupMocks({
+      user: { plan: 'enterprise', priceLockedAt: null, legacyTier: null },
+      versionAuthor: 'u1',
+      team: { id: 't1' },
+      seatCount: 1,
+    });
+
+    const res = await POST(makeRequest(), { params });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('invite_reviewer_required');
+    expect(mockApprove).not.toHaveBeenCalled();
+  });
+
+  it('Pro 自审 + 用户无 owner team → 403 + 引导建团队', async () => {
+    setupMocks({
+      user: { plan: 'pro', priceLockedAt: null, legacyTier: null },
+      versionAuthor: 'u1',
+      team: undefined,
+    });
+
+    const res = await POST(makeRequest(), { params });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('invite_reviewer_required');
+    expect(data.cta?.href).toBe('/teams/new');
+  });
+});

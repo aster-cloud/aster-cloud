@@ -99,7 +99,22 @@ export async function POST(req: Request) {
       );
     }
 
-    // 转换响应格式以匹配前端期望
+    // Bug-4 修复：识别 result 对象中的决策字段而不是用 Boolean(整对象) → 总 truthy
+    // 同 cnl-executor.parseAsterCNLResult 的 approvalFields 顺序，保持语义一致
+    function deriveApproved(r: unknown): boolean {
+      if (r === null || r === undefined) return false;
+      if (typeof r === 'boolean') return r;
+      if (typeof r === 'object') {
+        const obj = r as Record<string, unknown>;
+        for (const f of ['approved', 'isApproved', 'allowed', 'isAllowed', 'isEligible', 'eligible', 'isSuccess', 'success', '批准', 'genehmigt']) {
+          if (f in obj) return obj[f] === true || obj[f] === 'true';
+        }
+        // 未识别决策字段 → 视为有结果即成功（与 cnl-executor _type 分支语义一致）
+        return true;
+      }
+      return Boolean(r);
+    }
+
     return NextResponse.json(
       {
         executionId: `exec-${Date.now()}`,
@@ -107,7 +122,7 @@ export async function POST(req: Request) {
         output: {
           matchedRules: [],
           actions: [],
-          approved: Boolean(apiResponse.result),
+          approved: deriveApproved(apiResponse.result),
         },
         result: apiResponse.result,
         durationMs: apiResponse.executionTimeMs || 0,

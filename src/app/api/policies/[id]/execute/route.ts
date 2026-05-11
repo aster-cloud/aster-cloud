@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { db, policies, executions, users, usageRecords } from '@/lib/prisma';
 import { eq, sql, desc, asc } from 'drizzle-orm';
 import { PLANS, PlanType } from '@/lib/plans';
+import { upgradeResponse } from '@/lib/plan-quota';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
 import { getCachedPolicyMeta, cachePolicyMeta, type CachedPolicyMeta } from '@/lib/cache';
@@ -187,8 +188,13 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     const currentUsage = usageData?.count || 0;
     if (limits.executions !== -1 && currentUsage >= limits.executions) {
+      // 保留 429 状态码（与现有客户端行为一致），body 改用 upgradeResponse 统一格式
       return NextResponse.json(
-        { error: 'Usage limit exceeded', message: `You've reached your monthly limit of ${limits.executions} executions.`, upgrade: true },
+        upgradeResponse('evaluations', {
+          usage: currentUsage,
+          limit: limits.executions,
+          message: `You've reached your monthly limit of ${limits.executions} executions.`,
+        }),
         { status: 429 }
       );
     }

@@ -5,15 +5,21 @@
  * 支持 REST 和 WebSocket 两种调用方式。
  */
 
-import { signRequest } from '@/lib/api-signing';
+import { signRequest, signInternalCallerHeaders } from '@/lib/api-signing';
 import { API_ENDPOINTS } from '@/config/api-versions';
 
 // 环境变量配置
-const getApiConfig = () => ({
-  baseUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev',
-  wsUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_WS_URL || 'wss://policy.aster-lang.dev/ws/preview',
-  timeout: parseInt(process.env.ASTER_POLICY_API_TIMEOUT || '30000', 10),
-});
+const getApiConfig = () => {
+  const isServer = typeof window === 'undefined';
+  return {
+    // 服务端优先使用内部网络地址（容器间通信），回退到公开地址
+    baseUrl: isServer
+      ? (process.env.ASTER_POLICY_API_INTERNAL_URL || process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev')
+      : (process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev'),
+    wsUrl: process.env.NEXT_PUBLIC_ASTER_POLICY_WS_URL || 'wss://policy.aster-lang.dev/ws/preview',
+    timeout: parseInt(process.env.ASTER_POLICY_API_TIMEOUT || '30000', 10),
+  };
+};
 
 // 请求类型定义
 export interface PolicyEvaluateRequest {
@@ -162,7 +168,9 @@ export class PolicyApiClient {
   constructor(
     private readonly tenantId: string,
     private readonly userId: string,
-    private readonly userRole: string = 'member'
+    private readonly userRole: string = 'member',
+    /** v1.2：业务角色用于 WAADR 北极星指标 — business_expert / compliance_officer / risk_analyst / engineer / admin */
+    private readonly businessRole: string = 'unknown'
   ) {
     const config = getApiConfig();
     this.baseUrl = config.baseUrl;
@@ -179,6 +187,8 @@ export class PolicyApiClient {
       'X-Tenant-Id': this.tenantId,
       'X-User-Id': this.userId,
       'X-User-Role': this.userRole,
+      // v1.2：业务角色不同于 RBAC 角色，专用于 WAADR 北极星指标过滤
+      'X-User-Business-Role': this.businessRole,
     };
   }
 
@@ -204,6 +214,17 @@ export class PolicyApiClient {
         const sigHeaders = await signRequest(method, url, bodyStr);
         Object.assign(headers, sigHeaders);
       }
+
+      // /evaluate-source 受 InternalCallerFilter 保护：必须带 X-Internal-Caller + HMAC 签名
+      // 防止外部客户绕过审核流提交未批准源码（详见 AKA-9）
+      if (path === API_ENDPOINTS.evaluateSource && process.env.ASTER_PLAN_GATE_HMAC_KEY) {
+        const internalHeaders = await signInternalCallerHeaders(method, path);
+        Object.assign(headers, internalHeaders);
+      }
+
+      // OTEL-1: 注入 W3C traceparent，让 aster-api 端的 OTel span 与 cloud 串起来
+      const { newTraceContext } = await import('@/lib/trace-context');
+      headers['traceparent'] = newTraceContext().traceparent;
 
       const response = await fetch(url, {
         method,
@@ -405,8 +426,13 @@ export class PolicyApiError extends Error {
 /**
  * 创建 Policy API 客户端 (服务端使用)
  */
-export function createPolicyApiClient(tenantId: string, userId: string, userRole?: string): PolicyApiClient {
-  return new PolicyApiClient(tenantId, userId, userRole);
+export function createPolicyApiClient(
+  tenantId: string,
+  userId: string,
+  userRole?: string,
+  businessRole?: string
+): PolicyApiClient {
+  return new PolicyApiClient(tenantId, userId, userRole, businessRole);
 }
 
 /**

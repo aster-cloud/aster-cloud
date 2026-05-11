@@ -140,7 +140,13 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
       )}
       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs">
         <span className="text-gray-500 dark:text-gray-400">Result</span>
-        <span className="font-medium text-gray-900 dark:text-gray-100">{String(trace.finalResult)}</span>
+        <span className="font-medium text-gray-900 dark:text-gray-100">
+          {trace.finalResult !== null && trace.finalResult !== undefined
+            ? typeof trace.finalResult === 'object'
+              ? JSON.stringify(trace.finalResult)
+              : String(trace.finalResult)
+            : '—'}
+        </span>
       </div>
 
       {/* AI 解释区域 */}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policies, executions, policyGroups, users, policyVersions } from '@/lib/prisma';
 import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
+import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
 import { detectPII } from '@/services/pii/detector';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { eq, isNull, desc, sql, and, inArray } from 'drizzle-orm';
@@ -132,12 +133,12 @@ export async function POST(req: Request) {
 
       if (!isUnlimited(policyLimit) && policyCount >= policyLimit) {
         return NextResponse.json(
-          {
-            error: 'Policy limit reached',
+          upgradeResponse('published_rules', {
+            usage: policyCount,
+            limit: policyLimit,
             message: `Current plan allows ${policyLimit} policies. Upgrade for higher limits.`,
-            upgrade: true,
-          },
-          { status: 403 }
+          }),
+          { status: UPGRADE_HTTP_STATUS }
         );
       }
     }

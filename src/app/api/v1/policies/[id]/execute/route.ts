@@ -3,6 +3,7 @@ import { authenticateApiRequest } from '@/lib/api-keys';
 import { db, policies, executions, users, usageRecords } from '@/lib/prisma';
 import { eq, sql, desc, asc } from 'drizzle-orm';
 import { PLANS, PlanType } from '@/lib/plans';
+import { upgradeResponse } from '@/lib/plan-quota';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
 
@@ -148,14 +149,22 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     if (limits.apiCalls !== -1 && apiCallUsage >= limits.apiCalls) {
       return NextResponse.json(
-        { error: 'API call limit exceeded', message: `You've reached your monthly limit of ${limits.apiCalls} API calls.` },
+        upgradeResponse('evaluations', {
+          usage: apiCallUsage,
+          limit: limits.apiCalls,
+          message: `You've reached your monthly limit of ${limits.apiCalls} API calls.`,
+        }),
         { status: 429 }
       );
     }
 
     if (limits.executions !== -1 && executionUsage >= limits.executions) {
       return NextResponse.json(
-        { error: 'Execution limit exceeded', message: `You've reached your monthly limit of ${limits.executions} executions.` },
+        upgradeResponse('evaluations', {
+          usage: executionUsage,
+          limit: limits.executions,
+          message: `You've reached your monthly limit of ${limits.executions} executions.`,
+        }),
         { status: 429 }
       );
     }

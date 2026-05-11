@@ -71,3 +71,36 @@ export async function signRequest(
     'X-Aster-Signature': signature,
   };
 }
+
+export interface InternalCallerHeaders {
+  'X-Internal-Caller': string;
+  'X-Aster-Timestamp': string;
+  'X-Internal-Signature': string;
+}
+
+/**
+ * 为调用 aster-api 的"内部专用"路径生成签名头（如 /evaluate-source）
+ *
+ * 协议：HMAC-SHA256(`POST\n${path}\n${unixSeconds}`)，密钥 = ASTER_PLAN_GATE_HMAC_KEY
+ * （与 PlanCacheResource / ApiKeyCacheResource 同一套）
+ *
+ * 注意：与 signRequest 不同——不带 body hash / nonce，是更轻量的"内部 caller 标识"，
+ * 由 InternalCallerFilter 在 aster-api 端校验。
+ */
+export async function signInternalCallerHeaders(
+  method: string,
+  path: string
+): Promise<InternalCallerHeaders> {
+  const secret = process.env.ASTER_PLAN_GATE_HMAC_KEY;
+  if (!secret) {
+    throw new Error('ASTER_PLAN_GATE_HMAC_KEY not configured');
+  }
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const message = `${method}\n${path}\n${timestamp}`;
+  const signature = await hmacSha256(secret, message);
+  return {
+    'X-Internal-Caller': 'cloud-bff',
+    'X-Aster-Timestamp': timestamp,
+    'X-Internal-Signature': signature,
+  };
+}

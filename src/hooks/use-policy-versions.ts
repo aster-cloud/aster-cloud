@@ -47,6 +47,20 @@ interface UsePolicyVersionsOptions {
 }
 
 /**
+ * Approve 失败时的结构化错误码
+ * - invite_reviewer_required：单 seat 用户需先邀请 reviewer
+ * - segregation_of_duties：多 seat 自审 SOX 违规
+ */
+export type ApproveErrorCode = 'invite_reviewer_required' | 'segregation_of_duties' | 'other';
+
+export interface ApproveResult {
+  ok: boolean;
+  errorCode?: ApproveErrorCode;
+  message?: string;
+  cta?: { label: string; href: string };
+}
+
+/**
  * Hook 返回类型
  */
 interface UsePolicyVersionsResult {
@@ -72,8 +86,8 @@ interface UsePolicyVersionsResult {
   archive: (version: number, reason?: string) => Promise<boolean>;
   /** 提交审批 */
   submitForApproval: (version: number) => Promise<boolean>;
-  /** 批准版本 */
-  approve: (version: number, comment?: string) => Promise<boolean>;
+  /** 批准版本（返回结构化结果，便于 UI 区分 SOX 错误） */
+  approve: (version: number, comment?: string) => Promise<ApproveResult>;
   /** 拒绝版本 */
   reject: (version: number, comment: string) => Promise<boolean>;
 }
@@ -285,7 +299,7 @@ export function usePolicyVersions({
 
   // 批准版本
   const approve = useCallback(
-    async (version: number, comment?: string): Promise<boolean> => {
+    async (version: number, comment?: string): Promise<ApproveResult> => {
       setError(null);
 
       try {
@@ -302,14 +316,20 @@ export function usePolicyVersions({
 
         if (response.ok) {
           await refresh();
-          return true;
-        } else {
-          setError(data.error || '批准失败');
-          return false;
+          return { ok: true };
         }
+
+        const code = (data?.error ?? '') as string;
+        const errorCode: ApproveErrorCode =
+          code === 'invite_reviewer_required' || code === 'segregation_of_duties'
+            ? code
+            : 'other';
+        setError(data?.message || data?.error || '批准失败');
+        return { ok: false, errorCode, message: data?.message, cta: data?.cta };
       } catch (err) {
-        setError(err instanceof Error ? err.message : '未知错误');
-        return false;
+        const message = err instanceof Error ? err.message : '未知错误';
+        setError(message);
+        return { ok: false, errorCode: 'other', message };
       }
     },
     [policyId, refresh]

@@ -1,0 +1,147 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+
+interface AiUsage {
+  plan: string;
+  period: string;
+  monthly: { used: number; limit: number; remaining: number; percent: number };
+  cost: { cents: number; tokens: number };
+  rateLimit: { perMinute: number; perMinuteUsed: number };
+  byok: { enabled: boolean; providers: Array<{ provider: string; keyHint: string }> };
+  banned: { until: string; reason: string } | null;
+  emailVerified: boolean;
+}
+
+/**
+ * 用户 dashboard AI 用量卡片
+ * 显示：本月用量进度条 / BYOK 状态 / 封禁警告 / 升级 CTA
+ */
+export function AiUsageCard({ locale }: { locale: string }) {
+  const t = useTranslations('dashboard.aiUsage');
+  const [data, setData] = useState<AiUsage | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/user/ai-usage')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="h-32 animate-pulse rounded-lg bg-gray-100" />;
+  }
+  if (!data) return null;
+
+  // BYOK 模式
+  if (data.byok.enabled) {
+    return (
+      <div className="rounded-lg border border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">{t('title')}</h3>
+          <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+            {t('byokActive')}
+          </span>
+        </div>
+        <div className="mt-2 text-xs text-gray-500">
+          {data.byok.providers.map((p) => `${p.provider} ****${p.keyHint}`).join(' · ')}
+        </div>
+        <div className="mt-3 text-sm text-gray-700">
+          {t('byokUsage', { tokens: data.cost.tokens.toLocaleString() })}
+        </div>
+        <Link
+          href={`/${locale}/settings/ai-keys`}
+          className="mt-2 inline-block text-xs text-indigo-600 hover:underline"
+        >
+          {t('manageKeys')} →
+        </Link>
+      </div>
+    );
+  }
+
+  // 邮箱未验证（Free 档强制）
+  if (data.plan === 'free' && !data.emailVerified) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h3 className="text-sm font-medium text-amber-800">{t('emailUnverifiedTitle')}</h3>
+        <p className="mt-1 text-xs text-amber-700">{t('emailUnverifiedHint')}</p>
+        <Link
+          href={`/${locale}/settings/profile`}
+          className="mt-2 inline-block text-xs font-medium text-indigo-600 hover:underline"
+        >
+          {t('verifyNow')} →
+        </Link>
+      </div>
+    );
+  }
+
+  // 被封禁
+  if (data.banned) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+        <h3 className="text-sm font-medium text-red-700">{t('bannedTitle')}</h3>
+        <p className="mt-1 text-xs text-red-600">{data.banned.reason}</p>
+        <p className="mt-2 text-xs text-gray-500">
+          {t('bannedUntil', { date: new Date(data.banned.until).toLocaleString() })}
+        </p>
+      </div>
+    );
+  }
+
+  // 配额进度条
+  const percent = data.monthly.percent;
+  const barColor = percent >= 90 ? 'bg-red-500' : percent >= 70 ? 'bg-yellow-500' : 'bg-indigo-500';
+  const textColor = percent >= 90 ? 'text-red-700' : percent >= 70 ? 'text-yellow-700' : 'text-gray-700';
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-gray-700">{t('title')}</h3>
+        <span className={`text-xs font-medium ${textColor}`}>
+          {data.monthly.used} / {data.monthly.limit === -1 ? '∞' : data.monthly.limit}
+        </span>
+      </div>
+
+      {data.monthly.limit !== -1 && (
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+          <div
+            className={`h-full ${barColor} transition-all`}
+            style={{ width: `${Math.min(percent, 100)}%` }}
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+        <span>{t('costThisMonth', { dollars: (data.cost.cents / 100).toFixed(2) })}</span>
+        <span>{t('plan', { plan: data.plan })}</span>
+      </div>
+
+      {percent >= 80 && data.monthly.limit !== -1 && (
+        <div className="mt-3 rounded bg-yellow-50 p-2 text-xs text-yellow-800">
+          {t('warningHighUsage', { remaining: data.monthly.remaining })}
+          <Link
+            href={`/${locale}/pricing`}
+            className="ml-2 font-medium text-indigo-600 hover:underline"
+          >
+            {t('upgrade')} →
+          </Link>
+          <span className="mx-1">{t('or')}</span>
+          <Link
+            href={`/${locale}/settings/ai-keys`}
+            className="font-medium text-indigo-600 hover:underline"
+          >
+            {t('byok')} →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}

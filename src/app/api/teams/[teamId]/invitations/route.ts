@@ -12,6 +12,9 @@ import {
   TeamRole,
 } from '@/lib/team-permissions';
 import { sendTeamInvitationEmail } from '@/lib/resend';
+import { getEffectiveLimits, type PlanType } from '@/lib/plans';
+import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
+import { sql } from 'drizzle-orm';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
 
@@ -111,6 +114,39 @@ export async function POST(req: Request, { params }: RouteParams) {
     const inviteCheck = canInviteWithRole(access.role, role as TeamRole);
     if (!inviteCheck.allowed) {
       return NextResponse.json({ error: inviteCheck.error }, { status: inviteCheck.status });
+    }
+
+    // PM v1.1：plan gate 检查 maxTeamMembers
+    // Free 档 maxTeamMembers=1，邀请第二人即触发 team_member_invite reason
+    const ownerTeam = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
+    if (ownerTeam) {
+      const owner = await db.query.users.findFirst({ where: eq(users.id, ownerTeam.ownerId) });
+      if (owner) {
+        const limits = getEffectiveLimits({
+          plan: owner.plan as PlanType,
+          priceLockedAt: owner.priceLockedAt,
+          legacyTier: owner.legacyTier,
+        });
+        if (limits.maxTeamMembers !== -1) {
+          const [{ count: memberCount }] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(teamMembers)
+            .where(eq(teamMembers.teamId, teamId));
+          // 已有成员数 >= 上限 → 拒绝邀请；用 reviewer_required 还是 team_member_invite
+          // 取决于 plan 是否支持审批：Free 用 team_member_invite，其他档位均不应进入此分支
+          if (memberCount >= limits.maxTeamMembers) {
+            const reason = limits.approvalRequired ? 'team_member_invite' : 'reviewer_required';
+            return NextResponse.json(
+              upgradeResponse(reason, {
+                usage: memberCount,
+                limit: limits.maxTeamMembers,
+                message: `Plan allows ${limits.maxTeamMembers} team member(s). Upgrade to invite more.`,
+              }),
+              { status: UPGRADE_HTTP_STATUS }
+            );
+          }
+        }
+      }
     }
 
     // 检查用户是否已是成员（通过 user.email 关联）

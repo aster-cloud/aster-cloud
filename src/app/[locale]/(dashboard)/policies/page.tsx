@@ -173,7 +173,7 @@ export default async function PoliciesPage({
       newSubgroup: t('groups.newSubgroup'),
       edit: t('groups.edit'),
       delete: t('groups.delete'),
-      policiesCount: t('groups.policiesCount'),
+      policiesCount: t.raw('groups.policiesCount'),
       createTitle: t('groups.createTitle'),
       editTitle: t('groups.editTitle'),
       nameLabel: t('groups.nameLabel'),

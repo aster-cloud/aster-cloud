@@ -5,6 +5,7 @@ import {
   getPlanConfig,
   getPlanLimit,
   isUnlimited,
+  getEffectiveLimits,
   PlanCapabilities,
   PlanLimitType,
   PlanType,
@@ -133,7 +134,7 @@ export async function getUsageStats(userId: string) {
   const [user, usageRecordsData, policyCountResult] = await Promise.all([
     db.query.users.findFirst({
       where: eq(users.id, userId),
-      columns: { plan: true, trialEndsAt: true },
+      columns: { plan: true, trialEndsAt: true, priceLockedAt: true, legacyTier: true },
     }),
     db.query.usageRecords.findMany({
       where: and(eq(usageRecords.userId, userId), eq(usageRecords.period, period)),
@@ -155,7 +156,22 @@ export async function getUsageStats(userId: string) {
   }
 
   const planConfig = getPlanConfig(effectivePlan);
-  const { limits, capabilities } = planConfig;
+  const { capabilities } = planConfig;
+
+  // PM v1.1：限额数字优先用 getEffectiveLimits（priceLockedAt 决定走 LEGACY 还是 V2）
+  // 字段名映射：getEffectiveLimits 返回 publishedRules，旧 limits 用 policies
+  const eff = getEffectiveLimits({
+    plan: effectivePlan,
+    priceLockedAt: user?.priceLockedAt,
+    legacyTier: user?.legacyTier,
+  });
+  const limits = {
+    policies: eff.publishedRules,
+    executions: eff.evaluations,
+    apiCalls: eff.apiCalls,
+    apiKeys: eff.apiKeys,
+    teamMembers: eff.maxTeamMembers,
+  };
 
   let trialDaysLeft: number | null = null;
   if (effectivePlan === 'trial' && user?.trialEndsAt) {

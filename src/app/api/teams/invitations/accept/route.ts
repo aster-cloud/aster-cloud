@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, teamInvitations, teamMembers, users } from '@/lib/prisma';
-import { eq, and } from 'drizzle-orm';
+import { db, teams, teamInvitations, teamMembers, users } from '@/lib/prisma';
+import { eq, and, sql } from 'drizzle-orm';
+import { stripe } from '@/lib/stripe';
 
 
 // POST /api/teams/invitations/accept - 接受邀请
@@ -83,6 +84,10 @@ export async function POST(req: Request) {
       await tx.delete(teamInvitations).where(eq(teamInvitations.id, invitation.id));
     });
 
+    await syncStripeSeats(invitation.teamId).catch((err) => {
+      console.error('[invitation-accept] Stripe seat sync failed', err);
+    });
+
     return NextResponse.json({
       success: true,
       team: {
@@ -96,4 +101,38 @@ export async function POST(req: Request) {
     console.error('Error accepting invitation:', error);
     return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
   }
+}
+
+/**
+ * 接受邀请后同步 Stripe 订阅 seats 到团队当前成员数。
+ * - 只对 owner 已订阅 Pro/Enterprise 的团队生效（其他情况静默跳过）
+ * - 失败不阻塞用户加入团队（最坏由 reconcile cron 兜底）
+ */
+async function syncStripeSeats(teamId: string): Promise<void> {
+  const team = await db.query.teams.findFirst({
+    where: eq(teams.id, teamId),
+    columns: { ownerId: true },
+  });
+  if (!team) return;
+
+  const owner = await db.query.users.findFirst({
+    where: eq(users.id, team.ownerId),
+    columns: { subscriptionId: true, subscriptionStatus: true },
+  });
+  if (!owner?.subscriptionId || owner.subscriptionStatus !== 'active') return;
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(teamMembers)
+    .where(eq(teamMembers.teamId, teamId));
+
+  const subscription = await stripe.subscriptions.retrieve(owner.subscriptionId);
+  const item = subscription.items.data[0];
+  if (!item) return;
+  if (item.quantity === count) return;
+
+  await stripe.subscriptionItems.update(item.id, {
+    quantity: count,
+    proration_behavior: 'create_prorations',
+  });
 }

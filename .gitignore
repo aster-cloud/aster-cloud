@@ -53,3 +53,5 @@ next-env.d.ts
 .git/*.**
 .env*.local
 .ace-tool/
+
+.pnpm-store/

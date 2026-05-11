@@ -4,7 +4,7 @@ import { getUsageStats } from '@/lib/usage';
 import { db, policies, executions } from '@/lib/prisma';
 import { eq, desc, sql } from 'drizzle-orm';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { DashboardContent } from './dashboard-content';
 
 // 服务端数据获取
@@ -56,6 +56,7 @@ export default async function DashboardPage() {
 
   const { stats, policies } = await getDashboardData(session.user.id);
   const t = await getTranslations('dashboard');
+  const locale = await getLocale();
 
   // 预计算 PII 总数
   const totalPiiFields = policies.reduce(
@@ -110,6 +111,7 @@ export default async function DashboardPage() {
       policies={policies}
       totalPiiFields={totalPiiFields}
       translations={translations}
+      locale={locale}
     />
   );
 }
