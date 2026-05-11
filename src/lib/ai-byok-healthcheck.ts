@@ -3,7 +3,7 @@
 // 调用方：/api/cron/byok-healthcheck（每天 03:00 UTC）
 
 import { db, aiKeyBindings, users } from '@/lib/prisma';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getDecryptedBYOKKey } from '@/lib/ai-key-vault';
 
 export type HealthCheckResult = {

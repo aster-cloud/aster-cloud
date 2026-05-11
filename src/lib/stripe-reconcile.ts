@@ -11,8 +11,8 @@
  *   - Aggregate diff > 5% of population → halt + Slack alert
  */
 
-import { db, teams, teamMembers, users, auditLogs } from '@/lib/prisma';
-import { and, eq, sql } from 'drizzle-orm';
+import { db, teamMembers, users, auditLogs } from '@/lib/prisma';
+import { eq, sql } from 'drizzle-orm';
 import { stripe } from '@/lib/stripe';
 
 const PER_TEAM_DIFF_LIMIT = 5;

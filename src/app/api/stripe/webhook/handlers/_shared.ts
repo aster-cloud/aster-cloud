@@ -144,9 +144,8 @@ function isUniqueViolation(err: unknown): boolean {
   return false;
 }
 
-export type WebhookHandlerCtx = {
-  // Reserved for future DI; handlers currently import directly from @/lib/prisma & @/lib/stripe
-};
+export type WebhookHandlerCtx = Record<string, never>;
+// Reserved for future DI; handlers currently import directly from @/lib/prisma & @/lib/stripe.
 
 export type WebhookHandler<T extends Stripe.Event.Data.Object> = (
   data: T,

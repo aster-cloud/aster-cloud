@@ -47,6 +47,7 @@ function setupSequentialCounts(...counts: number[]) {
 }
 
 // 用 any 避免和完整 User shape 类型对齐（测试只关心 ai-quota 用的字段）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mockUserBase(overrides: Partial<Record<string, unknown>> = {}): any {
   return {
     id: 'user-1',
@@ -73,6 +74,7 @@ describe('checkAiQuota', () => {
       vi.mocked(db.query.aiKeyBindings.findFirst).mockResolvedValue({
         id: 'k1',
         provider: 'openai',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       const result = await checkAiQuota('user-1');
@@ -252,6 +254,7 @@ describe('checkAiQuota', () => {
       vi.mocked(db.query.aiKeyBindings.findFirst).mockResolvedValue({
         id: 'k1',
         provider: 'openai',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       const result = await checkAiQuota('user-1');

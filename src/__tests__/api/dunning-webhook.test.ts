@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockUpdate, mockUpdateSet, mockUpdateWhere, mockInsert, mockInsertValues, mockSelect, mockFindFirst } =
+const { mockUpdate, mockUpdateSet: _mockUpdateSet, mockUpdateWhere: _mockUpdateWhere, mockInsert, mockInsertValues: _mockInsertValues, mockSelect, mockFindFirst } =
   vi.hoisted(() => {
     const mockUpdateWhere = vi.fn().mockResolvedValue(undefined);
     const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
