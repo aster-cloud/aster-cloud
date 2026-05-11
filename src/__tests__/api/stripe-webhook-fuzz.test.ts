@@ -4,7 +4,7 @@
 // 攻击向量：name 含特殊字符 / 仅符号 / 空白 / 极长 / 无 name 无 email / Unicode
 
 import { describe, it, expect } from 'vitest';
-import { buildPersonalTeamSlug } from '@/app/api/stripe/webhook/route';
+import { buildPersonalTeamSlug } from '@/app/api/stripe/webhook/handlers/_shared';
 
 describe('buildPersonalTeamSlug — 破坏性输入', () => {
   describe('正常路径', () => {

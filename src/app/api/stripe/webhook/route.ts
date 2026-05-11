@@ -10,9 +10,6 @@ import { handleSubscriptionDeleted } from './handlers/subscription-deleted';
 import { handleInvoicePaymentSucceeded } from './handlers/invoice-payment-succeeded';
 import { handleInvoicePaymentFailed } from './handlers/invoice-payment-failed';
 
-// Re-export for backward compatibility with tests that import these from `route`.
-export { buildPersonalTeamSlug } from './handlers/_shared';
-
 type AnyHandler = (data: Stripe.Event.Data.Object, ctx: object) => Promise<void>;
 
 const handlers: Record<string, AnyHandler> = {
