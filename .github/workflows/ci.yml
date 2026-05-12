@@ -56,3 +56,49 @@ jobs:
             test-results/
             coverage/
           if-no-files-found: ignore
+
+  build-migrate-image:
+    # 仅在 main 分支 push 时跑（PR 不构建/推镜像）
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.migrate
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            docker.io/wontlost/aster-cloud-migrate:${{ github.sha }}
+            docker.io/wontlost/aster-cloud-migrate:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger ArgoCD sync to pick up new migrate image
+        if: success()
+        env:
+          ARGOCD_SERVER: argocd.aster-lang.cloud
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          if [ -z "$ARGOCD_AUTH_TOKEN" ]; then
+            echo "ARGOCD_AUTH_TOKEN not set; skipping auto-sync"
+            exit 0
+          fi
+          # 重启 aster-cloud Application 让 PreSync hook 重新触发 Job
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
+            "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" \
+            -d '{"revision":"main"}' || echo "::warning::ArgoCD sync trigger failed; migration will run on next sync"
