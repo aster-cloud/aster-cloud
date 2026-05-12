@@ -1,0 +1,70 @@
+name: Security scan (nuclei + zap)
+
+# P0-8: 周度扫描生产域名查漏洞
+# 运行：每周日 02:00 UTC（避开生产忙时）+ 手动触发
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nuclei:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nuclei scan (aster-lang.cloud)
+        uses: projectdiscovery/nuclei-action@v3
+        with:
+          target: https://aster-lang.cloud
+          flags: "-severity critical,high,medium -j -timeout 30 -rl 100"
+          output: nuclei-aster-cloud.json
+
+      - name: Nuclei scan (policy.aster-lang.dev)
+        uses: projectdiscovery/nuclei-action@v3
+        with:
+          target: https://policy.aster-lang.dev
+          flags: "-severity critical,high,medium -j -timeout 30 -rl 100"
+          output: nuclei-aster-api.json
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuclei-${{ github.run_id }}
+          path: nuclei-*.json
+
+      - name: Fail on critical/high
+        run: |
+          for f in nuclei-*.json; do
+            [ -f "$f" ] || continue
+            critical_high=$(grep -cE '"severity":"(critical|high)"' "$f" || true)
+            if [ "$critical_high" -gt 0 ]; then
+              echo "::error::$f has $critical_high critical/high findings"
+              exit 1
+            fi
+          done
+
+  zap-baseline-cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP baseline (aster-lang.cloud)
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: https://aster-lang.cloud
+          fail_action: false  # 报告但不阻塞（避免误报阻挡）
+
+  zap-baseline-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP baseline (policy.aster-lang.dev)
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: https://policy.aster-lang.dev
+          fail_action: false
