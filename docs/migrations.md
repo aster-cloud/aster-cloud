@@ -75,5 +75,20 @@ drizzle 不支持自动 down migration。回滚策略：
 ## 安全
 
 - 迁移用户应有 CREATE/ALTER 权限，但**不需要** SUPERUSER
-- 生产 PG user 是 `aster`，由 cloudnative-pg 创建时配的角色
+- 生产 PG user 是 `aster_api_user`，由 cloudnative-pg 创建时配的角色
 - 迁移容器 `runAsUser: 1000`，无 host 网络访问
+
+## drizzle schema 权限（一次性 setup）
+
+drizzle 在自己的 `drizzle` schema 下管理 `__drizzle_migrations` 表。
+首次部署时由 postgres superuser 创建 schema，需要 grant 权限给业务 user：
+
+```sql
+GRANT USAGE, CREATE ON SCHEMA drizzle TO aster_api_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA drizzle TO aster_api_user;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA drizzle TO aster_api_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA drizzle GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO aster_api_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA drizzle GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO aster_api_user;
+```
+
+已在生产执行（2026-05-12）。
