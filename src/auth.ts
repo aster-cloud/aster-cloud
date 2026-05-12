@@ -267,6 +267,11 @@ const config: NextAuthConfig = {
   },
 
   trustHost: true,
+
+  // Auth.js v5 strictly reads process.env.AUTH_SECRET; the CF Worker
+  // secret is named NEXTAUTH_SECRET (legacy v4 name). Pass it through
+  // explicitly so v5 picks up either name. Same for AUTH_URL.
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 };
 
 // 导出 auth 函数和 handlers
