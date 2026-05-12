@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1760000000000,
+      "tag": "0001_grandfather_legacy_tier",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1760000010000,
+      "tag": "0002_ai_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760000020000,
+      "tag": "0003_user_columns_resync",
+      "breakpoints": true
+    }
+  ]
+}
