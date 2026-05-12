@@ -25,11 +25,18 @@ const MIXPANEL_DOMAINS = [
   'https://api.mixpanel.com',
 ];
 
+// aster-api 直连域名（AI generate/explain/complete SSE 走客户端 fetch，
+// 不经 Next.js server proxy，所以必须在 connect-src 列白）
+const ASTER_API_DOMAINS = [
+  'https://policy.aster-lang.dev',
+];
+
 const ALL_TRUSTED_SCRIPT_SRC = [...STRIPE_DOMAINS, ...MIXPANEL_DOMAINS];
 const ALL_TRUSTED_CONNECT_SRC = [
   ...STRIPE_DOMAINS,
   ...MIXPANEL_DOMAINS,
-  // SSE / WebSocket to aster-api (server-side proxied; included for safety)
+  ...ASTER_API_DOMAINS,
+  // SSE / WebSocket
   "wss:",
 ];
 
