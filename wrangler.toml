@@ -65,3 +65,10 @@ AUTH_TRUST_HOST = "true"
 #
 # 邮件（可选）：
 # wrangler secret put RESEND_API_KEY
+#
+# Aster API 内部调用（policy evaluate-source 必需）：
+# wrangler secret put ASTER_PLAN_GATE_HMAC_KEY  # 与 aster-api Vault apps/aster-api-plan-gate.hmac-key 同值
+#
+# Aster API URL（可选，默认 https://policy.aster-lang.dev）：
+# 编辑器 / AI 客户端会读 NEXT_PUBLIC_ASTER_POLICY_API_URL 作为运行时 baseUrl
+# wrangler secret put NEXT_PUBLIC_ASTER_POLICY_API_URL
