@@ -3,20 +3,22 @@
 # Used by k3s Job to apply drizzle migrations against prod PG
 #
 # Why a separate image: aster-cloud itself runs on Cloudflare Workers (no PG
-# client). Migrations need a Node+pnpm+postgres environment that can reach
-# the cluster-internal PG service.
+# client). Migrations need a Node+postgres environment that can reach the
+# cluster-internal PG service.
 
 FROM node:24-alpine
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 WORKDIR /app
 
-# 仅安装 migration 所需依赖
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod=false \
-    --filter='!.' \
-    || pnpm install --frozen-lockfile
+# Minimal install: tsx + drizzle bits + postgres driver
+# Pinning explicit versions keeps the migrate image stable while the main
+# app upgrades. Update these when bumping dependencies in package.json.
+RUN npm install --no-audit --no-fund \
+      tsx@4.21.0 \
+      drizzle-orm@0.45.1 \
+      postgres@3.4.8 \
+      drizzle-kit@0.31.9 \
+      typescript@5.9.3
 
 COPY drizzle.config.ts ./
 COPY drizzle/ ./drizzle/
@@ -26,4 +28,4 @@ COPY scripts/migrate.ts ./scripts/migrate.ts
 # 非 root 用户
 USER node
 
-CMD ["pnpm", "tsx", "scripts/migrate.ts"]
+CMD ["npx", "tsx", "scripts/migrate.ts"]
