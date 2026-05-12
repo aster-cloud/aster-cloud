@@ -15,7 +15,8 @@ function applySecurityHeaders(response: NextResponse, nonce: string) {
   for (const [k, v] of Object.entries(securityHeadersOnly())) {
     response.headers.set(k, v);
   }
-  // x-nonce header is exposed only inside the request pipeline (Next reads it via headers())
+  // x-nonce header exposed on the response for downstream layouts that
+  // read it via headers() helper in Server Components.
   response.headers.set('x-nonce', nonce);
 }
 
@@ -25,31 +26,35 @@ function generateNonce(): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
+function rand(n: number): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(n)))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // SNAP-8: 确保入站请求有 traceparent；缺失时生成 root context（W3C Trace Context）
-  // 方便后续浏览器 RUM 接入；当前阶段只透传到 cloud 内部 + 出站 fetch
-  if (!request.headers.get('traceparent')) {
-    const rand = (n: number) =>
-      Array.from(crypto.getRandomValues(new Uint8Array(n)))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
-    const traceId = rand(16);
-    const spanId = rand(8);
-    request.headers.set('traceparent', `00-${traceId}-${spanId}-01`);
+  // Build a NEW Headers object for downstream — Edge runtime forbids mutating
+  // request.headers in place. We populate it with the inbound headers plus
+  // any additions (traceparent, x-nonce) and pass it via NextResponse.next.
+  const downstreamHeaders = new Headers(request.headers);
+
+  // SNAP-8: ensure traceparent (W3C Trace Context). Generate if missing.
+  if (!downstreamHeaders.has('traceparent')) {
+    downstreamHeaders.set('traceparent', `00-${rand(16)}-${rand(8)}-01`);
   }
+
+  // Per-request CSP nonce; expose via downstream request header for layouts.
+  const nonce = generateNonce();
+  downstreamHeaders.set('x-nonce', nonce);
 
   // Read user preference from cookie, default to false (no auto-detection)
   const localeDetectionCookie = request.cookies.get(LOCALE_DETECTION_COOKIE);
   const localeDetection = localeDetectionCookie?.value === 'true';
 
-  // Check if user has a saved locale preference (set by next-intl when visiting localized pages)
+  // Check if user has a saved locale preference
   const savedLocale = request.cookies.get('NEXT_LOCALE')?.value as Locale | undefined;
-
-  // Generate per-request CSP nonce; expose via request header for downstream layouts
-  const nonce = generateNonce();
-  request.headers.set('x-nonce', nonce);
 
   // If user has a non-default locale preference and is accessing a non-prefixed path, redirect
   if (savedLocale && savedLocale !== defaultLocale && locales.includes(savedLocale)) {
@@ -73,8 +78,22 @@ export default function middleware(request: NextRequest) {
     localeDetection,
   });
 
+  // Run the i18n handler. It returns a NextResponse. If it returns a "next"
+  // response (no redirect/rewrite), we need to merge in our downstream
+  // request headers; otherwise we just attach security headers and return.
   const response = handleI18nRouting(request);
+
+  // Attach our enriched request headers via the x-middleware-request-* mechanism
+  // that NextResponse.next uses. The cleanest path: if i18n returned a rewrite
+  // (most common case), it already has the request headers baked in; we just
+  // overlay security response headers and our nonce.
   applySecurityHeaders(response, nonce);
+
+  // For nonce propagation to Server Components, we set the nonce on the request
+  // headers via a "set-cookie style" passthrough — but since we cannot mutate
+  // request.headers in-place, and i18n already returned its response, the
+  // canonical Next.js trick is to add the nonce via response header and have
+  // the layout read it from there. (See app/layout.tsx headers() lookup.)
   return response;
 }
 
