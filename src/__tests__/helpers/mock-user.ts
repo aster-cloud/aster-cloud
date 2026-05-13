@@ -51,6 +51,8 @@ export function mockUser(overrides: Partial<MockUser> = {}): MockUser {
     purgePendingUntil: null,
     reactivationCount: 0,
     priorPurgeCount: 0,
+    riskTier: 0,
+    riskTierReason: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

@@ -61,6 +61,20 @@ export function DrizzleAdapter(dbOrGetter: DbOrGetter): Adapter {
         }
       }
 
+      // 评估注册风险层（一次性，写入后下游决策都读该字段）
+      const { assessRegistrationRisk, policyForTier } = await import('@/lib/risk-tier');
+      const assessment = await assessRegistrationRisk(db, {
+        priorPurgeCount,
+        signupIpHash,
+        emailNormalized,
+      });
+      if (assessment.tier > 0) {
+        console.warn(
+          `[adapter.createUser] new user tier=${assessment.tier} reason=${assessment.reason} ` +
+          `email_normalized=${emailNormalized}`,
+        );
+      }
+
       await db.insert(users).values({
         id,
         email: data.email,
@@ -70,9 +84,32 @@ export function DrizzleAdapter(dbOrGetter: DbOrGetter): Adapter {
         image: data.image,
         signupIpHash,
         priorPurgeCount,
+        riskTier: assessment.tier,
+        riskTierReason: assessment.reason,
         createdAt: now,
         updatedAt: now,
       });
+
+      // tier ≥ 2 触发 Slack 告警（fire-and-forget）
+      const policy = policyForTier(assessment.tier);
+      if (policy.alertOnRegistration) {
+        try {
+          const webhook = process.env.SLACK_RISK_WEBHOOK;
+          if (webhook) {
+            void fetch(webhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text:
+                  `:warning: High-risk registration tier=${assessment.tier} ` +
+                  `(${assessment.reason}) — user=${id}, email_normalized=${emailNormalized}`,
+              }),
+            }).catch(() => undefined);
+          }
+        } catch {
+          // never let slack error fail signup
+        }
+      }
 
       const user = await db.query.users.findFirst({
         where: eq(users.id, id),

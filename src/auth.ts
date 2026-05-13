@@ -308,19 +308,37 @@ const config: NextAuthConfig = {
   // Events
   events: {
     async createUser({ user }) {
-      // Start trial period for new users
-      const TRIAL_DAYS = parseInt(process.env.NEXT_PUBLIC_TRIAL_DAYS || '14', 10);
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
-
       const db = getDb();
-      await db.update(users)
-        .set({
-          plan: 'trial',
-          trialStartedAt: new Date(),
-          trialEndsAt,
-        })
-        .where(eq(users.id, user.id!));
+
+      // 读 adapter 已经计算好的 riskTier，按 policy 给 trial 天数
+      // tier ≥ 2 直接 free 计划（无 trial），阻止"注册→自删→重注"白嫖循环
+      const row = await db.query.users.findFirst({
+        where: eq(users.id, user.id!),
+        columns: { riskTier: true },
+      });
+      const { policyForTier } = await import('@/lib/risk-tier');
+      // 默认 trusted（schema default = 0）
+      const tier = (row?.riskTier ?? 0) as 0 | 1 | 2 | 3 | 4;
+      const policy = policyForTier(tier);
+
+      const envTrialDays = parseInt(process.env.NEXT_PUBLIC_TRIAL_DAYS || '14', 10);
+      // policy.trialDays 与 env 取较小值（env 是产品调节，policy 是风控护栏）
+      const trialDays = Math.min(envTrialDays, policy.trialDays);
+
+      if (trialDays > 0) {
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
+        await db.update(users)
+          .set({
+            plan: 'trial',
+            trialStartedAt: new Date(),
+            trialEndsAt,
+          })
+          .where(eq(users.id, user.id!));
+      } else {
+        // 无 trial，保持 schema 默认 plan=free
+        console.warn(`[auth.createUser] user ${user.id} starts on free plan (riskTier=${tier})`);
+      }
 
       // Send welcome email
       if (user.email && user.name) {

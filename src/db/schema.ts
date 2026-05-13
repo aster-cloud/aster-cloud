@@ -252,6 +252,14 @@ export const users = pgTable(
     reactivationCount: integer('reactivationCount').default(0).notNull(),
     /** 该 emailNormalized 历史上被清理的次数（hard-purge 时累计，下次同邮箱注册时携带）。 */
     priorPurgeCount: integer('priorPurgeCount').default(0).notNull(),
+    /**
+     * 注册风险分层（0=trusted .. 4=hard block）。在 createUser 中计算并 freeze。
+     * 由 lib/risk-tier.ts 评估；下游模块（trial、AI quota、API quota、Stripe）
+     * 据此分流。详见 docs/risk-tier-design.md。
+     */
+    riskTier: integer('riskTier').default(0).notNull(),
+    /** riskTier 评分时的关键原因（用于审计 + 客户支持 + 申诉）。 */
+    riskTierReason: text('riskTierReason'),
 
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),

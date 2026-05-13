@@ -55,6 +55,30 @@ export async function POST(req: Request) {
       );
     }
 
+    // 风险等级 gate：tier ≥ 3 禁止自助升级，必须 support 人工放行
+    // （防"软删→重注→再付费"洗白循环 + Stripe 拒付链路滥用）
+    {
+      const { db } = await import('@/lib/prisma');
+      const { users } = await import('@/db/schema');
+      const { eq } = await import('drizzle-orm');
+      const row = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { riskTier: true, riskTierReason: true },
+      });
+      const { policyForTier } = await import('@/lib/risk-tier');
+      const tier = (row?.riskTier ?? 0) as 0 | 1 | 2 | 3 | 4;
+      if (!policyForTier(tier).allowStripeCheckout) {
+        return NextResponse.json(
+          {
+            error: 'checkout_blocked_by_risk_tier',
+            message: 'Self-service upgrade is not available for this account. Contact support@aster-lang.cloud.',
+            reason: row?.riskTierReason ?? null,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const priceId = getPlanStripePriceId(plan, interval, currency);
     if (!priceId) {
       return NextResponse.json(

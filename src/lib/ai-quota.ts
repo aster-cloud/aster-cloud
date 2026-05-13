@@ -67,10 +67,34 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
       aiBannedUntil: true,
       aiBanReason: true,
       emailVerified: true,
+      riskTier: true,
     },
   });
   if (!user) {
     return { allowed: false, reason: 'ai_quota_exhausted', message: 'user not found' };
+  }
+
+  // 注册风险层 → 配额乘子 + email-verified 硬要求
+  const { policyForTier } = await import('@/lib/risk-tier');
+  const tier = (user.riskTier ?? 0) as 0 | 1 | 2 | 3 | 4;
+  const riskPolicy = policyForTier(tier);
+
+  // tier 4 + tier 3 完全禁用 AI
+  if (riskPolicy.aiQuotaMultiplier === 0) {
+    return {
+      allowed: false,
+      reason: 'ai_banned',
+      message: `AI 功能因账户风险等级被禁用（tier ${tier}）。如需启用请联系 support@aster-lang.cloud。`,
+    };
+  }
+
+  // tier ≥ 2 强制 email-verified（不再走 plan 分支，所有 plan 都要求）
+  if (riskPolicy.requireEmailVerifiedForApi && !user.emailVerified) {
+    return {
+      allowed: false,
+      reason: 'ai_email_unverified',
+      message: '账户处于审查状态，请先完成邮箱验证以解锁 AI 功能。验证邮件已发送至您注册邮箱。',
+    };
   }
 
   // L0: BYOK 优先 — 用户绑定了自己 key 直接放行
@@ -105,8 +129,11 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
 
   const plan = user.plan as PlanType;
 
-  // L2: 月度次数配额
-  const monthlyLimit = AI_MONTHLY_QUOTA[plan as keyof typeof AI_MONTHLY_QUOTA] ?? 20;
+  // L2: 月度次数配额（base × riskTier 乘子；tier 0 trusted = ×1，tier 1 = ×0.5 …）
+  const baseLimit = AI_MONTHLY_QUOTA[plan as keyof typeof AI_MONTHLY_QUOTA] ?? 20;
+  const monthlyLimit = baseLimit === -1
+    ? -1
+    : Math.max(1, Math.floor(baseLimit * riskPolicy.aiQuotaMultiplier));
   if (monthlyLimit !== -1) {
     const period = currentPeriod();
     const monthlyCount = await countSuccessfulCalls(userId, period);
@@ -114,7 +141,9 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
       return {
         allowed: false,
         reason: 'ai_quota_exhausted',
-        message: `本月 AI 配额已用尽（${monthlyCount} / ${monthlyLimit}）。绑定自己的 OpenAI key 或升级套餐。`,
+        message: tier > 0
+          ? `本月 AI 配额已用尽（${monthlyCount} / ${monthlyLimit}，账户风险等级 ${tier} 影响配额）。绑定自己的 OpenAI key 或联系 support。`
+          : `本月 AI 配额已用尽（${monthlyCount} / ${monthlyLimit}）。绑定自己的 OpenAI key 或升级套餐。`,
       };
     }
   }

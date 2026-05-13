@@ -29,6 +29,13 @@
       "when": 1760000030000,
       "tag": "0004_user_soft_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1760000040000,
+      "tag": "0005_user_risk_tier",
+      "breakpoints": true
     }
   ]
 }

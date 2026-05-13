@@ -27,6 +27,18 @@ vi.mock('@/lib/plans', () => ({
   },
 }));
 
+// Stub the risk-tier gate's DB lookup. Default = trusted (tier 0) so the
+// pre-existing test cases still pass without enumerating riskTier.
+vi.mock('@/lib/prisma', () => ({
+  db: {
+    query: {
+      users: {
+        findFirst: vi.fn(async () => ({ riskTier: 0, riskTierReason: null })),
+      },
+    },
+  },
+}));
+
 const mockAuth = vi.mocked(auth);
 const mockGetPlanStripePriceId = vi.mocked(getPlanStripePriceId);
 // Cast to mock function for proper typing
@@ -257,6 +269,49 @@ describe('Stripe Checkout API', () => {
       expect(response.status).toBe(500);
       const body = await response.json();
       expect(body.error).toBe('Failed to create checkout session');
+    });
+  });
+
+  describe('风险等级 gate (risk-tier)', () => {
+    it('tier 3 blocks checkout with 403 + reason', async () => {
+      const { db } = await import('@/lib/prisma');
+      vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
+        riskTier: 3,
+        riskTierReason: 'prior_purge=3',
+      // @ts-expect-error partial mock shape
+      });
+
+      const response = await POST(
+        createRequest({ plan: 'pro', interval: 'monthly' })
+      );
+
+      expect(response.status).toBe(403);
+      const body = await response.json();
+      expect(body.error).toBe('checkout_blocked_by_risk_tier');
+      expect(body.reason).toBe('prior_purge=3');
+      // Stripe should not have been reached
+      expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it('tier 0 (trusted) goes through normally', async () => {
+      const { db } = await import('@/lib/prisma');
+      vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
+        riskTier: 0,
+        riskTierReason: null,
+      // @ts-expect-error partial mock shape
+      });
+      mockGetPlanStripePriceId.mockReturnValue('price_test_pro');
+      mockCreateCheckoutSession.mockResolvedValue({
+        id: 'cs_test_ok',
+        url: 'https://checkout.stripe.com/test',
+      } as never);
+
+      const response = await POST(
+        createRequest({ plan: 'pro', interval: 'monthly' })
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockCreateCheckoutSession).toHaveBeenCalled();
     });
   });
 });
