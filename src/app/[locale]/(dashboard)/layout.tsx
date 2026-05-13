@@ -6,6 +6,7 @@ import {
   UserDropdown,
 } from '@/components/dashboard-nav';
 import { getSession } from '@/lib/auth';
+import { isAdminFromSession } from '@/lib/admin-auth';
 
 export default async function DashboardLayout({
   children,
@@ -16,8 +17,9 @@ export default async function DashboardLayout({
   const tSettings = await getTranslations('settings.account');
   const tNav = await getTranslations('nav');
   const tMobile = await getTranslations('dashboardNav.mobile');
+  const tAdmin = await getTranslations('admin.riskTier');
 
-  const session = await getSession();
+  const [session, admin] = await Promise.all([getSession(), isAdminFromSession()]);
 
   const navItems = [
     { href: '/dashboard', label: t('dashboard') },
@@ -25,6 +27,8 @@ export default async function DashboardLayout({
     { href: '/reports', label: t('reports') },
     { href: '/teams', label: t('teams') },
     { href: '/security', label: t('security') },
+    // Admin-only：风险等级处理台。非 admin 浏览到该路由会触发 notFound。
+    ...(admin ? [{ href: '/admin/risk-tier', label: tAdmin('title') }] : []),
   ];
 
   const secondaryItems = [

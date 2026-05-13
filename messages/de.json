@@ -1004,6 +1004,47 @@
     "title": "Sicherheitsüberwachung",
     "description": "Überwachen Sie Sicherheitsereignisse, Prüfprotokolle und den Systemzustand."
   },
+  "admin": {
+    "riskTier": {
+      "title": "Risiko-Tier-Triage",
+      "subtitle": "Benutzer mit Registrierungs-Risiko ≥ 1. Vor dem Herabstufen den Grund prüfen; jede Übersteuerung wird im Audit-Log protokolliert.",
+      "total": "Gesamt",
+      "loading": "Lädt…",
+      "empty": "Keine Benutzer über der gewählten Stufe.",
+      "refresh": "Aktualisieren",
+      "filters": {
+        "minTier": "Min. Stufe",
+        "sortBy": "Sortieren nach",
+        "byTier": "Stufe (hoch → niedrig)",
+        "byCreated": "Erstellt (neu → alt)",
+        "byPurges": "Bereinigungen"
+      },
+      "table": {
+        "tier": "Stufe",
+        "email": "E-Mail",
+        "plan": "Plan",
+        "priorPurges": "Frühere Löschungen",
+        "reactivations": "Reaktivierungen",
+        "reason": "Grund",
+        "created": "Erstellt",
+        "actions": "Aktionen",
+        "tombstoned": "Soft-gelöscht",
+        "override": "Übersteuern"
+      },
+      "override": {
+        "title": "Risiko-Stufe übersteuern",
+        "currentTier": "Aktuelle Stufe",
+        "newTier": "Neue Stufe",
+        "ticketId": "Ticket-ID",
+        "ticketIdHint": "(Support-Ticket-Referenz, im Audit-Log gespeichert)",
+        "note": "Notiz",
+        "notePlaceholder": "Kurze Begründung (≤200 Zeichen). Nur im Audit-Log sichtbar.",
+        "cancel": "Abbrechen",
+        "submit": "Anwenden",
+        "submitting": "Wird angewendet…"
+      }
+    }
+  },
   "decisionTrace": {
     "title": "Entscheidungsprotokoll",
     "empty": "Keine Trace-Daten",

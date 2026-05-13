@@ -1004,6 +1004,47 @@
     "title": "安全监控",
     "description": "监控安全事件、审计日志和系统健康状态。"
   },
+  "admin": {
+    "riskTier": {
+      "title": "风险等级处理台",
+      "subtitle": "注册风险等级 ≥ 1 的用户。降级前请核实原因；每次覆盖都会写入审计日志。",
+      "total": "总计",
+      "loading": "加载中…",
+      "empty": "当前筛选条件下没有符合的用户。",
+      "refresh": "刷新",
+      "filters": {
+        "minTier": "最低等级",
+        "sortBy": "排序",
+        "byTier": "等级（高 → 低）",
+        "byCreated": "创建时间（新 → 旧）",
+        "byPurges": "历史清理次数"
+      },
+      "table": {
+        "tier": "等级",
+        "email": "邮箱",
+        "plan": "套餐",
+        "priorPurges": "历史清理",
+        "reactivations": "复活次数",
+        "reason": "原因",
+        "created": "创建于",
+        "actions": "操作",
+        "tombstoned": "已软删",
+        "override": "手动覆盖"
+      },
+      "override": {
+        "title": "覆盖风险等级",
+        "currentTier": "当前等级",
+        "newTier": "新等级",
+        "ticketId": "工单编号",
+        "ticketIdHint": "（support 工单引用，写入审计日志）",
+        "note": "备注",
+        "notePlaceholder": "简要说明（≤200 字）。仅审计日志可见。",
+        "cancel": "取消",
+        "submit": "应用",
+        "submitting": "应用中…"
+      }
+    }
+  },
   "decisionTrace": {
     "title": "决策轨迹",
     "empty": "暂无轨迹数据",

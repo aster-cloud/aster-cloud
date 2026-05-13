@@ -1004,6 +1004,47 @@
     "title": "Security Monitoring",
     "description": "Monitor security events, audit logs, and system health."
   },
+  "admin": {
+    "riskTier": {
+      "title": "Risk-tier Triage",
+      "subtitle": "Users with non-zero registration risk. Verify the reason before reducing tier; every override is logged.",
+      "total": "Total",
+      "loading": "Loading…",
+      "empty": "No users above the selected tier.",
+      "refresh": "Refresh",
+      "filters": {
+        "minTier": "Min tier",
+        "sortBy": "Sort by",
+        "byTier": "Tier (high → low)",
+        "byCreated": "Created (new → old)",
+        "byPurges": "Prior purges"
+      },
+      "table": {
+        "tier": "Tier",
+        "email": "Email",
+        "plan": "Plan",
+        "priorPurges": "Prior purges",
+        "reactivations": "Reactivations",
+        "reason": "Reason",
+        "created": "Created",
+        "actions": "Actions",
+        "tombstoned": "Tombstoned",
+        "override": "Override"
+      },
+      "override": {
+        "title": "Override risk tier",
+        "currentTier": "Current tier",
+        "newTier": "New tier",
+        "ticketId": "Ticket ID",
+        "ticketIdHint": "(support ticket reference, recorded in audit log)",
+        "note": "Note",
+        "notePlaceholder": "Brief justification (max ~200 chars). Visible in audit log only.",
+        "cancel": "Cancel",
+        "submit": "Apply override",
+        "submitting": "Applying…"
+      }
+    }
+  },
   "decisionTrace": {
     "title": "Decision Trace",
     "empty": "No trace data",

@@ -278,8 +278,7 @@ describe('Stripe Checkout API', () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         riskTier: 3,
         riskTierReason: 'prior_purge=3',
-      // @ts-expect-error partial mock shape
-      });
+      } as never);
 
       const response = await POST(
         createRequest({ plan: 'pro', interval: 'monthly' })
@@ -298,8 +297,7 @@ describe('Stripe Checkout API', () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValueOnce({
         riskTier: 0,
         riskTierReason: null,
-      // @ts-expect-error partial mock shape
-      });
+      } as never);
       mockGetPlanStripePriceId.mockReturnValue('price_test_pro');
       mockCreateCheckoutSession.mockResolvedValue({
         id: 'cs_test_ok',
