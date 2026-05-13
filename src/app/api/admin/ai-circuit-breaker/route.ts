@@ -4,34 +4,18 @@
  * POST { action: "release" }  → 立即解除全局熔断
  * GET                          → 查看当前状态
  *
- * 仅 plan=enterprise OR role=admin 用户可访问
+ * 仅 User.isAdmin=true 用户可访问（与套餐 plan 解耦，见 lib/admin-auth.ts）
  */
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { db, users } from '@/lib/prisma';
-import { eq } from 'drizzle-orm';
 import {
   todayPlatformCostCents,
   evaluateCircuit,
   releaseCircuit,
   CIRCUIT_BREAKER_THRESHOLDS,
 } from '@/lib/ai-circuit-breaker';
+import { requireAdmin } from '@/lib/admin-auth';
 
-async function ensureAdmin(): Promise<{ userId: string } | NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
-    columns: { plan: true },
-  });
-  if (!user || user.plan !== 'enterprise') {
-    // 简化版：仅 enterprise 用户视为 admin（生产应有专门 role 字段）
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-  return { userId: session.user.id };
-}
+const ensureAdmin = requireAdmin;
 
 export async function GET() {
   const check = await ensureAdmin();

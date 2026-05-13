@@ -7,6 +7,7 @@ import {
 } from '@/components/dashboard-nav';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
+import { getEffectiveRole, canAccess } from '@/lib/effective-role';
 
 export default async function DashboardLayout({
   children,
@@ -19,21 +20,28 @@ export default async function DashboardLayout({
   const tMobile = await getTranslations('dashboardNav.mobile');
   const tAdmin = await getTranslations('admin.riskTier');
 
-  const [session, admin] = await Promise.all([getSession(), isAdminFromSession()]);
+  const session = await getSession();
+  const userId = session?.user?.id ?? null;
+  const [admin, role] = await Promise.all([
+    isAdminFromSession(),
+    userId ? getEffectiveRole(userId) : Promise.resolve('owner' as const),
+  ]);
 
+  // role-aware nav 过滤：让 viewer 不看到无操作权限的入口。
+  // 真实操作授权仍由 API 层 checkTeamPermission 兜底，本过滤仅决定可见性。
   const navItems = [
-    { href: '/dashboard', label: t('dashboard') },
-    { href: '/policies', label: t('policies') },
-    { href: '/reports', label: t('reports') },
-    { href: '/teams', label: t('teams') },
-    { href: '/security', label: t('security') },
-    // Admin-only：风险等级处理台。非 admin 浏览到该路由会触发 notFound。
+    { href: '/dashboard', label: t('dashboard') },        // 所有 role
+    { href: '/policies', label: t('policies') },           // viewer 只读，更高 role 可写
+    ...(canAccess(role, 'member') ? [{ href: '/reports', label: t('reports') }] : []),
+    { href: '/teams', label: t('teams') },                 // 所有 role 看自己加入的 team
+    ...(canAccess(role, 'member') ? [{ href: '/security', label: t('security') }] : []),
     ...(admin ? [{ href: '/admin/risk-tier', label: tAdmin('title') }] : []),
   ];
 
   const secondaryItems = [
-    { href: '/billing', label: t('billing') },
-    { href: '/settings', label: t('settings') },
+    // 只让能影响付费的角色（admin/owner）看到 billing 入口
+    ...(canAccess(role, 'admin') ? [{ href: '/billing', label: t('billing') }] : []),
+    { href: '/settings', label: t('settings') },           // 个人设置所有 role
   ];
 
   const userMenuLabels = {

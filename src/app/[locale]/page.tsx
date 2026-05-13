@@ -285,7 +285,7 @@ function HomeContent({ locale }: { locale: string }) {
             <div className="flex space-x-6 text-gray-400 text-sm">
               <Link href="/privacy" className="hover:text-white">{t('footer.privacy')}</Link>
               <Link href="/terms" className="hover:text-white">{t('footer.terms')}</Link>
-              <a href="https://docs.aster-lang.cloud" target="_blank" rel="noopener noreferrer" className="hover:text-white">{t('footer.documentation')}</a>
+              <a href="https://aster-lang.dev/" target="_blank" rel="noopener noreferrer" className="hover:text-white">{t('footer.documentation')}</a>
               <a href="mailto:support@aster-lang.cloud" className="hover:text-white">{t('footer.support')}</a>
             </div>
           </div>

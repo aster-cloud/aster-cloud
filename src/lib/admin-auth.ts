@@ -1,11 +1,13 @@
 /**
  * 单点 admin 判定。
  *
- * 当前判定：user.plan === 'enterprise'。
- * 这是临时方案（与 api/admin/ai-circuit-breaker 一致），生产应换成
- * 专门 role 字段（roles[] 或 isAdmin boolean）+ Authentik group claim。
+ * 判定依据：user.isAdmin === true（drizzle migration 0006 添加的字段）。
  *
- * 抽到这里是为了未来切换 role 字段时**只改这一处**。
+ * 与套餐 plan 完全解耦 —— enterprise 套餐客户**不会**自动成为平台 admin。
+ * 唯一授予方式：DBA 在 PG 上手动 `UPDATE "User" SET "isAdmin"=true WHERE ...`。
+ *
+ * 抽到这里是为了未来扩展角色模型（如 multi-role array、Authentik group
+ * claim）时只改这一处。
  */
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
@@ -24,9 +26,9 @@ export async function requireAdmin(): Promise<AdminContext | NextResponse> {
   }
   const u = await db.query.users.findFirst({
     where: eq(users.id, session.user.id),
-    columns: { plan: true },
+    columns: { isAdmin: true },
   });
-  if (!u || u.plan !== 'enterprise') {
+  if (!u?.isAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return { userId: session.user.id };
@@ -38,8 +40,8 @@ export async function isAdminFromSession(): Promise<{ userId: string } | null> {
   if (!session?.user?.id) return null;
   const u = await db.query.users.findFirst({
     where: eq(users.id, session.user.id),
-    columns: { plan: true },
+    columns: { isAdmin: true },
   });
-  if (!u || u.plan !== 'enterprise') return null;
+  if (!u?.isAdmin) return null;
   return { userId: session.user.id };
 }

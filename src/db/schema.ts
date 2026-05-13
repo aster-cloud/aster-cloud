@@ -261,6 +261,18 @@ export const users = pgTable(
     /** riskTier 评分时的关键原因（用于审计 + 客户支持 + 申诉）。 */
     riskTierReason: text('riskTierReason'),
 
+    /**
+     * 平台级 admin。**与套餐 plan 解耦**：plan=enterprise 的客户不会
+     * 自动变 admin，反过来 admin 也可以是 free 用户。
+     *
+     * 用于 /admin/* 页面 + API 路由的 server-side gate（lib/admin-auth.ts）。
+     * 默认 false；唯一授予方式：DBA / 紧急情况下 SQL 手动 set true。
+     *
+     * 避免之前 plan='enterprise' 当 admin 的设计：第一个真实 enterprise
+     * 客户付费时其 owner 会自动看见全平台用户列表（数据泄露）。
+     */
+    isAdmin: boolean('isAdmin').default(false).notNull(),
+
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },

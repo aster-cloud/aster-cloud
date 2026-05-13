@@ -36,6 +36,13 @@
       "when": 1760000040000,
       "tag": "0005_user_risk_tier",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1760000050000,
+      "tag": "0006_user_is_admin",
+      "breakpoints": true
     }
   ]
 }

@@ -53,6 +53,7 @@ export function mockUser(overrides: Partial<MockUser> = {}): MockUser {
     priorPurgeCount: 0,
     riskTier: 0,
     riskTierReason: null,
+    isAdmin: false,
     createdAt: now,
     updatedAt: now,
     ...overrides,
