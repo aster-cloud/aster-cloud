@@ -86,9 +86,18 @@ export function DrizzleAdapter(dbOrGetter: DbOrGetter): Adapter {
 
     async getUserByEmail(email: string) {
       const db = resolveDb(dbOrGetter);
-      const user = await db.query.users.findFirst({
+      // 先精确匹配；如未命中再走 emailNormalized（处理大小写/gmail 别名等
+      // 视为同一用户的情形，让 Auth.js 自动 linkAccount 到既有 user）。
+      let user = await db.query.users.findFirst({
         where: eq(users.email, email),
       });
+      if (!user) {
+        const { normalizeEmail } = await import('@/lib/email-normalize');
+        const normalized = normalizeEmail(email);
+        user = await db.query.users.findFirst({
+          where: eq(users.emailNormalized, normalized),
+        });
+      }
 
       if (!user) return null;
       return {

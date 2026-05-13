@@ -38,10 +38,17 @@ const config: NextAuthConfig = {
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      // OAuth provider 已验证邮箱所有权 → 允许把新 GitHub 账户 link 到
+      // 已有同邮箱 user（避免 Auth.js v5 默认抛 OAuthAccountNotLinked）。
+      // 风险：若 OAuth provider 允许未验证邮箱，攻击者可借此接管账户。
+      // GitHub 默认要求邮箱验证才暴露给应用，故此处可接受。
+      allowDangerousEmailAccountLinking: true,
     }),
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // 同上。Google 始终只返回已验证邮箱。
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       name: 'credentials',
@@ -217,14 +224,20 @@ const config: NextAuthConfig = {
             return false;
           }
 
+          // emailNormalized 命中已有用户的两种情形：
+          //   a) 同人用第二个 OAuth provider 绑同邮箱 → 允许（让 adapter 自然 link）
+          //   b) 攻击者用归一化等价的邮箱抢注 → 拒绝
+          // 现状无法精确区分；放行更接近实际用户预期（同一邮箱主人）。
+          // 真实风险（gmail 别名滥用）由 OAuth provider 自身的邮箱验证守住。
           const normalized = normalizeEmail(user.email);
           const dup = await db.query.users.findFirst({
             where: (u, { eq }) => eq(u.emailNormalized, normalized),
             columns: { id: true },
           });
           if (dup) {
-            await recordSignupAttempt(clientIp, false);
-            return false;
+            // 同邮箱已存在用户：放行让 DrizzleAdapter 在该 user 上挂载新 account
+            await recordSignupAttempt(clientIp, true);
+            return true;
           }
 
           const allowed = await checkSignupRateLimit(clientIp);
