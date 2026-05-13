@@ -67,6 +67,7 @@ export function DrizzleAdapter(dbOrGetter: DbOrGetter): Adapter {
         priorPurgeCount,
         signupIpHash,
         emailNormalized,
+        email: data.email ?? null,
       });
       if (assessment.tier > 0) {
         console.warn(

@@ -91,7 +91,40 @@ tier      = max(fromPurge, fromIp)
 
 ### 后续工作
 
-1. Admin tool UI：列 `riskTier > 0` 用户 + 手动降级按钮
-2. 自动复评 cron：tier ≥ 2 用户 7 天无异常行为 → 自动降到 tier 1
-3. 信号扩展：emailAge、deviceFingerprint
-4. 信号回写：当用户被 `aiBannedUntil`、Stripe 拒付时把 tier 临时调高
+#### 已完成
+
+1. ✅ Admin tool UI：`/admin/risk-tier`（仅 plan=enterprise 可见），列 `riskTier > 0` 用户 + 手动降级按钮 + ticket-id 必填 + audit log 留痕
+2. ✅ 自动复评 cron：`/api/cron/risk-tier-decay`（每天 05:00 UTC），tier ≥ 2 用户 7 天**无任何风险事件 + 未被 admin 触碰**则 tier −1
+3. ✅ 信号扩展：邮箱启发式可疑度（`lib/email-suspicion.ts`，5 个启发式特征，≥2 命中视为可疑，最多贡献到 tier 1）
+4. ✅ 信号回写（`raiseRiskTier()`）：
+   - `ai-anomaly-detection.ts` 自动封禁后 tier +1
+   - Stripe `charge.dispute.created` webhook handler tier +1
+5. ✅ wrangler crons：04:30 user-purge + 05:00 risk-tier-decay
+
+#### 仍未做
+
+- deviceFingerprint 信号（需要前端配合，工作量高）
+- HIBP / emailrep.io 真邮箱年龄信号（需外部 API key + 配额）
+- Admin tool 显示历史 tier 变迁时间线（拉 audit log 的 `user.risk_tier_*` 事件）
+
+### 信号矩阵（更新版）
+
+| 信号 | 触发 tier | 来源 | 衰减 |
+|---|---|---|---|
+| `prior_purge=1` | tier 1 | createUser audit lookup | 不衰减（永久信号） |
+| `prior_purge=2` | tier 2 | 同上 | 不衰减 |
+| `prior_purge=3` | tier 3 | 同上 | 不衰减 |
+| `prior_purge≥4` | tier 4 | 同上 | 不衰减 |
+| `ip_cluster=3` | tier 1 | 24h 内 signupIpHash 计数 | 24h 自然衰减 |
+| `ip_cluster≥4` | tier 2 | 同上 | 同上 |
+| `email_suspicious` | tier 1 | 启发式（5 个规则 ≥2 命中） | 不衰减（邮箱不变） |
+| `ai_anomaly_ban` (raise) | +1 | ai-anomaly-detection 封禁后 | 7d quiet → decay cron 自动 -1 |
+| `stripe_dispute:*` (raise) | +1 | charge.dispute.created webhook | 同上 |
+| `manual_override:*` | 任意 | admin tool | 不自动衰减（admin 决策权威） |
+
+### Decay cron 跳过条件（任一即跳过）
+
+- audit log 最近 7d 有 `user.purge_attempt` / `user.signup_burst` / `user.ai_anomaly_block` / `user.risk_tier_overridden`
+- `aiBannedUntil` 在最近 7d
+- `User.updatedAt` 在最近 7d（避免立刻覆盖 admin/raise 改动）
+- `deletedAt` 非空（软删用户不参与）

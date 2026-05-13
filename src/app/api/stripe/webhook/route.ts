@@ -9,6 +9,7 @@ import { handleSubscriptionTrialWillEnd } from './handlers/subscription-trial-wi
 import { handleSubscriptionDeleted } from './handlers/subscription-deleted';
 import { handleInvoicePaymentSucceeded } from './handlers/invoice-payment-succeeded';
 import { handleInvoicePaymentFailed } from './handlers/invoice-payment-failed';
+import { handleChargeDisputeCreated } from './handlers/charge-dispute-created';
 
 type AnyHandler = (data: Stripe.Event.Data.Object, ctx: object) => Promise<void>;
 
@@ -20,6 +21,7 @@ const handlers: Record<string, AnyHandler> = {
   'customer.subscription.deleted': handleSubscriptionDeleted as AnyHandler,
   'invoice.payment_succeeded': handleInvoicePaymentSucceeded as AnyHandler,
   'invoice.payment_failed': handleInvoicePaymentFailed as AnyHandler,
+  'charge.dispute.created': handleChargeDisputeCreated as AnyHandler,
 };
 
 export async function POST(req: Request) {

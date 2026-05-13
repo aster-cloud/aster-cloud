@@ -28,6 +28,8 @@ export interface AssessmentInputs {
   priorPurgeCount: number;
   signupIpHash: string | null;
   emailNormalized: string | null;
+  /** 原始邮箱（未归一化）— 用于启发式可疑度分析 */
+  email?: string | null;
 }
 
 /** 24h 内同 signupIpHash 注册的账号数（含本次新建之前的）。 */
@@ -43,14 +45,15 @@ async function countIpClusterPeers(db: Database, ipHash: string): Promise<number
 /**
  * 评估一个新用户的风险层。
  *
- * tier 阶梯：
+ * tier 阶梯（取多个分量最大值）：
  *   0 trusted   priorPurge=0 且 ipCluster<3
- *   1 normal    priorPurge=1 或 ipCluster=3
+ *   1 normal    priorPurge=1 或 ipCluster=3 或 email_suspicious
  *   2 elevated  priorPurge=2 或 ipCluster≥4
  *   3 high      priorPurge=3
  *   4 hard      priorPurge≥4
  *
- * 同时命中多个 tier 时取较高者。
+ * email 启发式可疑（合成邮箱特征）只贡献到 tier 1 —— 避免单一特征
+ * 把真实用户误抬到 tier 2+。
  */
 export async function assessRegistrationRisk(
   db: Database,
@@ -66,6 +69,19 @@ export async function assessRegistrationRisk(
     signals.ip_cluster = ipCluster;
   }
 
+  // 邮箱启发式可疑度（仅当原始邮箱可得）
+  let emailSuspicious = false;
+  let emailSuspicionDetail = '';
+  if (inputs.email) {
+    const { analyzeEmailSuspicion } = await import('@/lib/email-suspicion');
+    const r = analyzeEmailSuspicion(inputs.email);
+    emailSuspicious = r.suspicious;
+    if (r.suspicious) {
+      signals.email_suspicious = true;
+      emailSuspicionDetail = r.signals.join('+');
+    }
+  }
+
   // 单信号映射
   const fromPurge =
     inputs.priorPurgeCount >= 4 ? 4
@@ -79,12 +95,15 @@ export async function assessRegistrationRisk(
     : ipCluster === 3 ? 1
     : 0;
 
-  const tier = Math.max(fromPurge, fromIp) as RiskTier;
+  const fromEmail = emailSuspicious ? 1 : 0;
+
+  const tier = Math.max(fromPurge, fromIp, fromEmail) as RiskTier;
 
   // 原因串：只列触发非零分量的信号
   const reasonParts: string[] = [];
   if (fromPurge > 0) reasonParts.push(`prior_purge=${inputs.priorPurgeCount}`);
   if (fromIp > 0) reasonParts.push(`ip_cluster=${ipCluster}`);
+  if (fromEmail > 0) reasonParts.push(`email_suspicious=${emailSuspicionDetail}`);
   const reason = reasonParts.length === 0 ? 'trusted' : reasonParts.join(',');
 
   return { tier, reason, signals };
@@ -157,4 +176,60 @@ export function policyForTier(tier: RiskTier): TierPolicy {
         alertOnRegistration: true,
       };
   }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 行为信号回写：被自动封禁 / 支付争议时把 tier 临时调高一档
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * 把 user 的 riskTier 提升一档（最高到 4）。幂等（已经满级则 no-op）。
+ *
+ * 调用点：
+ *   - ai-anomaly-detection.ts 自动封禁后
+ *   - Stripe webhook charge.dispute.created / invoice.payment_failed
+ *
+ * 写 audit log（user.risk_tier_raised）供后续 decay cron 看见并跳过该周期。
+ */
+export async function raiseRiskTier(
+  db: Database,
+  userId: string,
+  reason: string,
+): Promise<{ from: number; to: number } | null> {
+  const { users, auditLogs } = await import('@/db/schema');
+  const { eq } = await import('drizzle-orm');
+
+  const current = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { riskTier: true, riskTierReason: true },
+  });
+  if (!current) return null;
+
+  const from = current.riskTier;
+  if (from >= 4) return null; // 已满级
+
+  const to = (from + 1) as RiskTier;
+  const newReason = `raised:${reason}:was=${from}:prev_reason=${current.riskTierReason ?? 'none'}`;
+  const now = new Date();
+
+  await db.update(users)
+    .set({ riskTier: to, riskTierReason: newReason, updatedAt: now })
+    .where(eq(users.id, userId));
+
+  await db.insert(auditLogs).values({
+    id: crypto.randomUUID(),
+    userId,
+    action: 'user.risk_tier_raised',
+    resource: 'user',
+    resourceId: userId,
+    metadata: {
+      previousTier: from,
+      newTier: to,
+      reason,
+      previousReason: current.riskTierReason,
+    },
+    createdAt: now,
+  });
+
+  return { from, to };
 }

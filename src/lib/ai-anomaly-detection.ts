@@ -144,6 +144,15 @@ export async function detectAndBan(): Promise<AnomalySignal[]> {
       })
       .where(eq(users.id, s.userId));
 
+    // 行为信号回写到 risk-tier：被自动封禁本身就是一个强信号，tier +1
+    // （受 raiseRiskTier 内部 clamp 到 4 保护，幂等）
+    try {
+      const { raiseRiskTier } = await import('@/lib/risk-tier');
+      await raiseRiskTier(db, s.userId, 'ai_anomaly_ban');
+    } catch {
+      // fail-open：raise 失败不应阻塞 ban 路径
+    }
+
     // SNAP-4: 推送 ban 状态到 aster-api（让本地 redis 立即拒绝）
     try {
       const { pushUserSnapshot } = await import('@/lib/snapshot-pusher');
