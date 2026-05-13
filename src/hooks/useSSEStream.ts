@@ -27,25 +27,68 @@ export interface UseSSEStreamResult {
 }
 
 /**
- * 解析 SSE text/event-stream 响应中的 JSON 事件行
+ * 解析 SSE text/event-stream 帧到结构化 event。
  *
- * aster-api 返回格式：每行一个 JSON 对象（Quarkus @RestStreamElementType）
+ * aster-api 同时使用两种格式：
+ *   1) 双行 W3C 标准：
+ *        event: error
+ *        data: {"error":"out_of_scope","message":"...","rule_id":"..."}
+ *      解析需按"帧"（两个 \n 分隔）而非按"行"。
+ *   2) 单行 Quarkus JSON：
+ *        data: {"type":"delta","data":"..."}
+ *      此时 type 由 payload 自身携带。
+ *
+ * 兼容做法：从一段文本中提取 `event:` 行（如有）作为 type override，
+ * 把所有 `data:` 行的内容拼接为 payload，再尝试 JSON.parse。
  */
-function parseSSELine(line: string): SSEEvent | null {
-  const trimmed = line.trim();
+export function parseSSEFrame(frame: string): SSEEvent | null {
+  const trimmed = frame.trim();
   if (!trimmed) return null;
 
-  // Quarkus SSE: data: 前缀
-  const payload = trimmed.startsWith('data:')
-    ? trimmed.slice(5).trim()
-    : trimmed;
+  let eventType: SSEEventType | null = null;
+  const dataParts: string[] = [];
 
-  if (!payload) return null;
+  for (const line of trimmed.split('\n')) {
+    const l = line.trim();
+    if (!l || l.startsWith(':')) continue; // SSE 注释 / 空行
+    if (l.startsWith('event:')) {
+      const v = l.slice(6).trim();
+      if (v === 'delta' || v === 'validation_error' || v === 'repair_start' || v === 'final' || v === 'error') {
+        eventType = v;
+      }
+    } else if (l.startsWith('data:')) {
+      dataParts.push(l.slice(5).trim());
+    }
+  }
 
+  if (dataParts.length === 0) {
+    // 既没 event: 也没 data:（或全空），按纯文本 delta 处理
+    return eventType ? { type: eventType } : { type: 'delta', data: trimmed };
+  }
+
+  const payload = dataParts.join('\n');
+
+  // 尝试 JSON.parse 拿结构化字段
   try {
-    return JSON.parse(payload) as SSEEvent;
+    const parsed = JSON.parse(payload) as Partial<SSEEvent> & {
+      error?: string;
+      message?: string;
+      rule_id?: string;
+    };
+    // PromptScopeFilter 返回 { error: "out_of_scope", message: "...", rule_id: "..." }
+    // 用 message 作为 user-facing 文案，error 仅作为机器可读的 code
+    const userMessage = parsed.message ?? parsed.error;
+    return {
+      type: eventType ?? parsed.type ?? 'delta',
+      data: parsed.data,
+      error: userMessage,
+      validated: parsed.validated,
+    };
   } catch {
-    // 非 JSON 行（如纯文本 delta），视为 delta 事件
+    // 非 JSON：当 type 提示是 delta 时拼回 content；否则带 event type 抛错
+    if (eventType && eventType !== 'delta') {
+      return { type: eventType, error: payload };
+    }
     return { type: 'delta', data: payload };
   }
 }
@@ -117,62 +160,50 @@ export function useSSEStream(): UseSSEStreamResult {
       const decoder = new TextDecoder();
       let buffer = '';
 
+      const dispatch = (event: SSEEvent) => {
+        switch (event.type) {
+          case 'delta':
+            if (event.data) setContent(prev => prev + event.data);
+            break;
+          case 'repair_start':
+            // 新的修复尝试开始：清空已有内容，显示进度
+            setContent('');
+            setValidationError(null);
+            setRepairProgress(event.data ?? null);
+            break;
+          case 'final':
+            if (event.data) setContent(event.data);
+            setValidated(event.validated === true);
+            setCompleted(true);
+            break;
+          case 'validation_error':
+            setValidationError(event.error ?? event.data ?? 'Validation failed');
+            break;
+          case 'error':
+            setError(event.error ?? event.data ?? 'Unknown error');
+            break;
+        }
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        // 保留最后一行（可能不完整）
-        buffer = lines.pop() ?? '';
+        // SSE 帧由空行（"\n\n"）分隔。逐帧 split + 保留最后一个不完整 frame。
+        const frames = buffer.split(/\n\n/);
+        buffer = frames.pop() ?? '';
 
-        for (const line of lines) {
-          const event = parseSSELine(line);
-          if (!event) continue;
-
-          switch (event.type) {
-            case 'delta':
-              if (event.data) {
-                setContent(prev => prev + event.data);
-              }
-              break;
-            case 'repair_start':
-              // 新的修复尝试开始：清空已有内容，显示进度
-              setContent('');
-              setValidationError(null);
-              setRepairProgress(event.data ?? null);
-              break;
-            case 'final':
-              if (event.data) {
-                setContent(event.data);
-              }
-              setValidated(event.validated === true);
-              setCompleted(true);
-              break;
-            case 'validation_error':
-              setValidationError(event.error ?? event.data ?? 'Validation failed');
-              break;
-            case 'error':
-              setError(event.error ?? event.data ?? 'Unknown error');
-              break;
-          }
+        for (const frame of frames) {
+          const event = parseSSEFrame(frame);
+          if (event) dispatch(event);
         }
       }
 
       // 处理 buffer 中剩余内容
       if (buffer.trim()) {
-        const event = parseSSELine(buffer);
-        if (event) {
-          if (event.type === 'final' && event.data) {
-            setContent(event.data);
-            setValidated(event.validated === true);
-            setCompleted(true);
-          } else if (event.type === 'delta' && event.data) {
-            setContent(prev => prev + event.data);
-          } else if (event.type === 'error') {
-            setError(event.error ?? event.data ?? 'Unknown error');
-          }
-        }
+        const event = parseSSEFrame(buffer);
+        if (event) dispatch(event);
       }
 
       if (!completed) setCompleted(true);
