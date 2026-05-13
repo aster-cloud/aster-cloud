@@ -950,14 +950,14 @@
       "usageDescription": "使用 API 密钥将 Aster Cloud 策略集成到您的应用程序中。请在 Authorization 请求头中包含密钥。",
       "enterName": "请输入 API 密钥的名称",
       "examples": {
-        "getPolicyId": "如何获取策略 ID",
-        "getPolicyIdDesc": "在策略页面找到您的策略 ID。点击任意策略，在 URL 中查看其 ID（例如：/policies/abc123），或使用下方的策略列表 API。",
-        "executePolicy": "执行策略",
-        "executePolicyDesc": "使用输入数据运行策略并获取决策结果。请将 URL 中的 YOUR_POLICY_ID 替换为您的策略 ID。",
-        "listPolicies": "获取策略列表",
-        "listPoliciesDesc": "获取您账户下的所有可用策略。使用此接口可查找策略 ID。",
+        "getPolicyId": "如何找到策略的模块名与函数名",
+        "getPolicyIdDesc": "在策略页面打开任意策略，编辑器顶部即可看到模块名（如 aster.finance.loan）与入口函数名（如 evaluateLoanEligibility）。两者都需要传给 /api/v1/policies/evaluate。",
+        "executePolicy": "评估策略",
+        "executePolicyDesc": "向已发布的策略发送上下文数据，获取决策结果。",
+        "listPolicies": "查看策略的版本历史",
+        "listPoliciesDesc": "返回某条策略的全部版本及其发布状态，常用于审计某次决策。",
         "responseExample": "响应格式",
-        "responseExampleDesc": "成功执行后返回策略决策结果和匹配的规则。",
+        "responseExampleDesc": "成功评估时返回 { result, executionTimeMs, error }。result 是策略的返回值；成功时 error 为 null。",
         "errorHandling": "错误码说明",
         "errorHandlingDesc": "使用 API 时可能遇到的常见 HTTP 状态码。",
         "error401": "API 密钥无效或缺失",
@@ -1089,6 +1089,44 @@
     "team_member_invite": {
       "title": "Free 仅支持 1 人",
       "body": "Pro 支持邀请团队成员、按角色分配权限。升级 Pro 即可加人。"
+    }
+  },
+  "equivalencePage": {
+    "seo": {
+      "title": "双引擎等价性 — Aster Lang",
+      "description": "Aster Lang 的 Java 与 TypeScript 引擎通过自动化测试语料库保持语义等价。本页面展示每日刷新的等价率。"
+    },
+    "hero": {
+      "title": "双引擎等价性",
+      "subtitle": "Aster Lang 同时维护两个生产引擎（Java 与 TypeScript）。我们每晚用共享语料库测试它们的一致性，并把结果发布在这里。"
+    },
+    "unavailable": "当前无法获取实时数据。请前往代码仓库查看最新测量结果。",
+    "currentRate": "当前等价率",
+    "measuredOn": "{equivalent} / {total} 个样本 — 测量于 {date}",
+    "stats": {
+      "equivalent": "等价",
+      "equivalentDesc": "两个引擎都接受",
+      "divergent": "分歧",
+      "divergentDesc": "其中一个引擎失败",
+      "total": "语料总数",
+      "totalDesc": "tier1 + tier2 样本"
+    },
+    "trend": {
+      "heading": "趋势",
+      "date": "日期",
+      "ratio": "等价 / 总数",
+      "rate": "等价率",
+      "delta": "Δ"
+    },
+    "progress": "从 {date} 的 {initial} 起步。{count} 次测量中累计提升 +{delta} 个百分点。",
+    "footer": {
+      "heading": "测量方法",
+      "items": [
+        "源语料：aster-cloud/aster-lang-test，tier1（等价）+ tier2（分歧）样本。",
+        "两个引擎都解析每个样本。只有两边都成功才计为「等价」。",
+        "每天 02:00 UTC 由 nightly-equivalence GitHub Action 重新测量；历史数据回写 equivalence-history.csv。",
+        "测量方法详见 dual-engine syntax baseline RFC。"
+      ]
     }
   },
   "pricingPage": {

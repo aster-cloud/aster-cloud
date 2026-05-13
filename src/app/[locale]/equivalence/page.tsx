@@ -7,10 +7,10 @@
  * 目的：把 RFC §9 中描述的"双引擎语义等价"从空头文档变成可被外部审计的事实。
  */
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 export const dynamic = 'force-static';
-export const revalidate = 3600; // 每小时重 revalidate（CF Pages 实际取决于 ISR 配置）
+export const revalidate = 3600; // 每小时重 revalidate
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -27,8 +27,6 @@ type HistoryRow = {
 const HISTORY_URL =
   'https://raw.githubusercontent.com/aster-cloud/aster-lang-test/main/equivalence-history.csv';
 const REPO_URL = 'https://github.com/aster-cloud/aster-lang-test';
-const RFC_URL =
-  'https://github.com/aster-cloud/aster-deploy/blob/main/docs/rfc/dual-engine-syntax-baseline.md';
 
 async function fetchHistory(): Promise<HistoryRow[]> {
   try {
@@ -53,27 +51,30 @@ async function fetchHistory(): Promise<HistoryRow[]> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'equivalencePage.seo' });
   return {
-    title: 'Dual-Engine Equivalence — Aster Lang',
-    description:
-      "Aster Lang's Java and TypeScript engines are kept semantically equivalent by an automated test corpus. This page shows the live equivalence rate, refreshed nightly.",
+    title: t('title'),
+    description: t('description'),
     alternates: { canonical: `/${locale}/equivalence` },
     openGraph: {
-      title: 'Dual-Engine Equivalence — Aster Lang',
-      description:
-        'Live equivalence rate between the Java and TypeScript Aster engines.',
+      title: t('title'),
+      description: t('description'),
       type: 'website',
     },
   };
 }
 
-function formatPercent(n: number): string {
-  return (n * 100).toFixed(1) + '%';
+function formatPercent(n: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(n);
 }
 
-function formatTimestamp(iso: string): string {
+function formatTimestamp(iso: string, locale: string): string {
   try {
-    return new Date(iso).toISOString().slice(0, 10);
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso));
   } catch {
     return iso;
   }
@@ -82,6 +83,7 @@ function formatTimestamp(iso: string): string {
 export default async function EquivalencePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations('equivalencePage');
   const history = await fetchHistory();
   const latest = history[history.length - 1];
   const initial = history[0];
@@ -97,9 +99,11 @@ export default async function EquivalencePage({ params }: Props) {
         creator: { '@type': 'Organization', name: 'Aster Cloud' },
         license: 'https://opensource.org/license/mit',
         variableMeasured: 'equivalence rate (equivalent / total samples)',
-        temporalCoverage: `${formatTimestamp(history[0]?.timestamp ?? '')}/..`,
+        temporalCoverage: `${formatTimestamp(history[0]?.timestamp ?? '', 'en')}/..`,
       }
     : null;
+
+  const footerItems = t.raw('footer.items') as string[];
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:py-20">
@@ -111,23 +115,19 @@ export default async function EquivalencePage({ params }: Props) {
       )}
 
       <header className="mb-12 text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          Dual-Engine Equivalence
-        </h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{t('hero.title')}</h1>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-          Aster Lang ships two production engines (Java and TypeScript). We test
-          them against a shared corpus every night and publish the result here.
+          {t('hero.subtitle')}
         </p>
       </header>
 
       {!latest && (
         <section className="rounded-lg border border-yellow-300 bg-yellow-50 p-6 text-center dark:border-yellow-700 dark:bg-yellow-900/20">
           <p>
-            Live data unavailable right now. See{' '}
+            {t('unavailable')}{' '}
             <a className="underline" href={REPO_URL}>
-              the repository
-            </a>{' '}
-            for the latest measurement.
+              {REPO_URL.replace('https://', '')}
+            </a>
           </p>
         </section>
       )}
@@ -135,72 +135,61 @@ export default async function EquivalencePage({ params }: Props) {
       {latest && (
         <>
           <section className="mb-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-white shadow-xl sm:p-12">
-            <p className="text-sm uppercase tracking-wider opacity-80">
-              Current equivalence rate
-            </p>
+            <p className="text-sm uppercase tracking-wider opacity-80">{t('currentRate')}</p>
             <p className="mt-2 text-7xl font-bold tabular-nums sm:text-8xl">
-              {formatPercent(latest.rate)}
+              {formatPercent(latest.rate, locale)}
             </p>
             <p className="mt-2 text-sm opacity-90">
-              {latest.equivalent} / {latest.total} samples — measured{' '}
-              {formatTimestamp(latest.timestamp)}
+              {t('measuredOn', {
+                equivalent: latest.equivalent,
+                total: latest.total,
+                date: formatTimestamp(latest.timestamp, locale),
+              })}
             </p>
           </section>
 
           <section className="mb-12 grid gap-6 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
               <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Equivalent
+                {t('stats.equivalent')}
               </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">
-                {latest.equivalent}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                both engines accept
-              </p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums">{latest.equivalent}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('stats.equivalentDesc')}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
               <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Divergent
+                {t('stats.divergent')}
               </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">
-                {latest.divergent}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                one engine fails
-              </p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums">{latest.divergent}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('stats.divergentDesc')}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
               <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Total corpus
+                {t('stats.total')}
               </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">
-                {latest.total}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                tier1 + tier2 samples
-              </p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums">{latest.total}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('stats.totalDesc')}</p>
             </div>
           </section>
 
           {history.length > 1 && (
             <section className="mb-12">
-              <h2 className="mb-4 text-xl font-semibold">Trend</h2>
+              <h2 className="mb-4 text-xl font-semibold">{t('trend.heading')}</h2>
               <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Date
+                        {t('trend.date')}
                       </th>
                       <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Equivalent / Total
+                        {t('trend.ratio')}
                       </th>
                       <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Rate
+                        {t('trend.rate')}
                       </th>
                       <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Δ
+                        {t('trend.delta')}
                       </th>
                     </tr>
                   </thead>
@@ -211,22 +200,20 @@ export default async function EquivalencePage({ params }: Props) {
                       return (
                         <tr key={r.timestamp}>
                           <td className="px-4 py-2 text-sm tabular-nums">
-                            {formatTimestamp(r.timestamp)}
+                            {formatTimestamp(r.timestamp, locale)}
                           </td>
                           <td className="px-4 py-2 text-right text-sm tabular-nums">
                             {r.equivalent} / {r.total}
                           </td>
                           <td className="px-4 py-2 text-right text-sm font-medium tabular-nums">
-                            {formatPercent(r.rate)}
+                            {formatPercent(r.rate, locale)}
                           </td>
                           <td className="px-4 py-2 text-right text-sm tabular-nums">
                             {delta === null
                               ? '—'
                               : delta === 0
                               ? '0'
-                              : (delta > 0 ? '+' : '') +
-                                (delta * 100).toFixed(2) +
-                                'pp'}
+                              : (delta > 0 ? '+' : '') + (delta * 100).toFixed(2) + 'pp'}
                           </td>
                         </tr>
                       );
@@ -240,12 +227,12 @@ export default async function EquivalencePage({ params }: Props) {
           {initial && initial.timestamp !== latest.timestamp && (
             <section className="mb-12 rounded-lg border border-gray-200 bg-gray-50 p-6 text-sm dark:border-gray-700 dark:bg-gray-900">
               <p>
-                Started at <strong>{formatPercent(initial.rate)}</strong> on{' '}
-                {formatTimestamp(initial.timestamp)}. Improved by{' '}
-                <strong>
-                  +{((latest.rate - initial.rate) * 100).toFixed(1)} percentage points
-                </strong>{' '}
-                across {history.length} measurements.
+                {t('progress', {
+                  initial: formatPercent(initial.rate, locale),
+                  date: formatTimestamp(initial.timestamp, locale),
+                  delta: ((latest.rate - initial.rate) * 100).toFixed(1),
+                  count: history.length,
+                })}
               </p>
             </section>
           )}
@@ -254,38 +241,12 @@ export default async function EquivalencePage({ params }: Props) {
 
       <section className="border-t border-gray-200 pt-8 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
         <h3 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">
-          How this is measured
+          {t('footer.heading')}
         </h3>
         <ul className="list-inside list-disc space-y-1">
-          <li>
-            Source corpus:{' '}
-            <a className="underline" href={REPO_URL}>
-              aster-cloud/aster-lang-test
-            </a>
-            , tier1 (equivalence) + tier2 (divergent) samples.
-          </li>
-          <li>
-            Both engines parse every sample. A sample is{' '}
-            <em>equivalent</em> only if both engines succeed.
-          </li>
-          <li>
-            Re-measured nightly at 02:00 UTC via the{' '}
-            <code className="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">
-              nightly-equivalence
-            </code>{' '}
-            GitHub Action; history committed back to{' '}
-            <code className="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">
-              equivalence-history.csv
-            </code>
-            .
-          </li>
-          <li>
-            See the{' '}
-            <a className="underline" href={RFC_URL}>
-              dual-engine syntax baseline RFC
-            </a>{' '}
-            for the methodology.
-          </li>
+          {footerItems.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
         </ul>
       </section>
     </main>

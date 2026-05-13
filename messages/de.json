@@ -950,14 +950,14 @@
       "usageDescription": "Verwenden Sie Ihren API-Schlüssel, um Aster Cloud-Richtlinien in Ihre Anwendungen zu integrieren. Fügen Sie den Schlüssel im Authorization-Header ein.",
       "enterName": "Bitte geben Sie einen Namen für Ihren API-Schlüssel ein",
       "examples": {
-        "getPolicyId": "So erhalten Sie Ihre Richtlinien-ID",
-        "getPolicyIdDesc": "Finden Sie Ihre Richtlinien-ID auf der Richtlinienseite. Klicken Sie auf eine Richtlinie, um die ID in der URL zu sehen (z.B. /policies/abc123), oder verwenden Sie die Richtlinien-API unten.",
-        "executePolicy": "Richtlinie ausführen",
-        "executePolicyDesc": "Führen Sie eine Richtlinie mit Eingabedaten aus und erhalten Sie das Entscheidungsergebnis. Ersetzen Sie YOUR_POLICY_ID in der URL.",
-        "listPolicies": "Richtlinien auflisten",
-        "listPoliciesDesc": "Rufen Sie alle verfügbaren Richtlinien für Ihr Konto ab. Verwenden Sie dies, um Ihre Richtlinien-IDs zu finden.",
+        "getPolicyId": "So finden Sie Modul- und Funktionsname einer Richtlinie",
+        "getPolicyIdDesc": "Öffnen Sie eine Richtlinie auf der Richtlinienseite; der Modulname (z.B. aster.finance.loan) und der Einstiegsfunktionsname (z.B. evaluateLoanEligibility) erscheinen oben im Editor. Beide werden an /api/v1/policies/evaluate übergeben.",
+        "executePolicy": "Richtlinie auswerten",
+        "executePolicyDesc": "Senden Sie Kontextdaten an eine veröffentlichte Richtlinie und erhalten Sie ihre Entscheidung.",
+        "listPolicies": "Versionsverlauf einer Richtlinie",
+        "listPoliciesDesc": "Liefert alle Versionen einer Richtlinie mit ihrem Veröffentlichungsstatus — nützlich für die Prüfung einer Entscheidung.",
         "responseExample": "Antwortformat",
-        "responseExampleDesc": "Eine erfolgreiche Ausführung gibt die Richtlinienentscheidung und übereinstimmende Regeln zurück.",
+        "responseExampleDesc": "Erfolgreiche Auswertung liefert { result, executionTimeMs, error }. result ist der Rückgabewert der Richtlinie; bei Erfolg ist error null.",
         "errorHandling": "Fehlercodes",
         "errorHandlingDesc": "Häufige HTTP-Statuscodes, die bei der API-Nutzung auftreten können.",
         "error401": "Ungültiger oder fehlender API-Schlüssel",
@@ -1089,6 +1089,44 @@
     "team_member_invite": {
       "title": "Free ist Einzelplatz",
       "body": "Pro ermöglicht das Einladen von Teamkollegen mit rollenbasierter Zugriffskontrolle. Upgraden Sie, um Mitglieder hinzuzufügen."
+    }
+  },
+  "equivalencePage": {
+    "seo": {
+      "title": "Dual-Engine-Äquivalenz — Aster Lang",
+      "description": "Die Java- und TypeScript-Engines von Aster Lang werden durch ein automatisiertes Test-Corpus semantisch äquivalent gehalten. Diese Seite zeigt die aktuelle, nächtlich aktualisierte Äquivalenzrate."
+    },
+    "hero": {
+      "title": "Dual-Engine-Äquivalenz",
+      "subtitle": "Aster Lang betreibt zwei Produktions-Engines (Java und TypeScript). Wir testen sie jede Nacht gegen ein gemeinsames Corpus und veröffentlichen das Ergebnis hier."
+    },
+    "unavailable": "Live-Daten derzeit nicht verfügbar. Aktuelle Messung im Repository einsehen.",
+    "currentRate": "Aktuelle Äquivalenzrate",
+    "measuredOn": "{equivalent} / {total} Samples — gemessen am {date}",
+    "stats": {
+      "equivalent": "Äquivalent",
+      "equivalentDesc": "beide Engines akzeptieren",
+      "divergent": "Divergent",
+      "divergentDesc": "eine Engine schlägt fehl",
+      "total": "Corpus gesamt",
+      "totalDesc": "tier1 + tier2 Samples"
+    },
+    "trend": {
+      "heading": "Verlauf",
+      "date": "Datum",
+      "ratio": "Äquivalent / Gesamt",
+      "rate": "Rate",
+      "delta": "Δ"
+    },
+    "progress": "Gestartet bei {initial} am {date}. Verbesserung um +{delta} Prozentpunkte über {count} Messungen.",
+    "footer": {
+      "heading": "So wird gemessen",
+      "items": [
+        "Quell-Corpus: aster-cloud/aster-lang-test, tier1 (Äquivalenz) + tier2 (Divergenz).",
+        "Beide Engines parsen jedes Sample. Ein Sample gilt nur als äquivalent, wenn beide erfolgreich sind.",
+        "Erneute Messung täglich um 02:00 UTC via GitHub Action nightly-equivalence; Verlauf wird in equivalence-history.csv zurückgeschrieben.",
+        "Methodik siehe RFC „dual-engine syntax baseline“."
+      ]
     }
   },
   "pricingPage": {

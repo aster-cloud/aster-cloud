@@ -950,14 +950,14 @@
       "usageDescription": "Use your API key to integrate Aster Cloud policies into your applications. Include the key in the Authorization header.",
       "enterName": "Please enter a name for your API key",
       "examples": {
-        "getPolicyId": "How to get your Policy ID",
-        "getPolicyIdDesc": "Find your Policy ID in the Policies page. Click on any policy to see its ID in the URL (e.g., /policies/abc123), or use the List Policies API below.",
-        "executePolicy": "Execute Policy",
-        "executePolicyDesc": "Run a policy with input data and get the decision result. Replace YOUR_POLICY_ID in the URL.",
-        "listPolicies": "List Policies",
-        "listPoliciesDesc": "Retrieve all policies available to your account. Use this to find your Policy IDs.",
-        "responseExample": "Response Format",
-        "responseExampleDesc": "Successful execution returns the policy decision and matched rules.",
+        "getPolicyId": "How to find a policy module + function",
+        "getPolicyIdDesc": "Open any policy in the Policies page; the module name (e.g. aster.finance.loan) and the entry function name (e.g. evaluateLoanEligibility) are shown in the editor header. You will pass both to /api/v1/policies/evaluate.",
+        "executePolicy": "Evaluate a policy",
+        "executePolicyDesc": "Send context data to a deployed policy and receive its decision result.",
+        "listPolicies": "Inspect a policy's version history",
+        "listPoliciesDesc": "Returns every version of a given policy together with its publish status — useful when auditing a decision.",
+        "responseExample": "Response shape",
+        "responseExampleDesc": "Successful evaluation returns { result, executionTimeMs, error }. result is the policy's return value; error is null on success.",
         "errorHandling": "Error Codes",
         "errorHandlingDesc": "Common HTTP status codes you may encounter when using the API.",
         "error401": "Invalid or missing API key",
@@ -1089,6 +1089,44 @@
     "team_member_invite": {
       "title": "Free is single-seat",
       "body": "Pro lets you invite teammates with role-based access. Upgrade to add a member."
+    }
+  },
+  "equivalencePage": {
+    "seo": {
+      "title": "Dual-Engine Equivalence — Aster Lang",
+      "description": "Aster Lang's Java and TypeScript engines are kept semantically equivalent by an automated test corpus. This page shows the live equivalence rate, refreshed nightly."
+    },
+    "hero": {
+      "title": "Dual-Engine Equivalence",
+      "subtitle": "Aster Lang ships two production engines (Java and TypeScript). We test them against a shared corpus every night and publish the result here."
+    },
+    "unavailable": "Live data unavailable right now. See the repository for the latest measurement.",
+    "currentRate": "Current equivalence rate",
+    "measuredOn": "{equivalent} / {total} samples — measured {date}",
+    "stats": {
+      "equivalent": "Equivalent",
+      "equivalentDesc": "both engines accept",
+      "divergent": "Divergent",
+      "divergentDesc": "one engine fails",
+      "total": "Total corpus",
+      "totalDesc": "tier1 + tier2 samples"
+    },
+    "trend": {
+      "heading": "Trend",
+      "date": "Date",
+      "ratio": "Equivalent / Total",
+      "rate": "Rate",
+      "delta": "Δ"
+    },
+    "progress": "Started at {initial} on {date}. Improved by +{delta} percentage points across {count} measurements.",
+    "footer": {
+      "heading": "How this is measured",
+      "items": [
+        "Source corpus: aster-cloud/aster-lang-test, tier1 (equivalence) + tier2 (divergent) samples.",
+        "Both engines parse every sample. A sample is equivalent only if both engines succeed.",
+        "Re-measured nightly at 02:00 UTC via the nightly-equivalence GitHub Action; history committed back to equivalence-history.csv.",
+        "See the dual-engine syntax baseline RFC for the methodology."
+      ]
     }
   },
   "pricingPage": {

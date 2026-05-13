@@ -321,15 +321,17 @@ export function ApiKeysContent({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-gray-500 uppercase">cURL</span>
                 <button
-                  onClick={() => copyToClipboard(`curl -X POST https://aster-lang.cloud/api/v1/policies/YOUR_POLICY_ID/execute \\
+                  onClick={() => copyToClipboard(`curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "input": {
+    "policyModule": "aster.finance.loan",
+    "policyFunction": "evaluateLoanEligibility",
+    "context": [{
       "creditScore": 750,
       "income": 85000,
       "loanAmount": 250000
-    }
+    }]
   }'`)}
                   className="text-xs text-indigo-600 hover:text-indigo-800"
                 >
@@ -337,15 +339,17 @@ export function ApiKeysContent({
                 </button>
               </div>
               <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`curl -X POST https://aster-lang.cloud/api/v1/policies/YOUR_POLICY_ID/execute \\
+{`curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "input": {
+    "policyModule": "aster.finance.loan",
+    "policyFunction": "evaluateLoanEligibility",
+    "context": [{
       "creditScore": 750,
       "income": 85000,
       "loanAmount": 250000
-    }
+    }]
   }'`}
               </pre>
             </div>
@@ -355,50 +359,52 @@ export function ApiKeysContent({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-gray-500 uppercase">JavaScript / Node.js</span>
                 <button
-                  onClick={() => copyToClipboard(`const policyId = 'YOUR_POLICY_ID';
-
-const response = await fetch(\`https://aster-lang.cloud/api/v1/policies/\${policyId}/execute\`, {
+                  onClick={() => copyToClipboard(`const response = await fetch('https://policy.aster-lang.dev/api/v1/policies/evaluate', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    input: {
+    policyModule: 'aster.finance.loan',
+    policyFunction: 'evaluateLoanEligibility',
+    context: [{
       creditScore: 750,
       income: 85000,
       loanAmount: 250000,
-    },
+    }],
   }),
 });
 
-const result = await response.json();
-console.log(result.success ? 'Approved' : 'Rejected');`)}
+const { result, executionTimeMs, error } = await response.json();
+if (error) console.error(error);
+else console.log('Decision:', result, 'in', executionTimeMs, 'ms');`)}
                   className="text-xs text-indigo-600 hover:text-indigo-800"
                 >
                   {t.copy}
                 </button>
               </div>
               <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`const policyId = 'YOUR_POLICY_ID';
-
-const response = await fetch(\`https://aster-lang.cloud/api/v1/policies/\${policyId}/execute\`, {
+{`const response = await fetch('https://policy.aster-lang.dev/api/v1/policies/evaluate', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    input: {
+    policyModule: 'aster.finance.loan',
+    policyFunction: 'evaluateLoanEligibility',
+    context: [{
       creditScore: 750,
       income: 85000,
       loanAmount: 250000,
-    },
+    }],
   }),
 });
 
-const result = await response.json();
-console.log(result.success ? 'Approved' : 'Rejected');`}
+const { result, executionTimeMs, error } = await response.json();
+if (error) console.error(error);
+else console.log('Decision:', result, 'in', executionTimeMs, 'ms');`}
               </pre>
             </div>
 
@@ -409,25 +415,28 @@ console.log(result.success ? 'Approved' : 'Rejected');`}
                 <button
                   onClick={() => copyToClipboard(`import requests
 
-policy_id = 'YOUR_POLICY_ID'
-
 response = requests.post(
-    f'https://aster-lang.cloud/api/v1/policies/{policy_id}/execute',
+    'https://policy.aster-lang.dev/api/v1/policies/evaluate',
     headers={
         'Authorization': 'Bearer YOUR_API_KEY',
         'Content-Type': 'application/json',
     },
     json={
-        'input': {
+        'policyModule': 'aster.finance.loan',
+        'policyFunction': 'evaluateLoanEligibility',
+        'context': [{
             'creditScore': 750,
             'income': 85000,
             'loanAmount': 250000,
-        },
+        }],
     },
 )
 
-result = response.json()
-print('Approved' if result['success'] else 'Rejected')`)}
+data = response.json()
+if data.get('error'):
+    print('Error:', data['error'])
+else:
+    print('Decision:', data['result'], 'in', data['executionTimeMs'], 'ms')`)}
                   className="text-xs text-indigo-600 hover:text-indigo-800"
                 >
                   {t.copy}
@@ -436,30 +445,33 @@ print('Approved' if result['success'] else 'Rejected')`)}
               <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
 {`import requests
 
-policy_id = 'YOUR_POLICY_ID'
-
 response = requests.post(
-    f'https://aster-lang.cloud/api/v1/policies/{policy_id}/execute',
+    'https://policy.aster-lang.dev/api/v1/policies/evaluate',
     headers={
         'Authorization': 'Bearer YOUR_API_KEY',
         'Content-Type': 'application/json',
     },
     json={
-        'input': {
+        'policyModule': 'aster.finance.loan',
+        'policyFunction': 'evaluateLoanEligibility',
+        'context': [{
             'creditScore': 750,
             'income': 85000,
             'loanAmount': 250000,
-        },
+        }],
     },
 )
 
-result = response.json()
-print('Approved' if result['success'] else 'Rejected')`}
+data = response.json()
+if data.get('error'):
+    print('Error:', data['error'])
+else:
+    print('Decision:', data['result'], 'in', data['executionTimeMs'], 'ms')`}
               </pre>
             </div>
           </div>
 
-          {/* List Policies */}
+          {/* Version History */}
           <div className="mt-8">
             <h4 className="text-sm font-medium text-gray-900">{t.examples.listPolicies}</h4>
             <p className="mt-1 text-xs text-gray-500">{t.examples.listPoliciesDesc}</p>
@@ -467,7 +479,7 @@ print('Approved' if result['success'] else 'Rejected')`}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-gray-500 uppercase">cURL</span>
                 <button
-                  onClick={() => copyToClipboard(`curl -X GET https://aster-lang.cloud/api/v1/policies \\
+                  onClick={() => copyToClipboard(`curl -X GET https://policy.aster-lang.dev/api/v1/policies/YOUR_POLICY_ID/versions \\
   -H "Authorization: Bearer YOUR_API_KEY"`)}
                   className="text-xs text-indigo-600 hover:text-indigo-800"
                 >
@@ -475,7 +487,7 @@ print('Approved' if result['success'] else 'Rejected')`}
                 </button>
               </div>
               <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`curl -X GET https://aster-lang.cloud/api/v1/policies \\
+{`curl -X GET https://policy.aster-lang.dev/api/v1/policies/YOUR_POLICY_ID/versions \\
   -H "Authorization: Bearer YOUR_API_KEY"`}
               </pre>
             </div>
@@ -487,14 +499,13 @@ print('Approved' if result['success'] else 'Rejected')`}
             <p className="mt-1 text-xs text-gray-500">{t.examples.responseExampleDesc}</p>
             <pre className="mt-3 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
 {`{
-  "executionId": "exec_abc123",
-  "success": true,
-  "output": {
-    "allowed": true,
-    "matchedRules": ["credit_score_check", "income_verification"],
-    "actions": ["approve_loan", "set_interest_rate"]
+  "result": {
+    "approved": true,
+    "interestRate": 0.0625,
+    "reasons": ["credit_score_check", "income_verification"]
   },
-  "durationMs": 12
+  "executionTimeMs": 12,
+  "error": null
 }`}
             </pre>
           </div>
