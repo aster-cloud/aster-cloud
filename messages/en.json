@@ -982,14 +982,14 @@
     "dangerZone": {
       "title": "Danger Zone",
       "deleteAccount": "Delete account",
-      "deleteAccountDesc": "Permanently delete your account and all associated data.",
+      "deleteAccountDesc": "Schedule your account for permanent deletion in 30 days. Signing in with the same email before then will fully restore it.",
       "confirmTitle": "Delete your account?",
-      "confirmMessage": "This action cannot be undone. This will permanently delete:",
+      "confirmMessage": "Your account will be hidden immediately and permanently deleted after 30 days. During that window, signing in with the same email restores everything below:",
       "confirmItem1": "Your account and profile information",
       "confirmItem2": "All your policies, executions, and API keys",
       "confirmItem3": "Any teams you own and their data",
-      "confirmDelete": "Yes, delete my account",
-      "deleting": "Deleting...",
+      "confirmDelete": "Yes, schedule deletion",
+      "deleting": "Scheduling...",
       "cancel": "Cancel"
     },
     "language": {

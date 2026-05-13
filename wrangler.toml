@@ -41,6 +41,14 @@ id = "250b39f14c014a5e8e636799c23bb120"
 binding = "HYPERDRIVE"
 id = "b712d2c83ffe41f0b4d0ec615314a935"
 
+# Cron triggers — daily user-purge sweep
+# OpenNext on Cloudflare Workers supports [[triggers]].crons. The worker's
+# scheduled() handler must POST to /api/cron/user-purge with the CRON_SECRET.
+# 04:30 UTC = quiet window for OCI PG; runs after backup (02:00) and nightly
+# perf benchmark (04:00).
+[triggers]
+crons = ["30 4 * * *"]
+
 # 环境变量（公开的，非敏感信息）
 [vars]
 NODE_ENV = "production"

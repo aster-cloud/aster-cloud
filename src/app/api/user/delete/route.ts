@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, teams, users } from '@/lib/prisma';
-import { eq } from 'drizzle-orm';
+import { db } from '@/lib/prisma';
+import { GRACE_PERIOD_DAYS, softDeleteUser } from '@/lib/user-lifecycle';
 
-// DELETE /api/user/delete - Delete current user's account
+// DELETE /api/user/delete - 软删当前用户。30 天 grace 期内同邮箱重登可复活；
+// 过期后 cron /api/cron/user-purge 物理清理。
 export async function DELETE() {
   try {
     const session = await getSession();
@@ -11,24 +12,13 @@ export async function DELETE() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    await softDeleteUser(db, session.user.id);
 
-    // Delete user and all related data (cascading delete handles most relations)
-    // Note: Team ownership needs special handling
-    const ownedTeams = await db.query.teams.findMany({
-      where: eq(teams.ownerId, userId),
-      columns: { id: true },
+    return NextResponse.json({
+      success: true,
+      gracePeriodDays: GRACE_PERIOD_DAYS,
+      message: `Account scheduled for permanent deletion in ${GRACE_PERIOD_DAYS} days. Signing in with the same email before then will restore it.`,
     });
-
-    // Delete owned teams first (this will cascade to team members, invitations, etc.)
-    if (ownedTeams.length > 0) {
-      await db.delete(teams).where(eq(teams.ownerId, userId));
-    }
-
-    // Delete the user (cascades to accounts, sessions, policies, executions, etc.)
-    await db.delete(users).where(eq(users.id, userId));
-
-    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting account:', error);
     return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });

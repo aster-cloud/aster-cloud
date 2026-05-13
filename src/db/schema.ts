@@ -243,6 +243,16 @@ export const users = pgTable(
     onboardingGoals: text('onboardingGoals').array(),
     onboardingCompletedAt: timestamp('onboardingCompletedAt', { mode: 'date' }),
 
+    // Soft-delete + grace-period reactivation
+    /** 用户发起自删的时间。非空 → 账号处于墓碑状态，正常 signIn 拒绝。 */
+    deletedAt: timestamp('deletedAt', { mode: 'date' }),
+    /** Hard-purge 时间点（deletedAt + 30d）。cron 到此时间真正物理删除。 */
+    purgePendingUntil: timestamp('purgePendingUntil', { mode: 'date' }),
+    /** grace 期内复活的次数（审计 / 反复活滥用）。 */
+    reactivationCount: integer('reactivationCount').default(0).notNull(),
+    /** 该 emailNormalized 历史上被清理的次数（hard-purge 时累计，下次同邮箱注册时携带）。 */
+    priorPurgeCount: integer('priorPurgeCount').default(0).notNull(),
+
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -250,6 +260,8 @@ export const users = pgTable(
     index('User_email_idx').on(table.email),
     index('User_stripeCustomerId_idx').on(table.stripeCustomerId),
     uniqueIndex('User_emailNormalized_unique').on(table.emailNormalized),
+    // 用于 cron 找到所有该 hard-purge 的墓碑用户
+    index('User_purgePendingUntil_idx').on(table.purgePendingUntil),
   ]
 );
 

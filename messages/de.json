@@ -982,14 +982,14 @@
     "dangerZone": {
       "title": "Gefahrenzone",
       "deleteAccount": "Konto löschen",
-      "deleteAccountDesc": "Löschen Sie Ihr Konto und alle zugehörigen Daten dauerhaft.",
+      "deleteAccountDesc": "Ihr Konto wird in 30 Tagen endgültig gelöscht. Bei einer Anmeldung mit derselben E-Mail innerhalb dieser Frist wird es vollständig wiederhergestellt.",
       "confirmTitle": "Konto löschen?",
-      "confirmMessage": "Diese Aktion kann nicht rückgängig gemacht werden. Folgendes wird dauerhaft gelöscht:",
+      "confirmMessage": "Ihr Konto wird sofort verborgen und nach 30 Tagen endgültig gelöscht. Innerhalb dieser Frist stellt eine Anmeldung mit derselben E-Mail Folgendes wieder her:",
       "confirmItem1": "Ihr Konto und Profilinformationen",
       "confirmItem2": "Alle Richtlinien, Ausführungen und API-Schlüssel",
       "confirmItem3": "Alle Teams, die Sie besitzen, und deren Daten",
-      "confirmDelete": "Ja, mein Konto löschen",
-      "deleting": "Wird gelöscht...",
+      "confirmDelete": "Ja, Löschung planen",
+      "deleting": "Wird geplant...",
       "cancel": "Abbrechen"
     },
     "language": {

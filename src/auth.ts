@@ -180,8 +180,33 @@ const config: NextAuthConfig = {
     },
 
     async signIn({ user, account, profile: _profile }) {
-      if (account?.provider && account.provider !== 'credentials') {
-        const db = getDb();
+      const db = getDb();
+
+      // Credentials provider: 已在 authorize() 里查过 user 并验证密码。
+      // 这里仅复查"是否处于墓碑"——如是，触发 grace 期内复活。
+      if (account?.provider === 'credentials') {
+        if (user.id) {
+          const row = await db.query.users.findFirst({
+            where: (u, { eq }) => eq(u.id, user.id!),
+            columns: { id: true, email: true, deletedAt: true, purgePendingUntil: true, emailNormalized: true },
+          });
+          if (row?.deletedAt) {
+            const stillInGrace = row.purgePendingUntil && row.purgePendingUntil > new Date();
+            if (stillInGrace && row.email) {
+              const { normalizeEmail } = await import('@/lib/email-normalize');
+              const { reactivateUser } = await import('@/lib/user-lifecycle');
+              await reactivateUser(db, row.id, normalizeEmail(row.email));
+              console.warn(`[auth] reactivated tombstoned user via credentials: ${row.id}`);
+              return true;
+            }
+            // 已过 grace 或异常状态 → 拒绝（authorize 应该没让密码通过，但兜底）
+            return false;
+          }
+        }
+        return true;
+      }
+
+      if (account?.provider) {
         const existingAccount = await db.query.accounts.findFirst({
           where: (accounts, { and, eq }) => and(
             eq(accounts.provider, account.provider),
@@ -190,6 +215,22 @@ const config: NextAuthConfig = {
         });
 
         if (existingAccount) {
+          // 已绑 account 的同时还要查 owning user 是否被软删
+          const owner = await db.query.users.findFirst({
+            where: (u, { eq }) => eq(u.id, existingAccount.userId),
+            columns: { id: true, email: true, deletedAt: true, purgePendingUntil: true },
+          });
+          if (owner?.deletedAt) {
+            const stillInGrace = owner.purgePendingUntil && owner.purgePendingUntil > new Date();
+            if (stillInGrace && owner.email) {
+              const { normalizeEmail } = await import('@/lib/email-normalize');
+              const { reactivateUser } = await import('@/lib/user-lifecycle');
+              await reactivateUser(db, owner.id, normalizeEmail(owner.email));
+              console.warn(`[auth] reactivated tombstoned user via OAuth: ${owner.id}`);
+              return true;
+            }
+            return false;
+          }
           return true;
         }
 
@@ -199,10 +240,12 @@ const config: NextAuthConfig = {
             { normalizeEmail },
             { isDisposableEmail },
             { checkSignupRateLimit, recordSignupAttempt },
+            { findTombstonedUserByNormalizedEmail, reactivateUser },
           ] = await Promise.all([
             import('@/lib/email-normalize'),
             import('@/lib/email-disposable'),
             import('@/lib/signup-rate-limit'),
+            import('@/lib/user-lifecycle'),
           ]);
 
           // 取请求 IP（仅在 signIn 触发的请求上下文中可用）
@@ -224,18 +267,25 @@ const config: NextAuthConfig = {
             return false;
           }
 
-          // emailNormalized 命中已有用户的两种情形：
-          //   a) 同人用第二个 OAuth provider 绑同邮箱 → 允许（让 adapter 自然 link）
-          //   b) 攻击者用归一化等价的邮箱抢注 → 拒绝
-          // 现状无法精确区分；放行更接近实际用户预期（同一邮箱主人）。
-          // 真实风险（gmail 别名滥用）由 OAuth provider 自身的邮箱验证守住。
           const normalized = normalizeEmail(user.email);
+
+          // 1) 优先看 grace 期内的墓碑用户 → 复活（user.id 保持不变，所有
+          //    业务数据原路恢复，新 OAuth account 由 adapter 后续 linkAccount）
+          const tombstoned = await findTombstonedUserByNormalizedEmail(db, normalized);
+          if (tombstoned) {
+            await reactivateUser(db, tombstoned.id, normalized);
+            console.warn(`[auth] reactivated tombstoned user via OAuth (new provider): ${tombstoned.id}`);
+            await recordSignupAttempt(clientIp, true);
+            return true;
+          }
+
+          // 2) 同 normalized email 的活用户：允许 adapter linkAccount
+          //    （getUserByEmail 在 adapter 里已 fallback 到 emailNormalized）
           const dup = await db.query.users.findFirst({
             where: (u, { eq }) => eq(u.emailNormalized, normalized),
             columns: { id: true },
           });
           if (dup) {
-            // 同邮箱已存在用户：放行让 DrizzleAdapter 在该 user 上挂载新 account
             await recordSignupAttempt(clientIp, true);
             return true;
           }

@@ -42,6 +42,25 @@ export function DrizzleAdapter(dbOrGetter: DbOrGetter): Adapter {
         // headers() 可能在测试或非请求上下文中不可用
       }
 
+      // 查 audit log 看该 emailNormalized 历史上 hard-purge 过几次
+      // （cron 在 user-purge 时写过 'user.hard_purged' + metadata.emailNormalizedHistorical）
+      // 用于反复活滥用：注册时把次数留在 priorPurgeCount 字段，下游可用作风控信号。
+      let priorPurgeCount = 0;
+      if (emailNormalized) {
+        try {
+          const past = await db.query.auditLogs.findMany({
+            where: (a, { sql }) => sql`${a.action} = 'user.hard_purged' AND ${a.metadata}->>'emailNormalizedHistorical' = ${emailNormalized}`,
+            columns: { id: true },
+          });
+          priorPurgeCount = past.length;
+          if (priorPurgeCount > 0) {
+            console.warn(`[adapter.createUser] emailNormalized=${emailNormalized} has ${priorPurgeCount} prior hard-purges`);
+          }
+        } catch {
+          // audit 查询失败不阻塞注册
+        }
+      }
+
       await db.insert(users).values({
         id,
         email: data.email,
@@ -50,6 +69,7 @@ export function DrizzleAdapter(dbOrGetter: DbOrGetter): Adapter {
         name: data.name,
         image: data.image,
         signupIpHash,
+        priorPurgeCount,
         createdAt: now,
         updatedAt: now,
       });
