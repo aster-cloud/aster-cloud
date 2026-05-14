@@ -42,6 +42,28 @@ const eslintConfig = [
         varsIgnorePattern: "^_",
         caughtErrorsIgnorePattern: "^_",
       }],
+      // R8-FE-1：禁止生产代码从 lib/__internal__/* 导入 —— 那是测试夹具专区。
+      // 测试文件 (__tests__) 通过下面的 override 放行。
+      "no-restricted-imports": ["error", {
+        patterns: [
+          {
+            group: ["**/lib/__internal__/*", "@/lib/__internal__/*"],
+            message:
+              "lib/__internal__/* 仅供测试导入。生产代码请使用 lexicon-availability 公开 API。",
+          },
+        ],
+      }],
+    },
+  },
+  {
+    // 测试文件可自由 import __internal__ 测试助手
+    files: [
+      "src/__tests__/**/*.{ts,tsx}",
+      "**/*.test.{ts,tsx}",
+      "**/*.spec.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": "off",
     },
   },
 ];

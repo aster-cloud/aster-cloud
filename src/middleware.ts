@@ -2,8 +2,12 @@ import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale, type Locale } from './i18n/config';
 import { buildCspHeader, securityHeadersOnly } from '@/lib/security/csp';
+import { fetchAvailable } from '@/lib/lexicon-availability';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
+
+// fetchAvailable + AvailabilityResult 已抽到 @/lib/lexicon-availability
+// 让 R5 单元测试可直接对其测试，middleware 保持薄
 
 /**
  * Apply CSP + security headers to every middleware response.
@@ -32,8 +36,30 @@ function rand(n: number): string {
     .join('');
 }
 
-export default function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ----- 严格 locale gate：路径里的 locale 段必须落在后端可用集合 -----
+  // 仅检查显式带 locale 前缀的请求（例如 /zh/dashboard）。
+  // R3：只在 authoritative=true 时执行重定向 + 清 cookie；
+  // 冷启动 + 后端不可达（authoritative=false）保留用户偏好，让 next-intl 正常处理。
+  const firstSeg = pathname.split('/')[1] as Locale | undefined;
+  if (firstSeg && (locales as readonly string[]).includes(firstSeg)) {
+    const { available, authoritative } = await fetchAvailable();
+    if (authoritative && !available.has(firstSeg)) {
+      const url = request.nextUrl.clone();
+      // 把 /zh/foo/bar → /en/foo/bar；defaultLocale 用 as-needed 时无前缀
+      const rest = pathname.substring(firstSeg.length + 1) || '/';
+      url.pathname = defaultLocale === 'en' ? rest : `/${defaultLocale}${rest}`;
+      const redirect = NextResponse.redirect(url);
+      // R3-Minor-FE：locale-gate 重定向同步清掉 stale cookie，避免下次 cookie 路径再触发一次往返
+      redirect.cookies.delete('NEXT_LOCALE');
+      const fallbackNonce = generateNonce();
+      applySecurityHeaders(redirect, fallbackNonce);
+      return redirect;
+    }
+  }
+
 
   // Build a NEW Headers object for downstream — Edge runtime forbids mutating
   // request.headers in place. We populate it with the inbound headers plus
@@ -56,8 +82,24 @@ export default function middleware(request: NextRequest) {
   // Check if user has a saved locale preference
   const savedLocale = request.cookies.get('NEXT_LOCALE')?.value as Locale | undefined;
 
-  // If user has a non-default locale preference and is accessing a non-prefixed path, redirect
+  // C1 + R3：cookie 触发的重定向必须满足三件事：
+  //   1) savedLocale 是 compile-time supported 之一
+  //   2) 后端 availability 是 authoritative（不是冷启动 fetch 失败的 guess）
+  //   3) savedLocale 仍在 available 集合中
+  // 只有 (1) && (2) && !(3) 才视为"确认不可用"，删 cookie + 按 default 走。
+  // authoritative=false 时（冷启动 outage）保留 cookie，让下次请求重试。
   if (savedLocale && savedLocale !== defaultLocale && locales.includes(savedLocale)) {
+    const { available, authoritative } = await fetchAvailable();
+    if (authoritative && !available.has(savedLocale)) {
+      // 确认 stale → 清掉 cookie；按当前 path 继续，让 next-intl 处理
+      const dropResponse = NextResponse.next({
+        request: { headers: downstreamHeaders },
+      });
+      dropResponse.cookies.delete('NEXT_LOCALE');
+      applySecurityHeaders(dropResponse, nonce);
+      return dropResponse;
+    }
+    // authoritative=false 时，假定 cookie 仍有效，按正常 saved-locale redirect 走
     const hasLocalePrefix = locales.some(
       (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
     );

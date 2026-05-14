@@ -5,7 +5,10 @@
     "startFreeTrial": "开始免费试用",
     "getStarted": "开始使用",
     "contactSales": "联系销售",
-    "learnMore": "了解更多"
+    "learnMore": "了解更多",
+    "languageUnavailable": "{name} 已不可用",
+    "switchedTo": "已切换到 {name}",
+    "selectLanguage": "选择语言"
   },
   "nav": {
     "brand": "Aster Cloud"

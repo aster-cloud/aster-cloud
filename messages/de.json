@@ -5,7 +5,10 @@
     "startFreeTrial": "Kostenlose Testversion starten",
     "getStarted": "Jetzt starten",
     "contactSales": "Vertrieb kontaktieren",
-    "learnMore": "Mehr erfahren"
+    "learnMore": "Mehr erfahren",
+    "languageUnavailable": "{name} ist nicht mehr verfügbar",
+    "switchedTo": "auf {name} gewechselt",
+    "selectLanguage": "Sprache wählen"
   },
   "nav": {
     "brand": "Aster Cloud"

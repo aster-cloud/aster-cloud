@@ -22,6 +22,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm exec tsc --noEmit
+      - name: Verify message catalog parity (en backbone)
+        run: pnpm run check:locales:strict
       - run: pnpm test:run
       # 仅在 coverage provider 已安装时跑（可选，不阻塞 CI）
       - name: Coverage (optional)

@@ -5,7 +5,10 @@
     "startFreeTrial": "Start Free Trial",
     "getStarted": "Get Started",
     "contactSales": "Contact Sales",
-    "learnMore": "Learn More"
+    "learnMore": "Learn More",
+    "languageUnavailable": "{name} is no longer available",
+    "switchedTo": "switched to {name}",
+    "selectLanguage": "Select language"
   },
   "nav": {
     "brand": "Aster Cloud"
