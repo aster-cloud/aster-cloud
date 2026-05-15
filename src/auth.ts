@@ -14,6 +14,7 @@ import { getDb, users } from '@/lib/prisma';
 import { DrizzleAdapter } from '@/db/adapter';
 import { sendWelcomeEmail } from '@/lib/resend';
 import { checkAccountLockout, recordFailedAttempt, resetFailedAttempts } from '@/lib/account-lockout';
+import { markDenial } from '@/lib/auth-denial';
 import type { NextAuthConfig } from 'next-auth';
 
 // Password utilities
@@ -200,6 +201,10 @@ const config: NextAuthConfig = {
               return true;
             }
             // 已过 grace 或异常状态 → 拒绝（authorize 应该没让密码通过，但兜底）
+            await markDenial('account_deleted', {
+              email: row.email ?? user.email,
+              provider: 'credentials',
+            });
             return false;
           }
         }
@@ -229,6 +234,10 @@ const config: NextAuthConfig = {
               console.warn(`[auth] reactivated tombstoned user via OAuth: ${owner.id}`);
               return true;
             }
+            await markDenial('account_deleted', {
+              email: owner.email ?? user.email,
+              provider: account.provider,
+            });
             return false;
           }
           return true;
@@ -264,6 +273,11 @@ const config: NextAuthConfig = {
 
           if (isDisposableEmail(user.email)) {
             await recordSignupAttempt(clientIp, false);
+            await markDenial('disposable_email', {
+              email: user.email,
+              ip: clientIp,
+              provider: account.provider,
+            });
             return false;
           }
 
@@ -293,6 +307,11 @@ const config: NextAuthConfig = {
           const allowed = await checkSignupRateLimit(clientIp);
           if (!allowed) {
             await recordSignupAttempt(clientIp, false);
+            await markDenial('signup_rate_limit', {
+              email: user.email,
+              ip: clientIp,
+              provider: account.provider,
+            });
             return false;
           }
 

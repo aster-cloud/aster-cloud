@@ -214,7 +214,15 @@
         "captchaFailed": "CAPTCHA verification failed. Please try again.",
         "verificationFailed": "Verification failed",
         "invalidCredentials": "Invalid email or password",
-        "invalidCredentialsWithAttempts": "Invalid email or password. {attempts} attempts remaining."
+        "invalidCredentialsWithAttempts": "Invalid email or password. {attempts} attempts remaining.",
+        "accessDenied": {
+          "signup_rate_limit": "Too many sign-up attempts from your network in the last 24 hours. Please try again later, or contact support if you believe this is an error.",
+          "disposable_email": "Sign-up with disposable or temporary email providers is not supported. Please use a permanent email address.",
+          "account_deleted": "This account has been permanently deleted and cannot be restored. Please sign up for a new account.",
+          "oauth_link_blocked": "Could not link this provider to your account. Please sign in with the original method you used to register.",
+          "unknown": "Access was denied. If this continues, please contact support."
+        },
+        "refSupport": "Reference: {ref}"
       }
     },
     "forgotPassword": {

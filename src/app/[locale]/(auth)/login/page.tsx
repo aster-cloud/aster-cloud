@@ -1,9 +1,29 @@
 import { getTranslations } from 'next-intl/server';
 import { LoginContent } from './login-content';
+import { readAndClearDenial, type DenialReason } from '@/lib/auth-denial';
+
+const KNOWN_REASONS: DenialReason[] = [
+  'signup_rate_limit',
+  'disposable_email',
+  'account_deleted',
+  'oauth_link_blocked',
+  'unknown',
+];
 
 export default async function LoginPage() {
   const t = await getTranslations('auth.login');
   const tNav = await getTranslations('nav');
+
+  // 一次性消费 markDenial() 设的 cookie；若存在则把 reason+ref 传给客户端
+  const denial = await readAndClearDenial();
+  const denialReason: DenialReason | null =
+    denial && KNOWN_REASONS.includes(denial.reason) ? denial.reason : null;
+  const denialMessage = denialReason
+    ? (t.raw(`errors.accessDenied.${denialReason}`) as string)
+    : null;
+  const refSupportTemplate = denial?.ref
+    ? (t.raw('errors.refSupport') as string)
+    : null;
 
   // 预渲染所有翻译字符串
   const translations = {
@@ -31,5 +51,19 @@ export default async function LoginPage() {
   // 获取 Turnstile Site Key（服务端安全传递）
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
 
-  return <LoginContent translations={translations} turnstileSiteKey={turnstileSiteKey} />;
+  return (
+    <LoginContent
+      translations={translations}
+      turnstileSiteKey={turnstileSiteKey}
+      denial={
+        denialMessage
+          ? {
+              message: denialMessage,
+              ref: denial?.ref ?? null,
+              refTemplate: refSupportTemplate,
+            }
+          : null
+      }
+    />
+  );
 }

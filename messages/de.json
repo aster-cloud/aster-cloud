@@ -214,7 +214,15 @@
         "captchaFailed": "CAPTCHA-Verifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
         "verificationFailed": "Verifizierung fehlgeschlagen",
         "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort",
-        "invalidCredentialsWithAttempts": "Ungültige E-Mail-Adresse oder Passwort. {attempts} Versuche verbleiben."
+        "invalidCredentialsWithAttempts": "Ungültige E-Mail-Adresse oder Passwort. {attempts} Versuche verbleiben.",
+        "accessDenied": {
+          "signup_rate_limit": "Zu viele Registrierungsversuche von Ihrem Netzwerk in den letzten 24 Stunden. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support.",
+          "disposable_email": "Registrierung mit Einweg- oder temporären E-Mail-Anbietern wird nicht unterstützt. Bitte verwenden Sie eine dauerhafte E-Mail-Adresse.",
+          "account_deleted": "Dieses Konto wurde dauerhaft gelöscht und kann nicht wiederhergestellt werden. Bitte registrieren Sie sich für ein neues Konto.",
+          "oauth_link_blocked": "Dieser Anbieter konnte nicht mit Ihrem Konto verknüpft werden. Bitte melden Sie sich mit der ursprünglichen Methode an.",
+          "unknown": "Zugriff verweigert. Wenn dieses Problem weiterhin besteht, kontaktieren Sie bitte den Support."
+        },
+        "refSupport": "Referenz: {ref}"
       }
     },
     "forgotPassword": {

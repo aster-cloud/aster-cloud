@@ -30,12 +30,27 @@ interface Translations {
   };
 }
 
+/**
+ * 来自 server 的拒绝信息（由 markDenial → readAndClearDenial cookie 传递）。
+ * 优先级高于 ?error= URL 参数：URL 是 NextAuth 自动加的泛化错误，
+ * cookie 里才是 signIn callback 的具体拒绝原因 + 排查 ref。
+ */
+interface DenialInfo {
+  /** 已本地化的错误正文 */
+  message: string;
+  /** 关联 ID（同时打到 server 日志），可空 */
+  ref: string | null;
+  /** 形如 "Reference: {ref}" 的模板，可空 */
+  refTemplate: string | null;
+}
+
 interface LoginContentProps {
   translations: Translations;
   turnstileSiteKey?: string;
+  denial?: DenialInfo | null;
 }
 
-function LoginForm({ translations: t, turnstileSiteKey }: LoginContentProps) {
+function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentProps) {
   const locale = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -150,11 +165,16 @@ function LoginForm({ translations: t, turnstileSiteKey }: LoginContentProps) {
           </p>
         </div>
 
-        {(error || errorParam) && (
+        {(error || denial || errorParam) && (
           <div className="rounded-md bg-red-50 p-4">
             <p className="text-sm text-red-700">
-              {error || t.errors.generic}
+              {error || denial?.message || t.errors.generic}
             </p>
+            {denial?.ref && denial?.refTemplate && (
+              <p className="mt-1 text-xs text-red-600 font-mono">
+                {denial.refTemplate.replace('{ref}', denial.ref)}
+              </p>
+            )}
           </div>
         )}
 
@@ -290,10 +310,10 @@ function LoginForm({ translations: t, turnstileSiteKey }: LoginContentProps) {
   );
 }
 
-export function LoginContent({ translations, turnstileSiteKey }: LoginContentProps) {
+export function LoginContent({ translations, turnstileSiteKey, denial }: LoginContentProps) {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-      <LoginForm translations={translations} turnstileSiteKey={turnstileSiteKey} />
+      <LoginForm translations={translations} turnstileSiteKey={turnstileSiteKey} denial={denial} />
     </Suspense>
   );
 }
