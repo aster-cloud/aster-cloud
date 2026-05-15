@@ -72,7 +72,7 @@ function DroppableGroupItem({
     <div
       ref={setNodeRef}
       className={`transition-colors ${
-        isDragging && isOver ? 'ring-2 ring-indigo-500 ring-inset rounded-md' : ''
+        isDragging && isOver ? 'ring-2 ring-primary ring-inset rounded-md' : ''
       }`}
     >
       {children(isOver)}
@@ -126,9 +126,9 @@ export function PolicyGroupTree({
             <div
               className={`group flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors ${
                 isDragging && isOver
-                  ? 'bg-indigo-100 text-indigo-800'
+                  ? 'bg-primary-subtle text-primary-hover'
                   : isSelected
-                  ? 'bg-indigo-100 text-indigo-800'
+                  ? 'bg-primary-subtle text-primary-hover'
                   : 'text-gray-700 hover:bg-gray-100'
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -150,7 +150,7 @@ export function PolicyGroupTree({
 
           {/* Folder Icon */}
           {isExpanded && hasChildren ? (
-            <FolderOpen className="w-4 h-4 mr-2 text-indigo-500" />
+            <FolderOpen className="w-4 h-4 mr-2 text-primary" />
           ) : (
             <Folder className="w-4 h-4 mr-2 text-gray-400" />
           )}
@@ -256,7 +256,7 @@ export function PolicyGroupTree({
         <div
           className={`flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors mb-1 ${
             selectedGroupId === null
-              ? 'bg-indigo-100 text-indigo-800'
+              ? 'bg-primary-subtle text-primary-hover'
               : 'text-gray-700 hover:bg-gray-100'
           }`}
           onClick={() => onSelectGroup(null)}
@@ -272,9 +272,9 @@ export function PolicyGroupTree({
             <div
               className={`flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors mb-2 ${
                 isDragging && isOver
-                  ? 'bg-indigo-100 text-indigo-800'
+                  ? 'bg-primary-subtle text-primary-hover'
                   : selectedGroupId === 'ungrouped'
-                  ? 'bg-indigo-100 text-indigo-800'
+                  ? 'bg-primary-subtle text-primary-hover'
                   : 'text-gray-700 hover:bg-gray-100'
               }`}
               onClick={() => onSelectGroup('ungrouped')}

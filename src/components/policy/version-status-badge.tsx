@@ -67,7 +67,7 @@ export function VersionStatusBadge({
       </span>
       {isDefault && (
         <span
-          className={`inline-flex items-center rounded-full font-medium ${sizeClasses} bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200`}
+          className={`inline-flex items-center rounded-full font-medium ${sizeClasses} bg-primary-subtle dark:bg-primary-active text-primary-hover dark:text-primary-fg`}
         >
           默认
         </span>

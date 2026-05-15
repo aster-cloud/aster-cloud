@@ -208,7 +208,7 @@ export function AIAssistantPanel({
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
         <div className="flex items-center gap-2">
-          <svg className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
           </svg>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -237,7 +237,7 @@ export function AIAssistantPanel({
           placeholder={t('promptPlaceholder')}
           rows={3}
           disabled={streaming}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none disabled:opacity-50"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none resize-none disabled:opacity-50"
         />
         <div className="mt-2 flex items-center justify-between">
           <span className="text-xs text-gray-400">
@@ -272,7 +272,7 @@ export function AIAssistantPanel({
                   type="button"
                   onClick={handleGenerate}
                   disabled={!prompt.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
@@ -291,11 +291,11 @@ export function AIAssistantPanel({
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
             {/* 状态指示 */}
             {streaming && (
-              <div className="flex items-center gap-2 mb-2 text-xs text-indigo-600 dark:text-indigo-400">
+              <div className="flex items-center gap-2 mb-2 text-xs text-primary dark:text-primary">
                 <div className="flex gap-0.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0ms]" />
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:150ms]" />
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:300ms]" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
                 </div>
                 {repairProgress
                   ? `${t('repairing')} (${repairProgress})`
@@ -307,7 +307,7 @@ export function AIAssistantPanel({
             {/* 代码预览 */}
             <pre className="text-xs font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words max-h-64 overflow-auto">
               {content}
-              {streaming && <span className="inline-block w-1.5 h-4 bg-indigo-500 animate-pulse ml-0.5" />}
+              {streaming && <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5" />}
             </pre>
           </div>
 
@@ -358,7 +358,7 @@ export function AIAssistantPanel({
                 <button
                   type="button"
                   onClick={handleShowDiff}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
@@ -369,7 +369,7 @@ export function AIAssistantPanel({
                 <button
                   type="button"
                   onClick={handleApply}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />

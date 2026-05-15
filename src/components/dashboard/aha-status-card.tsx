@@ -88,7 +88,7 @@ export function AhaStatusCard({ locale }: { locale: string }) {
         </p>
         <Link
           href={`/${locale}/policies/new`}
-          className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          className="mt-2 inline-block text-sm font-medium text-primary hover:text-primary-hover"
         >
           Create policy →
         </Link>
@@ -103,25 +103,25 @@ export function AhaStatusCard({ locale }: { locale: string }) {
   );
 
   return (
-    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wider text-indigo-700">
+    <div className="rounded-lg border border-primary/30 bg-primary-subtle p-4 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wider text-primary-hover">
         AHA Moment Challenge
       </p>
-      <p className="mt-1 text-sm font-medium text-indigo-900">
+      <p className="mt-1 text-sm font-medium text-primary-active">
         Publish your first policy within {data.ahaWindowHours}h of signup
       </p>
-      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-indigo-100">
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-primary-subtle">
         <div
-          className="h-full bg-indigo-600 transition-all"
+          className="h-full bg-primary transition-all"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-indigo-700">
+      <p className="mt-2 text-xs text-primary-hover">
         ⏰ {data.hoursRemaining.toFixed(1)}h remaining
       </p>
       <Link
         href={`/${locale}/policies/new`}
-        className="mt-3 inline-block rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+        className="mt-3 inline-block rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
       >
         Create policy →
       </Link>

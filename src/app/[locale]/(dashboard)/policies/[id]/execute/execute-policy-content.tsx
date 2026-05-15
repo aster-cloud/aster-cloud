@@ -300,7 +300,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             id={id}
             value={String(value ?? enumVariants[0])}
             onChange={(e) => updateFormField(paramName, fieldName, e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           >
             {enumVariants.map((variant) => (
               <option key={variant} value={variant}>{variant}</option>
@@ -319,7 +319,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             id={id}
             checked={Boolean(value)}
             onChange={(e) => updateFormField(paramName, fieldName, e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20 cursor-pointer transition-colors"
+            className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors"
           />
           <label htmlFor={id} className="text-sm font-medium text-gray-700 cursor-pointer">
             {label}
@@ -340,7 +340,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             id={id}
             value={value as number ?? 0}
             onChange={(e) => updateFormField(paramName, fieldName, parseInt(e.target.value, 10) || 0)}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           />
         </div>
       );
@@ -358,7 +358,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             id={id}
             value={value as number ?? 0}
             onChange={(e) => updateFormField(paramName, fieldName, parseFloat(e.target.value) || 0)}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           />
         </div>
       );
@@ -375,7 +375,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
           id={id}
           value={String(value ?? '')}
           onChange={(e) => updateFormField(paramName, fieldName, e.target.value)}
-          className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+          className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
         />
       </div>
     );
@@ -390,7 +390,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       return (
         <div key={param.name} className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-4">
           <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center">
-            <span className="w-2 h-2 bg-indigo-500 rounded-full mr-2" />
+            <span className="w-2 h-2 bg-primary rounded-full mr-2" />
             {param.name}
             <span className="ml-2 text-xs font-normal text-gray-400 bg-white px-2 py-0.5 rounded border border-gray-200">
               {param.type}
@@ -474,7 +474,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                 {inputMode === 'form' && schema?.parameters && (
                   <button
                     onClick={regenerateSampleData}
-                    className="text-xs text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
+                    className="text-xs text-primary hover:text-primary font-medium flex items-center gap-1"
                     title={t('generateSampleData')}
                   >
                     <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -486,7 +486,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                 {inputMode === 'json' && (
                   <button
                     onClick={regenerateSampleData}
-                    className="text-xs text-indigo-600 hover:text-indigo-500 font-medium flex items-center gap-1"
+                    className="text-xs text-primary hover:text-primary font-medium flex items-center gap-1"
                     title={t('generateSampleData')}
                   >
                     <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -553,7 +553,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 rows={12}
-                className="block w-full rounded-lg border border-gray-300 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                className="block w-full rounded-lg border border-gray-300 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                 placeholder={t('inputPlaceholder')}
               />
             )}
@@ -561,7 +561,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             <button
               onClick={handleExecute}
               disabled={isLoading}
-              className="mt-4 w-full inline-flex justify-center items-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-4 w-full inline-flex justify-center items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-primary-hover focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>

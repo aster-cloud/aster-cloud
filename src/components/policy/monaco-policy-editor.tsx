@@ -583,7 +583,7 @@ export function MonacoPolicyEditor({
             type="button"
             onClick={() => setShowProblems(prev => !prev)}
             aria-expanded={showProblems}
-            className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+            className="text-xs font-medium text-primary hover:text-primary"
           >
             {showProblems ? t('hideProblems') : t('viewProblems')}
           </button>

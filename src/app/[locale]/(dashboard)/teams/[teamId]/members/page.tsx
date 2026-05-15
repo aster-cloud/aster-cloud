@@ -245,7 +245,7 @@ export default function TeamMembersPage() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-accent-subtle text-accent-hover';
       case 'admin':
         return 'bg-blue-100 text-blue-800';
       case 'member':
@@ -270,7 +270,7 @@ export default function TeamMembersPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -279,7 +279,7 @@ export default function TeamMembersPage() {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">{error || t('teamNotFound')}</p>
-        <Link href={`/${locale}/teams`} className="mt-4 text-indigo-600 hover:text-indigo-700">
+        <Link href={`/${locale}/teams`} className="mt-4 text-primary hover:text-primary-hover">
           {t('backToTeams')}
         </Link>
       </div>
@@ -310,7 +310,7 @@ export default function TeamMembersPage() {
           <div className="mt-4 sm:mt-0">
             <button
               onClick={() => setShowInviteForm(true)}
-              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+              className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
             >
               <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -350,7 +350,7 @@ export default function TeamMembersPage() {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('members.emailPlaceholder')}
                 />
               </div>
@@ -362,7 +362,7 @@ export default function TeamMembersPage() {
                   id="role"
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as TeamRole)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                 >
                   {getAvailableRoles().map((role) => (
                     <option key={role} value={role}>
@@ -382,7 +382,7 @@ export default function TeamMembersPage() {
                 <button
                   type="submit"
                   disabled={isInviting}
-                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
                 >
                   {isInviting ? t('members.sending') : t('members.sendInvite')}
                 </button>
@@ -442,8 +442,8 @@ export default function TeamMembersPage() {
               <li key={member.id} className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <span className="text-indigo-600 font-medium">
+                    <div className="w-10 h-10 rounded-full bg-primary-subtle flex items-center justify-center">
+                      <span className="text-primary font-medium">
                         {(member.user.name || member.user.email).charAt(0).toUpperCase()}
                       </span>
                     </div>
@@ -470,7 +470,7 @@ export default function TeamMembersPage() {
                       <select
                         value={member.role}
                         onChange={(e) => handleRoleChange(member.id, e.target.value as TeamRole)}
-                        className="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        className="rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
                       >
                         {getAvailableRoles().map((role) => (
                           <option key={role} value={role}>{t(`roles.${role}`)}</option>
@@ -507,7 +507,7 @@ export default function TeamMembersPage() {
               <button
                 onClick={loadMoreMembers}
                 disabled={isLoadingMore}
-                className="w-full text-center text-sm text-indigo-600 hover:text-indigo-800 disabled:text-gray-400"
+                className="w-full text-center text-sm text-primary hover:text-primary-hover disabled:text-gray-400"
               >
                 {isLoadingMore ? t('members.loadingMore') : t('members.loadMore')}
               </button>

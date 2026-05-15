@@ -97,7 +97,7 @@ function SyntaxCard({ item, locale, compact = false }: SyntaxCardProps) {
         className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+          <span className="text-xs font-mono text-primary bg-primary-subtle px-1.5 py-0.5 rounded">
             {item.keywords[locale][0]}
           </span>
           {!compact && (
@@ -232,7 +232,7 @@ export function CNLSyntaxReferencePanel({
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors rounded-t-lg"
       >
         <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
           <span className="font-medium text-gray-900">{titles[ui]}</span>
@@ -270,7 +270,7 @@ export function CNLSyntaxReferencePanel({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={searchPlaceholders[ui]}
-                className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
               {searchQuery && (
                 <button
@@ -293,7 +293,7 @@ export function CNLSyntaxReferencePanel({
                   onClick={() => setSelectedCategory('all')}
                   className={`text-xs px-2 py-1 rounded-full transition-colors ${
                     selectedCategory === 'all'
-                      ? 'bg-indigo-100 text-indigo-700'
+                      ? 'bg-primary-subtle text-primary-hover'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -306,7 +306,7 @@ export function CNLSyntaxReferencePanel({
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`text-xs px-2 py-1 rounded-full transition-colors flex items-center gap-1 ${
                       selectedCategory === cat.id
-                        ? 'bg-indigo-100 text-indigo-700'
+                        ? 'bg-primary-subtle text-primary-hover'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -379,7 +379,7 @@ export function CNLSyntaxHint({ locale }: CNLSyntaxHintProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-primary hover:bg-primary-subtle rounded transition-colors"
         title={locale === 'zh-CN' ? '语法提示' : locale === 'de-DE' ? 'Syntax-Tipps' : 'Syntax hints'}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -393,7 +393,7 @@ export function CNLSyntaxHint({ locale }: CNLSyntaxHintProps) {
           <div className="p-2 space-y-1">
             {quickHints.map((hint, idx) => (
               <div key={idx} className="flex items-start gap-2 p-1.5 rounded hover:bg-gray-50">
-                <code className="text-xs text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded flex-shrink-0">
+                <code className="text-xs text-primary bg-primary-subtle px-1 py-0.5 rounded flex-shrink-0">
                   {hint.keyword}
                 </code>
                 <span className="text-xs text-gray-600 line-clamp-2">{hint.description}</span>
@@ -404,7 +404,7 @@ export function CNLSyntaxHint({ locale }: CNLSyntaxHintProps) {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="w-full text-xs text-center text-indigo-600 hover:text-indigo-700"
+              className="w-full text-xs text-center text-primary hover:text-primary-hover"
             >
               {locale === 'zh-CN' ? '查看完整参考' : locale === 'de-DE' ? 'Vollstaendige Referenz' : 'View full reference'}
             </button>

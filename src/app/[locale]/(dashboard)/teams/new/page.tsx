@@ -110,7 +110,7 @@ export default function NewTeamPage() {
               maxLength={50}
               value={formData.name}
               onChange={handleNameChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
               placeholder={t('createTeam.namePlaceholder')}
             />
             <p className="mt-1 text-xs text-gray-500">{t('createTeam.nameHint')}</p>
@@ -134,7 +134,7 @@ export default function NewTeamPage() {
                 pattern="[a-z0-9-]+"
                 value={formData.slug}
                 onChange={handleSlugChange}
-                className="block w-full flex-1 rounded-none rounded-r-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="block w-full flex-1 rounded-none rounded-r-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm"
                 placeholder={t('createTeam.slugPlaceholder')}
               />
             </div>
@@ -151,7 +151,7 @@ export default function NewTeamPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>

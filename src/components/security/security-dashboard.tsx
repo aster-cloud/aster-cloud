@@ -156,7 +156,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
         <p className="text-red-500 dark:text-red-400">{error}</p>
         <button
           onClick={fetchData}
-          className="mt-4 text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="mt-4 text-primary dark:text-primary hover:underline"
         >
           重试
         </button>
@@ -180,7 +180,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
                 onClick={() => setTimeRange(range)}
                 className={`px-3 py-1 text-sm font-medium first:rounded-l-md last:rounded-r-md border ${
                   timeRange === range
-                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    ? 'bg-primary text-white border-primary'
                     : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -327,7 +327,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
                     {/* Event Details */}
                     {Object.keys(event.details).length > 0 && (
                       <details className="mt-2">
-                        <summary className="text-xs text-indigo-600 dark:text-indigo-400 cursor-pointer">
+                        <summary className="text-xs text-primary dark:text-primary cursor-pointer">
                           查看详情
                         </summary>
                         <pre className="mt-1 text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto">

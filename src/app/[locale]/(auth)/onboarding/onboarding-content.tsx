@@ -68,7 +68,7 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
       <div className="max-w-lg w-full space-y-8">
         <div>
           <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">{t.brand}</span>
+            <span className="text-3xl font-bold text-primary">{t.brand}</span>
           </Link>
           <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">
             {t.welcome}
@@ -80,7 +80,7 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
               <div
                 key={s}
                 className={`h-2 w-16 rounded-full ${
-                  s <= step ? 'bg-indigo-600' : 'bg-gray-200'
+                  s <= step ? 'bg-primary' : 'bg-gray-200'
                 }`}
               />
             ))}
@@ -99,7 +99,7 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
                   onClick={() => setSelectedUseCase(id)}
                   className={`flex items-center p-4 rounded-lg border-2 transition-colors ${
                     selectedUseCase === id
-                      ? 'border-indigo-600 bg-indigo-50'
+                      ? 'border-primary bg-primary-subtle'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -113,7 +113,7 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
               type="button"
               onClick={() => setStep(2)}
               disabled={!selectedUseCase}
-              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t.continue}
             </button>
@@ -134,14 +134,14 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
                   onClick={() => toggleGoal(id)}
                   className={`flex items-center w-full p-4 rounded-lg border-2 transition-colors ${
                     selectedGoals.includes(id)
-                      ? 'border-indigo-600 bg-indigo-50'
+                      ? 'border-primary bg-primary-subtle'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <div
                     className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
                       selectedGoals.includes(id)
-                        ? 'bg-indigo-600 border-indigo-600'
+                        ? 'bg-primary border-primary'
                         : 'border-gray-300'
                     }`}
                   >
@@ -168,7 +168,7 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
                 type="button"
                 onClick={handleComplete}
                 disabled={selectedGoals.length === 0 || isLoading}
-                className="flex-1 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? t.starting : t.getStarted}
               </button>
@@ -177,7 +177,7 @@ export function OnboardingContent({ translations: t }: OnboardingContentProps) {
         )}
 
         <p className="text-center text-sm text-gray-500">
-          <Link href="/dashboard" className="text-indigo-600 hover:text-indigo-500">
+          <Link href="/dashboard" className="text-primary hover:text-primary">
             {t.skipForNow}
           </Link>
         </p>

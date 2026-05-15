@@ -64,7 +64,7 @@ export default async function DashboardLayout({
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link href="/dashboard" className="flex items-center">
-                <span className="text-xl font-bold text-indigo-600">{tNav('brand')}</span>
+                <span className="text-xl font-bold text-primary">{tNav('brand')}</span>
               </Link>
               {/* Desktop nav and Mobile menu (hamburger + mobile nav drawer) */}
               <DashboardNavClient

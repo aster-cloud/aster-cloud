@@ -110,7 +110,7 @@ export function PolicyGroupDialog({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
             <div className="flex items-center">
-              <Folder className="w-5 h-5 text-indigo-600 mr-2" />
+              <Folder className="w-5 h-5 text-primary mr-2" />
               <h3 className="text-lg font-semibold text-gray-900">
                 {mode === 'create' ? t.createTitle : t.editTitle}
               </h3>
@@ -174,7 +174,7 @@ export function PolicyGroupDialog({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t.namePlaceholder}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     autoFocus
                   />
                 </div>
@@ -190,7 +190,7 @@ export function PolicyGroupDialog({
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t.descriptionPlaceholder}
                     rows={3}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
               </div>
@@ -220,7 +220,7 @@ export function PolicyGroupDialog({
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                  className="px-3 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-hover disabled:opacity-50"
                   disabled={saving}
                 >
                   {saving ? t.saving : t.save}

@@ -125,7 +125,7 @@ export function PolicyDetailContent({
         <div className="mt-4 md:mt-0 flex space-x-3">
           <Link
             href={`/${locale}/policies/${policy.id}/execute`}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
           >
             {t.executeAction}
           </Link>
@@ -156,7 +156,7 @@ export function PolicyDetailContent({
         >
           <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.executions}</dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900">{policy._count.executions}</dd>
-          <p className="mt-1 text-xs text-indigo-600">{t.detail.viewLogs} →</p>
+          <p className="mt-1 text-xs text-primary">{t.detail.viewLogs} →</p>
         </Link>
         <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
           <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.piiFields}</dt>

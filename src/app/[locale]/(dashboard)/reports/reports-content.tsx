@@ -191,7 +191,7 @@ export function ReportsContent({
                 disabled={isGenerating}
                 className={`p-4 rounded-lg border-2 text-left transition-colors ${
                   selectedType === id
-                    ? 'border-indigo-600 bg-indigo-50'
+                    ? 'border-primary bg-primary-subtle'
                     : 'border-gray-200 hover:border-gray-300'
                 } disabled:opacity-50`}
               >
@@ -206,7 +206,7 @@ export function ReportsContent({
               <button
                 onClick={() => generateReport(selectedType)}
                 disabled={isGenerating}
-                className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover disabled:opacity-50"
               >
                 {isGenerating ? (
                   <>
@@ -278,7 +278,7 @@ export function ReportsContent({
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <span className="text-sm font-medium text-indigo-600">
+                        <span className="text-sm font-medium text-primary">
                           {report.title}
                         </span>
                         <span className="ml-2">{getStatusBadge(report.status)}</span>

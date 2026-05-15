@@ -110,7 +110,7 @@ export default function TeamPoliciesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -119,7 +119,7 @@ export default function TeamPoliciesPage() {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">{error || t('teamNotFound')}</p>
-        <Link href="/teams" className="mt-4 text-indigo-600 hover:text-indigo-700">
+        <Link href="/teams" className="mt-4 text-primary hover:text-primary-hover">
           {t('backToTeams')}
         </Link>
       </div>
@@ -150,7 +150,7 @@ export default function TeamPoliciesPage() {
           <div className="mt-4 sm:mt-0">
             <button
               onClick={() => setShowCreateForm(true)}
-              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+              className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
             >
               <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -191,7 +191,7 @@ export default function TeamPoliciesPage() {
                   required
                   value={newPolicy.name}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, name: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('policies.namePlaceholder')}
                 />
               </div>
@@ -205,7 +205,7 @@ export default function TeamPoliciesPage() {
                   name="description"
                   value={newPolicy.description}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, description: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('policies.descriptionPlaceholder')}
                 />
               </div>
@@ -220,7 +220,7 @@ export default function TeamPoliciesPage() {
                   rows={10}
                   value={newPolicy.content}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, content: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm font-mono"
                   placeholder={t('policies.contentPlaceholder')}
                 />
               </div>
@@ -235,7 +235,7 @@ export default function TeamPoliciesPage() {
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
                 >
                   {isCreating ? t('creating') : t('policies.create')}
                 </button>
@@ -267,7 +267,7 @@ export default function TeamPoliciesPage() {
             <div className="mt-6">
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+                className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
               >
                 <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -286,7 +286,7 @@ export default function TeamPoliciesPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <Link href={`/policies/${policy.id}`} className="block">
-                        <p className="text-sm font-medium text-indigo-600 truncate hover:underline">
+                        <p className="text-sm font-medium text-primary truncate hover:underline">
                           {policy.name}
                         </p>
                         {policy.description && (
@@ -328,7 +328,7 @@ export default function TeamPoliciesPage() {
                     <div className="flex items-center space-x-2">
                       <Link
                         href={`/policies/${policy.id}/execute`}
-                        className="text-indigo-600 hover:text-indigo-900 text-sm"
+                        className="text-primary hover:text-primary-active text-sm"
                       >
                         {tPolicies('executeAction')}
                       </Link>

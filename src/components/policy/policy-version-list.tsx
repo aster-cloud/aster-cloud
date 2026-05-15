@@ -276,7 +276,7 @@ export function PolicyVersionList({
                 {version.status === 'DRAFT' && onSubmitForApproval && (
                   <button
                     onClick={() => openActionDialog('submit', version)}
-                    className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md"
+                    className="text-sm bg-primary hover:bg-primary-hover text-white px-3 py-1.5 rounded-md"
                   >
                     提交审批
                   </button>
@@ -308,7 +308,7 @@ export function PolicyVersionList({
                 {version.status === 'APPROVED' && !version.isDefault && onSetDefault && (
                   <button
                     onClick={() => openActionDialog('set-default', version)}
-                    className="text-sm bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800 px-3 py-1.5 rounded-md"
+                    className="text-sm bg-primary-subtle dark:bg-primary-active text-primary-hover dark:text-primary-fg hover:bg-primary-subtle dark:hover:bg-primary-hover px-3 py-1.5 rounded-md"
                   >
                     设为默认
                   </button>

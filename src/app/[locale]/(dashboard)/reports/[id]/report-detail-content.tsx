@@ -156,7 +156,7 @@ export function ReportDetailContent({
     return (
       <div className="text-center py-12">
         <p className="text-red-600">{t.detail.reportNotFound}</p>
-        <Link href="/reports" className="mt-4 text-indigo-600 hover:underline">
+        <Link href="/reports" className="mt-4 text-primary hover:underline">
           {t.detail.backToReports}
         </Link>
       </div>
@@ -299,7 +299,7 @@ export function ReportDetailContent({
                 <ul className="space-y-2">
                   {report.data.recommendations.map((rec, index) => (
                     <li key={index} className="flex items-start">
-                      <svg className="h-5 w-5 text-indigo-500 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                      <svg className="h-5 w-5 text-primary mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
                       </svg>
                       <span className="text-sm text-gray-700">{rec}</span>
@@ -320,7 +320,7 @@ export function ReportDetailContent({
                     <li key={policy.id} className="py-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <Link href={`/policies/${policy.id}`} className="text-sm font-medium text-indigo-600 hover:underline">
+                          <Link href={`/policies/${policy.id}`} className="text-sm font-medium text-primary hover:underline">
                             {policy.name}
                           </Link>
                           {policy.piiFields.length > 0 && (

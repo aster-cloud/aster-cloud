@@ -223,7 +223,7 @@ function BillingContentInner({
                 <div className="mt-1 flex items-center gap-1">
                   <div className="h-2 flex-1 bg-gray-200 rounded-full">
                     <div
-                      className="h-2 bg-indigo-600 rounded-full"
+                      className="h-2 bg-primary rounded-full"
                       style={{
                         width: isUnlimited(usage.executionsLimit)
                           ? '100%'
@@ -242,7 +242,7 @@ function BillingContentInner({
                 <div className="mt-1 flex items-center gap-1">
                   <div className="h-2 flex-1 bg-gray-200 rounded-full">
                     <div
-                      className="h-2 bg-indigo-600 rounded-full"
+                      className="h-2 bg-primary rounded-full"
                       style={{
                         width: usage.apiCallsLimit === 0
                           ? '0%'
@@ -263,7 +263,7 @@ function BillingContentInner({
                 <div className="mt-1 flex items-center gap-1">
                   <div className="h-2 flex-1 bg-gray-200 rounded-full">
                     <div
-                      className="h-2 bg-indigo-600 rounded-full"
+                      className="h-2 bg-primary rounded-full"
                       style={{
                         width: isUnlimited(usage.policiesLimit)
                           ? '100%'
@@ -313,7 +313,7 @@ function BillingContentInner({
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
           >
             {AVAILABLE_CURRENCIES.map((curr) => (
               <option key={curr} value={curr}>
@@ -343,11 +343,11 @@ function BillingContentInner({
             <div
               key={planKey}
               className={`rounded-2xl bg-white p-8 flex flex-col ${
-                isFeatured ? 'border-2 border-indigo-600 shadow-xl relative' : 'border border-gray-200'
+                isFeatured ? 'border-2 border-primary shadow-xl relative' : 'border border-gray-200'
               }`}
             >
               {isFeatured && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-semibold px-3 py-1 rounded-full">
                   {t.mostPopular}
                 </span>
               )}
@@ -399,7 +399,7 @@ function BillingContentInner({
                     disabled={isLoading !== null}
                     className={`w-full rounded-md px-4 py-2 text-sm font-semibold shadow-sm ${
                       planKey === 'pro'
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        ? 'bg-primary text-white hover:bg-primary-hover'
                         : 'bg-gray-900 text-white hover:bg-gray-800'
                     } disabled:opacity-50`}
                   >

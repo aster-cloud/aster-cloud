@@ -101,7 +101,7 @@ export default function TeamDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export default function TeamDashboardPage() {
         </div>
         <Link
           href="/teams"
-          className="mt-4 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
+          className="mt-4 inline-flex items-center text-sm text-primary hover:text-primary-hover"
         >
           <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -213,8 +213,8 @@ export default function TeamDashboardPage() {
             className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
           >
             <div className="flex items-center">
-              <div className="flex-shrink-0 p-3 bg-purple-100 rounded-lg">
-                <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex-shrink-0 p-3 bg-accent-subtle rounded-lg">
+                <svg className="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -234,7 +234,7 @@ export default function TeamDashboardPage() {
           <h2 className="text-lg font-medium text-gray-900">{t('dashboard.recentMembers')}</h2>
           <Link
             href={`/teams/${teamId}/members`}
-            className="text-sm text-indigo-600 hover:text-indigo-700"
+            className="text-sm text-primary hover:text-primary-hover"
           >
             {t('viewAll')}
           </Link>
@@ -244,8 +244,8 @@ export default function TeamDashboardPage() {
             {members.slice(0, 5).map((member) => (
               <li key={member.id} className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-indigo-600 text-sm font-medium">
+                  <div className="w-8 h-8 rounded-full bg-primary-subtle flex items-center justify-center">
+                    <span className="text-primary text-sm font-medium">
                       {(member.user.name || member.user.email).charAt(0).toUpperCase()}
                     </span>
                   </div>
@@ -274,7 +274,7 @@ export default function TeamDashboardPage() {
             <h2 className="text-lg font-medium text-gray-900">{t('dashboard.recentPolicies')}</h2>
             <Link
               href={`/teams/${teamId}/policies`}
-              className="text-sm text-indigo-600 hover:text-indigo-700"
+              className="text-sm text-primary hover:text-primary-hover"
             >
               {t('viewAll')}
             </Link>
@@ -285,7 +285,7 @@ export default function TeamDashboardPage() {
                 <li key={policy.id} className="px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-indigo-600">{policy.name}</p>
+                      <p className="text-sm font-medium text-primary">{policy.name}</p>
                       {policy.description && (
                         <p className="text-xs text-gray-500 truncate max-w-md">{policy.description}</p>
                       )}

@@ -63,7 +63,7 @@ export default function AcceptInvitePage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -96,7 +96,7 @@ export default function AcceptInvitePage() {
           <div className="mt-6">
             <Link
               href="/teams"
-              className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
             >
               {t('backToTeams')}
             </Link>
@@ -109,9 +109,9 @@ export default function AcceptInvitePage() {
   return (
     <div className="max-w-md mx-auto mt-12">
       <div className="bg-white shadow rounded-lg p-6 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-subtle">
           <svg
-            className="h-6 w-6 text-indigo-600"
+            className="h-6 w-6 text-primary"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -139,7 +139,7 @@ export default function AcceptInvitePage() {
           <button
             onClick={handleAccept}
             disabled={isAccepting}
-            className="w-full inline-flex justify-center items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+            className="w-full inline-flex justify-center items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover disabled:opacity-50"
           >
             {isAccepting ? (
               <>

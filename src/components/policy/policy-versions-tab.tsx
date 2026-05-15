@@ -126,7 +126,7 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
         <div className="text-red-500 dark:text-red-400">{error}</div>
         <button
           onClick={refresh}
-          className="mt-4 text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="mt-4 text-primary dark:text-primary hover:underline"
         >
           重试
         </button>
@@ -145,7 +145,7 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
           {viewMode === 'list' && (versions as PolicyVersionInfo[]).length >= 2 && (
             <button
               onClick={handleOpenCompare}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-sm text-primary dark:text-primary hover:underline"
             >
               版本对比
             </button>
@@ -239,7 +239,7 @@ function InviteReviewerModal({
           </button>
           <a
             href={cta.href}
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+            className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
           >
             {cta.label}
           </a>

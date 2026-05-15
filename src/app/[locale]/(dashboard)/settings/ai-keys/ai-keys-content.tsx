@@ -98,7 +98,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       <p className="mt-1 text-sm text-gray-600">
         绑定您自己的 OpenAI / Anthropic / Vertex AI key，调用 AI 功能时使用您自己的额度，
         不受平台 LLM 月度配额限制。
-        <Link href={`/${locale}/dashboard`} className="ml-2 text-indigo-600 hover:underline">
+        <Link href={`/${locale}/dashboard`} className="ml-2 text-primary hover:underline">
           查看 AI 用量 →
         </Link>
       </p>
@@ -111,7 +111,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
             <select
               value={provider}
               onChange={(e) => setProvider(e.target.value as 'openai' | 'anthropic' | 'vertex')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
             >
               <option value="openai">OpenAI (sk-...)</option>
               <option value="anthropic">Anthropic (sk-ant-...)</option>
@@ -126,7 +126,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
               onChange={(e) => setApiKey(e.target.value)}
               autoComplete="off"
               placeholder="sk-..."
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
               required
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -144,7 +144,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
           >
             {submitting ? 'Saving...' : 'Save Key'}
           </button>

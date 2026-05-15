@@ -145,7 +145,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
               <button
                 type="button"
                 onClick={() => setShowExampleSelector(!showExampleSelector)}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {selectedExample
                   ? getExampleName(selectedExample, locale)
@@ -180,8 +180,8 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                               key={example.id}
                               type="button"
                               onClick={() => handleSelectExample(example)}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 ${
-                                selectedExample?.id === example.id ? 'bg-indigo-100 text-indigo-900' : 'text-gray-700'
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-primary-subtle ${
+                                selectedExample?.id === example.id ? 'bg-primary-subtle text-primary-active' : 'text-gray-700'
                               }`}
                             >
                               <div className="font-medium">{getExampleName(example, locale)}</div>
@@ -206,7 +206,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
               onClick={() => setShowAIPanel(prev => !prev)}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition-colors ${
                 showAIPanel
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  ? 'bg-primary text-white hover:bg-primary-hover'
                   : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -242,12 +242,12 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
 
         {/* 已选示例提示 */}
         {selectedExample && (
-          <div className="mt-3 p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+          <div className="mt-3 p-3 rounded-lg bg-primary-subtle border border-primary/20">
             <div className="flex items-start gap-2">
-              <svg className="h-5 w-5 text-indigo-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-sm text-indigo-700">
+              <div className="text-sm text-primary-hover">
                 {locale.startsWith('zh')
                   ? '已加载示例模板。你可以修改后保存为你的策略。'
                   : 'Template loaded. You can modify and save as your policy.'}
@@ -286,7 +286,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t('form.namePlaceholder')}
               />
             </div>
@@ -302,7 +302,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t('form.descriptionPlaceholder')}
               />
             </div>
@@ -375,7 +375,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 type="checkbox"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
               />
               <label htmlFor="isPublic" className="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
                 {t('form.isPublic')}
@@ -395,7 +395,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="inline-flex justify-center rounded-lg border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex justify-center rounded-lg border border-transparent bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-primary-hover focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? t('form.creating') : t('form.create')}
           </button>

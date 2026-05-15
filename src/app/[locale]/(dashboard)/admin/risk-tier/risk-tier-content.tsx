@@ -131,7 +131,7 @@ export function RiskTierAdminContent() {
         </label>
         <button
           onClick={fetchRows}
-          className="ml-auto rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+          className="ml-auto rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover"
         >
           {t('refresh')}
         </button>
@@ -348,7 +348,7 @@ function OverrideModal({
           <button
             onClick={submit}
             disabled={submitting || newTier === row.riskTier}
-            className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
           >
             {submitting ? t('submitting') : t('submit')}
           </button>

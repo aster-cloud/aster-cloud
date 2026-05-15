@@ -63,7 +63,7 @@ export function CNLLanguageSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white shadow-sm transition-all duration-200 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ${
+        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white shadow-sm transition-all duration-200 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${
           compact ? 'px-2 py-1.5 text-sm' : 'px-3 py-2 text-sm'
         }`}
         aria-expanded={isOpen}
@@ -99,7 +99,7 @@ export function CNLLanguageSelector({
                 onClick={() => handleSelect(option.locale)}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                   option.locale === value
-                    ? 'bg-indigo-50 text-indigo-700'
+                    ? 'bg-primary-subtle text-primary-hover'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
                 role="option"
@@ -110,7 +110,7 @@ export function CNLLanguageSelector({
                 </span>
                 <span className="flex-1 text-left">{option.label}</span>
                 {option.locale === value && (
-                  <svg className="h-4 w-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="h-4 w-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
                       d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"

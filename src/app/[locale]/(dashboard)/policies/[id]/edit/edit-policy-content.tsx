@@ -208,7 +208,7 @@ export function EditPolicyContent({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t.form.namePlaceholder}
               />
             </div>
@@ -224,7 +224,7 @@ export function EditPolicyContent({
                 name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t.form.descriptionPlaceholder}
               />
             </div>
@@ -256,7 +256,7 @@ export function EditPolicyContent({
                     onClick={() => setShowAIPanel(prev => !prev)}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium shadow-sm transition-colors ${
                       showAIPanel
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        ? 'bg-primary text-white hover:bg-primary-hover'
                         : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -320,7 +320,7 @@ export function EditPolicyContent({
                 type="checkbox"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
               />
               <label htmlFor="isPublic" className="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
                 {t.form.isPublic}
@@ -340,7 +340,7 @@ export function EditPolicyContent({
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex justify-center rounded-lg border border-transparent bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex justify-center rounded-lg border border-transparent bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-primary-hover focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? t.form.saving : t.form.save}
           </button>

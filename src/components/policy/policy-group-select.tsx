@@ -108,7 +108,7 @@ export function PolicyGroupSelect({
           type="button"
           className={`w-full flex items-center px-3 py-2 text-sm transition-colors ${
             isSelected
-              ? 'bg-indigo-50 text-indigo-700'
+              ? 'bg-primary-subtle text-primary-hover'
               : 'text-gray-700 hover:bg-gray-50'
           }`}
           style={{ paddingLeft: `${depth * 16 + 12}px` }}
@@ -122,7 +122,7 @@ export function PolicyGroupSelect({
           {group._count && (
             <span className="text-xs text-gray-400 ml-2">{group._count.policies}</span>
           )}
-          {isSelected && <Check className="w-4 h-4 ml-2 text-indigo-600 flex-shrink-0" />}
+          {isSelected && <Check className="w-4 h-4 ml-2 text-primary flex-shrink-0" />}
         </button>
         {group.children && group.children.length > 0 && (
           <div>
@@ -151,7 +151,7 @@ export function PolicyGroupSelect({
           ${disabled
             ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
             : isOpen
-              ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+              ? 'border-primary ring-2 ring-primary/20'
               : 'border-gray-300 hover:border-gray-400'
           }
         `}
@@ -161,7 +161,7 @@ export function PolicyGroupSelect({
             <span className="text-gray-400 text-sm">Loading...</span>
           ) : selectedGroup ? (
             <>
-              <Folder className="w-4 h-4 mr-2 text-indigo-500 flex-shrink-0" />
+              <Folder className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
               <span className="text-gray-900 text-sm truncate">{selectedGroup.name}</span>
             </>
           ) : (
@@ -197,7 +197,7 @@ export function PolicyGroupSelect({
             type="button"
             className={`w-full flex items-center px-3 py-2 text-sm transition-colors ${
               value === null
-                ? 'bg-indigo-50 text-indigo-700'
+                ? 'bg-primary-subtle text-primary-hover'
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
             onClick={() => {
@@ -207,7 +207,7 @@ export function PolicyGroupSelect({
           >
             <Folder className="w-4 h-4 mr-2 text-gray-400" />
             <span className="flex-1 text-left">No group (Ungrouped)</span>
-            {value === null && <Check className="w-4 h-4 ml-2 text-indigo-600" />}
+            {value === null && <Check className="w-4 h-4 ml-2 text-primary" />}
           </button>
 
           {/* Divider */}

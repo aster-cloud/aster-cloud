@@ -33,7 +33,7 @@ function TermsContent() {
       <nav className="border-b border-gray-200 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="text-2xl font-bold text-indigo-600">
+            <Link href="/" className="text-2xl font-bold text-primary">
               {t('nav.brand')}
             </Link>
             <Link
@@ -71,7 +71,7 @@ function TermsContent() {
         <div className="mt-12 pt-8 border-t border-gray-200">
           <Link
             href="/"
-            className="text-indigo-600 hover:text-indigo-700 font-medium"
+            className="text-primary hover:text-primary-hover font-medium"
           >
             &larr; {t('nav.brand')}
           </Link>

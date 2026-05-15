@@ -137,7 +137,7 @@ export function VersionDetailPanel({
               onClick={() => setActiveTab(tab.id)}
               className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                  ? 'border-primary text-primary dark:text-primary'
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >

@@ -55,7 +55,7 @@ export function AiUsageCard({ locale }: { locale: string }) {
         </div>
         <Link
           href={`/${locale}/settings/ai-keys`}
-          className="mt-2 inline-block text-xs text-indigo-600 hover:underline"
+          className="mt-2 inline-block text-xs text-primary hover:underline"
         >
           {t('manageKeys')} →
         </Link>
@@ -71,7 +71,7 @@ export function AiUsageCard({ locale }: { locale: string }) {
         <p className="mt-1 text-xs text-amber-700">{t('emailUnverifiedHint')}</p>
         <Link
           href={`/${locale}/settings/profile`}
-          className="mt-2 inline-block text-xs font-medium text-indigo-600 hover:underline"
+          className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
         >
           {t('verifyNow')} →
         </Link>
@@ -94,7 +94,7 @@ export function AiUsageCard({ locale }: { locale: string }) {
 
   // 配额进度条
   const percent = data.monthly.percent;
-  const barColor = percent >= 90 ? 'bg-red-500' : percent >= 70 ? 'bg-yellow-500' : 'bg-indigo-500';
+  const barColor = percent >= 90 ? 'bg-red-500' : percent >= 70 ? 'bg-yellow-500' : 'bg-primary';
   const textColor = percent >= 90 ? 'text-red-700' : percent >= 70 ? 'text-yellow-700' : 'text-gray-700';
 
   return (
@@ -129,14 +129,14 @@ export function AiUsageCard({ locale }: { locale: string }) {
           {t('warningHighUsage', { remaining: data.monthly.remaining })}
           <Link
             href={`/${locale}/pricing`}
-            className="ml-2 font-medium text-indigo-600 hover:underline"
+            className="ml-2 font-medium text-primary hover:underline"
           >
             {t('upgrade')} →
           </Link>
           <span className="mx-1">{t('or')}</span>
           <Link
             href={`/${locale}/settings/ai-keys`}
-            className="font-medium text-indigo-600 hover:underline"
+            className="font-medium text-primary hover:underline"
           >
             {t('byok')} →
           </Link>

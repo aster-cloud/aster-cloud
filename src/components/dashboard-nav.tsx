@@ -39,7 +39,7 @@ export function MobileMenuButton({
   return (
     <button
       type="button"
-      className="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+      className="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
       aria-expanded={isOpen}
       aria-label={isOpen ? labels.closeMenu : labels.openMenu}
       onClick={onToggle}
@@ -91,13 +91,13 @@ export function UserDropdown({
     <div className="relative" ref={menuRef}>
       <button
         type="button"
-        className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        className="w-8 h-8 rounded-full bg-primary-subtle flex items-center justify-center hover:bg-primary-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-label={userMenuLabels.profile}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="text-indigo-600 text-sm font-medium">{userInitial}</span>
+        <span className="text-primary text-sm font-medium">{userInitial}</span>
       </button>
 
       {isOpen && (
@@ -148,7 +148,7 @@ export function DesktopNav({ navItems }: { navItems: NavItem[] }) {
           href={item.href}
           className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
             isActive(item.href)
-              ? 'border-indigo-500 text-gray-900'
+              ? 'border-primary text-gray-900'
               : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
           }`}
           aria-current={isActive(item.href) ? 'page' : undefined}
@@ -190,7 +190,7 @@ export function MobileNav({
             href={item.href}
             className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
               isActive(item.href)
-                ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                ? 'bg-primary-subtle border-primary text-primary-hover'
                 : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
             }`}
             aria-current={isActive(item.href) ? 'page' : undefined}
@@ -206,7 +206,7 @@ export function MobileNav({
             href={item.href}
             className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
               isActive(item.href)
-                ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                ? 'bg-primary-subtle border-primary text-primary-hover'
                 : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
             }`}
             aria-current={isActive(item.href) ? 'page' : undefined}

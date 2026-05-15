@@ -299,7 +299,7 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
                       <button
                         onClick={() => restorePolicy(item.policyId)}
                         disabled={actionLoading === item.policyId}
-                        className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
                       >
                         {actionLoading === item.policyId ? '...' : t.trash.restore}
                       </button>

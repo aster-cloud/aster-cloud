@@ -24,7 +24,7 @@ export default function LogoutPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
+            <span className="text-3xl font-bold text-primary">{tNav('brand')}</span>
           </Link>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             {t('title')}
@@ -35,7 +35,7 @@ export default function LogoutPage() {
         </div>
 
         <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </div>
     </div>

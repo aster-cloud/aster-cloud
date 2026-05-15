@@ -134,7 +134,7 @@ export default async function EquivalencePage({ params }: Props) {
 
       {latest && (
         <>
-          <section className="mb-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-white shadow-xl sm:p-12">
+          <section className="mb-12 rounded-2xl bg-gradient-to-br from-primary to-accent p-8 text-white shadow-xl sm:p-12">
             <p className="text-sm uppercase tracking-wider opacity-80">{t('currentRate')}</p>
             <p className="mt-2 text-7xl font-bold tabular-nums sm:text-8xl">
               {formatPercent(latest.rate, locale)}

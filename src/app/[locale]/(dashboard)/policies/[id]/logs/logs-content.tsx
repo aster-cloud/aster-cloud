@@ -97,9 +97,9 @@ const sourceConfig: Record<ExecutionSource, { bg: string; text: string; ring: st
     ),
   },
   API: {
-    bg: 'bg-purple-50',
-    text: 'text-purple-700',
-    ring: 'ring-purple-600/20',
+    bg: 'bg-accent-subtle',
+    text: 'text-accent-hover',
+    ring: 'ring-accent/20',
     icon: (
       <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -128,9 +128,9 @@ const sourceConfig: Record<ExecutionSource, { bg: string; text: string; ring: st
     ),
   },
   api: {
-    bg: 'bg-purple-50',
-    text: 'text-purple-700',
-    ring: 'ring-purple-600/20',
+    bg: 'bg-accent-subtle',
+    text: 'text-accent-hover',
+    ring: 'ring-accent/20',
     icon: (
       <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -302,7 +302,7 @@ export function LogsContent({
       {stats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           {/* Total Executions */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 shadow-lg">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary p-6 shadow-lg">
             <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10" />
             <div className="relative">
               <div className="flex items-center">
@@ -312,7 +312,7 @@ export function LogsContent({
                   </svg>
                 </div>
               </div>
-              <p className="mt-4 text-sm font-medium text-indigo-100">{t.logs.totalExecutions}</p>
+              <p className="mt-4 text-sm font-medium text-primary-fg">{t.logs.totalExecutions}</p>
               <p className="mt-1 text-3xl font-bold text-white">{stats.totalExecutions.toLocaleString()}</p>
             </div>
           </div>
@@ -404,7 +404,7 @@ export function LogsContent({
                 setSuccessFilter(e.target.value);
                 setPage(1);
               }}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             >
               <option value="">{t.logs.all}</option>
               <option value="true">{t.logs.success}</option>
@@ -421,7 +421,7 @@ export function LogsContent({
                 setSourceFilter(e.target.value);
                 setPage(1);
               }}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             >
               <option value="">{t.logs.all}</option>
               <option value="WEB">{t.logs.web}</option>
@@ -437,7 +437,7 @@ export function LogsContent({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             />
           </div>
           <div>
@@ -448,7 +448,7 @@ export function LogsContent({
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             />
           </div>
         </div>
@@ -470,8 +470,8 @@ export function LogsContent({
       <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-100 mb-4">
-              <svg className="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-subtle mb-4">
+              <svg className="animate-spin h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
@@ -568,7 +568,7 @@ export function LogsContent({
                         onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                         className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                           expandedLog === log.id
-                            ? 'bg-indigo-100 text-indigo-700'
+                            ? 'bg-primary-subtle text-primary-hover'
                             : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >

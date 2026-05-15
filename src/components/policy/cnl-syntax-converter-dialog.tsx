@@ -150,7 +150,7 @@ export function CNLSyntaxConverterDialog({
                 <select
                   value={targetLocale}
                   onChange={(e) => setTargetLocale(e.target.value as SupportedLocale)}
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 >
                   {languageOptions.map((option) => (
                     <option
@@ -265,7 +265,7 @@ export function CNLSyntaxConverterDialog({
               type="button"
               onClick={handleApply}
               disabled={!conversionResult.success || detectedLocale === targetLocale}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isZh ? '应用转换' : 'Apply Conversion'}
             </button>
@@ -299,7 +299,7 @@ export function CNLConvertButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary-hover bg-primary-subtle border border-primary/30 rounded-lg hover:bg-primary-subtle focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       title={isZh ? '将策略转换为其他语言' : 'Convert policy to another language'}
     >
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

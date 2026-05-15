@@ -106,7 +106,7 @@ describe('PolicyGroupTree', () => {
       );
 
       const allPoliciesElement = screen.getByText('All Policies').closest('div');
-      expect(allPoliciesElement).toHaveClass('bg-indigo-100');
+      expect(allPoliciesElement).toHaveClass('bg-primary-subtle');
     });
 
     it('should highlight selected group', () => {
@@ -123,7 +123,7 @@ describe('PolicyGroupTree', () => {
       );
 
       const groupElement = screen.getByText('Selected Group').closest('div');
-      expect(groupElement).toHaveClass('bg-indigo-100');
+      expect(groupElement).toHaveClass('bg-primary-subtle');
     });
   });
 

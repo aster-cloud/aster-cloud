@@ -50,7 +50,7 @@ export function ApiUsageCard({ locale }: { locale: string }) {
         <p className="mt-2 text-xs text-gray-500">{t('lockedHint')}</p>
         <Link
           href={`/${locale}/pricing`}
-          className="mt-3 inline-block text-xs font-medium text-indigo-600 hover:underline"
+          className="mt-3 inline-block text-xs font-medium text-primary hover:underline"
         >
           {t('upgrade')} →
         </Link>
@@ -59,7 +59,7 @@ export function ApiUsageCard({ locale }: { locale: string }) {
   }
 
   const percent = data.monthly.percent;
-  const barColor = percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-yellow-500' : 'bg-indigo-500';
+  const barColor = percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-yellow-500' : 'bg-primary';
   const textColor = percent >= 100 ? 'text-red-700' : percent >= 80 ? 'text-yellow-700' : 'text-gray-700';
 
   return (
@@ -97,7 +97,7 @@ export function ApiUsageCard({ locale }: { locale: string }) {
             : t('warningHighUsage', { remaining: data.monthly.remaining })}
           <Link
             href={`/${locale}/pricing`}
-            className="ml-2 font-medium text-indigo-600 hover:underline"
+            className="ml-2 font-medium text-primary hover:underline"
           >
             {t('upgrade')} →
           </Link>
