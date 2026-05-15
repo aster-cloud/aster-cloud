@@ -23,9 +23,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { track, Events } from '@/lib/mixpanel';
-import { ArrowRight, Search } from 'lucide-react';
+import {
+  ArrowRight,
+  FileText,
+  Home,
+  KeyRound,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { cn } from '@/components/ui';
-import type { Command } from './command-palette-commands';
+import type { Command, CommandIcon } from './command-palette-commands';
+
+// Map icon id (string, RSC-serializable) → Lucide component. Kept on
+// the client side so Server Components don't have to send forwardRef
+// values across the RSC boundary.
+const ICONS: Record<CommandIcon, React.ComponentType<{ className?: string }>> = {
+  'home':         Home,
+  'file-text':    FileText,
+  'users':        Users,
+  'shield-check': ShieldCheck,
+  'sparkles':     Sparkles,
+  'wallet':       Wallet,
+  'settings':     Settings,
+  'key-round':    KeyRound,
+};
 
 // Note: buildCommands + types live in command-palette-commands.ts (no
 // 'use client'). Server Components must import them from that module
@@ -255,7 +280,7 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
                       </p>
                       <ul>
                         {items.map((cmd) => {
-                          const Icon = cmd.icon;
+                          const Icon = ICONS[cmd.icon];
                           const flatIdx = flatList.indexOf(cmd);
                           const isActive = flatIdx === activeIdx;
                           return (

@@ -9,18 +9,24 @@
  * ("Attempted to call buildCommands() from the server but buildCommands
  * is on the client"). Splitting keeps the catalog + types in a plain
  * module that both server and client can import freely.
+ *
+ * Why icons are strings (not components): Server Components serialize
+ * props as JSON over the RSC wire. Lucide icons are forwardRef objects
+ * — they can't cross the boundary without "Functions cannot be passed
+ * directly to Client Components" errors. We ship an icon *id* and let
+ * the client map it back to the component.
  */
 
-import {
-  FileText,
-  Home,
-  KeyRound,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-  Users,
-  Wallet,
-} from 'lucide-react';
+/** Icon identifiers — mapped to Lucide components inside the palette. */
+export type CommandIcon =
+  | 'home'
+  | 'file-text'
+  | 'users'
+  | 'shield-check'
+  | 'sparkles'
+  | 'wallet'
+  | 'settings'
+  | 'key-round';
 
 export interface Command {
   /** Stable id for keying React lists and analytics events. */
@@ -29,8 +35,8 @@ export interface Command {
   label: string;
   /** Short helper text shown under the label. */
   hint?: string;
-  /** Lucide icon component. */
-  icon: React.ComponentType<{ className?: string }>;
+  /** Icon id — the client component looks up the Lucide component. */
+  icon: CommandIcon;
   /** Route (locale prefix added by router.push call site). */
   href: string;
   /** Section header in the rendered list. */
@@ -75,22 +81,22 @@ export function buildCommands({
 }: BuildCommandsArgs): Command[] {
   const p = routePrefix;
   const cmds: Command[] = [
-    { id: 'dashboard',  group: 'navigate', icon: Home,        label: labels.dashboard,  href: `${p}/dashboard`,         keywords: ['仪表盘', 'übersicht'] },
-    { id: 'policies',   group: 'navigate', icon: FileText,    label: labels.policies,   href: `${p}/policies`,          keywords: ['policy', '策略', 'richtlinien'] },
-    { id: 'reports',    group: 'navigate', icon: FileText,    label: labels.reports,    href: `${p}/reports`,           keywords: ['report', '报告', 'berichte'] },
-    { id: 'teams',      group: 'navigate', icon: Users,       label: labels.teams,      href: `${p}/teams`,             keywords: ['team', '团队'] },
-    { id: 'security',   group: 'navigate', icon: ShieldCheck, label: labels.security,   href: `${p}/security`,          keywords: ['security', '安全'] },
+    { id: 'dashboard',  group: 'navigate', icon: 'home',         label: labels.dashboard, href: `${p}/dashboard`,         keywords: ['仪表盘', 'übersicht'] },
+    { id: 'policies',   group: 'navigate', icon: 'file-text',    label: labels.policies,  href: `${p}/policies`,          keywords: ['policy', '策略', 'richtlinien'] },
+    { id: 'reports',    group: 'navigate', icon: 'file-text',    label: labels.reports,   href: `${p}/reports`,           keywords: ['report', '报告', 'berichte'] },
+    { id: 'teams',      group: 'navigate', icon: 'users',        label: labels.teams,     href: `${p}/teams`,             keywords: ['team', '团队'] },
+    { id: 'security',   group: 'navigate', icon: 'shield-check', label: labels.security,  href: `${p}/security`,          keywords: ['security', '安全'] },
 
     ...(canCreate
-      ? ([{ id: 'new-policy', group: 'create', icon: Sparkles, label: labels.newPolicy, href: `${p}/policies/new`, keywords: ['create', '新建', 'neu'] }] as Command[])
+      ? ([{ id: 'new-policy', group: 'create', icon: 'sparkles', label: labels.newPolicy, href: `${p}/policies/new`, keywords: ['create', '新建', 'neu'] }] as Command[])
       : []),
 
     ...(showBilling
-      ? ([{ id: 'billing', group: 'settings', icon: Wallet, label: labels.billing, href: `${p}/billing`, keywords: ['plan', '账单'] }] as Command[])
+      ? ([{ id: 'billing', group: 'settings', icon: 'wallet', label: labels.billing, href: `${p}/billing`, keywords: ['plan', '账单'] }] as Command[])
       : []),
-    { id: 'settings',  group: 'settings', icon: Settings, label: labels.settings, href: `${p}/settings`, keywords: ['settings', '设置'] },
-    { id: 'api-keys',  group: 'settings', icon: KeyRound, label: labels.apiKeys,  href: `${p}/settings/api-keys`, keywords: ['api', 'token', '密钥'] },
-    { id: 'ai-keys',   group: 'settings', icon: Sparkles, label: labels.aiKeys,   href: `${p}/settings/ai-keys`,  keywords: ['byok', 'openai', 'ai 密钥'] },
+    { id: 'settings',  group: 'settings', icon: 'settings',  label: labels.settings, href: `${p}/settings`,          keywords: ['settings', '设置'] },
+    { id: 'api-keys',  group: 'settings', icon: 'key-round', label: labels.apiKeys,  href: `${p}/settings/api-keys`, keywords: ['api', 'token', '密钥'] },
+    { id: 'ai-keys',   group: 'settings', icon: 'sparkles',  label: labels.aiKeys,   href: `${p}/settings/ai-keys`,  keywords: ['byok', 'openai', 'ai 密钥'] },
   ];
   return cmds;
 }
