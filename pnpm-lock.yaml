@@ -20,6 +20,9 @@ importers:
       '@aster-cloud/aster-lang-ts':
         specifier: ^0.1.5
         version: 0.1.5(ws@8.19.0)(zod@3.25.76)
+      '@aster/tokens':
+        specifier: file:../aster-design-system/packages/tokens
+        version: file:../aster-design-system/packages/tokens
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.1
@@ -258,6 +261,9 @@ packages:
     resolution: {integrity: sha512-5yn7xOwkL8VCqLEuCmrEXLjvNfRz19HrGou87xm8RVL1mF7WN3IjLQJS2sqbs689QG2MebdL/swOFwQFGVZOpw==}
     engines: {node: '>=24.0.0'}
     hasBin: true
+
+  '@aster/tokens@file:../aster-design-system/packages/tokens':
+    resolution: {directory: ../aster-design-system/packages/tokens, type: directory}
 
   '@auth/core@0.41.0':
     resolution: {integrity: sha512-Wd7mHPQ/8zy6Qj7f4T46vg3aoor8fskJm6g2Zyj064oQ3+p0xNZXAV60ww0hY+MbTesfu29kK14Zk5d5JTazXQ==}
@@ -5215,6 +5221,8 @@ snapshots:
     transitivePeerDependencies:
       - ws
       - zod
+
+  '@aster/tokens@file:../aster-design-system/packages/tokens': {}
 
   '@auth/core@0.41.0':
     dependencies:

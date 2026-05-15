@@ -1,48 +1,114 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Geist";
-  src:
-    url("/fonts/geist-latin-ext.woff2") format("woff2"),
-    url("/fonts/geist-latin.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+/*
+ * Aster brand tokens — single source of truth shared with aster-lang-dev.
+ *
+ * `@aster/tokens/tokens.css` declares CSS variables for the entire brand:
+ *   - Color ramps (violet/sky/zinc/emerald/amber/rose, each 50–950)
+ *   - Semantic roles (primary, accent, bg, fg, success/warning/danger)
+ *   - Font stacks (Fraunces display / Inter sans / JetBrains Mono code)
+ *   - Radius, shadow, motion durations + easings
+ * Dark mode is handled inside that file via [data-theme="dark"] +
+ * prefers-color-scheme fallback — no work needed here.
+ */
+@import "@aster/tokens/tokens.css";
 
-@font-face {
-  font-family: "Geist Mono";
-  src:
-    url("/fonts/geist-mono-latin-ext.woff2") format("woff2"),
-    url("/fonts/geist-mono-latin.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+/*
+ * Brand fonts via Google Fonts CDN (W1.5 baseline).
+ *
+ * We're moving FROM self-hosted Geist Sans/Mono TO the Aster brand stack
+ * (Fraunces / Inter / JetBrains Mono). The legacy /public/fonts/geist-*
+ * woff2 files stay on disk for one or two release cycles so any orphan
+ * `font-family: "Geist"` rules still resolve.
+ *
+ * Production hardening (W3+): swap to next/font/google for self-hosting +
+ * automatic subsetting + zero-CLS preload. The CDN @import works fine for
+ * the visual baseline check.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --font-geist-sans: "Geist", Arial, Helvetica, sans-serif;
-  --font-geist-mono: "Geist Mono", "SFMono-Regular", Menlo, Consolas, monospace;
-}
-
+/*
+ * Bridge Aster tokens into Tailwind 4's @theme namespace.
+ *
+ * Tailwind 4 turns each `--color-*` / `--font-*` / `--shadow-*` declared
+ * inside `@theme` into a utility (`bg-primary`, `font-display`, etc.).
+ * Aster's underlying tokens are already CSS variables, so this is a pure
+ * pass-through — no values duplicated, single source of truth preserved.
+ *
+ * Convention: we expose semantic roles as utilities (so components write
+ * `bg-primary`, not `bg-violet-600`). Raw scales remain reachable via
+ * `var(--aster-color-violet-600)` for custom CSS, AND via Tailwind's own
+ * `violet-*` / `sky-*` / `zinc-*` defaults — they happen to match our
+ * chosen palette exactly, so consumers can mix utilities fluently.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Semantic role tokens — what feature code should reach for. */
+  --color-primary:         var(--aster-primary);
+  --color-primary-hover:   var(--aster-primary-hover);
+  --color-primary-active:  var(--aster-primary-active);
+  --color-primary-fg:      var(--aster-primary-fg);
+  --color-primary-subtle:  var(--aster-primary-subtle);
+
+  --color-accent:          var(--aster-accent);
+  --color-accent-hover:    var(--aster-accent-hover);
+  --color-accent-fg:       var(--aster-accent-fg);
+  --color-accent-subtle:   var(--aster-accent-subtle);
+
+  --color-bg:              var(--aster-bg);
+  --color-bg-subtle:       var(--aster-bg-subtle);
+  --color-bg-muted:        var(--aster-bg-muted);
+  --color-fg:              var(--aster-fg);
+  --color-fg-muted:        var(--aster-fg-muted);
+  --color-fg-subtle:       var(--aster-fg-subtle);
+  --color-border:          var(--aster-border);
+  --color-border-strong:   var(--aster-border-strong);
+
+  --color-success:         var(--aster-success);
+  --color-success-fg:      var(--aster-success-fg);
+  --color-success-subtle:  var(--aster-success-subtle);
+  --color-warning:         var(--aster-warning);
+  --color-warning-fg:      var(--aster-warning-fg);
+  --color-warning-subtle:  var(--aster-warning-subtle);
+  --color-danger:          var(--aster-danger);
+  --color-danger-fg:       var(--aster-danger-fg);
+  --color-danger-subtle:   var(--aster-danger-subtle);
+
+  /* Three font roles. The legacy --font-sans / --font-mono are remapped
+   * onto Aster so existing `font-sans` / `font-mono` utilities silently
+   * upgrade to the new brand families. */
+  --font-display: var(--aster-font-display);
+  --font-sans:    var(--aster-font-sans);
+  --font-mono:    var(--aster-font-mono);
+
+  /* Brand-tinted shadow + focus ring. */
+  --shadow-brand: var(--aster-shadow-brand);
+  --shadow-ring:  var(--aster-shadow-ring);
+
+  /* Motion easings (Tailwind 4 reads `--ease-*` for transition utilities). */
+  --ease-standard: var(--aster-easing-standard);
+  --ease-out-soft: var(--aster-easing-out);
+  --ease-in-soft:  var(--aster-easing-in);
+  --ease-bounce:   var(--aster-easing-bounce);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #f5f5f5;
-  }
+/*
+ * Legacy aliases — keep until W2-W3 sweeps remove the old references.
+ *
+ * Existing code uses `var(--background)`, `var(--foreground)`, and the
+ * `--font-geist-*` names. Redirecting them onto Aster tokens means the
+ * brand swap shows up immediately even before we touch component code.
+ */
+:root {
+  --background: var(--aster-bg);
+  --foreground: var(--aster-fg);
+  --font-geist-sans: var(--aster-font-sans);
+  --font-geist-mono: var(--aster-font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans);
+  background: var(--aster-bg);
+  color: var(--aster-fg);
+  font-family: var(--aster-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
