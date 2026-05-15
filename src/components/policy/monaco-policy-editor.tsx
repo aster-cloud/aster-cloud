@@ -470,7 +470,12 @@ export function MonacoPolicyEditor({
               }, 500);
             });
           },
+          // Monaco 0.55+ 把旧 `freeInlineCompletions` 重命名为 `disposeInlineCompletions`，
+          // 并改成 *必填*。缺它时编辑器 dispose 时报
+          // "this.provider.disposeInlineCompletions is not a function" 然后整个 inline
+          // completion 子系统崩。两个方法都放上保持向后兼容（旧版用 free，新版用 dispose）。
           freeInlineCompletions: () => {},
+          disposeInlineCompletions: () => {},
         });
       }
 

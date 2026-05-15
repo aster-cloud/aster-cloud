@@ -2,10 +2,22 @@
 
 import { useCallback } from 'react';
 import { useSSEStream } from './useSSEStream';
-import { API_ENDPOINTS } from '@/config/api-versions';
 
-const getApiBaseUrl = () =>
-  process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
+/**
+ * AI SSE 端点路由：全部走 aster-cloud 的同源代理，不直连 aster-api。
+ *
+ * R23-Critical-2 给 aster-api 的 /api/v1/ai/* 加了 HMAC 鉴权，浏览器
+ * 拿不到 HMAC key，所以必须经 aster-cloud server-side 代理转签。
+ * 同源还顺带省掉 CORS preflight，SSE 也不被 CORS 阻断。
+ *
+ * tenantId 参数被刻意忽略 —— server 端从 NextAuth session 派生，
+ * 不信任 caller-supplied 值（详见 /api/llm/complete 注释）。
+ */
+const SSE_PROXY = {
+  generate: '/api/llm/generate',
+  explain: '/api/llm/explain',
+  suggest: '/api/llm/suggest',
+} as const;
 
 export interface GenerateOptions {
   goal: string;
@@ -48,13 +60,9 @@ export interface UseAIAssistantResult {
 export function useAIAssistant(): UseAIAssistantResult {
   const sse = useSSEStream();
 
-  const generate = useCallback(async (options: GenerateOptions, tenantId?: string) => {
-    const baseUrl = getApiBaseUrl();
-    const headers: Record<string, string> = {};
-    if (tenantId) headers['X-Tenant-Id'] = tenantId;
-
+  const generate = useCallback(async (options: GenerateOptions, _tenantId?: string) => {
     await sse.startStream(
-      `${baseUrl}${API_ENDPOINTS.aiGenerate}`,
+      SSE_PROXY.generate,
       {
         goal: options.goal,
         locale: options.locale,
@@ -62,40 +70,32 @@ export function useAIAssistant(): UseAIAssistantResult {
         schema: options.schema,
         model: options.model,
       },
-      headers,
+      {},
     );
   }, [sse]);
 
-  const explain = useCallback(async (options: ExplainOptions, tenantId?: string) => {
-    const baseUrl = getApiBaseUrl();
-    const headers: Record<string, string> = {};
-    if (tenantId) headers['X-Tenant-Id'] = tenantId;
-
+  const explain = useCallback(async (options: ExplainOptions, _tenantId?: string) => {
     await sse.startStream(
-      `${baseUrl}${API_ENDPOINTS.aiExplain}`,
+      SSE_PROXY.explain,
       {
         source: options.source,
         locale: options.locale,
         traceData: options.traceData,
       },
-      headers,
+      {},
     );
   }, [sse]);
 
-  const suggest = useCallback(async (options: SuggestOptions, tenantId?: string) => {
-    const baseUrl = getApiBaseUrl();
-    const headers: Record<string, string> = {};
-    if (tenantId) headers['X-Tenant-Id'] = tenantId;
-
+  const suggest = useCallback(async (options: SuggestOptions, _tenantId?: string) => {
     await sse.startStream(
-      `${baseUrl}${API_ENDPOINTS.aiSuggest}`,
+      SSE_PROXY.suggest,
       {
         source: options.source,
         locale: options.locale,
         focus: options.focus,
         model: options.model,
       },
-      headers,
+      {},
     );
   }, [sse]);
 
