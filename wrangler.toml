@@ -51,7 +51,7 @@ id = "250b39f14c014a5e8e636799c23bb120"
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "b712d2c83ffe41f0b4d0ec615314a935"
-localConnectionString = "postgres://placeholder@localhost:5432/aster_cloud_dev"
+localConnectionString = "postgres://placeholder:placeholder@localhost:5432/aster_cloud_dev"
 
 # Cron triggers
 # - 04:30 UTC: /api/cron/user-purge (软删 30d 后 hard-delete)
