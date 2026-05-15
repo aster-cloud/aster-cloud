@@ -14,8 +14,8 @@
     "brand": "Aster Cloud"
   },
   "hero": {
-    "title": "Policy-as-Code in plain English",
-    "titleHighlight": "(and 中文 / Deutsch)",
+    "title": "Policy as Code in native language",
+    "titleHighlight": "{locales}",
     "description": "Write business rules in your native language. AI drafts, humans approve, GraalVM executes. Hash-chained audit included.",
     "noCreditCard": "No credit card required."
   },

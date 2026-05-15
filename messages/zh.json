@@ -15,7 +15,7 @@
   },
   "hero": {
     "title": "用母语写策略",
-    "titleHighlight": "（English / 中文 / Deutsch）",
+    "titleHighlight": "{locales}",
     "description": "用母语撰写业务规则。AI 起草，人工审核，GraalVM 执行。哈希链审计开箱即用。",
     "noCreditCard": "无需信用卡。"
   },

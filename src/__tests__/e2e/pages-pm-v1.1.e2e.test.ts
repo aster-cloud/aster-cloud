@@ -79,24 +79,28 @@ function expectNotContains(html: string, needle: string, locale: string) {
 
 describe.skipIf(!serverReachable)('E2E PM v1.1 — pages render correct content', () => {
   describe('Hero — three locales', () => {
-    it('en hero shows "Policy-as-Code in plain English"', async () => {
+    it('en hero shows "Policy as Code in native language" with native locale list', async () => {
       const { status, html } = await fetchDoc('/');
       expect(status).toBe(200);
-      expectContains(html, 'Policy-as-Code in plain English', 'en');
+      expectContains(html, 'Policy as Code in native language', 'en');
+      // Current locale leads; the rest are listed in config order.
+      expectContains(html, 'English / 中文 / Deutsch', 'en');
       expectContains(html, 'No credit card required', 'en');
     });
 
-    it('zh hero shows "用母语写策略"', async () => {
+    it('zh hero shows "用母语写策略" with current-locale-first native list', async () => {
       const { status, html } = await fetchDoc('/zh');
       expect(status).toBe(200);
       expectContains(html, '用母语写策略', 'zh');
+      expectContains(html, '中文 / English / Deutsch', 'zh');
       expectContains(html, '无需信用卡', 'zh');
     });
 
-    it('de hero shows "Policy-as-Code in Ihrer Muttersprache"', async () => {
+    it('de hero shows "Policy as Code in der Muttersprache" with native locale list', async () => {
       const { status, html } = await fetchDoc('/de');
       expect(status).toBe(200);
-      expectContains(html, 'Policy-as-Code in Ihrer Muttersprache', 'de');
+      expectContains(html, 'Policy as Code in der Muttersprache', 'de');
+      expectContains(html, 'Deutsch / English / 中文', 'de');
       expectContains(html, 'Keine Kreditkarte erforderlich', 'de');
     });
   });

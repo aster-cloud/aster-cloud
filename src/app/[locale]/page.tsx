@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { locales, localeNames, type Locale } from '@/i18n/config';
 import {
   buttonVariants,
   Card,
@@ -74,7 +75,7 @@ function HomeContent({ locale }: { locale: string }) {
   return (
     <div className="flex min-h-screen flex-col bg-bg text-fg">
       <Nav t={t} />
-      <Hero t={t} />
+      <Hero t={t} locale={locale} />
       <TrustBand t={t} />
       <Features t={t} />
       <PricingPreview
@@ -133,7 +134,26 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
 /* Hero                                                                */
 /* ------------------------------------------------------------------ */
 
-function Hero({ t }: { t: ReturnType<typeof useTranslations> }) {
+function Hero({
+  t,
+  locale,
+}: {
+  t: ReturnType<typeof useTranslations>;
+  locale: string;
+}) {
+  // Subtitle lists the *available* native locale names rather than a
+  // hard-coded "English / 中文 / Deutsch" string. The locale set is the
+  // single source of truth in i18n/config.ts — adding a language pack
+  // there automatically surfaces it in the hero. Current locale leads
+  // the list so users see their own language first.
+  const orderedLocales: Locale[] = locales.includes(locale as Locale)
+    ? [
+        locale as Locale,
+        ...locales.filter((l) => l !== locale),
+      ]
+    : [...locales];
+  const localesLabel = orderedLocales.map((l) => localeNames[l]).join(' / ');
+
   return (
     <section className="relative overflow-hidden pt-32 pb-24">
       {/* Decorative gradient — kept very subtle so it doesn't fight the
@@ -149,15 +169,15 @@ function Hero({ t }: { t: ReturnType<typeof useTranslations> }) {
         <Stack gap={6} align="center" className="text-center">
           <h1 className={cn(
             'font-display font-semibold tracking-tighter text-fg',
-            // Step the headline size down a notch at the widest breakpoints
-            // so `hero.title` + `hero.titleHighlight` fit on a single line
-            // on desktop. Mobile keeps the larger leading for readability.
             'text-4xl leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl',
             'max-w-5xl',
           )}>
-            {t('hero.title')}{' '}
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              {t('hero.titleHighlight')}
+            {t('hero.title')}
+            {/* Native-locale list rendered as its own line — keeps the
+                main title weight clean and lets the gradient highlight
+                read as a separate "available languages" stamp under it. */}
+            <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {t('hero.titleHighlight', { locales: localesLabel })}
             </span>
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-fg-muted sm:text-xl">

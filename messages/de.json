@@ -14,8 +14,8 @@
     "brand": "Aster Cloud"
   },
   "hero": {
-    "title": "Policy-as-Code in Ihrer Muttersprache",
-    "titleHighlight": "(English / 中文 / Deutsch)",
+    "title": "Policy as Code in der Muttersprache",
+    "titleHighlight": "{locales}",
     "description": "Schreiben Sie Geschäftsregeln in Ihrer Muttersprache. KI entwirft, Menschen genehmigen, GraalVM führt aus. Manipulationssicheres Audit inklusive.",
     "noCreditCard": "Keine Kreditkarte erforderlich."
   },
