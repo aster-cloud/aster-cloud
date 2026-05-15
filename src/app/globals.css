@@ -3,7 +3,7 @@
 /*
  * Aster brand tokens — single source of truth shared with aster-lang-dev.
  *
- * `@aster/tokens/tokens.css` declares CSS variables for the entire brand:
+ * `@aster-cloud/tokens/tokens.css` declares CSS variables for the entire brand:
  *   - Color ramps (violet/sky/zinc/emerald/amber/rose, each 50–950)
  *   - Semantic roles (primary, accent, bg, fg, success/warning/danger)
  *   - Font stacks (Fraunces display / Inter sans / JetBrains Mono code)
@@ -11,7 +11,7 @@
  * Dark mode is handled inside that file via [data-theme="dark"] +
  * prefers-color-scheme fallback — no work needed here.
  */
-@import "@aster/tokens/tokens.css";
+@import "@aster-cloud/tokens/tokens.css";
 
 /*
  * Brand fonts via Google Fonts CDN (W1.5 baseline).
