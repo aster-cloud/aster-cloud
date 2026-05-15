@@ -96,8 +96,14 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # 默认从 wrangler.toml 读 name=aster-cloud
-          # 由于 wrangler.toml 已声明 main=worker.js + assets，无需额外参数
+          # Force plain `wrangler deploy`. Without an explicit command, the
+          # action runs `wrangler deploy` which OpenNext-aware wrangler
+          # rewrites to `opennextjs-cloudflare deploy`. That wrapper calls
+          # getPlatformProxy(), which tries to bind a local Hyperdrive
+          # connection string and aborts the CI deploy with
+          # "no local hyperdrive connection string". We've already produced
+          # the OpenNext build in the previous step, so just push it.
+          command: deploy --keep-vars
 
   build-migrate-image:
     # 仅在 main 分支 push 时跑（PR 不构建/推镜像）
