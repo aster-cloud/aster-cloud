@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { Copy, CheckCircle2, X as XIcon } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
 import { formatDate } from '@/lib/format';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Breadcrumbs,
   Button,
   Card,
   CardBody,
@@ -170,13 +170,12 @@ export function ApiKeysContent({
     <Container size="wide" className="py-6 sm:py-10">
       <Stack gap={6}>
         <Stack gap={2}>
-          <nav className="text-sm text-fg-muted">
-            <Link href="/settings" className="hover:text-fg">
-              {t.nav.settings}
-            </Link>
-            <span className="mx-2">/</span>
-            <span className="text-fg">{t.breadcrumb}</span>
-          </nav>
+          <Breadcrumbs
+            items={[
+              { label: t.nav.settings, href: '/settings' },
+              { label: t.breadcrumb },
+            ]}
+          />
           <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
             {t.title}
           </h1>

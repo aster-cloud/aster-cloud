@@ -309,6 +309,18 @@
     },
     "userMenu": {
       "profile": "用户菜单"
+    },
+    "commandPalette": {
+      "placeholder": "搜索或跳转…",
+      "noResults": "未找到结果。",
+      "groupNavigate": "导航",
+      "groupCreate": "新建",
+      "groupSettings": "设置",
+      "hintOpen": "打开命令面板（⌘K）",
+      "newPolicy": "新建策略",
+      "apiKeys": "API 密钥",
+      "aiKeys": "AI 密钥",
+      "aiAssistant": "AI 助手"
     }
   },
   "teams": {

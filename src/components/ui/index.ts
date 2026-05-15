@@ -41,5 +41,8 @@ export { Skeleton } from './skeleton';
 export { Separator, type SeparatorProps } from './separator';
 export { Stack, type StackProps } from './stack';
 export { Container, type ContainerProps } from './container';
+export {
+  Breadcrumbs, type BreadcrumbsProps, type BreadcrumbItem,
+} from './breadcrumbs';
 
 export { cn } from './utils';

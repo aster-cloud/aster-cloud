@@ -1,13 +1,18 @@
 import { Link } from '@/i18n/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import {
   DashboardNavClient,
   UserDropdown,
 } from '@/components/dashboard-nav';
+import {
+  CommandPalette,
+  buildCommands,
+} from '@/components/dashboard/command-palette';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import { getEffectiveRole, canAccess } from '@/lib/effective-role';
+import { defaultLocale } from '@/i18n/config';
 
 export default async function DashboardLayout({
   children,
@@ -19,6 +24,9 @@ export default async function DashboardLayout({
   const tNav = await getTranslations('nav');
   const tMobile = await getTranslations('dashboardNav.mobile');
   const tAdmin = await getTranslations('admin.riskTier');
+  const tCmd = await getTranslations('dashboardNav.commandPalette');
+  const locale = await getLocale();
+  const routePrefix = locale === defaultLocale ? '' : `/${locale}`;
 
   const session = await getSession();
   const userId = session?.user?.id ?? null;
@@ -76,7 +84,40 @@ export default async function DashboardLayout({
                 userEmail={session?.user?.email || undefined}
               />
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              {/* ⌘K command palette — trigger + dialog. Mounted at layout
+                  level so the keyboard shortcut is global across every
+                  dashboard page. */}
+              <CommandPalette
+                commands={buildCommands({
+                  routePrefix,
+                  labels: {
+                    dashboard:   t('dashboard'),
+                    policies:    t('policies'),
+                    newPolicy:   tCmd('newPolicy'),
+                    reports:     t('reports'),
+                    teams:       t('teams'),
+                    security:    t('security'),
+                    billing:     t('billing'),
+                    settings:    t('settings'),
+                    apiKeys:     tCmd('apiKeys'),
+                    aiKeys:      tCmd('aiKeys'),
+                    aiAssistant: tCmd('aiAssistant'),
+                  },
+                  // Viewers can still navigate; gating `create` further is a
+                  // role-aware concern we can revisit when the palette grows.
+                  canCreate:  canAccess(role, 'member'),
+                  showBilling: canAccess(role, 'admin'),
+                })}
+                labels={{
+                  placeholder:    tCmd('placeholder'),
+                  noResults:      tCmd('noResults'),
+                  groupNavigate:  tCmd('groupNavigate'),
+                  groupCreate:    tCmd('groupCreate'),
+                  groupSettings:  tCmd('groupSettings'),
+                  hintOpen:       tCmd('hintOpen'),
+                }}
+              />
               <div className="hidden sm:flex sm:items-center sm:space-x-4">
                 {secondaryItems.map((item) => (
                   <Link

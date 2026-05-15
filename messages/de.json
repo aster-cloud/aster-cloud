@@ -309,6 +309,18 @@
     },
     "userMenu": {
       "profile": "Benutzermenü"
+    },
+    "commandPalette": {
+      "placeholder": "Suchen oder springen…",
+      "noResults": "Keine Treffer.",
+      "groupNavigate": "Navigieren",
+      "groupCreate": "Neu",
+      "groupSettings": "Einstellungen",
+      "hintOpen": "Befehlspalette öffnen (⌘K)",
+      "newPolicy": "Neue Richtlinie",
+      "apiKeys": "API-Schlüssel",
+      "aiKeys": "KI-Schlüssel",
+      "aiAssistant": "KI-Assistent"
     }
   },
   "teams": {
