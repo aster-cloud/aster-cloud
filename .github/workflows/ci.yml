@@ -59,6 +59,46 @@ jobs:
             coverage/
           if-no-files-found: ignore
 
+  deploy-worker:
+    # main 分支 push 时部署 Cloudflare Worker。
+    # 历史上没接 wrangler，导致 main 上的 fix 不会自动到 prod —— 见 2026-05-15
+    # auth-denial / api-usage 修复推上去后用户仍报错的事故。
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      # 同一时间只允许一个 deploy 跑；后到的 commit 取消先到的（取最新）
+      group: cloudflare-deploy
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js + OpenNext bundle
+        # opennextjs-cloudflare 把 .next 转换为 Cloudflare Worker 兼容格式，
+        # 输出到 .open-next/。--skipNextBuild 复用上一步的 next build。
+        run: |
+          pnpm run build:next
+          pnpm exec opennextjs-cloudflare build --skipNextBuild
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # 默认从 wrangler.toml 读 name=aster-cloud
+          # 由于 wrangler.toml 已声明 main=worker.js + assets，无需额外参数
+
   build-migrate-image:
     # 仅在 main 分支 push 时跑（PR 不构建/推镜像）
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
