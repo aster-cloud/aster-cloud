@@ -48,6 +48,12 @@ id = "250b39f14c014a5e8e636799c23bb120"
 # (which we don't run from the deploy pipeline) and never reached at
 # runtime in production — prod traffic resolves the binding through
 # the `id` above to the real Hyperdrive instance.
+#
+# ⚠️ Local dev: this placeholder does NOT point at a real database.
+# If you run `wrangler dev` or `pnpm preview` and want the dashboard to
+# read/write data, override the value with a Postgres URL that resolves
+# on your machine (Supabase pooler, local docker-compose, etc.) — or
+# use `next dev`, which goes through DATABASE_URL instead of this binding.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "b712d2c83ffe41f0b4d0ec615314a935"

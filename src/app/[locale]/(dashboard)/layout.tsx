@@ -35,26 +35,12 @@ export default async function DashboardLayout({
   const tAdmin = await getTranslations('admin.riskTier');
   const tCmd = await getTranslations('dashboardNav.commandPalette');
 
-  // Surface dashboard layout failures with a marker that's easy to grep
-  // in Worker runtime logs. Without this any throw collapses to Next's
-  // opaque digest "Error ID: <random>" and the actual cause is lost.
-  let session, admin, role;
-  try {
-    session = await getSession();
-  } catch (e) {
-    console.error('[dashboard-layout] getSession threw:', e);
-    throw e;
-  }
+  const session = await getSession();
   const userId = session?.user?.id ?? null;
-  try {
-    [admin, role] = await Promise.all([
-      isAdminFromSession(),
-      userId ? getEffectiveRole(userId) : Promise.resolve('owner' as const),
-    ]);
-  } catch (e) {
-    console.error('[dashboard-layout] role lookup threw:', e);
-    throw e;
-  }
+  const [admin, role] = await Promise.all([
+    isAdminFromSession(),
+    userId ? getEffectiveRole(userId) : Promise.resolve('owner' as const),
+  ]);
 
   // role-aware nav 过滤：让 viewer 不看到无操作权限的入口。
   // 真实操作授权仍由 API 层 checkTeamPermission 兜底，本过滤仅决定可见性。
