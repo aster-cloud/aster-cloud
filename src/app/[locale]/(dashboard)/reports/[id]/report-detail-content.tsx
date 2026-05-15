@@ -2,6 +2,7 @@
 
 import { Link } from '@/i18n/navigation';
 import { formatDate } from '@/lib/format';
+import { Breadcrumbs } from '@/components/ui';
 
 interface ComplianceReport {
   id: string;
@@ -168,14 +169,14 @@ export function ReportDetailContent({
       {/* Header */}
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div>
-          <div className="flex items-center">
-            <Link href="/reports" className="text-gray-400 hover:text-gray-600 mr-2">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-              </svg>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">{report.title}</h1>
-          </div>
+          <Breadcrumbs
+            className="mb-2"
+            items={[
+              { label: t.detail.backToReports, href: '/reports' },
+              { label: report.title },
+            ]}
+          />
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{report.title}</h1>
           <div className="mt-2 flex items-center space-x-3">
             {getStatusBadge(report.status)}
             <span className="text-sm text-gray-500">

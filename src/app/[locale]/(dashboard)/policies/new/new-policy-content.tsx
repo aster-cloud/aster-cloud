@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import type { editor } from 'monaco-editor';
 import dynamic from 'next/dynamic';
+import { Breadcrumbs } from '@/components/ui';
 import {
   POLICY_EXAMPLES,
   CATEGORY_LABELS,
@@ -125,10 +126,17 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="md:flex md:items-center md:justify-between mb-6">
+      <div className="md:flex md:items-start md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('form.createTitle')}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <Breadcrumbs
+            className="mb-2"
+            items={[
+              { label: t('title'), href: '/policies' },
+              { label: t('form.createTitle') },
+            ]}
+          />
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('form.createTitle')}</h1>
+          <p className="mt-1 text-sm text-fg-muted">
             {t('form.createSubtitle')}
           </p>
         </div>

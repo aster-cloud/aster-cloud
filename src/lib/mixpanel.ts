@@ -90,6 +90,12 @@ export const Events = {
 
   // 升级阻塞 — UpgradeBlocker 触发时上报，是 NSM 漏斗最强转化信号
   UPGRADE_BLOCKED_AT_REVIEW: 'upgrade_blocked_at_review',
+
+  // ⌘K command palette — usage telemetry. PALETTE_OPENED tracks awareness;
+  // PALETTE_COMMAND_SELECTED tracks utility. Together they tell us if the
+  // feature earns its discovery cost.
+  PALETTE_OPENED: 'palette_opened',
+  PALETTE_COMMAND_SELECTED: 'palette_command_selected',
 } as const;
 
 /**

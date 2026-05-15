@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { track, Events } from '@/lib/mixpanel';
 import {
   ArrowRight,
   FileText,
@@ -88,10 +89,15 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
 
   /* ---- Open / close mechanics ---- */
 
-  const openPalette = useCallback(() => {
+  const openPalette = useCallback((trigger: 'click' | 'keyboard' = 'click') => {
     setOpen(true);
     setQuery('');
     setActiveIdx(0);
+    // Analytics: how often the palette is opened tells us whether the
+    // discovery affordance is paying off. Mixpanel calls are no-ops when
+    // the token isn't configured (e.g. local dev without secrets) so
+    // gating here is unnecessary.
+    track(Events.PALETTE_OPENED, { trigger });
   }, []);
 
   const closePalette = useCallback(() => {
@@ -99,6 +105,22 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
     // Native dialog.close() avoids leftover backdrop state.
     dialogRef.current?.close();
   }, []);
+
+  /** Wrap router.push so click + Enter both report the same selection event. */
+  const selectCommand = useCallback(
+    (cmd: Command, trigger: 'click' | 'enter') => {
+      track(Events.PALETTE_COMMAND_SELECTED, {
+        command_id: cmd.id,
+        command_group: cmd.group,
+        // Whether the user typed to filter — distinguishes "browse" from "search".
+        had_query: query.trim().length > 0,
+        trigger,
+      });
+      closePalette();
+      router.push(cmd.href);
+    },
+    [closePalette, query, router],
+  );
 
   // Global Cmd+K / Ctrl+K listener — mounted once at layout level.
   useEffect(() => {
@@ -116,7 +138,7 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
         if (!isTyping || isOurInput) {
           e.preventDefault();
           if (open) closePalette();
-          else openPalette();
+          else openPalette('keyboard');
         }
       }
     };
@@ -170,12 +192,11 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
         e.preventDefault();
         const cmd = filtered[activeIdx];
         if (cmd) {
-          closePalette();
-          router.push(cmd.href);
+          selectCommand(cmd, 'enter');
         }
       }
     },
-    [filtered, activeIdx, router, closePalette],
+    [filtered, activeIdx, selectCommand],
   );
 
   /* ---- Grouping (preserve catalog order within group) ---- */
@@ -269,10 +290,7 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
                               <button
                                 type="button"
                                 onMouseEnter={() => setActiveIdx(flatIdx)}
-                                onClick={() => {
-                                  closePalette();
-                                  router.push(cmd.href);
-                                }}
+                                onClick={() => selectCommand(cmd, 'click')}
                                 className={cn(
                                   'flex w-full items-center gap-3 rounded-md px-3 py-2',
                                   'text-left transition-colors duration-fast',
@@ -315,7 +333,7 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
           keyboard Cmd+K does the same thing. */}
       <button
         type="button"
-        onClick={openPalette}
+        onClick={() => openPalette('click')}
         aria-label={labels.hintOpen}
         className={cn(
           'inline-flex items-center gap-2 rounded-md border border-border bg-bg-subtle',

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Breadcrumbs } from '@/components/ui';
 
 interface RiskRow {
   id: string;
@@ -78,8 +79,15 @@ export function RiskTierAdminContent() {
   return (
     <div className="px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('subtitle')}</p>
+        <Breadcrumbs
+          className="mb-2"
+          items={[
+            { label: 'Admin' },
+            { label: t('title') },
+          ]}
+        />
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('title')}</h1>
+        <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
       </header>
 
       <section className="mb-6 grid gap-3 grid-cols-2 sm:grid-cols-5">

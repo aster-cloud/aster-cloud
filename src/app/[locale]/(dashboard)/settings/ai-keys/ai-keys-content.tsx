@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Breadcrumbs } from '@/components/ui';
 
 interface BYOKBinding {
   id: string;
@@ -88,14 +89,16 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <nav className="mb-4 text-sm text-gray-500">
-        <Link href={`/${locale}/settings`} className="hover:underline">Settings</Link>
-        <span className="mx-2">/</span>
-        <span>AI Keys (BYOK)</span>
-      </nav>
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: 'Settings', href: '/settings' },
+          { label: 'AI Keys (BYOK)' },
+        ]}
+      />
 
-      <h1 className="text-2xl font-bold text-gray-900">AI Keys (Bring Your Own Key)</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">AI Keys (Bring Your Own Key)</h1>
+      <p className="mt-1 text-sm text-fg-muted">
         绑定您自己的 OpenAI / Anthropic / Vertex AI key，调用 AI 功能时使用您自己的额度，
         不受平台 LLM 月度配额限制。
         <Link href={`/${locale}/dashboard`} className="ml-2 text-primary hover:underline">
