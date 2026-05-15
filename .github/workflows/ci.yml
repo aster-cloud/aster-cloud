@@ -59,51 +59,16 @@ jobs:
             coverage/
           if-no-files-found: ignore
 
-  deploy-worker:
-    # main 分支 push 时部署 Cloudflare Worker。
-    # 历史上没接 wrangler，导致 main 上的 fix 不会自动到 prod —— 见 2026-05-15
-    # auth-denial / api-usage 修复推上去后用户仍报错的事故。
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    concurrency:
-      # 同一时间只允许一个 deploy 跑；后到的 commit 取消先到的（取最新）
-      group: cloudflare-deploy
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build Next.js + OpenNext bundle
-        # opennextjs-cloudflare 把 .next 转换为 Cloudflare Worker 兼容格式，
-        # 输出到 .open-next/。--skipNextBuild 复用上一步的 next build。
-        run: |
-          pnpm run build:next
-          pnpm exec opennextjs-cloudflare build --skipNextBuild
-
-      - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Force plain `wrangler deploy`. Without an explicit command, the
-          # action runs `wrangler deploy` which OpenNext-aware wrangler
-          # rewrites to `opennextjs-cloudflare deploy`. That wrapper calls
-          # getPlatformProxy(), which tries to bind a local Hyperdrive
-          # connection string and aborts the CI deploy with
-          # "no local hyperdrive connection string". We've already produced
-          # the OpenNext build in the previous step, so just push it.
-          command: deploy --keep-vars
+  # Cloudflare's git integration auto-deploys from main on every push,
+  # so there is no GitHub Actions deploy job here. (Previous attempts to
+  # add one created two parallel deploys racing for the same Worker.)
+  # Operator: configure deploys at
+  # https://dash.cloudflare.com/?to=/:account/workers/services/view/aster-cloud
+  # The git build must set CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
+  # to any non-empty placeholder (e.g. postgres://placeholder) — wrangler
+  # 4.92's deploy preflight reads it even though prod uses the bound
+  # Hyperdrive at runtime. Without this dummy value, OpenNext's deploy
+  # wrapper aborts with "no local hyperdrive connection string".
 
   build-migrate-image:
     # 仅在 main 分支 push 时跑（PR 不构建/推镜像）
