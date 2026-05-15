@@ -1,10 +1,34 @@
+/**
+ * Pricing page client.
+ *
+ * W2.2 rewrite — same behavior, design-system visuals:
+ *   - Stripe checkout path unchanged (startProCheckout below)
+ *   - Mixpanel tracking unchanged (PRICING_VIEWED, _TIER_SELECTED,
+ *     _CHECKOUT_STARTED, _CONTACT_CLICKED)
+ *   - monthly/yearly toggle now uses a token-driven segmented control
+ *   - Tier cards use Card primitive; highlighted tier uses primary tone
+ *   - All copy still routed through 'pricingPage' i18n namespace
+ *
+ * JSON-LD pricing offers preserved so SEO crawlers still see the three
+ * tiers at their current displayed prices.
+ */
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { Check } from 'lucide-react';
 import { track, Events } from '@/lib/mixpanel';
 import type { CurrencyCode } from '@/lib/plans';
+import {
+  buttonVariants,
+  Card,
+  CardHeader,
+  CardBody,
+  Container,
+  Stack,
+  cn,
+} from '@/components/ui';
 
 type BillingInterval = 'monthly' | 'yearly';
 type Tier = 'free' | 'pro' | 'enterprise';
@@ -45,13 +69,13 @@ export function PricingContent({
       void startProCheckout(interval, currency);
       return;
     }
-    // free
+    // free tier
     window.location.href = `/${locale}/signup`;
   };
 
   const proPriceDisplay = interval === 'monthly' ? proMonthlyDisplay : proYearlyDisplay;
 
-  // JSON-LD：让搜索引擎抓到三档价格
+  // JSON-LD: keep crawlers seeing the three offers at their current prices.
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -69,84 +93,150 @@ export function PricingContent({
           billingIncrement: interval === 'monthly' ? 'P1M' : 'P1Y',
         },
       },
-      { '@type': 'Offer', name: 'Enterprise', price: '0', priceCurrency: currency, priceSpecification: { '@type': 'UnitPriceSpecification', valueAddedTaxIncluded: false } },
+      {
+        '@type': 'Offer',
+        name: 'Enterprise',
+        price: '0',
+        priceCurrency: currency,
+        priceSpecification: { '@type': 'UnitPriceSpecification', valueAddedTaxIncluded: false },
+      },
     ],
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-bg text-fg">
       <script
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="mx-auto max-w-5xl px-4 pt-16 pb-8 text-center">
-        <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">{t('hero.title')}</h1>
-        <p className="mt-4 text-lg text-gray-600">{t('hero.subtitle')}</p>
+      <Container size="xl" className="pt-16 pb-8">
+        <Stack gap={8} align="center">
+          <Stack gap={4} align="center" className="text-center">
+            <h1 className="font-display text-5xl font-semibold leading-tight tracking-tight text-fg sm:text-6xl">
+              {t('hero.title')}
+            </h1>
+            <p className="max-w-xl text-lg text-fg-muted">{t('hero.subtitle')}</p>
+          </Stack>
+          <IntervalToggle
+            value={interval}
+            onChange={setInterval}
+            monthlyLabel={t('toggle.monthly')}
+            yearlyLabel={t('toggle.yearly')}
+          />
+        </Stack>
+      </Container>
 
-        {/* monthly / yearly toggle */}
-        <div className="mt-8 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
-          <button
-            type="button"
-            onClick={() => setInterval('monthly')}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-              interval === 'monthly' ? 'bg-white text-gray-900 shadow' : 'text-gray-500'
-            }`}
-          >
-            {t('toggle.monthly')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setInterval('yearly')}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-              interval === 'yearly' ? 'bg-white text-gray-900 shadow' : 'text-gray-500'
-            }`}
-          >
-            {t('toggle.yearly')}
-          </button>
+      <Container size="xl" className="pb-16">
+        <div className="grid gap-6 md:grid-cols-3">
+          <TierCard
+            name={t('tiers.free.name')}
+            tagline={t('tiers.free.tagline')}
+            priceLabel="0"
+            priceSuffix={t('tiers.free.priceSuffix')}
+            features={t.raw('tiers.free.features') as string[]}
+            ctaLabel={t('tiers.free.cta')}
+            onSelect={() => handleTierSelect('free')}
+          />
+          <TierCard
+            highlighted
+            highlightLabel={t('tiers.pro.highlight')}
+            name={t('tiers.pro.name')}
+            tagline={t('tiers.pro.tagline')}
+            priceLabel={proPriceDisplay}
+            priceSuffix={
+              interval === 'yearly'
+                ? t('tiers.pro.priceSuffixYearly')
+                : t('tiers.pro.priceSuffix')
+            }
+            features={t.raw('tiers.pro.features') as string[]}
+            ctaLabel={t('tiers.pro.cta')}
+            onSelect={() => handleTierSelect('pro')}
+          />
+          <TierCard
+            name={t('tiers.enterprise.name')}
+            tagline={t('tiers.enterprise.tagline')}
+            priceLabel={t('tiers.enterprise.priceSuffix')}
+            features={t.raw('tiers.enterprise.features') as string[]}
+            ctaLabel={t('tiers.enterprise.cta')}
+            onSelect={() => handleTierSelect('enterprise')}
+          />
         </div>
-      </section>
+      </Container>
 
-      <section className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pb-16 md:grid-cols-3">
-        <TierCard
-          name={t('tiers.free.name')}
-          tagline={t('tiers.free.tagline')}
-          priceLabel="0"
-          priceSuffix={t('tiers.free.priceSuffix')}
-          features={t.raw('tiers.free.features') as string[]}
-          ctaLabel={t('tiers.free.cta')}
-          onSelect={() => handleTierSelect('free')}
-        />
-        <TierCard
-          highlighted
-          highlightLabel={t('tiers.pro.highlight')}
-          name={t('tiers.pro.name')}
-          tagline={t('tiers.pro.tagline')}
-          priceLabel={proPriceDisplay}
-          priceSuffix={interval === 'yearly' ? t('tiers.pro.priceSuffixYearly') : t('tiers.pro.priceSuffix')}
-          features={t.raw('tiers.pro.features') as string[]}
-          ctaLabel={t('tiers.pro.cta')}
-          onSelect={() => handleTierSelect('pro')}
-        />
-        <TierCard
-          name={t('tiers.enterprise.name')}
-          tagline={t('tiers.enterprise.tagline')}
-          priceLabel={t('tiers.enterprise.priceSuffix')}
-          features={t.raw('tiers.enterprise.features') as string[]}
-          ctaLabel={t('tiers.enterprise.cta')}
-          onSelect={() => handleTierSelect('enterprise')}
-        />
-      </section>
-
-      <section className="mx-auto max-w-5xl px-4 pb-24 text-center text-sm text-gray-500">
-        <Link href={`/${locale}/signup`} className="text-indigo-600 hover:underline">
+      <Container size="base" className="pb-24 text-center">
+        <Link
+          href={`/${locale}/signup`}
+          className="text-sm font-medium text-primary hover:text-primary-hover"
+        >
           {t('tiers.free.cta')} →
         </Link>
-      </section>
+      </Container>
     </main>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Interval toggle (monthly / yearly)                                  */
+/* ------------------------------------------------------------------ */
+
+interface IntervalToggleProps {
+  value: BillingInterval;
+  onChange: (v: BillingInterval) => void;
+  monthlyLabel: string;
+  yearlyLabel: string;
+}
+
+function IntervalToggle({ value, onChange, monthlyLabel, yearlyLabel }: IntervalToggleProps) {
+  // Segmented control: a single rounded shell with two buttons. Active
+  // pill uses bg-bg + shadow to look "raised" out of the bg-muted shell.
+  return (
+    <div
+      role="tablist"
+      aria-label="Billing interval"
+      className="inline-flex rounded-full border border-border bg-bg-muted p-1"
+    >
+      <IntervalButton
+        active={value === 'monthly'}
+        onClick={() => onChange('monthly')}
+        label={monthlyLabel}
+      />
+      <IntervalButton
+        active={value === 'yearly'}
+        onClick={() => onChange('yearly')}
+        label={yearlyLabel}
+      />
+    </div>
+  );
+}
+
+function IntervalButton({
+  active, onClick, label,
+}: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        'rounded-full px-4 py-1.5 text-sm font-medium',
+        'transition-all duration-fast ease-standard',
+        'focus-visible:outline-none focus-visible:shadow-ring',
+        active
+          ? 'bg-bg text-fg shadow-sm'
+          : 'text-fg-muted hover:text-fg',
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Tier card                                                           */
+/* ------------------------------------------------------------------ */
 
 interface TierCardProps {
   name: string;
@@ -161,55 +251,65 @@ interface TierCardProps {
 }
 
 function TierCard({
-  name,
-  tagline,
-  priceLabel,
-  priceSuffix,
-  features,
-  ctaLabel,
-  highlighted,
-  highlightLabel,
-  onSelect,
+  name, tagline, priceLabel, priceSuffix, features,
+  ctaLabel, highlighted, highlightLabel, onSelect,
 }: TierCardProps) {
   return (
-    <div
-      className={`relative flex flex-col rounded-xl border p-8 ${
-        highlighted ? 'border-indigo-600 shadow-lg' : 'border-gray-200'
-      }`}
-    >
+    <Card className={cn(
+      'relative flex flex-col',
+      highlighted && 'border-2 border-primary shadow-lg shadow-primary/10',
+    )}>
       {highlighted && highlightLabel && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">
+        <span className={cn(
+          'absolute -top-3 left-1/2 -translate-x-1/2',
+          'rounded-full bg-primary text-primary-fg',
+          'px-3 py-1 text-xs font-semibold',
+        )}>
           {highlightLabel}
-        </div>
+        </span>
       )}
-      <h3 className="text-2xl font-bold text-gray-900">{name}</h3>
-      <p className="mt-1 text-sm text-gray-500">{tagline}</p>
-      <div className="mt-4 flex items-baseline gap-1">
-        <span className="text-4xl font-bold text-gray-900">{priceLabel}</span>
-        {priceSuffix && <span className="text-sm text-gray-500">{priceSuffix}</span>}
-      </div>
-      <ul className="mt-6 flex-1 space-y-2 text-sm text-gray-700">
-        {features.map((feat) => (
-          <li key={feat} className="flex items-start gap-2">
-            <span aria-hidden>•</span>
-            <span>{feat}</span>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={onSelect}
-        className={`mt-6 rounded-md px-4 py-2 text-sm font-medium ${
-          highlighted
-            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-        }`}
-      >
-        {ctaLabel}
-      </button>
-    </div>
+      <CardHeader>
+        <h3 className="font-display text-2xl font-semibold tracking-tight text-fg">
+          {name}
+        </h3>
+        <p className="text-sm text-fg-muted">{tagline}</p>
+      </CardHeader>
+      <CardBody className="flex flex-1 flex-col gap-6">
+        <p className="flex items-baseline gap-1.5">
+          <span className="font-display text-4xl font-semibold tracking-tight text-fg">
+            {priceLabel}
+          </span>
+          {priceSuffix && (
+            <span className="text-sm text-fg-muted">{priceSuffix}</span>
+          )}
+        </p>
+        <ul className="flex-1 space-y-3 text-sm text-fg-muted">
+          {features.map((feat) => (
+            <li key={feat} className="flex items-start gap-2">
+              <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+              <span>{feat}</span>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          onClick={onSelect}
+          className={buttonVariants({
+            variant: highlighted ? 'primary' : 'outline',
+            size: 'md',
+            className: 'mt-auto w-full',
+          })}
+        >
+          {ctaLabel}
+        </button>
+      </CardBody>
+    </Card>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Stripe checkout                                                     */
+/* ------------------------------------------------------------------ */
 
 async function startProCheckout(interval: BillingInterval, currency: CurrencyCode) {
   try {

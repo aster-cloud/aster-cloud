@@ -1,12 +1,31 @@
+/**
+ * Forgot-password page — single email field → reset link.
+ *
+ * W2.2 rewrite: same /api/auth/forgot-password flow, design-system
+ * visuals. Success state uses Alert (success variant) instead of a
+ * bespoke green-tinted box.
+ */
 'use client';
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Card,
+  CardBody,
+  Container,
+  Input,
+  Label,
+  Stack,
+  Wordmark,
+} from '@/components/ui';
 
 export default function ForgotPasswordPage() {
   const t = useTranslations('auth.forgotPassword');
-  const tNav = useTranslations('nav');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -20,9 +39,7 @@ export default function ForgotPasswordPage() {
     try {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
@@ -30,7 +47,6 @@ export default function ForgotPasswordPage() {
         const data = await response.json();
         throw new Error(data.error || 'Something went wrong');
       }
-
       setIsSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -39,109 +55,80 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <Link href="/" className="flex justify-center">
-              <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
-            </Link>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              {t('successTitle')}
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              {t('successMessage')}
-            </p>
-          </div>
-
-          <div className="rounded-md bg-green-50 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-800">
-                  {t('successMessage')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <Link
-              href="/login"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              {t('backToLogin')}
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <Link href="/" className="flex justify-center">
-            <span className="text-3xl font-bold text-indigo-600">{tNav('brand')}</span>
-          </Link>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {t('title')}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            {t('subtitle')}
-          </p>
-        </div>
-
-        {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="email" className="sr-only">
-              {t('email')}
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-              placeholder={t('email')}
-            />
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {isLoading ? t('sending') : t('sendResetLink')}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <Link
-              href="/login"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              {t('backToLogin')}
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle py-12">
+      <Container size="narrow">
+        <Stack gap={8}>
+          <Stack gap={6} align="center" className="text-center">
+            <Link href="/" aria-label="Aster">
+              <Wordmark variant="product" size="lg" />
             </Link>
-          </div>
-        </form>
-      </div>
+            <Stack gap={2}>
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+                {isSubmitted ? t('successTitle') : t('title')}
+              </h1>
+              <p className="text-sm text-fg-muted">
+                {isSubmitted ? t('successMessage') : t('subtitle')}
+              </p>
+            </Stack>
+          </Stack>
+
+          {isSubmitted ? (
+            <>
+              <Alert variant="success">
+                <AlertTitle>{t('successTitle')}</AlertTitle>
+                <AlertDescription>{t('successMessage')}</AlertDescription>
+              </Alert>
+              <p className="text-center">
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-primary hover:text-primary-hover"
+                >
+                  {t('backToLogin')}
+                </Link>
+              </p>
+            </>
+          ) : (
+            <Card>
+              <CardBody className="pt-6">
+                <form onSubmit={handleSubmit}>
+                  <Stack gap={4}>
+                    {error && (
+                      <Alert variant="danger">
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
+                    <Stack gap={2}>
+                      <Label htmlFor="email">{t('email')}</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder={t('email')}
+                      />
+                    </Stack>
+                    <Button type="submit" disabled={isLoading} className="w-full">
+                      {isLoading ? t('sending') : t('sendResetLink')}
+                    </Button>
+                    <p className="text-center">
+                      <Link
+                        href="/login"
+                        className="text-sm font-medium text-primary hover:text-primary-hover"
+                      >
+                        {t('backToLogin')}
+                      </Link>
+                    </p>
+                  </Stack>
+                </form>
+              </CardBody>
+            </Card>
+          )}
+        </Stack>
+      </Container>
     </div>
   );
 }

@@ -174,12 +174,12 @@ export function TurnstilePlaceholder({
   className?: string;
 }) {
   return (
-    <div className={`border border-dashed border-gray-300 rounded p-4 text-center ${className}`}>
-      <p className="text-sm text-gray-500 mb-2">CAPTCHA (开发模式)</p>
+    <div className={`rounded border border-dashed border-border p-4 text-center ${className}`}>
+      <p className="mb-2 text-sm text-fg-muted">CAPTCHA (开发模式)</p>
       <button
         type="button"
         onClick={() => onVerify('dev-token-' + Date.now())}
-        className="text-xs text-indigo-600 hover:text-indigo-500"
+        className="text-xs text-primary hover:text-primary-hover"
       >
         点击模拟验证
       </button>
