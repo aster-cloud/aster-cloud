@@ -83,6 +83,9 @@ importers:
       stripe:
         specifier: ^20.1.0
         version: 20.4.1(@types/node@24.12.4)
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
       vscode-ws-jsonrpc:
         specifier: ^3.5.0
         version: 3.5.0
@@ -4283,6 +4286,11 @@ packages:
     resolution: {integrity: sha512-r+qVb7UI1+kiOhjYsmsNUCY+jrnjVopwGeFlmMyQj4YInlwZzgMeMSv9n8MqnWWy77HL5BVM8K2WgX50SbtcpA==}
     peerDependencies:
       react: ^17.0.0 || ^18.0.0 || >=19.0.0-rc <19.0.0 || ^19.0.0
+
+  uuid@10.0.0:
+    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+    hasBin: true
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -9145,6 +9153,8 @@ snapshots:
       icu-minify: 4.12.0
       intl-messageformat: 11.2.6
       react: 19.2.3
+
+  uuid@10.0.0: {}
 
   vary@1.1.2: {}
 

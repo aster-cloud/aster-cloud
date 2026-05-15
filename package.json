@@ -49,6 +49,7 @@
     "react-dom": "19.2.3",
     "resend": "^6.8.0",
     "stripe": "^20.1.0",
+    "uuid": "^10.0.0",
     "vscode-ws-jsonrpc": "^3.5.0",
     "ws": "^8.19.0"
   },
