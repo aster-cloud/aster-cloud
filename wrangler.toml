@@ -37,9 +37,21 @@ binding = "CACHE"
 id = "250b39f14c014a5e8e636799c23bb120"
 
 # Hyperdrive 绑定 - PostgreSQL 连接池
+#
+# localConnectionString is REQUIRED by the OpenNext deploy preflight
+# even when deploying to production. The preflight calls
+# wrangler's getPlatformProxy() which insists every Hyperdrive binding
+# has a local-dev fallback connection string — without it the deploy
+# aborts with "no local hyperdrive connection string".
+#
+# The value is a placeholder. It's only consumed by `wrangler dev`
+# (which we don't run from the deploy pipeline) and never reached at
+# runtime in production — prod traffic resolves the binding through
+# the `id` above to the real Hyperdrive instance.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "b712d2c83ffe41f0b4d0ec615314a935"
+localConnectionString = "postgres://placeholder@localhost:5432/aster_cloud_dev"
 
 # Cron triggers
 # - 04:30 UTC: /api/cron/user-purge (软删 30d 后 hard-delete)
