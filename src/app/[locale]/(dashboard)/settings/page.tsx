@@ -1,10 +1,34 @@
+/**
+ * User settings page.
+ *
+ * W2.3 rewrite:
+ *   - 4 setting cards (API keys link, language detection toggle, profile,
+ *     account actions) each in a Card
+ *   - "Danger zone" card uses a danger-tinted top border so it reads as
+ *     destructive without being overpowered
+ *   - Bespoke delete-confirmation modal replaced with ConfirmDialog
+ *     (already in our ui/ as a separate, more accessible primitive)
+ *   - Cookie I/O + session handling unchanged
+ */
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
-import { Link } from '@/i18n/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { defaultLocale } from '@/i18n/config';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  Alert,
+  AlertDescription,
+  buttonVariants,
+  Button,
+  Card,
+  CardBody,
+  Container,
+  Stack,
+  cn,
+} from '@/components/ui';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
 
@@ -14,7 +38,7 @@ function getCookie(name: string): string | null {
   return match ? match[2] : null;
 }
 
-function setCookie(name: string, value: string, days: number = 365) {
+function setCookie(name: string, value: string, days = 365) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
   document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
 }
@@ -29,12 +53,11 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Build locale-aware callback URL
+  // Build locale-aware callback URL — default locale = no prefix.
   const localePrefix = locale === defaultLocale ? '' : `/${locale}`;
   const logoutCallbackUrl = `${localePrefix}/`;
 
   useEffect(() => {
-    // Load locale detection preference from cookie
     const saved = getCookie(LOCALE_DETECTION_COOKIE);
     if (saved !== null) {
       setLocaleDetection(saved === 'true');
@@ -42,10 +65,11 @@ export default function SettingsPage() {
   }, []);
 
   const handleLocaleDetectionToggle = () => {
-    const newValue = !localeDetection;
-    setLocaleDetection(newValue);
-    setCookie(LOCALE_DETECTION_COOKIE, String(newValue));
-    // Refresh to apply the change
+    const next = !localeDetection;
+    setLocaleDetection(next);
+    setCookie(LOCALE_DETECTION_COOKIE, String(next));
+    // Hard reload: middleware reads the cookie on every request, this
+    // ensures the toggle's effect lands immediately.
     window.location.reload();
   };
 
@@ -57,18 +81,12 @@ export default function SettingsPage() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     setDeleteError(null);
-
     try {
-      const response = await fetch('/api/user/delete', {
-        method: 'DELETE',
-      });
-
+      const response = await fetch('/api/user/delete', { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to delete account');
       }
-
-      // Sign out after successful deletion
       await signOut({ callbackUrl: logoutCallbackUrl });
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : 'Failed to delete account');
@@ -77,196 +95,221 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {t('subtitle')}
-        </p>
-      </div>
+    <Container size="base" className="py-6 sm:py-10">
+      <Stack gap={6}>
+        <Stack gap={2}>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+            {t('title')}
+          </h1>
+          <p className="text-sm text-fg-muted">{t('subtitle')}</p>
+        </Stack>
 
-      {/* API Keys Section */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-medium leading-6 text-gray-900">{t('apiKeys.title')}</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {t('apiKeys.subtitle')}
-              </p>
-            </div>
+        {/* API Keys */}
+        <SettingCard
+          title={t('apiKeys.title')}
+          description={t('apiKeys.subtitle')}
+          action={
             <Link
               href="/settings/api-keys"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className={buttonVariants({ variant: 'secondary', size: 'md' })}
             >
               {t('apiKeys.manageKeys')}
             </Link>
-          </div>
-        </div>
-      </div>
+          }
+        />
 
-      {/* Language Preferences Section */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('language.title')}</h3>
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{t('language.autoDetect')}</p>
-                <p className="text-sm text-gray-500">{t('language.autoDetectDesc')}</p>
-              </div>
-              <button
-                onClick={handleLocaleDetectionToggle}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                  localeDetection ? 'bg-indigo-600' : 'bg-gray-200'
-                }`}
-                role="switch"
-                aria-checked={localeDetection}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    localeDetection ? 'translate-x-5' : 'translate-x-0'
-                  }`}
+        {/* Language preferences (toggle) */}
+        <Card>
+          <CardBody className="pt-6">
+            <Stack gap={4}>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                {t('language.title')}
+              </h2>
+              <Stack direction="row" justify="between" align="center" gap={4}>
+                <Stack gap={1}>
+                  <p className="text-sm font-medium text-fg">{t('language.autoDetect')}</p>
+                  <p className="text-sm text-fg-muted">{t('language.autoDetectDesc')}</p>
+                </Stack>
+                <Toggle
+                  checked={localeDetection}
+                  onChange={handleLocaleDetectionToggle}
+                  ariaLabel={t('language.autoDetect')}
                 />
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-gray-400">
-              {localeDetection ? t('language.enabled') : t('language.disabled')}
-            </p>
-          </div>
-        </div>
-      </div>
+              </Stack>
+              <p className="text-xs text-fg-subtle">
+                {localeDetection ? t('language.enabled') : t('language.disabled')}
+              </p>
+            </Stack>
+          </CardBody>
+        </Card>
 
-      {/* Profile Section */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('profile.title')}</h3>
-          <div className="mt-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{t('profile.name')}</label>
-              <p className="mt-1 text-sm text-gray-900">{session?.user?.name || t('profile.notSet')}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{t('profile.email')}</label>
-              <p className="mt-1 text-sm text-gray-900">{session?.user?.email || t('profile.notSet')}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{t('profile.plan')}</label>
-              <p className="mt-1 text-sm text-gray-900 capitalize">{session?.user?.plan || 'Free'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        {/* Profile fields (read-only display) */}
+        <Card>
+          <CardBody className="pt-6">
+            <Stack gap={4}>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                {t('profile.title')}
+              </h2>
+              <Stack gap={3}>
+                <ProfileField label={t('profile.name')} value={session?.user?.name || t('profile.notSet')} />
+                <ProfileField label={t('profile.email')} value={session?.user?.email || t('profile.notSet')} />
+                <ProfileField label={t('profile.plan')} value={session?.user?.plan || 'Free'} capitalize />
+              </Stack>
+            </Stack>
+          </CardBody>
+        </Card>
 
-      {/* Account Actions Section */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">{t('account.title')}</h3>
-          <div className="mt-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{t('account.signOut')}</p>
-                <p className="text-sm text-gray-500">{t('account.signOutDesc')}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                {isLoggingOut ? t('account.signingOut') : t('account.signOut')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+        {/* Account actions (sign out) */}
+        <SettingCard
+          title={t('account.title')}
+          subtitle={t('account.signOut')}
+          description={t('account.signOutDesc')}
+          action={
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? t('account.signingOut') : t('account.signOut')}
+            </Button>
+          }
+        />
 
-      {/* Danger Zone */}
-      <div className="bg-white shadow rounded-lg border border-red-200">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-red-600">{t('dangerZone.title')}</h3>
-          <div className="mt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{t('dangerZone.deleteAccount')}</p>
-                <p className="text-sm text-gray-500">
-                  {t('dangerZone.deleteAccountDesc')}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                {t('dangerZone.deleteAccount')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Delete Account Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          {/* Background overlay */}
-          <div
-            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-            onClick={() => !isDeleting && setShowDeleteModal(false)}
-          />
-
-          {/* Modal container */}
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            {/* Modal panel */}
-            <div className="relative w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg font-medium leading-6 text-gray-900">
-                      {t('dangerZone.confirmTitle')}
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        {t('dangerZone.confirmMessage')}
-                      </p>
-                      <ul className="mt-3 text-sm text-gray-500 list-disc list-inside space-y-1">
-                        <li>{t('dangerZone.confirmItem1')}</li>
-                        <li>{t('dangerZone.confirmItem2')}</li>
-                        <li>{t('dangerZone.confirmItem3')}</li>
-                      </ul>
-                    </div>
-                    {deleteError && (
-                      <div className="mt-3 text-sm text-red-600">
-                        {deleteError}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                <button
+        {/* Danger zone — rose-tinted border to telegraph destructive context */}
+        <Card className="border-rose-200">
+          <CardBody className="pt-6">
+            <Stack gap={4}>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-danger">
+                {t('dangerZone.title')}
+              </h2>
+              <Stack direction="row" justify="between" align="center" gap={4}>
+                <Stack gap={1}>
+                  <p className="text-sm font-medium text-fg">{t('dangerZone.deleteAccount')}</p>
+                  <p className="text-sm text-fg-muted">{t('dangerZone.deleteAccountDesc')}</p>
+                </Stack>
+                <Button
                   type="button"
-                  onClick={handleDeleteAccount}
-                  disabled={isDeleting}
-                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 sm:ml-3 sm:w-auto sm:text-sm"
+                  variant="destructive"
+                  onClick={() => setShowDeleteModal(true)}
                 >
-                  {isDeleting ? t('dangerZone.deleting') : t('dangerZone.confirmDelete')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteModal(false)}
-                  disabled={isDeleting}
-                  className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 sm:mt-0 sm:w-auto sm:text-sm"
-                >
-                  {t('dangerZone.cancel')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+                  {t('dangerZone.deleteAccount')}
+                </Button>
+              </Stack>
+            </Stack>
+          </CardBody>
+        </Card>
+      </Stack>
+
+      <ConfirmDialog
+        isOpen={showDeleteModal}
+        onCancel={() => !isDeleting && setShowDeleteModal(false)}
+        onConfirm={handleDeleteAccount}
+        title={t('dangerZone.confirmTitle')}
+        description={
+          <Stack gap={3}>
+            <p>{t('dangerZone.confirmMessage')}</p>
+            <ul className="list-inside list-disc space-y-1 text-sm text-fg-muted">
+              <li>{t('dangerZone.confirmItem1')}</li>
+              <li>{t('dangerZone.confirmItem2')}</li>
+              <li>{t('dangerZone.confirmItem3')}</li>
+            </ul>
+            {deleteError && (
+              <Alert variant="danger">
+                <AlertDescription>{deleteError}</AlertDescription>
+              </Alert>
+            )}
+          </Stack>
+        }
+        confirmLabel={isDeleting ? t('dangerZone.deleting') : t('dangerZone.confirmDelete')}
+        cancelLabel={t('dangerZone.cancel')}
+        variant="danger"
+        isLoading={isDeleting}
+      />
+    </Container>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* SettingCard — header row + right-aligned action                     */
+/* ------------------------------------------------------------------ */
+
+interface SettingCardProps {
+  title: string;
+  subtitle?: string;
+  description: string;
+  action: React.ReactNode;
+}
+
+function SettingCard({ title, subtitle, description, action }: SettingCardProps) {
+  return (
+    <Card>
+      <CardBody className="pt-6">
+        <Stack direction="row" justify="between" align="center" gap={4} wrap>
+          <Stack gap={1} className="min-w-0 flex-1">
+            <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="text-sm font-medium text-fg">{subtitle}</p>
+            )}
+            <p className="text-sm text-fg-muted">{description}</p>
+          </Stack>
+          <div className="shrink-0">{action}</div>
+        </Stack>
+      </CardBody>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* ProfileField — label above value                                    */
+/* ------------------------------------------------------------------ */
+
+function ProfileField({
+  label, value, capitalize,
+}: { label: string; value: string; capitalize?: boolean }) {
+  return (
+    <Stack gap={1}>
+      <p className="text-sm font-medium text-fg-muted">{label}</p>
+      <p className={cn('text-sm text-fg', capitalize && 'capitalize')}>{value}</p>
+    </Stack>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Toggle — small switch styled to match the brand                     */
+/* ------------------------------------------------------------------ */
+
+interface ToggleProps {
+  checked: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+}
+
+function Toggle({ checked, onChange, ariaLabel }: ToggleProps) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={onChange}
+      className={cn(
+        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent',
+        'transition-colors duration-fast ease-standard',
+        'focus-visible:outline-none focus-visible:shadow-ring',
+        checked ? 'bg-primary' : 'bg-bg-muted',
       )}
-    </div>
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none inline-block size-5 transform rounded-full bg-bg shadow ring-0',
+          'transition-transform duration-fast ease-standard',
+          checked ? 'translate-x-5' : 'translate-x-0',
+        )}
+      />
+    </button>
   );
 }

@@ -1,8 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import { Copy, CheckCircle2, X as XIcon } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { formatDate } from '@/lib/format';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Card,
+  CardBody,
+  Container,
+  Input,
+  Stack,
+  cn,
+} from '@/components/ui';
 
 interface ApiKey {
   id: string;
@@ -154,192 +167,175 @@ export function ApiKeysContent({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <nav className="text-sm text-gray-500 mb-2">
-            <Link href="/settings" className="hover:text-gray-700">{t.nav.settings}</Link>
+    <Container size="wide" className="py-6 sm:py-10">
+      <Stack gap={6}>
+        <Stack gap={2}>
+          <nav className="text-sm text-fg-muted">
+            <Link href="/settings" className="hover:text-fg">
+              {t.nav.settings}
+            </Link>
             <span className="mx-2">/</span>
-            <span className="text-gray-900">{t.breadcrumb}</span>
+            <span className="text-fg">{t.breadcrumb}</span>
           </nav>
-          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {t.subtitle}
-          </p>
-        </div>
-      </div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+            {t.title}
+          </h1>
+          <p className="text-sm text-fg-muted">{t.subtitle}</p>
+        </Stack>
 
-      {/* New Key Created Alert */}
-      {newKeyValue && (
-        <div className="rounded-md bg-green-50 p-4 border border-green-200">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-green-800">{t.keyCreated}</h3>
-              <p className="mt-1 text-sm text-green-700">
-                {t.copyWarning}
-              </p>
-              <div className="mt-2 flex items-center space-x-2">
-                <code className="flex-1 bg-green-100 px-3 py-2 rounded text-sm font-mono text-green-900 break-all">
-                  {newKeyValue}
-                </code>
+        {/* "Key created" — show the secret once, never again */}
+        {newKeyValue && (
+          <Alert variant="success" hideIcon>
+            <Stack direction="row" gap={3} align="start">
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-hidden />
+              <Stack gap={3} className="min-w-0 flex-1">
+                <Stack gap={1}>
+                  <AlertTitle>{t.keyCreated}</AlertTitle>
+                  <AlertDescription>{t.copyWarning}</AlertDescription>
+                </Stack>
+                <Stack direction="row" gap={2} align="center">
+                  <code className="flex-1 break-all rounded bg-success-subtle px-3 py-2 font-mono text-sm text-emerald-900">
+                    {newKeyValue}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => copyToClipboard(newKeyValue)}
+                  >
+                    <Copy className="size-3.5" aria-hidden />
+                    {t.copy}
+                  </Button>
+                </Stack>
                 <button
-                  onClick={() => copyToClipboard(newKeyValue)}
-                  className="px-3 py-2 text-sm font-medium text-green-700 bg-green-100 rounded hover:bg-green-200"
+                  type="button"
+                  onClick={() => setNewKeyValue(null)}
+                  className="inline-flex items-center gap-1 text-sm text-fg-muted hover:text-fg"
                 >
-                  {t.copy}
+                  <XIcon className="size-3.5" aria-hidden />
+                  {t.dismiss}
                 </button>
-              </div>
-              <button
-                onClick={() => setNewKeyValue(null)}
-                className="mt-2 text-sm text-green-600 hover:text-green-800"
+              </Stack>
+            </Stack>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="danger">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Create new key */}
+        <Card>
+          <CardBody className="pt-6">
+            <Stack gap={4}>
+              <label
+                htmlFor="apiKeyName"
+                className="font-display text-xl font-semibold tracking-tight text-fg"
               >
-                {t.dismiss}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                {t.createNew}
+              </label>
+              <form onSubmit={handleCreateKey} className="flex gap-3">
+                <Input
+                  type="text"
+                  id="apiKeyName"
+                  name="apiKeyName"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder={t.keyPlaceholder}
+                  className="flex-1"
+                />
+                <Button type="submit" disabled={isCreating}>
+                  {isCreating ? t.creating : t.createKey}
+                </Button>
+              </form>
+            </Stack>
+          </CardBody>
+        </Card>
 
-      {/* Error Alert */}
-      {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
+        {/* Keys list */}
+        <Card>
+          <CardBody className="pt-6">
+            <Stack gap={4}>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                {t.yourKeys}
+              </h2>
+              {apiKeys.length === 0 ? (
+                <p className="py-8 text-center text-fg-muted">{t.noKeys}</p>
+              ) : (
+                <div className="overflow-hidden">
+                  <table className="min-w-full divide-y divide-border">
+                    <thead>
+                      <tr>
+                        <Th>{t.name}</Th>
+                        <Th>{t.key}</Th>
+                        <Th>{t.lastUsed}</Th>
+                        <Th>{t.created}</Th>
+                        <Th align="right">{t.actions}</Th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {apiKeys.map((key) => (
+                        <tr key={key.id}>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-fg">
+                            {key.name}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 font-mono text-sm text-fg-muted">
+                            {key.prefix}...
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-fg-muted">
+                            {key.lastUsedAt ? formatDate(key.lastUsedAt, locale) : t.never}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-fg-muted">
+                            {formatDate(key.createdAt, locale)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-right text-sm">
+                            <button
+                              type="button"
+                              onClick={() => handleRevokeKey(key.id)}
+                              className="text-danger hover:opacity-80"
+                            >
+                              {t.revoke}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Stack>
+          </CardBody>
+        </Card>
 
-      {/* Create New Key */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <label htmlFor="apiKeyName" className="text-lg font-medium leading-6 text-gray-900">{t.createNew}</label>
-          <form onSubmit={handleCreateKey} className="mt-4 flex space-x-4">
-            <input
-              type="text"
-              id="apiKeyName"
-              name="apiKeyName"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              placeholder={t.keyPlaceholder}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {isCreating ? t.creating : t.createKey}
-            </button>
-          </form>
-        </div>
-      </div>
+        {/* Usage examples — code snippets */}
+        <Card>
+          <CardBody className="pt-6">
+            <Stack gap={6}>
+              <Stack gap={1}>
+                <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                  {t.usageExample}
+                </h2>
+                <p className="text-sm text-fg-muted">{t.usageDescription}</p>
+              </Stack>
 
-      {/* API Keys List */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">{t.yourKeys}</h3>
-          {apiKeys.length === 0 ? (
-            <div className="mt-4 text-center py-8 text-gray-500">
-              {t.noKeys}
-            </div>
-          ) : (
-            <div className="mt-4 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t.name}
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t.key}
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t.lastUsed}
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t.created}
-                    </th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t.actions}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {apiKeys.map((key) => (
-                    <tr key={key.id}>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {key.name}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                        {key.prefix}...
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {key.lastUsedAt ? formatDate(key.lastUsedAt, locale) : t.never}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(key.createdAt, locale)}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-right text-sm">
-                        <button
-                          onClick={() => handleRevokeKey(key.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          {t.revoke}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
+              <Alert variant="info">
+                <AlertTitle>{t.examples.getPolicyId}</AlertTitle>
+                <AlertDescription>{t.examples.getPolicyIdDesc}</AlertDescription>
+              </Alert>
 
-      {/* Usage Examples */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">{t.usageExample}</h3>
-          <p className="mt-1 text-sm text-gray-500">{t.usageDescription}</p>
-
-          {/* How to get Policy ID */}
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-medium text-blue-900">{t.examples.getPolicyId}</h4>
-            <p className="mt-1 text-xs text-blue-700">{t.examples.getPolicyIdDesc}</p>
-          </div>
-
-          {/* Execute Policy */}
-          <div className="mt-6">
-            <h4 className="text-sm font-medium text-gray-900">{t.examples.executePolicy}</h4>
-            <p className="mt-1 text-xs text-gray-500">{t.examples.executePolicyDesc}</p>
-
-            {/* cURL */}
-            <div className="mt-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 uppercase">cURL</span>
-                <button
-                  onClick={() => copyToClipboard(`curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "policyModule": "aster.finance.loan",
-    "policyFunction": "evaluateLoanEligibility",
-    "context": [{
-      "creditScore": 750,
-      "income": 85000,
-      "loanAmount": 250000
-    }]
-  }'`)}
-                  className="text-xs text-indigo-600 hover:text-indigo-800"
-                >
-                  {t.copy}
-                </button>
-              </div>
-              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate \\
+              {/* Execute policy — three snippets */}
+              <Stack gap={4}>
+                <Stack gap={1}>
+                  <h3 className="text-sm font-semibold text-fg">{t.examples.executePolicy}</h3>
+                  <p className="text-xs text-fg-muted">{t.examples.executePolicyDesc}</p>
+                </Stack>
+                <CodeBlock
+                  label="cURL"
+                  copyLabel={t.copy}
+                  copy={copyToClipboard}
+                  code={`curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -351,41 +347,12 @@ export function ApiKeysContent({
       "loanAmount": 250000
     }]
   }'`}
-              </pre>
-            </div>
-
-            {/* JavaScript/Node.js */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 uppercase">JavaScript / Node.js</span>
-                <button
-                  onClick={() => copyToClipboard(`const response = await fetch('https://policy.aster-lang.dev/api/v1/policies/evaluate', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    policyModule: 'aster.finance.loan',
-    policyFunction: 'evaluateLoanEligibility',
-    context: [{
-      creditScore: 750,
-      income: 85000,
-      loanAmount: 250000,
-    }],
-  }),
-});
-
-const { result, executionTimeMs, error } = await response.json();
-if (error) console.error(error);
-else console.log('Decision:', result, 'in', executionTimeMs, 'ms');`)}
-                  className="text-xs text-indigo-600 hover:text-indigo-800"
-                >
-                  {t.copy}
-                </button>
-              </div>
-              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`const response = await fetch('https://policy.aster-lang.dev/api/v1/policies/evaluate', {
+                />
+                <CodeBlock
+                  label="JavaScript / Node.js"
+                  copyLabel={t.copy}
+                  copy={copyToClipboard}
+                  code={`const response = await fetch('https://policy.aster-lang.dev/api/v1/policies/evaluate', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
@@ -405,45 +372,12 @@ else console.log('Decision:', result, 'in', executionTimeMs, 'ms');`)}
 const { result, executionTimeMs, error } = await response.json();
 if (error) console.error(error);
 else console.log('Decision:', result, 'in', executionTimeMs, 'ms');`}
-              </pre>
-            </div>
-
-            {/* Python */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 uppercase">Python</span>
-                <button
-                  onClick={() => copyToClipboard(`import requests
-
-response = requests.post(
-    'https://policy.aster-lang.dev/api/v1/policies/evaluate',
-    headers={
-        'Authorization': 'Bearer YOUR_API_KEY',
-        'Content-Type': 'application/json',
-    },
-    json={
-        'policyModule': 'aster.finance.loan',
-        'policyFunction': 'evaluateLoanEligibility',
-        'context': [{
-            'creditScore': 750,
-            'income': 85000,
-            'loanAmount': 250000,
-        }],
-    },
-)
-
-data = response.json()
-if data.get('error'):
-    print('Error:', data['error'])
-else:
-    print('Decision:', data['result'], 'in', data['executionTimeMs'], 'ms')`)}
-                  className="text-xs text-indigo-600 hover:text-indigo-800"
-                >
-                  {t.copy}
-                </button>
-              </div>
-              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`import requests
+                />
+                <CodeBlock
+                  label="Python"
+                  copyLabel={t.copy}
+                  copy={copyToClipboard}
+                  code={`import requests
 
 response = requests.post(
     'https://policy.aster-lang.dev/api/v1/policies/evaluate',
@@ -467,38 +401,32 @@ if data.get('error'):
     print('Error:', data['error'])
 else:
     print('Decision:', data['result'], 'in', data['executionTimeMs'], 'ms')`}
-              </pre>
-            </div>
-          </div>
+                />
+              </Stack>
 
-          {/* Version History */}
-          <div className="mt-8">
-            <h4 className="text-sm font-medium text-gray-900">{t.examples.listPolicies}</h4>
-            <p className="mt-1 text-xs text-gray-500">{t.examples.listPoliciesDesc}</p>
-            <div className="mt-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 uppercase">cURL</span>
-                <button
-                  onClick={() => copyToClipboard(`curl -X GET https://policy.aster-lang.dev/api/v1/policies/YOUR_POLICY_ID/versions \\
-  -H "Authorization: Bearer YOUR_API_KEY"`)}
-                  className="text-xs text-indigo-600 hover:text-indigo-800"
-                >
-                  {t.copy}
-                </button>
-              </div>
-              <pre className="mt-1 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`curl -X GET https://policy.aster-lang.dev/api/v1/policies/YOUR_POLICY_ID/versions \\
+              {/* List policy versions */}
+              <Stack gap={3}>
+                <Stack gap={1}>
+                  <h3 className="text-sm font-semibold text-fg">{t.examples.listPolicies}</h3>
+                  <p className="text-xs text-fg-muted">{t.examples.listPoliciesDesc}</p>
+                </Stack>
+                <CodeBlock
+                  label="cURL"
+                  copyLabel={t.copy}
+                  copy={copyToClipboard}
+                  code={`curl -X GET https://policy.aster-lang.dev/api/v1/policies/YOUR_POLICY_ID/versions \\
   -H "Authorization: Bearer YOUR_API_KEY"`}
-              </pre>
-            </div>
-          </div>
+                />
+              </Stack>
 
-          {/* Response Example */}
-          <div className="mt-8">
-            <h4 className="text-sm font-medium text-gray-900">{t.examples.responseExample}</h4>
-            <p className="mt-1 text-xs text-gray-500">{t.examples.responseExampleDesc}</p>
-            <pre className="mt-3 bg-gray-900 text-gray-100 p-3 rounded-md overflow-x-auto text-xs">
-{`{
+              {/* Response shape */}
+              <Stack gap={3}>
+                <Stack gap={1}>
+                  <h3 className="text-sm font-semibold text-fg">{t.examples.responseExample}</h3>
+                  <p className="text-xs text-fg-muted">{t.examples.responseExampleDesc}</p>
+                </Stack>
+                <CodeBlock
+                  code={`{
   "result": {
     "approved": true,
     "interestRate": 0.0625,
@@ -507,24 +435,90 @@ else:
   "executionTimeMs": 12,
   "error": null
 }`}
-            </pre>
-          </div>
+                />
+              </Stack>
 
-          {/* Error Handling */}
-          <div className="mt-8">
-            <h4 className="text-sm font-medium text-gray-900">{t.examples.errorHandling}</h4>
-            <p className="mt-1 text-xs text-gray-500">{t.examples.errorHandlingDesc}</p>
-            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-3">
-              <div className="text-xs text-amber-800 space-y-1">
-                <p><code className="bg-amber-100 px-1 rounded">401</code> - {t.examples.error401}</p>
-                <p><code className="bg-amber-100 px-1 rounded">403</code> - {t.examples.error403}</p>
-                <p><code className="bg-amber-100 px-1 rounded">404</code> - {t.examples.error404}</p>
-                <p><code className="bg-amber-100 px-1 rounded">429</code> - {t.examples.error429}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+              {/* Error catalog */}
+              <Stack gap={3}>
+                <Stack gap={1}>
+                  <h3 className="text-sm font-semibold text-fg">{t.examples.errorHandling}</h3>
+                  <p className="text-xs text-fg-muted">{t.examples.errorHandlingDesc}</p>
+                </Stack>
+                <Alert variant="warning" hideIcon className="text-xs">
+                  <Stack gap={1}>
+                    <ErrorRow code="401" text={t.examples.error401} />
+                    <ErrorRow code="403" text={t.examples.error403} />
+                    <ErrorRow code="404" text={t.examples.error404} />
+                    <ErrorRow code="429" text={t.examples.error429} />
+                  </Stack>
+                </Alert>
+              </Stack>
+            </Stack>
+          </CardBody>
+        </Card>
+      </Stack>
+    </Container>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Subcomponents                                                       */
+/* ------------------------------------------------------------------ */
+
+function Th({
+  children, align = 'left',
+}: { children: React.ReactNode; align?: 'left' | 'right' }) {
+  return (
+    <th
+      scope="col"
+      className={cn(
+        'px-3 py-3 text-xs font-medium uppercase tracking-wider text-fg-muted',
+        align === 'right' ? 'text-right' : 'text-left',
+      )}
+    >
+      {children}
+    </th>
+  );
+}
+
+interface CodeBlockProps {
+  code: string;
+  label?: string;
+  copyLabel?: string;
+  copy?: (text: string) => void;
+}
+
+function CodeBlock({ code, label, copyLabel, copy }: CodeBlockProps) {
+  return (
+    <Stack gap={1}>
+      {(label || (copy && copyLabel)) && (
+        <Stack direction="row" justify="between" align="center">
+          {label && (
+            <span className="text-xs font-medium uppercase text-fg-muted">{label}</span>
+          )}
+          {copy && copyLabel && (
+            <button
+              type="button"
+              onClick={() => copy(code)}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary-hover"
+            >
+              <Copy className="size-3" aria-hidden />
+              {copyLabel}
+            </button>
+          )}
+        </Stack>
+      )}
+      <pre className="overflow-x-auto rounded-md bg-zinc-900 p-3 font-mono text-xs text-zinc-100">
+        {code}
+      </pre>
+    </Stack>
+  );
+}
+
+function ErrorRow({ code, text }: { code: string; text: string }) {
+  return (
+    <p>
+      <code className="rounded bg-warning-subtle px-1 font-mono">{code}</code> — {text}
+    </p>
   );
 }

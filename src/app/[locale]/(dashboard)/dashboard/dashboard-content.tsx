@@ -1,12 +1,57 @@
+/**
+ * Dashboard home — the first thing every signed-in user sees.
+ *
+ * W2.3 rewrite goals (compared to the 463-line predecessor):
+ *   - All inline indigo/green/purple/yellow/red utilities replaced with
+ *     design-system primitives and semantic tokens
+ *   - Repeated stat-card and quick-action patterns extracted to local
+ *     subcomponents so the JSX reads as "5 stat cards, 3 quick actions"
+ *     instead of 100 lines of copy-paste
+ *   - Card + Stack + Container layout so density and spacing match the
+ *     rest of the W2 sweep
+ *
+ * Behaviors preserved verbatim:
+ *   - Trial / plan banner switch
+ *   - Restore-hint toast on double-click of a deleted policy
+ *   - PII badge, deleted-strike styling
+ *   - Usage progress bars when limits are finite
+ *   - DunningBanner, AhaStatusCard, AiUsageCard, ApiUsageCard all
+ *     mounted in their original slots
+ */
 'use client';
 
 import { useState, useCallback } from 'react';
+import {
+  Plus,
+  FileText,
+  KeyRound,
+  Info,
+  CheckCircle2,
+  AlertTriangle,
+  X,
+} from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { isUnlimited } from '@/lib/plans';
 import { AiUsageCard } from '@/components/dashboard/ai-usage-card';
 import { ApiUsageCard } from '@/components/dashboard/api-usage-card';
 import { AhaStatusCard } from '@/components/dashboard/aha-status-card';
 import { DunningBanner } from '@/components/dashboard/dunning-banner';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  buttonVariants,
+  Card,
+  CardBody,
+  Container,
+  Stack,
+  cn,
+} from '@/components/ui';
+
+/* ------------------------------------------------------------------ */
+/* Types — props shape unchanged from the previous version             */
+/* ------------------------------------------------------------------ */
 
 interface DashboardStats {
   plan: string;
@@ -36,9 +81,7 @@ interface Policy {
   description: string | null;
   piiFields: string[] | null;
   updatedAt: string;
-  _count: {
-    executions: number;
-  };
+  _count: { executions: number };
   isDeleted?: boolean;
 }
 
@@ -80,11 +123,6 @@ interface Translations {
   };
 }
 
-// 简单模板插值
-function formatTemplate(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
-}
-
 interface DashboardContentProps {
   stats: DashboardStats;
   policies: Policy[];
@@ -93,6 +131,17 @@ interface DashboardContentProps {
   locale: string;
 }
 
+/** Tiny template interpolator — replaces {count}/{plan}/etc. in i18n
+ *  strings whose plurals are computed server-side. Kept inline so the
+ *  dependency on next-intl's ICU API stays minimal. */
+function formatTemplate(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
+}
+
+/* ------------------------------------------------------------------ */
+/* Root component                                                      */
+/* ------------------------------------------------------------------ */
+
 export function DashboardContent({
   stats,
   policies,
@@ -100,17 +149,19 @@ export function DashboardContent({
   translations: t,
   locale,
 }: DashboardContentProps) {
-  // 跟踪已删除策略的点击次数
+  // Double-click on a deleted policy → show "How to restore" hint.
+  // Server data marks isDeleted; the user reaches here from the recent
+  // policies list and may not realize they need the trash UI to restore.
+  // Counter is per-policy; threshold = 2 keeps single accidental clicks
+  // quiet, two-in-a-row triggers the affordance.
   const [_deletedClickCount, setDeletedClickCount] = useState<Record<string, number>>({});
   const [showRestoreHint, setShowRestoreHint] = useState(false);
 
-  // 处理已删除策略的点击
   const handleDeletedPolicyClick = useCallback((policyId: string) => {
     setDeletedClickCount((prev) => {
       const newCount = (prev[policyId] || 0) + 1;
       if (newCount >= 2) {
         setShowRestoreHint(true);
-        // 3秒后自动隐藏提示
         setTimeout(() => setShowRestoreHint(false), 3000);
       }
       return { ...prev, [policyId]: newCount };
@@ -118,346 +169,410 @@ export function DashboardContent({
   }, []);
 
   return (
-    <div>
-      <DunningBanner />
+    <Container size="xl" className="py-6 sm:py-10">
+      <Stack gap={8}>
+        <DunningBanner />
 
-      {/* 恢复提示 Toast */}
-      {showRestoreHint && (
-        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center gap-3 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3 shadow-lg">
-            <svg className="h-5 w-5 text-yellow-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-            </svg>
-            <p className="text-sm text-yellow-800">{t.recentPolicies.restoreHint}</p>
-            <button
-              onClick={() => setShowRestoreHint(false)}
-              className="ml-2 text-yellow-600 hover:text-yellow-800"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+        {showRestoreHint && (
+          <RestoreHintToast
+            message={t.recentPolicies.restoreHint}
+            onClose={() => setShowRestoreHint(false)}
+          />
+        )}
 
-      <div className="md:flex md:items-center md:justify-between">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+        {/* Welcome row + primary CTA */}
+        <Stack direction="row" gap={4} justify="between" align="center" wrap>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
             {t.welcomeBack}
-          </h2>
-        </div>
-        <div className="mt-4 flex md:ml-4 md:mt-0">
+          </h1>
           <Link
             href="/policies/new"
-            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+            className={buttonVariants({ variant: 'primary', size: 'md' })}
           >
+            <Plus className="size-4" aria-hidden />
             {t.newPolicy}
           </Link>
-        </div>
-      </div>
+        </Stack>
 
-      {/* Trial Banner */}
-      {stats.plan === 'trial' && stats.trialDaysLeft !== null && (
-        <div className="mt-6 rounded-lg bg-indigo-50 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-indigo-800">{t.trialActive}</h3>
-              <p className="mt-1 text-sm text-indigo-700">
-                {t.trialDaysLeft}{' '}
-                <Link href="/billing" className="font-medium underline">
-                  {t.upgradeNow}
-                </Link>{' '}
-                {t.toKeepProFeatures}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Plan Badge for non-trial users */}
-      {stats.plan && stats.plan !== 'trial' && stats.plan !== 'free' && (
-        <div className="mt-6 rounded-lg bg-green-50 p-4">
-          <div className="flex items-center">
-            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-            </svg>
-            <span className="ml-2 text-sm font-medium text-green-800 capitalize">
-              {t.planActive}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Grid */}
-      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* 策略总数 */}
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">{t.stats.totalPolicies}</dt>
-          <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-            {stats.usage.policies || 0}
-          </dd>
-          {stats.usage.policiesLimit !== undefined && !isUnlimited(stats.usage.policiesLimit) && (
-            <div className="mt-2">
-              <div className="h-2 w-full bg-gray-200 rounded-full">
-                <div
-                  className="h-2 bg-indigo-600 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      ((stats.usage.policies || 0) / (stats.usage.policiesLimit || 1)) * 100,
-                      100
-                    )}%`,
-                  }}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                {formatTemplate(t.stats.limitTemplate, { count: stats.usage.policiesLimit })}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* 本月执行次数 */}
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">{t.stats.executionsThisMonth}</dt>
-          <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-            {stats.usage.executions || 0}
-          </dd>
-          {stats.usage.executionsLimit !== undefined &&
-            !isUnlimited(stats.usage.executionsLimit) && (
-            <div className="mt-2">
-              <div className="h-2 w-full bg-gray-200 rounded-full">
-                <div
-                  className="h-2 bg-indigo-600 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      ((stats.usage.executions || 0) / (stats.usage.executionsLimit || 1)) * 100,
-                      100
-                    )}%`,
-                  }}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                {formatTemplate(t.stats.limitTemplate, { count: stats.usage.executionsLimit })}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* API 调用 */}
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">{t.stats.apiCalls}</dt>
-          <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-            {stats.usage.apiCalls || 0}
-          </dd>
-          {!stats.features.apiAccess ? (
-            <Link href="/billing" className="mt-1 text-xs text-indigo-600">
-              {t.stats.upgradeForApi}
-            </Link>
-          ) : stats.usage.apiCallsLimit !== undefined && !isUnlimited(stats.usage.apiCallsLimit) && (
-            <div className="mt-2">
-              <div className="h-2 w-full bg-gray-200 rounded-full">
-                <div
-                  className="h-2 bg-indigo-600 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      ((stats.usage.apiCalls || 0) / (stats.usage.apiCallsLimit || 1)) * 100,
-                      100
-                    )}%`,
-                  }}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                {formatTemplate(t.stats.limitTemplate, { count: stats.usage.apiCallsLimit })}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* PII 字段检测 */}
-        <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-          <dt className="truncate text-sm font-medium text-gray-500">{t.stats.piiFieldsDetected}</dt>
-          <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
-            {totalPiiFields}
-          </dd>
-          {totalPiiFields > 0 && (
-            <p className="mt-1 text-xs text-yellow-600">
-              {t.stats.reviewRecommended}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* AHA Moment status (PM 02 NSM leading indicator) */}
-      <div className="mt-6">
-        <AhaStatusCard locale={locale} />
-      </div>
-
-      {/* AI / API Usage Cards (PM v1.1) */}
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <AiUsageCard locale={locale} />
-        <ApiUsageCard locale={locale} />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="mt-8">
-        <h3 className="text-lg font-medium leading-6 text-gray-900">{t.quickActions.title}</h3>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Link
-            href="/policies/new"
-            className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-          >
-            <div className="flex-shrink-0 p-3 bg-indigo-100 rounded-lg">
-              <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-900">{t.quickActions.createPolicy}</p>
-              <p className="text-xs text-gray-500">{t.quickActions.createPolicyDesc}</p>
-            </div>
-          </Link>
-
-          <Link
-            href="/reports"
-            className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-          >
-            <div className="flex-shrink-0 p-3 bg-green-100 rounded-lg">
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-900">{t.quickActions.generateReport}</p>
-              <p className="text-xs text-gray-500">{t.quickActions.generateReportDesc}</p>
-            </div>
-          </Link>
-
-          <Link
-            href="/settings/api-keys"
-            className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-          >
-            <div className="flex-shrink-0 p-3 bg-purple-100 rounded-lg">
-              <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-900">{t.quickActions.apiKeys}</p>
-              <p className="text-xs text-gray-500">{t.quickActions.apiKeysDesc}</p>
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Recent Policies */}
-      <div className="mt-8">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">{t.recentPolicies.title}</h3>
-          <Link href="/policies" className="text-sm text-indigo-600 hover:text-indigo-500">
-            {t.recentPolicies.viewAll}
-          </Link>
-        </div>
-        <div className="mt-4 overflow-hidden bg-white shadow sm:rounded-md">
-          {policies.length === 0 ? (
-            <div className="px-4 py-12 text-center text-gray-500">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+        {/* Plan-state banner */}
+        {stats.plan === 'trial' && stats.trialDaysLeft !== null && (
+          <Alert variant="info">
+            <AlertTitle>{t.trialActive}</AlertTitle>
+            <AlertDescription>
+              {t.trialDaysLeft}{' '}
+              <Link
+                href="/billing"
+                className="font-medium text-primary underline-offset-2 hover:underline"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <p className="mt-2">{t.recentPolicies.noPolicies}</p>
-              <p className="mt-2">
-                <Link href="/policies/new" className="text-indigo-600 hover:text-indigo-500">
-                  {t.recentPolicies.createFirst}
+                {t.upgradeNow}
+              </Link>{' '}
+              {t.toKeepProFeatures}
+            </AlertDescription>
+          </Alert>
+        )}
+        {stats.plan && stats.plan !== 'trial' && stats.plan !== 'free' && (
+          <Alert variant="success" hideIcon>
+            <Stack direction="row" gap={2} align="center">
+              <CheckCircle2 className="size-5 text-success" aria-hidden />
+              <span className="text-sm font-medium capitalize">{t.planActive}</span>
+            </Stack>
+          </Alert>
+        )}
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label={t.stats.totalPolicies}
+            value={stats.usage.policies || 0}
+            limit={stats.usage.policiesLimit}
+            limitTemplate={t.stats.limitTemplate}
+          />
+          <StatCard
+            label={t.stats.executionsThisMonth}
+            value={stats.usage.executions || 0}
+            limit={stats.usage.executionsLimit}
+            limitTemplate={t.stats.limitTemplate}
+          />
+          <StatCard
+            label={t.stats.apiCalls}
+            value={stats.usage.apiCalls || 0}
+            limit={stats.features.apiAccess ? stats.usage.apiCallsLimit : undefined}
+            limitTemplate={t.stats.limitTemplate}
+            footer={
+              !stats.features.apiAccess && (
+                <Link href="/billing" className="text-xs text-primary hover:text-primary-hover">
+                  {t.stats.upgradeForApi}
                 </Link>
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {policies.map((policy) => (
-                <li key={policy.id}>
-                  {policy.isDeleted ? (
-                    // 已删除的策略：不可点击，仅显示
-                    <div
-                      className="block cursor-not-allowed"
-                      onClick={() => handleDeletedPolicyClick(policy.id)}
-                    >
-                      <div className="px-4 py-4 sm:px-6">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium truncate text-gray-400 line-through">
-                            {policy.name}
-                          </p>
-                          <div className="ml-2 flex-shrink-0 flex gap-2">
-                            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-                              {t.recentPolicies.deleted}
-                            </span>
-                            {policy.piiFields && policy.piiFields.length > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                                {policy.piiFields.length} PII
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="mt-2 flex justify-between">
-                          <p className="text-sm text-gray-500 truncate">
-                            {policy.description || t.recentPolicies.noDescription}
-                          </p>
-                          <p className="text-sm text-gray-400">
-                            {formatTemplate(t.recentPolicies.runsTemplate, { count: policy._count.executions })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    // 正常策略：可点击跳转
-                    <Link
-                      href={`/policies/${policy.id}`}
-                      className="block hover:bg-gray-50"
-                    >
-                      <div className="px-4 py-4 sm:px-6">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium truncate text-indigo-600">
-                            {policy.name}
-                          </p>
-                          <div className="ml-2 flex-shrink-0 flex gap-2">
-                            {policy.piiFields && policy.piiFields.length > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                                {policy.piiFields.length} PII
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="mt-2 flex justify-between">
-                          <p className="text-sm text-gray-500 truncate">
-                            {policy.description || t.recentPolicies.noDescription}
-                          </p>
-                          <p className="text-sm text-gray-400">
-                            {formatTemplate(t.recentPolicies.runsTemplate, { count: policy._count.executions })}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+              )
+            }
+          />
+          <StatCard
+            label={t.stats.piiFieldsDetected}
+            value={totalPiiFields}
+            footer={
+              totalPiiFields > 0 && (
+                <p className="flex items-center gap-1 text-xs text-warning">
+                  <AlertTriangle className="size-3.5" aria-hidden />
+                  {t.stats.reviewRecommended}
+                </p>
+              )
+            }
+          />
         </div>
-      </div>
+
+        {/* AHA-moment card — kept in its own slot (PM 02 NSM leading indicator) */}
+        <AhaStatusCard locale={locale} />
+
+        {/* AI + Policy API usage (PM v1.1) */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <AiUsageCard locale={locale} />
+          <ApiUsageCard locale={locale} />
+        </div>
+
+        {/* Quick actions */}
+        <Stack gap={4}>
+          <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+            {t.quickActions.title}
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <QuickAction
+              href="/policies/new"
+              icon={Plus}
+              tone="primary"
+              title={t.quickActions.createPolicy}
+              description={t.quickActions.createPolicyDesc}
+            />
+            <QuickAction
+              href="/reports"
+              icon={FileText}
+              tone="success"
+              title={t.quickActions.generateReport}
+              description={t.quickActions.generateReportDesc}
+            />
+            <QuickAction
+              href="/settings/api-keys"
+              icon={KeyRound}
+              tone="accent"
+              title={t.quickActions.apiKeys}
+              description={t.quickActions.apiKeysDesc}
+            />
+          </div>
+        </Stack>
+
+        {/* Recent policies list */}
+        <Stack gap={4}>
+          <Stack direction="row" justify="between" align="center">
+            <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+              {t.recentPolicies.title}
+            </h2>
+            <Link
+              href="/policies"
+              className="text-sm font-medium text-primary hover:text-primary-hover"
+            >
+              {t.recentPolicies.viewAll}
+            </Link>
+          </Stack>
+          <Card>
+            {policies.length === 0 ? (
+              <EmptyPolicies
+                noPolicies={t.recentPolicies.noPolicies}
+                createFirst={t.recentPolicies.createFirst}
+              />
+            ) : (
+              <ul className="divide-y divide-border">
+                {policies.map((policy) => (
+                  <PolicyRow
+                    key={policy.id}
+                    policy={policy}
+                    deletedLabel={t.recentPolicies.deleted}
+                    noDescription={t.recentPolicies.noDescription}
+                    runsTemplate={t.recentPolicies.runsTemplate}
+                    onDeletedClick={handleDeletedPolicyClick}
+                  />
+                ))}
+              </ul>
+            )}
+          </Card>
+        </Stack>
+      </Stack>
+    </Container>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* StatCard — value + optional progress bar + footer slot              */
+/* ------------------------------------------------------------------ */
+
+interface StatCardProps {
+  label: string;
+  value: number;
+  limit?: number;
+  limitTemplate?: string;
+  footer?: React.ReactNode;
+}
+
+function StatCard({ label, value, limit, limitTemplate, footer }: StatCardProps) {
+  const showBar = limit !== undefined && !isUnlimited(limit);
+  const percent = showBar ? Math.min((value / Math.max(limit, 1)) * 100, 100) : 0;
+  return (
+    <Card>
+      <CardBody className="pt-6">
+        <Stack gap={2}>
+          <p className="truncate text-sm font-medium text-fg-muted">{label}</p>
+          <p className="font-display text-3xl font-semibold tracking-tight text-fg">
+            {value.toLocaleString()}
+          </p>
+          {showBar && (
+            <Stack gap={1}>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-bg-muted">
+                <div
+                  className="h-full bg-primary transition-all duration-medium ease-standard"
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+              {limitTemplate && (
+                <p className="text-xs text-fg-subtle">
+                  {formatTemplate(limitTemplate, { count: limit! })}
+                </p>
+              )}
+            </Stack>
+          )}
+          {footer}
+        </Stack>
+      </CardBody>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* QuickAction — icon tile + title + sub                               */
+/* ------------------------------------------------------------------ */
+
+type ActionTone = 'primary' | 'success' | 'accent' | 'warning' | 'danger' | 'neutral';
+
+const ACTION_TONE_BG: Record<ActionTone, string> = {
+  primary: 'bg-primary-subtle text-primary',
+  success: 'bg-success-subtle text-success',
+  accent:  'bg-accent-subtle text-accent',
+  warning: 'bg-warning-subtle text-warning',
+  danger:  'bg-danger-subtle text-danger',
+  neutral: 'bg-bg-muted text-fg-muted',
+};
+
+interface QuickActionProps {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: ActionTone;
+  title: string;
+  description: string;
+}
+
+function QuickAction({ href, icon: Icon, tone, title, description }: QuickActionProps) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-4',
+        'rounded-lg border border-border bg-bg p-4',
+        'transition-all duration-fast ease-standard',
+        'hover:border-border-strong hover:shadow-sm',
+        'focus-visible:outline-none focus-visible:shadow-ring',
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'flex size-10 shrink-0 items-center justify-center rounded-md',
+          ACTION_TONE_BG[tone],
+        )}
+      >
+        <Icon className="size-5" />
+      </span>
+      <Stack gap={1}>
+        <p className="text-sm font-medium text-fg">{title}</p>
+        <p className="text-xs text-fg-muted">{description}</p>
+      </Stack>
+    </Link>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Policy row — handles both clickable + deleted (struck-through)      */
+/* ------------------------------------------------------------------ */
+
+interface PolicyRowProps {
+  policy: Policy;
+  deletedLabel: string;
+  noDescription: string;
+  runsTemplate: string;
+  onDeletedClick: (id: string) => void;
+}
+
+function PolicyRow({
+  policy, deletedLabel, noDescription, runsTemplate, onDeletedClick,
+}: PolicyRowProps) {
+  const runsText = formatTemplate(runsTemplate, { count: policy._count.executions });
+  const piiCount = policy.piiFields?.length ?? 0;
+
+  if (policy.isDeleted) {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={() => onDeletedClick(policy.id)}
+          className="block w-full cursor-not-allowed text-left"
+        >
+          <PolicyRowInner
+            name={policy.name}
+            description={policy.description}
+            runsText={runsText}
+            piiCount={piiCount}
+            noDescription={noDescription}
+            deletedLabel={deletedLabel}
+            disabled
+          />
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Link
+        href={`/policies/${policy.id}`}
+        className="block transition-colors duration-fast hover:bg-bg-subtle"
+      >
+        <PolicyRowInner
+          name={policy.name}
+          description={policy.description}
+          runsText={runsText}
+          piiCount={piiCount}
+          noDescription={noDescription}
+        />
+      </Link>
+    </li>
+  );
+}
+
+function PolicyRowInner({
+  name, description, runsText, piiCount, noDescription, deletedLabel, disabled,
+}: {
+  name: string;
+  description: string | null;
+  runsText: string;
+  piiCount: number;
+  noDescription: string;
+  deletedLabel?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="px-4 py-4 sm:px-6">
+      <Stack gap={2}>
+        <Stack direction="row" justify="between" align="center" gap={2}>
+          <p
+            className={cn(
+              'truncate text-sm font-medium',
+              disabled ? 'text-fg-subtle line-through' : 'text-primary',
+            )}
+          >
+            {name}
+          </p>
+          <Stack direction="row" gap={2}>
+            {disabled && deletedLabel && (
+              <Badge variant="danger">{deletedLabel}</Badge>
+            )}
+            {piiCount > 0 && <Badge variant="warning">{piiCount} PII</Badge>}
+          </Stack>
+        </Stack>
+        <Stack direction="row" justify="between" align="center" gap={2}>
+          <p className="truncate text-sm text-fg-muted">
+            {description || noDescription}
+          </p>
+          <p className="shrink-0 text-sm text-fg-subtle">{runsText}</p>
+        </Stack>
+      </Stack>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Empty state + restore hint                                          */
+/* ------------------------------------------------------------------ */
+
+function EmptyPolicies({ noPolicies, createFirst }: { noPolicies: string; createFirst: string }) {
+  return (
+    <div className="px-4 py-12 text-center">
+      <Stack gap={3} align="center">
+        <FileText className="size-10 text-fg-subtle" aria-hidden />
+        <p className="text-fg-muted">{noPolicies}</p>
+        <Link
+          href="/policies/new"
+          className="text-sm font-medium text-primary hover:text-primary-hover"
+        >
+          {createFirst}
+        </Link>
+      </Stack>
+    </div>
+  );
+}
+
+function RestoreHintToast({ message, onClose }: { message: string; onClose: () => void }) {
+  return (
+    <div className="fixed right-4 top-4 z-50 max-w-sm animate-in fade-in slide-in-from-top-2 duration-medium">
+      <Alert variant="warning" className="pr-12 shadow-lg">
+        <AlertDescription className="flex items-center gap-3">
+          <Info className="size-4 shrink-0" aria-hidden />
+          {message}
+        </AlertDescription>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Dismiss"
+          className="absolute right-3 top-3 text-warning hover:opacity-80"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
+      </Alert>
     </div>
   );
 }
