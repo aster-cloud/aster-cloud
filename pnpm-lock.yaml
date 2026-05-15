@@ -23,6 +23,9 @@ importers:
       '@aster-cloud/tokens':
         specifier: ^0.1.0
         version: 0.1.0
+      '@aster-cloud/ui':
+        specifier: ^0.1.0
+        version: 0.1.0(react@19.2.3)
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.2
@@ -41,6 +44,12 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       disposable-email-domains:
         specifier: ^1.0.62
         version: 1.0.62
@@ -83,6 +92,9 @@ importers:
       stripe:
         specifier: ^20.1.0
         version: 20.4.1(@types/node@24.12.4)
+      tailwind-merge:
+        specifier: ^3.6.0
+        version: 3.6.0
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -267,6 +279,11 @@ packages:
 
   '@aster-cloud/tokens@0.1.0':
     resolution: {integrity: sha512-AQexV643kYCw2BJKX8fXIUf8/u0xujCjOA4NTK1369AHPGCn/xqM8sGH/Ti59dp55mfhnqgexoiohEQzySkroQ==}
+
+  '@aster-cloud/ui@0.1.0':
+    resolution: {integrity: sha512-BAiSCRIqLpog9PjES1PdNBvI+gyXRd9oSIaAROtf0OC3cFzVi8TQ5Sq1vqD6nP3Dt9G5bZsTe14Cm7n3UBDwEg==}
+    peerDependencies:
+      react: ^18.2.0 || ^19.0.0
 
   '@auth/core@0.41.0':
     resolution: {integrity: sha512-Wd7mHPQ/8zy6Qj7f4T46vg3aoor8fskJm6g2Zyj064oQ3+p0xNZXAV60ww0hY+MbTesfu29kK14Zk5d5JTazXQ==}
@@ -2307,6 +2324,9 @@ packages:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
 
+  class-variance-authority@0.7.1:
+    resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
+
   cli-cursor@5.0.0:
     resolution: {integrity: sha512-aCj4O5wKyszjMmDT4tZj93kxyydN/K5zPWSCe6/0AV/AA1pqe5ZBIw0a2ZfPQV7lL5/yb5HsUreJ6UFAF1tEQw==}
     engines: {node: '>=18'}
@@ -2324,6 +2344,10 @@ packages:
 
   cloudflare@4.5.0:
     resolution: {integrity: sha512-fPcbPKx4zF45jBvQ0z7PCdgejVAPBBCZxwqk1k7krQNfpM07Cfj97/Q6wBzvYqlWXx/zt1S9+m8vnfCe06umbQ==}
+
+  clsx@2.1.1:
+    resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
+    engines: {node: '>=6'}
 
   cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
@@ -4127,6 +4151,9 @@ packages:
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
 
+  tailwind-merge@3.6.0:
+    resolution: {integrity: sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==}
+
   tailwindcss@4.3.0:
     resolution: {integrity: sha512-y6nxMGB1nMW9R6k96e5gdIFzcfL/gTJRNaqGes1YvkLnPVXzWgbqFF2yLC0T8G774n24cx3Pe8XrKoniCOAH+Q==}
 
@@ -4669,6 +4696,13 @@ snapshots:
       - zod
 
   '@aster-cloud/tokens@0.1.0': {}
+
+  '@aster-cloud/ui@0.1.0(react@19.2.3)':
+    dependencies:
+      '@aster-cloud/tokens': 0.1.0
+      class-variance-authority: 0.7.1
+      clsx: 2.1.1
+      react: 19.2.3
 
   '@auth/core@0.41.0':
     dependencies:
@@ -6988,6 +7022,10 @@ snapshots:
 
   ci-info@4.4.0: {}
 
+  class-variance-authority@0.7.1:
+    dependencies:
+      clsx: 2.1.1
+
   cli-cursor@5.0.0:
     dependencies:
       restore-cursor: 5.1.0
@@ -7013,6 +7051,8 @@ snapshots:
       node-fetch: 2.7.0
     transitivePeerDependencies:
       - encoding
+
+  clsx@2.1.1: {}
 
   cluster-key-slot@1.1.2: {}
 
@@ -8956,6 +8996,8 @@ snapshots:
       standardwebhooks: 1.0.0
 
   symbol-tree@3.2.4: {}
+
+  tailwind-merge@3.6.0: {}
 
   tailwindcss@4.3.0: {}
 

@@ -29,12 +29,15 @@
   "dependencies": {
     "@aster-cloud/aster-lang-ts": "^0.1.5",
     "@aster-cloud/tokens": "^0.1.0",
+    "@aster-cloud/ui": "^0.1.0",
     "@auth/drizzle-adapter": "^1.11.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@monaco-editor/react": "^4.7.0",
     "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "disposable-email-domains": "^1.0.62",
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.10.1",
@@ -49,6 +52,7 @@
     "react-dom": "19.2.3",
     "resend": "^6.8.0",
     "stripe": "^20.1.0",
+    "tailwind-merge": "^3.6.0",
     "uuid": "^10.0.0",
     "vscode-ws-jsonrpc": "^3.5.0",
     "ws": "^8.19.0"
