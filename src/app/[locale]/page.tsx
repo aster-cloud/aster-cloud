@@ -32,6 +32,9 @@ import {
   GlobeLock,
   Server,
   Check,
+  Cpu,
+  FileLock,
+  GlobeIcon,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -45,6 +48,7 @@ import {
   Wordmark,
   cn,
 } from '@/components/ui';
+import { CnlDemo } from '@/components/marketing/cnl-demo';
 import {
   getCurrencyForLocale,
   formatPrice,
@@ -71,6 +75,7 @@ function HomeContent({ locale }: { locale: string }) {
     <div className="flex min-h-screen flex-col bg-bg text-fg">
       <Nav t={t} />
       <Hero t={t} />
+      <TrustBand t={t} />
       <Features t={t} />
       <PricingPreview
         t={t}
@@ -164,6 +169,65 @@ function Hero({ t }: { t: ReturnType<typeof useTranslations> }) {
             </Link>
           </Stack>
           <p className="text-xs text-fg-subtle">{t('hero.noCreditCard')}</p>
+
+          {/* Live CNL demo — typewriter cycles three real, compilable
+              snippets. The whole pitch of Aster is "policies written by
+              humans, run as code" — show it, don't just say it. */}
+          <div className="mt-10 w-full">
+            <CnlDemo />
+          </div>
+        </Stack>
+      </Container>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Trust band                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 3-column strip directly under the hero that anchors the page on
+ * *real* product facts. The fact that we don't have customer logos yet
+ * is OK — what we DO have is unusual in policy-DSL space (GraalVM
+ * compilation, hash-chain audit, native trilingual support) and that's
+ * what the band advertises.
+ *
+ * The 3 items map 1:1 to keys under `trust.items` in messages/*.json so
+ * copy edits are i18n-driven, no hard-coded English.
+ */
+function TrustBand({ t }: { t: ReturnType<typeof useTranslations> }) {
+  const items = [
+    { icon: Cpu,       key: 'compiled'  },
+    { icon: FileLock,  key: 'audited'   },
+    { icon: GlobeIcon, key: 'multilang' },
+  ] as const;
+
+  return (
+    <section className="border-y border-border bg-bg-subtle py-14">
+      <Container size="xl">
+        <Stack gap={8}>
+          <p className="text-center font-sans text-xs font-semibold uppercase tracking-widest text-primary">
+            {t('trust.eyebrow')}
+          </p>
+          <div className="grid gap-8 sm:grid-cols-3 sm:gap-10">
+            {items.map(({ icon: Icon, key }) => (
+              <Stack key={key} gap={3} align="center" className="text-center">
+                <span
+                  aria-hidden
+                  className="flex size-11 items-center justify-center rounded-lg bg-primary-subtle text-primary"
+                >
+                  <Icon className="size-5" />
+                </span>
+                <h3 className="font-display text-lg font-semibold tracking-tight text-fg">
+                  {t(`trust.items.${key}.title`)}
+                </h3>
+                <p className="text-sm leading-relaxed text-fg-muted">
+                  {t(`trust.items.${key}.description`)}
+                </p>
+              </Stack>
+            ))}
+          </div>
         </Stack>
       </Container>
     </section>

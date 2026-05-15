@@ -19,6 +19,23 @@
     "description": "用母语撰写业务规则。AI 起草，人工审核，GraalVM 执行。哈希链审计开箱即用。",
     "noCreditCard": "无需信用卡。"
   },
+  "trust": {
+    "eyebrow": "为生产而生",
+    "items": {
+      "compiled": {
+        "title": "编译执行，不是解释",
+        "description": "Truffle on GraalVM 以 JVM 速度运行规则。跨机器输出一致的 .class 字节码。"
+      },
+      "audited": {
+        "title": "默认审计追溯",
+        "description": "每一次决策都钉入 SHA-256 哈希链。任意历史评估都可逐字节复现。"
+      },
+      "multilang": {
+        "title": "三套语言包",
+        "description": "所有套餐均含英文、中文、Deutsch 三套词典。企业版支持行业定制词典。"
+      }
+    }
+  },
   "features": {
     "title": "为合规策略运营而生",
     "nativeLanguage": {

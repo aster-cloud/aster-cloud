@@ -19,6 +19,23 @@
     "description": "Write business rules in your native language. AI drafts, humans approve, GraalVM executes. Hash-chained audit included.",
     "noCreditCard": "No credit card required."
   },
+  "trust": {
+    "eyebrow": "Built for production",
+    "items": {
+      "compiled": {
+        "title": "Compiled, not interpreted",
+        "description": "Truffle on GraalVM runs your rules at JVM speed. Same .class output across machines."
+      },
+      "audited": {
+        "title": "Audit-trail by default",
+        "description": "Every decision pinned to a SHA-256 hash chain. Replay any historical evaluation byte-for-byte."
+      },
+      "multilang": {
+        "title": "Three lexicons today",
+        "description": "English, 中文, Deutsch ship in every plan. Custom industry lexicons on Enterprise."
+      }
+    }
+  },
   "features": {
     "title": "Built for compliant policy operations",
     "nativeLanguage": {

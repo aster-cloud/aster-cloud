@@ -19,6 +19,23 @@
     "description": "Schreiben Sie Geschäftsregeln in Ihrer Muttersprache. KI entwirft, Menschen genehmigen, GraalVM führt aus. Manipulationssicheres Audit inklusive.",
     "noCreditCard": "Keine Kreditkarte erforderlich."
   },
+  "trust": {
+    "eyebrow": "Für den Produktivbetrieb",
+    "items": {
+      "compiled": {
+        "title": "Kompiliert, nicht interpretiert",
+        "description": "Truffle auf GraalVM führt Ihre Regeln mit JVM-Geschwindigkeit aus. Identische .class-Ausgabe auf jeder Maschine."
+      },
+      "audited": {
+        "title": "Audit-Trail von Haus aus",
+        "description": "Jede Entscheidung wird an eine SHA-256-Hashkette gebunden. Jede historische Auswertung lässt sich byte-genau wiedergeben."
+      },
+      "multilang": {
+        "title": "Drei Lexika ab Werk",
+        "description": "English, 中文, Deutsch in jedem Plan enthalten. Branchen-spezifische Lexika auf Enterprise-Tarifen."
+      }
+    }
+  },
   "features": {
     "title": "Gemacht für regelkonformen Policy-Betrieb",
     "nativeLanguage": {
