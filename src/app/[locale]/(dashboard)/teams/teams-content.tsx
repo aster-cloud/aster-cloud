@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
+import { Breadcrumbs, ListSearchInput } from '@/components/ui';
 
 interface Team {
   id: string;
@@ -33,6 +35,10 @@ interface Translations {
     description: string;
     upgradeButton: string;
   };
+  nav: {
+    dashboard: string;
+    teams: string;
+  };
 }
 
 // 简单模板插值
@@ -53,6 +59,16 @@ export function TeamsContent({
 }: TeamsContentProps) {
   const [teams] = useState<Team[]>(initialTeams);
   const [error] = useState('');
+  const [query, setQuery] = useState('');
+  const tCommon = useTranslations('common');
+
+  // Client-side filter — name match (case-insensitive). Trim avoids
+  // empty-query false negatives when the user clears the input.
+  const visibleTeams = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return teams;
+    return teams.filter((t) => t.name.toLowerCase().includes(q));
+  }, [teams, query]);
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -112,6 +128,13 @@ export function TeamsContent({
 
   return (
     <div>
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: t.nav.dashboard, href: '/dashboard' },
+          { label: t.nav.teams },
+        ]}
+      />
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
@@ -129,6 +152,16 @@ export function TeamsContent({
           </Link>
         </div>
       </div>
+
+      {teams.length > 0 && (
+        <div className="mt-6">
+          <ListSearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder={tCommon('searchPlaceholder')}
+          />
+        </div>
+      )}
 
       {error && (
         <div className="mt-4 rounded-md bg-red-50 p-4">
@@ -167,7 +200,7 @@ export function TeamsContent({
         </div>
       ) : (
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((team) => (
+          {visibleTeams.map((team) => (
             <Link
               key={team.id}
               href={`/teams/${team.id}`}

@@ -44,5 +44,6 @@ export { Container, type ContainerProps } from './container';
 export {
   Breadcrumbs, type BreadcrumbsProps, type BreadcrumbItem,
 } from './breadcrumbs';
+export { ListSearchInput } from './list-search-input';
 
 export { cn } from './utils';

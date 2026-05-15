@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db, policies, policyGroups, executions } from '@/lib/prisma';
-import { eq, and, desc, isNull, or, sql, asc } from 'drizzle-orm';
+import { eq, and, desc, isNull, or, sql, asc, inArray } from 'drizzle-orm';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { getTranslations } from 'next-intl/server';
 import { PoliciesContent } from './policies-content';
@@ -68,51 +68,66 @@ async function getPoliciesData(userId: string) {
     }),
   ]);
 
-  // 为每个策略获取执行次数
-  const policiesWithCount = await Promise.all(
-    policiesData.map(async (policy) => {
-      const [{ count: executionCount }] = await db
-        .select({ count: sql<number>`count(*)::int` })
+  // Single GROUP BY query for execution counts — replaces a per-policy
+  // count(*) loop that scaled linearly with the number of policies.
+  const policyIds = policiesData.map((p) => p.id);
+  const execCountRows = policyIds.length
+    ? await db
+        .select({
+          policyId: executions.policyId,
+          c: sql<number>`count(*)::int`,
+        })
         .from(executions)
-        .where(eq(executions.policyId, policy.id));
-
-      return {
-        id: policy.id,
-        name: policy.name,
-        description: policy.description,
-        content: policy.content,
-        isPublic: policy.isPublic,
-        piiFields: policy.piiFields as string[] | null,
-        groupId: policy.groupId,
-        group: policy.group,
-        createdAt: policy.createdAt.toISOString(),
-        updatedAt: policy.updatedAt.toISOString(),
-        isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
-        _count: { executions: executionCount },
-      };
-    })
+        .where(inArray(executions.policyId, policyIds))
+        .groupBy(executions.policyId)
+    : [];
+  const execCountByPolicy = new Map<string, number>(
+    execCountRows.map((r) => [r.policyId, r.c]),
   );
 
-  // 为每个分组获取策略数量
-  const groupsWithCount = await Promise.all(
-    groups.map(async (group) => {
-      const [{ count: policyCount }] = await db
-        .select({ count: sql<number>`count(*)::int` })
+  const policiesWithCount = policiesData.map((policy) => ({
+    id: policy.id,
+    name: policy.name,
+    description: policy.description,
+    content: policy.content,
+    isPublic: policy.isPublic,
+    piiFields: policy.piiFields as string[] | null,
+    groupId: policy.groupId,
+    group: policy.group,
+    createdAt: policy.createdAt.toISOString(),
+    updatedAt: policy.updatedAt.toISOString(),
+    isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
+    _count: { executions: execCountByPolicy.get(policy.id) ?? 0 },
+  }));
+
+  // Single GROUP BY for per-group policy counts — same N+1 collapsed.
+  const groupIds = groups.map((g) => g.id);
+  const groupCountRows = groupIds.length
+    ? await db
+        .select({
+          groupId: policies.groupId,
+          c: sql<number>`count(*)::int`,
+        })
         .from(policies)
-        .where(and(eq(policies.groupId, group.id), isNull(policies.deletedAt)));
-
-      return {
-        id: group.id,
-        name: group.name,
-        description: group.description,
-        icon: group.icon,
-        parentId: group.parentId,
-        isSystem: group.isSystem,
-        sortOrder: group.sortOrder,
-        _count: { policies: policyCount },
-      };
-    })
+        .where(and(inArray(policies.groupId, groupIds), isNull(policies.deletedAt)))
+        .groupBy(policies.groupId)
+    : [];
+  const policyCountByGroup = new Map<string, number>(
+    groupCountRows
+      .filter((r): r is { groupId: string; c: number } => r.groupId !== null)
+      .map((r) => [r.groupId, r.c]),
   );
+
+  const groupsWithCount = groups.map((group) => ({
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    icon: group.icon,
+    parentId: group.parentId,
+    isSystem: group.isSystem,
+    sortOrder: group.sortOrder,
+    _count: { policies: policyCountByGroup.get(group.id) ?? 0 },
+  }));
 
   const freezeInfo = {
     limit: freezeStatus.limit,

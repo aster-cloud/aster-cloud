@@ -13,6 +13,7 @@ export default async function TeamsPage() {
   }
 
   const t = await getTranslations('teams');
+  const tNav = await getTranslations('dashboardNav');
 
   // 检查团队功能访问权限
   const hasAccess = await hasFeatureAccess(session.user.id, 'teamFeatures');
@@ -42,35 +43,49 @@ export default async function TeamsPage() {
         orderBy: desc(teams.updatedAt),
       });
 
-      // 为每个团队获取成员数和策略数
-      teamsResult = await Promise.all(
-        teamsData.map(async (team) => {
-          const membership = userTeamMemberships.find((m) => m.teamId === team.id);
-
-          const [{ memberCount }, { policyCount }] = await Promise.all([
-            db
-              .select({ memberCount: sql<number>`count(*)::int` })
-              .from(teamMembers)
-              .where(eq(teamMembers.teamId, team.id))
-              .then((r) => r[0]),
-            db
-              .select({ policyCount: sql<number>`count(*)::int` })
-              .from(policies)
-              .where(eq(policies.teamId, team.id))
-              .then((r) => r[0]),
-          ]);
-
-          return {
-            id: team.id,
-            name: team.name,
-            slug: team.slug,
-            role: membership?.role || 'member',
-            memberCount,
-            policyCount,
-            createdAt: team.createdAt.toISOString(),
-          };
-        })
+      // Two GROUP BY queries (one per metric) replace the previous
+      // 2 × N round-trip pattern. For a user with K teams, this drops
+      // from 2K queries to 2.
+      const teamIdList = teamsData.map((t) => t.id);
+      const [memberRows, policyRows] = await Promise.all([
+        db
+          .select({
+            teamId: teamMembers.teamId,
+            c: sql<number>`count(*)::int`,
+          })
+          .from(teamMembers)
+          .where(inArray(teamMembers.teamId, teamIdList))
+          .groupBy(teamMembers.teamId),
+        db
+          .select({
+            teamId: policies.teamId,
+            c: sql<number>`count(*)::int`,
+          })
+          .from(policies)
+          .where(inArray(policies.teamId, teamIdList))
+          .groupBy(policies.teamId),
+      ]);
+      const memberCountByTeam = new Map<string, number>(
+        memberRows.map((r) => [r.teamId, r.c]),
       );
+      const policyCountByTeam = new Map<string, number>(
+        policyRows
+          .filter((r): r is { teamId: string; c: number } => r.teamId !== null)
+          .map((r) => [r.teamId, r.c]),
+      );
+
+      teamsResult = teamsData.map((team) => {
+        const membership = userTeamMemberships.find((m) => m.teamId === team.id);
+        return {
+          id: team.id,
+          name: team.name,
+          slug: team.slug,
+          role: membership?.role || 'member',
+          memberCount: memberCountByTeam.get(team.id) ?? 0,
+          policyCount: policyCountByTeam.get(team.id) ?? 0,
+          createdAt: team.createdAt.toISOString(),
+        };
+      });
     }
   }
 
@@ -94,6 +109,10 @@ export default async function TeamsPage() {
       title: t('upgradeRequired.title'),
       description: t('upgradeRequired.description'),
       upgradeButton: t('upgradeRequired.upgradeButton'),
+    },
+    nav: {
+      dashboard: tNav('dashboard'),
+      teams: tNav('teams'),
     },
   };
 

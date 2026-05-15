@@ -8,7 +8,15 @@
     "learnMore": "了解更多",
     "languageUnavailable": "{name} 已不可用",
     "switchedTo": "已切换到 {name}",
-    "selectLanguage": "选择语言"
+    "selectLanguage": "选择语言",
+    "loading": "加载中…",
+    "retry": "重试",
+    "somethingWrong": "出错了",
+    "notFoundTitle": "页面未找到",
+    "notFoundBody": "你访问的页面不存在或已被移动。",
+    "backToDashboard": "返回仪表盘",
+    "cancel": "取消",
+    "searchPlaceholder": "搜索…"
   },
   "nav": {
     "brand": "Aster Cloud"

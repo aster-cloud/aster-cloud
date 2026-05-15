@@ -16,6 +16,7 @@ import {
   Stack,
   cn,
 } from '@/components/ui';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface ApiKey {
   id: string;
@@ -70,6 +71,7 @@ interface Translations {
   nav: {
     settings: string;
   };
+  cancel: string;
 }
 
 interface ApiKeysContentProps {
@@ -88,6 +90,13 @@ export function ApiKeysContent({
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // Branded revoke confirmation — replaces window.confirm() which
+  // shows the OS-default gray dialog (unstyleable, not i18n-aware,
+  // accessibility limited). Tracks which key is queued for revocation
+  // plus a pending flag so the dialog can show a spinner while the
+  // DELETE call runs.
+  const [revokeTarget, setRevokeTarget] = useState<ApiKey | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
 
   const fetchApiKeys = async () => {
     try {
@@ -141,13 +150,19 @@ export function ApiKeysContent({
     }
   };
 
-  const handleRevokeKey = async (keyId: string) => {
-    if (!confirm(t.confirmRevoke)) {
-      return;
-    }
+  // Two-step revoke: clicking "Revoke" stages the key into revokeTarget
+  // which opens the ConfirmDialog; confirming runs the actual DELETE.
+  // Splitting the click-handler this way keeps the dialog stateful and
+  // allows isRevoking to disable buttons during the network call.
+  const handleRevokeKey = (key: ApiKey) => {
+    setRevokeTarget(key);
+  };
 
+  const confirmRevokeKey = async () => {
+    if (!revokeTarget) return;
+    setIsRevoking(true);
     try {
-      const response = await fetch(`/api/api-keys/${keyId}`, {
+      const response = await fetch(`/api/api-keys/${revokeTarget.id}`, {
         method: 'DELETE',
       });
 
@@ -157,8 +172,12 @@ export function ApiKeysContent({
       }
 
       fetchApiKeys();
+      setRevokeTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke API key');
+      setRevokeTarget(null);
+    } finally {
+      setIsRevoking(false);
     }
   };
 
@@ -292,7 +311,7 @@ export function ApiKeysContent({
                           <td className="whitespace-nowrap px-3 py-4 text-right text-sm">
                             <button
                               type="button"
-                              onClick={() => handleRevokeKey(key.id)}
+                              onClick={() => handleRevokeKey(key)}
                               className="text-danger hover:opacity-80"
                             >
                               {t.revoke}
@@ -456,6 +475,18 @@ else:
           </CardBody>
         </Card>
       </Stack>
+
+      <ConfirmDialog
+        isOpen={revokeTarget !== null}
+        title={t.revoke}
+        description={t.confirmRevoke}
+        confirmLabel={t.revoke}
+        cancelLabel={t.cancel}
+        variant="danger"
+        isLoading={isRevoking}
+        onConfirm={confirmRevokeKey}
+        onCancel={() => !isRevoking && setRevokeTarget(null)}
+      />
     </Container>
   );
 }

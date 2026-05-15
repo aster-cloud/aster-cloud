@@ -35,6 +35,7 @@ export default async function BillingPage() {
   }
 
   const t = await getTranslations('billing');
+  const tNav = await getTranslations('dashboardNav');
   const locale = await getLocale();
   const defaultCurrency = getCurrencyForLocale(locale) as CurrencyCode;
 
@@ -120,6 +121,10 @@ export default async function BillingPage() {
       productQuestions: t('faq.productQuestions'),
       billingQuestions: t('faq.billingQuestions'),
       items: faqItems,
+    },
+    nav: {
+      dashboard: tNav('dashboard'),
+      billing: tNav('billing'),
     },
   };
 

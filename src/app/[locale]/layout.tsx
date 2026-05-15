@@ -2,9 +2,37 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { Toaster } from 'sonner';
+import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
 import { AuthProvider } from "@/components/providers/session-provider";
 import { locales, type Locale } from '@/i18n/config';
 import "../globals.css";
+
+// Self-host the brand fonts via next/font/google. Previously globals.css
+// did `@import url('https://fonts.googleapis.com/...')` which (a) failed
+// in mainland China, (b) introduced FOUT/CLS at first paint, and (c)
+// leaked traffic to Google. next/font handles subsetting + preload +
+// CSS-variable wiring automatically. The `variable` value is consumed
+// inside tokens.css via the --aster-font-{display,sans,mono} tokens
+// (see globals.css :root override block).
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--aster-font-display-loaded',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--aster-font-sans-loaded',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--aster-font-mono-loaded',
+  display: 'swap',
+  weight: ['400', '500'],
+});
 
 export const metadata: Metadata = {
   title: "Aster Cloud - Policy Management Platform",
@@ -36,10 +64,22 @@ export default async function LocaleLayout({ children, params }: Props) {
   const messages = await getMessages();
 
   return (
-    <html lang={locale}>
+    <html
+      lang={locale}
+      className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+    >
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthProvider>{children}</AuthProvider>
+          {/* Global toast outlet. Sonner is mounted once at locale-layout
+              level so every page can call `toast.success()` / `toast.error()`
+              without each owning its own ad-hoc banner state. */}
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            toastOptions={{ className: 'font-sans' }}
+          />
         </NextIntlClientProvider>
       </body>
     </html>

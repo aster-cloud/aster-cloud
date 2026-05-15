@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface Member {
   id: string;
@@ -34,8 +35,19 @@ interface Team {
 
 type TeamRole = 'owner' | 'admin' | 'member' | 'viewer';
 
+// Branded confirm state — replaces three window.confirm() call sites
+// (revoke invitation / remove member / leave team) with a single
+// ConfirmDialog instance. The discriminated union keeps the dialog
+// stateless across action types and avoids three parallel pendingId
+// booleans.
+type PendingAction =
+  | { kind: 'revokeInvitation'; invitationId: string }
+  | { kind: 'removeMember'; memberId: string; memberName: string }
+  | { kind: 'leaveTeam'; memberId: string };
+
 export default function TeamMembersPage() {
   const t = useTranslations('teams');
+  const tCommon = useTranslations('common');
   const params = useParams();
   const router = useRouter();
   const teamId = params.teamId as string;
@@ -58,6 +70,10 @@ export default function TeamMembersPage() {
   const [inviteRole, setInviteRole] = useState<TeamRole>('member');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState('');
+
+  // ConfirmDialog state — see PendingAction discriminated union above.
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [isActioning, setIsActioning] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -164,43 +180,12 @@ export default function TeamMembersPage() {
     }
   };
 
-  const handleRevokeInvitation = async (invitationId: string) => {
-    if (!confirm(t('members.confirmRevokeInvitation'))) return;
-
-    try {
-      const res = await fetch(`/api/teams/${teamId}/invitations/${invitationId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || t('members.revokeFailed'));
-      }
-      setInvitations((prev) => prev.filter((i) => i.id !== invitationId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('members.revokeFailed'));
-    }
+  const handleRevokeInvitation = (invitationId: string) => {
+    setPendingAction({ kind: 'revokeInvitation', invitationId });
   };
 
-  const handleRemoveMember = async (memberId: string, memberName: string) => {
-    if (!confirm(t('members.confirmRemove', { name: memberName }))) return;
-
-    try {
-      const res = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to remove member');
-      }
-      setMembers((prev) => prev.filter((m) => m.id !== memberId));
-      // 同步更新成员计数
-      setTotalMembers((prev) => Math.max(0, prev - 1));
-      // 如果还有更多成员且当前列表变短了，可能需要加载下一条
-      // 简化处理：仅更新 hasMore 状态
-      setHasMoreMembers((prev) => prev && members.length - 1 < totalMembers - 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('members.removeFailed'));
-    }
+  const handleRemoveMember = (memberId: string, memberName: string) => {
+    setPendingAction({ kind: 'removeMember', memberId, memberName });
   };
 
   const handleRoleChange = async (memberId: string, newRole: TeamRole) => {
@@ -224,23 +209,90 @@ export default function TeamMembersPage() {
     }
   };
 
-  const handleLeaveTeam = async (memberId: string) => {
-    if (!confirm(t('members.confirmLeave'))) return;
+  const handleLeaveTeam = (memberId: string) => {
+    setPendingAction({ kind: 'leaveTeam', memberId });
+  };
 
+  // Single executor for all three pending actions — invoked by the
+  // shared ConfirmDialog after the user confirms.
+  const runPendingAction = async () => {
+    if (!pendingAction) return;
+    setIsActioning(true);
     try {
-      const res = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to leave team');
+      if (pendingAction.kind === 'revokeInvitation') {
+        const res = await fetch(
+          `/api/teams/${teamId}/invitations/${pendingAction.invitationId}`,
+          { method: 'DELETE' },
+        );
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || t('members.revokeFailed'));
+        }
+        setInvitations((prev) =>
+          prev.filter((i) => i.id !== pendingAction.invitationId),
+        );
+      } else if (pendingAction.kind === 'removeMember') {
+        const res = await fetch(
+          `/api/teams/${teamId}/members/${pendingAction.memberId}`,
+          { method: 'DELETE' },
+        );
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to remove member');
+        }
+        setMembers((prev) => prev.filter((m) => m.id !== pendingAction.memberId));
+        setTotalMembers((prev) => Math.max(0, prev - 1));
+        setHasMoreMembers(
+          (prev) => prev && members.length - 1 < totalMembers - 1,
+        );
+      } else if (pendingAction.kind === 'leaveTeam') {
+        const res = await fetch(
+          `/api/teams/${teamId}/members/${pendingAction.memberId}`,
+          { method: 'DELETE' },
+        );
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to leave team');
+        }
+        router.push(`/${locale}/teams`);
+        return; // skip clearing — navigation away kills this component
       }
-      // 离开团队后重定向到团队列表（保持当前语言）
-      router.push(`/${locale}/teams`);
+      setPendingAction(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('members.leaveFailed'));
+      const fallback =
+        pendingAction.kind === 'revokeInvitation'
+          ? t('members.revokeFailed')
+          : pendingAction.kind === 'removeMember'
+            ? t('members.removeFailed')
+            : t('members.leaveFailed');
+      setError(err instanceof Error ? err.message : fallback);
+      setPendingAction(null);
+    } finally {
+      setIsActioning(false);
     }
   };
+
+  // Derive dialog title/description from the current pending action,
+  // reusing the already-translated message keys for each row's CTA.
+  const pendingDialogProps = pendingAction
+    ? pendingAction.kind === 'revokeInvitation'
+      ? {
+          title: t('members.revoke'),
+          confirmLabel: t('members.revoke'),
+          description: t('members.confirmRevokeInvitation'),
+        }
+      : pendingAction.kind === 'removeMember'
+        ? {
+            title: t('members.remove'),
+            confirmLabel: t('members.remove'),
+            description: t('members.confirmRemove', { name: pendingAction.memberName }),
+          }
+        : {
+            title: t('members.leave'),
+            confirmLabel: t('members.leave'),
+            description: t('members.confirmLeave'),
+          }
+    : { title: '', confirmLabel: '', description: '' };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -515,6 +567,18 @@ export default function TeamMembersPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={pendingAction !== null}
+        title={pendingDialogProps.title}
+        description={pendingDialogProps.description}
+        confirmLabel={pendingDialogProps.confirmLabel}
+        cancelLabel={tCommon('cancel')}
+        variant="danger"
+        isLoading={isActioning}
+        onConfirm={runPendingAction}
+        onCancel={() => !isActioning && setPendingAction(null)}
+      />
     </div>
   );
 }

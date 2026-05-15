@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
+import { Breadcrumbs, ListSearchInput } from '@/components/ui';
 
 interface ComplianceReport {
   id: string;
@@ -45,6 +47,10 @@ interface Translations {
     soc2: { name: string; description: string };
     pci_dss: { name: string; description: string };
   };
+  nav: {
+    dashboard: string;
+    reports: string;
+  };
 }
 
 // 简单模板插值
@@ -69,6 +75,19 @@ export function ReportsContent({
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedType, setSelectedType] = useState('');
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const tCommon = useTranslations('common');
+
+  // Client-side filter — matches report title and type (case-insensitive).
+  const visibleReports = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return reports;
+    return reports.filter(
+      (r) =>
+        r.title.toLowerCase().includes(q) ||
+        r.type.toLowerCase().includes(q),
+    );
+  }, [reports, query]);
 
   const fetchReports = async () => {
     try {
@@ -156,6 +175,13 @@ export function ReportsContent({
 
   return (
     <div>
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: t.nav.dashboard, href: '/dashboard' },
+          { label: t.nav.reports },
+        ]}
+      />
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
@@ -246,6 +272,15 @@ export function ReportsContent({
           <LoadingSkeleton lines={3} className="bg-white shadow sm:rounded-lg p-6" />
         </div>
       )}
+      {reports.length > 0 && (
+        <div className="mb-4">
+          <ListSearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder={tCommon('searchPlaceholder')}
+          />
+        </div>
+      )}
       {reports.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <svg
@@ -269,7 +304,7 @@ export function ReportsContent({
       ) : (
         <div className="bg-white shadow sm:rounded-lg overflow-hidden">
           <ul className="divide-y divide-gray-200">
-            {reports.map((report) => (
+            {visibleReports.map((report) => (
               <li key={report.id}>
                 <Link
                   href={`/reports/${report.id}`}

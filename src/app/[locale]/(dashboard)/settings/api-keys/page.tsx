@@ -12,6 +12,7 @@ export default async function ApiKeysPage() {
 
   const t = await getTranslations('settings.apiKeys');
   const tNav = await getTranslations('dashboardNav');
+  const tCommon = await getTranslations('common');
   const locale = await getLocale();
 
   // 获取 API keys 列表
@@ -72,6 +73,7 @@ export default async function ApiKeysPage() {
     nav: {
       settings: tNav('settings'),
     },
+    cancel: tCommon('cancel'),
   };
 
   return (

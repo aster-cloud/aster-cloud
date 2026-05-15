@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/ui';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface BYOKBinding {
   id: string;
@@ -33,6 +34,11 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Branded revoke confirmation — replaces window.confirm() so the
+  // dialog matches the rest of the dashboard chrome and isn't locked
+  // to the OS-default Chinese-only string this page used to hard-code.
+  const [revokeProvider, setRevokeProvider] = useState<string | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
 
   const refresh = async () => {
     const r = await fetch('/api/user/ai-keys');
@@ -70,16 +76,29 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
     }
   };
 
-  const handleRevoke = async (p: string) => {
-    if (!confirm(`确定要撤销 ${PROVIDER_LABELS[p] ?? p} 的 BYOK key 吗？此后会回到平台 LLM 配额。`)) return;
+  const handleRevoke = (p: string) => {
+    setRevokeProvider(p);
+  };
+
+  const confirmRevoke = async () => {
+    if (!revokeProvider) return;
+    setIsRevoking(true);
     setError(null);
-    const r = await fetch(`/api/user/ai-keys?provider=${encodeURIComponent(p)}`, { method: 'DELETE' });
-    if (!r.ok) {
-      const data = await r.json().catch(() => ({}));
-      setError(data.error || `撤销失败 (HTTP ${r.status})`);
-      return;
+    try {
+      const r = await fetch(
+        `/api/user/ai-keys?provider=${encodeURIComponent(revokeProvider)}`,
+        { method: 'DELETE' },
+      );
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(data.error || `撤销失败 (HTTP ${r.status})`);
+        return;
+      }
+      await refresh();
+    } finally {
+      setIsRevoking(false);
+      setRevokeProvider(null);
     }
-    await refresh();
   };
 
   const formatDate = (iso: string | null) => {
@@ -219,6 +238,22 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
           <li>合规场景下数据不落到第三方（Vertex 部署在您 GCP 项目内）</li>
         </ul>
       </section>
+
+      <ConfirmDialog
+        isOpen={revokeProvider !== null}
+        title="撤销 BYOK key"
+        description={
+          revokeProvider
+            ? `确定要撤销 ${PROVIDER_LABELS[revokeProvider] ?? revokeProvider} 的 BYOK key 吗？此后会回到平台 LLM 配额。`
+            : ''
+        }
+        confirmLabel="撤销"
+        cancelLabel="取消"
+        variant="danger"
+        isLoading={isRevoking}
+        onConfirm={confirmRevoke}
+        onCancel={() => !isRevoking && setRevokeProvider(null)}
+      />
     </div>
   );
 }

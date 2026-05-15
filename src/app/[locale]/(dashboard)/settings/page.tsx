@@ -13,6 +13,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/navigation';
@@ -46,6 +47,7 @@ function setCookie(name: string, value: string, days = 365) {
 export default function SettingsPage() {
   const t = useTranslations('settings');
   const locale = useLocale();
+  const router = useRouter();
   const { data: session } = useSession();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [localeDetection, setLocaleDetection] = useState(false);
@@ -68,9 +70,10 @@ export default function SettingsPage() {
     const next = !localeDetection;
     setLocaleDetection(next);
     setCookie(LOCALE_DETECTION_COOKIE, String(next));
-    // Hard reload: middleware reads the cookie on every request, this
-    // ensures the toggle's effect lands immediately.
-    window.location.reload();
+    // router.refresh() re-runs the RSC pipeline so middleware reads the
+    // updated cookie on the next request, but keeps client state intact
+    // — no full white-screen reload, no scroll position lost.
+    router.refresh();
   };
 
   const handleLogout = async () => {

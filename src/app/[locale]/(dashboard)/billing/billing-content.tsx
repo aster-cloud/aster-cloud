@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDate } from '@/lib/format';
+import { Breadcrumbs } from '@/components/ui';
 import {
   BillingInterval,
   CurrencyCode,
@@ -68,6 +69,10 @@ interface Translations {
     productQuestions: string;
     billingQuestions: string;
     items: Record<string, { question: string; answer: string }>;
+  };
+  nav: {
+    dashboard: string;
+    billing: string;
   };
 }
 
@@ -172,6 +177,13 @@ function BillingContentInner({
 
   return (
     <div>
+      <Breadcrumbs
+        className="mb-4"
+        items={[
+          { label: t.nav.dashboard, href: '/dashboard' },
+          { label: t.nav.billing },
+        ]}
+      />
       <div className="md:flex md:items-center md:justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>

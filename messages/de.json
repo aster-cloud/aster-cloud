@@ -8,7 +8,15 @@
     "learnMore": "Mehr erfahren",
     "languageUnavailable": "{name} ist nicht mehr verfügbar",
     "switchedTo": "auf {name} gewechselt",
-    "selectLanguage": "Sprache wählen"
+    "selectLanguage": "Sprache wählen",
+    "loading": "Lädt…",
+    "retry": "Erneut versuchen",
+    "somethingWrong": "Etwas ist schiefgelaufen",
+    "notFoundTitle": "Seite nicht gefunden",
+    "notFoundBody": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "backToDashboard": "Zurück zum Dashboard",
+    "cancel": "Abbrechen",
+    "searchPlaceholder": "Suchen…"
   },
   "nav": {
     "brand": "Aster Cloud"

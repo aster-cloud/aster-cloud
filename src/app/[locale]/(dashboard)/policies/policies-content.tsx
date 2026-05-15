@@ -18,11 +18,13 @@ import {
   Circle,
   FileText,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Badge,
+  ListSearchInput,
   buttonVariants,
   cn,
 } from '@/components/ui';
@@ -375,6 +377,8 @@ export function PoliciesContent({
   const [freezeInfo, setFreezeInfo] = useState<FreezeInfo>(initialFreezeInfo);
   const [error, setError] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const tCommon = useTranslations('common');
 
   // 分组对话框状态
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -462,6 +466,17 @@ export function PoliciesContent({
     const groupIds = new Set(getDescendantIds(targetGroup));
     return policies.filter((p) => p.groupId && groupIds.has(p.groupId));
   }, [policies, groups, selectedGroupId]);
+
+  // Layer name/description text search on top of the group-tree filter.
+  // Both filters compose: pick a group AND match a query.
+  const visiblePolicies = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return filteredPolicies;
+    return filteredPolicies.filter((p) => {
+      const hay = [p.name, p.description ?? ''].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredPolicies, query]);
 
   // 重新获取策略列表和冻结状态
   const refreshPolicies = useCallback(async () => {
@@ -834,6 +849,16 @@ export function PoliciesContent({
           </Alert>
         )}
 
+        {policies.length > 0 && (
+          <div className="mt-4">
+            <ListSearchInput
+              value={query}
+              onChange={setQuery}
+              placeholder={tCommon('searchPlaceholder')}
+            />
+          </div>
+        )}
+
         {filteredPolicies.length === 0 ? (
           <div className="mt-8 text-center">
             <FileText className="mx-auto size-12 text-fg-subtle" aria-hidden />
@@ -852,7 +877,7 @@ export function PoliciesContent({
         ) : (
           <div className="mt-8 overflow-hidden rounded-md border border-border bg-bg shadow-sm">
             <ul className="divide-y divide-border">
-              {filteredPolicies.map((policy) => (
+              {visiblePolicies.map((policy) => (
                 <DraggablePolicyItem
                   key={policy.id}
                   policy={policy}

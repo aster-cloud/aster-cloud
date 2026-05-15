@@ -16,6 +16,7 @@ export default async function ReportsPage({ params }: PageProps) {
   }
 
   const t = await getTranslations('reports');
+  const tNav = await getTranslations('dashboardNav');
 
   // 获取报告列表
   const reportsData = await getComplianceReports(session.user.id);
@@ -73,6 +74,10 @@ export default async function ReportsPage({ params }: PageProps) {
         name: t('reportTypes.pci_dss.name'),
         description: t('reportTypes.pci_dss.description'),
       },
+    },
+    nav: {
+      dashboard: tNav('dashboard'),
+      reports: tNav('reports'),
     },
   };
 
