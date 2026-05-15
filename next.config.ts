@@ -4,9 +4,19 @@ import { validateEnvOrWarn } from './src/lib/env-validation';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
-// next.config 加载阶段先做一次 env 校验（仅 warn，不阻塞 next build）
-// 真正的 fail-fast 在 src/instrumentation.ts 的 register() 里执行（runtime 启动时）
-validateEnvOrWarn();
+// 只在 next build 阶段做一次 warn-only 校验。
+//
+// 历史踩坑：早先在这里无条件调 validateEnvOrWarn()，
+// OpenNext on Cloudflare Workers 会在每个 cold start 重新加载这个模块，
+// 而 Worker 的 secret binding 不通过 process.env 暴露 —— 导致 Worker 日志
+// 每次冷启都喷一长串"缺失 DATABASE_URL/AUTH_SECRET/..."的 error，
+// 看上去像 outage 实际只是 logger 误报（请求是能跑的）。
+//
+// 真正的 runtime fail-fast 在 src/instrumentation.ts，那里能正确识别
+// Cloudflare 运行环境并降级为 warn。
+if (process.env.NEXT_PHASE === 'phase-production-build') {
+  validateEnvOrWarn();
+}
 
 const nextConfig: NextConfig = {
   // Required for OpenNext Cloudflare deployment

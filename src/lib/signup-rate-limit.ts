@@ -25,6 +25,26 @@ export function hashIp(ip: string): string {
 }
 
 /**
+ * 把 schema-missing 错误降级为"放行"。
+ *
+ * 历史踩坑：SignupAttempt 表在 schema.ts 声明但没有 migration 创建。
+ * 生产 DB 缺表时 `select count(*) from SignupAttempt` 抛 42P01，
+ * 整个 signIn callback 链路炸 → NextAuth 重定向到 /login?error=AccessDenied，
+ * 合法用户登不上。
+ *
+ * 限流的语义是"防过度注册"，缺表时降级为放行（最坏情况：让 3+ 次/24h
+ * 的攻击者得逞）比"全员锁出"安全得多。
+ */
+function isSchemaMissing(err: unknown): boolean {
+  if (err && typeof err === 'object' && 'code' in err) {
+    const code = (err as { code?: string }).code;
+    return code === '42P01' || code === '42703';
+  }
+  const msg = err instanceof Error ? err.message : String(err);
+  return /(relation|column) .* does not exist/i.test(msg);
+}
+
+/**
  * 检查 IP 是否超出 24h 注册限额
  * @returns true = 允许；false = 已超限，应拒绝
  */
@@ -33,19 +53,27 @@ export async function checkSignupRateLimit(ip: string | null | undefined): Promi
   const ipHash = hashIp(ip);
   const since = new Date(Date.now() - WINDOW_MS);
 
-  const result = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(signupAttempts)
-    .where(
-      and(
-        eq(signupAttempts.ipHash, ipHash),
-        gte(signupAttempts.createdAt, since),
-        eq(signupAttempts.succeeded, true)
-      )
-    );
+  try {
+    const result = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(signupAttempts)
+      .where(
+        and(
+          eq(signupAttempts.ipHash, ipHash),
+          gte(signupAttempts.createdAt, since),
+          eq(signupAttempts.succeeded, true)
+        )
+      );
 
-  const count = result[0]?.c ?? 0;
-  return count < MAX_ATTEMPTS;
+    const count = result[0]?.c ?? 0;
+    return count < MAX_ATTEMPTS;
+  } catch (err) {
+    if (isSchemaMissing(err)) {
+      console.warn('[signup-rate-limit] SignupAttempt schema missing; allowing signup (fail-open)');
+      return true;
+    }
+    throw err;
+  }
 }
 
 /**
@@ -57,10 +85,18 @@ export async function recordSignupAttempt(
 ): Promise<void> {
   if (!ip) return;
   const ipHash = hashIp(ip);
-  await db.insert(signupAttempts).values({
-    id: randomUUID(),
-    ipHash,
-    succeeded,
-    createdAt: new Date(),
-  });
+  try {
+    await db.insert(signupAttempts).values({
+      id: randomUUID(),
+      ipHash,
+      succeeded,
+      createdAt: new Date(),
+    });
+  } catch (err) {
+    if (isSchemaMissing(err)) {
+      // 静默：表缺失时 check 已 fail-open，记录就丢，不影响 signIn 路径
+      return;
+    }
+    throw err;
+  }
 }
