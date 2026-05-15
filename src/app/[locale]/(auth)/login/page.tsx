@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { LoginContent } from './login-content';
-import { readAndClearDenial, type DenialReason } from '@/lib/auth-denial';
+import { readDenial, type DenialReason } from '@/lib/auth-denial';
 
 const KNOWN_REASONS: DenialReason[] = [
   'signup_rate_limit',
@@ -14,8 +14,9 @@ export default async function LoginPage() {
   const t = await getTranslations('auth.login');
   const tNav = await getTranslations('nav');
 
-  // 一次性消费 markDenial() 设的 cookie；若存在则把 reason+ref 传给客户端
-  const denial = await readAndClearDenial();
+  // 读取 markDenial() 设的 cookie；若存在则把 reason+ref 传给客户端。
+  // Server Component 不能 set cookie（参见 readDenial 注释），自然过期即可。
+  const denial = await readDenial();
   const denialReason: DenialReason | null =
     denial && KNOWN_REASONS.includes(denial.reason) ? denial.reason : null;
   const denialMessage = denialReason

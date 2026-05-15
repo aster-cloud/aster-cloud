@@ -97,26 +97,27 @@ export async function markDenial(
 }
 
 /**
- * 在 /login 页面 server-side 调用：读取一次性 cookie 并立即清除。
+ * 在 /login 页面 server-side 调用：读取 denial cookie。
  * 客户端拿到 reason/ref 后渲染对应的本地化错误。
+ *
+ * <p>关于"一次性消费"：Next.js 15 的 Server Component 上下文里
+ * **不能** 调用 cookies().set() —— 只有 Server Action / Route Handler 才能写
+ * cookie。如果在这里尝试 set() 会抛 "Cookies can only be modified in a
+ * Server Action or Route Handler." —— 导致整个 read 路径走 catch 返回 null，
+ * 用户始终看不到具体原因。
+ *
+ * <p>所以这里只读不清；cookie 本身 maxAge=60s 会自然过期。用户在 60s 内
+ * 刷新会看到同一条 actionable error，这其实比"刷新后回到 generic 错误"
+ * 体验更好。60s 后浏览器自动清除。
  *
  * @returns 有效的 payload 或 null（无 cookie / JSON 损坏 / 超 TTL）
  */
-export async function readAndClearDenial(): Promise<DenialPayload | null> {
+export async function readDenial(): Promise<DenialPayload | null> {
   try {
     const { cookies } = await import('next/headers');
     const store = await cookies();
     const c = store.get(COOKIE_NAME);
     if (!c?.value) return null;
-
-    // 立即清除（一次性消费）
-    store.set(COOKIE_NAME, '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 0,
-    });
 
     const parsed = JSON.parse(c.value) as Partial<DenialPayload>;
     if (
@@ -135,6 +136,13 @@ export async function readAndClearDenial(): Promise<DenialPayload | null> {
     return null;
   }
 }
+
+/**
+ * @deprecated 旧 API：Server Component 里 cookies().set() 会抛异常，导致整条
+ * 路径返回 null。请使用 {@link readDenial}。保留导出仅为兼容已发布的 page.tsx，
+ * 行为已退化为"只读不清"。
+ */
+export const readAndClearDenial = readDenial;
 
 function hashPii(s: string): string {
   return createHash('sha256').update(s).digest('hex').slice(0, 12);

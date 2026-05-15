@@ -52,49 +52,46 @@ describe('auth-denial', () => {
     expect(typeof parsed.ts).toBe('number');
   });
 
-  it('readAndClearDenial returns payload and clears cookie', async () => {
-    const { markDenial, readAndClearDenial } = await import('@/lib/auth-denial');
+  it('readDenial returns payload (read-only, does not clear)', async () => {
+    const { markDenial, readDenial } = await import('@/lib/auth-denial');
     const ref = await markDenial('disposable_email');
 
-    const first = await readAndClearDenial();
+    const first = await readDenial();
     expect(first).not.toBeNull();
     expect(first!.reason).toBe('disposable_email');
     expect(first!.ref).toBe(ref);
 
-    // 已被清除（一次性消费）
-    const stored = cookieStore.get('aster_auth_denial');
-    expect(stored?.value).toBe('');
-    expect(stored?.maxAge).toBe(0);
-
-    // 第二次读返回 null（cookie value 为空 string）
-    const second = await readAndClearDenial();
-    expect(second).toBeNull();
+    // Server Component 不能写 cookie：read 不应清除，等浏览器 maxAge 自然过期。
+    // 第二次读应返回同样的 payload。
+    const second = await readDenial();
+    expect(second).not.toBeNull();
+    expect(second!.ref).toBe(ref);
   });
 
-  it('readAndClearDenial returns null on no cookie', async () => {
-    const { readAndClearDenial } = await import('@/lib/auth-denial');
-    const result = await readAndClearDenial();
+  it('readDenial returns null on no cookie', async () => {
+    const { readDenial } = await import('@/lib/auth-denial');
+    const result = await readDenial();
     expect(result).toBeNull();
   });
 
-  it('readAndClearDenial returns null on malformed JSON', async () => {
+  it('readDenial returns null on malformed JSON', async () => {
     cookieStore.set('aster_auth_denial', { name: 'aster_auth_denial', value: 'not-json{' });
-    const { readAndClearDenial } = await import('@/lib/auth-denial');
-    const result = await readAndClearDenial();
+    const { readDenial } = await import('@/lib/auth-denial');
+    const result = await readDenial();
     expect(result).toBeNull();
   });
 
-  it('readAndClearDenial returns null on missing required fields', async () => {
+  it('readDenial returns null on missing required fields', async () => {
     cookieStore.set('aster_auth_denial', {
       name: 'aster_auth_denial',
       value: JSON.stringify({ reason: 'foo' }), // 缺 ref + ts
     });
-    const { readAndClearDenial } = await import('@/lib/auth-denial');
-    const result = await readAndClearDenial();
+    const { readDenial } = await import('@/lib/auth-denial');
+    const result = await readDenial();
     expect(result).toBeNull();
   });
 
-  it('readAndClearDenial returns null on stale timestamp (>60s old)', async () => {
+  it('readDenial returns null on stale timestamp (>60s old)', async () => {
     cookieStore.set('aster_auth_denial', {
       name: 'aster_auth_denial',
       value: JSON.stringify({
@@ -103,9 +100,14 @@ describe('auth-denial', () => {
         ts: Math.floor(Date.now() / 1000) - 120, // 2 分钟前
       }),
     });
-    const { readAndClearDenial } = await import('@/lib/auth-denial');
-    const result = await readAndClearDenial();
+    const { readDenial } = await import('@/lib/auth-denial');
+    const result = await readDenial();
     expect(result).toBeNull();
+  });
+
+  it('readAndClearDenial alias is exported for backward compat', async () => {
+    const m = await import('@/lib/auth-denial');
+    expect(m.readAndClearDenial).toBe(m.readDenial);
   });
 
   it('markDenial handles cookies() unavailability gracefully', async () => {

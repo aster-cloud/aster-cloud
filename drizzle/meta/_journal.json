@@ -43,6 +43,13 @@
       "when": 1760000050000,
       "tag": "0006_user_is_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778838292712,
+      "tag": "0007_api_call_record_and_ai_audit_columns",
+      "breakpoints": true
     }
   ]
 }

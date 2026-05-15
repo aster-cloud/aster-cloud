@@ -8,6 +8,23 @@ import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Postgres "undefined_table" 错误码。当 ApiCallRecord 迁移尚未应用时，
+ * 查询会抛此错误。我们 catch + 返回空 payload，dashboard 卡片显示 0 调用，
+ * 而不是整张卡片 500。一旦 0007_api_call_record_and_ai_audit_columns
+ * 迁移落地，错误自然消失。
+ */
+const PG_UNDEFINED_TABLE = '42P01';
+
+function isUndefinedTable(err: unknown): boolean {
+  if (err && typeof err === 'object' && 'code' in err) {
+    return (err as { code?: string }).code === PG_UNDEFINED_TABLE;
+  }
+  // 兜底：某些 driver 不暴露 code，只能看 message
+  const msg = err instanceof Error ? err.message : String(err);
+  return /relation .* does not exist/i.test(msg);
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -31,49 +48,63 @@ export async function GET() {
   const limit = limits.apiCalls;
   const period = currentPeriod();
 
-  const used = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(apiCallRecords)
-    .where(
-      and(
-        eq(apiCallRecords.userId, userId),
-        eq(apiCallRecords.periodMonth, period),
-        eq(apiCallRecords.status, 'success')
-      )
-    );
-  const usedCount = used[0]?.c ?? 0;
+  let usedCount = 0;
+  let latRow: { p50: number | null; p95: number | null; sample_count: number } = {
+    p50: 0,
+    p95: 0,
+    sample_count: 0,
+  };
+  let trend: Array<{ day: string; calls: number }> = [];
+  let degraded = false;
 
-  // p50 / p95 latency（最近 7 天 success）
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const latencyResult = await db.execute(sql`
-    SELECT
-      percentile_cont(0.5) WITHIN GROUP (ORDER BY "latencyMs")::int AS p50,
-      percentile_cont(0.95) WITHIN GROUP (ORDER BY "latencyMs")::int AS p95,
-      count(*)::int AS sample_count
-    FROM "ApiCallRecord"
-    WHERE "userId" = ${userId}
-      AND "createdAt" >= ${sevenDaysAgo.toISOString()}::timestamp
-      AND status = 'success'
-  `);
-  const latRow = (latencyResult as unknown as Array<{
-    p50: number | null;
-    p95: number | null;
-    sample_count: number;
-  }>)[0] ?? { p50: 0, p95: 0, sample_count: 0 };
+  try {
+    const used = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(apiCallRecords)
+      .where(
+        and(
+          eq(apiCallRecords.userId, userId),
+          eq(apiCallRecords.periodMonth, period),
+          eq(apiCallRecords.status, 'success')
+        )
+      );
+    usedCount = used[0]?.c ?? 0;
 
-  // 最近 7 天日趋势
-  const trendResult = await db.execute(sql`
-    SELECT
-      date_trunc('day', "createdAt")::date::text AS day,
-      count(*)::int AS calls
-    FROM "ApiCallRecord"
-    WHERE "userId" = ${userId}
-      AND "createdAt" >= ${sevenDaysAgo.toISOString()}::timestamp
-      AND status = 'success'
-    GROUP BY 1
-    ORDER BY 1
-  `);
-  const trend = (trendResult as unknown as Array<{ day: string; calls: number }>);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const latencyResult = await db.execute(sql`
+      SELECT
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY "latencyMs")::int AS p50,
+        percentile_cont(0.95) WITHIN GROUP (ORDER BY "latencyMs")::int AS p95,
+        count(*)::int AS sample_count
+      FROM "ApiCallRecord"
+      WHERE "userId" = ${userId}
+        AND "createdAt" >= ${sevenDaysAgo.toISOString()}::timestamp
+        AND status = 'success'
+    `);
+    latRow =
+      (latencyResult as unknown as Array<typeof latRow>)[0] ?? latRow;
+
+    const trendResult = await db.execute(sql`
+      SELECT
+        date_trunc('day', "createdAt")::date::text AS day,
+        count(*)::int AS calls
+      FROM "ApiCallRecord"
+      WHERE "userId" = ${userId}
+        AND "createdAt" >= ${sevenDaysAgo.toISOString()}::timestamp
+        AND status = 'success'
+      GROUP BY 1
+      ORDER BY 1
+    `);
+    trend = trendResult as unknown as Array<{ day: string; calls: number }>;
+  } catch (err) {
+    if (isUndefinedTable(err)) {
+      // 迁移未应用，dashboard 仍可用：返回 0 调用 + degraded 标记。
+      console.warn('[api-usage] ApiCallRecord table missing; returning zero usage');
+      degraded = true;
+    } else {
+      throw err;
+    }
+  }
   void gte;
 
   return NextResponse.json({
@@ -91,6 +122,7 @@ export async function GET() {
       sampleCount: latRow.sample_count,
     },
     trend,
+    degraded,
   });
 }
 
