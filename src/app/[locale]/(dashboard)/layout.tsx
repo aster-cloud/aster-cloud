@@ -1,5 +1,5 @@
 import { Link } from '@/i18n/navigation';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import {
   DashboardNavClient,
@@ -16,17 +16,26 @@ import { defaultLocale } from '@/i18n/config';
 
 export default async function DashboardLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  // Next.js 15 passes [locale] via params here — match the parent layout
+  // pattern (src/app/[locale]/layout.tsx) instead of calling getLocale()
+  // from next-intl/server. The latter requires the same request-scoped
+  // context the parent layout has already established, but on OpenNext-on-
+  // Cloudflare it can throw at deploy time when the platform-proxy preflight
+  // tries to resolve the locale without a full request lifecycle.
+  params: Promise<{ locale: string }>;
 }) {
+  const { locale } = await params;
+  const routePrefix = locale === defaultLocale ? '' : `/${locale}`;
+
   const t = await getTranslations('dashboardNav');
   const tSettings = await getTranslations('settings.account');
   const tNav = await getTranslations('nav');
   const tMobile = await getTranslations('dashboardNav.mobile');
   const tAdmin = await getTranslations('admin.riskTier');
   const tCmd = await getTranslations('dashboardNav.commandPalette');
-  const locale = await getLocale();
-  const routePrefix = locale === defaultLocale ? '' : `/${locale}`;
 
   const session = await getSession();
   const userId = session?.user?.id ?? null;
