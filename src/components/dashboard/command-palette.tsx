@@ -23,41 +23,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { track, Events } from '@/lib/mixpanel';
-import {
-  ArrowRight,
-  FileText,
-  Home,
-  KeyRound,
-  Search,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-  Users,
-  Wallet,
-} from 'lucide-react';
+import { ArrowRight, Search } from 'lucide-react';
 import { cn } from '@/components/ui';
+import type { Command } from './command-palette-commands';
 
-/* ------------------------------------------------------------------ */
-/* Command catalog — single source of truth                            */
-/* ------------------------------------------------------------------ */
-
-export interface Command {
-  /** Stable id for keying React lists and analytics events. */
-  id: string;
-  /** Visible label — i18n-translated upstream and passed in via props. */
-  label: string;
-  /** Short helper text shown under the label. */
-  hint?: string;
-  /** Lucide icon component. */
-  icon: React.ComponentType<{ className?: string }>;
-  /** Route (locale prefix added by router.push call site). */
-  href: string;
-  /** Section header in the rendered list. */
-  group: 'navigate' | 'create' | 'settings';
-  /** Optional list of extra search keywords (e.g. translations of the label
-   *  in other languages so a 中文 user can still search "policy"). */
-  keywords?: string[];
-}
+// Note: buildCommands + types live in command-palette-commands.ts (no
+// 'use client'). Server Components must import them from that module
+// directly — re-exporting them from this file would drag them back
+// across the client boundary and break server-side invocation.
 
 /* ------------------------------------------------------------------ */
 /* Palette component                                                   */
@@ -353,61 +326,3 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Default command catalog                                             */
-/* ------------------------------------------------------------------ */
-
-/**
- * Build the default command list. The layout passes localized labels
- * (already translated via next-intl on the server) so this stays
- * i18n-clean. The keyword list is intentionally tri-lingual on the
- * highest-traffic items so 中文 / Deutsch users can still type
- * "policy" / "settings" and find the right command.
- */
-export interface BuildCommandsArgs {
-  /** Locale prefix already applied to hrefs ('' for default, '/zh' etc). */
-  routePrefix: string;
-  /** Labels piped through from server-side getTranslations. */
-  labels: {
-    dashboard: string;
-    policies: string;
-    newPolicy: string;
-    reports: string;
-    teams: string;
-    security: string;
-    billing: string;
-    settings: string;
-    apiKeys: string;
-    aiKeys: string;
-    aiAssistant: string;
-  };
-  /** Optional viewer-only flag to hide create commands when role is viewer. */
-  canCreate?: boolean;
-  /** Whether to expose billing entry (admins only). */
-  showBilling?: boolean;
-}
-
-export function buildCommands({
-  routePrefix, labels, canCreate = true, showBilling = true,
-}: BuildCommandsArgs): Command[] {
-  const p = routePrefix;
-  const cmds: Command[] = [
-    { id: 'dashboard',  group: 'navigate', icon: Home,        label: labels.dashboard,  href: `${p}/dashboard`,         keywords: ['仪表盘', 'übersicht'] },
-    { id: 'policies',   group: 'navigate', icon: FileText,    label: labels.policies,   href: `${p}/policies`,          keywords: ['policy', '策略', 'richtlinien'] },
-    { id: 'reports',    group: 'navigate', icon: FileText,    label: labels.reports,    href: `${p}/reports`,           keywords: ['report', '报告', 'berichte'] },
-    { id: 'teams',      group: 'navigate', icon: Users,       label: labels.teams,      href: `${p}/teams`,             keywords: ['team', '团队'] },
-    { id: 'security',   group: 'navigate', icon: ShieldCheck, label: labels.security,   href: `${p}/security`,          keywords: ['security', '安全'] },
-
-    ...(canCreate
-      ? ([{ id: 'new-policy', group: 'create', icon: Sparkles, label: labels.newPolicy, href: `${p}/policies/new`, keywords: ['create', '新建', 'neu'] }] as Command[])
-      : []),
-
-    ...(showBilling
-      ? ([{ id: 'billing', group: 'settings', icon: Wallet, label: labels.billing, href: `${p}/billing`, keywords: ['plan', '账单'] }] as Command[])
-      : []),
-    { id: 'settings',  group: 'settings', icon: Settings, label: labels.settings, href: `${p}/settings`, keywords: ['settings', '设置'] },
-    { id: 'api-keys',  group: 'settings', icon: KeyRound, label: labels.apiKeys,  href: `${p}/settings/api-keys`, keywords: ['api', 'token', '密钥'] },
-    { id: 'ai-keys',   group: 'settings', icon: Sparkles, label: labels.aiKeys,   href: `${p}/settings/ai-keys`,  keywords: ['byok', 'openai', 'ai 密钥'] },
-  ];
-  return cmds;
-}

@@ -5,10 +5,8 @@ import {
   DashboardNavClient,
   UserDropdown,
 } from '@/components/dashboard-nav';
-import {
-  CommandPalette,
-  buildCommands,
-} from '@/components/dashboard/command-palette';
+import { CommandPalette } from '@/components/dashboard/command-palette';
+import { buildCommands } from '@/components/dashboard/command-palette-commands';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import { getEffectiveRole, canAccess } from '@/lib/effective-role';
