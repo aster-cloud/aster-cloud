@@ -19,12 +19,7 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
 
-      # @aster-cloud scope hosted on GitHub Packages. GITHUB_TOKEN is
-      # auto-provided by Actions and has read:packages on repos in the
-      # same org.
       - run: pnpm install --frozen-lockfile
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm lint
       - run: pnpm exec tsc --noEmit
       - name: Verify message catalog parity (en backbone)
@@ -88,8 +83,6 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Next.js + OpenNext bundle
         # opennextjs-cloudflare 把 .next 转换为 Cloudflare Worker 兼容格式，
