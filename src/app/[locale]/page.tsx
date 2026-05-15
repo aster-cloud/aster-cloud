@@ -149,11 +149,14 @@ function Hero({ t }: { t: ReturnType<typeof useTranslations> }) {
         <Stack gap={6} align="center" className="text-center">
           <h1 className={cn(
             'font-display font-semibold tracking-tighter text-fg',
-            'text-5xl leading-[1.05] sm:text-6xl md:text-7xl',
-            'max-w-4xl',
+            // Step the headline size down a notch at the widest breakpoints
+            // so `hero.title` + `hero.titleHighlight` fit on a single line
+            // on desktop. Mobile keeps the larger leading for readability.
+            'text-4xl leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl',
+            'max-w-5xl',
           )}>
-            {t('hero.title')}
-            <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            {t('hero.title')}{' '}
+            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {t('hero.titleHighlight')}
             </span>
           </h1>
