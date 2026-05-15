@@ -44,6 +44,9 @@ const ENV_CHECKS: readonly EnvCheck[] = [
   // 跨服务 PlanGate（aster-cloud 内部接口被 aster-api 调用）
   { key: 'ASTER_PLAN_GATE_HMAC_KEY', required: 'production-only', description: 'PlanGate HMAC 共享密钥' },
 
+  // R21-Critical-2: cron 鉴权密钥（生产必填，否则 requireCronAuth 返回 503）
+  { key: 'CRON_SECRET', required: 'production-only', description: 'Cloudflare/Vercel cron trigger 鉴权密钥；缺失时所有 cron route 返回 503' },
+
   // 邮件（F2.5 trial reminder + 失败通知）
   { key: 'RESEND_API_KEY', required: 'production-only', description: 'Resend 邮件服务' },
 

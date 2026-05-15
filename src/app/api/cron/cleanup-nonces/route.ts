@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
 import { cleanupNoncesJob, checkNonceHealth } from '@/cron/cleanup-nonces';
 
 export const runtime = 'nodejs';
@@ -22,15 +23,9 @@ export const dynamic = 'force-dynamic';
  * 需要 CRON_SECRET 认证。
  */
 export async function GET(request: NextRequest) {
-  // 验证 Cron 密钥
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  // 如果设置了 CRON_SECRET，则验证授权头
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    console.warn('[Cron] Unauthorized cleanup attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(request);
+  if (guard) return guard;
 
   try {
     const result = await cleanupNoncesJob();
@@ -61,13 +56,9 @@ export async function GET(request: NextRequest) {
  * 检查 Nonce 表是否有过多积压。
  */
 export async function POST(request: NextRequest) {
-  // 验证 Cron 密钥
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(request);
+  if (guard) return guard;
 
   try {
     // 解析可选的 maxActive 参数

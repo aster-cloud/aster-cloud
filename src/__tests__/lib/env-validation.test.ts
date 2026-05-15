@@ -20,6 +20,7 @@ function makeFullProductionEnv(): NodeJS.ProcessEnv {
     NEXT_PUBLIC_STRIPE_PRO_YEARLY_CNY_PRICE_ID: 'price_pro_cny_y',
     NEXT_PUBLIC_MIXPANEL_TOKEN: 'mp-token',
     ASTER_PLAN_GATE_HMAC_KEY: 'hmac-key',
+    CRON_SECRET: 'cron-secret',
     RESEND_API_KEY: 're_key',
     NEXT_PUBLIC_APP_URL: 'https://aster-lang.cloud',
   } as NodeJS.ProcessEnv;

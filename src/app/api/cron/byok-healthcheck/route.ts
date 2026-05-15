@@ -3,6 +3,7 @@
  * 每天 03:00 UTC 运行一次（与 trial reminder 时段错开）
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
 import { checkAllBYOKKeys } from '@/lib/ai-byok-healthcheck';
 import { resend } from '@/lib/resend';
 
@@ -10,11 +11,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(request);
+  if (guard) return guard;
 
   const results = await checkAllBYOKKeys(async (to, subject, body) => {
     if (!resend) return;

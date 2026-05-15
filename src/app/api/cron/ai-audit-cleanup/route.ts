@@ -8,6 +8,7 @@
  *   2. signupAttempts（24h 前，无须保留）
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
 import { db, aiUsageRecords, signupAttempts } from '@/lib/prisma';
 import { lt, sql } from 'drizzle-orm';
 
@@ -18,11 +19,9 @@ const RETENTION_DAYS = 180;
 const SIGNUP_ATTEMPT_TTL_HOURS = 24;
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(request);
+  if (guard) return guard;
 
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
   const cutoffIso = cutoff.toISOString();

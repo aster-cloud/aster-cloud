@@ -10,21 +10,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
 import { reconcileStripeSeats } from '@/lib/stripe-reconcile';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function authorize(request: NextRequest): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true; // dev mode
-  return request.headers.get('authorization') === `Bearer ${cronSecret}`;
-}
-
 export async function GET(request: NextRequest) {
-  if (!authorize(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(request);
+  if (guard) return guard;
 
   const url = new URL(request.url);
   const dryRun = url.searchParams.get('dryRun') === 'true';

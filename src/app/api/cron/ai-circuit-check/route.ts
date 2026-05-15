@@ -2,17 +2,16 @@
  * 全局成本熔断器 cron（每 10 分钟扫一次）
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
 import { todayPlatformCostCents, evaluateCircuit, applyCircuit } from '@/lib/ai-circuit-breaker';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(request);
+  if (guard) return guard;
 
   const cents = await todayPlatformCostCents();
   const state = evaluateCircuit(cents);

@@ -15,6 +15,7 @@
  * 触发：Cloudflare Cron Trigger 调用此路由 + Authorization: Bearer ${CRON_SECRET}
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
 import { db } from '@/lib/prisma';
 import { users, auditLogs } from '@/db/schema';
 import { and, eq, gte, inArray, isNull } from 'drizzle-orm';
@@ -37,11 +38,9 @@ interface DecayResult {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(req);
+  if (guard) return guard;
 
   const now = new Date();
   const windowStart = new Date(now.getTime() - QUIET_WINDOW_DAYS * 86400_000);

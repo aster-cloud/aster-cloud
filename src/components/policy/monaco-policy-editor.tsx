@@ -49,7 +49,8 @@ interface MonacoPolicyEditorProps {
   onExplainSelection?: (selectedText: string) => void;
 }
 
-const AI_COMPLETE_API_URL = process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
+// R23-Critical-2: AI complete 直连 aster-api 已停用。改走 server-side proxy
+// `/api/llm/complete`（aster-cloud）做 NextAuth 鉴权 + HMAC 转签。
 
 // NOTE: inlineCompletionTimer and inlineProviderDisposable are managed as
 // component-scoped refs inside MonacoPolicyEditor to avoid cross-instance leaks.
@@ -421,15 +422,19 @@ export function MonacoPolicyEditor({
                 }
 
                 try {
+                  // R23-Critical-2: 不再直连 aster-api，改走 server-side proxy
+                  // /api/llm/complete。proxy 端做 NextAuth 鉴权 + HMAC 转签，
+                  // 让 aster-api 的 InternalCallerFilter 能区分"已登录用户调用" vs
+                  // "匿名公网调用"。caller-supplied X-Tenant-Id 不再被信任 ——
+                  // server 端从 session 取真实 tenantId。
                   const headers: Record<string, string> = {
                     'Content-Type': 'application/json',
                   };
-                  if (tenantId) headers['X-Tenant-Id'] = tenantId;
 
                   const abortCtrl = new AbortController();
                   token.onCancellationRequested(() => abortCtrl.abort());
 
-                  const resp = await fetch(`${AI_COMPLETE_API_URL}/api/v1/ai/complete`, {
+                  const resp = await fetch(`/api/llm/complete`, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify({ prefix, locale }),

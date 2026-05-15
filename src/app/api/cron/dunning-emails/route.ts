@@ -5,6 +5,7 @@
  * 幂等通过 dunningEmailsSentCount 控制：每发一封 +1，避免重复发送。
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
 import { db, users } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
 import { resend } from '@/lib/resend';
@@ -28,11 +29,9 @@ interface DunningResult {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // R21-Critical-2: fail-closed cron auth via shared helper
+  const guard = requireCronAuth(request);
+  if (guard) return guard;
 
   const candidates = await db.query.users.findMany({
     where: eq(users.subscriptionStatus, 'past_due'),

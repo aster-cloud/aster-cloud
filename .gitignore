@@ -55,3 +55,6 @@ next-env.d.ts
 .ace-tool/
 
 .pnpm-store/
+# R21-Major-4: aster-cloud uses pnpm. package-lock.json is forbidden — drift
+# between two lockfiles caused stale @aster-cloud/aster-lang-ts resolution.
+package-lock.json
