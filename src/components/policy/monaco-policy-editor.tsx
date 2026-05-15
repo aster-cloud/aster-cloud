@@ -16,6 +16,7 @@ import {
 } from '@/lib/aster-lexicon';
 import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
 import type { TypecheckDiagnostic } from '@aster-cloud/aster-lang-ts/browser';
+import { violet, sky, emerald, amber, rose, zinc } from '@aster-cloud/tokens';
 
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
@@ -221,7 +222,50 @@ function registerAsterLanguage(
   });
 }
 
-// 定义主题
+/**
+ * Aster Monaco theme.
+ *
+ * Replaces the default VS Code palette with a brand-aware scheme keyed on
+ * @aster-cloud/tokens. The mapping intentionally surfaces *Aster CNL's
+ * structural concepts* rather than mimicking JavaScript/TypeScript token
+ * colors — `Module` and `Rule` declarations are the most important visual
+ * landmarks in a policy, so they get the violet primary; relational
+ * keywords (`has`, `given`, `option of`) lean on the sky accent; control
+ * flow uses amber as "branching needs attention" affordance.
+ *
+ * Why hard-coded hex values rather than CSS variables: Monaco's defineTheme
+ * API resolves colors at theme-definition time, not at render time. CSS
+ * variables would yield literal "var(--aster-…)" strings to Monaco's
+ * internal color parser → it would fall back to black. The tokens package
+ * exports the same raw hex strings as `tokens.css`, so this stays in sync
+ * with the rest of the brand via a single source.
+ *
+ * Monaco color string conventions:
+ *   - `rules[].foreground`: 6-char hex WITHOUT '#' prefix (Monaco quirk)
+ *   - `colors[*]`: 6/8-char hex WITH '#' prefix (8-char includes alpha)
+ */
+
+/** Strip leading '#' for use in Monaco's token-color rules. */
+const hex = (c: string) => c.replace(/^#/, '');
+
+/**
+ * Token role → brand-color mapping. Each entry maps the Monaco token type
+ * emitted by `setMonarchTokensProvider` (see registerAsterLanguage above)
+ * to a light/dark hex pair pulled from the design tokens.
+ *
+ *   Module / Rule declarations  → violet (primary, strongest landmark)
+ *   has / given / type concepts → sky    (accent, relational)
+ *   if / otherwise / for each   → amber  (control flow, "branching")
+ *   workflow / max attempts     → emerald (action / commit)
+ *   wait for / async            → sky lighter (live / streaming)
+ *   booleans + literals         → rose   (literals stand out)
+ *   strings                     → amber 700 (warm content)
+ *   numbers                     → emerald (quantitative "success")
+ *   comments                    → muted neutral italic
+ *   identifiers                 → fg (neutral)
+ *   domain vocabulary           → sky italic (signals "domain word")
+ *   brackets                    → violet (subtle scope anchors)
+ */
 function defineAsterTheme(monaco: typeof import('monaco-editor'), isDark: boolean) {
   const themeName = isDark ? 'aster-dark' : 'aster-light';
 
@@ -229,54 +273,82 @@ function defineAsterTheme(monaco: typeof import('monaco-editor'), isDark: boolea
     base: isDark ? 'vs-dark' : 'vs',
     inherit: true,
     rules: [
-      // 关键词颜色
-      { token: 'keyword.module', foreground: isDark ? 'C586C0' : '7B3AA4', fontStyle: 'bold' },
-      { token: 'keyword.type', foreground: isDark ? '4EC9B0' : '267F99', fontStyle: 'bold' },
-      { token: 'keyword.function', foreground: isDark ? 'DCDCAA' : '795E26', fontStyle: 'bold' },
-      { token: 'keyword.control', foreground: isDark ? 'C586C0' : 'AF00DB' },
-      { token: 'keyword.variable', foreground: isDark ? '569CD6' : '0000FF' },
-      { token: 'keyword.boolean', foreground: isDark ? '569CD6' : '0000FF' },
-      { token: 'keyword.operator', foreground: isDark ? 'D4D4D4' : '000000' },
-      { token: 'keyword.workflow', foreground: isDark ? 'CE9178' : 'A31515', fontStyle: 'bold' },
-      { token: 'keyword.async', foreground: isDark ? '4FC1FF' : '0070C1' },
-      { token: 'keyword.effect', foreground: isDark ? 'B5CEA8' : '098658' },
+      // === Module / Rule declarations — the brand-defining landmarks ===
+      { token: 'keyword.module',   foreground: hex(isDark ? violet[400] : violet[700]), fontStyle: 'bold' },
+      { token: 'keyword.function', foreground: hex(isDark ? violet[300] : violet[600]), fontStyle: 'bold' },
 
-      // 类型
-      { token: 'type', foreground: isDark ? '4EC9B0' : '267F99' },
+      // === Type / structural keywords (has, given, as one of, …) ===
+      { token: 'keyword.type',     foreground: hex(isDark ? sky[300] : sky[700]), fontStyle: 'bold' },
+      { token: 'type',             foreground: hex(isDark ? sky[400] : sky[700]) },
+      { token: 'keyword.variable', foreground: hex(isDark ? sky[300] : sky[700]) },
 
-      // 常量和字面量
-      { token: 'constant.language', foreground: isDark ? '569CD6' : '0000FF' },
+      // === Control flow (if, otherwise, for each) ===
+      { token: 'keyword.control',  foreground: hex(isDark ? amber[300] : amber[700]), fontStyle: 'bold' },
 
-      // 字符串
-      { token: 'string', foreground: isDark ? 'CE9178' : 'A31515' },
-      { token: 'string.escape', foreground: isDark ? 'D7BA7D' : 'EE0000' },
-      { token: 'string.invalid', foreground: isDark ? 'F44747' : 'CD3131' },
+      // === Workflow / commit keywords (max attempts, retry) ===
+      { token: 'keyword.workflow', foreground: hex(isDark ? emerald[300] : emerald[700]), fontStyle: 'bold' },
 
-      // 数字
-      { token: 'number', foreground: isDark ? 'B5CEA8' : '098658' },
-      { token: 'number.float', foreground: isDark ? 'B5CEA8' : '098658' },
+      // === Async (wait for, after) — pairs with AI/streaming brand color ===
+      { token: 'keyword.async',    foreground: hex(isDark ? sky[200] : sky[600]) },
 
-      // 注释
-      { token: 'comment', foreground: isDark ? '6A9955' : '008000', fontStyle: 'italic' },
+      // === Effects (input/output, side effect markers) ===
+      { token: 'keyword.effect',   foreground: hex(isDark ? emerald[200] : emerald[600]), fontStyle: 'italic' },
 
-      // 标识符
-      { token: 'identifier', foreground: isDark ? '9CDCFE' : '001080' },
+      // === Operators (and, or, not, divided by) — quiet neutral ===
+      { token: 'keyword.operator', foreground: hex(isDark ? zinc[300] : zinc[700]) },
 
-      // 领域术语（青绿色斜体，与函数色 DCDCAA/795E26 区分）
-      { token: 'variable.domain', foreground: isDark ? '4EC9B0' : '267F99', fontStyle: 'italic' },
+      // === Booleans + null/none — high-contrast rose so they pop ===
+      { token: 'keyword.boolean',     foreground: hex(isDark ? rose[300] : rose[700]) },
+      { token: 'constant.language',   foreground: hex(isDark ? rose[300] : rose[700]) },
 
-      // 运算符和分隔符
-      { token: 'operator', foreground: isDark ? 'D4D4D4' : '000000' },
-      { token: 'delimiter', foreground: isDark ? 'D4D4D4' : '000000' },
-      { token: 'delimiter.bracket', foreground: isDark ? 'FFD700' : 'AF9500' },
+      // === Strings (warm amber range — "human text") ===
+      { token: 'string',          foreground: hex(isDark ? amber[200] : amber[800]) },
+      { token: 'string.escape',   foreground: hex(isDark ? amber[400] : amber[600]) },
+      { token: 'string.invalid',  foreground: hex(isDark ? rose[400] : rose[700]) },
+
+      // === Numbers (emerald — quantitative truth) ===
+      { token: 'number',          foreground: hex(isDark ? emerald[200] : emerald[700]) },
+      { token: 'number.float',    foreground: hex(isDark ? emerald[200] : emerald[700]) },
+
+      // === Comments (muted italic) ===
+      { token: 'comment',         foreground: hex(isDark ? zinc[500] : zinc[500]), fontStyle: 'italic' },
+
+      // === Identifiers (default neutral text) ===
+      { token: 'identifier',      foreground: hex(isDark ? zinc[50] : zinc[900]) },
+
+      // === Domain vocabulary terms — sky italic flags them as "your vocabulary" ===
+      { token: 'variable.domain', foreground: hex(isDark ? sky[300] : sky[700]), fontStyle: 'italic' },
+
+      // === Operators / delimiters (quiet so structure breathes) ===
+      { token: 'operator',         foreground: hex(isDark ? zinc[300] : zinc[700]) },
+      { token: 'delimiter',        foreground: hex(isDark ? zinc[400] : zinc[600]) },
+      // Brackets carry subtle violet so scope is glanceable
+      { token: 'delimiter.bracket', foreground: hex(isDark ? violet[300] : violet[600]) },
     ],
     colors: {
-      'editor.background': isDark ? '#1e1e1e' : '#ffffff',
-      'editor.foreground': isDark ? '#d4d4d4' : '#000000',
-      'editorLineNumber.foreground': isDark ? '#858585' : '#237893',
-      'editorCursor.foreground': isDark ? '#aeafad' : '#000000',
-      'editor.selectionBackground': isDark ? '#264f78' : '#add6ff',
-      'editor.inactiveSelectionBackground': isDark ? '#3a3d41' : '#e5ebf1',
+      // Editor chrome — pulled from semantic surface tokens.
+      // Dark uses zinc-950 (matches dashboard dark surface) instead of
+      // Monaco's stock #1e1e1e so the editor blends seamlessly with the
+      // rest of the app rather than feeling like a foreign panel.
+      'editor.background':                     isDark ? '#09090b' : '#ffffff',  // zinc-950 / white
+      'editor.foreground':                     isDark ? '#fafafa' : '#18181b',  // zinc-50 / zinc-900
+      'editorLineNumber.foreground':           isDark ? '#52525b' : '#a1a1aa',  // zinc-600 / zinc-400
+      'editorLineNumber.activeForeground':     isDark ? '#a78bfa' : '#7c3aed',  // violet-400 / violet-600
+      'editorCursor.foreground':               isDark ? '#a78bfa' : '#7c3aed',  // violet — brand-tinted caret
+      // Selection — primary subtle so the text remains legible underneath.
+      // Hex8 (RGBA) so we can dial the alpha and keep selection see-through.
+      'editor.selectionBackground':            isDark ? '#7c3aed40' : '#7c3aed30',
+      'editor.inactiveSelectionBackground':    isDark ? '#7c3aed20' : '#7c3aed18',
+      'editor.lineHighlightBackground':        isDark ? '#27272a80' : '#fafafa', // zinc-800/50 alpha / zinc-50
+      // Bracket-pair highlight follows the brand
+      'editorBracketMatch.background':         isDark ? '#7c3aed30' : '#7c3aed15',
+      'editorBracketMatch.border':             isDark ? '#a78bfa'   : '#7c3aed',
+      // Indent guides — quiet
+      'editorIndentGuide.background':          isDark ? '#27272a' : '#e4e4e7',
+      'editorIndentGuide.activeBackground':    isDark ? '#3f3f46' : '#d4d4d8',
+      // Find / replace UI
+      'editor.findMatchBackground':            isDark ? '#7c3aed50' : '#7c3aed30',
+      'editor.findMatchHighlightBackground':   isDark ? '#7c3aed30' : '#7c3aed18',
     },
   });
 
