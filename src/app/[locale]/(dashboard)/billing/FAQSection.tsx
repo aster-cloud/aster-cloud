@@ -36,17 +36,17 @@ interface FAQItemProps {
 
 function FAQItem({ faqKey, t, isOpen, onToggle }: FAQItemProps) {
   return (
-    <div className="border-b border-gray-200">
+    <div className="border-b border-border">
       <button
         type="button"
         onClick={onToggle}
         className="w-full py-4 flex items-center justify-between text-left"
       >
-        <span className="text-base font-medium text-gray-900">
+        <span className="text-base font-medium text-fg">
           {t(`faq.${faqKey}.question`)}
         </span>
         <svg
-          className={`h-5 w-5 text-gray-500 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-5 w-5 text-fg-muted transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
           viewBox="0 0 20 20"
           fill="currentColor"
         >
@@ -58,7 +58,7 @@ function FAQItem({ faqKey, t, isOpen, onToggle }: FAQItemProps) {
         </svg>
       </button>
       {isOpen && (
-        <div className="pb-4 text-sm text-gray-600">
+        <div className="pb-4 text-sm text-fg-muted">
           {t(`faq.${faqKey}.answer`)}
         </div>
       )}
@@ -77,7 +77,7 @@ interface FAQCategoryProps {
 function FAQCategory({ title, faqKeys, t, openItems, onToggle }: FAQCategoryProps) {
   return (
     <div>
-      <h4 className="text-lg font-semibold text-gray-900 mb-4">{title}</h4>
+      <h4 className="text-lg font-semibold text-fg mb-4">{title}</h4>
       <div className="space-y-0">
         {faqKeys.map((key) => (
           <FAQItem
@@ -114,7 +114,7 @@ export default function FAQSection({ t }: FAQSectionProps) {
 
   return (
     <div className="mt-16">
-      <h3 className="text-xl font-semibold text-gray-900 mb-8">{t('faq.title')}</h3>
+      <h3 className="text-xl font-semibold text-fg mb-8">{t('faq.title')}</h3>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <FAQCategory
           title={t('faq.productQuestions')}

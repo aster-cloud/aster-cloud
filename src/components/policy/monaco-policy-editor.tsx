@@ -589,7 +589,7 @@ export function MonacoPolicyEditor({
   );
 
   return (
-    <div className="relative rounded-lg border border-gray-300 dark:border-gray-600 [&_.monaco-editor]:rounded-lg">
+    <div className="relative rounded-lg border border-border-strong dark:border-gray-600 [&_.monaco-editor]:rounded-lg">
       <Editor
         height={height}
         language={ASTER_LANG_ID}
@@ -622,17 +622,17 @@ export function MonacoPolicyEditor({
           fixedOverflowWidgets: true,
         }}
         loading={
-          <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-center h-full bg-bg dark:bg-gray-900 text-fg-muted dark:text-fg-subtle">
             Loading editor...
           </div>
         }
       />
       {!value && placeholder && (
-        <div aria-hidden="true" className="absolute top-3 left-14 text-gray-500 pointer-events-none text-sm font-mono">
+        <div aria-hidden="true" className="absolute top-3 left-14 text-fg-muted pointer-events-none text-sm font-mono">
           {placeholder}
         </div>
       )}
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+      <div className="mt-2 flex items-center justify-between text-xs text-fg-muted">
         <div className="flex items-center gap-2" role="status" aria-live="polite">
           {errorCount > 0 && (
             <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-200">
@@ -662,7 +662,7 @@ export function MonacoPolicyEditor({
         )}
       </div>
       {showProblems && diagnostics.length > 0 && (
-        <ul role="list" className="mt-2 rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:divide-gray-800">
+        <ul role="list" className="mt-2 rounded-lg border border-border bg-bg divide-y divide-border dark:border-gray-700 dark:bg-gray-900 dark:divide-gray-800">
           {diagnostics
             .filter(d => d.severity === 'error' || d.severity === 'warning')
             .map((diag, i) => (
@@ -670,14 +670,14 @@ export function MonacoPolicyEditor({
                 <button
                   type="button"
                   onClick={() => revealDiagnostic(diag)}
-                  className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-fg hover:bg-bg-subtle dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   <span
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${diag.severity === 'error' ? 'bg-red-500' : 'bg-amber-500'}`}
                     aria-hidden="true"
                   />
                   <span className="flex-1">{diag.message}</span>
-                  <span className="shrink-0 text-gray-400">
+                  <span className="shrink-0 text-fg-subtle">
                     L{diag.span?.start?.line ?? 1}:{diag.span?.start?.col ?? 1}
                   </span>
                 </button>

@@ -96,17 +96,17 @@ export function CNLSyntaxConverterDialog({
       {/* Dialog Container */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="relative w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all"
+          className="relative w-full max-w-4xl transform overflow-hidden rounded-2xl bg-bg shadow-xl transition-all"
           role="dialog"
           aria-modal="true"
           aria-labelledby="converter-dialog-title"
         >
           {/* 标题栏 */}
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h3 id="converter-dialog-title" className="text-lg font-semibold text-gray-900">
+          <div className="border-b border-border px-6 py-4">
+            <h3 id="converter-dialog-title" className="text-lg font-semibold text-fg">
               {isZh ? '语法转换' : 'Syntax Conversion'}
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-fg-muted">
               {isZh
                 ? '将策略从一种 CNL 语言转换为另一种语言'
                 : 'Convert your policy from one CNL language to another'}
@@ -119,17 +119,17 @@ export function CNLSyntaxConverterDialog({
             <div className="flex items-center gap-4 mb-4">
               {/* 源语言（自动检测） */}
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   {isZh ? '源语言' : 'Source Language'}
                 </label>
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2 px-3 py-2 bg-bg-subtle rounded-lg border border-border">
                   <span className="text-lg">
                     {detectedLocale === 'en-US' ? '🇺🇸' : detectedLocale === 'zh-CN' ? '🇨🇳' : '🇩🇪'}
                   </span>
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-fg">
                     {getLocaleName(detectedLocale, uiLocale)}
                   </span>
-                  <span className="text-xs text-gray-400 ml-auto">
+                  <span className="text-xs text-fg-subtle ml-auto">
                     {isZh ? '（自动检测）' : '(auto-detected)'}
                   </span>
                 </div>
@@ -137,20 +137,20 @@ export function CNLSyntaxConverterDialog({
 
               {/* 箭头 */}
               <div className="flex items-center justify-center pt-6">
-                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-6 h-6 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </div>
 
               {/* 目标语言 */}
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-fg mb-1">
                   {isZh ? '目标语言' : 'Target Language'}
                 </label>
                 <select
                   value={targetLocale}
                   onChange={(e) => setTargetLocale(e.target.value as SupportedLocale)}
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  className="w-full px-3 py-2 bg-bg rounded-lg border border-border-strong text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 >
                   {languageOptions.map((option) => (
                     <option
@@ -170,10 +170,10 @@ export function CNLSyntaxConverterDialog({
             <div className="grid grid-cols-2 gap-4">
               {/* 原始内容 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-fg mb-2">
                   {isZh ? '原始内容' : 'Original'}
                 </label>
-                <div className="h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-900 p-3">
+                <div className="h-64 overflow-auto rounded-lg border border-border bg-gray-900 p-3">
                   <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
                     {content || (isZh ? '（空内容）' : '(empty)')}
                   </pre>
@@ -182,10 +182,10 @@ export function CNLSyntaxConverterDialog({
 
               {/* 转换后内容 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-fg mb-2">
                   {isZh ? '转换预览' : 'Preview'}
                 </label>
-                <div className="h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-900 p-3">
+                <div className="h-64 overflow-auto rounded-lg border border-border bg-gray-900 p-3">
                   {conversionResult.success ? (
                     <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
                       {conversionResult.content || (isZh ? '（空内容）' : '(empty)')}
@@ -252,12 +252,12 @@ export function CNLSyntaxConverterDialog({
           </div>
 
           {/* 操作按钮 */}
-          <div className="border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+          <div className="border-t border-border px-6 py-4 flex justify-end gap-3">
             <button
               type="button"
               ref={cancelButtonRef}
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-fg bg-bg border border-border-strong rounded-lg hover:bg-bg-subtle focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
             >
               {isZh ? '取消' : 'Cancel'}
             </button>

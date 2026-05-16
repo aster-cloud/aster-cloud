@@ -106,20 +106,20 @@ export function PolicyGroupDialog({
 
       {/* Dialog */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative w-full max-w-md transform overflow-hidden rounded-lg bg-white shadow-xl transition-all">
+        <div className="relative w-full max-w-md transform overflow-hidden rounded-lg bg-bg shadow-xl transition-all">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center">
               <Folder className="w-5 h-5 text-primary mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-fg">
                 {mode === 'create' ? t.createTitle : t.editTitle}
               </h3>
             </div>
             <button
               onClick={onClose}
-              className="rounded-md p-1 hover:bg-gray-100"
+              className="rounded-md p-1 hover:bg-bg-muted"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5 text-fg-muted" />
             </button>
           </div>
 
@@ -136,10 +136,10 @@ export function PolicyGroupDialog({
                 <div className="flex items-start">
                   <AlertTriangle className="w-5 h-5 text-amber-500 mr-2 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-fg">
                       {t.deleteConfirm}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       {t.deleteWarning}
                     </p>
                   </div>
@@ -147,7 +147,7 @@ export function PolicyGroupDialog({
                 <div className="flex justify-end space-x-3">
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    className="px-3 py-2 text-sm font-medium text-fg bg-bg border border-border-strong rounded-md hover:bg-bg-subtle"
                     disabled={deleting}
                   >
                     {t.cancel}
@@ -164,7 +164,7 @@ export function PolicyGroupDialog({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="group-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="group-name" className="block text-sm font-medium text-fg mb-1">
                     {t.nameLabel}
                   </label>
                   <input
@@ -174,13 +174,13 @@ export function PolicyGroupDialog({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t.namePlaceholder}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-md border border-border-strong px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="group-description" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="group-description" className="block text-sm font-medium text-fg mb-1">
                     {t.descriptionLabel}
                   </label>
                   <textarea
@@ -190,7 +190,7 @@ export function PolicyGroupDialog({
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t.descriptionPlaceholder}
                     rows={3}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-md border border-border-strong px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
               </div>
@@ -199,7 +199,7 @@ export function PolicyGroupDialog({
 
           {/* Footer */}
           {!showDeleteConfirm && (
-            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3">
+            <div className="flex items-center justify-between border-t border-border px-4 py-3">
               <div>
                 {mode === 'edit' && onDelete && (
                   <button
@@ -213,7 +213,7 @@ export function PolicyGroupDialog({
               <div className="flex space-x-3">
                 <button
                   onClick={onClose}
-                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-3 py-2 text-sm font-medium text-fg bg-bg border border-border-strong rounded-md hover:bg-bg-subtle"
                   disabled={saving}
                 >
                   {t.cancel}

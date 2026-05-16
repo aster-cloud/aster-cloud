@@ -111,15 +111,15 @@ export function PolicyDetailContent({
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div>
           <div className="flex items-center">
-            <Link href={`/${locale}/policies`} className="text-gray-400 hover:text-gray-600 mr-2">
+            <Link href={`/${locale}/policies`} className="text-fg-subtle hover:text-fg-muted mr-2">
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
               </svg>
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">{policy.name}</h1>
+            <h1 className="text-2xl font-bold text-fg">{policy.name}</h1>
           </div>
           {policy.description && (
-            <p className="mt-1 text-sm text-gray-500">{policy.description}</p>
+            <p className="mt-1 text-sm text-fg-muted">{policy.description}</p>
           )}
         </div>
         <div className="mt-4 md:mt-0 flex space-x-3">
@@ -131,7 +131,7 @@ export function PolicyDetailContent({
           </Link>
           <Link
             href={`/${locale}/policies/${policy.id}/edit`}
-            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-bg-subtle"
           >
             {t.edit}
           </Link>
@@ -146,33 +146,33 @@ export function PolicyDetailContent({
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.version}</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">v{policy.version}</dd>
+        <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+          <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.version}</dt>
+          <dd className="mt-1 text-2xl font-semibold text-fg">v{policy.version}</dd>
         </div>
         <Link
           href={`/${locale}/policies/${policy.id}/logs`}
-          className="bg-white overflow-hidden rounded-lg shadow px-4 py-5 hover:bg-gray-50 transition-colors block"
+          className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5 hover:bg-bg-subtle transition-colors block"
         >
-          <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.executions}</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">{policy._count.executions}</dd>
+          <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.executions}</dt>
+          <dd className="mt-1 text-2xl font-semibold text-fg">{policy._count.executions}</dd>
           <p className="mt-1 text-xs text-primary">{t.detail.viewLogs} →</p>
         </Link>
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.piiFields}</dt>
-          <dd className="mt-1 text-2xl font-semibold text-gray-900">
+        <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+          <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.piiFields}</dt>
+          <dd className="mt-1 text-2xl font-semibold text-fg">
             {policy.piiFields?.length || 0}
           </dd>
         </div>
-        <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-          <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.status}</dt>
+        <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+          <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.status}</dt>
           <dd className="mt-1">
             {policy.isPublic ? (
               <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
                 {t.public}
               </span>
             ) : (
-              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-800">
+              <span className="inline-flex items-center rounded-full bg-bg-muted px-2.5 py-0.5 text-sm font-medium text-fg">
                 {t.private}
               </span>
             )}
@@ -201,9 +201,9 @@ export function PolicyDetailContent({
       )}
 
       {/* Content */}
-      <div className="bg-white shadow sm:rounded-lg mb-6">
+      <div className="bg-bg shadow sm:rounded-lg mb-6">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">{t.detail.policyContent}</h3>
+          <h3 className="text-lg font-medium text-fg mb-4">{t.detail.policyContent}</h3>
           <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
             {policy.content}
           </pre>

@@ -96,7 +96,7 @@ export default function NewTeamPage() {
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="name" className="block text-sm font-medium text-fg">
               {t('createTeam.nameLabel')}
             </label>
             <input
@@ -108,18 +108,18 @@ export default function NewTeamPage() {
               maxLength={50}
               value={formData.name}
               onChange={handleNameChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
               placeholder={t('createTeam.namePlaceholder')}
             />
-            <p className="mt-1 text-xs text-gray-500">{t('createTeam.nameHint')}</p>
+            <p className="mt-1 text-xs text-fg-muted">{t('createTeam.nameHint')}</p>
           </div>
 
           <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="slug" className="block text-sm font-medium text-fg">
               {t('createTeam.slugLabel')}
             </label>
             <div className="mt-1 flex rounded-md shadow-sm">
-              <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
+              <span className="inline-flex items-center rounded-l-md border border-r-0 border-border-strong bg-bg-subtle px-3 text-fg-muted sm:text-sm">
                 /teams/
               </span>
               <input
@@ -132,17 +132,17 @@ export default function NewTeamPage() {
                 pattern="[a-z0-9-]+"
                 value={formData.slug}
                 onChange={handleSlugChange}
-                className="block w-full flex-1 rounded-none rounded-r-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm"
+                className="block w-full flex-1 rounded-none rounded-r-md border-border-strong focus:border-primary focus:ring-primary sm:text-sm"
                 placeholder={t('createTeam.slugPlaceholder')}
               />
             </div>
-            <p className="mt-1 text-xs text-gray-500">{t('createTeam.slugHint')}</p>
+            <p className="mt-1 text-xs text-fg-muted">{t('createTeam.slugHint')}</p>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-end space-x-3 pt-4 border-t border-border">
             <Link
               href="/teams"
-              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center rounded-md border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg shadow-sm hover:bg-bg-subtle"
             >
               {t('cancel')}
             </Link>

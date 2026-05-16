@@ -293,14 +293,14 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (typeKind === 'enum' && enumVariants && enumVariants.length > 0) {
       return (
         <div key={id}>
-          <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
-            {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
+          <label htmlFor={id} className="block text-sm font-semibold text-fg mb-2">
+            {label} <span className="text-xs font-normal text-fg-subtle bg-bg-muted px-2 py-0.5 rounded">({typeName})</span>
           </label>
           <select
             id={id}
             value={String(value ?? enumVariants[0])}
             onChange={(e) => updateFormField(paramName, fieldName, e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+            className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           >
             {enumVariants.map((variant) => (
               <option key={variant} value={variant}>{variant}</option>
@@ -319,12 +319,12 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             id={id}
             checked={Boolean(value)}
             onChange={(e) => updateFormField(paramName, fieldName, e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors"
+            className="h-5 w-5 rounded border-border-strong text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors"
           />
-          <label htmlFor={id} className="text-sm font-medium text-gray-700 cursor-pointer">
+          <label htmlFor={id} className="text-sm font-medium text-fg cursor-pointer">
             {label}
           </label>
-          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
+          <span className="text-xs text-fg-subtle bg-bg-muted px-2 py-0.5 rounded">({typeName})</span>
         </div>
       );
     }
@@ -332,15 +332,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (['int', 'integer', 'long', '整数', '长整数', 'ganzzahl', 'langzahl'].some(t => typeName.toLowerCase().includes(t))) {
       return (
         <div key={id}>
-          <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
-            {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
+          <label htmlFor={id} className="block text-sm font-semibold text-fg mb-2">
+            {label} <span className="text-xs font-normal text-fg-subtle bg-bg-muted px-2 py-0.5 rounded">({typeName})</span>
           </label>
           <input
             type="number"
             id={id}
             value={value as number ?? 0}
             onChange={(e) => updateFormField(paramName, fieldName, parseInt(e.target.value, 10) || 0)}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+            className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           />
         </div>
       );
@@ -349,8 +349,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (['double', 'float', 'decimal', '小数', '浮点数', 'dezimal'].some(t => typeName.toLowerCase().includes(t))) {
       return (
         <div key={id}>
-          <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
-            {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
+          <label htmlFor={id} className="block text-sm font-semibold text-fg mb-2">
+            {label} <span className="text-xs font-normal text-fg-subtle bg-bg-muted px-2 py-0.5 rounded">({typeName})</span>
           </label>
           <input
             type="number"
@@ -358,7 +358,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             id={id}
             value={value as number ?? 0}
             onChange={(e) => updateFormField(paramName, fieldName, parseFloat(e.target.value) || 0)}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+            className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
           />
         </div>
       );
@@ -367,15 +367,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     // 默认：文本输入
     return (
       <div key={id}>
-        <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-2">
-          {label} <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">({typeName})</span>
+        <label htmlFor={id} className="block text-sm font-semibold text-fg mb-2">
+          {label} <span className="text-xs font-normal text-fg-subtle bg-bg-muted px-2 py-0.5 rounded">({typeName})</span>
         </label>
         <input
           type="text"
           id={id}
           value={String(value ?? '')}
           onChange={(e) => updateFormField(paramName, fieldName, e.target.value)}
-          className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+          className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
         />
       </div>
     );
@@ -388,15 +388,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     if (param.typeKind === 'struct' && param.fields && param.fields.length > 0) {
       // 结构体类型：渲染字段组
       return (
-        <div key={param.name} className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-4">
-          <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center">
+        <div key={param.name} className="bg-bg-subtle border border-border rounded-xl p-5 mb-4">
+          <h4 className="text-sm font-bold text-fg mb-4 flex items-center">
             <span className="w-2 h-2 bg-primary rounded-full mr-2" />
             {param.name}
-            <span className="ml-2 text-xs font-normal text-gray-400 bg-white px-2 py-0.5 rounded border border-gray-200">
+            <span className="ml-2 text-xs font-normal text-fg-subtle bg-bg px-2 py-0.5 rounded border border-border">
               {param.type}
             </span>
           </h4>
-          <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-100">
+          <div className="space-y-4 bg-bg rounded-lg p-4 border border-border">
             {param.fields.map((field) =>
               renderField(
                 param.name,
@@ -425,36 +425,36 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center">
-          <Link href={`/${locale}/policies/${policyId}`} className="text-gray-400 hover:text-gray-600 mr-2">
+          <Link href={`/${locale}/policies/${policyId}`} className="text-fg-subtle hover:text-fg-muted mr-2">
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-fg">
             {t('title', { name: policyName || 'Policy' })}
           </h1>
         </div>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-fg-muted">
           {t('subtitle')}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Panel */}
-        <div className="bg-white shadow-lg sm:rounded-xl border border-gray-200">
+        <div className="bg-bg shadow-lg sm:rounded-xl border border-border">
           <div className="px-6 py-6 sm:p-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">{t('input')}</h3>
+              <h3 className="text-lg font-semibold text-fg">{t('input')}</h3>
               <div className="flex items-center space-x-3">
                 {/* Mode Toggle */}
                 {schema?.parameters && schema.parameters.length > 0 && (
-                  <div className="flex rounded-lg bg-gray-100 p-1">
+                  <div className="flex rounded-lg bg-bg-muted p-1">
                     <button
                       onClick={() => setInputMode('form')}
                       className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                         inputMode === 'form'
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
+                          ? 'bg-bg text-fg shadow-sm'
+                          : 'text-fg-muted hover:text-fg'
                       }`}
                     >
                       Form
@@ -463,8 +463,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                       onClick={() => setInputMode('json')}
                       className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                         inputMode === 'json'
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
+                          ? 'bg-bg text-fg shadow-sm'
+                          : 'text-fg-muted hover:text-fg'
                       }`}
                     >
                       JSON
@@ -536,8 +536,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             {inputMode === 'form' && schema?.parameters && schema.parameters.length > 0 && !schemaLoading && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                 {schema.functionName && (
-                  <div className="text-sm text-gray-500 mb-2">
-                    {FUNCTION_LABEL[policyLocale] ?? 'Function'}: <span className="font-mono text-gray-700">{schema.functionName}</span>
+                  <div className="text-sm text-fg-muted mb-2">
+                    {FUNCTION_LABEL[policyLocale] ?? 'Function'}: <span className="font-mono text-fg">{schema.functionName}</span>
                   </div>
                 )}
                 {schema.parameters.map((param) => renderParameterForm(param))}
@@ -553,7 +553,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 rows={12}
-                className="block w-full rounded-lg border border-gray-300 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                className="block w-full rounded-lg border border-border-strong bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 shadow-sm font-mono text-sm leading-relaxed transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                 placeholder={t('inputPlaceholder')}
               />
             )}
@@ -579,9 +579,9 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
         </div>
 
         {/* Result Panel */}
-        <div className="bg-white shadow-lg sm:rounded-xl border border-gray-200">
+        <div className="bg-bg shadow-lg sm:rounded-xl border border-border">
           <div className="px-6 py-6 sm:p-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('result')}</h3>
+            <h3 className="text-lg font-semibold text-fg mb-4">{t('result')}</h3>
 
             {error && (() => {
               const needsUpgrade = error.includes('|UPGRADE');
@@ -609,7 +609,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
               <div className="space-y-4">
                 {/* Status */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('status')}</span>
+                  <span className="text-sm text-fg-muted">{t('status')}</span>
                   {result.success ? (
                     <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
                       {t('success')}
@@ -623,14 +623,14 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
 
                 {/* Duration */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('duration')}</span>
-                  <span className="text-sm font-medium text-gray-900">{result.durationMs}ms</span>
+                  <span className="text-sm text-fg-muted">{t('duration')}</span>
+                  <span className="text-sm font-medium text-fg">{result.durationMs}ms</span>
                 </div>
 
                 {/* Decision */}
                 {result.output && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{t('decision')}</span>
+                    <span className="text-sm text-fg-muted">{t('decision')}</span>
                     {result.output.approved ? (
                       <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
                         {t('approved')}
@@ -646,10 +646,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                 {/* Matched Rules */}
                 {result.output?.matchedRules && result.output.matchedRules.length > 0 && (
                   <div>
-                    <span className="text-sm font-medium text-gray-700">{t('matchedRules')}</span>
+                    <span className="text-sm font-medium text-fg">{t('matchedRules')}</span>
                     <ul className="mt-2 space-y-1">
                       {result.output.matchedRules.map((rule, i) => (
-                        <li key={i} className="text-sm text-gray-600 flex items-center">
+                        <li key={i} className="text-sm text-fg-muted flex items-center">
                           <svg className="h-4 w-4 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
                           </svg>
@@ -663,10 +663,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                 {/* Actions */}
                 {result.output?.actions && result.output.actions.length > 0 && (
                   <div>
-                    <span className="text-sm font-medium text-gray-700">{t('actions')}</span>
+                    <span className="text-sm font-medium text-fg">{t('actions')}</span>
                     <ul className="mt-2 space-y-1">
                       {result.output.actions.map((action, i) => (
-                        <li key={i} className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                        <li key={i} className="text-sm text-fg-muted bg-bg-subtle px-2 py-1 rounded">
                           {action}
                         </li>
                       ))}
@@ -683,7 +683,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
 
                 {/* Raw Output */}
                 <details className="mt-4">
-                  <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+                  <summary className="text-sm text-fg-muted cursor-pointer hover:text-fg">
                     {t('viewRawOutput')}
                   </summary>
                   <pre className="mt-2 bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs">
@@ -694,8 +694,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
             )}
 
             {!result && !error && (
-              <div className="text-center py-12 text-gray-500">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="text-center py-12 text-fg-muted">
+                <svg className="mx-auto h-12 w-12 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 <p className="mt-2">{t('emptyState')}</p>

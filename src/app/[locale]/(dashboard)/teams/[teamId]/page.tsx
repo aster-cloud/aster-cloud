@@ -133,7 +133,7 @@ export default function TeamDashboardPage() {
       <div className="mb-6">
         <Link
           href="/teams"
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
         >
           <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -144,14 +144,14 @@ export default function TeamDashboardPage() {
 
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{team.name}</h1>
-          <p className="mt-1 text-sm text-gray-500">/{team.slug}</p>
+          <h1 className="text-2xl font-bold text-fg">{team.name}</h1>
+          <p className="mt-1 text-sm text-fg-muted">/{team.slug}</p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
           {canManageSettings && (
             <Link
               href={`/teams/${teamId}/settings`}
-              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center rounded-md border border-border-strong bg-bg px-3 py-2 text-sm font-medium text-fg shadow-sm hover:bg-bg-subtle"
             >
               <svg className="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -168,7 +168,7 @@ export default function TeamDashboardPage() {
         {/* 成员卡片 */}
         <Link
           href={`/teams/${teamId}/members`}
-          className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
+          className="block bg-bg rounded-lg shadow hover:shadow-md transition-shadow p-6"
         >
           <div className="flex items-center">
             <div className="flex-shrink-0 p-3 bg-blue-100 rounded-lg">
@@ -177,8 +177,8 @@ export default function TeamDashboardPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">{t('dashboard.members')}</h3>
-              <p className="text-2xl font-bold text-gray-900">{members.length}</p>
+              <h3 className="text-lg font-medium text-fg">{t('dashboard.members')}</h3>
+              <p className="text-2xl font-bold text-fg">{members.length}</p>
             </div>
           </div>
           {pendingInvitations.length > 0 && (
@@ -191,7 +191,7 @@ export default function TeamDashboardPage() {
         {/* 策略卡片 */}
         <Link
           href={`/teams/${teamId}/policies`}
-          className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
+          className="block bg-bg rounded-lg shadow hover:shadow-md transition-shadow p-6"
         >
           <div className="flex items-center">
             <div className="flex-shrink-0 p-3 bg-green-100 rounded-lg">
@@ -200,8 +200,8 @@ export default function TeamDashboardPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">{t('dashboard.policies')}</h3>
-              <p className="text-2xl font-bold text-gray-900">{policies.length}</p>
+              <h3 className="text-lg font-medium text-fg">{t('dashboard.policies')}</h3>
+              <p className="text-2xl font-bold text-fg">{policies.length}</p>
             </div>
           </div>
         </Link>
@@ -210,7 +210,7 @@ export default function TeamDashboardPage() {
         {canManageSettings && (
           <Link
             href={`/teams/${teamId}/settings`}
-            className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
+            className="block bg-bg rounded-lg shadow hover:shadow-md transition-shadow p-6"
           >
             <div className="flex items-center">
               <div className="flex-shrink-0 p-3 bg-accent-subtle rounded-lg">
@@ -220,8 +220,8 @@ export default function TeamDashboardPage() {
                 </svg>
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">{t('dashboard.settings')}</h3>
-                <p className="text-sm text-gray-500">{t('dashboard.manageTeam')}</p>
+                <h3 className="text-lg font-medium text-fg">{t('dashboard.settings')}</h3>
+                <p className="text-sm text-fg-muted">{t('dashboard.manageTeam')}</p>
               </div>
             </div>
           </Link>
@@ -231,7 +231,7 @@ export default function TeamDashboardPage() {
       {/* 最近成员 */}
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">{t('dashboard.recentMembers')}</h2>
+          <h2 className="text-lg font-medium text-fg">{t('dashboard.recentMembers')}</h2>
           <Link
             href={`/teams/${teamId}/members`}
             className="text-sm text-primary hover:text-primary-hover"
@@ -239,8 +239,8 @@ export default function TeamDashboardPage() {
             {t('viewAll')}
           </Link>
         </div>
-        <div className="mt-4 bg-white shadow rounded-lg overflow-hidden">
-          <ul className="divide-y divide-gray-200">
+        <div className="mt-4 bg-bg shadow rounded-lg overflow-hidden">
+          <ul className="divide-y divide-border">
             {members.slice(0, 5).map((member) => (
               <li key={member.id} className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center">
@@ -250,15 +250,15 @@ export default function TeamDashboardPage() {
                     </span>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-fg">
                       {member.user.name || member.user.email}
                     </p>
                     {member.user.name && (
-                      <p className="text-xs text-gray-500">{member.user.email}</p>
+                      <p className="text-xs text-fg-muted">{member.user.email}</p>
                     )}
                   </div>
                 </div>
-                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">
+                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-bg-muted text-fg">
                   {t(`roles.${member.role}`)}
                 </span>
               </li>
@@ -271,7 +271,7 @@ export default function TeamDashboardPage() {
       {policies.length > 0 && (
         <div className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900">{t('dashboard.recentPolicies')}</h2>
+            <h2 className="text-lg font-medium text-fg">{t('dashboard.recentPolicies')}</h2>
             <Link
               href={`/teams/${teamId}/policies`}
               className="text-sm text-primary hover:text-primary-hover"
@@ -279,18 +279,18 @@ export default function TeamDashboardPage() {
               {t('viewAll')}
             </Link>
           </div>
-          <div className="mt-4 bg-white shadow rounded-lg overflow-hidden">
-            <ul className="divide-y divide-gray-200">
+          <div className="mt-4 bg-bg shadow rounded-lg overflow-hidden">
+            <ul className="divide-y divide-border">
               {policies.slice(0, 5).map((policy) => (
                 <li key={policy.id} className="px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-primary">{policy.name}</p>
                       {policy.description && (
-                        <p className="text-xs text-gray-500 truncate max-w-md">{policy.description}</p>
+                        <p className="text-xs text-fg-muted truncate max-w-md">{policy.description}</p>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-fg-muted">
                       {t('executions', { count: policy.executionCount })}
                     </span>
                   </div>

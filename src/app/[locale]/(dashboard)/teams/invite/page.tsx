@@ -71,7 +71,7 @@ export default function AcceptInvitePage() {
   if (!token) {
     return (
       <div className="max-w-md mx-auto mt-12">
-        <div className="bg-white shadow rounded-lg p-6 text-center">
+        <div className="bg-bg shadow rounded-lg p-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
             <svg
               className="h-6 w-6 text-red-600"
@@ -87,10 +87,10 @@ export default function AcceptInvitePage() {
               />
             </svg>
           </div>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">
+          <h3 className="mt-4 text-lg font-medium text-fg">
             {t('acceptInvite.invalid')}
           </h3>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-fg-muted">
             {t('acceptInvite.expired')}
           </p>
           <div className="mt-6">
@@ -108,7 +108,7 @@ export default function AcceptInvitePage() {
 
   return (
     <div className="max-w-md mx-auto mt-12">
-      <div className="bg-white shadow rounded-lg p-6 text-center">
+      <div className="bg-bg shadow rounded-lg p-6 text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-subtle">
           <svg
             className="h-6 w-6 text-primary"
@@ -124,10 +124,10 @@ export default function AcceptInvitePage() {
             />
           </svg>
         </div>
-        <h3 className="mt-4 text-lg font-medium text-gray-900">
+        <h3 className="mt-4 text-lg font-medium text-fg">
           {t('acceptInvite.title')}
         </h3>
-        <p className="mt-2 text-sm text-gray-500">{t('acceptInvite.joining')}</p>
+        <p className="mt-2 text-sm text-fg-muted">{t('acceptInvite.joining')}</p>
 
         {error && (
           <div className="mt-4 rounded-md bg-red-50 p-3">
@@ -170,7 +170,7 @@ export default function AcceptInvitePage() {
           </button>
           <Link
             href="/teams"
-            className="block w-full text-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="block w-full text-center rounded-md border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
           >
             {t('cancel')}
           </Link>

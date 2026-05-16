@@ -90,24 +90,24 @@ function SyntaxCard({ item, locale, compact = false }: SyntaxCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <div className="border border-border rounded-lg overflow-hidden bg-bg">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-bg-subtle transition-colors"
       >
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-primary bg-primary-subtle px-1.5 py-0.5 rounded">
             {item.keywords[locale][0]}
           </span>
           {!compact && (
-            <span className="text-sm text-gray-600 truncate max-w-[200px]">
+            <span className="text-sm text-fg-muted truncate max-w-[200px]">
               {item.description[locale]}
             </span>
           )}
         </div>
         <svg
-          className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-fg-subtle transition-transform ${expanded ? 'rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -117,19 +117,19 @@ function SyntaxCard({ item, locale, compact = false }: SyntaxCardProps) {
       </button>
 
       {expanded && (
-        <div className="px-3 py-2 border-t border-gray-100 bg-gray-50">
+        <div className="px-3 py-2 border-t border-border bg-bg-subtle">
           {compact && (
-            <p className="text-xs text-gray-600 mb-2">{item.description[locale]}</p>
+            <p className="text-xs text-fg-muted mb-2">{item.description[locale]}</p>
           )}
           <div className="space-y-1">
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-fg-muted">
               {locale === 'zh-CN' ? '关键字：' : locale === 'de-DE' ? 'Schluesselwoerter:' : 'Keywords:'}
             </div>
             <div className="flex flex-wrap gap-1">
               {item.keywords[locale].map((keyword, idx) => (
                 <code
                   key={idx}
-                  className="text-xs bg-white px-1.5 py-0.5 rounded border border-gray-200 text-gray-700"
+                  className="text-xs bg-bg px-1.5 py-0.5 rounded border border-border text-fg"
                 >
                   {keyword}
                 </code>
@@ -137,7 +137,7 @@ function SyntaxCard({ item, locale, compact = false }: SyntaxCardProps) {
             </div>
           </div>
           <div className="mt-2">
-            <div className="text-xs text-gray-500 mb-1">
+            <div className="text-xs text-fg-muted mb-1">
               {locale === 'zh-CN' ? '示例：' : locale === 'de-DE' ? 'Beispiel:' : 'Example:'}
             </div>
             <pre className="text-xs bg-gray-900 text-gray-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">
@@ -224,24 +224,24 @@ export function CNLSyntaxReferencePanel({
   };
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`}>
+    <div className={`bg-bg border border-border rounded-lg shadow-sm ${className}`}>
       {/* 标题栏 */}
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors rounded-t-lg"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-bg-subtle transition-colors rounded-t-lg"
       >
         <div className="flex items-center gap-2">
           <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
-          <span className="font-medium text-gray-900">{titles[ui]}</span>
-          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+          <span className="font-medium text-fg">{titles[ui]}</span>
+          <span className="text-xs text-fg-subtle bg-bg-muted px-1.5 py-0.5 rounded">
             {locale === 'zh-CN' ? '中文' : locale === 'de-DE' ? 'DE' : 'EN'}
           </span>
         </div>
         <svg
-          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 text-fg-subtle transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -252,13 +252,13 @@ export function CNLSyntaxReferencePanel({
 
       {/* 展开内容 */}
       {isExpanded && (
-        <div className="border-t border-gray-200">
+        <div className="border-t border-border">
           {/* 搜索和过滤 */}
-          <div className="p-3 border-b border-gray-100 space-y-2">
+          <div className="p-3 border-b border-border space-y-2">
             {/* 搜索框 */}
             <div className="relative">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-subtle"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -270,13 +270,13 @@ export function CNLSyntaxReferencePanel({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={searchPlaceholders[ui]}
-                className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                className="w-full pl-9 pr-8 py-1.5 text-sm border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={handleClearSearch}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-subtle hover:text-fg-muted"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -294,7 +294,7 @@ export function CNLSyntaxReferencePanel({
                   className={`text-xs px-2 py-1 rounded-full transition-colors ${
                     selectedCategory === 'all'
                       ? 'bg-primary-subtle text-primary-hover'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-bg-muted text-fg-muted hover:bg-bg-muted'
                   }`}
                 >
                   {allCategories[ui]}
@@ -307,7 +307,7 @@ export function CNLSyntaxReferencePanel({
                     className={`text-xs px-2 py-1 rounded-full transition-colors flex items-center gap-1 ${
                       selectedCategory === cat.id
                         ? 'bg-primary-subtle text-primary-hover'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'bg-bg-muted text-fg-muted hover:bg-bg-muted'
                     }`}
                   >
                     <CategoryIcon category={cat.icon} className="w-3 h-3" />
@@ -324,8 +324,8 @@ export function CNLSyntaxReferencePanel({
               <div key={groupIdx}>
                 {group.category && (
                   <div className="flex items-center gap-2 mb-2">
-                    <CategoryIcon category={group.category.icon} className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">
+                    <CategoryIcon category={group.category.icon} className="w-4 h-4 text-fg-muted" />
+                    <span className="text-sm font-medium text-fg">
                       {group.category.name[locale]}
                     </span>
                   </div>
@@ -344,7 +344,7 @@ export function CNLSyntaxReferencePanel({
             ))}
 
             {filteredItems.length === 0 && (
-              <div className="text-center py-8 text-gray-500 text-sm">
+              <div className="text-center py-8 text-fg-muted text-sm">
                 {ui === 'zh' ? '未找到匹配的语法' : ui === 'de' ? 'Keine passende Syntax gefunden' : 'No matching syntax found'}
               </div>
             )}
@@ -379,7 +379,7 @@ export function CNLSyntaxHint({ locale }: CNLSyntaxHintProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-primary hover:bg-primary-subtle rounded transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-fg-muted hover:text-primary hover:bg-primary-subtle rounded transition-colors"
         title={locale === 'zh-CN' ? '语法提示' : locale === 'de-DE' ? 'Syntax-Tipps' : 'Syntax hints'}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -389,18 +389,18 @@ export function CNLSyntaxHint({ locale }: CNLSyntaxHintProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+        <div className="absolute right-0 top-full mt-1 w-64 bg-bg rounded-lg shadow-lg border border-border z-20">
           <div className="p-2 space-y-1">
             {quickHints.map((hint, idx) => (
-              <div key={idx} className="flex items-start gap-2 p-1.5 rounded hover:bg-gray-50">
+              <div key={idx} className="flex items-start gap-2 p-1.5 rounded hover:bg-bg-subtle">
                 <code className="text-xs text-primary bg-primary-subtle px-1 py-0.5 rounded flex-shrink-0">
                   {hint.keyword}
                 </code>
-                <span className="text-xs text-gray-600 line-clamp-2">{hint.description}</span>
+                <span className="text-xs text-fg-muted line-clamp-2">{hint.description}</span>
               </div>
             ))}
           </div>
-          <div className="border-t border-gray-100 p-2">
+          <div className="border-t border-border p-2">
             <button
               type="button"
               onClick={() => setIsOpen(false)}

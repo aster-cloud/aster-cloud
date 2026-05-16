@@ -197,7 +197,7 @@ export function PolicyVersionList({
     return (
       <div className="animate-pulse space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+          <div key={i} className="h-20 bg-bg-muted dark:bg-gray-700 rounded-lg" />
         ))}
       </div>
     );
@@ -205,7 +205,7 @@ export function PolicyVersionList({
 
   if (versions.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+      <div className="text-center py-8 text-fg-muted dark:text-fg-subtle">
         暂无版本记录
       </div>
     );
@@ -217,24 +217,24 @@ export function PolicyVersionList({
         {versions.map((version) => (
           <div
             key={version.id}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4"
+            className="bg-bg dark:bg-gray-800 rounded-lg shadow-sm border border-border dark:border-gray-700 p-4"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <span className="text-lg font-semibold text-fg dark:text-white">
                     v{version.version}
                   </span>
                   <VersionStatusBadge status={version.status} isDefault={version.isDefault} />
                 </div>
 
                 {version.releaseNote && (
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                  <p className="mt-1 text-sm text-fg-muted dark:text-fg-subtle">
                     {version.releaseNote}
                   </p>
                 )}
 
-                <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
+                <div className="mt-2 flex items-center gap-4 text-xs text-fg-muted dark:text-fg-muted">
                   <span>
                     创建于 {new Date(version.createdAt).toLocaleString('zh-CN')}
                   </span>
@@ -255,7 +255,7 @@ export function PolicyVersionList({
                 )}
 
                 {version.archivedAt && (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                  <p className="mt-1 text-xs text-fg-muted dark:text-fg-muted">
                     归档于 {new Date(version.archivedAt).toLocaleString('zh-CN')}
                   </p>
                 )}
@@ -266,7 +266,7 @@ export function PolicyVersionList({
                 {onViewSource && (
                   <button
                     onClick={() => onViewSource(version.version)}
-                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-2 py-1"
+                    className="text-sm text-fg-muted dark:text-fg-subtle hover:text-fg dark:hover:text-white px-2 py-1"
                   >
                     查看源码
                   </button>
@@ -328,7 +328,7 @@ export function PolicyVersionList({
                   onArchive && (
                     <button
                       onClick={() => openActionDialog('archive', version)}
-                      className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-2 py-1"
+                      className="text-sm text-fg-muted dark:text-fg-subtle hover:text-fg dark:hover:text-gray-300 px-2 py-1"
                     >
                       归档
                     </button>
@@ -353,7 +353,7 @@ export function PolicyVersionList({
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder={dialogConfig.commentPlaceholder}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500"
+                className="w-full px-3 py-2 border border-border-strong dark:border-gray-600 rounded-md text-sm bg-bg dark:bg-gray-800 text-fg dark:text-white placeholder-gray-500"
                 rows={3}
               />
             </div>

@@ -26,9 +26,9 @@ export function AIDiffPreview({ original, generated, onAccept, onReject }: AIDif
   }, [onReject]);
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+    <div className="rounded-lg border border-border dark:border-gray-700 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 bg-bg-subtle dark:bg-gray-800/50 border-b border-border dark:border-gray-700">
+        <span className="text-xs font-medium text-fg-muted dark:text-fg-subtle">
           {t('diffPreview')}
         </span>
         <div className="flex gap-2">
@@ -45,7 +45,7 @@ export function AIDiffPreview({ original, generated, onAccept, onReject }: AIDif
           <button
             type="button"
             onClick={handleReject}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            className="inline-flex items-center gap-1 rounded-md border border-border-strong dark:border-gray-600 bg-bg dark:bg-gray-800 px-2.5 py-1 text-xs font-medium text-fg dark:text-gray-300 hover:bg-bg-subtle dark:hover:bg-gray-700"
           >
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

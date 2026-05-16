@@ -79,10 +79,10 @@ export function VersionDetailPanel({
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div className="bg-bg dark:bg-gray-800 rounded-lg shadow-lg p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-8 bg-bg-muted dark:bg-gray-700 rounded w-1/3" />
+          <div className="h-64 bg-bg-muted dark:bg-gray-700 rounded" />
         </div>
       </div>
     );
@@ -90,7 +90,7 @@ export function VersionDetailPanel({
 
   if (error) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+      <div className="bg-bg dark:bg-gray-800 rounded-lg shadow-lg p-6">
         <div className="text-red-500 dark:text-red-400">{error}</div>
       </div>
     );
@@ -103,11 +103,11 @@ export function VersionDetailPanel({
   const sourceCode = detail.source ?? detail.content;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+    <div className="bg-bg dark:bg-gray-800 rounded-lg shadow-lg">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-semibold text-fg dark:text-white">
             v{detail.version}
           </h2>
           <VersionStatusBadge status={detail.status} isDefault={detail.isDefault} />
@@ -115,7 +115,7 @@ export function VersionDetailPanel({
         {onClose && (
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="text-fg-muted hover:text-fg dark:text-fg-subtle dark:hover:text-gray-200"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -125,7 +125,7 @@ export function VersionDetailPanel({
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="border-b border-border dark:border-gray-700">
         <nav className="flex -mb-px px-6">
           {[
             { id: 'source' as const, label: '源码' },
@@ -138,7 +138,7 @@ export function VersionDetailPanel({
               className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-primary text-primary dark:text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  : 'border-transparent text-fg-muted hover:text-fg dark:text-fg-subtle dark:hover:text-gray-300'
               }`}
             >
               {tab.label}
@@ -152,7 +152,7 @@ export function VersionDetailPanel({
         {activeTab === 'source' && (
           <div className="space-y-4">
             {detail.releaseNote && (
-              <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+              <div className="text-sm text-fg-muted dark:text-fg-subtle bg-bg-subtle dark:bg-gray-900 p-3 rounded-lg">
                 {detail.releaseNote}
               </div>
             )}
@@ -199,33 +199,33 @@ export function VersionDetailPanel({
         {activeTab === 'approvals' && (
           <div className="space-y-4">
             {detail.approvals.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-8 text-fg-muted dark:text-fg-subtle">
                 暂无审批记录
               </div>
             ) : (
               detail.approvals.map((approval) => {
                 const decisionInfo = decisionLabels[approval.decision] || {
                   label: approval.decision,
-                  color: 'text-gray-600',
+                  color: 'text-fg-muted',
                 };
                 return (
                   <div
                     key={approval.id}
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                    className="border border-border dark:border-gray-700 rounded-lg p-4"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`font-medium ${decisionInfo.color}`}>
                         {decisionInfo.label}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-500">
+                      <span className="text-xs text-fg-muted dark:text-fg-muted">
                         {new Date(approval.createdAt).toLocaleString('zh-CN')}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-fg-muted dark:text-fg-subtle">
                       审批人: {approval.approverId}
                     </div>
                     {approval.comment && (
-                      <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 p-2 rounded">
+                      <div className="mt-2 text-sm text-fg dark:text-gray-300 bg-bg-subtle dark:bg-gray-900 p-2 rounded">
                         {approval.comment}
                       </div>
                     )}
@@ -250,10 +250,10 @@ function MetadataItem({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
+    <div className="flex items-start justify-between py-2 border-b border-border dark:border-gray-700 last:border-0">
+      <span className="text-sm text-fg-muted dark:text-fg-subtle">{label}</span>
       <span
-        className={`text-sm text-gray-900 dark:text-white ${mono ? 'font-mono' : ''} max-w-[60%] break-all text-right`}
+        className={`text-sm text-fg dark:text-white ${mono ? 'font-mono' : ''} max-w-[60%] break-all text-right`}
       >
         {value}
       </span>

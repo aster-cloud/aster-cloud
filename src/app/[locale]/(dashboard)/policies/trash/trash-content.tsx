@@ -209,8 +209,8 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
 
       {/* Stats */}
       {stats && stats.total > 0 && (
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <p className="text-sm text-gray-600">
+        <div className="bg-bg-subtle rounded-lg p-4 mb-6">
+          <p className="text-sm text-fg-muted">
             {t.trash.itemCount.replace('{count}', stats.total.toString())}
             {stats.expiringWithin7Days > 0 && (
               <span className="ml-2 text-orange-600">
@@ -235,13 +235,13 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
       )}
 
       {/* Trash List */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-bg shadow rounded-lg overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
+          <div className="p-8 text-center text-fg-muted">Loading...</div>
         ) : items.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-fg-muted">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-12 w-12 text-fg-subtle"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -256,35 +256,35 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
             <p className="mt-2">{t.trash.empty}</p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-200">
+          <ul className="divide-y divide-border">
             {items.map((item) => {
               const daysRemaining = item.daysRemaining ?? getDaysRemaining(item.expiresAt);
               const isExpiringSoon = daysRemaining <= 7;
 
               return (
-                <li key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <li key={item.id} className="p-4 hover:bg-bg-subtle transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">
+                        <h3 className="text-sm font-semibold text-fg truncate">
                           {item.name}
                         </h3>
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                             isExpiringSoon
                               ? 'bg-orange-100 text-orange-700'
-                              : 'bg-gray-100 text-gray-600'
+                              : 'bg-bg-muted text-fg-muted'
                           }`}
                         >
                           {t.trash.daysRemaining.replace('{days}', daysRemaining.toString())}
                         </span>
                       </div>
                       {item.description && (
-                        <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                        <p className="mt-1 text-sm text-fg-muted line-clamp-2">
                           {item.description}
                         </p>
                       )}
-                      <div className="mt-2 flex items-center text-xs text-gray-400">
+                      <div className="mt-2 flex items-center text-xs text-fg-subtle">
                         <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>

@@ -15,8 +15,8 @@ const statusConfig: Record<
   DRAFT: {
     label: 'Draft',
     labelZh: '草稿',
-    bgColor: 'bg-gray-100 dark:bg-gray-700',
-    textColor: 'text-gray-700 dark:text-gray-300',
+    bgColor: 'bg-bg-muted dark:bg-gray-700',
+    textColor: 'text-fg dark:text-gray-300',
   },
   PENDING_APPROVAL: {
     label: 'Pending',
@@ -45,8 +45,8 @@ const statusConfig: Record<
   ARCHIVED: {
     label: 'Archived',
     labelZh: '已归档',
-    bgColor: 'bg-gray-200 dark:bg-gray-600',
-    textColor: 'text-gray-600 dark:text-gray-400',
+    bgColor: 'bg-bg-muted dark:bg-gray-600',
+    textColor: 'text-fg-muted dark:text-fg-subtle',
   },
 };
 

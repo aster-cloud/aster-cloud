@@ -179,10 +179,10 @@ export function ReportDetailContent({
           <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{report.title}</h1>
           <div className="mt-2 flex items-center space-x-3">
             {getStatusBadge(report.status)}
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-fg-muted">
               {formatTemplate(t.typeTemplate, { type: report.type.toUpperCase() })}
             </span>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-fg-muted">
               {formatTemplate(t.createdTemplate, { date: formatDate(report.createdAt, locale) })}
             </span>
           </div>
@@ -214,12 +214,12 @@ export function ReportDetailContent({
       {report.status === 'completed' && report.data && (
         <>
           {/* Compliance Score */}
-          <div className="bg-white shadow sm:rounded-lg mb-6">
+          <div className="bg-bg shadow sm:rounded-lg mb-6">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{t.detail.complianceScore}</h3>
-                  <p className="mt-1 text-sm text-gray-500">{t.detail.overallCompliance}</p>
+                  <h3 className="text-lg font-medium text-fg">{t.detail.complianceScore}</h3>
+                  <p className="mt-1 text-sm text-fg-muted">{t.detail.overallCompliance}</p>
                 </div>
                 <div className={`text-5xl font-bold ${getScoreColor(report.data.summary.complianceScore)}`}>
                   {report.data.summary.complianceScore}%
@@ -229,19 +229,19 @@ export function ReportDetailContent({
               {/* Category Scores */}
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className={`rounded-lg p-4 ${getScoreBgColor(report.data.scores.categories.dataProtection)}`}>
-                  <div className="text-sm font-medium text-gray-600">{t.detail.categories.dataProtection}</div>
+                  <div className="text-sm font-medium text-fg-muted">{t.detail.categories.dataProtection}</div>
                   <div className={`text-2xl font-bold ${getScoreColor(report.data.scores.categories.dataProtection)}`}>
                     {report.data.scores.categories.dataProtection}%
                   </div>
                 </div>
                 <div className={`rounded-lg p-4 ${getScoreBgColor(report.data.scores.categories.accessControl)}`}>
-                  <div className="text-sm font-medium text-gray-600">{t.detail.categories.accessControl}</div>
+                  <div className="text-sm font-medium text-fg-muted">{t.detail.categories.accessControl}</div>
                   <div className={`text-2xl font-bold ${getScoreColor(report.data.scores.categories.accessControl)}`}>
                     {report.data.scores.categories.accessControl}%
                   </div>
                 </div>
                 <div className={`rounded-lg p-4 ${getScoreBgColor(report.data.scores.categories.auditLogging)}`}>
-                  <div className="text-sm font-medium text-gray-600">{t.detail.categories.auditLogging}</div>
+                  <div className="text-sm font-medium text-fg-muted">{t.detail.categories.auditLogging}</div>
                   <div className={`text-2xl font-bold ${getScoreColor(report.data.scores.categories.auditLogging)}`}>
                     {report.data.scores.categories.auditLogging}%
                   </div>
@@ -252,31 +252,31 @@ export function ReportDetailContent({
 
           {/* Summary Stats */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.summary.totalPolicies}</dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">{report.data.summary.totalPolicies}</dd>
+            <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+              <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.summary.totalPolicies}</dt>
+              <dd className="mt-1 text-2xl font-semibold text-fg">{report.data.summary.totalPolicies}</dd>
             </div>
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.summary.policiesWithPII}</dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">{report.data.summary.policiesWithPII}</dd>
+            <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+              <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.summary.policiesWithPII}</dt>
+              <dd className="mt-1 text-2xl font-semibold text-fg">{report.data.summary.policiesWithPII}</dd>
             </div>
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.summary.totalExecutions}</dt>
-              <dd className="mt-1 text-2xl font-semibold text-gray-900">{report.data.summary.totalExecutions}</dd>
+            <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+              <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.summary.totalExecutions}</dt>
+              <dd className="mt-1 text-2xl font-semibold text-fg">{report.data.summary.totalExecutions}</dd>
             </div>
-            <div className="bg-white overflow-hidden rounded-lg shadow px-4 py-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{t.detail.summary.riskLevel}</dt>
+            <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+              <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.summary.riskLevel}</dt>
               <dd className="mt-1">{getRiskBadge(report.data.piiAnalysis.riskLevel)}</dd>
             </div>
           </div>
 
           {/* PII Analysis */}
           {report.data.piiAnalysis.fieldsDetected.length > 0 && (
-            <div className="bg-white shadow sm:rounded-lg mb-6">
+            <div className="bg-bg shadow sm:rounded-lg mb-6">
               <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t.detail.piiAnalysis}</h3>
+                <h3 className="text-lg font-medium text-fg mb-4">{t.detail.piiAnalysis}</h3>
                 <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">{t.detail.detectedFields}</h4>
+                  <h4 className="text-sm font-medium text-fg mb-2">{t.detail.detectedFields}</h4>
                   <div className="flex flex-wrap gap-2">
                     {report.data.piiAnalysis.fieldsDetected.map((field) => (
                       <span
@@ -294,16 +294,16 @@ export function ReportDetailContent({
 
           {/* Recommendations */}
           {report.data.recommendations.length > 0 && (
-            <div className="bg-white shadow sm:rounded-lg mb-6">
+            <div className="bg-bg shadow sm:rounded-lg mb-6">
               <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t.detail.recommendations}</h3>
+                <h3 className="text-lg font-medium text-fg mb-4">{t.detail.recommendations}</h3>
                 <ul className="space-y-2">
                   {report.data.recommendations.map((rec, index) => (
                     <li key={index} className="flex items-start">
                       <svg className="h-5 w-5 text-primary mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
                       </svg>
-                      <span className="text-sm text-gray-700">{rec}</span>
+                      <span className="text-sm text-fg">{rec}</span>
                     </li>
                   ))}
                 </ul>
@@ -313,10 +313,10 @@ export function ReportDetailContent({
 
           {/* Policies Analyzed */}
           {report.data.policies.length > 0 && (
-            <div className="bg-white shadow sm:rounded-lg">
+            <div className="bg-bg shadow sm:rounded-lg">
               <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">{t.detail.policiesAnalyzed}</h3>
-                <ul className="divide-y divide-gray-200">
+                <h3 className="text-lg font-medium text-fg mb-4">{t.detail.policiesAnalyzed}</h3>
+                <ul className="divide-y divide-border">
                   {report.data.policies.map((policy) => (
                     <li key={policy.id} className="py-3">
                       <div className="flex items-center justify-between">
@@ -329,7 +329,7 @@ export function ReportDetailContent({
                               {policy.piiFields.map((field) => (
                                 <span
                                   key={field}
-                                  className="inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
+                                  className="inline-flex items-center rounded bg-bg-muted px-1.5 py-0.5 text-xs text-fg-muted"
                                 >
                                   {field}
                                 </span>
@@ -337,7 +337,7 @@ export function ReportDetailContent({
                             </div>
                           )}
                         </div>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-fg-muted">
                           {formatTemplate(t.detail.executionCountTemplate, { count: policy.executionCount })}
                         </span>
                       </div>

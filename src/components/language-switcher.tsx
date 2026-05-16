@@ -113,7 +113,7 @@ export function LanguageSwitcher() {
         value={locale}
         onChange={(e) => handleChange(e.target.value)}
         disabled={loading}
-        className="bg-transparent border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer disabled:opacity-50"
+        className="bg-transparent border border-border-strong rounded-md px-2 py-1 text-sm text-fg-muted hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer disabled:opacity-50"
       >
         {available.map((loc) => (
           <option key={loc} value={loc}>

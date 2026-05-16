@@ -27,7 +27,7 @@ const MonacoPolicyEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[400px] bg-gray-900 rounded-lg flex items-center justify-center text-gray-400">
+      <div className="h-[400px] bg-gray-900 rounded-lg flex items-center justify-center text-fg-subtle">
         Loading editor...
       </div>
     ),
@@ -143,17 +143,17 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       </div>
 
       {/* 示例策略选择器 + CNL 语言选择器 */}
-      <div className="mb-6 bg-white shadow-sm sm:rounded-lg border border-gray-200 p-4">
+      <div className="mb-6 bg-bg shadow-sm sm:rounded-lg border border-border p-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-fg">
               {locale.startsWith('zh') ? '从示例开始：' : 'Start from example:'}
             </span>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowExampleSelector(!showExampleSelector)}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary"
+                className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg shadow-sm hover:bg-bg-subtle focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {selectedExample
                   ? getExampleName(selectedExample, locale)
@@ -172,7 +172,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
 
               {/* 下拉菜单 */}
               {showExampleSelector && (
-                <div className="absolute z-10 mt-2 w-80 origin-top-left rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="absolute z-10 mt-2 w-80 origin-top-left rounded-lg bg-bg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                   <div className="py-1 max-h-96 overflow-y-auto">
                     {/* 按类别分组显示 */}
                     {(Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>).map((category) => {
@@ -180,7 +180,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                       if (categoryExamples.length === 0) return null;
                       return (
                         <div key={category}>
-                          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                          <div className="px-3 py-2 text-xs font-semibold text-fg-muted uppercase tracking-wider bg-bg-subtle">
                             {CATEGORY_LABELS[category][normalizeLocale(locale)]}
                           </div>
                           {categoryExamples.map((example) => (
@@ -189,11 +189,11 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                               type="button"
                               onClick={() => handleSelectExample(example)}
                               className={`w-full text-left px-4 py-2 text-sm hover:bg-primary-subtle ${
-                                selectedExample?.id === example.id ? 'bg-primary-subtle text-primary-active' : 'text-gray-700'
+                                selectedExample?.id === example.id ? 'bg-primary-subtle text-primary-active' : 'text-fg'
                               }`}
                             >
                               <div className="font-medium">{getExampleName(example, locale)}</div>
-                              <div className="text-xs text-gray-500 mt-0.5">
+                              <div className="text-xs text-fg-muted mt-0.5">
                                 {getExampleDescription(example, locale)}
                               </div>
                             </button>
@@ -215,7 +215,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition-colors ${
                 showAIPanel
                   ? 'bg-primary text-white hover:bg-primary-hover'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  : 'border border-border-strong bg-bg text-fg hover:bg-bg-subtle'
               }`}
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -237,7 +237,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
               <button
                 type="button"
                 onClick={handleClearExample}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1"
+                className="text-sm text-fg-muted hover:text-fg font-medium flex items-center gap-1"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -280,11 +280,11 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white shadow-lg sm:rounded-xl border border-gray-200">
+        <div className="bg-bg shadow-lg sm:rounded-xl border border-border">
           <div className="px-6 py-6 sm:p-8">
             {/* Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-900">
+              <label htmlFor="name" className="block text-sm font-semibold text-fg">
                 {t('form.name')}
               </label>
               <input
@@ -294,14 +294,14 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+                className="mt-2 block w-full rounded-lg border border-border-strong bg-bg px-4 py-3 text-fg placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t('form.namePlaceholder')}
               />
             </div>
 
             {/* Description */}
             <div className="mt-6">
-              <label htmlFor="description" className="block text-sm font-semibold text-gray-900">
+              <label htmlFor="description" className="block text-sm font-semibold text-fg">
                 {t('form.description')}
               </label>
               <input
@@ -310,7 +310,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
+                className="mt-2 block w-full rounded-lg border border-border-strong bg-bg px-4 py-3 text-fg placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
                 placeholder={t('form.descriptionPlaceholder')}
               />
             </div>
@@ -323,7 +323,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 label={locale.startsWith('zh') ? '分组' : 'Group'}
                 placeholder={locale.startsWith('zh') ? '选择分组（可选）...' : 'Select a group (optional)...'}
               />
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-fg-muted">
                 {locale.startsWith('zh')
                   ? '可选：将策略归类到一个分组以便管理'
                   : 'Optional: Organize your policy into a group for better management'}
@@ -332,7 +332,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
 
             {/* Content - Monaco Editor */}
             <div className="mt-6">
-              <label id="content-label" className="block text-sm font-semibold text-gray-900">
+              <label id="content-label" className="block text-sm font-semibold text-fg">
                 {t('form.content')}
               </label>
               <div className="mt-2" role="group" aria-labelledby="content-label">
@@ -362,7 +362,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                   />
                 </div>
               )}
-              <p className="mt-3 text-sm text-gray-500">
+              <p className="mt-3 text-sm text-fg-muted">
                 {t('form.contentHelp')}
               </p>
 
@@ -383,9 +383,9 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
                 type="checkbox"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                className="h-5 w-5 rounded border-border-strong text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
               />
-              <label htmlFor="isPublic" className="ml-3 block text-sm font-medium text-gray-700 cursor-pointer">
+              <label htmlFor="isPublic" className="ml-3 block text-sm font-medium text-fg cursor-pointer">
                 {t('form.isPublic')}
               </label>
             </div>
@@ -396,7 +396,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
         <div className="flex justify-end space-x-4">
           <Link
             href={`/${locale}/policies`}
-            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:border-gray-400"
+            className="rounded-lg border border-border-strong bg-bg px-5 py-2.5 text-sm font-medium text-fg shadow-sm transition-all duration-200 hover:bg-bg-subtle hover:border-gray-400"
           >
             {t('form.cancel')}
           </Link>

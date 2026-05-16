@@ -129,7 +129,7 @@ export function PolicyGroupTree({
                   ? 'bg-primary-subtle text-primary-hover'
                   : isSelected
                   ? 'bg-primary-subtle text-primary-hover'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  : 'text-fg hover:bg-bg-muted'
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
               onClick={() => onSelectGroup(group.id)}
@@ -141,9 +141,9 @@ export function PolicyGroupTree({
           >
             {hasChildren ? (
               isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-fg-subtle" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <ChevronRight className="w-4 h-4 text-fg-subtle" />
               )
             ) : null}
           </span>
@@ -152,14 +152,14 @@ export function PolicyGroupTree({
           {isExpanded && hasChildren ? (
             <FolderOpen className="w-4 h-4 mr-2 text-primary" />
           ) : (
-            <Folder className="w-4 h-4 mr-2 text-gray-400" />
+            <Folder className="w-4 h-4 mr-2 text-fg-subtle" />
           )}
 
           {/* Group Name */}
           <span className="flex-1 truncate">{group.name}</span>
 
           {/* Policy Count - 显示包含子分组的总数 */}
-          <span className="text-xs text-gray-400 mr-2">
+          <span className="text-xs text-fg-subtle mr-2">
             {getTotalPoliciesCount(group)}
           </span>
 
@@ -167,18 +167,18 @@ export function PolicyGroupTree({
           {!group.isSystem && (onEditGroup || onDeleteGroup || onCreateGroup) && (
             <div className="relative">
               <button
-                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-200"
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-bg-muted"
                 onClick={(e) => handleMenuToggle(group.id, e)}
               >
-                <MoreVertical className="w-4 h-4 text-gray-500" />
+                <MoreVertical className="w-4 h-4 text-fg-muted" />
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                <div className="absolute right-0 top-full mt-1 w-40 bg-bg rounded-md shadow-lg border border-border z-10">
                   {/* 最多支持5级分组，第5级不再显示"新建子分组" */}
                   {onCreateGroup && depth < MAX_GROUP_DEPTH - 1 && (
                     <button
-                      className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="w-full flex items-center px-3 py-2 text-sm text-fg hover:bg-bg-muted"
                       onClick={(e) => {
                         e.stopPropagation();
                         setMenuOpenId(null);
@@ -191,7 +191,7 @@ export function PolicyGroupTree({
                   )}
                   {onEditGroup && (
                     <button
-                      className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="w-full flex items-center px-3 py-2 text-sm text-fg hover:bg-bg-muted"
                       onClick={(e) => {
                         e.stopPropagation();
                         setMenuOpenId(null);
@@ -204,7 +204,7 @@ export function PolicyGroupTree({
                   )}
                   {onDeleteGroup && (
                     <button
-                      className="w-full flex items-center px-3 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      className="w-full flex items-center px-3 py-2 text-sm text-red-600 hover:bg-bg-muted"
                       onClick={(e) => {
                         e.stopPropagation();
                         setMenuOpenId(null);
@@ -234,20 +234,20 @@ export function PolicyGroupTree({
   };
 
   return (
-    <div className="w-56 flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
+    <div className="w-56 flex-shrink-0 border-r border-border bg-bg-subtle overflow-y-auto">
       <div className="p-3">
         {/* Header with Create Button */}
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-fg-muted uppercase tracking-wider">
             Groups
           </span>
           {onCreateGroup && (
             <button
-              className="p-1 rounded hover:bg-gray-200"
+              className="p-1 rounded hover:bg-bg-muted"
               onClick={() => onCreateGroup(null)}
               title={t.newGroup}
             >
-              <Plus className="w-4 h-4 text-gray-500" />
+              <Plus className="w-4 h-4 text-fg-muted" />
             </button>
           )}
         </div>
@@ -257,13 +257,13 @@ export function PolicyGroupTree({
           className={`flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer transition-colors mb-1 ${
             selectedGroupId === null
               ? 'bg-primary-subtle text-primary-hover'
-              : 'text-gray-700 hover:bg-gray-100'
+              : 'text-fg hover:bg-bg-muted'
           }`}
           onClick={() => onSelectGroup(null)}
         >
-          <Folder className="w-4 h-4 mr-2 text-gray-400" />
+          <Folder className="w-4 h-4 mr-2 text-fg-subtle" />
           <span className="flex-1">{t.allPolicies}</span>
-          <span className="text-xs text-gray-400">{totalPoliciesCount}</span>
+          <span className="text-xs text-fg-subtle">{totalPoliciesCount}</span>
         </div>
 
         {/* Ungrouped */}
@@ -275,19 +275,19 @@ export function PolicyGroupTree({
                   ? 'bg-primary-subtle text-primary-hover'
                   : selectedGroupId === 'ungrouped'
                   ? 'bg-primary-subtle text-primary-hover'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  : 'text-fg hover:bg-bg-muted'
               }`}
               onClick={() => onSelectGroup('ungrouped')}
             >
-              <Folder className="w-4 h-4 mr-2 text-gray-400" />
+              <Folder className="w-4 h-4 mr-2 text-fg-subtle" />
               <span className="flex-1">{t.ungrouped}</span>
-              <span className="text-xs text-gray-400">{ungroupedCount}</span>
+              <span className="text-xs text-fg-subtle">{ungroupedCount}</span>
             </div>
           )}
         </DroppableGroupItem>
 
         {/* Divider */}
-        <div className="border-t border-gray-200 my-2" />
+        <div className="border-t border-border my-2" />
 
         {/* Group Tree */}
         <div className="space-y-0.5">

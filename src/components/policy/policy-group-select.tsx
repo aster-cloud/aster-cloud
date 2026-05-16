@@ -109,7 +109,7 @@ export function PolicyGroupSelect({
           className={`w-full flex items-center px-3 py-2 text-sm transition-colors ${
             isSelected
               ? 'bg-primary-subtle text-primary-hover'
-              : 'text-gray-700 hover:bg-gray-50'
+              : 'text-fg hover:bg-bg-subtle'
           }`}
           style={{ paddingLeft: `${depth * 16 + 12}px` }}
           onClick={() => {
@@ -117,10 +117,10 @@ export function PolicyGroupSelect({
             setIsOpen(false);
           }}
         >
-          <Folder className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+          <Folder className="w-4 h-4 mr-2 text-fg-subtle flex-shrink-0" />
           <span className="flex-1 text-left truncate">{group.name}</span>
           {group._count && (
-            <span className="text-xs text-gray-400 ml-2">{group._count.policies}</span>
+            <span className="text-xs text-fg-subtle ml-2">{group._count.policies}</span>
           )}
           {isSelected && <Check className="w-4 h-4 ml-2 text-primary flex-shrink-0" />}
         </button>
@@ -136,7 +136,7 @@ export function PolicyGroupSelect({
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       {label && (
-        <label className="block text-sm font-semibold text-gray-900 mb-2">
+        <label className="block text-sm font-semibold text-fg mb-2">
           {label}
         </label>
       )}
@@ -147,25 +147,25 @@ export function PolicyGroupSelect({
         disabled={disabled || isLoading}
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-full flex items-center justify-between rounded-lg border bg-white px-4 py-3 text-left shadow-sm transition-all duration-200
+          w-full flex items-center justify-between rounded-lg border bg-bg px-4 py-3 text-left shadow-sm transition-all duration-200
           ${disabled
-            ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+            ? 'border-border bg-bg-subtle cursor-not-allowed'
             : isOpen
               ? 'border-primary ring-2 ring-primary/20'
-              : 'border-gray-300 hover:border-gray-400'
+              : 'border-border-strong hover:border-gray-400'
           }
         `}
       >
         <div className="flex items-center flex-1 min-w-0">
           {isLoading ? (
-            <span className="text-gray-400 text-sm">Loading...</span>
+            <span className="text-fg-subtle text-sm">Loading...</span>
           ) : selectedGroup ? (
             <>
               <Folder className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
-              <span className="text-gray-900 text-sm truncate">{selectedGroup.name}</span>
+              <span className="text-fg text-sm truncate">{selectedGroup.name}</span>
             </>
           ) : (
-            <span className="text-gray-400 text-sm">{placeholder}</span>
+            <span className="text-fg-subtle text-sm">{placeholder}</span>
           )}
         </div>
 
@@ -178,47 +178,47 @@ export function PolicyGroupSelect({
                 e.stopPropagation();
                 onChange(null);
               }}
-              className="p-1 rounded hover:bg-gray-100 mr-1"
+              className="p-1 rounded hover:bg-bg-muted mr-1"
             >
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-4 h-4 text-fg-subtle" />
             </button>
           )}
           <ChevronDown
-            className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 text-fg-subtle transition-transform ${isOpen ? 'rotate-180' : ''}`}
           />
         </div>
       </button>
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute z-20 mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-64 overflow-y-auto">
+        <div className="absolute z-20 mt-2 w-full bg-bg rounded-lg shadow-lg border border-border max-h-64 overflow-y-auto">
           {/* Ungrouped option */}
           <button
             type="button"
             className={`w-full flex items-center px-3 py-2 text-sm transition-colors ${
               value === null
                 ? 'bg-primary-subtle text-primary-hover'
-                : 'text-gray-700 hover:bg-gray-50'
+                : 'text-fg hover:bg-bg-subtle'
             }`}
             onClick={() => {
               onChange(null);
               setIsOpen(false);
             }}
           >
-            <Folder className="w-4 h-4 mr-2 text-gray-400" />
+            <Folder className="w-4 h-4 mr-2 text-fg-subtle" />
             <span className="flex-1 text-left">No group (Ungrouped)</span>
             {value === null && <Check className="w-4 h-4 ml-2 text-primary" />}
           </button>
 
           {/* Divider */}
-          {groups.length > 0 && <div className="border-t border-gray-100 my-1" />}
+          {groups.length > 0 && <div className="border-t border-border my-1" />}
 
           {/* Groups */}
           {groups.map((group) => renderGroupItem(group, 0))}
 
           {/* Empty state */}
           {groups.length === 0 && !isLoading && (
-            <div className="px-3 py-4 text-center text-sm text-gray-500">
+            <div className="px-3 py-4 text-center text-sm text-fg-muted">
               No groups available
             </div>
           )}

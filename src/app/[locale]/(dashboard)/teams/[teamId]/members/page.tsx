@@ -303,9 +303,9 @@ export default function TeamMembersPage() {
       case 'member':
         return 'bg-green-100 text-green-800';
       case 'viewer':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-bg-muted text-fg';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-bg-muted text-fg';
     }
   };
 
@@ -344,7 +344,7 @@ export default function TeamMembersPage() {
       <div className="mb-6">
         <Link
           href={`/${locale}/teams/${teamId}`}
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
         >
           <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -355,8 +355,8 @@ export default function TeamMembersPage() {
 
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('members.title')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{team.name}</p>
+          <h1 className="text-2xl font-bold text-fg">{t('members.title')}</h1>
+          <p className="mt-1 text-sm text-fg-muted">{team.name}</p>
         </div>
         {canInvite && (
           <div className="mt-4 sm:mt-0">
@@ -382,9 +382,9 @@ export default function TeamMembersPage() {
       {/* 邀请表单模态框 */}
       {showInviteForm && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">{t('members.inviteTitle')}</h3>
+          <div className="bg-bg rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="px-6 py-4 border-b border-border">
+              <h3 className="text-lg font-medium text-fg">{t('members.inviteTitle')}</h3>
             </div>
             <form onSubmit={handleInvite} className="px-6 py-4 space-y-4">
               {inviteError && (
@@ -393,7 +393,7 @@ export default function TeamMembersPage() {
                 </div>
               )}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-medium text-fg">
                   {t('members.emailLabel')}
                 </label>
                 <input
@@ -402,19 +402,19 @@ export default function TeamMembersPage() {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('members.emailPlaceholder')}
                 />
               </div>
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="role" className="block text-sm font-medium text-fg">
                   {t('members.roleLabel')}
                 </label>
                 <select
                   id="role"
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as TeamRole)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                 >
                   {getAvailableRoles().map((role) => (
                     <option key={role} value={role}>
@@ -427,7 +427,7 @@ export default function TeamMembersPage() {
                 <button
                   type="button"
                   onClick={() => setShowInviteForm(false)}
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-md border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
                 >
                   {t('cancel')}
                 </button>
@@ -447,14 +447,14 @@ export default function TeamMembersPage() {
       {/* 待处理邀请 */}
       {invitations.length > 0 && canInvite && (
         <div className="mt-8">
-          <h2 className="text-lg font-medium text-gray-900">{t('members.pendingInvitations')}</h2>
-          <div className="mt-4 bg-white shadow rounded-lg overflow-hidden">
-            <ul className="divide-y divide-gray-200">
+          <h2 className="text-lg font-medium text-fg">{t('members.pendingInvitations')}</h2>
+          <div className="mt-4 bg-bg shadow rounded-lg overflow-hidden">
+            <ul className="divide-y divide-border">
               {invitations.map((invitation) => (
                 <li key={invitation.id} className="px-4 py-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{invitation.email}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-fg">{invitation.email}</p>
+                    <p className="text-xs text-fg-muted">
                       {t('members.expiresAt', {
                         date: formatDate(invitation.expiresAt, locale),
                       })}
@@ -480,16 +480,16 @@ export default function TeamMembersPage() {
 
       {/* 成员列表 */}
       <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900">
+        <h2 className="text-lg font-medium text-fg">
           {t('members.currentMembers', { count: totalMembers || members.length })}
         </h2>
         {hasMoreMembers && (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-fg-muted mt-1">
             {t('members.showingPartial', { shown: members.length, total: totalMembers })}
           </p>
         )}
-        <div className="mt-4 bg-white shadow rounded-lg overflow-hidden">
-          <ul className="divide-y divide-gray-200">
+        <div className="mt-4 bg-bg shadow rounded-lg overflow-hidden">
+          <ul className="divide-y divide-border">
             {members.map((member) => (
               <li key={member.id} className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">
@@ -500,13 +500,13 @@ export default function TeamMembersPage() {
                       </span>
                     </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-fg">
                         {member.user.name || member.user.email}
                       </p>
                       {member.user.name && (
-                        <p className="text-xs text-gray-500">{member.user.email}</p>
+                        <p className="text-xs text-fg-muted">{member.user.email}</p>
                       )}
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-fg-subtle">
                         {t('members.joinedAt', {
                           date: formatDate(member.joinedAt, locale),
                         })}
@@ -522,7 +522,7 @@ export default function TeamMembersPage() {
                       <select
                         value={member.role}
                         onChange={(e) => handleRoleChange(member.id, e.target.value as TeamRole)}
-                        className="rounded-md border-gray-300 text-sm focus:border-primary focus:ring-primary"
+                        className="rounded-md border-border-strong text-sm focus:border-primary focus:ring-primary"
                       >
                         {getAvailableRoles().map((role) => (
                           <option key={role} value={role}>{t(`roles.${role}`)}</option>
@@ -555,11 +555,11 @@ export default function TeamMembersPage() {
           </ul>
           {/* 加载更多按钮 */}
           {hasMoreMembers && (
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="px-4 py-3 bg-bg-subtle border-t border-border">
               <button
                 onClick={loadMoreMembers}
                 disabled={isLoadingMore}
-                className="w-full text-center text-sm text-primary hover:text-primary-hover disabled:text-gray-400"
+                className="w-full text-center text-sm text-primary hover:text-primary-hover disabled:text-fg-subtle"
               >
                 {isLoadingMore ? t('members.loadingMore') : t('members.loadMore')}
               </button>

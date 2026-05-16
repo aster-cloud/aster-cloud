@@ -212,16 +212,16 @@ export function VersionComparePanel({
   }, [diffLines]);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+    <div className="bg-bg dark:bg-gray-800 rounded-lg shadow-lg">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border dark:border-gray-700">
+        <h2 className="text-xl font-semibold text-fg dark:text-white">
           版本对比
         </h2>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="text-fg-muted hover:text-fg dark:text-fg-subtle dark:hover:text-gray-200"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -231,15 +231,15 @@ export function VersionComparePanel({
       </div>
 
       {/* Version Selectors */}
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-4 px-6 py-4 border-b border-border dark:border-gray-700">
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+          <label className="block text-sm font-medium text-fg-muted dark:text-fg-subtle mb-1">
             基准版本
           </label>
           <select
             value={leftVersion}
             onChange={(e) => setLeftVersion(parseInt(e.target.value, 10))}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 border border-border-strong dark:border-gray-600 rounded-md text-sm bg-bg dark:bg-gray-900 text-fg dark:text-white"
           >
             {sortedVersions.map((v) => (
               <option key={v.version} value={v.version}>
@@ -249,20 +249,20 @@ export function VersionComparePanel({
           </select>
         </div>
 
-        <div className="text-gray-400 self-end pb-2">
+        <div className="text-fg-subtle self-end pb-2">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
         </div>
 
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+          <label className="block text-sm font-medium text-fg-muted dark:text-fg-subtle mb-1">
             比较版本
           </label>
           <select
             value={rightVersion}
             onChange={(e) => setRightVersion(parseInt(e.target.value, 10))}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 border border-border-strong dark:border-gray-600 rounded-md text-sm bg-bg dark:bg-gray-900 text-fg dark:text-white"
           >
             {sortedVersions.map((v) => (
               <option key={v.version} value={v.version}>
@@ -274,7 +274,7 @@ export function VersionComparePanel({
       </div>
 
       {/* Stats */}
-      <div className="flex items-center gap-4 px-6 py-2 text-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-4 px-6 py-2 text-sm border-b border-border dark:border-gray-700">
         <span className="text-green-600 dark:text-green-400">+{stats.added} 行添加</span>
         <span className="text-red-600 dark:text-red-400">-{stats.removed} 行删除</span>
       </div>
@@ -284,7 +284,7 @@ export function VersionComparePanel({
         {loading ? (
           <div className="animate-pulse space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-6 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div key={i} className="h-6 bg-bg-muted dark:bg-gray-700 rounded" />
             ))}
           </div>
         ) : error ? (
@@ -302,10 +302,10 @@ export function VersionComparePanel({
                       : ''
                 }`}
               >
-                <span className="w-12 text-right px-2 text-gray-400 dark:text-gray-500 select-none border-r border-gray-200 dark:border-gray-700">
+                <span className="w-12 text-right px-2 text-fg-subtle dark:text-fg-muted select-none border-r border-border dark:border-gray-700">
                   {line.leftLineNum ?? ''}
                 </span>
-                <span className="w-12 text-right px-2 text-gray-400 dark:text-gray-500 select-none border-r border-gray-200 dark:border-gray-700">
+                <span className="w-12 text-right px-2 text-fg-subtle dark:text-fg-muted select-none border-r border-border dark:border-gray-700">
                   {line.rightLineNum ?? ''}
                 </span>
                 <span
@@ -314,12 +314,12 @@ export function VersionComparePanel({
                       ? 'text-green-600 dark:text-green-400'
                       : line.type === 'removed'
                         ? 'text-red-600 dark:text-red-400'
-                        : 'text-gray-300 dark:text-gray-600'
+                        : 'text-gray-300 dark:text-fg-muted'
                   }`}
                 >
                   {line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}
                 </span>
-                <span className="flex-1 px-2 text-gray-900 dark:text-gray-100 whitespace-pre">
+                <span className="flex-1 px-2 text-fg dark:text-gray-100 whitespace-pre">
                   {line.content || ' '}
                 </span>
               </div>

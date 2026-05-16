@@ -43,9 +43,9 @@ export function AhaStatusCard({ locale }: { locale: string }) {
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-        <div className="mt-2 h-6 w-40 animate-pulse rounded bg-gray-200" />
+      <div className="rounded-lg border border-border bg-bg p-4 shadow-sm">
+        <div className="h-4 w-24 animate-pulse rounded bg-bg-muted" />
+        <div className="mt-2 h-6 w-40 animate-pulse rounded bg-bg-muted" />
       </div>
     );
   }
@@ -79,11 +79,11 @@ export function AhaStatusCard({ locale }: { locale: string }) {
   if (data.expired) {
     // 超出 AHA 窗口但仍未 publish — 温和提示，不威胁
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+      <div className="rounded-lg border border-border bg-bg p-4 shadow-sm">
+        <p className="text-xs font-medium uppercase tracking-wider text-fg-muted">
           Publish your first policy
         </p>
-        <p className="mt-1 text-sm text-gray-700">
+        <p className="mt-1 text-sm text-fg">
           Ready to ship your first rule? It only takes a few minutes.
         </p>
         <Link

@@ -132,7 +132,7 @@ export default function TeamPoliciesPage() {
       <div className="mb-6">
         <Link
           href={`/teams/${teamId}`}
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
         >
           <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -143,8 +143,8 @@ export default function TeamPoliciesPage() {
 
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('policies.title')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{team.name}</p>
+          <h1 className="text-2xl font-bold text-fg">{t('policies.title')}</h1>
+          <p className="mt-1 text-sm text-fg-muted">{team.name}</p>
         </div>
         {canCreatePolicy && (
           <div className="mt-4 sm:mt-0">
@@ -170,9 +170,9 @@ export default function TeamPoliciesPage() {
       {/* 创建策略模态框 */}
       {showCreateForm && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">{t('policies.createTitle')}</h3>
+          <div className="bg-bg rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-border">
+              <h3 className="text-lg font-medium text-fg">{t('policies.createTitle')}</h3>
             </div>
             <form onSubmit={handleCreatePolicy} className="px-6 py-4 space-y-4">
               {createError && (
@@ -181,7 +181,7 @@ export default function TeamPoliciesPage() {
                 </div>
               )}
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="name" className="block text-sm font-medium text-fg">
                   {t('policies.nameLabel')}
                 </label>
                 <input
@@ -191,12 +191,12 @@ export default function TeamPoliciesPage() {
                   required
                   value={newPolicy.name}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, name: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('policies.namePlaceholder')}
                 />
               </div>
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="description" className="block text-sm font-medium text-fg">
                   {t('policies.descriptionLabel')}
                 </label>
                 <input
@@ -205,12 +205,12 @@ export default function TeamPoliciesPage() {
                   name="description"
                   value={newPolicy.description}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, description: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('policies.descriptionPlaceholder')}
                 />
               </div>
               <div>
-                <label htmlFor="content" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="content" className="block text-sm font-medium text-fg">
                   {t('policies.contentLabel')}
                 </label>
                 <textarea
@@ -220,7 +220,7 @@ export default function TeamPoliciesPage() {
                   rows={10}
                   value={newPolicy.content}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, content: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm font-mono"
+                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm font-mono"
                   placeholder={t('policies.contentPlaceholder')}
                 />
               </div>
@@ -228,7 +228,7 @@ export default function TeamPoliciesPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateForm(false)}
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-md border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
                 >
                   {t('cancel')}
                 </button>
@@ -249,7 +249,7 @@ export default function TeamPoliciesPage() {
       {policies.length === 0 ? (
         <div className="mt-8 text-center">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-fg-subtle"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -261,8 +261,8 @@ export default function TeamPoliciesPage() {
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">{t('policies.noPolicies')}</h3>
-          <p className="mt-1 text-sm text-gray-500">{t('policies.getStarted')}</p>
+          <h3 className="mt-2 text-sm font-semibold text-fg">{t('policies.noPolicies')}</h3>
+          <p className="mt-1 text-sm text-fg-muted">{t('policies.getStarted')}</p>
           {canCreatePolicy && (
             <div className="mt-6">
               <button
@@ -278,11 +278,11 @@ export default function TeamPoliciesPage() {
           )}
         </div>
       ) : (
-        <div className="mt-8 overflow-hidden bg-white shadow sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
+        <div className="mt-8 overflow-hidden bg-bg shadow sm:rounded-md">
+          <ul className="divide-y divide-border">
             {policies.map((policy) => (
               <li key={policy.id}>
-                <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                <div className="px-4 py-4 sm:px-6 hover:bg-bg-subtle">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <Link href={`/policies/${policy.id}`} className="block">
@@ -290,7 +290,7 @@ export default function TeamPoliciesPage() {
                           {policy.name}
                         </p>
                         {policy.description && (
-                          <p className="mt-1 text-sm text-gray-500 truncate">
+                          <p className="mt-1 text-sm text-fg-muted truncate">
                             {policy.description}
                           </p>
                         )}
@@ -305,16 +305,16 @@ export default function TeamPoliciesPage() {
                       )}
 
                       {/* 执行次数 */}
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-fg-muted">
                         {t('executions', { count: policy.executionCount })}
                       </span>
 
                       {/* 版本 */}
-                      <span className="text-xs text-gray-400">v{policy.version}</span>
+                      <span className="text-xs text-fg-subtle">v{policy.version}</span>
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-fg-subtle">
                       {policy.createdBy && (
                         <span>
                           {t('policies.createdBy', { name: policy.createdBy.name || 'Unknown' })}
@@ -334,7 +334,7 @@ export default function TeamPoliciesPage() {
                       </Link>
                       <Link
                         href={`/policies/${policy.id}`}
-                        className="text-gray-600 hover:text-gray-900 text-sm"
+                        className="text-fg-muted hover:text-fg text-sm"
                       >
                         {t('viewDetails')}
                       </Link>

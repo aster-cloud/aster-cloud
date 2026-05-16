@@ -54,20 +54,20 @@ export function UpgradeBlocker({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-lg bg-bg p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-2 text-lg font-semibold text-gray-900">
+        <h2 className="mb-2 text-lg font-semibold text-fg">
           {t(`${reason}.title`, { limit: limit ?? 0 })}
         </h2>
-        <p className="mb-6 text-sm text-gray-600">
+        <p className="mb-6 text-sm text-fg-muted">
           {t(`${reason}.body`, { limit: limit ?? 0 })}
         </p>
         <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-md border border-border-strong px-4 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
           >
             {t('dismiss')}
           </button>

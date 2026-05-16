@@ -34,16 +34,16 @@ function TraceStepItem({ step, depth }: { step: TraceStep; depth: number }) {
   const row = (
     <div className="flex items-center justify-between gap-3 py-1.5">
       <div className="flex items-center gap-2 min-w-0">
-        <span className="shrink-0 text-xs text-gray-400 tabular-nums w-5 text-right">
+        <span className="shrink-0 text-xs text-fg-subtle tabular-nums w-5 text-right">
           {step.sequence}
         </span>
-        <code className="text-xs text-gray-800 dark:text-gray-200 truncate">
+        <code className="text-xs text-fg dark:text-gray-200 truncate">
           {step.expression}
         </code>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {step.result !== undefined && step.result !== null && (
-          <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[120px] truncate">
+          <span className="text-xs text-fg-muted dark:text-fg-subtle max-w-[120px] truncate">
             {String(step.result)}
           </span>
         )}
@@ -60,14 +60,14 @@ function TraceStepItem({ step, depth }: { step: TraceStep; depth: number }) {
   );
 
   if (!hasChildren) {
-    return <div className={depth > 0 ? 'pl-4 border-l border-gray-200 dark:border-gray-700' : ''}>{row}</div>;
+    return <div className={depth > 0 ? 'pl-4 border-l border-border dark:border-gray-700' : ''}>{row}</div>;
   }
 
   return (
-    <details className={depth > 0 ? 'pl-4 border-l border-gray-200 dark:border-gray-700' : ''}>
+    <details className={depth > 0 ? 'pl-4 border-l border-border dark:border-gray-700' : ''}>
       <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <div className="flex items-center gap-1">
-          <svg className="h-3 w-3 text-gray-400 transition-transform [[open]>&]:rotate-90" viewBox="0 0 12 12" fill="currentColor">
+          <svg className="h-3 w-3 text-fg-subtle transition-transform [[open]>&]:rotate-90" viewBox="0 0 12 12" fill="currentColor">
             <path d="M4.5 2l5 4-5 4V2z" />
           </svg>
           <div className="flex-1">{row}</div>
@@ -104,10 +104,10 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
   return (
     <section
       aria-label={t('ariaLabel')}
-      className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
+      className="rounded-xl border border-border bg-bg-subtle p-4 dark:border-gray-700 dark:bg-gray-800"
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('title')}</h3>
+        <h3 className="text-sm font-semibold text-fg dark:text-gray-100">{t('title')}</h3>
         <div className="flex items-center gap-3">
           {source && (
             <button
@@ -122,7 +122,7 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
               {tAI('explain')}
             </button>
           )}
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-fg-muted dark:text-fg-subtle">
             {trace.moduleName}.{trace.functionName} — {trace.executionTimeMs}ms
           </span>
         </div>
@@ -134,13 +134,13 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
           ))}
         </div>
       ) : (
-        <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="py-6 text-center text-sm text-fg-muted dark:text-fg-subtle">
           {t('empty')}
         </div>
       )}
-      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs">
-        <span className="text-gray-500 dark:text-gray-400">Result</span>
-        <span className="font-medium text-gray-900 dark:text-gray-100">
+      <div className="mt-3 pt-3 border-t border-border dark:border-gray-700 flex items-center justify-between text-xs">
+        <span className="text-fg-muted dark:text-fg-subtle">Result</span>
+        <span className="font-medium text-fg dark:text-gray-100">
           {trace.finalResult !== null && trace.finalResult !== undefined
             ? typeof trace.finalResult === 'object'
               ? JSON.stringify(trace.finalResult)
@@ -151,13 +151,13 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
 
       {/* AI 解释区域 */}
       {showExplanation && (
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-3 pt-3 border-t border-border dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{tAI('explain')}</span>
+            <span className="text-xs font-semibold text-fg dark:text-gray-300">{tAI('explain')}</span>
             <button
               type="button"
               onClick={() => { setShowExplanation(false); ai.reset(); }}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-fg-subtle hover:text-fg-muted"
             >
               {tAI('close')}
             </button>
@@ -171,7 +171,7 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
               </div>
             </div>
           )}
-          <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <div className="text-xs text-fg dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
             {ai.content}
             {ai.streaming && <span className="inline-block w-1 h-3 bg-primary animate-pulse ml-0.5" />}
           </div>

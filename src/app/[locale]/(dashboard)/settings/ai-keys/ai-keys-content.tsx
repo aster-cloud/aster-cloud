@@ -125,15 +125,15 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
         </Link>
       </p>
 
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">添加 BYOK Key</h2>
+      <section className="mt-6 rounded-lg border border-border bg-bg p-6">
+        <h2 className="text-lg font-semibold text-fg">添加 BYOK Key</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Provider</label>
+            <label className="block text-sm font-medium text-fg">Provider</label>
             <select
               value={provider}
               onChange={(e) => setProvider(e.target.value as 'openai' | 'anthropic' | 'vertex')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary"
             >
               <option value="openai">OpenAI (sk-...)</option>
               <option value="anthropic">Anthropic (sk-ant-...)</option>
@@ -141,17 +141,17 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">API Key</label>
+            <label className="block text-sm font-medium text-fg">API Key</label>
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               autoComplete="off"
               placeholder="sk-..."
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary"
               required
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-fg-muted">
               Key 通过 pgcrypto 加密保存；明文不可恢复。
             </p>
           </div>
@@ -173,14 +173,14 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
         </form>
       </section>
 
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">已绑定的 Keys</h2>
+      <section className="mt-6 rounded-lg border border-border bg-bg p-6">
+        <h2 className="text-lg font-semibold text-fg">已绑定的 Keys</h2>
         {bindings.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-500">未绑定任何 BYOK key。AI 调用会使用平台月度配额。</p>
+          <p className="mt-3 text-sm text-fg-muted">未绑定任何 BYOK key。AI 调用会使用平台月度配额。</p>
         ) : (
           <table className="mt-4 w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase text-gray-500">
+              <tr className="border-b border-border text-xs uppercase text-fg-muted">
                 <th className="pb-2 text-left">Provider</th>
                 <th className="pb-2 text-left">Key Hint</th>
                 <th className="pb-2 text-left">Status</th>
@@ -191,7 +191,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
             </thead>
             <tbody>
               {bindings.map((b) => (
-                <tr key={b.id} className="border-b border-gray-100">
+                <tr key={b.id} className="border-b border-border">
                   <td className="py-3">{PROVIDER_LABELS[b.provider] ?? b.provider}</td>
                   <td className="py-3 font-mono text-xs">****{b.keyHint}</td>
                   <td className="py-3">
@@ -200,7 +200,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                         Active
                       </span>
                     ) : (
-                      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      <span className="rounded bg-bg-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
                         Disabled
                       </span>
                     )}
@@ -213,8 +213,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 text-gray-600">{formatDate(b.lastUsedAt)}</td>
-                  <td className="py-3 text-gray-600">{formatDate(b.createdAt)}</td>
+                  <td className="py-3 text-fg-muted">{formatDate(b.lastUsedAt)}</td>
+                  <td className="py-3 text-fg-muted">{formatDate(b.createdAt)}</td>
                   <td className="py-3">
                     <button
                       onClick={() => handleRevoke(b.provider)}
@@ -230,9 +230,9 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
         )}
       </section>
 
-      <section className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-6">
-        <h3 className="text-base font-semibold text-gray-900">为什么用 BYOK？</h3>
-        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-gray-700">
+      <section className="mt-6 rounded-lg border border-border bg-bg-subtle p-6">
+        <h3 className="text-base font-semibold text-fg">为什么用 BYOK？</h3>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-fg">
           <li>不消耗平台月度 AI 配额（Free 20 / Pro 500 / Team 500/seat）</li>
           <li>调用直接走您 provider 账户结算，使用您的速率限制</li>
           <li>合规场景下数据不落到第三方（Vertex 部署在您 GCP 项目内）</li>

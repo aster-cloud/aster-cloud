@@ -28,7 +28,7 @@ const TIER_LABELS: Record<number, string> = {
 };
 
 const TIER_COLORS: Record<number, string> = {
-  0: 'bg-gray-100 text-gray-700',
+  0: 'bg-bg-muted text-fg',
   1: 'bg-yellow-100 text-yellow-800',
   2: 'bg-orange-100 text-orange-800',
   3: 'bg-red-100 text-red-800',
@@ -94,7 +94,7 @@ export function RiskTierAdminContent() {
         {[1, 2, 3, 4].map((tier) => (
           <div
             key={tier}
-            className={`rounded-lg border border-gray-200 p-4 dark:border-gray-700 ${TIER_COLORS[tier]}`}
+            className={`rounded-lg border border-border p-4 dark:border-gray-700 ${TIER_COLORS[tier]}`}
           >
             <p className="text-xs uppercase tracking-wider">
               tier {tier} ({TIER_LABELS[tier]})
@@ -104,8 +104,8 @@ export function RiskTierAdminContent() {
             </p>
           </div>
         ))}
-        <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('total')}</p>
+        <div className="rounded-lg border border-border p-4 dark:border-gray-700">
+          <p className="text-xs uppercase tracking-wider text-fg-muted">{t('total')}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{rows.length}</p>
         </div>
       </section>
@@ -116,7 +116,7 @@ export function RiskTierAdminContent() {
           <select
             value={minTier}
             onChange={(e) => setMinTier(Number(e.target.value))}
-            className="ml-1 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+            className="ml-1 rounded border border-border-strong px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
           >
             {[1, 2, 3, 4].map((v) => (
               <option key={v} value={v}>
@@ -130,7 +130,7 @@ export function RiskTierAdminContent() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortKey)}
-            className="ml-1 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+            className="ml-1 rounded border border-border-strong px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
           >
             <option value="riskTier">{t('filters.byTier')}</option>
             <option value="createdAt">{t('filters.byCreated')}</option>
@@ -145,7 +145,7 @@ export function RiskTierAdminContent() {
         </button>
       </section>
 
-      {loading && <p className="text-sm text-gray-500">{t('loading')}</p>}
+      {loading && <p className="text-sm text-fg-muted">{t('loading')}</p>}
       {error && (
         <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
           {error}
@@ -153,46 +153,46 @@ export function RiskTierAdminContent() {
       )}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+        <div className="overflow-x-auto rounded-lg border border-border dark:border-gray-700">
+          <table className="min-w-full divide-y divide-border dark:divide-gray-700">
+            <thead className="bg-bg-subtle dark:bg-gray-800">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.tier')}
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.email')}
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.plan')}
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.priorPurges')}
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.reactivations')}
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.reason')}
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.created')}
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-fg-muted">
                   {t('table.actions')}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-border dark:divide-gray-700">
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-gray-500">
+                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-fg-muted">
                     {t('empty')}
                   </td>
                 </tr>
               )}
               {sorted.map((r) => (
-                <tr key={r.id} className={r.deletedAt ? 'bg-gray-50/50 dark:bg-gray-900/40' : ''}>
+                <tr key={r.id} className={r.deletedAt ? 'bg-bg-subtle/50 dark:bg-gray-900/40' : ''}>
                   <td className="px-3 py-2">
                     <span className={`inline-flex rounded px-2 py-0.5 text-xs ${TIER_COLORS[r.riskTier]}`}>
                       {r.riskTier} {TIER_LABELS[r.riskTier]}
@@ -201,7 +201,7 @@ export function RiskTierAdminContent() {
                   <td className="px-3 py-2 text-sm">
                     <div className="font-mono">{r.email ?? '—'}</div>
                     {r.emailNormalized && r.emailNormalized !== r.email && (
-                      <div className="font-mono text-xs text-gray-500">↳ {r.emailNormalized}</div>
+                      <div className="font-mono text-xs text-fg-muted">↳ {r.emailNormalized}</div>
                     )}
                     {r.deletedAt && (
                       <div className="mt-0.5 text-xs text-red-600">
@@ -213,13 +213,13 @@ export function RiskTierAdminContent() {
                   <td className="px-3 py-2 text-right text-sm tabular-nums">{r.priorPurgeCount}</td>
                   <td className="px-3 py-2 text-right text-sm tabular-nums">{r.reactivationCount}</td>
                   <td className="px-3 py-2 text-xs font-mono">{r.riskTierReason ?? '—'}</td>
-                  <td className="px-3 py-2 text-xs text-gray-500">
+                  <td className="px-3 py-2 text-xs text-fg-muted">
                     {new Date(r.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => setOverrideOf(r)}
-                      className="rounded bg-gray-200 px-2 py-1 text-xs font-medium hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                      className="rounded bg-bg-muted px-2 py-1 text-xs font-medium hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
                     >
                       {t('table.override')}
                     </button>
@@ -289,12 +289,12 @@ function OverrideModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-900">
+      <div className="w-full max-w-md rounded-lg bg-bg p-6 shadow-xl dark:bg-gray-900">
         <h3 className="text-lg font-semibold">{t('title')}</h3>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-2 text-sm text-fg-muted dark:text-fg-subtle">
           <span className="font-mono">{row.email ?? row.id}</span>
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-fg-muted">
           {t('currentTier')}: <span className={`rounded px-1 ${TIER_COLORS[row.riskTier]}`}>
             {row.riskTier} {TIER_LABELS[row.riskTier]}
           </span>
@@ -306,7 +306,7 @@ function OverrideModal({
             <select
               value={newTier}
               onChange={(e) => setNewTier(Number(e.target.value))}
-              className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
+              className="mt-1 block w-full rounded border border-border-strong px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
             >
               {[0, 1, 2, 3, 4].map((v) => (
                 <option key={v} value={v}>
@@ -317,13 +317,13 @@ function OverrideModal({
           </label>
 
           <label className="block text-sm">
-            {t('ticketId')} <span className="text-xs text-gray-500">{t('ticketIdHint')}</span>
+            {t('ticketId')} <span className="text-xs text-fg-muted">{t('ticketIdHint')}</span>
             <input
               type="text"
               value={ticketId}
               onChange={(e) => setTicketId(e.target.value)}
               placeholder="SUP-1234"
-              className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
+              className="mt-1 block w-full rounded border border-border-strong px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
             />
           </label>
 
@@ -334,7 +334,7 @@ function OverrideModal({
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               placeholder={t('notePlaceholder')}
-              className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
+              className="mt-1 block w-full rounded border border-border-strong px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
             />
           </label>
 
@@ -349,7 +349,7 @@ function OverrideModal({
           <button
             onClick={onClose}
             disabled={submitting}
-            className="rounded px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded px-3 py-1.5 text-sm hover:bg-bg-muted dark:hover:bg-gray-800"
           >
             {t('cancel')}
           </button>

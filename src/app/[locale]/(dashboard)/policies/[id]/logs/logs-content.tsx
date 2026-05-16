@@ -107,8 +107,8 @@ const sourceConfig: Record<ExecutionSource, { bg: string; text: string; ring: st
     ),
   },
   CLI: {
-    bg: 'bg-gray-100',
-    text: 'text-gray-700',
+    bg: 'bg-bg-muted',
+    text: 'text-fg',
     ring: 'ring-gray-600/20',
     icon: (
       <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -281,7 +281,7 @@ export function LogsContent({
         <div className="flex items-center">
           <Link
             href={`/${locale}/policies/${policyId}`}
-            className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors mr-4"
+            className="flex items-center justify-center w-10 h-10 rounded-lg bg-bg-muted text-fg-muted hover:bg-bg-muted hover:text-fg transition-colors mr-4"
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path
@@ -292,8 +292,8 @@ export function LogsContent({
             </svg>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t.logs.title}</h1>
-            <p className="mt-1 text-sm text-gray-500">{policyName}</p>
+            <h1 className="text-2xl font-bold text-fg">{t.logs.title}</h1>
+            <p className="mt-1 text-sm text-fg-muted">{policyName}</p>
           </div>
         </div>
       </div>
@@ -303,10 +303,10 @@ export function LogsContent({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           {/* Total Executions */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary p-6 shadow-lg">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10" />
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-bg/10" />
             <div className="relative">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-lg bg-white/20 p-3">
+                <div className="flex-shrink-0 rounded-lg bg-bg/20 p-3">
                   <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
@@ -319,10 +319,10 @@ export function LogsContent({
 
           {/* Success Rate */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 shadow-lg">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10" />
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-bg/10" />
             <div className="relative">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-lg bg-white/20 p-3">
+                <div className="flex-shrink-0 rounded-lg bg-bg/20 p-3">
                   <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -340,10 +340,10 @@ export function LogsContent({
 
           {/* Failed */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 p-6 shadow-lg">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10" />
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-bg/10" />
             <div className="relative">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-lg bg-white/20 p-3">
+                <div className="flex-shrink-0 rounded-lg bg-bg/20 p-3">
                   <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
@@ -356,10 +356,10 @@ export function LogsContent({
 
           {/* Avg Duration */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 p-6 shadow-lg">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10" />
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-bg/10" />
             <div className="relative">
               <div className="flex items-center">
-                <div className="flex-shrink-0 rounded-lg bg-white/20 p-3">
+                <div className="flex-shrink-0 rounded-lg bg-bg/20 p-3">
                   <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -373,18 +373,18 @@ export function LogsContent({
       )}
 
       {/* Filters */}
-      <div className="bg-white shadow-sm rounded-xl border border-gray-200 p-5 mb-6">
+      <div className="bg-bg shadow-sm rounded-xl border border-border p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <svg className="h-5 w-5 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5 text-fg-subtle mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
-            <h3 className="text-sm font-semibold text-gray-900">{t.logs.filter}</h3>
+            <h3 className="text-sm font-semibold text-fg">{t.logs.filter}</h3>
           </div>
           {hasActiveFilters && (
             <button
               onClick={resetFilters}
-              className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+              className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
             >
               <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -395,7 +395,7 @@ export function LogsContent({
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            <label className="block text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">
               Status
             </label>
             <select
@@ -404,7 +404,7 @@ export function LogsContent({
                 setSuccessFilter(e.target.value);
                 setPage(1);
               }}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             >
               <option value="">{t.logs.all}</option>
               <option value="true">{t.logs.success}</option>
@@ -412,7 +412,7 @@ export function LogsContent({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            <label className="block text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">
               {t.logs.source}
             </label>
             <select
@@ -421,7 +421,7 @@ export function LogsContent({
                 setSourceFilter(e.target.value);
                 setPage(1);
               }}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             >
               <option value="">{t.logs.all}</option>
               <option value="WEB">{t.logs.web}</option>
@@ -430,25 +430,25 @@ export function LogsContent({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            <label className="block text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">
               {t.logs.from}
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            <label className="block text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">
               {t.logs.to}
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
+              className="block w-full rounded-lg border border-border-strong bg-bg px-4 py-2.5 text-fg shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm cursor-pointer"
             />
           </div>
         </div>
@@ -467,7 +467,7 @@ export function LogsContent({
       )}
 
       {/* Logs List */}
-      <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-bg shadow-sm rounded-xl border border-border overflow-hidden">
         {loading ? (
           <div className="p-12 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-subtle mb-4">
@@ -476,24 +476,24 @@ export function LogsContent({
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
             </div>
-            <p className="text-sm text-gray-500">Loading execution logs...</p>
+            <p className="text-sm text-fg-muted">Loading execution logs...</p>
           </div>
         ) : logs.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-              <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-muted mb-4">
+              <svg className="h-8 w-8 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h3 className="text-sm font-medium text-gray-900 mb-1">{t.logs.noLogs}</h3>
-            <p className="text-sm text-gray-500">Execute the policy to see logs here</p>
+            <h3 className="text-sm font-medium text-fg mb-1">{t.logs.noLogs}</h3>
+            <p className="text-sm text-fg-muted">Execute the policy to see logs here</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {logs.map((log) => (
               <div
                 key={log.id}
-                className={`transition-colors ${expandedLog === log.id ? 'bg-gray-50' : 'hover:bg-gray-50/50'}`}
+                className={`transition-colors ${expandedLog === log.id ? 'bg-bg-subtle' : 'hover:bg-bg-subtle/50'}`}
               >
                 {/* Log Header */}
                 <div className="p-4">
@@ -532,8 +532,8 @@ export function LogsContent({
                       {/* Source Badge */}
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-                          sourceConfig[log.source]?.bg || 'bg-gray-100'
-                        } ${sourceConfig[log.source]?.text || 'text-gray-700'} ${
+                          sourceConfig[log.source]?.bg || 'bg-bg-muted'
+                        } ${sourceConfig[log.source]?.text || 'text-fg'} ${
                           sourceConfig[log.source]?.ring || 'ring-gray-600/20'
                         }`}
                       >
@@ -543,7 +543,7 @@ export function LogsContent({
 
                       {/* Version */}
                       {log.policyVersion && (
-                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                        <span className="inline-flex items-center rounded-md bg-bg-muted px-2 py-1 text-xs font-medium text-fg-muted">
                           v{log.policyVersion}
                         </span>
                       )}
@@ -551,15 +551,15 @@ export function LogsContent({
 
                     <div className="flex items-center gap-4">
                       {/* Duration */}
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="flex items-center text-sm text-fg-muted">
+                        <svg className="h-4 w-4 mr-1 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span className="font-medium">{formatDuration(log.duration)}</span>
                       </div>
 
                       {/* Timestamp */}
-                      <div className="text-sm text-gray-400" title={new Date(log.createdAt).toLocaleString()}>
+                      <div className="text-sm text-fg-subtle" title={new Date(log.createdAt).toLocaleString()}>
                         {formatRelativeTime(log.createdAt)}
                       </div>
 
@@ -569,7 +569,7 @@ export function LogsContent({
                         className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                           expandedLog === log.id
                             ? 'bg-primary-subtle text-primary-hover'
-                            : 'text-gray-600 hover:bg-gray-100'
+                            : 'text-fg-muted hover:bg-bg-muted'
                         }`}
                       >
                         {expandedLog === log.id ? (
@@ -597,16 +597,16 @@ export function LogsContent({
                   <div className="px-4 pb-4">
                     <div className="ml-11 space-y-4">
                       {/* Input */}
-                      <div className="rounded-lg border border-gray-200 overflow-hidden">
-                        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                          <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center">
-                            <svg className="h-4 w-4 mr-1.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="rounded-lg border border-border overflow-hidden">
+                        <div className="bg-bg-subtle px-4 py-2 border-b border-border">
+                          <h4 className="text-xs font-semibold text-fg-muted uppercase tracking-wide flex items-center">
+                            <svg className="h-4 w-4 mr-1.5 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                             </svg>
                             {t.logs.input}
                           </h4>
                         </div>
-                        <pre className="bg-white p-4 text-xs overflow-x-auto font-mono text-gray-700 max-h-48">
+                        <pre className="bg-bg p-4 text-xs overflow-x-auto font-mono text-fg max-h-48">
                           {JSON.stringify(log.input, null, 2)}
                         </pre>
                       </div>
@@ -622,7 +622,7 @@ export function LogsContent({
                               {t.logs.output}
                             </h4>
                           </div>
-                          <pre className="bg-white p-4 text-xs overflow-x-auto font-mono text-gray-700 max-h-48">
+                          <pre className="bg-bg p-4 text-xs overflow-x-auto font-mono text-fg max-h-48">
                             {JSON.stringify(log.output, null, 2)}
                           </pre>
                         </div>
@@ -636,7 +636,7 @@ export function LogsContent({
                               {t.logs.error}
                             </h4>
                           </div>
-                          <pre className="bg-white p-4 text-xs overflow-x-auto font-mono text-red-600 max-h-48">
+                          <pre className="bg-bg p-4 text-xs overflow-x-auto font-mono text-red-600 max-h-48">
                             {log.error}
                           </pre>
                         </div>
@@ -651,17 +651,17 @@ export function LogsContent({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="bg-gray-50 px-4 py-4 flex items-center justify-between border-t border-gray-200">
-            <div className="flex items-center text-sm text-gray-500">
-              <span className="font-medium text-gray-900">{t.logs.page} {page}</span>
+          <div className="bg-bg-subtle px-4 py-4 flex items-center justify-between border-t border-border">
+            <div className="flex items-center text-sm text-fg-muted">
+              <span className="font-medium text-fg">{t.logs.page} {page}</span>
               <span className="mx-1">{t.logs.of}</span>
-              <span className="font-medium text-gray-900">{totalPages}</span>
+              <span className="font-medium text-fg">{totalPages}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center rounded-lg bg-bg px-3 py-2 text-sm font-medium text-fg shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-bg-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -671,7 +671,7 @@ export function LogsContent({
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center rounded-lg bg-bg px-3 py-2 text-sm font-medium text-fg shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-bg-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {t.logs.next}
                 <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

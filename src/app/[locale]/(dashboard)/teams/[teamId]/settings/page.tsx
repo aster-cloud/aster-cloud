@@ -130,7 +130,7 @@ export default function TeamSettingsPage() {
   if (!canEdit) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">{t('settings.noPermission')}</p>
+        <p className="text-fg-muted">{t('settings.noPermission')}</p>
         <Link
           href={`/teams/${teamId}`}
           className="mt-4 inline-flex items-center text-primary hover:text-primary-hover"
@@ -147,7 +147,7 @@ export default function TeamSettingsPage() {
       <div className="mb-6">
         <Link
           href={`/teams/${teamId}`}
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
         >
           <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -156,13 +156,13 @@ export default function TeamSettingsPage() {
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">{t('settings.title')}</h1>
+      <h1 className="text-2xl font-bold text-fg mb-8">{t('settings.title')}</h1>
 
       {/* 基本信息 */}
-      <div className="bg-white shadow rounded-lg mb-8">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">{t('settings.generalTitle')}</h2>
-          <p className="mt-1 text-sm text-gray-500">{t('settings.generalSubtitle')}</p>
+      <div className="bg-bg shadow rounded-lg mb-8">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="text-lg font-medium text-fg">{t('settings.generalTitle')}</h2>
+          <p className="mt-1 text-sm text-fg-muted">{t('settings.generalSubtitle')}</p>
         </div>
         <form onSubmit={handleSave} className="px-6 py-4 space-y-4">
           {error && (
@@ -177,7 +177,7 @@ export default function TeamSettingsPage() {
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="name" className="block text-sm font-medium text-fg">
               {t('settings.nameLabel')}
             </label>
             <input
@@ -189,16 +189,16 @@ export default function TeamSettingsPage() {
               maxLength={50}
               value={formData.name}
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
             />
           </div>
 
           <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="slug" className="block text-sm font-medium text-fg">
               {t('settings.slugLabel')}
             </label>
             <div className="mt-1 flex rounded-md shadow-sm">
-              <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
+              <span className="inline-flex items-center rounded-l-md border border-r-0 border-border-strong bg-bg-subtle px-3 text-fg-muted sm:text-sm">
                 /teams/
               </span>
               <input
@@ -216,10 +216,10 @@ export default function TeamSettingsPage() {
                     slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
                   }))
                 }
-                className="block w-full flex-1 rounded-none rounded-r-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm"
+                className="block w-full flex-1 rounded-none rounded-r-md border-border-strong focus:border-primary focus:ring-primary sm:text-sm"
               />
             </div>
-            <p className="mt-1 text-xs text-gray-500">{t('settings.slugHint')}</p>
+            <p className="mt-1 text-xs text-fg-muted">{t('settings.slugHint')}</p>
           </div>
 
           <div className="pt-4">
@@ -236,16 +236,16 @@ export default function TeamSettingsPage() {
 
       {/* 危险区域 */}
       {canDelete && (
-        <div className="bg-white shadow rounded-lg border-2 border-red-200">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-bg shadow rounded-lg border-2 border-red-200">
+          <div className="px-6 py-4 border-b border-border">
             <h2 className="text-lg font-medium text-red-600">{t('settings.dangerZone')}</h2>
-            <p className="mt-1 text-sm text-gray-500">{t('settings.dangerZoneSubtitle')}</p>
+            <p className="mt-1 text-sm text-fg-muted">{t('settings.dangerZoneSubtitle')}</p>
           </div>
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium text-gray-900">{t('settings.deleteTeamTitle')}</h3>
-                <p className="text-sm text-gray-500">{t('settings.deleteTeamDescription')}</p>
+                <h3 className="text-sm font-medium text-fg">{t('settings.deleteTeamTitle')}</h3>
+                <p className="text-sm text-fg-muted">{t('settings.deleteTeamDescription')}</p>
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -261,19 +261,19 @@ export default function TeamSettingsPage() {
       {/* 删除确认模态框 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b border-gray-200">
+          <div className="bg-bg rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="px-6 py-4 border-b border-border">
               <h3 className="text-lg font-medium text-red-600">{t('settings.confirmDeleteTitle')}</h3>
             </div>
             <div className="px-6 py-4 space-y-4">
-              <p className="text-sm text-gray-600">{t('settings.confirmDeleteWarning')}</p>
-              <ul className="text-sm text-gray-500 list-disc list-inside space-y-1">
+              <p className="text-sm text-fg-muted">{t('settings.confirmDeleteWarning')}</p>
+              <ul className="text-sm text-fg-muted list-disc list-inside space-y-1">
                 <li>{t('settings.deleteWarning1')}</li>
                 <li>{t('settings.deleteWarning2')}</li>
                 <li>{t('settings.deleteWarning3')}</li>
               </ul>
               <div>
-                <label htmlFor="deleteConfirm" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="deleteConfirm" className="block text-sm font-medium text-fg">
                   {t('settings.typeToConfirm', { name: team.name })}
                 </label>
                 <input
@@ -282,7 +282,7 @@ export default function TeamSettingsPage() {
                   name="deleteConfirm"
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
                   placeholder={team.name}
                 />
               </div>
@@ -293,7 +293,7 @@ export default function TeamSettingsPage() {
                     setShowDeleteConfirm(false);
                     setDeleteConfirmText('');
                   }}
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-md border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
                 >
                   {t('cancel')}
                 </button>
@@ -313,35 +313,35 @@ export default function TeamSettingsPage() {
 
       {/* SSO 和审计日志即将推出 */}
       <div className="mt-8 space-y-4">
-        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+        <div className="bg-bg-subtle rounded-lg p-6 border border-border">
           <div className="flex items-center">
-            <div className="flex-shrink-0 p-2 bg-gray-200 rounded-lg">
-              <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex-shrink-0 p-2 bg-bg-muted rounded-lg">
+              <svg className="h-6 w-6 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
               </svg>
             </div>
             <div className="ml-4">
-              <h3 className="text-sm font-medium text-gray-900">{t('settings.ssoTitle')}</h3>
-              <p className="text-sm text-gray-500">{t('settings.ssoDescription')}</p>
+              <h3 className="text-sm font-medium text-fg">{t('settings.ssoTitle')}</h3>
+              <p className="text-sm text-fg-muted">{t('settings.ssoDescription')}</p>
             </div>
-            <span className="ml-auto inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+            <span className="ml-auto inline-flex items-center rounded-full bg-bg-muted px-2.5 py-0.5 text-xs font-medium text-fg-muted">
               {t('comingSoon')}
             </span>
           </div>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+        <div className="bg-bg-subtle rounded-lg p-6 border border-border">
           <div className="flex items-center">
-            <div className="flex-shrink-0 p-2 bg-gray-200 rounded-lg">
-              <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex-shrink-0 p-2 bg-bg-muted rounded-lg">
+              <svg className="h-6 w-6 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
               </svg>
             </div>
             <div className="ml-4">
-              <h3 className="text-sm font-medium text-gray-900">{t('settings.auditLogsTitle')}</h3>
-              <p className="text-sm text-gray-500">{t('settings.auditLogsDescription')}</p>
+              <h3 className="text-sm font-medium text-fg">{t('settings.auditLogsTitle')}</h3>
+              <p className="text-sm text-fg-muted">{t('settings.auditLogsDescription')}</p>
             </div>
-            <span className="ml-auto inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+            <span className="ml-auto inline-flex items-center rounded-full bg-bg-muted px-2.5 py-0.5 text-xs font-medium text-fg-muted">
               {t('comingSoon')}
             </span>
           </div>

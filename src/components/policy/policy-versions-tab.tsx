@@ -122,7 +122,7 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
 
   if (error) {
     return (
-      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg p-6">
+      <div className="bg-bg dark:bg-gray-800 shadow sm:rounded-lg p-6">
         <div className="text-red-500 dark:text-red-400">{error}</div>
         <button
           onClick={refresh}
@@ -135,11 +135,11 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+    <div className="bg-bg dark:bg-gray-800 shadow sm:rounded-lg">
       <div className="px-4 py-5 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+          <h3 className="text-lg font-medium text-fg dark:text-white">
             版本管理
           </h3>
           {viewMode === 'list' && (versions as PolicyVersionInfo[]).length >= 2 && (
@@ -219,21 +219,21 @@ function InviteReviewerModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl"
+        className="w-full max-w-md rounded-lg bg-bg dark:bg-gray-800 p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-fg dark:text-white">
           Invite a reviewer
         </h3>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{message}</p>
-        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-sm text-fg-muted dark:text-gray-300">{message}</p>
+        <p className="mt-3 text-xs text-fg-muted dark:text-fg-subtle">
           SOX Segregation of Duties requires a different person to approve.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="rounded-md px-3 py-2 text-sm font-medium text-fg-muted hover:bg-bg-muted dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Cancel
           </button>
