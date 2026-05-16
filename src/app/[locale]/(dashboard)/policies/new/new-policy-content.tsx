@@ -1,424 +1,68 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import type { editor } from 'monaco-editor';
-import dynamic from 'next/dynamic';
-import { Breadcrumbs } from '@/components/ui';
-import {
-  POLICY_EXAMPLES,
-  CATEGORY_LABELS,
-  type PolicyExample,
-  getExampleName,
-  getExampleDescription,
-  getExampleSource,
-  normalizeLocale,
-} from '@/data/policy-examples';
-import { PolicyGroupSelect } from '@/components/policy/policy-group-select';
-import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
-import { CNLSyntaxConverterDialog, CNLConvertButton } from '@/components/policy/cnl-syntax-converter-dialog';
-import { AIAssistantPanel } from '@/components/policy/ai-assistant-panel';
+import { PolicyForm } from '@/components/policy/policy-form';
+import type { PolicyDraftFields } from '@/components/policy/policy-form/use-policy-draft';
 
-// 动态导入 Monaco 编辑器以避免 SSR 问题
-const MonacoPolicyEditor = dynamic(
-  () => import('@/components/policy/monaco-policy-editor').then((mod) => mod.MonacoPolicyEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[400px] bg-gray-900 rounded-lg flex items-center justify-center text-fg-subtle">
-        Loading editor...
-      </div>
-    ),
-  }
-);
+/**
+ * /policies/new — thin wrapper around <PolicyForm>.
+ *
+ * All UI lives in the shared PolicyForm component (IDE layout +
+ * autosave + shortcuts). This wrapper only owns the create-specific
+ * concerns: POST /api/policies on save, navigate to the new detail
+ * page, surface upgrade prompts.
+ */
 
 interface NewPolicyContentProps {
   locale: string;
 }
 
+const EMPTY: PolicyDraftFields = {
+  name: '',
+  description: '',
+  content: '',
+  isPublic: false,
+  groupId: null,
+};
+
 export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   const t = useTranslations('policies');
-  const router = useRouter();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [content, setContent] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
-  const [groupId, setGroupId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  // CNL 语言跟随页面 locale
-  const cnlLocale = normalizeLocale(locale);
-
-  // 示例选择器状态
-  const [selectedExample, setSelectedExample] = useState<PolicyExample | null>(null);
-  const [showExampleSelector, setShowExampleSelector] = useState(false);
-
-  // 语法转换对话框状态
-  const [isConverterOpen, setIsConverterOpen] = useState(false);
-
-  // AI 助手面板状态
-  const [showAIPanel, setShowAIPanel] = useState(false);
-  const editorInstanceRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const tAI = useTranslations('ai');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
+  const handleSave = useCallback(
+    async (fields: PolicyDraftFields) => {
       const res = await fetch('/api/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description, content, isPublic, groupId }),
+        body: JSON.stringify(fields),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
-        if (data.upgrade) {
-          setError(data.message);
-        } else {
-          throw new Error(data.error || t('form.failedToCreate'));
-        }
-        return;
+        return {
+          message: data.message || data.error || t('form.failedToCreate'),
+          upgrade: !!data.upgrade,
+        };
       }
-
-      router.push(`/${locale}/policies/${data.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('form.failedToCreate'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 选择示例策略作为模板
-  const handleSelectExample = useCallback(
-    (example: PolicyExample) => {
-      setSelectedExample(example);
-      setShowExampleSelector(false);
-      setName(getExampleName(example, locale));
-      setDescription(getExampleDescription(example, locale));
-      // 使用当前页面语言获取对应的源码
-      setContent(getExampleSource(example, normalizeLocale(locale)));
+      return { id: data.id as string };
     },
-    [locale]
+    [t],
   );
 
-  // 应用语法转换结果
-  const handleApplyConversion = useCallback((convertedContent: string, _newLocale: unknown) => {
-    void _newLocale; // CNL 语言已跟随页面 locale，忽略转换后的语言
-    setContent(convertedContent);
-    // 转换后清除模板选择状态，因为内容已经被修改
-    setSelectedExample(null);
-  }, []);
-
-  // 清除选中的示例
-  const handleClearExample = useCallback(() => {
-    setSelectedExample(null);
-    setName('');
-    setDescription('');
-    setContent('');
-  }, []);
-
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="md:flex md:items-start md:justify-between mb-6">
-        <div>
-          <Breadcrumbs
-            className="mb-2"
-            items={[
-              { label: t('title'), href: '/policies' },
-              { label: t('form.createTitle') },
-            ]}
-          />
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('form.createTitle')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">
-            {t('form.createSubtitle')}
-          </p>
-        </div>
-      </div>
-
-      {/* 示例策略选择器 + CNL 语言选择器 */}
-      <div className="mb-6 bg-bg shadow-sm sm:rounded-lg border border-border p-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-fg">
-              {locale.startsWith('zh') ? '从示例开始：' : 'Start from example:'}
-            </span>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowExampleSelector(!showExampleSelector)}
-                className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg shadow-sm hover:bg-bg-subtle focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {selectedExample
-                  ? getExampleName(selectedExample, locale)
-                  : locale.startsWith('zh')
-                    ? '选择示例模板...'
-                    : 'Choose a template...'}
-                <svg
-                  className={`h-4 w-4 transition-transform ${showExampleSelector ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {/* 下拉菜单 */}
-              {showExampleSelector && (
-                <div className="absolute z-10 mt-2 w-80 origin-top-left rounded-lg bg-bg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                  <div className="py-1 max-h-96 overflow-y-auto">
-                    {/* 按类别分组显示 */}
-                    {(Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>).map((category) => {
-                      const categoryExamples = POLICY_EXAMPLES.filter((e) => e.category === category);
-                      if (categoryExamples.length === 0) return null;
-                      return (
-                        <div key={category}>
-                          <div className="px-3 py-2 text-xs font-semibold text-fg-muted uppercase tracking-wider bg-bg-subtle">
-                            {CATEGORY_LABELS[category][normalizeLocale(locale)]}
-                          </div>
-                          {categoryExamples.map((example) => (
-                            <button
-                              key={example.id}
-                              type="button"
-                              onClick={() => handleSelectExample(example)}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-primary-subtle ${
-                                selectedExample?.id === example.id ? 'bg-primary-subtle text-primary-active' : 'text-fg'
-                              }`}
-                            >
-                              <div className="font-medium">{getExampleName(example, locale)}</div>
-                              <div className="text-xs text-fg-muted mt-0.5">
-                                {getExampleDescription(example, locale)}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* AI 助手切换按钮 */}
-            <button
-              type="button"
-              onClick={() => setShowAIPanel(prev => !prev)}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition-colors ${
-                showAIPanel
-                  ? 'bg-primary text-white hover:bg-primary-hover'
-                  : 'border border-border-strong bg-bg text-fg hover:bg-bg-subtle'
-              }`}
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-              </svg>
-              {tAI('toggleAI')}
-            </button>
-
-            {/* 语法转换按钮（仅在有内容且非模板模式时显示） */}
-            {!selectedExample && content.trim() && (
-              <CNLConvertButton
-                onClick={() => setIsConverterOpen(true)}
-                uiLocale={locale}
-              />
-            )}
-
-            {/* 清除选择按钮 */}
-            {selectedExample && (
-              <button
-                type="button"
-                onClick={handleClearExample}
-                className="text-sm text-fg-muted hover:text-fg font-medium flex items-center gap-1"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                {locale.startsWith('zh') ? '清除' : 'Clear'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 已选示例提示 */}
-        {selectedExample && (
-          <div className="mt-3 p-3 rounded-lg bg-primary-subtle border border-primary/20">
-            <div className="flex items-start gap-2">
-              <svg className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="text-sm text-primary-hover">
-                {locale.startsWith('zh')
-                  ? '已加载示例模板。你可以修改后保存为你的策略。'
-                  : 'Template loaded. You can modify and save as your policy.'}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {error && (
-        <div className="mb-6 rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-          {error.includes('Upgrade') && (
-            <Link
-              href={`/${locale}/billing`}
-              className="mt-2 inline-block text-sm font-medium text-red-700 underline"
-            >
-              {t('form.viewPlans')}
-            </Link>
-          )}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-bg shadow-lg sm:rounded-xl border border-border">
-          <div className="px-6 py-6 sm:p-8">
-            {/* Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-fg">
-                {t('form.name')}
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="mt-2 block w-full rounded-lg border border-border-strong bg-bg px-4 py-3 text-fg placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
-                placeholder={t('form.namePlaceholder')}
-              />
-            </div>
-
-            {/* Description */}
-            <div className="mt-6">
-              <label htmlFor="description" className="block text-sm font-semibold text-fg">
-                {t('form.description')}
-              </label>
-              <input
-                type="text"
-                id="description"
-                name="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="mt-2 block w-full rounded-lg border border-border-strong bg-bg px-4 py-3 text-fg placeholder-gray-400 shadow-sm transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none hover:border-gray-400 sm:text-sm"
-                placeholder={t('form.descriptionPlaceholder')}
-              />
-            </div>
-
-            {/* Group */}
-            <div className="mt-6">
-              <PolicyGroupSelect
-                value={groupId}
-                onChange={setGroupId}
-                label={locale.startsWith('zh') ? '分组' : 'Group'}
-                placeholder={locale.startsWith('zh') ? '选择分组（可选）...' : 'Select a group (optional)...'}
-              />
-              <p className="mt-2 text-sm text-fg-muted">
-                {locale.startsWith('zh')
-                  ? '可选：将策略归类到一个分组以便管理'
-                  : 'Optional: Organize your policy into a group for better management'}
-              </p>
-            </div>
-
-            {/* Content - Monaco Editor */}
-            <div className="mt-6">
-              <label id="content-label" className="block text-sm font-semibold text-fg">
-                {t('form.content')}
-              </label>
-              <div className="mt-2" role="group" aria-labelledby="content-label">
-                <MonacoPolicyEditor
-                  value={content}
-                  onChange={setContent}
-                  locale={cnlLocale}
-                  height="400px"
-                  placeholder={t('form.contentPlaceholder')}
-                  onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
-                  enableAICompletion
-                  onToggleAIPanel={() => setShowAIPanel(prev => !prev)}
-                />
-              </div>
-
-              {/* AI 助手面板 */}
-              {showAIPanel && (
-                <div className="mt-3">
-                  <AIAssistantPanel
-                    editor={editorInstanceRef.current}
-                    locale={cnlLocale}
-                    onApply={(source) => {
-                      setContent(source);
-                      setShowAIPanel(false);
-                    }}
-                    onClose={() => setShowAIPanel(false)}
-                  />
-                </div>
-              )}
-              <p className="mt-3 text-sm text-fg-muted">
-                {t('form.contentHelp')}
-              </p>
-
-              {/* 语法参考面板 */}
-              <CNLSyntaxReferencePanel
-                locale={cnlLocale}
-                uiLocale={locale}
-                className="mt-4"
-                defaultExpanded={false}
-              />
-            </div>
-
-            {/* Public toggle */}
-            <div className="mt-6 flex items-center">
-              <input
-                id="isPublic"
-                name="isPublic"
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-5 w-5 rounded border-border-strong text-primary focus:ring-2 focus:ring-primary/20 cursor-pointer"
-              />
-              <label htmlFor="isPublic" className="ml-3 block text-sm font-medium text-fg cursor-pointer">
-                {t('form.isPublic')}
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end space-x-4">
-          <Link
-            href={`/${locale}/policies`}
-            className="rounded-lg border border-border-strong bg-bg px-5 py-2.5 text-sm font-medium text-fg shadow-sm transition-all duration-200 hover:bg-bg-subtle hover:border-gray-400"
-          >
-            {t('form.cancel')}
-          </Link>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="inline-flex justify-center rounded-lg border border-transparent bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-primary-hover focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? t('form.creating') : t('form.create')}
-          </button>
-        </div>
-      </form>
-
-      {/* 语法转换对话框 */}
-      <CNLSyntaxConverterDialog
-        isOpen={isConverterOpen}
-        onClose={() => setIsConverterOpen(false)}
-        content={content}
-        currentLocale={cnlLocale}
-        uiLocale={locale}
-        onApply={handleApplyConversion}
-      />
-    </div>
+    <PolicyForm
+      mode="create"
+      uiLocale={locale}
+      policyId={null}
+      initial={EMPTY}
+      title={t('form.createTitle')}
+      subtitle={t('form.createSubtitle')}
+      onSave={handleSave}
+      cancelHref={`/${locale}/policies`}
+      detailHrefFor={(id) => `/${locale}/policies/${id}`}
+      breadcrumbs={[
+        { label: t('title'), href: '/policies' },
+        { label: t('form.createTitle') },
+      ]}
+    />
   );
 }
