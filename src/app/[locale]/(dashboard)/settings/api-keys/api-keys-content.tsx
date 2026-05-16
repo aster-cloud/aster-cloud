@@ -282,7 +282,11 @@ export function ApiKeysContent({
               {apiKeys.length === 0 ? (
                 <p className="py-8 text-center text-fg-muted">{t.noKeys}</p>
               ) : (
-                <div className="overflow-hidden">
+                // overflow-x-auto so the table scrolls sideways on
+                // narrow viewports instead of clipping columns. The
+                // previous overflow-hidden silently dropped the
+                // trailing Actions column on mobile.
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
                   <table className="min-w-full divide-y divide-border">
                     <thead>
                       <tr>
