@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/ui';
 
 interface Member {
   id: string;

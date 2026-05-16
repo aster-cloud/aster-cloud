@@ -16,7 +16,7 @@ import {
   Stack,
   cn,
 } from '@/components/ui';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/ui';
 
 interface ApiKey {
   id: string;

@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { PolicyVersionStatus } from '@/lib/prisma';
 import { VersionStatusBadge } from './version-status-badge';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/ui';
 
 interface PolicyVersionInfo {
   id: string;

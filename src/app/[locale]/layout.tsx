@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { Toaster } from 'sonner';
+import { Toaster } from '@aster-cloud/ui';
 import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
 import { AuthProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -116,15 +116,12 @@ export default async function LocaleLayout({ children, params }: Props) {
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider nonce={nonce}>
             <AuthProvider>{children}</AuthProvider>
-            {/* Global toast outlet. Sonner is mounted once at locale-layout
-                level so every page can call `toast.success()` / `toast.error()`
-                without each owning its own ad-hoc banner state. */}
-            <Toaster
-              position="top-right"
-              richColors
-              closeButton
-              toastOptions={{ className: 'font-sans' }}
-            />
+            {/* Global toast outlet. The @aster-cloud/ui Toaster wraps
+                sonner with our brand defaults (position, theme="system",
+                richColors, closeButton, font-sans). Mounted once at
+                locale-layout level so every page can call `toast.*()`
+                without owning its own banner state. */}
+            <Toaster />
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

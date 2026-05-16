@@ -127,47 +127,6 @@
   --aster-font-mono:    var(--aster-font-mono-loaded, "JetBrains Mono"), "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
 }
 
-/*
- * Button secondary refinement.
- *
- * @aster-cloud/ui's Button "secondary" variant ships these classes:
- *   bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300
- *   dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700
- *
- * In light mode our card surfaces already sit at zinc-50 (--aster-bg-subtle),
- * so bg-zinc-100 buttons are only one shade away from the background and
- * read as text rather than a tappable affordance.
- *
- * Override at the consumer (here) so we don't have to cut a release of
- * aster-design-system to fix Aster Cloud's specific surface palette.
- * We bump the resting fill to zinc-200 and add a 1px border so the
- * button silhouette is always perceptible on top of bg-bg, bg-bg-subtle,
- * and bg-bg-muted. Dark mode keeps the existing token-derived treatment
- * by matching the same selectors.
- *
- * The rules live inside @layer utilities so they win against Tailwind's
- * own `bg-zinc-100` utility (same layer, declared later = later in
- * source-order = applied last) without needing !important.
- */
-button.bg-zinc-100,
-a.bg-zinc-100 {
-  background-color: var(--aster-color-zinc-200) !important;
-  border: 1px solid var(--aster-border-strong) !important;
-}
-button.bg-zinc-100:hover,
-a.bg-zinc-100:hover {
-  background-color: var(--aster-color-zinc-300) !important;
-}
-[data-theme="dark"] button.bg-zinc-100,
-[data-theme="dark"] a.bg-zinc-100 {
-  background-color: var(--aster-color-zinc-800) !important;
-  border-color: var(--aster-border-strong) !important;
-}
-[data-theme="dark"] button.bg-zinc-100:hover,
-[data-theme="dark"] a.bg-zinc-100:hover {
-  background-color: var(--aster-color-zinc-700) !important;
-}
-
 body {
   background: var(--aster-bg);
   color: var(--aster-fg);

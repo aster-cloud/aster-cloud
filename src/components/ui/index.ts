@@ -1,49 +1,102 @@
 /**
  * @/components/ui — single import surface for design-system primitives.
  *
- * Pages should import from here, NOT from the individual module files:
+ * Re-exports from @aster-cloud/ui so consumers can keep using the
+ * familiar `import { Button, … } from '@/components/ui'` path even as
+ * primitives migrate into the npm-published design system. We also
+ * re-export the few aster-cloud-specific wrappers that adapt design-
+ * system primitives to in-app concerns (e.g. Breadcrumbs needs the
+ * next-intl Link).
  *
- *   import { Button, Card, Stack } from '@/components/ui';
- *
- * Two consumption paths converge:
- *   - Button / Card / Wordmark — re-exported from @aster-cloud/ui
- *     (canonical source: aster-design-system on npm)
- *   - Input / Textarea / Label / Select / Badge / Alert / Skeleton /
- *     Separator / Stack / Container — local primitives that depend on
- *     aster-cloud-only idioms (Tailwind 4 @theme tokens, lucide icons).
- *
- * When a local primitive stabilizes and we want aster-lang-dev or another
- * future React surface to consume it, we promote it to @aster-cloud/ui in
- * a separate release.
+ * If you're adding a new shared primitive: build it in
+ * `aster-design-system/packages/ui` first, cut a `@aster-cloud/ui`
+ * release, then re-export here. Don't grow this directory with new
+ * primitives — that's the anti-pattern we just unwound.
  */
-export { Button, buttonVariants, type ButtonProps } from './button';
+
 export {
+  // Foundations
+  cn,
+  // Actions
+  Button,
+  buttonVariants,
+  IconButton,
+  Dropdown,
+  DropdownItem,
+  DropdownSeparator,
+  DropdownLabel,
+  // Surfaces
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardBody,
   CardFooter,
-} from './card';
-export { Wordmark, type WordmarkProps } from './wordmark';
+  Container,
+  Stack,
+  Separator,
+  Wordmark,
+  // Form controls
+  Input,
+  Textarea,
+  Label,
+  Select,
+  Toggle,
+  ListSearchInput,
+  // Status / feedback
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Badge,
+  Skeleton,
+  Spinner,
+  Toaster,
+  toast,
+  // Navigation / structure
+  PageHeader,
+  // Data display
+  DataTable,
+  StatCard,
+  EmptyState,
+  // Overlays
+  ConfirmDialog,
+} from '@aster-cloud/ui';
 
-export { Input, type InputProps } from './input';
-export { Textarea, type TextareaProps } from './textarea';
-export { Label, type LabelProps } from './label';
-export { Select, type SelectProps } from './select';
+export type {
+  ButtonProps,
+  IconButtonProps,
+  DropdownProps,
+  DropdownItemProps,
+  ContainerProps,
+  StackProps,
+  SeparatorProps,
+  WordmarkProps,
+  InputProps,
+  TextareaProps,
+  LabelProps,
+  SelectProps,
+  ToggleProps,
+  ListSearchInputProps,
+  AlertProps,
+  BadgeProps,
+  SpinnerProps,
+  ToasterProps,
+  PageHeaderProps,
+  DataTableColumn,
+  DataTableProps,
+  StatCardProps,
+  StatCardTone,
+  EmptyStateProps,
+  ConfirmDialogProps,
+  ConfirmDialogVariant,
+} from '@aster-cloud/ui';
 
-export { Badge, type BadgeProps } from './badge';
+// Breadcrumbs needs a routing-aware Link in this app, so we wrap the
+// package primitive with the next-intl Link rather than re-exporting
+// it directly. Same goes for any future primitive that needs deeper
+// integration.
 export {
-  Alert, AlertTitle, AlertDescription, type AlertProps,
-} from './alert';
-export { Skeleton } from './skeleton';
-
-export { Separator, type SeparatorProps } from './separator';
-export { Stack, type StackProps } from './stack';
-export { Container, type ContainerProps } from './container';
-export {
-  Breadcrumbs, type BreadcrumbsProps, type BreadcrumbItem,
+  Breadcrumbs,
+  type BreadcrumbsProps,
+  type BreadcrumbItem,
 } from './breadcrumbs';
-export { ListSearchInput } from './list-search-input';
-
-export { cn } from './utils';

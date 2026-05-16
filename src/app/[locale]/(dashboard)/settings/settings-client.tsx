@@ -23,7 +23,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/ui';
 import { Alert, AlertDescription, Button, cn } from '@/components/ui';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';

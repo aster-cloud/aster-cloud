@@ -54,7 +54,7 @@ import { useTranslations } from 'next-intl';
 import type { editor } from 'monaco-editor';
 import { Link } from '@/i18n/navigation';
 import { Breadcrumbs, buttonVariants, cn } from '@/components/ui';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/ui';
 import { normalizeLocale } from '@/data/policy-examples';
 
 import { MetaSection } from './meta-section';

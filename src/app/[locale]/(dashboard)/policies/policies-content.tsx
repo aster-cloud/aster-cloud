@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { formatDate } from '@/lib/format';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/ui';
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { ErrorState } from '@/components/feedback/error-state';
 import {

@@ -512,31 +512,11 @@ function Footer({ t }: { t: ReturnType<typeof useTranslations> }) {
       <Container size="xl">
         <Stack gap={8}>
           <Stack direction="row" justify="between" align="center" wrap gap={6}>
-            {/* Inline wordmark for the footer specifically. The shared
-                <Wordmark> component hard-codes its two halves to text-fg
-                + text-primary, which both come from light-mode brand
-                tokens and end up nearly invisible against bg-zinc-900.
-                Re-render the two spans here with dark-surface-safe
-                colors (white + violet-300) instead of fighting class
-                specificity with [&_span] overrides. */}
-            <span
-              aria-label="Aster Cloud"
-              role="img"
-              className="inline-flex select-none items-baseline gap-1.5"
-            >
-              <span
-                aria-hidden
-                className="font-display text-2xl font-semibold tracking-tightest text-white"
-              >
-                Aster
-              </span>
-              <span
-                aria-hidden
-                className="font-mono text-base font-normal tracking-tight text-violet-300"
-              >
-                cloud
-              </span>
-            </span>
+            {/* @aster-cloud/ui@0.2.0 added `tone="inverted"` for exactly
+                this case (hand-painted dark surface that doesn't follow
+                the theme token cascade). Drops the previous inline
+                two-span workaround in favor of the canonical primitive. */}
+            <Wordmark variant="product" size="md" tone="inverted" />
             <Stack direction="row" gap={6} wrap>
               <FooterLink href="/privacy">{t('footer.privacy')}</FooterLink>
               <FooterLink href="/terms">{t('footer.terms')}</FooterLink>

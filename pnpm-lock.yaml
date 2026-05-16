@@ -24,8 +24,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0
       '@aster-cloud/ui':
-        specifier: ^0.1.0
-        version: 0.1.0(react@19.2.3)
+        specifier: ^0.2.0
+        version: 0.2.0(react@19.2.3)(sonner@2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
       '@auth/drizzle-adapter':
         specifier: ^1.11.1
         version: 1.11.2
@@ -283,10 +283,14 @@ packages:
   '@aster-cloud/tokens@0.1.0':
     resolution: {integrity: sha512-AQexV643kYCw2BJKX8fXIUf8/u0xujCjOA4NTK1369AHPGCn/xqM8sGH/Ti59dp55mfhnqgexoiohEQzySkroQ==}
 
-  '@aster-cloud/ui@0.1.0':
-    resolution: {integrity: sha512-BAiSCRIqLpog9PjES1PdNBvI+gyXRd9oSIaAROtf0OC3cFzVi8TQ5Sq1vqD6nP3Dt9G5bZsTe14Cm7n3UBDwEg==}
+  '@aster-cloud/ui@0.2.0':
+    resolution: {integrity: sha512-/I6BYFeHpbU/1PdT8TutQvlpsBC5cpzrTvm07UGhxWWiLoqa7n3ne6keWiOLgIdjowlQBR/bhc+BG5Mm2LJQ6Q==}
     peerDependencies:
       react: ^18.2.0 || ^19.0.0
+      sonner: ^2.0.0 || ^1.5.0
+    peerDependenciesMeta:
+      sonner:
+        optional: true
 
   '@auth/core@0.41.0':
     resolution: {integrity: sha512-Wd7mHPQ/8zy6Qj7f4T46vg3aoor8fskJm6g2Zyj064oQ3+p0xNZXAV60ww0hY+MbTesfu29kK14Zk5d5JTazXQ==}
@@ -3421,6 +3425,11 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
+  lucide-react@0.460.0:
+    resolution: {integrity: sha512-BVtq/DykVeIvRTJvRAgCsOwaGL8Un3Bxh8MbDxMhEWlZay3T4IpEKDEpwt5KZ0KJMHzgm6jrltxlT5eXOWXDHg==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
+
   lucide-react@0.562.0:
     resolution: {integrity: sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw==}
     peerDependencies:
@@ -4160,6 +4169,9 @@ packages:
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
 
+  tailwind-merge@2.6.1:
+    resolution: {integrity: sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ==}
+
   tailwind-merge@3.6.0:
     resolution: {integrity: sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==}
 
@@ -4706,12 +4718,16 @@ snapshots:
 
   '@aster-cloud/tokens@0.1.0': {}
 
-  '@aster-cloud/ui@0.1.0(react@19.2.3)':
+  '@aster-cloud/ui@0.2.0(react@19.2.3)(sonner@2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3))':
     dependencies:
       '@aster-cloud/tokens': 0.1.0
       class-variance-authority: 0.7.1
       clsx: 2.1.1
+      lucide-react: 0.460.0(react@19.2.3)
       react: 19.2.3
+      tailwind-merge: 2.6.1
+    optionalDependencies:
+      sonner: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
 
   '@auth/core@0.41.0':
     dependencies:
@@ -8230,6 +8246,10 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
+  lucide-react@0.460.0(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+
   lucide-react@0.562.0(react@19.2.3):
     dependencies:
       react: 19.2.3
@@ -9010,6 +9030,8 @@ snapshots:
       standardwebhooks: 1.0.0
 
   symbol-tree@3.2.4: {}
+
+  tailwind-merge@2.6.1: {}
 
   tailwind-merge@3.6.0: {}
 

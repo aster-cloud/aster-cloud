@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatDate } from '@/lib/format';
 import { Breadcrumbs } from '@/components/ui';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ConfirmDialog } from '@/components/ui';
 
 interface TrashItem {
   id: string;
