@@ -1,20 +1,22 @@
-import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
+import { notFound } from 'next/navigation';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import { CircuitBreakerContent } from './circuit-breaker-content';
 
 /**
  * /admin/ai-circuit-breaker — admin-only manual override for the
  * platform-wide LLM cost kill switch.
+ *
+ * Non-admins get a 404 (not a redirect) so the page's existence
+ * isn't leaked to non-admins — matches the /admin/risk-tier
+ * convention. isAdminFromSession already short-circuits when the
+ * user isn't signed in, so we don't need a separate session check.
  */
+export const dynamic = 'force-dynamic';
+
 export default async function CircuitBreakerPage() {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    redirect('/login');
-  }
-  const isAdmin = await isAdminFromSession();
-  if (!isAdmin) {
-    redirect('/dashboard');
+  const admin = await isAdminFromSession();
+  if (!admin) {
+    notFound();
   }
   return <CircuitBreakerContent />;
 }

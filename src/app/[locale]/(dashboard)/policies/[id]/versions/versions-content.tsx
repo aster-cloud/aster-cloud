@@ -98,8 +98,12 @@ export function VersionsContent({
   const t = useTranslations('policies.versions');
   const tCommon = useTranslations('common');
   const listKey = `/api/v1/policies/${policyId}/versions`;
-  const { data: versions, error, isLoading, mutate: refresh } =
-    useApi<VersionRow[]>(listKey);
+  // Backend wraps the array as { versions: [...] } — destructure here
+  // rather than handing a wrong-shape `data` to DataTable, which would
+  // try `data.map` on a plain object and crash with TypeError.
+  const { data, error, isLoading, mutate: refresh } =
+    useApi<{ versions: VersionRow[] }>(listKey);
+  const versions = data?.versions;
 
   const [pending, setPending] = useState<PendingAction | null>(null);
   // The dialog input — release note for submit, comment for

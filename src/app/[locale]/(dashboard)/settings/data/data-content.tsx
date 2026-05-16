@@ -20,10 +20,11 @@ import {
 /**
  * Client island for /settings/data.
  *
- * Two cards: download (GET /api/user/ai-data) and erase (DELETE
- * /api/user/ai-data). Both are GDPR rights — they're user-triggered
- * and have to remain reachable even if the dashboard goes through
- * a brand redesign.
+ * Two cards: download (GET /api/user/ai-data-export, Article 15)
+ * and erase (DELETE /api/user/ai-data, Article 17). The two paths
+ * are separated on purpose — putting export on the same route as
+ * erase would let a curl GET accidentally trip the erasure handler
+ * via method-confusion bugs. Two paths, two methods, two intents.
  */
 export function DataContent() {
   const t = useTranslations('settings.dataPage');
@@ -35,7 +36,9 @@ export function DataContent() {
   const downloadJson = async () => {
     setIsDownloading(true);
     try {
-      const res = await fetch('/api/user/ai-data');
+      // GDPR Article 15 export endpoint. The sibling /ai-data path
+      // is DELETE-only — GET against it returns 405.
+      const res = await fetch('/api/user/ai-data-export');
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast.error(t('downloadFailure', { error: data.error || res.status }));
