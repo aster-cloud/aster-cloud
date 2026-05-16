@@ -39,7 +39,7 @@ export function MobileMenuButton({
   return (
     <button
       type="button"
-      className="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+      className="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-fg-muted hover:text-fg hover:bg-bg-subtle focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors"
       aria-expanded={isOpen}
       aria-label={isOpen ? labels.closeMenu : labels.openMenu}
       onClick={onToggle}
@@ -101,23 +101,23 @@ export function UserDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-bg border border-border ring-1 ring-black/5 dark:ring-white/10 z-50">
           {userEmail && (
-            <div className="px-4 py-2 border-b border-gray-100">
-              <p className="text-sm font-medium text-gray-900 truncate">{userName || userEmail}</p>
-              {userName && <p className="text-xs text-gray-500 truncate">{userEmail}</p>}
+            <div className="px-4 py-2 border-b border-border">
+              <p className="text-sm font-medium text-fg truncate">{userName || userEmail}</p>
+              {userName && <p className="text-xs text-fg-muted truncate">{userEmail}</p>}
             </div>
           )}
           <Link
             href="/settings"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="block px-4 py-2 text-sm text-fg hover:bg-bg-subtle"
             onClick={() => setIsOpen(false)}
           >
             {userMenuLabels.settings}
           </Link>
           <button
             type="button"
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="block w-full text-left px-4 py-2 text-sm text-fg hover:bg-bg-subtle"
             onClick={handleSignOut}
             disabled={isSigningOut}
           >
@@ -146,10 +146,10 @@ export function DesktopNav({ navItems }: { navItems: NavItem[] }) {
         <Link
           key={item.href}
           href={item.href}
-          className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+          className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
             isActive(item.href)
-              ? 'border-primary text-gray-900'
-              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              ? 'border-primary text-fg'
+              : 'border-transparent text-fg-muted hover:border-border-strong hover:text-fg'
           }`}
           aria-current={isActive(item.href) ? 'page' : undefined}
         >
@@ -182,16 +182,16 @@ export function MobileNav({
   if (!isOpen) return null;
 
   return (
-    <div className="sm:hidden absolute top-16 inset-x-0 bg-white border-b border-gray-200 shadow-lg z-50">
+    <div className="sm:hidden absolute top-16 inset-x-0 bg-bg border-b border-border shadow-lg z-50">
       <div className="pt-2 pb-3 space-y-1">
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+            className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors ${
               isActive(item.href)
-                ? 'bg-primary-subtle border-primary text-primary-hover'
-                : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                ? 'bg-primary-subtle border-primary text-fg'
+                : 'border-transparent text-fg-muted hover:bg-bg-subtle hover:border-border-strong hover:text-fg'
             }`}
             aria-current={isActive(item.href) ? 'page' : undefined}
           >
@@ -199,15 +199,15 @@ export function MobileNav({
           </Link>
         ))}
       </div>
-      <div className="pt-2 pb-3 border-t border-gray-200">
+      <div className="pt-2 pb-3 border-t border-border">
         {secondaryItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+            className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors ${
               isActive(item.href)
-                ? 'bg-primary-subtle border-primary text-primary-hover'
-                : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                ? 'bg-primary-subtle border-primary text-fg'
+                : 'border-transparent text-fg-muted hover:bg-bg-subtle hover:border-border-strong hover:text-fg'
             }`}
             aria-current={isActive(item.href) ? 'page' : undefined}
           >
