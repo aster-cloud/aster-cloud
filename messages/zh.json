@@ -19,7 +19,8 @@
     "searchPlaceholder": "搜索…",
     "themeLight": "浅色主题",
     "themeDark": "深色主题",
-    "themeSystem": "跟随系统"
+    "themeSystem": "跟随系统",
+    "skipToContent": "跳到主内容"
   },
   "nav": {
     "brand": "Aster Cloud"

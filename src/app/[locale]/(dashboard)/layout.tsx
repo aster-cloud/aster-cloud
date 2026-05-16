@@ -84,6 +84,15 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-bg-subtle text-fg">
+      {/* Keyboard-only "skip to main content" link — visually hidden
+          until focused. Lets screen-reader / keyboard users bypass the
+          nav block on every page load. */}
+      <a
+        href="#dashboard-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-fg focus:shadow-lg"
+      >
+        {tCommon('skipToContent')}
+      </a>
       {/* Top Navigation */}
       <nav className="bg-bg border-b border-border relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -167,7 +176,11 @@ export default async function DashboardLayout({
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main
+        id="dashboard-main"
+        tabIndex={-1}
+        className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8"
+      >
         {children}
       </main>
     </div>

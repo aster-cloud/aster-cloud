@@ -19,7 +19,8 @@
     "searchPlaceholder": "Suchen…",
     "themeLight": "Helles Thema",
     "themeDark": "Dunkles Thema",
-    "themeSystem": "Systemthema"
+    "themeSystem": "Systemthema",
+    "skipToContent": "Zum Hauptinhalt springen"
   },
   "nav": {
     "brand": "Aster Cloud"

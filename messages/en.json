@@ -19,7 +19,8 @@
     "searchPlaceholder": "Search…",
     "themeLight": "Light theme",
     "themeDark": "Dark theme",
-    "themeSystem": "System theme"
+    "themeSystem": "System theme",
+    "skipToContent": "Skip to main content"
   },
   "nav": {
     "brand": "Aster Cloud"
