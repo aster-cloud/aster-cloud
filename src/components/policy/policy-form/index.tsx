@@ -12,7 +12,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { normalizeLocale } from '@/data/policy-examples';
 
 import { MetaSection } from './meta-section';
-import { SidePanel } from './side-panel';
+import { SidePanel, type SidePanelTab } from './side-panel';
 import { StatusBar } from './status-bar';
 import {
   usePolicyDraft,
@@ -20,6 +20,8 @@ import {
 } from './use-policy-draft';
 import { useUnsavedWarning } from './use-unsaved-warning';
 import { usePolicyShortcuts } from './use-policy-shortcuts';
+import { useCompile } from './use-compile';
+import { useMonacoMarkers } from './use-monaco-markers';
 
 const MonacoPolicyEditor = dynamic(
   () =>
@@ -118,12 +120,28 @@ export function PolicyForm({
   // ---------------------------------------------------------------
   const [metaExpanded, setMetaExpanded] = useState(mode === 'create');
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [requestedTab, setRequestedTab] = useState<SidePanelTab | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [serverError, setServerError] = useState<PolicySaveError | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
 
+  // Editor instance is captured imperatively. We also hold a state
+  // boolean so child hooks (markers, jump-to-line) re-run after
+  // monaco's async onMount — refs alone won't trigger a re-render.
   const editorInstanceRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
+  // Resolve the live instance only after onMount has fired so hook
+  // deps see a stable value.
+  const editorForHooks = editorReady ? editorInstanceRef.current : null;
+
+  // ---------------------------------------------------------------
+  // Compile-on-type
+  // ---------------------------------------------------------------
+  const compile = useCompile({ source: content, locale: cnlLocale });
+
+  // Bind diagnostics onto Monaco as inline markers.
+  useMonacoMarkers(editorForHooks, compile.diagnostics);
 
   // ---------------------------------------------------------------
   // Draft persistence
@@ -364,9 +382,13 @@ export function PolicyForm({
             placeholder={t('contentPlaceholder')}
             onEditorReady={(ed) => {
               editorInstanceRef.current = ed;
+              // Trigger one re-render so marker / palette hooks
+              // depending on the editor instance can pick it up.
+              setEditorReady(true);
             }}
             enableAICompletion
             onToggleAIPanel={() => {
+              setRequestedTab('ai');
               setSidePanelOpen(true);
             }}
           />
@@ -386,6 +408,17 @@ export function PolicyForm({
                 setMetaExpanded(true);
               }}
               onClose={() => setSidePanelOpen(false)}
+              compileState={compile.state}
+              compileDiagnostics={compile.diagnostics}
+              compileModule={compile.module}
+              onJumpToLine={(line, column) => {
+                const ed = editorInstanceRef.current;
+                if (!ed) return;
+                ed.revealLineInCenter(line);
+                ed.setPosition({ lineNumber: line, column });
+                ed.focus();
+              }}
+              initialTab={requestedTab}
             />
           </div>
         )}
@@ -397,6 +430,13 @@ export function PolicyForm({
         cnlLocale={cnlLocale}
         isDirty={isDirty}
         lastSavedAt={lastSavedAt}
+        compileState={compile.state}
+        compileDiagnostics={compile.diagnostics}
+        compileTransportError={compile.transportError}
+        onCompileChipClick={() => {
+          setRequestedTab('decision');
+          setSidePanelOpen(true);
+        }}
       />
 
       {/* ----- Cancel confirmation ----- */}

@@ -1,11 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import { useTranslations } from 'next-intl';
-import { Sparkles, BookOpen, LayoutTemplate, X } from 'lucide-react';
+import {
+  Sparkles,
+  BookOpen,
+  LayoutTemplate,
+  Activity,
+  AlertCircle,
+  X,
+} from 'lucide-react';
 import { AIAssistantPanel } from '@/components/policy/ai-assistant-panel';
 import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
+import type {
+  CompileDiagnostic,
+  CompileModuleSummary,
+  CompileState,
+} from './use-compile';
 import {
   POLICY_EXAMPLES,
   CATEGORY_LABELS,
@@ -38,7 +50,7 @@ import { cn } from '@/components/ui';
  *     with descriptions visible.
  */
 
-export type SidePanelTab = 'ai' | 'syntax' | 'templates';
+export type SidePanelTab = 'ai' | 'syntax' | 'templates' | 'decision';
 
 export interface SidePanelProps {
   editor: editor.IStandaloneCodeEditor | null;
@@ -50,6 +62,15 @@ export interface SidePanelProps {
   onApplyTemplate: (template: PolicyExample) => void;
   /** Close the entire side panel (parent collapses it). */
   onClose: () => void;
+  /** Compile state from PolicyForm — drives the Decision tab. */
+  compileState?: CompileState;
+  compileDiagnostics?: CompileDiagnostic[];
+  compileModule?: CompileModuleSummary;
+  /** Click a diagnostic row → jump to the offending line in Monaco. */
+  onJumpToLine?: (line: number, column: number) => void;
+  /** Externally request a specific tab (e.g. compile errored → focus
+   *  Decision). Optional — if absent, the panel manages its own tab. */
+  initialTab?: SidePanelTab;
 }
 
 export function SidePanel({
@@ -59,9 +80,21 @@ export function SidePanel({
   onApplyContent,
   onApplyTemplate,
   onClose,
+  compileState,
+  compileDiagnostics,
+  compileModule,
+  onJumpToLine,
+  initialTab,
 }: SidePanelProps) {
   const t = useTranslations('policies.form');
-  const [tab, setTab] = useState<SidePanelTab>('ai');
+  const [tab, setTab] = useState<SidePanelTab>(initialTab ?? 'ai');
+  // Whenever the parent bumps the requested tab (e.g. compile errored),
+  // honor it without losing user-selected state otherwise.
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
+  const errorCount =
+    compileDiagnostics?.filter((d) => d.severity === 'error').length ?? 0;
 
   return (
     <aside
@@ -87,6 +120,19 @@ export function SidePanel({
             onClick={() => setTab('templates')}
             icon={<LayoutTemplate aria-hidden className="size-4" />}
             label={t('sidePanelTemplates')}
+          />
+          <TabButton
+            active={tab === 'decision'}
+            onClick={() => setTab('decision')}
+            icon={
+              errorCount > 0 ? (
+                <AlertCircle aria-hidden className="size-4 text-danger" />
+              ) : (
+                <Activity aria-hidden className="size-4" />
+              )
+            }
+            label={t('decisionPreview')}
+            badge={errorCount > 0 ? errorCount : undefined}
           />
         </div>
         <button
@@ -132,6 +178,14 @@ export function SidePanel({
             onApplyBody={onApplyContent}
           />
         )}
+        {tab === 'decision' && (
+          <DecisionTab
+            state={compileState}
+            diagnostics={compileDiagnostics ?? []}
+            module={compileModule}
+            onJumpToLine={onJumpToLine}
+          />
+        )}
       </div>
     </aside>
   );
@@ -142,11 +196,13 @@ function TabButton({
   onClick,
   icon,
   label,
+  badge,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  badge?: number;
 }) {
   return (
     <button
@@ -164,7 +220,95 @@ function TabButton({
     >
       {icon}
       {label}
+      {badge !== undefined && (
+        <span className="ml-1 rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-danger-fg leading-none">
+          {badge}
+        </span>
+      )}
     </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Decision tab                                                        */
+/* ------------------------------------------------------------------ */
+
+function DecisionTab({
+  state,
+  diagnostics,
+  module: moduleInfo,
+  onJumpToLine,
+}: {
+  state?: CompileState;
+  diagnostics: CompileDiagnostic[];
+  module?: CompileModuleSummary;
+  onJumpToLine?: (line: number, column: number) => void;
+}) {
+  const t = useTranslations('policies.form');
+  // Empty editor / first mount: helpful nudge, not an error.
+  if (!state || state === 'idle') {
+    return (
+      <div className="p-4 text-sm text-fg-muted">{t('decisionNone')}</div>
+    );
+  }
+  const errors = diagnostics.filter((d) => d.severity === 'error');
+  const warnings = diagnostics.filter((d) => d.severity === 'warning');
+
+  return (
+    <div className="space-y-4 p-3">
+      {(errors.length > 0 || warnings.length > 0) && (
+        <ul className="space-y-1.5">
+          {[...errors, ...warnings].map((d, i) => (
+            <li key={`${d.startLine}-${d.startColumn}-${i}`}>
+              <button
+                type="button"
+                onClick={() => onJumpToLine?.(d.startLine, d.startColumn)}
+                className={cn(
+                  'block w-full rounded-md border px-2.5 py-2 text-left text-xs transition-colors',
+                  'focus-visible:outline-none focus-visible:shadow-ring',
+                  d.severity === 'error'
+                    ? 'border-danger/30 bg-danger/5 text-danger hover:bg-danger/10'
+                    : 'border-warning/30 bg-warning/5 text-warning-fg hover:bg-warning/10',
+                )}
+              >
+                <div className="font-mono text-[11px] opacity-70">
+                  L{d.startLine}:{d.startColumn}
+                  {d.code ? ` · ${d.code}` : ''}
+                </div>
+                <div className="mt-0.5">{d.message}</div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {moduleInfo && errors.length === 0 && (
+        <div className="space-y-2 rounded-md border border-border bg-bg-subtle p-3 text-xs">
+          <div>
+            <span className="font-semibold text-fg">{t('decisionModule')}: </span>
+            <span className="font-mono text-fg-muted">{moduleInfo.name}</span>
+          </div>
+          {moduleInfo.functions.length > 0 && (
+            <div>
+              <span className="font-semibold text-fg">
+                {t('decisionFunctions')}:{' '}
+              </span>
+              <span className="font-mono text-fg-muted">
+                {moduleInfo.functions.join(', ')}
+              </span>
+            </div>
+          )}
+          {moduleInfo.types.length > 0 && (
+            <div>
+              <span className="font-semibold text-fg">{t('decisionTypes')}: </span>
+              <span className="font-mono text-fg-muted">
+                {moduleInfo.types.join(', ')}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

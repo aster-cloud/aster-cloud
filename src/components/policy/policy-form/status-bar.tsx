@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  WifiOff,
+} from 'lucide-react';
+import { cn } from '@/components/ui';
+import type { CompileDiagnostic, CompileState } from './use-compile';
 
 /**
  * Footer status bar — a one-line summary of the editor state plus
@@ -9,9 +18,9 @@ import { useTranslations } from 'next-intl';
  * layout, matching the convention of VS Code / JetBrains.
  *
  * Information density is deliberate: line count, CNL locale,
- * save state, and the two most-used shortcut hints. Anything more
- * earns its place by becoming a "next action" the user might want
- * (added in PR-2 when we add compile status).
+ * compile state, save state, and the two most-used shortcut hints.
+ * The compile chip is itself a status signal — Loader during
+ * pending, ✓ on success, AlertCircle on errors with a count.
  */
 
 export interface StatusBarProps {
@@ -23,6 +32,14 @@ export interface StatusBarProps {
   isDirty: boolean;
   /** Epoch ms of the last localStorage autosave; 0 if none. */
   lastSavedAt: number;
+  /** Real-time compile machine state. */
+  compileState?: CompileState;
+  /** Diagnostics from the most recent compile, for the counts. */
+  compileDiagnostics?: CompileDiagnostic[];
+  /** Non-empty when the compile request itself failed (5xx, network). */
+  compileTransportError?: string;
+  /** Click the compile chip → open decision panel. */
+  onCompileChipClick?: () => void;
 }
 
 export function StatusBar({
@@ -30,6 +47,10 @@ export function StatusBar({
   cnlLocale,
   isDirty,
   lastSavedAt,
+  compileState,
+  compileDiagnostics,
+  compileTransportError,
+  onCompileChipClick,
 }: StatusBarProps) {
   const t = useTranslations('policies.form');
   const lineCount = content.length === 0 ? 0 : content.split('\n').length;
@@ -44,6 +65,32 @@ export function StatusBar({
       <span>{t('statusLines', { count: lineCount })}</span>
       <Separator />
       <span>{t('statusLocale', { locale: cnlLocale.toUpperCase() })}</span>
+
+      {compileState && compileState !== 'idle' && (
+        <>
+          <Separator />
+          {onCompileChipClick ? (
+            <button
+              type="button"
+              onClick={onCompileChipClick}
+              className="rounded px-1 -mx-1 hover:bg-bg-muted focus-visible:outline-none focus-visible:shadow-ring"
+            >
+              <CompileChip
+                state={compileState}
+                diagnostics={compileDiagnostics ?? []}
+                transportError={compileTransportError}
+              />
+            </button>
+          ) : (
+            <CompileChip
+              state={compileState}
+              diagnostics={compileDiagnostics ?? []}
+              transportError={compileTransportError}
+            />
+          )}
+        </>
+      )}
+
       <Separator />
       {isDirty ? (
         <span className="text-warning-fg">{t('statusUnsaved')}</span>
@@ -58,6 +105,61 @@ export function StatusBar({
         <ShortcutHint label={t('statusPaletteHint')} />
       </span>
     </footer>
+  );
+}
+
+function CompileChip({
+  state,
+  diagnostics,
+  transportError,
+}: {
+  state: CompileState;
+  diagnostics: CompileDiagnostic[];
+  transportError?: string;
+}) {
+  const t = useTranslations('policies.form');
+  if (state === 'pending') {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Loader2 aria-hidden className="size-3 animate-spin" />
+        {t('compileChecking')}
+      </span>
+    );
+  }
+  if (state === 'error' && transportError) {
+    return (
+      <span className="inline-flex items-center gap-1 text-danger">
+        <WifiOff aria-hidden className="size-3" />
+        {t('compileTransportError')}
+      </span>
+    );
+  }
+  // ok
+  const errorCount = diagnostics.filter((d) => d.severity === 'error').length;
+  const warningCount = diagnostics.filter(
+    (d) => d.severity === 'warning',
+  ).length;
+  if (errorCount > 0) {
+    return (
+      <span className={cn('inline-flex items-center gap-1 text-danger')}>
+        <AlertCircle aria-hidden className="size-3" />
+        {t('compileErrors', { count: errorCount })}
+      </span>
+    );
+  }
+  if (warningCount > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-warning-fg">
+        <AlertTriangle aria-hidden className="size-3" />
+        {t('compileWarnings', { count: warningCount })}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-success-fg">
+      <CheckCircle2 aria-hidden className="size-3" />
+      {t('compileOk')}
+    </span>
   );
 }
 

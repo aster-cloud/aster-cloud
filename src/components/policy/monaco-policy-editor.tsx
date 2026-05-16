@@ -552,6 +552,12 @@ export function MonacoPolicyEditor({
       }
 
       setIsEditorReady(true);
+      // Expose the monaco namespace on globalThis so sibling client
+      // hooks (e.g. useMonacoMarkers in policy-form/) can call
+      // monaco.editor.setModelMarkers without each remounting their
+      // own loader. Safe — there's a single monaco instance per
+      // window in the @monaco-editor/react integration.
+      (globalThis as { monaco?: typeof import('monaco-editor') }).monaco = monaco;
       onEditorReady?.(editor);
     },
     [lexicon, isDark, vocabulary, onEditorReady, enableAICompletion, tenantId, locale, onToggleAIPanel, onExplainSelection]
