@@ -1,25 +1,36 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  validateSyntaxWithSpan,
+  EN_US,
+  ZH_CN,
+  DE_DE,
+  type Lexicon,
+} from '@aster-cloud/aster-lang-ts/browser';
 
 /**
- * Debounced "compile on type" hook.
+ * Real-time CNL compile-on-type using the in-browser parser.
  *
- * The editor calls this with the current source body and CNL locale;
- * the hook waits for the user to pause typing (default 600 ms), POSTs
- * to /api/policies/compile, and exposes the result as state. An in-
- * flight request is cancelled (via AbortController) the moment fresh
- * input arrives so stale responses can't clobber newer ones.
+ * We deliberately do NOT round-trip to a backend `/compile` endpoint
+ * here: the upstream Java service exposes `/validate` (which takes a
+ * deployed module+function id, not source) but no source-level
+ * compile route — every fetch was returning 502. The browser-bundled
+ * @aster-cloud/aster-lang-ts ships `validateSyntaxWithSpan(source,
+ * lexicon)` for exactly this case: lexer + parser, no type check, no
+ * file-system access. Net result is faster (zero network), works
+ * offline, and the diagnostics carry real line/column spans we can
+ * project onto Monaco markers.
  *
- * State surface:
- *   - `state`: 'idle' | 'pending' | 'ok' | 'error'
- *       - idle    nothing to compile (empty source) or first mount
- *       - pending request in flight (UI shows a spinner / "checking")
- *       - ok      compile succeeded, diagnostics may still be present
- *       - error   transport-level failure (5xx, network); diagnostics
- *                 here are not authoritative
- *   - `diagnostics`: structured ranges from the upstream compiler
- *   - `module`: the parsed module summary on success
+ * State surface (unchanged from the original network-backed shape so
+ * StatusBar / SidePanel keep working):
+ *   - idle    → no source yet
+ *   - pending → debounce window in progress (briefly visible during
+ *               keystroke storms; transitions to ok very quickly
+ *               since parsing is local + synchronous)
+ *   - ok      → validation ran; diagnostics may still be present
+ *   - error   → unrecoverable internal error (would be surprising;
+ *               kept for parity with the previous fetch error path)
  */
 
 export interface CompileDiagnostic {
@@ -44,108 +55,85 @@ export interface UseCompileResult {
   state: CompileState;
   diagnostics: CompileDiagnostic[];
   module?: CompileModuleSummary;
-  /** Server-level failure message (network / 5xx), distinct from
-   *  compiler diagnostics which are routine. */
+  /** Kept on the result type so consumers don't need to change; the
+   *  browser parser path never sets this. */
   transportError?: string;
 }
 
 interface UseCompileOptions {
   source: string;
+  /** CNL locale: 'en' | 'zh' | 'de' — selects the matching lexicon. */
   locale: string;
-  /** Debounce window in ms. */
+  /** Debounce window in ms. Default 250 — parsing is local so we can
+   *  afford a much tighter feedback loop than network-backed compile. */
   debounceMs?: number;
-  /** Pass false to disable while the form is mounting / unmounting. */
   enabled?: boolean;
+}
+
+/** Map our locale strings to the lexicon constants. */
+function lexiconFor(locale: string): Lexicon {
+  if (locale.startsWith('zh')) return ZH_CN;
+  if (locale.startsWith('de')) return DE_DE;
+  return EN_US;
 }
 
 export function useCompile({
   source,
   locale,
-  debounceMs = 600,
+  debounceMs = 250,
   enabled = true,
 }: UseCompileOptions): UseCompileResult {
   const [state, setState] = useState<CompileState>('idle');
   const [diagnostics, setDiagnostics] = useState<CompileDiagnostic[]>([]);
-  const [moduleInfo, setModuleInfo] = useState<CompileModuleSummary | undefined>();
-  const [transportError, setTransportError] = useState<string | undefined>();
 
-  // Track the in-flight request so a follow-on keystroke can cancel it.
-  const inflightRef = useRef<AbortController | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lexicon = useMemo(() => lexiconFor(locale), [locale]);
 
   useEffect(() => {
     if (!enabled) return;
     if (source.trim().length === 0) {
       setState('idle');
       setDiagnostics([]);
-      setModuleInfo(undefined);
-      setTransportError(undefined);
       return;
     }
 
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      if (inflightRef.current) inflightRef.current.abort();
-      const ctrl = new AbortController();
-      inflightRef.current = ctrl;
-      setState('pending');
-
-      fetch('/api/policies/compile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source, locale }),
-        signal: ctrl.signal,
-      })
-        .then(async (res) => {
-          // Even on 4xx the body may carry diagnostics, so we parse
-          // regardless of res.ok and rely on the payload's `success`.
-          const data = (await res.json().catch(() => null)) as
-            | {
-                success?: boolean;
-                error?: string;
-                diagnostics?: CompileDiagnostic[];
-                module?: CompileModuleSummary;
-              }
-            | null;
-          if (!data) {
-            setState('error');
-            setTransportError(`HTTP ${res.status}`);
-            return;
-          }
-          if (!res.ok && !data.diagnostics) {
-            setState('error');
-            setTransportError(data.error || `HTTP ${res.status}`);
-            return;
-          }
-          setDiagnostics(data.diagnostics ?? []);
-          setModuleInfo(data.module);
-          setTransportError(undefined);
-          setState('ok');
-        })
-        .catch((err: unknown) => {
-          if (err instanceof DOMException && err.name === 'AbortError') {
-            // Superseded by a newer request — leave state as 'pending'
-            // so the next response paints.
-            return;
-          }
-          setState('error');
-          setTransportError(
-            err instanceof Error ? err.message : 'Network error',
-          );
-        });
+    setState('pending');
+    const handle = setTimeout(() => {
+      try {
+        const errors = validateSyntaxWithSpan(source, lexicon);
+        const mapped: CompileDiagnostic[] = errors.map((e) => ({
+          // validateSyntaxWithSpan only surfaces errors. We could
+          // upgrade to compile() later for warnings, but for the
+          // real-time loop "error vs nothing" is the right signal.
+          severity: 'error',
+          message: e.message,
+          // The parser is 1-based for lines, 0-based for columns;
+          // Monaco wants 1-based for both. Clamp to >= 1.
+          startLine: e.span?.start.line ?? 1,
+          startColumn: Math.max(1, (e.span?.start.col ?? 0) + 1),
+          endLine: e.span?.end.line ?? e.span?.start.line ?? 1,
+          endColumn: Math.max(
+            1,
+            (e.span?.end.col ?? e.span?.start.col ?? 0) + 1,
+          ),
+        }));
+        setDiagnostics(mapped);
+        setState('ok');
+      } catch (err) {
+        // The browser parser should never throw on user input — it
+        // returns diagnostics for parse failures — but if it does
+        // (e.g. corrupt lexicon), we don't want a runtime crash.
+        // Log and treat as transient.
+        console.warn('[useCompile] parser crashed:', err);
+        setDiagnostics([]);
+        setState('error');
+      }
     }, debounceMs);
 
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [source, locale, debounceMs, enabled]);
+    return () => clearTimeout(handle);
+  }, [source, lexicon, debounceMs, enabled]);
 
-  // Final cleanup: cancel anything in flight on unmount.
-  useEffect(() => {
-    return () => {
-      if (inflightRef.current) inflightRef.current.abort();
-    };
-  }, []);
-
-  return { state, diagnostics, module: moduleInfo, transportError };
+  // No module summary from validateSyntaxWithSpan (it's parse-only,
+  // doesn't surface the Module name back). Leave undefined; consumers
+  // already render a friendly fallback.
+  return { state, diagnostics };
 }

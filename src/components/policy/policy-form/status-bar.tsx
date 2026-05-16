@@ -58,7 +58,7 @@ export function StatusBar({
 
   return (
     <footer
-      className="flex items-center gap-3 border-t border-border bg-bg-subtle px-3 py-1.5 text-xs text-fg-muted"
+      className="mx-4 sm:mx-6 flex items-center gap-3 rounded-md border border-border bg-bg-subtle px-3 py-1.5 text-xs text-fg-muted"
       role="status"
       aria-live="polite"
     >
@@ -181,14 +181,18 @@ function ShortcutHint({ label }: { label: string }) {
  * 30s so the value doesn't lie for long.
  */
 function useTimeAgo(epochMs: number): string {
-  const [now, setNow] = useState(() => Date.now());
+  // Initialize to 0 (not Date.now()) so SSR and the first client
+  // render produce the same DOM — bumping the value happens inside
+  // useEffect, which never runs server-side.
+  const [now, setNow] = useState(0);
   useEffect(() => {
+    setNow(Date.now());
     if (!epochMs) return;
     const t = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(t);
   }, [epochMs]);
 
-  if (!epochMs) return '';
+  if (!epochMs || !now) return '';
   const diffSec = Math.max(0, Math.round((now - epochMs) / 1000));
   if (diffSec < 5) return 'now';
   if (diffSec < 60) return `${diffSec}s ago`;

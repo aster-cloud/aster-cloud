@@ -369,10 +369,16 @@ export function PolicyForm({
   return (
     <div
       data-policy-form-root
-      className="flex h-[calc(100vh-4rem)] flex-col"
+      // Natural-flow layout (NOT a forced 100vh shell) so the
+      // surrounding dashboard <main> can scroll normally. The editor
+      // panel takes a fixed-ish height (clamp between 500 and 720 px
+      // based on viewport) instead of trying to stretch into a flex
+      // parent — that kept growing without bound when main had no
+      // height ceiling, producing the "endless page" symptom.
+      className="flex flex-col gap-3"
     >
       {/* ----- Top bar ----- */}
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-bg px-4 py-3 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-4 px-4 sm:px-6">
         <div className="min-w-0">
           <Breadcrumbs className="mb-1" items={breadcrumbs} />
           <h1 className="truncate font-display text-xl font-semibold tracking-tight text-fg sm:text-2xl">
@@ -429,7 +435,7 @@ export function PolicyForm({
       )}
 
       {/* ----- Meta section ----- */}
-      <div className="px-4 pt-3 sm:px-6">
+      <div className="px-4 sm:px-6">
         <MetaSection
           name={name}
           description={description}
@@ -450,8 +456,13 @@ export function PolicyForm({
       </div>
 
       {/* ----- Editor + Side panel ----- */}
-      <div className="flex min-h-0 flex-1 gap-3 px-4 py-3 sm:px-6">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-border bg-bg shadow-sm">
+      <div
+        className="flex gap-3 px-4 sm:px-6"
+        // Clamp the editor row to a usable working height. Below this,
+        // the page just gains a natural scrollbar — no broken flex.
+        style={{ height: 'clamp(500px, calc(100vh - 16rem), 720px)' }}
+      >
+        <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-border bg-bg shadow-sm overflow-hidden">
           <MonacoPolicyEditor
             value={content}
             onChange={setContent}
@@ -472,7 +483,7 @@ export function PolicyForm({
           />
         </div>
         {sidePanelOpen && (
-          <div className="hidden min-h-0 w-[28rem] lg:flex">
+          <div className="hidden w-[28rem] lg:flex">
             <SidePanel
               editor={editorInstanceRef.current}
               cnlLocale={cnlLocale}

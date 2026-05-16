@@ -127,26 +127,32 @@ export function usePolicyDraft({
   const key = useMemo(() => storageKey(policyId), [policyId]);
   const [lastSavedAt, setLastSavedAt] = useState(0);
 
-  // Pending draft is computed once on mount. We deliberately don't
-  // re-derive on every render — the user accepting or discarding
-  // resolves it and we never want to "re-offer" a draft mid-session.
+  // Pending draft is loaded in useEffect (NOT useState initializer)
+  // to keep the first client render identical to the SSR output —
+  // a useState initializer that reads localStorage produces
+  // server/client divergence and triggers React hydration error #418.
   const [pendingDraft, setPendingDraft] = useState<PolicyDraftFields | null>(
-    () => {
-      if (typeof window === 'undefined') return null;
-      const stored = safeRead(key);
-      if (!stored) return null;
-      const candidate: PolicyDraftFields = {
-        name: stored.name,
-        description: stored.description,
-        content: stored.content,
-        isPublic: stored.isPublic,
-        groupId: stored.groupId,
-      };
-      // Only surface a draft that ACTUALLY differs from the server-
-      // side baseline. If they match, there's nothing to restore.
-      return draftEquals(candidate, baseline) ? null : candidate;
-    },
+    null,
   );
+  const hasLoadedRef = useRef(false);
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+    const stored = safeRead(key);
+    if (!stored) return;
+    const candidate: PolicyDraftFields = {
+      name: stored.name,
+      description: stored.description,
+      content: stored.content,
+      isPublic: stored.isPublic,
+      groupId: stored.groupId,
+    };
+    if (!draftEquals(candidate, baseline)) {
+      setPendingDraft(candidate);
+    }
+    // baseline intentionally omitted — first mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   const isDirty = useMemo(
     () => !draftEquals(fields, baseline),
