@@ -1,4 +1,3 @@
-import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db, teams, teamMembers, policies } from '@/lib/prisma';
@@ -6,16 +5,21 @@ import { eq, desc, sql, inArray } from 'drizzle-orm';
 import { hasFeatureAccess } from '@/lib/usage';
 import { TeamsContent } from './teams-content';
 
+/**
+ * /teams — server shell.
+ *
+ * Resolves session + access flag + pre-aggregated teams list and
+ * hands them to the client. Translation strings are NOT pre-rendered
+ * here anymore: NextIntlClientProvider is mounted in [locale]/layout.tsx
+ * and the client content uses useTranslations() directly. Drops ~25 LOC
+ * of mechanical key listing per page (see audit "prerender anti-pattern").
+ */
 export default async function TeamsPage() {
   const session = await getSession();
   if (!session?.user?.id) {
     redirect('/login');
   }
 
-  const t = await getTranslations('teams');
-  const tNav = await getTranslations('dashboardNav');
-
-  // 检查团队功能访问权限
   const hasAccess = await hasFeatureAccess(session.user.id, 'teamFeatures');
 
   let teamsResult: {
@@ -29,23 +33,19 @@ export default async function TeamsPage() {
   }[] = [];
 
   if (hasAccess) {
-    // 首先获取用户所在的团队 ID
     const userTeamMemberships = await db.query.teamMembers.findMany({
       where: eq(teamMembers.userId, session.user.id),
       columns: { teamId: true, role: true },
     });
 
     if (userTeamMemberships.length > 0) {
-      // 获取这些团队的详细信息
       const teamIds = userTeamMemberships.map((m) => m.teamId);
       const teamsData = await db.query.teams.findMany({
         where: inArray(teams.id, teamIds),
         orderBy: desc(teams.updatedAt),
       });
 
-      // Two GROUP BY queries (one per metric) replace the previous
-      // 2 × N round-trip pattern. For a user with K teams, this drops
-      // from 2K queries to 2.
+      // Two GROUP BY queries replace the previous 2 × N pattern.
       const teamIdList = teamsData.map((t) => t.id);
       const [memberRows, policyRows] = await Promise.all([
         db
@@ -89,38 +89,10 @@ export default async function TeamsPage() {
     }
   }
 
-  // 预渲染所有翻译字符串
-  const translations = {
-    title: t('title'),
-    subtitle: t('subtitle'),
-    newTeam: t('newTeam'),
-    failedToLoad: t('failedToLoad'),
-    noTeams: t('noTeams'),
-    getStarted: t('getStarted'),
-    memberCountTemplate: t.raw('memberCount'),
-    policyCountTemplate: t.raw('policyCount'),
-    roles: {
-      owner: t('roles.owner'),
-      admin: t('roles.admin'),
-      member: t('roles.member'),
-      viewer: t('roles.viewer'),
-    },
-    upgradeRequired: {
-      title: t('upgradeRequired.title'),
-      description: t('upgradeRequired.description'),
-      upgradeButton: t('upgradeRequired.upgradeButton'),
-    },
-    nav: {
-      dashboard: tNav('dashboard'),
-      teams: tNav('teams'),
-    },
-  };
-
   return (
     <TeamsContent
       initialTeams={teamsResult}
       needsUpgrade={!hasAccess}
-      translations={translations}
     />
   );
 }
