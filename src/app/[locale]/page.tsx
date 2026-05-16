@@ -520,6 +520,7 @@ function Footer({ t }: { t: ReturnType<typeof useTranslations> }) {
             <Stack direction="row" gap={6} wrap>
               <FooterLink href="/privacy">{t('footer.privacy')}</FooterLink>
               <FooterLink href="/terms">{t('footer.terms')}</FooterLink>
+              <FooterLink href="/equivalence">{t('footer.equivalence')}</FooterLink>
               <FooterLink href="https://aster-lang.dev/" external>
                 {t('footer.documentation')}
               </FooterLink>
