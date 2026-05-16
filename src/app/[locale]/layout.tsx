@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -64,6 +65,14 @@ export default async function LocaleLayout({ children, params }: Props) {
   // Providing all messages to the client side
   const messages = await getMessages();
 
+  // Per-request CSP nonce, set by middleware.ts on the downstream
+  // request header. Threaded into ThemeProvider so the inline
+  // <script> it injects for FOUC-free theme bootstrapping passes
+  // our strict-dynamic CSP. Without it the script is blocked and
+  // users see a one-frame flash from light → dark on first load.
+  const requestHeaders = await headers();
+  const nonce = requestHeaders.get('x-nonce') ?? undefined;
+
   return (
     <html
       lang={locale}
@@ -74,7 +83,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     >
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider>
+          <ThemeProvider nonce={nonce}>
             <AuthProvider>{children}</AuthProvider>
             {/* Global toast outlet. Sonner is mounted once at locale-layout
                 level so every page can call `toast.success()` / `toast.error()`
