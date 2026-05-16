@@ -379,6 +379,9 @@ export function PoliciesContent({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const tCommon = useTranslations('common');
+  // Hook-based i18n for keys added in PR-E (replaces inline
+  // `locale.startsWith('zh') ? '中文' : 'English'` ternaries).
+  const tForm = useTranslations('policies.form');
 
   // 分组对话框状态
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -619,7 +622,7 @@ export function PoliciesContent({
       if (hasError) {
         // 如果有失败，回滚更改
         await refreshPolicies();
-        setError(locale.startsWith('zh') ? '移动策略失败' : 'Failed to move policy');
+        setError(tForm('failedToMove'));
       } else {
         // 刷新分组以更新策略计数，并清除选择
         await refreshGroups();
@@ -628,9 +631,9 @@ export function PoliciesContent({
     } catch (err) {
       console.error('Failed to update policy group:', err);
       await refreshPolicies();
-      setError(locale.startsWith('zh') ? '移动策略失败' : 'Failed to move policy');
+      setError(tForm('failedToMove'));
     }
-  }, [policies, groups, selectedPolicyIds, locale, refreshPolicies, refreshGroups, clearSelection]);
+  }, [policies, groups, selectedPolicyIds, tForm, refreshPolicies, refreshGroups, clearSelection]);
 
   // 打开删除确认对话框
   const handleDeleteClick = useCallback((policy: Policy) => {
@@ -797,12 +800,12 @@ export function PoliciesContent({
               {isMultiSelectMode ? (
                 <>
                   <Circle className="size-4" aria-hidden />
-                  {locale.startsWith('zh') ? '单选' : 'Single'}
+                  {tForm('selectionSingle')}
                 </>
               ) : (
                 <>
                   <ListChecks className="size-4" aria-hidden />
-                  {locale.startsWith('zh') ? '多选' : 'Multi'}
+                  {tForm('selectionMulti')}
                 </>
               )}
             </button>
@@ -937,16 +940,14 @@ export function PoliciesContent({
         isOpen={deleteDialogOpen}
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
-        title={locale.startsWith('zh') ? '删除策略' : 'Delete Policy'}
+        title={tForm('deleteDialogTitle')}
         description={
           policyToDelete
-            ? locale.startsWith('zh')
-              ? `确定要删除策略 "${policyToDelete.name}" 吗？此操作可以在回收站中撤销。`
-              : `Are you sure you want to delete "${policyToDelete.name}"? This can be undone from the trash.`
+            ? tForm('deleteDialogBody', { name: policyToDelete.name })
             : ''
         }
-        confirmLabel={locale.startsWith('zh') ? '删除' : 'Delete'}
-        cancelLabel={locale.startsWith('zh') ? '取消' : 'Cancel'}
+        confirmLabel={tForm('deleteDialogConfirm')}
+        cancelLabel={tForm('deleteDialogCancel')}
         variant="danger"
         isLoading={isDeleting}
       />

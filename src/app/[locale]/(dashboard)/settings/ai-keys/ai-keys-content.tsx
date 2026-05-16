@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Breadcrumbs } from '@/components/ui';
-import { ConfirmDialog } from '@/components/ui';
+import { useTranslations } from 'next-intl';
+import { Breadcrumbs, ConfirmDialog } from '@/components/ui';
 
 interface BYOKBinding {
   id: string;
@@ -27,16 +27,26 @@ interface AiKeysContentProps {
   locale: string;
 }
 
+/**
+ * Bring-Your-Own-Key settings — fully i18n'd in EN / ZH / DE.
+ *
+ * The previous implementation had the entire UI (labels, errors,
+ * confirm dialog, "Why use BYOK?" explainer) hard-coded in Chinese,
+ * which made the page unreadable for English / German users even
+ * when they switched locale. Strings now flow through next-intl
+ * (settings.aiKeysPage.*) and provider names stay as proper nouns.
+ */
 export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
+  const t = useTranslations('settings.aiKeysPage');
+  const tSettings = useTranslations('settings');
   const [bindings, setBindings] = useState<BYOKBinding[]>(initialBindings);
-  const [provider, setProvider] = useState<'openai' | 'anthropic' | 'vertex'>('openai');
+  const [provider, setProvider] = useState<'openai' | 'anthropic' | 'vertex'>(
+    'openai',
+  );
   const [apiKey, setApiKey] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  // Branded revoke confirmation — replaces window.confirm() so the
-  // dialog matches the rest of the dashboard chrome and isn't locked
-  // to the OS-default Chinese-only string this page used to hard-code.
   const [revokeProvider, setRevokeProvider] = useState<string | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
 
@@ -53,7 +63,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
     setError(null);
     setSuccess(null);
     if (apiKey.length < 20) {
-      setError('API key 太短，至少 20 个字符。');
+      setError(t('keyTooShort'));
       return;
     }
     setSubmitting(true);
@@ -65,20 +75,20 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(data.error || `保存失败 (HTTP ${r.status})`);
+        setError(data.error || t('saveFailed', { status: r.status }));
         return;
       }
       setApiKey('');
-      setSuccess(`${PROVIDER_LABELS[provider]} key 已保存。`);
+      setSuccess(
+        t('saved', { provider: PROVIDER_LABELS[provider] ?? provider }),
+      );
       await refresh();
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleRevoke = (p: string) => {
-    setRevokeProvider(p);
-  };
+  const handleRevoke = (p: string) => setRevokeProvider(p);
 
   const confirmRevoke = async () => {
     if (!revokeProvider) return;
@@ -91,7 +101,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       );
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(data.error || `撤销失败 (HTTP ${r.status})`);
+        setError(data.error || t('revokeFailed', { status: r.status }));
         return;
       }
       await refresh();
@@ -102,8 +112,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   };
 
   const formatDate = (iso: string | null) => {
-    if (!iso) return 'Never';
-    return new Date(iso).toLocaleDateString();
+    if (!iso) return t('never');
+    return new Date(iso).toLocaleDateString(locale);
   };
 
   return (
@@ -111,37 +121,49 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       <Breadcrumbs
         className="mb-4"
         items={[
-          { label: 'Settings', href: '/settings' },
-          { label: 'AI Keys (BYOK)' },
+          { label: tSettings('title'), href: '/settings' },
+          { label: t('breadcrumb') },
         ]}
       />
 
-      <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">AI Keys (Bring Your Own Key)</h1>
+      <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+        {t('title')}
+      </h1>
       <p className="mt-1 text-sm text-fg-muted">
-        绑定您自己的 OpenAI / Anthropic / Vertex AI key，调用 AI 功能时使用您自己的额度，
-        不受平台 LLM 月度配额限制。
-        <Link href={`/${locale}/dashboard`} className="ml-2 text-primary hover:underline">
-          查看 AI 用量 →
+        {t('subtitle')}{' '}
+        <Link
+          href={`/${locale}/dashboard`}
+          className="ml-2 text-primary hover:underline"
+        >
+          {t('viewUsage')}
         </Link>
       </p>
 
       <section className="mt-6 rounded-lg border border-border bg-bg p-6">
-        <h2 className="text-lg font-semibold text-fg">添加 BYOK Key</h2>
+        <h2 className="text-lg font-semibold text-fg">{t('addTitle')}</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-fg">Provider</label>
+            <label className="block text-sm font-medium text-fg">
+              {t('provider')}
+            </label>
             <select
               value={provider}
-              onChange={(e) => setProvider(e.target.value as 'openai' | 'anthropic' | 'vertex')}
+              onChange={(e) =>
+                setProvider(
+                  e.target.value as 'openai' | 'anthropic' | 'vertex',
+                )
+              }
               className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary"
             >
-              <option value="openai">OpenAI (sk-...)</option>
-              <option value="anthropic">Anthropic (sk-ant-...)</option>
-              <option value="vertex">Google Vertex AI</option>
+              <option value="openai">{t('providerOpenai')}</option>
+              <option value="anthropic">{t('providerAnthropic')}</option>
+              <option value="vertex">{t('providerVertex')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-fg">API Key</label>
+            <label className="block text-sm font-medium text-fg">
+              {t('apiKey')}
+            </label>
             <input
               type="password"
               value={apiKey}
@@ -151,16 +173,18 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
               className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary"
               required
             />
-            <p className="mt-1 text-xs text-fg-muted">
-              Key 通过 pgcrypto 加密保存；明文不可恢复。
-            </p>
+            <p className="mt-1 text-xs text-fg-muted">{t('apiKeyHint')}</p>
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+              {error}
+            </div>
           )}
           {success && (
-            <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">{success}</div>
+            <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">
+              {success}
+            </div>
           )}
 
           <button
@@ -168,87 +192,97 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
             disabled={submitting}
             className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
           >
-            {submitting ? 'Saving...' : 'Save Key'}
+            {submitting ? t('saving') : t('save')}
           </button>
         </form>
       </section>
 
       <section className="mt-6 rounded-lg border border-border bg-bg p-6">
-        <h2 className="text-lg font-semibold text-fg">已绑定的 Keys</h2>
+        <h2 className="text-lg font-semibold text-fg">{t('boundTitle')}</h2>
         {bindings.length === 0 ? (
-          <p className="mt-3 text-sm text-fg-muted">未绑定任何 BYOK key。AI 调用会使用平台月度配额。</p>
+          <p className="mt-3 text-sm text-fg-muted">{t('noneBound')}</p>
         ) : (
-          <table className="mt-4 w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs uppercase text-fg-muted">
-                <th className="pb-2 text-left">Provider</th>
-                <th className="pb-2 text-left">Key Hint</th>
-                <th className="pb-2 text-left">Status</th>
-                <th className="pb-2 text-left">Last Used</th>
-                <th className="pb-2 text-left">Created</th>
-                <th className="pb-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bindings.map((b) => (
-                <tr key={b.id} className="border-b border-border">
-                  <td className="py-3">{PROVIDER_LABELS[b.provider] ?? b.provider}</td>
-                  <td className="py-3 font-mono text-xs">****{b.keyHint}</td>
-                  <td className="py-3">
-                    {b.active ? (
-                      <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="rounded bg-bg-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
-                        Disabled
-                      </span>
-                    )}
-                    {b.lastError && (
-                      <span
-                        className="ml-2 cursor-help rounded bg-red-100 px-2 py-0.5 text-xs text-red-700"
-                        title={b.lastError}
-                      >
-                        Last error
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 text-fg-muted">{formatDate(b.lastUsedAt)}</td>
-                  <td className="py-3 text-fg-muted">{formatDate(b.createdAt)}</td>
-                  <td className="py-3">
-                    <button
-                      onClick={() => handleRevoke(b.provider)}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      Revoke
-                    </button>
-                  </td>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs uppercase text-fg-muted">
+                  <th className="pb-2 text-left">{t('thProvider')}</th>
+                  <th className="pb-2 text-left">{t('thKeyHint')}</th>
+                  <th className="pb-2 text-left">{t('thStatus')}</th>
+                  <th className="pb-2 text-left">{t('thLastUsed')}</th>
+                  <th className="pb-2 text-left">{t('thCreated')}</th>
+                  <th className="pb-2 text-left">{t('thActions')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bindings.map((b) => (
+                  <tr key={b.id} className="border-b border-border">
+                    <td className="py-3">
+                      {PROVIDER_LABELS[b.provider] ?? b.provider}
+                    </td>
+                    <td className="py-3 font-mono text-xs">****{b.keyHint}</td>
+                    <td className="py-3">
+                      {b.active ? (
+                        <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          {t('statusActive')}
+                        </span>
+                      ) : (
+                        <span className="rounded bg-bg-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
+                          {t('statusDisabled')}
+                        </span>
+                      )}
+                      {b.lastError && (
+                        <span
+                          className="ml-2 cursor-help rounded bg-red-100 px-2 py-0.5 text-xs text-red-700"
+                          title={b.lastError}
+                        >
+                          {t('lastError')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 text-fg-muted">
+                      {formatDate(b.lastUsedAt)}
+                    </td>
+                    <td className="py-3 text-fg-muted">
+                      {formatDate(b.createdAt)}
+                    </td>
+                    <td className="py-3">
+                      <button
+                        onClick={() => handleRevoke(b.provider)}
+                        className="text-xs text-red-600 hover:underline"
+                      >
+                        {t('revoke')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
       <section className="mt-6 rounded-lg border border-border bg-bg-subtle p-6">
-        <h3 className="text-base font-semibold text-fg">为什么用 BYOK？</h3>
+        <h3 className="text-base font-semibold text-fg">{t('whyTitle')}</h3>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-fg">
-          <li>不消耗平台月度 AI 配额（Free 20 / Pro 500 / Team 500/seat）</li>
-          <li>调用直接走您 provider 账户结算，使用您的速率限制</li>
-          <li>合规场景下数据不落到第三方（Vertex 部署在您 GCP 项目内）</li>
+          <li>{t('whyQuota')}</li>
+          <li>{t('whyBilling')}</li>
+          <li>{t('whyCompliance')}</li>
         </ul>
       </section>
 
       <ConfirmDialog
         isOpen={revokeProvider !== null}
-        title="撤销 BYOK key"
+        title={t('revokeDialogTitle')}
         description={
           revokeProvider
-            ? `确定要撤销 ${PROVIDER_LABELS[revokeProvider] ?? revokeProvider} 的 BYOK key 吗？此后会回到平台 LLM 配额。`
+            ? t('revokeDialogBody', {
+                provider: PROVIDER_LABELS[revokeProvider] ?? revokeProvider,
+              })
             : ''
         }
-        confirmLabel="撤销"
-        cancelLabel="取消"
+        confirmLabel={t('revokeDialogConfirm')}
+        cancelLabel={t('revokeDialogCancel')}
         variant="danger"
         isLoading={isRevoking}
         onConfirm={confirmRevoke}
