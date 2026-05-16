@@ -11,7 +11,39 @@ import {
 /**
  * POST /api/policies/evaluate-source
  *
- * 直接执行策略源代码，适用于示例策略和即时测试场景
+ * 直接执行策略源代码，适用于示例策略和即时测试场景。
+ *
+ * ============================================================
+ * SCOPE — read before adding new callers.
+ * ============================================================
+ *
+ * 这个 endpoint 的用户是 **外部开发者**：通过 quickstart docs
+ * (`aster-lang-dev/docs/getting-started/quickstart.md`) 在 curl /
+ * SDK 里 "POST 一段 source 立刻看结果"，不必先 CREATE 一个 stored
+ * policy。AKA-9 加固后由 HMAC + InternalCallerFilter + 登录会话
+ * 三重保护，禁止外部 SDK 客户绕过审核流提交源码。这是有意为之的
+ * 开发体验 API。
+ *
+ * Dashboard 编辑流（/policies/new, /policies/[id]/edit）**不要**
+ * 调用本 endpoint。Dashboard 的两类操作走完全独立的路径：
+ *
+ *   - 实时校验 → `validateSyntaxWithSpan()`（@aster-cloud/aster-lang-ts，
+ *     纯 client-side，不出浏览器）
+ *   - 执行     → `/api/policies/[id]/execute`（按 id 从 DB 读 source）
+ *
+ * 为什么 dashboard 必须走 by-id execute、即使是"我刚保存的 policy"
+ * 也要再从 DB 读一次：
+ *   1. MITM 加固——攻击者劫持浏览器会话也无法把 buffer 里的恶意
+ *      source 替换掉数据库里的版本。
+ *   2. 用户心智契约——dashboard 用户点 Run 期望执行的是"我刚保存
+ *      的版本"。把 buffer 直送 evaluate-source 会出现 audit 日志
+ *      和 version 历史都解释不了的 ghost behavior。
+ *   3. Audit chain——policy_versions + executions 是按 id 串起来
+ *      的；buffer 直接执行会让审计链断裂。
+ *
+ * 如果你正在加 dashboard 的 "Quick test" 按钮，正确做法是：先
+ * 调 PUT /api/policies/[id]（写入并自增 version），再调
+ * /api/policies/[id]/execute 用刚保存的版本执行。
  */
 export async function POST(req: Request) {
   try {

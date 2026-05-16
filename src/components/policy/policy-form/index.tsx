@@ -1,3 +1,49 @@
+/**
+ * PolicyForm — shared editor shell for /policies/new and
+ * /policies/[id]/edit.
+ *
+ * ============================================================
+ * SECURITY MODEL — do not break this invariant.
+ * ============================================================
+ *
+ * VALIDATE (real-time editor feedback):
+ *   Runs entirely client-side via @aster-cloud/aster-lang-ts's
+ *   `validateSyntaxWithSpan()` (see use-compile.ts). Source never
+ *   leaves the browser; diagnostics paint as Monaco markers in
+ *   the same tick. Cost: zero network, zero MITM surface.
+ *
+ * EXECUTE (any "Run" / "Test" button reachable from the dashboard):
+ *   MUST POST to /api/policies/[id]/execute and pass only the
+ *   `input` payload. The backend resolves the policy SOURCE by id
+ *   from Postgres / the policy KV cache. The current source the
+ *   user has typed but not saved is irrelevant — only persisted,
+ *   ownership-checked content is ever interpreted.
+ *
+ * NEVER, from inside this form (or any other dashboard surface):
+ *   - POST the editor buffer to /api/policies/evaluate-source
+ *   - POST the editor buffer to /api/policies/[id]/execute as a
+ *     `source` field
+ *   - Pipe the editor buffer into ANY runtime path
+ *
+ * Why this matters:
+ *   1. MITM hardening — even if a browser session is hijacked,
+ *      what runs in prod is whatever's in the database, not what
+ *      the attacker injects mid-flight.
+ *   2. Mental-model contract — when a dashboard user clicks Run,
+ *      they expect the result to match the version they last
+ *      saved. Silently substituting the editor buffer creates
+ *      ghost behavior the version history won't explain.
+ *   3. Audit chain — DB-resolved execution is what the policy
+ *      version table + executions log are keyed against. Source-
+ *      from-buffer execution would orphan the audit trail.
+ *
+ * The /api/policies/evaluate-source endpoint *exists* (and is
+ * actively promoted in aster-lang-dev's quickstart docs) for
+ * developer experimentation — "no need to CREATE a policy first."
+ * That is a separate, deliberate dev-experience API protected by
+ * HMAC + InternalCallerFilter + login session. It is correct for
+ * curl + SDKs. It is wrong for the dashboard editor.
+ */
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
