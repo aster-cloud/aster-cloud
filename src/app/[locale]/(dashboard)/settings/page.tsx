@@ -1,101 +1,72 @@
 /**
- * User settings page.
+ * User settings — server shell + client islands.
  *
- * W2.3 rewrite:
- *   - 4 setting cards (API keys link, language detection toggle, profile,
- *     account actions) each in a Card
- *   - "Danger zone" card uses a danger-tinted top border so it reads as
- *     destructive without being overpowered
- *   - Bespoke delete-confirmation modal replaced with ConfirmDialog
- *     (already in our ui/ as a separate, more accessible primitive)
- *   - Cookie I/O + session handling unchanged
+ * Server-rendered:
+ *   - Title / subtitle
+ *   - Setting cards layout + copy
+ *   - Profile values pulled directly from session.user (no client-side
+ *     useSession() round-trip, no first-paint "Not set" flicker)
+ *   - Initial value of the locale-detection toggle, read from the
+ *     server-side cookie so the switch never flips on-then-off after
+ *     hydration
+ *
+ * Client islands (settings-client.tsx):
+ *   - LocaleDetectionToggle  → cookie write + router.refresh()
+ *   - SignOutButton          → next-auth signOut()
+ *   - DeleteAccountFlow      → destructive confirm + DELETE call
  */
-'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
-import { useTranslations, useLocale } from 'next-intl';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { defaultLocale } from '@/i18n/config';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { getSession } from '@/lib/auth';
 import {
-  Alert,
-  AlertDescription,
   buttonVariants,
-  Button,
   Card,
   CardBody,
   Container,
   Stack,
   cn,
 } from '@/components/ui';
+import {
+  LocaleDetectionToggle,
+  SignOutButton,
+  DeleteAccountFlow,
+} from './settings-client';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
 
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? match[2] : null;
+interface PageProps {
+  params: Promise<{ locale: string }>;
 }
 
-function setCookie(name: string, value: string, days = 365) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`;
-}
+export default async function SettingsPage({ params }: PageProps) {
+  const { locale } = await params;
+  const session = await getSession();
+  if (!session?.user) {
+    redirect(`/${locale}/login`);
+  }
 
-export default function SettingsPage() {
-  const t = useTranslations('settings');
-  const locale = useLocale();
-  const router = useRouter();
-  const { data: session } = useSession();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [localeDetection, setLocaleDetection] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const t = await getTranslations('settings');
 
-  // Build locale-aware callback URL — default locale = no prefix.
+  // Seed the toggle's initial state on the server so it doesn't flip
+  // after hydration. Cookie absent ⇒ feature off (matches prior client
+  // behavior).
+  const cookieStore = await cookies();
+  const localeDetection =
+    cookieStore.get(LOCALE_DETECTION_COOKIE)?.value === 'true';
+
   const localePrefix = locale === defaultLocale ? '' : `/${locale}`;
   const logoutCallbackUrl = `${localePrefix}/`;
 
-  useEffect(() => {
-    const saved = getCookie(LOCALE_DETECTION_COOKIE);
-    if (saved !== null) {
-      setLocaleDetection(saved === 'true');
-    }
-  }, []);
-
-  const handleLocaleDetectionToggle = () => {
-    const next = !localeDetection;
-    setLocaleDetection(next);
-    setCookie(LOCALE_DETECTION_COOKIE, String(next));
-    // router.refresh() re-runs the RSC pipeline so middleware reads the
-    // updated cookie on the next request, but keeps client state intact
-    // — no full white-screen reload, no scroll position lost.
-    router.refresh();
-  };
-
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    await signOut({ callbackUrl: logoutCallbackUrl });
-  };
-
-  const handleDeleteAccount = async () => {
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      const response = await fetch('/api/user/delete', { method: 'DELETE' });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete account');
-      }
-      await signOut({ callbackUrl: logoutCallbackUrl });
-    } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : 'Failed to delete account');
-      setIsDeleting(false);
-    }
-  };
+  const profileName = session.user.name || t('profile.notSet');
+  const profileEmail = session.user.email || t('profile.notSet');
+  // session.user.plan is a custom field stitched on by the NextAuth
+  // callback; fall back to "Free" when the trial/seed user hasn't been
+  // assigned a plan yet.
+  const profilePlan = (session.user as { plan?: string }).plan || 'Free';
 
   return (
     <Container size="base" className="py-6 sm:py-10">
@@ -121,7 +92,7 @@ export default function SettingsPage() {
           }
         />
 
-        {/* Language preferences (toggle) */}
+        {/* Language preferences (client toggle island) */}
         <Card>
           <CardBody className="pt-6">
             <Stack gap={4}>
@@ -133,20 +104,18 @@ export default function SettingsPage() {
                   <p className="text-sm font-medium text-fg">{t('language.autoDetect')}</p>
                   <p className="text-sm text-fg-muted">{t('language.autoDetectDesc')}</p>
                 </Stack>
-                <Toggle
-                  checked={localeDetection}
-                  onChange={handleLocaleDetectionToggle}
+                <LocaleDetectionToggle
+                  initialChecked={localeDetection}
                   ariaLabel={t('language.autoDetect')}
+                  enabledHint={t('language.enabled')}
+                  disabledHint={t('language.disabled')}
                 />
               </Stack>
-              <p className="text-xs text-fg-subtle">
-                {localeDetection ? t('language.enabled') : t('language.disabled')}
-              </p>
             </Stack>
           </CardBody>
         </Card>
 
-        {/* Profile fields (read-only display) */}
+        {/* Profile fields — rendered fully on the server now. */}
         <Card>
           <CardBody className="pt-6">
             <Stack gap={4}>
@@ -154,32 +123,29 @@ export default function SettingsPage() {
                 {t('profile.title')}
               </h2>
               <Stack gap={3}>
-                <ProfileField label={t('profile.name')} value={session?.user?.name || t('profile.notSet')} />
-                <ProfileField label={t('profile.email')} value={session?.user?.email || t('profile.notSet')} />
-                <ProfileField label={t('profile.plan')} value={session?.user?.plan || 'Free'} capitalize />
+                <ProfileField label={t('profile.name')} value={profileName} />
+                <ProfileField label={t('profile.email')} value={profileEmail} />
+                <ProfileField label={t('profile.plan')} value={profilePlan} capitalize />
               </Stack>
             </Stack>
           </CardBody>
         </Card>
 
-        {/* Account actions (sign out) */}
+        {/* Account actions (sign out — client island) */}
         <SettingCard
           title={t('account.title')}
           subtitle={t('account.signOut')}
           description={t('account.signOutDesc')}
           action={
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-            >
-              {isLoggingOut ? t('account.signingOut') : t('account.signOut')}
-            </Button>
+            <SignOutButton
+              signOutLabel={t('account.signOut')}
+              signingOutLabel={t('account.signingOut')}
+              callbackUrl={logoutCallbackUrl}
+            />
           }
         />
 
-        {/* Danger zone — rose-tinted border to telegraph destructive context */}
+        {/* Danger zone — destructive flow lives in the client island. */}
         <Card className="border-rose-200">
           <CardBody className="pt-6">
             <Stack gap={4}>
@@ -191,50 +157,31 @@ export default function SettingsPage() {
                   <p className="text-sm font-medium text-fg">{t('dangerZone.deleteAccount')}</p>
                   <p className="text-sm text-fg-muted">{t('dangerZone.deleteAccountDesc')}</p>
                 </Stack>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => setShowDeleteModal(true)}
-                >
-                  {t('dangerZone.deleteAccount')}
-                </Button>
+                <DeleteAccountFlow
+                  triggerLabel={t('dangerZone.deleteAccount')}
+                  callbackUrl={logoutCallbackUrl}
+                  labels={{
+                    confirmTitle: t('dangerZone.confirmTitle'),
+                    confirmMessage: t('dangerZone.confirmMessage'),
+                    confirmItem1: t('dangerZone.confirmItem1'),
+                    confirmItem2: t('dangerZone.confirmItem2'),
+                    confirmItem3: t('dangerZone.confirmItem3'),
+                    confirmDelete: t('dangerZone.confirmDelete'),
+                    cancel: t('dangerZone.cancel'),
+                    deleting: t('dangerZone.deleting'),
+                  }}
+                />
               </Stack>
             </Stack>
           </CardBody>
         </Card>
       </Stack>
-
-      <ConfirmDialog
-        isOpen={showDeleteModal}
-        onCancel={() => !isDeleting && setShowDeleteModal(false)}
-        onConfirm={handleDeleteAccount}
-        title={t('dangerZone.confirmTitle')}
-        description={
-          <Stack gap={3}>
-            <p>{t('dangerZone.confirmMessage')}</p>
-            <ul className="list-inside list-disc space-y-1 text-sm text-fg-muted">
-              <li>{t('dangerZone.confirmItem1')}</li>
-              <li>{t('dangerZone.confirmItem2')}</li>
-              <li>{t('dangerZone.confirmItem3')}</li>
-            </ul>
-            {deleteError && (
-              <Alert variant="danger">
-                <AlertDescription>{deleteError}</AlertDescription>
-              </Alert>
-            )}
-          </Stack>
-        }
-        confirmLabel={isDeleting ? t('dangerZone.deleting') : t('dangerZone.confirmDelete')}
-        cancelLabel={t('dangerZone.cancel')}
-        variant="danger"
-        isLoading={isDeleting}
-      />
     </Container>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* SettingCard — header row + right-aligned action                     */
+/* SettingCard — server-rendered card with right-aligned action       */
 /* ------------------------------------------------------------------ */
 
 interface SettingCardProps {
@@ -277,42 +224,5 @@ function ProfileField({
       <p className="text-sm font-medium text-fg-muted">{label}</p>
       <p className={cn('text-sm text-fg', capitalize && 'capitalize')}>{value}</p>
     </Stack>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Toggle — small switch styled to match the brand                     */
-/* ------------------------------------------------------------------ */
-
-interface ToggleProps {
-  checked: boolean;
-  onChange: () => void;
-  ariaLabel: string;
-}
-
-function Toggle({ checked, onChange, ariaLabel }: ToggleProps) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={ariaLabel}
-      onClick={onChange}
-      className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent',
-        'transition-colors duration-fast ease-standard',
-        'focus-visible:outline-none focus-visible:shadow-ring',
-        checked ? 'bg-primary' : 'bg-bg-muted',
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          'pointer-events-none inline-block size-5 transform rounded-full bg-bg shadow ring-0',
-          'transition-transform duration-fast ease-standard',
-          checked ? 'translate-x-5' : 'translate-x-0',
-        )}
-      />
-    </button>
   );
 }

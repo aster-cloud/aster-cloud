@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Toaster } from 'sonner';
 import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
 import { AuthProvider } from "@/components/providers/session-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { locales, type Locale } from '@/i18n/config';
 import "../globals.css";
 
@@ -66,20 +67,25 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html
       lang={locale}
+      // next-themes flips data-theme on the client before hydration so
+      // a server/client mismatch on <html> is expected and benign.
+      suppressHydrationWarning
       className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <AuthProvider>{children}</AuthProvider>
-          {/* Global toast outlet. Sonner is mounted once at locale-layout
-              level so every page can call `toast.success()` / `toast.error()`
-              without each owning its own ad-hoc banner state. */}
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton
-            toastOptions={{ className: 'font-sans' }}
-          />
+          <ThemeProvider>
+            <AuthProvider>{children}</AuthProvider>
+            {/* Global toast outlet. Sonner is mounted once at locale-layout
+                level so every page can call `toast.success()` / `toast.error()`
+                without each owning its own ad-hoc banner state. */}
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              toastOptions={{ className: 'font-sans' }}
+            />
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

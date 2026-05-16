@@ -7,6 +7,7 @@ import {
 } from '@/components/dashboard-nav';
 import { CommandPalette } from '@/components/dashboard/command-palette';
 import { buildCommands } from '@/components/dashboard/command-palette-commands';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import { getEffectiveRole, canAccess } from '@/lib/effective-role';
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
   const tMobile = await getTranslations('dashboardNav.mobile');
   const tAdmin = await getTranslations('admin.riskTier');
   const tCmd = await getTranslations('dashboardNav.commandPalette');
+  const tCommon = await getTranslations('common');
 
   const session = await getSession();
   const userId = session?.user?.id ?? null;
@@ -72,9 +74,9 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-bg-subtle text-fg">
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-gray-200 relative">
+      <nav className="bg-bg border-b border-border relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -130,12 +132,19 @@ export default async function DashboardLayout({
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="text-sm text-gray-500 hover:text-gray-700"
+                    className="text-sm text-fg-muted hover:text-fg"
                   >
                     {item.label}
                   </Link>
                 ))}
               </div>
+              <ThemeToggle
+                labels={{
+                  light: tCommon('themeLight'),
+                  dark: tCommon('themeDark'),
+                  system: tCommon('themeSystem'),
+                }}
+              />
               <LanguageSwitcher />
               {/* User dropdown with sign out */}
               <UserDropdown

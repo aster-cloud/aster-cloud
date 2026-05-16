@@ -16,7 +16,10 @@
     "notFoundBody": "The page you were looking for doesn't exist or has moved.",
     "backToDashboard": "Back to dashboard",
     "cancel": "Cancel",
-    "searchPlaceholder": "Search…"
+    "searchPlaceholder": "Search…",
+    "themeLight": "Light theme",
+    "themeDark": "Dark theme",
+    "themeSystem": "System theme"
   },
   "nav": {
     "brand": "Aster Cloud"

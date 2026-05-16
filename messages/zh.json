@@ -16,7 +16,10 @@
     "notFoundBody": "你访问的页面不存在或已被移动。",
     "backToDashboard": "返回仪表盘",
     "cancel": "取消",
-    "searchPlaceholder": "搜索…"
+    "searchPlaceholder": "搜索…",
+    "themeLight": "浅色主题",
+    "themeDark": "深色主题",
+    "themeSystem": "跟随系统"
   },
   "nav": {
     "brand": "Aster Cloud"

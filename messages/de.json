@@ -16,7 +16,10 @@
     "notFoundBody": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
     "backToDashboard": "Zurück zum Dashboard",
     "cancel": "Abbrechen",
-    "searchPlaceholder": "Suchen…"
+    "searchPlaceholder": "Suchen…",
+    "themeLight": "Helles Thema",
+    "themeDark": "Dunkles Thema",
+    "themeSystem": "Systemthema"
   },
   "nav": {
     "brand": "Aster Cloud"
