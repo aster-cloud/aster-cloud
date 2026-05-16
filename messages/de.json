@@ -1123,6 +1123,11 @@
   "settings": {
     "title": "Einstellungen",
     "subtitle": "Verwalten Sie Ihre Kontoeinstellungen und Präferenzen.",
+    "dataCard": {
+      "title": "Deine Daten (DSGVO)",
+      "subtitle": "Lade die für dich gespeicherten KI-Konversationen herunter oder lösche sie.",
+      "open": "Daten verwalten"
+    },
     "apiKeys": {
       "title": "API-Schlüssel",
       "subtitle": "Verwalten Sie API-Schlüssel für den programmatischen Zugriff auf Aster Cloud.",
@@ -1165,6 +1170,52 @@
         "error404": "Richtlinie nicht gefunden",
         "error429": "Ratenlimit überschritten, bitte später erneut versuchen"
       }
+    },
+    "dataPage": {
+      "breadcrumb": "Meine Daten",
+      "title": "Deine KI-Daten",
+      "subtitle": "Gemäß DSGVO Art. 15 und 17 hast du das Recht, die gespeicherten KI-Konversationen einzusehen und zu löschen. Verwende die Aktionen unten.",
+      "downloadCard": {
+        "title": "Kopie herunterladen",
+        "body": "Exportiert jeden gespeicherten KI-Aufruf (Prompt + Antwort + Sicherheits-Flags) als JSON-Datei. Nützlich für Compliance-Archive oder Migration.",
+        "action": "JSON herunterladen"
+      },
+      "deleteCard": {
+        "title": "KI-Konversationsinhalte löschen",
+        "body": "Löscht dauerhaft den verschlüsselten Prompt + die Antwort + den redigierten Text aller deiner KI-Aufrufe. Aggregierte Zähler (Tokens, Kosten, Status) bleiben für Abrechnung und Missbrauchserkennung erhalten — DSGVO-konform.",
+        "action": "Inhalte löschen",
+        "confirmTitle": "KI-Konversationsinhalte löschen?",
+        "confirmBody": "Löscht die ursprünglichen Prompts und Antworten von {count, plural, =0 {keinen Datensätzen} one {# Datensatz} other {# Datensätzen}}. Zähler und Abrechnungs-Metadaten bleiben erhalten.",
+        "confirmAction": "Löschen",
+        "confirmCancel": "Abbrechen",
+        "success": "{count, plural, =0 {Nichts zu löschen} one {# Datensatz gelöscht} other {# Datensätze gelöscht}}",
+        "failure": "Löschen fehlgeschlagen: {error}"
+      },
+      "downloadFailure": "Download fehlgeschlagen: {error}",
+      "lastUpdatedAt": "Erstellt am {iso}"
+    },
+    "aiCircuitBreakerPage": {
+      "breadcrumb": "KI-Schutzschalter",
+      "title": "KI-Schutzschalter",
+      "subtitle": "Manueller Override für den plattformweiten LLM-Notschalter. Nur verwenden, wenn ein Upstream-LLM-Anbieter dauerhaft gestört ist und neue Aufrufe gestoppt werden müssen.",
+      "todaySpend": "Heutige Plattform-Ausgaben",
+      "spendUsd": "${usd}",
+      "currentState": "Aktueller Zustand",
+      "stateOpen": "Offen (Aufrufe zugelassen)",
+      "stateClosedFree": "Geschlossen für Free-Plan",
+      "stateClosedTrial": "Geschlossen für Free + Trial",
+      "stateClosedAll": "Geschlossen für alle Pläne",
+      "thresholds": "Auto-Auslöse-Schwellen",
+      "thresholdFree": "Free-Stopp ${usd}",
+      "thresholdTrial": "Trial-Stopp ${usd}",
+      "release": "Schaltkreis freigeben",
+      "releaseConfirmTitle": "Schaltkreis freigeben?",
+      "releaseConfirmBody": "Neue KI-Aufrufe aller Pläne werden wieder zugelassen. Nur tun, wenn das Upstream-Problem behoben ist.",
+      "releaseConfirmAction": "Freigeben",
+      "releaseConfirmCancel": "Abbrechen",
+      "releaseSuccess": "Schaltkreis freigegeben.",
+      "releaseFailure": "Freigabe fehlgeschlagen: {error}",
+      "refresh": "Aktualisieren"
     },
     "aiKeysPage": {
       "breadcrumb": "KI-Schlüssel (BYOK)",
@@ -1245,6 +1296,9 @@
     "description": "Überwachen Sie Sicherheitsereignisse, Prüfprotokolle und den Systemzustand."
   },
   "admin": {
+    "aiCircuitBreaker": {
+      "title": "KI-Schutzschalter"
+    },
     "riskTier": {
       "title": "Risiko-Tier-Triage",
       "subtitle": "Benutzer mit Registrierungs-Risiko ≥ 1. Vor dem Herabstufen den Grund prüfen; jede Übersteuerung wird im Audit-Log protokolliert.",

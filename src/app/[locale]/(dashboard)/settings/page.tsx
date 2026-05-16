@@ -92,6 +92,20 @@ export default async function SettingsPage({ params }: PageProps) {
           }
         />
 
+        {/* GDPR data — Article 15 (access) + Article 17 (erasure). */}
+        <SettingCard
+          title={t('dataCard.title')}
+          description={t('dataCard.subtitle')}
+          action={
+            <Link
+              href="/settings/data"
+              className={buttonVariants({ variant: 'secondary', size: 'md' })}
+            >
+              {t('dataCard.open')}
+            </Link>
+          }
+        />
+
         {/* Language preferences (client toggle island) */}
         <Card>
           <CardBody className="pt-6">

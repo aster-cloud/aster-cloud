@@ -1123,6 +1123,11 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account settings and preferences.",
+    "dataCard": {
+      "title": "Your data (GDPR)",
+      "subtitle": "Download or erase the AI conversations we have stored for you.",
+      "open": "Manage data"
+    },
     "apiKeys": {
       "title": "API Keys",
       "subtitle": "Manage API keys for programmatic access to Aster Cloud.",
@@ -1165,6 +1170,52 @@
         "error404": "Policy not found",
         "error429": "Rate limit exceeded, please retry later"
       }
+    },
+    "dataPage": {
+      "breadcrumb": "My data",
+      "title": "Your AI data",
+      "subtitle": "Under GDPR Articles 15 and 17 you have the right to access and erase the AI conversations we store. Use the actions below.",
+      "downloadCard": {
+        "title": "Download a copy",
+        "body": "Exports every AI call we have for you (prompt + completion + safety flags) as a JSON file. Useful for compliance archives or to migrate elsewhere.",
+        "action": "Download JSON"
+      },
+      "deleteCard": {
+        "title": "Erase AI conversation content",
+        "body": "Permanently clears the encrypted prompt + completion + redacted text of every AI call you have made. We keep aggregate counters (tokens, cost, status) for billing and abuse detection — those are GDPR-permitted.",
+        "action": "Erase content",
+        "confirmTitle": "Erase your AI conversation content?",
+        "confirmBody": "This wipes the original prompts and completions across {count, plural, =0 {no records} one {# record} other {# records}}. Counts and billing metadata are kept.",
+        "confirmAction": "Erase",
+        "confirmCancel": "Cancel",
+        "success": "{count, plural, =0 {Nothing to erase} one {# record erased} other {# records erased}}",
+        "failure": "Failed to erase: {error}"
+      },
+      "downloadFailure": "Failed to download data: {error}",
+      "lastUpdatedAt": "Generated at {iso}"
+    },
+    "aiCircuitBreakerPage": {
+      "breadcrumb": "AI circuit breaker",
+      "title": "AI circuit breaker",
+      "subtitle": "Manual override for the platform-wide LLM kill switch. Use only when an upstream LLM provider is sustained-degraded and we need to stop new calls from accruing cost.",
+      "todaySpend": "Today's platform spend",
+      "spendUsd": "${usd}",
+      "currentState": "Current state",
+      "stateOpen": "Open (calls allowed)",
+      "stateClosedFree": "Closed for Free plan",
+      "stateClosedTrial": "Closed for Free + Trial plans",
+      "stateClosedAll": "Closed for all plans",
+      "thresholds": "Auto-trip thresholds",
+      "thresholdFree": "Free stop ${usd}",
+      "thresholdTrial": "Trial stop ${usd}",
+      "release": "Release circuit",
+      "releaseConfirmTitle": "Release the circuit?",
+      "releaseConfirmBody": "New AI calls from all plans will be allowed again. Only do this if you've confirmed the upstream incident is resolved.",
+      "releaseConfirmAction": "Release",
+      "releaseConfirmCancel": "Cancel",
+      "releaseSuccess": "Circuit released.",
+      "releaseFailure": "Failed to release: {error}",
+      "refresh": "Refresh"
     },
     "aiKeysPage": {
       "breadcrumb": "AI Keys (BYOK)",
@@ -1245,6 +1296,9 @@
     "description": "Monitor security events, audit logs, and system health."
   },
   "admin": {
+    "aiCircuitBreaker": {
+      "title": "AI circuit breaker"
+    },
     "riskTier": {
       "title": "Risk-tier Triage",
       "subtitle": "Users with non-zero registration risk. Verify the reason before reducing tier; every override is logged.",

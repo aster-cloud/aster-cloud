@@ -1123,6 +1123,11 @@
   "settings": {
     "title": "设置",
     "subtitle": "管理您的账户设置和偏好。",
+    "dataCard": {
+      "title": "你的数据（GDPR）",
+      "subtitle": "下载或清除我们为你存储的 AI 对话。",
+      "open": "管理数据"
+    },
     "apiKeys": {
       "title": "API 密钥",
       "subtitle": "管理用于访问 Aster Cloud 的 API 密钥。",
@@ -1165,6 +1170,52 @@
         "error404": "策略未找到",
         "error429": "请求频率超限，请稍后重试"
       }
+    },
+    "dataPage": {
+      "breadcrumb": "我的数据",
+      "title": "你的 AI 数据",
+      "subtitle": "根据 GDPR 第 15 / 17 条，你有权访问和删除我们存储的 AI 对话。请在下方进行操作。",
+      "downloadCard": {
+        "title": "下载副本",
+        "body": "导出我们存储的所有 AI 调用（提示词 + 回复 + 安全标记）为 JSON 文件。适合归档或迁移。",
+        "action": "下载 JSON"
+      },
+      "deleteCard": {
+        "title": "清除 AI 对话内容",
+        "body": "永久清除你所有 AI 调用的加密提示词 + 回复 + 脱敏文本。我们会保留聚合计数（token、成本、状态）用于计费和滥用检测 —— 这些是 GDPR 允许保留的。",
+        "action": "清除内容",
+        "confirmTitle": "清除你的 AI 对话内容？",
+        "confirmBody": "此操作将永久清除 {count} 条记录的原始提示词和回复。计数和计费元数据将保留。",
+        "confirmAction": "清除",
+        "confirmCancel": "取消",
+        "success": "已清除 {count} 条记录",
+        "failure": "清除失败：{error}"
+      },
+      "downloadFailure": "下载失败：{error}",
+      "lastUpdatedAt": "生成时间：{iso}"
+    },
+    "aiCircuitBreakerPage": {
+      "breadcrumb": "AI 熔断器",
+      "title": "AI 熔断器",
+      "subtitle": "平台级 LLM 总开关的人工接管。仅当上游 LLM 提供商长期降级、需要停止新调用累积成本时使用。",
+      "todaySpend": "今日平台支出",
+      "spendUsd": "${usd}",
+      "currentState": "当前状态",
+      "stateOpen": "开启（允许调用）",
+      "stateClosedFree": "已关闭 Free 套餐",
+      "stateClosedTrial": "已关闭 Free + Trial 套餐",
+      "stateClosedAll": "已关闭所有套餐",
+      "thresholds": "自动触发阈值",
+      "thresholdFree": "Free 停止 ${usd}",
+      "thresholdTrial": "Trial 停止 ${usd}",
+      "release": "解除熔断",
+      "releaseConfirmTitle": "解除熔断？",
+      "releaseConfirmBody": "所有套餐的新 AI 调用将再次被允许。仅在确认上游故障已恢复后操作。",
+      "releaseConfirmAction": "解除",
+      "releaseConfirmCancel": "取消",
+      "releaseSuccess": "熔断已解除。",
+      "releaseFailure": "解除失败：{error}",
+      "refresh": "刷新"
     },
     "aiKeysPage": {
       "breadcrumb": "AI 密钥（BYOK）",
@@ -1245,6 +1296,9 @@
     "description": "监控安全事件、审计日志和系统健康状态。"
   },
   "admin": {
+    "aiCircuitBreaker": {
+      "title": "AI 熔断器"
+    },
     "riskTier": {
       "title": "风险等级处理台",
       "subtitle": "注册风险等级 ≥ 1 的用户。降级前请核实原因；每次覆盖都会写入审计日志。",

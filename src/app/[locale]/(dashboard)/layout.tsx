@@ -34,6 +34,7 @@ export default async function DashboardLayout({
   const tNav = await getTranslations('nav');
   const tMobile = await getTranslations('dashboardNav.mobile');
   const tAdmin = await getTranslations('admin.riskTier');
+  const tAdminCircuit = await getTranslations('admin.aiCircuitBreaker');
   const tCmd = await getTranslations('dashboardNav.commandPalette');
   const tCommon = await getTranslations('common');
 
@@ -53,6 +54,14 @@ export default async function DashboardLayout({
     { href: '/teams', label: t('teams') },                 // 所有 role 看自己加入的 team
     ...(canAccess(role, 'member') ? [{ href: '/security', label: t('security') }] : []),
     ...(admin ? [{ href: '/admin/risk-tier', label: tAdmin('title') }] : []),
+    ...(admin
+      ? [
+          {
+            href: '/admin/ai-circuit-breaker',
+            label: tAdminCircuit('title'),
+          },
+        ]
+      : []),
   ];
 
   const secondaryItems = [
