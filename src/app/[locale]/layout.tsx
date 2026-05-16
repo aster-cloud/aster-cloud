@@ -81,6 +81,37 @@ export default async function LocaleLayout({ children, params }: Props) {
       suppressHydrationWarning
       className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        {/*
+          esbuild __name polyfill.
+
+          OpenNext-on-Cloudflare bundles the worker with esbuild's
+          "keepNames" transform. That transform emits calls to an
+          __name helper to preserve `.name` on classes/functions
+          after minification. The helper definition lives in the
+          worker bundle, BUT some inline <script> fragments that
+          land in the HTML (notably next-themes' theme-bootstrap
+          and other framework-injected snippets) also reference
+          __name without re-declaring it — so the browser throws
+          "Uncaught ReferenceError: __name is not defined" on the
+          first inline script (seen on /security and any other
+          route that hits the same code path).
+
+          Define a no-op-shaped fallback before any other inline
+          script runs. The body matches esbuild's own definition
+          (sets .name and returns the target) so it's behaviorally
+          identical when the bundled helper hasn't loaded yet.
+          Nonce is the per-request CSP nonce, identical to the one
+          ThemeProvider uses below.
+        */}
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{
+            __html:
+              'globalThis.__name=globalThis.__name||function(t,n){try{Object.defineProperty(t,"name",{value:n,configurable:true})}catch(e){}return t};',
+          }}
+        />
+      </head>
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider nonce={nonce}>
