@@ -68,6 +68,7 @@ import { useUnsavedWarning } from './use-unsaved-warning';
 import { usePolicyShortcuts } from './use-policy-shortcuts';
 import { useCompile } from './use-compile';
 import { useMonacoMarkers } from './use-monaco-markers';
+import { useIsMobile } from './use-is-mobile';
 import { EditorPalette } from './editor-palette';
 import { CNLSyntaxConverterDialog } from '@/components/policy/cnl-syntax-converter-dialog';
 import {
@@ -153,6 +154,11 @@ export function PolicyForm({
   const t = useTranslations('policies.form');
   const tCommon = useTranslations('common');
   const cnlLocale = normalizeLocale(uiLocale);
+  // Mobile users (< md) are here to review, not to author CNL —
+  // swap Monaco for a read-only viewer so the page is usable on
+  // phones without dragging in the editor's keyboard + completion
+  // surface.
+  const isMobile = useIsMobile();
 
   // ---------------------------------------------------------------
   // Form fields
@@ -442,23 +448,27 @@ export function PolicyForm({
           >
             {tCommon('cancel')}
           </Link>
-          <button
-            type="button"
-            onClick={onSaveOnly}
-            disabled={isSaving}
-            className={cn(
-              buttonVariants({ variant: 'primary', size: 'md' }),
-              'gap-2',
-            )}
-          >
-            {isSaving
-              ? mode === 'create'
-                ? t('creating')
-                : t('saving')
-              : mode === 'create'
-                ? t('create')
-                : t('save')}
-          </button>
+          {/* Mobile is read-only — hide Save so users don't think
+              their typing (which can't happen) is being persisted. */}
+          {!isMobile && (
+            <button
+              type="button"
+              onClick={onSaveOnly}
+              disabled={isSaving}
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'md' }),
+                'gap-2',
+              )}
+            >
+              {isSaving
+                ? mode === 'create'
+                  ? t('creating')
+                  : t('saving')
+                : mode === 'create'
+                  ? t('create')
+                  : t('save')}
+            </button>
+          )}
         </div>
       </header>
 
@@ -509,24 +519,39 @@ export function PolicyForm({
         style={{ height: 'clamp(500px, calc(100vh - 16rem), 720px)' }}
       >
         <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-border bg-bg shadow-sm overflow-hidden">
-          <MonacoPolicyEditor
-            value={content}
-            onChange={setContent}
-            locale={cnlLocale}
-            height="100%"
-            placeholder={t('contentPlaceholder')}
-            onEditorReady={(ed) => {
-              editorInstanceRef.current = ed;
-              // Trigger one re-render so marker / palette hooks
-              // depending on the editor instance can pick it up.
-              setEditorReady(true);
-            }}
-            enableAICompletion
-            onToggleAIPanel={() => {
-              setRequestedTab('ai');
-              setSidePanelOpen(true);
-            }}
-          />
+          {isMobile ? (
+            // Read-only viewer for phones. Pre-formatted text with the
+            // same monospace stack Monaco uses, so syntax highlighting's
+            // absence is the only visible difference. The empty-state
+            // placeholder mirrors the editor's contentPlaceholder text
+            // so a brand-new policy doesn't surprise the user with a
+            // blank gray box.
+            <pre
+              className="m-0 h-full overflow-auto p-4 font-mono text-sm text-fg whitespace-pre-wrap break-words"
+              aria-label={t('content')}
+            >
+              {content || t('contentPlaceholder')}
+            </pre>
+          ) : (
+            <MonacoPolicyEditor
+              value={content}
+              onChange={setContent}
+              locale={cnlLocale}
+              height="100%"
+              placeholder={t('contentPlaceholder')}
+              onEditorReady={(ed) => {
+                editorInstanceRef.current = ed;
+                // Trigger one re-render so marker / palette hooks
+                // depending on the editor instance can pick it up.
+                setEditorReady(true);
+              }}
+              enableAICompletion
+              onToggleAIPanel={() => {
+                setRequestedTab('ai');
+                setSidePanelOpen(true);
+              }}
+            />
+          )}
         </div>
         {sidePanelOpen && (
           <div className="hidden w-[28rem] lg:flex">
