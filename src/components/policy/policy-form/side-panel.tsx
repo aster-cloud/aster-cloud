@@ -24,7 +24,6 @@ import {
   type PolicyExample,
   getExampleName,
   getExampleDescription,
-  getExampleSource,
   normalizeLocale,
   type SupportedLocale,
 } from '@/data/policy-examples';
@@ -174,8 +173,11 @@ export function SidePanel({
           <TemplatesTab
             uiLocale={uiLocale}
             cnlLocale={cnlLocale}
+            // Picking a template fully delegates to the parent's
+            // template handler — which in PR-3 inserts at cursor
+            // rather than wiping the form body. We deliberately
+            // don't call onApplyContent here anymore.
             onSelect={onApplyTemplate}
-            onApplyBody={onApplyContent}
           />
         )}
         {tab === 'decision' && (
@@ -318,14 +320,11 @@ function DecisionTab({
 
 function TemplatesTab({
   uiLocale,
-  cnlLocale,
   onSelect,
-  onApplyBody,
 }: {
   uiLocale: string;
   cnlLocale: SupportedLocale;
   onSelect: (t: PolicyExample) => void;
-  onApplyBody: (body: string) => void;
 }) {
   const categories = Object.keys(CATEGORY_LABELS) as Array<
     keyof typeof CATEGORY_LABELS
@@ -336,8 +335,8 @@ function TemplatesTab({
     <div className="space-y-4 p-3">
       <p className="text-xs text-fg-muted">
         {isZh
-          ? '点击模板会替换当前编辑器内容。'
-          : 'Picking a template replaces the editor body.'}
+          ? '点击模板会插入到编辑器光标位置。'
+          : 'Picking a template inserts it at the editor cursor.'}
       </p>
       {categories.map((category) => {
         const items = POLICY_EXAMPLES.filter((e) => e.category === category);
@@ -352,10 +351,7 @@ function TemplatesTab({
                 <li key={example.id}>
                   <button
                     type="button"
-                    onClick={() => {
-                      onSelect(example);
-                      onApplyBody(getExampleSource(example, cnlLocale));
-                    }}
+                    onClick={() => onSelect(example)}
                     className="w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-bg-subtle focus-visible:outline-none focus-visible:shadow-ring"
                   >
                     <div className="text-sm font-medium text-fg">

@@ -8,23 +8,34 @@ import { useEffect } from 'react';
  *   ⌘S / Ctrl+S       → Save
  *   ⌘Enter / Ctrl+Enter → Save and view (open the detail page after save)
  *   ⌘B / Ctrl+B       → Toggle side panel
+ *   ⌘K / Ctrl+K       → Open page-local command palette (when allowed
+ *                       — typically when the editor is the focused area)
  *   Esc               → onEscape (callee decides: close panel, blur, etc.)
  *
- * Shortcut handling is mounted at the form root rather than per-input
- * because most are global to the editing session (Save, toggle panel),
- * and inputs inside the form forward keystrokes upward unless they
- * mean something locally. ⌘S also needs preventDefault on the document
- * level to suppress the browser's own save-page dialog.
+ * ⌘K is special: a global dashboard ⌘K already exists for route
+ * navigation (CommandPalette in dashboard layout). The global handler
+ * skips when the active element is an editable input (its own
+ * heuristic). For the policy editor we WANT to intercept: when
+ * `isPaletteContextActive()` returns true, we preventDefault here
+ * BEFORE the global handler sees it.
  *
- * The handler reads from a ref-shaped `handlers` object so consumers
- * can recreate inline arrow functions on every render without making
- * us re-mount the listener.
+ * Shortcut handling is mounted at the form root rather than per-input
+ * because most are global to the editing session.
  */
 export interface PolicyShortcutHandlers {
   onSave: () => void;
   onSaveAndView: () => void;
   onTogglePanel: () => void;
   onEscape: () => void;
+  /** Optional — when present, ⌘K intercepts and calls this. */
+  onPalette?: () => void;
+  /**
+   * Predicate: should ⌘K open the in-editor palette right now?
+   * Typically `true` when the editor has focus, the palette is
+   * already open, or the form is in a state where local commands
+   * are the obvious thing.
+   */
+  isPaletteContextActive?: () => boolean;
 }
 
 function isMod(e: KeyboardEvent): boolean {
@@ -51,6 +62,19 @@ export function usePolicyShortcuts(handlers: PolicyShortcutHandlers): void {
         handlers.onTogglePanel();
         return;
       }
+      if (
+        isMod(e) &&
+        (e.key === 'k' || e.key === 'K') &&
+        handlers.onPalette &&
+        (handlers.isPaletteContextActive?.() ?? true)
+      ) {
+        // Stop propagation so the global ⌘K palette (dashboard nav)
+        // doesn't also open on top of us.
+        e.preventDefault();
+        e.stopPropagation();
+        handlers.onPalette();
+        return;
+      }
       if (e.key === 'Escape') {
         // Don't preventDefault on Escape — Monaco and dialogs rely on
         // their own Esc handling. We just notify the parent.
@@ -58,7 +82,11 @@ export function usePolicyShortcuts(handlers: PolicyShortcutHandlers): void {
         return;
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capture-phase listener so we intercept ⌘K before the dashboard's
+    // global palette has a chance to react. The dashboard palette
+    // attaches in bubble, so we're guaranteed to win when both are
+    // mounted.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [handlers]);
 }

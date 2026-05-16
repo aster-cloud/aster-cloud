@@ -22,6 +22,12 @@ import { useUnsavedWarning } from './use-unsaved-warning';
 import { usePolicyShortcuts } from './use-policy-shortcuts';
 import { useCompile } from './use-compile';
 import { useMonacoMarkers } from './use-monaco-markers';
+import { EditorPalette } from './editor-palette';
+import { CNLSyntaxConverterDialog } from '@/components/policy/cnl-syntax-converter-dialog';
+import {
+  type PolicyExample,
+  getExampleSource,
+} from '@/data/policy-examples';
 
 const MonacoPolicyEditor = dynamic(
   () =>
@@ -125,6 +131,8 @@ export function PolicyForm({
   const [serverError, setServerError] = useState<PolicySaveError | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [converterOpen, setConverterOpen] = useState(false);
 
   // Editor instance is captured imperatively. We also hold a state
   // boolean so child hooks (markers, jump-to-line) re-run after
@@ -142,6 +150,56 @@ export function PolicyForm({
 
   // Bind diagnostics onto Monaco as inline markers.
   useMonacoMarkers(editorForHooks, compile.diagnostics);
+
+  // ---------------------------------------------------------------
+  // Editor command helpers
+  // ---------------------------------------------------------------
+
+  /** Insert a text snippet at the current cursor (or replace selection). */
+  const insertAtCursor = useCallback((snippet: string) => {
+    const ed = editorInstanceRef.current;
+    if (!ed) {
+      // No editor yet — fall back to appending. Rare edge: palette
+      // opened before onMount completed.
+      setContent((prev) => (prev ? prev + '\n' + snippet : snippet));
+      return;
+    }
+    const selection = ed.getSelection();
+    const range = selection ?? {
+      startLineNumber: 1,
+      startColumn: 1,
+      endLineNumber: 1,
+      endColumn: 1,
+    };
+    ed.executeEdits('aster.insert-snippet', [
+      {
+        range,
+        text: snippet,
+        forceMoveMarkers: true,
+      },
+    ]);
+    ed.focus();
+  }, []);
+
+  /** Insert a template at the cursor (or replace selection). Sets a
+   *  default name only when the name field is empty so we don't
+   *  clobber whatever the user already typed. */
+  const insertTemplateAtCursor = useCallback(
+    (tpl: PolicyExample) => {
+      const body = getExampleSource(tpl, cnlLocale);
+      insertAtCursor(body);
+      setName((prev) => prev || tpl.id);
+      toast.success(t('templateInsertedAtCursor'));
+    },
+    [cnlLocale, insertAtCursor, t],
+  );
+
+  /** Trigger Monaco's built-in format-document action. */
+  const formatDocument = useCallback(() => {
+    const ed = editorInstanceRef.current;
+    if (!ed) return;
+    void ed.getAction('editor.action.formatDocument')?.run();
+  }, []);
 
   // ---------------------------------------------------------------
   // Draft persistence
@@ -264,7 +322,24 @@ export function PolicyForm({
     onSave: onSaveOnly,
     onSaveAndView,
     onTogglePanel: () => setSidePanelOpen((v) => !v),
+    onPalette: () => setPaletteOpen(true),
+    isPaletteContextActive: () => {
+      // Take over ⌘K whenever the editor or any element inside our
+      // form is focused — otherwise the dashboard's global ⌘K (route
+      // jump) still wins, which is the right call when the user is
+      // browsing the dashboard surface.
+      if (paletteOpen) return true;
+      const ed = editorInstanceRef.current;
+      if (ed && ed.hasTextFocus()) return true;
+      const active = document.activeElement;
+      if (active && active.closest('[data-policy-form-root]')) return true;
+      return false;
+    },
     onEscape: () => {
+      if (paletteOpen) {
+        setPaletteOpen(false);
+        return;
+      }
       if (sidePanelOpen) {
         setSidePanelOpen(false);
         return;
@@ -292,7 +367,10 @@ export function PolicyForm({
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
+    <div
+      data-policy-form-root
+      className="flex h-[calc(100vh-4rem)] flex-col"
+    >
       {/* ----- Top bar ----- */}
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border bg-bg px-4 py-3 sm:px-6">
         <div className="min-w-0">
@@ -401,11 +479,10 @@ export function PolicyForm({
               uiLocale={uiLocale}
               onApplyContent={(body) => setContent(body)}
               onApplyTemplate={(tpl) => {
-                // Replacing-the-form behavior matches the legacy
-                // template dropdown. PR-3 will switch this to
-                // insert-at-cursor.
-                setName((prev) => prev || tpl.id);
-                setMetaExpanded(true);
+                // PR-3: insert at cursor position rather than wiping
+                // whatever the user already typed. Preserves the form
+                // body and just adds the template snippet inline.
+                insertTemplateAtCursor(tpl);
               }}
               onClose={() => setSidePanelOpen(false)}
               compileState={compile.state}
@@ -436,6 +513,43 @@ export function PolicyForm({
         onCompileChipClick={() => {
           setRequestedTab('decision');
           setSidePanelOpen(true);
+        }}
+      />
+
+      {/* ----- Editor command palette ----- */}
+      <EditorPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        uiLocale={uiLocale}
+        onAskAI={() => {
+          setRequestedTab('ai');
+          setSidePanelOpen(true);
+        }}
+        onInsertTemplate={insertTemplateAtCursor}
+        onConvertLocale={() => setConverterOpen(true)}
+        onFormat={formatDocument}
+        onSave={onSaveOnly}
+        onSaveAndView={onSaveAndView}
+        onTogglePanel={() => setSidePanelOpen((v) => !v)}
+        onShowSyntax={() => {
+          setRequestedTab('syntax');
+          setSidePanelOpen(true);
+        }}
+        onShowDecision={() => {
+          setRequestedTab('decision');
+          setSidePanelOpen(true);
+        }}
+      />
+
+      {/* ----- CNL locale converter dialog ----- */}
+      <CNLSyntaxConverterDialog
+        isOpen={converterOpen}
+        onClose={() => setConverterOpen(false)}
+        content={content}
+        currentLocale={cnlLocale}
+        uiLocale={uiLocale}
+        onApply={(converted) => {
+          setContent(converted);
         }}
       />
 
