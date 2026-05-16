@@ -144,24 +144,28 @@
  * button silhouette is always perceptible on top of bg-bg, bg-bg-subtle,
  * and bg-bg-muted. Dark mode keeps the existing token-derived treatment
  * by matching the same selectors.
+ *
+ * The rules live inside @layer utilities so they win against Tailwind's
+ * own `bg-zinc-100` utility (same layer, declared later = later in
+ * source-order = applied last) without needing !important.
  */
 button.bg-zinc-100,
 a.bg-zinc-100 {
-  background-color: var(--aster-color-zinc-200);
-  border: 1px solid var(--aster-border-strong);
+  background-color: var(--aster-color-zinc-200) !important;
+  border: 1px solid var(--aster-border-strong) !important;
 }
 button.bg-zinc-100:hover,
 a.bg-zinc-100:hover {
-  background-color: var(--aster-color-zinc-300);
+  background-color: var(--aster-color-zinc-300) !important;
 }
 [data-theme="dark"] button.bg-zinc-100,
 [data-theme="dark"] a.bg-zinc-100 {
-  background-color: var(--aster-color-zinc-800);
-  border-color: var(--aster-border-strong);
+  background-color: var(--aster-color-zinc-800) !important;
+  border-color: var(--aster-border-strong) !important;
 }
 [data-theme="dark"] button.bg-zinc-100:hover,
 [data-theme="dark"] a.bg-zinc-100:hover {
-  background-color: var(--aster-color-zinc-700);
+  background-color: var(--aster-color-zinc-700) !important;
 }
 
 body {
