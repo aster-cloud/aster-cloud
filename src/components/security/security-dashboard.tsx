@@ -139,13 +139,13 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
   if (loading && !stats) {
     return (
       <div className="animate-pulse space-y-4">
-        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+        <div className="h-8 bg-bg-muted dark:bg-gray-700 rounded w-1/4" />
         <div className="grid grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div key={i} className="h-24 bg-bg-muted dark:bg-gray-700 rounded" />
           ))}
         </div>
-        <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-64 bg-bg-muted dark:bg-gray-700 rounded" />
       </div>
     );
   }
@@ -168,7 +168,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-semibold text-fg dark:text-white">
           安全监控
         </h2>
         <div className="flex items-center gap-4">
@@ -181,7 +181,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
                 className={`px-3 py-1 text-sm font-medium first:rounded-l-md last:rounded-r-md border ${
                   timeRange === range
                     ? 'bg-primary text-white border-primary'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'bg-bg dark:bg-gray-800 text-fg dark:text-gray-300 border-border-strong dark:border-gray-600 hover:bg-bg-subtle dark:hover:bg-gray-700'
                 }`}
               >
                 {range === '1h' ? '1小时' : range === '24h' ? '24小时' : range === '7d' ? '7天' : '30天'}
@@ -192,7 +192,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
           <button
             onClick={fetchData}
             disabled={loading}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="p-2 text-fg-muted hover:text-fg dark:text-fg-subtle dark:hover:text-gray-200"
           >
             <svg
               className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}
@@ -215,16 +215,16 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Events */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">总事件数</dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">
+          <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
+            <dt className="text-sm font-medium text-fg-muted dark:text-fg-subtle">总事件数</dt>
+            <dd className="mt-1 text-3xl font-semibold text-fg dark:text-white">
               {stats.total.toLocaleString()}
             </dd>
           </div>
 
           {/* Error Rate */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">错误率</dt>
+          <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
+            <dt className="text-sm font-medium text-fg-muted dark:text-fg-subtle">错误率</dt>
             <dd className={`mt-1 text-3xl font-semibold ${
               stats.errorRate > 0.1 ? 'text-red-600' : stats.errorRate > 0.05 ? 'text-yellow-600' : 'text-green-600'
             }`}>
@@ -233,16 +233,16 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
           </div>
 
           {/* Warnings */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">警告</dt>
+          <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
+            <dt className="text-sm font-medium text-fg-muted dark:text-fg-subtle">警告</dt>
             <dd className="mt-1 text-3xl font-semibold text-yellow-600">
               {stats.bySeverity.WARNING.toLocaleString()}
             </dd>
           </div>
 
           {/* Errors + Critical */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">错误/严重</dt>
+          <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
+            <dt className="text-sm font-medium text-fg-muted dark:text-fg-subtle">错误/严重</dt>
             <dd className="mt-1 text-3xl font-semibold text-red-600">
               {(stats.bySeverity.ERROR + stats.bySeverity.CRITICAL).toLocaleString()}
             </dd>
@@ -252,20 +252,20 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
 
       {/* Event Type Breakdown */}
       {stats && Object.keys(stats.byType).length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">事件类型分布</h3>
+        <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
+          <h3 className="text-lg font-medium text-fg dark:text-white mb-4">事件类型分布</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {Object.entries(stats.byType)
               .sort((a, b) => b[1] - a[1])
               .map(([type, count]) => (
                 <div
                   key={type}
-                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                  className="flex items-center justify-between p-2 bg-bg-subtle dark:bg-gray-700 rounded"
                 >
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                  <span className="text-sm text-fg dark:text-gray-300 truncate">
                     {EVENT_TYPE_LABELS[type] || type}
                   </span>
-                  <span className="ml-2 text-sm font-medium text-gray-900 dark:text-white">
+                  <span className="ml-2 text-sm font-medium text-fg dark:text-white">
                     {count}
                   </span>
                 </div>
@@ -275,14 +275,14 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
       )}
 
       {/* Recent Events */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">最近事件</h3>
+      <div className="bg-bg dark:bg-gray-800 rounded-lg shadow">
+        <div className="px-4 py-3 border-b border-border dark:border-gray-700 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-fg dark:text-white">最近事件</h3>
           {/* Severity Filter */}
           <select
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value as EventSeverity | 'ALL')}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="text-sm border border-border-strong dark:border-gray-600 rounded-md px-2 py-1 bg-bg dark:bg-gray-700 text-fg dark:text-white"
           >
             <option value="ALL">全部级别</option>
             <option value="INFO">信息</option>
@@ -291,14 +291,14 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
             <option value="CRITICAL">严重</option>
           </select>
         </div>
-        <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-y-auto">
+        <div className="divide-y divide-border dark:divide-gray-700 max-h-96 overflow-y-auto">
           {filteredEvents.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-8 text-center text-fg-muted dark:text-fg-subtle">
               暂无事件记录
             </div>
           ) : (
             filteredEvents.map((event) => (
-              <div key={event.id} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700">
+              <div key={event.id} className="px-4 py-3 hover:bg-bg-subtle dark:hover:bg-gray-700">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -309,11 +309,11 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
                       >
                         {SEVERITY_CONFIG[event.severity].label}
                       </span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-sm font-medium text-fg dark:text-white">
                         {EVENT_TYPE_LABELS[event.eventType] || event.eventType}
                       </span>
                     </div>
-                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="mt-1 text-sm text-fg-muted dark:text-fg-subtle">
                       {event.policyId && (
                         <span className="mr-3">策略: {event.policyId.slice(0, 8)}...</span>
                       )}
@@ -330,13 +330,13 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
                         <summary className="text-xs text-primary dark:text-primary cursor-pointer">
                           查看详情
                         </summary>
-                        <pre className="mt-1 text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto">
+                        <pre className="mt-1 text-xs bg-bg-muted dark:bg-gray-900 p-2 rounded overflow-x-auto">
                           {JSON.stringify(event.details, null, 2)}
                         </pre>
                       </details>
                     )}
                   </div>
-                  <div className="ml-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  <div className="ml-4 text-sm text-fg-muted dark:text-fg-subtle whitespace-nowrap">
                     {new Date(event.createdAt).toLocaleString('zh-CN')}
                   </div>
                 </div>

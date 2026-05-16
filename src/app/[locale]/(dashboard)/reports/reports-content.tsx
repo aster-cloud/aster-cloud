@@ -184,8 +184,8 @@ export function ReportsContent({
       />
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-fg">{t.title}</h1>
+          <p className="mt-1 text-sm text-fg-muted">
             {t.subtitle}
           </p>
         </div>
@@ -203,9 +203,9 @@ export function ReportsContent({
       )}
 
       {/* Generate Report */}
-      <div className="bg-white shadow sm:rounded-lg mb-8">
+      <div className="bg-bg shadow sm:rounded-lg mb-8">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+          <h3 className="text-lg font-medium text-fg mb-4">
             {t.generateNew}
           </h3>
 
@@ -218,11 +218,11 @@ export function ReportsContent({
                 className={`p-4 rounded-lg border-2 text-left transition-colors ${
                   selectedType === id
                     ? 'border-primary bg-primary-subtle'
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-border hover:border-border-strong'
                 } disabled:opacity-50`}
               >
-                <div className="font-medium text-gray-900">{t.reportTypes[id].name}</div>
-                <div className="text-sm text-gray-500">{t.reportTypes[id].description}</div>
+                <div className="font-medium text-fg">{t.reportTypes[id].name}</div>
+                <div className="text-sm text-fg-muted">{t.reportTypes[id].description}</div>
               </button>
             ))}
           </div>
@@ -269,7 +269,7 @@ export function ReportsContent({
       {/* Reports List */}
       {isGenerating && (
         <div aria-live="polite" className="mb-4">
-          <LoadingSkeleton lines={3} className="bg-white shadow sm:rounded-lg p-6" />
+          <LoadingSkeleton lines={3} className="bg-bg shadow sm:rounded-lg p-6" />
         </div>
       )}
       {reports.length > 0 && (
@@ -282,9 +282,9 @@ export function ReportsContent({
         </div>
       )}
       {reports.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
+        <div className="text-center py-12 bg-bg rounded-lg shadow">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-fg-subtle"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -296,19 +296,19 @@ export function ReportsContent({
               d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">{t.noReports}</h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <h3 className="mt-2 text-sm font-semibold text-fg">{t.noReports}</h3>
+          <p className="mt-1 text-sm text-fg-muted">
             {t.generateFirst}
           </p>
         </div>
       ) : (
-        <div className="bg-white shadow sm:rounded-lg overflow-hidden">
-          <ul className="divide-y divide-gray-200">
+        <div className="bg-bg shadow sm:rounded-lg overflow-hidden">
+          <ul className="divide-y divide-border">
             {visibleReports.map((report) => (
               <li key={report.id}>
                 <Link
                   href={`/reports/${report.id}`}
-                  className="block hover:bg-gray-50"
+                  className="block hover:bg-bg-subtle"
                 >
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
@@ -328,7 +328,7 @@ export function ReportsContent({
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 flex items-center text-sm text-gray-500">
+                    <div className="mt-2 flex items-center text-sm text-fg-muted">
                       <span>{formatTemplate(t.typeTemplate, { type: report.type.toUpperCase() })}</span>
                       <span className="mx-2">|</span>
                       <span>

@@ -79,9 +79,9 @@ export function TeamsContent({
       case 'member':
         return 'bg-green-100 text-green-800';
       case 'viewer':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-bg-muted text-fg';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-bg-muted text-fg';
     }
   };
 
@@ -100,7 +100,7 @@ export function TeamsContent({
     return (
       <div className="text-center py-12">
         <svg
-          className="mx-auto h-12 w-12 text-gray-400"
+          className="mx-auto h-12 w-12 text-fg-subtle"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -112,8 +112,8 @@ export function TeamsContent({
             d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
           />
         </svg>
-        <h2 className="mt-4 text-xl font-semibold text-gray-900">{t.upgradeRequired.title}</h2>
-        <p className="mt-2 text-gray-500">{t.upgradeRequired.description}</p>
+        <h2 className="mt-4 text-xl font-semibold text-fg">{t.upgradeRequired.title}</h2>
+        <p className="mt-2 text-fg-muted">{t.upgradeRequired.description}</p>
         <div className="mt-6">
           <Link
             href="/billing"
@@ -137,8 +137,8 @@ export function TeamsContent({
       />
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-          <p className="mt-1 text-sm text-gray-500">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold text-fg">{t.title}</h1>
+          <p className="mt-1 text-sm text-fg-muted">{t.subtitle}</p>
         </div>
         <div className="mt-4 sm:mt-0">
           <Link
@@ -172,7 +172,7 @@ export function TeamsContent({
       {teams.length === 0 ? (
         <div className="mt-8 text-center">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-fg-subtle"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -184,8 +184,8 @@ export function TeamsContent({
               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">{t.noTeams}</h3>
-          <p className="mt-1 text-sm text-gray-500">{t.getStarted}</p>
+          <h3 className="mt-2 text-sm font-semibold text-fg">{t.noTeams}</h3>
+          <p className="mt-1 text-sm text-fg-muted">{t.getStarted}</p>
           <div className="mt-6">
             <Link
               href="/teams/new"
@@ -204,19 +204,19 @@ export function TeamsContent({
             <Link
               key={team.id}
               href={`/teams/${team.id}`}
-              className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+              className="block bg-bg rounded-lg shadow hover:shadow-md transition-shadow"
             >
               <div className="p-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">{team.name}</h3>
+                  <h3 className="text-lg font-semibold text-fg">{team.name}</h3>
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getRoleBadgeColor(team.role)}`}
                   >
                     {getRoleLabel(team.role)}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-gray-500">/{team.slug}</p>
-                <div className="mt-4 flex items-center space-x-4 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-fg-muted">/{team.slug}</p>
+                <div className="mt-4 flex items-center space-x-4 text-sm text-fg-muted">
                   <div className="flex items-center">
                     <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
