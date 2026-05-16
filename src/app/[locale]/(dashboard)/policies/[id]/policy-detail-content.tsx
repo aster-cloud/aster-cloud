@@ -146,10 +146,14 @@ export function PolicyDetailContent({
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">
-        <div className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5">
+        <Link
+          href={`/${locale}/policies/${policy.id}/versions`}
+          className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5 hover:bg-bg-subtle transition-colors block"
+        >
           <dt className="text-sm font-medium text-fg-muted truncate">{t.detail.version}</dt>
           <dd className="mt-1 text-2xl font-semibold text-fg">v{policy.version}</dd>
-        </div>
+          <p className="mt-1 text-xs text-primary">{t.detail.versionHistory} →</p>
+        </Link>
         <Link
           href={`/${locale}/policies/${policy.id}/logs`}
           className="bg-bg overflow-hidden rounded-lg shadow px-4 py-5 hover:bg-bg-subtle transition-colors block"

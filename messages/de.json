@@ -856,6 +856,95 @@
       "backToPolicies": "Zurück zu Richtlinien",
       "policyNotFound": "Richtlinie nicht gefunden"
     },
+    "versions": {
+      "title": "Versionen & Freigaben",
+      "subtitle": "Jedes Speichern erzeugt eine neue Version. Freigabe-Gates steuern, welche Versionen ausgeführt werden dürfen.",
+      "breadcrumb": "Versionen",
+      "newVersion": "Neue Version",
+      "noVersions": "Noch keine Versionen",
+      "noVersionsBody": "Speichern Sie die Richtlinie mindestens einmal, um v1 zu erzeugen.",
+      "table": {
+        "version": "Version",
+        "status": "Status",
+        "author": "Autor",
+        "approvals": "Freigaben",
+        "createdAt": "Erstellt",
+        "releaseNote": "Release-Notiz",
+        "actions": "Aktionen"
+      },
+      "status": {
+        "DRAFT": "Entwurf",
+        "PENDING_APPROVAL": "Freigabe ausstehend",
+        "APPROVED": "Freigegeben",
+        "REJECTED": "Abgelehnt",
+        "DEPRECATED": "Verworfen",
+        "ARCHIVED": "Archiviert"
+      },
+      "isDefault": "Standard",
+      "actions": {
+        "view": "Anzeigen",
+        "submit": "Zur Freigabe einreichen",
+        "approve": "Freigeben",
+        "reject": "Ablehnen",
+        "setDefault": "Als Standard festlegen",
+        "deprecate": "Verwerfen",
+        "archive": "Archivieren"
+      },
+      "submitDialog": {
+        "title": "Version {n} zur Freigabe einreichen?",
+        "body": "Der Quellcode wird gesperrt — weitere Änderungen landen in einem neuen Entwurf. Freigeber werden benachrichtigt.",
+        "confirm": "Einreichen",
+        "cancel": "Abbrechen",
+        "noteLabel": "Release-Notiz (optional)",
+        "notePlaceholder": "Was hat sich in dieser Version geändert?"
+      },
+      "approveDialog": {
+        "title": "Version {n} freigeben?",
+        "body": "Freigegebene Versionen sind ausführbar. Nach der Freigabe kannst du sie als Standard markieren.",
+        "confirm": "Freigeben",
+        "cancel": "Abbrechen",
+        "commentLabel": "Kommentar (optional)",
+        "commentPlaceholder": "Hinweise für andere Freigeber…"
+      },
+      "rejectDialog": {
+        "title": "Version {n} ablehnen?",
+        "body": "Der Autor sieht deinen Kommentar und kann ihn in einem neuen Entwurf adressieren.",
+        "confirm": "Ablehnen",
+        "cancel": "Abbrechen",
+        "commentLabel": "Begründung",
+        "commentPlaceholder": "Warum wird abgelehnt?"
+      },
+      "setDefaultDialog": {
+        "title": "Version {n} als Standard?",
+        "body": "Neue Ausführungen ohne expliziten Version-Pin verwenden v{n}. Bestehende gepinnte Ausführungen behalten ihre Version.",
+        "confirm": "Als Standard",
+        "cancel": "Abbrechen"
+      },
+      "deprecateDialog": {
+        "title": "Version {n} verwerfen?",
+        "body": "Verworfene Versionen können noch ausgeführt werden, wenn explizit angepinnt — der Standard wechselt jedoch weg.",
+        "confirm": "Verwerfen",
+        "cancel": "Abbrechen",
+        "reasonLabel": "Begründung (optional)"
+      },
+      "archiveDialog": {
+        "title": "Version {n} archivieren?",
+        "body": "Archivierte Versionen können nicht mehr ausgeführt werden und sind vom Standard ausgeschlossen. Dieser Schritt ist endgültig — Rückgängig nur per neuer Version.",
+        "confirm": "Archivieren",
+        "cancel": "Abbrechen",
+        "reasonLabel": "Begründung (optional)"
+      },
+      "sox": {
+        "selfApprovalNotAllowed": "Du kannst eine selbst erstellte Version nicht freigeben. Bitte ein anderes Teammitglied.",
+        "inviteReviewerRequired": "Dein Plan erfordert einen zweiten Freigeber. Lade ein Teammitglied ein und fahre fort."
+      },
+      "approvalHistory": "Freigabe-Verlauf",
+      "approvalDecision": {
+        "APPROVED": "Freigegeben",
+        "REJECTED": "Abgelehnt",
+        "REQUESTED_CHANGES": "Änderungen angefordert"
+      }
+    },
     "deleteDialog": {
       "title": "Richtlinie löschen",
       "description": "Möchten Sie \"{name}\" wirklich löschen? Dies kann aus dem Papierkorb rückgängig gemacht werden.",

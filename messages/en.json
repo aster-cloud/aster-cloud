@@ -856,6 +856,95 @@
       "backToPolicies": "Back to policies",
       "policyNotFound": "Policy not found"
     },
+    "versions": {
+      "title": "Versions & approvals",
+      "subtitle": "Every save is a new version. Approval gates govern which versions can execute.",
+      "breadcrumb": "Versions",
+      "newVersion": "New version",
+      "noVersions": "No versions yet",
+      "noVersionsBody": "Save the policy at least once to create v1.",
+      "table": {
+        "version": "Version",
+        "status": "Status",
+        "author": "Author",
+        "approvals": "Approvals",
+        "createdAt": "Created",
+        "releaseNote": "Release note",
+        "actions": "Actions"
+      },
+      "status": {
+        "DRAFT": "Draft",
+        "PENDING_APPROVAL": "Pending approval",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "DEPRECATED": "Deprecated",
+        "ARCHIVED": "Archived"
+      },
+      "isDefault": "Default",
+      "actions": {
+        "view": "View",
+        "submit": "Submit for approval",
+        "approve": "Approve",
+        "reject": "Reject",
+        "setDefault": "Make default",
+        "deprecate": "Deprecate",
+        "archive": "Archive"
+      },
+      "submitDialog": {
+        "title": "Submit version {n} for approval?",
+        "body": "This locks the source — further edits go into a new draft version. Approvers will be notified.",
+        "confirm": "Submit",
+        "cancel": "Cancel",
+        "noteLabel": "Release note (optional)",
+        "notePlaceholder": "What changed in this version?"
+      },
+      "approveDialog": {
+        "title": "Approve version {n}?",
+        "body": "Approved versions are eligible to execute. You can mark it as default after approval.",
+        "confirm": "Approve",
+        "cancel": "Cancel",
+        "commentLabel": "Comment (optional)",
+        "commentPlaceholder": "Anything reviewers should know…"
+      },
+      "rejectDialog": {
+        "title": "Reject version {n}?",
+        "body": "The author will see your comment and can address it in a new draft.",
+        "confirm": "Reject",
+        "cancel": "Cancel",
+        "commentLabel": "Reason",
+        "commentPlaceholder": "Why is this rejected?"
+      },
+      "setDefaultDialog": {
+        "title": "Make version {n} the default?",
+        "body": "New executions without an explicit version pin will use v{n}. Existing pinned executions continue to use their pinned version.",
+        "confirm": "Make default",
+        "cancel": "Cancel"
+      },
+      "deprecateDialog": {
+        "title": "Deprecate version {n}?",
+        "body": "Deprecated versions can still execute when pinned, but the default will move off this version.",
+        "confirm": "Deprecate",
+        "cancel": "Cancel",
+        "reasonLabel": "Reason (optional)"
+      },
+      "archiveDialog": {
+        "title": "Archive version {n}?",
+        "body": "Archived versions cannot execute and are hidden from default execution. This is permanent — undo requires creating a new version.",
+        "confirm": "Archive",
+        "cancel": "Cancel",
+        "reasonLabel": "Reason (optional)"
+      },
+      "sox": {
+        "selfApprovalNotAllowed": "You cannot approve a version you authored. Ask another team member.",
+        "inviteReviewerRequired": "Approval requires a second reviewer on your plan. Invite a team member to continue."
+      },
+      "approvalHistory": "Approval history",
+      "approvalDecision": {
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "REQUESTED_CHANGES": "Requested changes"
+      }
+    },
     "deleteDialog": {
       "title": "Delete Policy",
       "description": "Are you sure you want to delete \"{name}\"? This can be undone from the trash.",

@@ -856,6 +856,95 @@
       "backToPolicies": "返回策略列表",
       "policyNotFound": "策略未找到"
     },
+    "versions": {
+      "title": "版本与审批",
+      "subtitle": "每次保存生成新版本，审批闸门决定哪些版本可以执行。",
+      "breadcrumb": "版本",
+      "newVersion": "新建版本",
+      "noVersions": "暂无版本",
+      "noVersionsBody": "至少保存一次以生成 v1。",
+      "table": {
+        "version": "版本",
+        "status": "状态",
+        "author": "作者",
+        "approvals": "审批",
+        "createdAt": "创建时间",
+        "releaseNote": "发布说明",
+        "actions": "操作"
+      },
+      "status": {
+        "DRAFT": "草稿",
+        "PENDING_APPROVAL": "待审批",
+        "APPROVED": "已批准",
+        "REJECTED": "已拒绝",
+        "DEPRECATED": "已弃用",
+        "ARCHIVED": "已归档"
+      },
+      "isDefault": "默认",
+      "actions": {
+        "view": "查看",
+        "submit": "提交审批",
+        "approve": "批准",
+        "reject": "拒绝",
+        "setDefault": "设为默认",
+        "deprecate": "弃用",
+        "archive": "归档"
+      },
+      "submitDialog": {
+        "title": "提交版本 {n} 审批？",
+        "body": "源码将被锁定 —— 后续修改进入新的草稿版本。审批人会收到通知。",
+        "confirm": "提交",
+        "cancel": "取消",
+        "noteLabel": "发布说明（可选）",
+        "notePlaceholder": "本次版本有什么变更？"
+      },
+      "approveDialog": {
+        "title": "批准版本 {n}？",
+        "body": "已批准的版本可执行。批准后可设为默认。",
+        "confirm": "批准",
+        "cancel": "取消",
+        "commentLabel": "评论（可选）",
+        "commentPlaceholder": "需要其他审批人了解的内容…"
+      },
+      "rejectDialog": {
+        "title": "拒绝版本 {n}？",
+        "body": "作者会看到你的评论，可在新草稿中修改。",
+        "confirm": "拒绝",
+        "cancel": "取消",
+        "commentLabel": "原因",
+        "commentPlaceholder": "为何拒绝？"
+      },
+      "setDefaultDialog": {
+        "title": "将版本 {n} 设为默认？",
+        "body": "未显式指定版本的新执行将使用 v{n}。已绑定其他版本的执行不受影响。",
+        "confirm": "设为默认",
+        "cancel": "取消"
+      },
+      "deprecateDialog": {
+        "title": "弃用版本 {n}？",
+        "body": "弃用版本仍可在显式绑定时执行，但默认执行会切到其他版本。",
+        "confirm": "弃用",
+        "cancel": "取消",
+        "reasonLabel": "原因（可选）"
+      },
+      "archiveDialog": {
+        "title": "归档版本 {n}？",
+        "body": "归档版本无法执行且会从默认执行中隐藏。此操作不可逆 —— 需要创建新版本来恢复。",
+        "confirm": "归档",
+        "cancel": "取消",
+        "reasonLabel": "原因（可选）"
+      },
+      "sox": {
+        "selfApprovalNotAllowed": "不能批准自己创建的版本，请请其他团队成员审批。",
+        "inviteReviewerRequired": "你的套餐要求第二位审批人。邀请团队成员后继续。"
+      },
+      "approvalHistory": "审批历史",
+      "approvalDecision": {
+        "APPROVED": "已批准",
+        "REJECTED": "已拒绝",
+        "REQUESTED_CHANGES": "请求修改"
+      }
+    },
     "deleteDialog": {
       "title": "删除策略",
       "description": "确定要删除策略 \"{name}\" 吗？此操作可以在回收站中撤销。",
