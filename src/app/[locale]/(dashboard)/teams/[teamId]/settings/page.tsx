@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { ConfirmDialog, Select, toast } from '@/components/ui';
 
 interface Team {
   id: string;
@@ -32,6 +33,14 @@ export default function TeamSettingsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 所有权转让
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [eligibleMembers, setEligibleMembers] = useState<
+    Array<{ id: string; userId: string; user: { name: string | null; email: string } }>
+  >([]);
+  const [transferTargetId, setTransferTargetId] = useState<string>('');
+  const [isTransferring, setIsTransferring] = useState(false);
 
   useEffect(() => {
     fetchTeam();
@@ -84,6 +93,51 @@ export default function TeamSettingsPage() {
       setError(err instanceof Error ? err.message : t('settings.saveFailed'));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  /** Load eligible members (anyone other than the current user) when
+   *  the transfer dialog opens — kept lazy to skip the fetch entirely
+   *  on the common path where the owner never opens this section. */
+  const openTransferDialog = async () => {
+    setTransferOpen(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members?limit=100`);
+      const data = await res.json();
+      if (res.ok) {
+        // The new owner must be an existing member; the backend
+        // additionally rejects transferring to yourself.
+        const eligible = (data.members ?? []).filter(
+          (m: { userId: string }) => m.userId !== data.currentUserId,
+        );
+        setEligibleMembers(eligible);
+        if (eligible.length > 0) setTransferTargetId(eligible[0].userId);
+      }
+    } catch {
+      // Silent — the dialog will show the empty-state hint.
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!transferTargetId) return;
+    setIsTransferring(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerId: transferTargetId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(t('settings.transferFailed', { error: data.error || res.status }));
+        return;
+      }
+      toast.success(t('settings.transferSuccess'));
+      setTransferOpen(false);
+      // Refresh team to pick up new role (we're now an admin, not owner).
+      await fetchTeam();
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -234,6 +288,27 @@ export default function TeamSettingsPage() {
         </form>
       </div>
 
+      {/* Ownership transfer — owner-only, separate card so it doesn't
+          look like part of the destructive zone. */}
+      {canDelete && (
+        <div className="bg-bg shadow rounded-lg border border-border">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-medium text-fg">{t('settings.transferOwnership')}</h2>
+            <p className="mt-1 text-sm text-fg-muted">{t('settings.transferOwnershipDesc')}</p>
+          </div>
+          <div className="px-6 py-4 flex items-center justify-between">
+            <p className="text-sm text-fg-muted">{t('settings.transferDialogBody')}</p>
+            <button
+              type="button"
+              onClick={openTransferDialog}
+              className="ml-4 inline-flex shrink-0 items-center rounded-md border border-border-strong bg-bg px-3 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
+            >
+              {t('settings.transferOwnership')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 危险区域 */}
       {canDelete && (
         <div className="bg-bg shadow rounded-lg border-2 border-red-200">
@@ -347,6 +422,43 @@ export default function TeamSettingsPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={transferOpen}
+        title={t('settings.transferDialogTitle')}
+        description={
+          <div className="space-y-3">
+            <p>{t('settings.transferDialogBody')}</p>
+            {eligibleMembers.length === 0 ? (
+              <p className="text-sm text-warning-fg">
+                {t('settings.transferNoEligible')}
+              </p>
+            ) : (
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-fg">
+                  {t('settings.transferSelectLabel')}
+                </span>
+                <Select
+                  value={transferTargetId}
+                  onChange={(e) => setTransferTargetId(e.target.value)}
+                >
+                  {eligibleMembers.map((m) => (
+                    <option key={m.id} value={m.userId}>
+                      {m.user.name ?? m.user.email}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
+          </div>
+        }
+        confirmLabel={t('settings.transferConfirm')}
+        cancelLabel={t('settings.transferCancel')}
+        variant="warning"
+        isLoading={isTransferring}
+        onConfirm={handleTransfer}
+        onCancel={() => !isTransferring && setTransferOpen(false)}
+      />
     </div>
   );
 }
