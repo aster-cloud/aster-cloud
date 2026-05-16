@@ -144,7 +144,7 @@ export default function TeamDashboardPage() {
 
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-fg">{team.name}</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{team.name}</h1>
           <p className="mt-1 text-sm text-fg-muted">/{team.slug}</p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">

@@ -137,7 +137,7 @@ export function TeamsContent({
       />
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-fg">{t.title}</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t.title}</h1>
           <p className="mt-1 text-sm text-fg-muted">{t.subtitle}</p>
         </div>
         <div className="mt-4 sm:mt-0">

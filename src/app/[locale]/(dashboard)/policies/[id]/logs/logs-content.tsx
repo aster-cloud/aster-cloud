@@ -292,7 +292,7 @@ export function LogsContent({
             </svg>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-fg">{t.logs.title}</h1>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t.logs.title}</h1>
             <p className="mt-1 text-sm text-fg-muted">{policyName}</p>
           </div>
         </div>
