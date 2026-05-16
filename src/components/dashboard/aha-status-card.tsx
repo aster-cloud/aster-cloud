@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useApi } from '@/lib/api';
 
 interface AhaAchieved {
   achieved: true;
@@ -27,21 +27,16 @@ type AhaStatus = AhaAchieved | AhaPending;
  * 已达成：庆祝消息 + 用时统计
  * 未达成 + 在 24h 窗口内：进度条 + 剩余时间 + 首条策略 CTA
  * 已超出 24h 窗口：仍提示 publish 首条策略（无窗口压力）
+ *
+ * Data: useApi caches /api/user/aha-status across mounts (multiple
+ * dashboard surfaces can render this card without re-fetching) and
+ * SWR's natural revalidate-on-focus picks up backend state changes
+ * without the parent needing to plumb an explicit refetch.
  */
 export function AhaStatusCard({ locale }: { locale: string }) {
-  const [data, setData] = useState<AhaStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useApi<AhaStatus>('/api/user/aha-status');
 
-  useEffect(() => {
-    fetch('/api/user/aha-status')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d && 'achieved' in d) setData(d as AhaStatus);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="rounded-lg border border-border bg-bg p-4 shadow-sm">
         <div className="h-4 w-24 animate-pulse rounded bg-bg-muted" />
