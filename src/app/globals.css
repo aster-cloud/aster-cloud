@@ -1,6 +1,19 @@
 @import "tailwindcss";
 
 /*
+ * Wire Tailwind 4's `dark:` variant onto our next-themes attribute so
+ * existing `dark:bg-…` utilities (notably inside @aster-cloud/ui's
+ * Button "secondary" variant) flip together with our tokens. Tailwind
+ * 4's default `dark:` only listens to `prefers-color-scheme: dark` —
+ * which decouples those classes from the in-product theme toggle and
+ * produces "light button on a dark background" mismatches whenever
+ * the user's OS theme disagrees with the chosen Aster theme. The
+ * `&:where(...)` form keeps specificity flat so consumer utilities
+ * still override predictably.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
  * Aster brand tokens — single source of truth shared with aster-lang-dev.
  *
  * `@aster-cloud/tokens/tokens.css` declares CSS variables for the entire brand:
