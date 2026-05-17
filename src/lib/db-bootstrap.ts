@@ -7,9 +7,9 @@
  *   only thing on the network with credentials. So we run the same
  *   work from inside the Worker on every cold start, guarded by:
  *
- *     1. A process-level `bootstrapDone` flag so we only attempt it
- *        once per Worker instance (re-runs cost ~one round-trip but
- *        are still wasteful at scale).
+ *     1. Per-phase Promise caches so we only attempt each piece of
+ *        work once per Worker instance, but admin seed and schema
+ *        patch are cached independently (see below).
  *     2. A Postgres advisory lock so concurrent Worker instances
  *        don't race the same DDL.
  *     3. `IF NOT EXISTS` on every DDL so re-applying a patch that
@@ -25,10 +25,23 @@
  *     or refreshes the admin user with isAdmin=true +
  *     mustChangePassword=true
  *
+ * Why the two phases are cached separately:
+ *   Schema patch is immutable — once the column exists, it exists
+ *   forever, so the Promise can be cached for the life of the Worker
+ *   isolate.
+ *
+ *   Admin seed is NOT immutable: the operator may set ADMIN_EMAIL /
+ *   ADMIN_INITIAL_PASSWORD *after* the first request lands. With a
+ *   single shared cache, the first request resolves the "env not set
+ *   — skipping" branch successfully, caches the resolved Promise, and
+ *   every later request short-circuits without re-attempting the
+ *   seed even after the secrets are populated. We split the caches so
+ *   the seed phase can retry on every cold start until it finds a
+ *   provisioned admin (then it self-no-ops).
+ *
  * It does NOT run on every request — only on the first request that
  * triggers `ensureSchemaApplied()`. Subsequent requests short-circuit
- * via the `bootstrapDone` Promise cache so they share the same
- * in-flight bootstrap rather than re-running it.
+ * via the cached Promises rather than re-running.
  *
  * Failure mode: bootstrap errors are logged but don't throw — we'd
  * rather let the request continue and surface the underlying SQL
@@ -47,67 +60,118 @@ import { randomUUID } from 'node:crypto';
  *  single-arg pg_try_advisory_lock signature without BigInt). */
 const BOOTSTRAP_LOCK_KEY = 1145394001; // "aster-bootstrap" hash, arbitrary
 
-/** Cache the in-flight (or completed) bootstrap so concurrent callers
- *  share one Promise rather than racing. */
-let bootstrapDone: Promise<void> | null = null;
+/** Schema patch is immutable: once the column lands, no later request
+ *  needs to retry. Safe to cache for the life of the isolate. */
+let schemaPatchDone: Promise<void> | null = null;
+
+/** Admin seed cache: we want to re-attempt until we've actually
+ *  provisioned the admin row. A *resolved* Promise here means
+ *  "we observed an isAdmin + rotated admin in the DB"; until that
+ *  is true the cache stays null and every caller re-attempts. */
+let adminSeedDone: Promise<void> | null = null;
 
 export function ensureSchemaApplied(): Promise<void> {
-  if (!bootstrapDone) {
-    bootstrapDone = runBootstrap().catch((err) => {
-      // Reset so the next request can retry — useful when the first
-      // attempt hit a transient connection blip.
-      bootstrapDone = null;
-      console.error('[db-bootstrap] failed:', err);
-      // Swallow: callers should not crash on bootstrap failure.
+  if (!schemaPatchDone) {
+    schemaPatchDone = runSchemaPatch().catch((err) => {
+      schemaPatchDone = null;
+      console.error('[db-bootstrap] schema patch failed:', err);
     });
   }
-  return bootstrapDone;
+  // Fire the admin seed in the background — we don't want to block
+  // the request on it, but every cold request gets a chance to try
+  // again until the admin row is finalized.
+  ensureAdminSeeded();
+  return schemaPatchDone;
 }
 
-async function runBootstrap(): Promise<void> {
+/**
+ * Idempotent admin seed. Cached only on *success* (i.e. when we
+ * observe the admin row in the desired final state, or successfully
+ * write it). Returns the in-flight Promise so concurrent callers
+ * share the work, but a skip-or-fail clears the cache so the next
+ * caller retries.
+ */
+export function ensureAdminSeeded(): Promise<void> {
+  if (adminSeedDone) return adminSeedDone;
+  adminSeedDone = runAdminSeed()
+    .then((didFinalize) => {
+      // Only keep the cache if we reached a terminal state — i.e.
+      // the admin row exists and is correctly flagged. Otherwise
+      // (env vars missing, transient skip), clear so the next caller
+      // re-attempts.
+      if (!didFinalize) {
+        adminSeedDone = null;
+      }
+    })
+    .catch((err) => {
+      adminSeedDone = null;
+      console.error('[db-bootstrap] admin seed failed:', err);
+    });
+  return adminSeedDone;
+}
+
+async function runSchemaPatch(): Promise<void> {
   const db = getDb();
 
-  // pg_try_advisory_lock returns true if we acquired the lock, false
-  // otherwise. False here means another worker is mid-bootstrap;
-  // bail out — the work will be done by them, and the next request
-  // will see the applied schema.
   const lockRes = await db.execute(
     sql`SELECT pg_try_advisory_lock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())}) AS got`,
   );
   const got = Array.isArray(lockRes)
-    ? Boolean(
-        (lockRes[0] as { got?: boolean } | undefined)?.got,
-      )
+    ? Boolean((lockRes[0] as { got?: boolean } | undefined)?.got)
     : false;
   if (!got) {
-    console.warn('[db-bootstrap] another worker holds the lock; skipping');
+    console.warn('[db-bootstrap] another worker holds the schema lock; skipping');
     return;
   }
 
   try {
-    // ---- Migration 0009: User.mustChangePassword ----
     // IF NOT EXISTS makes this safe to re-run after `pnpm db:push`
     // has already added the column.
     await db.execute(
       sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "mustChangePassword" boolean NOT NULL DEFAULT false`,
     );
     console.warn('[db-bootstrap] schema patch 0009 applied');
+  } finally {
+    await db.execute(
+      sql`SELECT pg_advisory_unlock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())})`,
+    );
+  }
+}
 
-    // ---- Admin user seed (optional) ----
-    // Only runs when both env vars are present. The operator sets
-    // these on the Worker as secrets; once the admin has rotated
-    // their password they can rotate / remove the env vars too
-    // (idempotent re-seed will just re-arm mustChangePassword,
-    // which is annoying but recoverable via change-password again).
-    const adminEmailRaw = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
-    if (adminEmailRaw && adminPassword) {
-      await seedAdmin(adminEmailRaw, adminPassword, process.env.ADMIN_NAME);
-    } else {
-      console.warn(
-        '[db-bootstrap] ADMIN_EMAIL / ADMIN_INITIAL_PASSWORD not set — skipping admin seed',
-      );
-    }
+/**
+ * Returns true if the admin seed reached a terminal state worth
+ * caching (admin row exists with isAdmin=true), false if it was
+ * skipped or otherwise non-final.
+ */
+async function runAdminSeed(): Promise<boolean> {
+  const adminEmailRaw = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!adminEmailRaw || !adminPassword) {
+    console.warn(
+      '[db-bootstrap] ADMIN_EMAIL / ADMIN_INITIAL_PASSWORD not set — skipping admin seed (will retry on next request)',
+    );
+    return false;
+  }
+
+  // Serialize with other workers via the same advisory lock so we
+  // don't race the insert against another isolate's seed.
+  const db = getDb();
+  const lockRes = await db.execute(
+    sql`SELECT pg_try_advisory_lock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())}) AS got`,
+  );
+  const got = Array.isArray(lockRes)
+    ? Boolean((lockRes[0] as { got?: boolean } | undefined)?.got)
+    : false;
+  if (!got) {
+    console.warn(
+      '[db-bootstrap] another worker holds the seed lock; will retry next request',
+    );
+    return false;
+  }
+
+  try {
+    await seedAdmin(adminEmailRaw, adminPassword, process.env.ADMIN_NAME);
+    return true;
   } finally {
     await db.execute(
       sql`SELECT pg_advisory_unlock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())})`,

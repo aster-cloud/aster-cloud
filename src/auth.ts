@@ -70,8 +70,14 @@ const config: NextAuthConfig = {
         // here too — it's idempotent + advisory-locked, so a parallel
         // call from the dashboard layout is a no-op.
         try {
-          const { ensureSchemaApplied } = await import('@/lib/db-bootstrap');
+          const { ensureSchemaApplied, ensureAdminSeeded } = await import(
+            '@/lib/db-bootstrap'
+          );
           await ensureSchemaApplied();
+          // Block on the admin seed too — otherwise the very first
+          // login attempt races the in-flight insert and the user
+          // lookup below sees no row.
+          await ensureAdminSeeded();
         } catch (err) {
           console.warn('[auth] ensureSchemaApplied failed:', err);
         }

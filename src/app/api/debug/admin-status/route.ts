@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq, sql } from 'drizzle-orm';
 import { getDb, users } from '@/lib/prisma';
-import { ensureSchemaApplied } from '@/lib/db-bootstrap';
+import { ensureAdminSeeded, ensureSchemaApplied } from '@/lib/db-bootstrap';
 import { verifyPassword } from '@/auth';
 
 /**
@@ -40,7 +40,12 @@ export async function GET(req: Request) {
 
   // Force the bootstrap to run (idempotent, advisory-lock guarded) so
   // we can be sure the column + admin row exist before inspecting.
+  // We have to await BOTH phases explicitly — ensureSchemaApplied
+  // only returns the schema-patch Promise and kicks off the seed in
+  // the background, so without the second await the inspection runs
+  // before the admin row is written.
   await ensureSchemaApplied();
+  await ensureAdminSeeded();
 
   const db = getDb();
 
