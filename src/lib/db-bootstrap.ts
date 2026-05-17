@@ -198,10 +198,16 @@ async function seedAdmin(
   const passwordHash = await bcrypt.hash(password, 12);
   const db = getDb();
 
-  const existing = await db.query.users.findFirst({
-    where: eq(users.email, email),
-    columns: { id: true, mustChangePassword: true, isAdmin: true },
-  });
+  // Case-insensitive lookup: an existing row may have been written
+  // with mixed-case email (e.g. via GitHub OAuth's profile.email),
+  // which would fail `eq` against our lowercased input and then
+  // collide with the email unique constraint on insert.
+  const existingRows = await db.execute(
+    sql`SELECT id, "mustChangePassword", "isAdmin" FROM "User" WHERE LOWER(email) = ${email} LIMIT 1`,
+  );
+  const existing = Array.isArray(existingRows) && existingRows[0]
+    ? (existingRows[0] as { id: string; mustChangePassword: boolean; isAdmin: boolean })
+    : null;
 
   if (existing) {
     // Already rotated voluntarily — don't reset the temp password or
