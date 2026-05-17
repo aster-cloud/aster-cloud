@@ -155,9 +155,26 @@ async function runAdminSeed(): Promise<boolean> {
     await seedAdmin(adminEmailRaw, adminPassword, process.env.ADMIN_NAME);
     return true;
   } catch (err) {
+    // Surface as much error context as possible — drizzle's
+    // `Failed query: ...` wrapper hides the underlying Postgres
+    // detail/code by default. The Worker dashboard only renders
+    // the top-level Error.message, so we manually pull out the
+    // pg driver fields and log them.
+    const e = err as {
+      code?: string;
+      detail?: string;
+      message?: string;
+      cause?: { code?: string; detail?: string; message?: string };
+    } | null;
+    const code = e?.code ?? e?.cause?.code;
+    const detail = e?.detail ?? e?.cause?.detail;
+    const causeMsg = e?.cause?.message;
+    console.error(
+      `[db-bootstrap] admin seed insert error: code=${code} detail=${detail} causeMsg=${causeMsg} topMsg=${e?.message}`,
+    );
+
     // Postgres unique violation = another worker won the race.
     // Treat as success: the row exists, we just didn't write it.
-    const code = (err as { code?: string } | null)?.code;
     if (code === '23505') {
       console.warn(
         '[db-bootstrap] admin seed lost a race; another worker created the row',
