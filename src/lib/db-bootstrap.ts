@@ -61,8 +61,6 @@
 import { sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { getDb } from '@/db';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 /** Schema patch is immutable: once the column lands, no later request
@@ -218,41 +216,47 @@ async function seedAdmin(
       );
       return;
     }
-    await db
-      .update(users)
-      .set({
-        passwordHash,
-        isAdmin: true,
-        mustChangePassword: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, existing.id));
+    // Raw SQL for the same reason as the insert branch — Drizzle's
+    // .set() may swallow the updatedAt value if the column has
+    // `.defaultNow()` in schema.ts.
+    const updateNow = new Date();
+    await db.execute(sql`
+      UPDATE "User"
+         SET "passwordHash"       = ${passwordHash},
+             "isAdmin"            = true,
+             "mustChangePassword" = true,
+             "updatedAt"          = ${updateNow.toISOString()}
+       WHERE "id" = ${existing.id}
+    `);
     console.warn(
       `[db-bootstrap] refreshed admin ${email} (id=${existing.id})`,
     );
   } else {
     const id = randomUUID();
     const now = new Date();
-    // Note: createdAt/updatedAt are declared with `.defaultNow()` in
-    // schema.ts, but that's a Drizzle-side default that only fires
-    // when the *value* is undefined. When Drizzle emits `DEFAULT`
-    // in the SQL but the underlying Postgres column has no `DEFAULT
-    // now()` clause, the column resolves to NULL → 23502
-    // not-null violation. The original Drizzle migration that
-    // created this table never wrote the DEFAULT now() at the DB
-    // level, so we have to pass the timestamps explicitly here.
-    await db.insert(users).values({
-      id,
-      email,
-      name: name ?? 'Admin',
-      passwordHash,
-      isAdmin: true,
-      mustChangePassword: true,
-      emailVerified: now,
-      plan: 'pro',
-      createdAt: now,
-      updatedAt: now,
-    });
+    // Bypass Drizzle's TS-layer .values() entirely with raw SQL.
+    // Empirically (see commit cb2df48) Drizzle was silently
+    // dropping our explicit createdAt/updatedAt and emitting
+    // `DEFAULT, DEFAULT` for them — likely because schema.ts
+    // declares them with `.defaultNow()`, which the query builder
+    // treats as "I'll handle this, ignore the user-provided value".
+    // The DB-level column has no `DEFAULT now()` clause (original
+    // migration never wrote one), so DEFAULT resolves to NULL and
+    // the NOT NULL constraint fires (23502). Going raw forces the
+    // exact INSERT we want.
+    await db.execute(sql`
+      INSERT INTO "User" (
+        "id", "name", "email",
+        "emailVerified", "passwordHash", "plan",
+        "isAdmin", "mustChangePassword",
+        "createdAt", "updatedAt"
+      ) VALUES (
+        ${id}, ${name ?? 'Admin'}, ${email},
+        ${now.toISOString()}, ${passwordHash}, 'pro',
+        true, true,
+        ${now.toISOString()}, ${now.toISOString()}
+      )
+    `);
     console.warn(`[db-bootstrap] created admin ${email} (id=${id})`);
   }
 }
