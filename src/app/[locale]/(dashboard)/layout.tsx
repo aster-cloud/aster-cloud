@@ -2,6 +2,7 @@ import { Link } from '@/i18n/navigation';
 import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { db, users } from '@/lib/prisma';
+import { ensureSchemaApplied } from '@/lib/db-bootstrap';
 import { getTranslations } from 'next-intl/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import {
@@ -31,6 +32,13 @@ export default async function DashboardLayout({
 }) {
   const { locale } = await params;
   const routePrefix = locale === defaultLocale ? '' : `/${locale}`;
+
+  // Run boot-time DB patches + admin seed on first request after a
+  // cold start. Idempotent + advisory-locked; subsequent calls in
+  // the same Worker instance short-circuit via a Promise cache. Awaited
+  // here (rather than fire-and-forget) so the mustChangePassword column
+  // exists before the redirect-gate below reads it.
+  await ensureSchemaApplied();
 
   const t = await getTranslations('dashboardNav');
   const tSettings = await getTranslations('settings.account');
