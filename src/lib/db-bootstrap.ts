@@ -224,6 +224,7 @@ async function seedAdmin(
         passwordHash,
         isAdmin: true,
         mustChangePassword: true,
+        updatedAt: new Date(),
       })
       .where(eq(users.id, existing.id));
     console.warn(
@@ -231,6 +232,15 @@ async function seedAdmin(
     );
   } else {
     const id = randomUUID();
+    const now = new Date();
+    // Note: createdAt/updatedAt are declared with `.defaultNow()` in
+    // schema.ts, but that's a Drizzle-side default that only fires
+    // when the *value* is undefined. When Drizzle emits `DEFAULT`
+    // in the SQL but the underlying Postgres column has no `DEFAULT
+    // now()` clause, the column resolves to NULL → 23502
+    // not-null violation. The original Drizzle migration that
+    // created this table never wrote the DEFAULT now() at the DB
+    // level, so we have to pass the timestamps explicitly here.
     await db.insert(users).values({
       id,
       email,
@@ -238,8 +248,10 @@ async function seedAdmin(
       passwordHash,
       isAdmin: true,
       mustChangePassword: true,
-      emailVerified: new Date(),
+      emailVerified: now,
       plan: 'pro',
+      createdAt: now,
+      updatedAt: now,
     });
     console.warn(`[db-bootstrap] created admin ${email} (id=${id})`);
   }
