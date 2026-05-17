@@ -62,6 +62,20 @@ const config: NextAuthConfig = {
           return null;
         }
 
+        // Cold-start safety net: the credentials callback can be the
+        // very first server request after a deploy (a brand-new visitor
+        // hitting /login). The dashboard layout's bootstrap won't have
+        // run yet, so the admin row may not exist + the
+        // mustChangePassword column may be missing. Run the bootstrap
+        // here too — it's idempotent + advisory-locked, so a parallel
+        // call from the dashboard layout is a no-op.
+        try {
+          const { ensureSchemaApplied } = await import('@/lib/db-bootstrap');
+          await ensureSchemaApplied();
+        } catch (err) {
+          console.warn('[auth] ensureSchemaApplied failed:', err);
+        }
+
         const email = (credentials.email as string).toLowerCase().trim();
 
         // 检查账户锁定状态
@@ -86,6 +100,14 @@ const config: NextAuthConfig = {
 
         // User not found or no password set (OAuth-only user)
         if (!user || !user.passwordHash) {
+          // Diagnostic logging — minified worker.js swallows the
+          // distinction between "no user" / "no password" / "bad
+          // password" and surfaces all three as the generic
+          // CredentialsSignin error. Logging lets the operator
+          // inspect Worker output to tell them apart.
+          console.warn(
+            `[auth] credentials reject: email=${email} found=${!!user} hasPasswordHash=${!!user?.passwordHash}`,
+          );
           await recordFailedAttempt(email);
           return null;
         }
@@ -97,6 +119,9 @@ const config: NextAuthConfig = {
         );
 
         if (!isValidPassword) {
+          console.warn(
+            `[auth] credentials reject: email=${email} reason=invalid-password`,
+          );
           const failedResult = await recordFailedAttempt(email);
           if (failedResult.nowLocked) {
             console.warn(`[Auth] 账户因多次失败被锁定: ${email}`);
