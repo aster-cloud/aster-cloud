@@ -10,14 +10,23 @@
  *     1. Per-phase Promise caches so we only attempt each piece of
  *        work once per Worker instance, but admin seed and schema
  *        patch are cached independently (see below).
- *     2. A Postgres advisory lock so concurrent Worker instances
- *        don't race the same DDL.
- *     3. `IF NOT EXISTS` on every DDL so re-applying a patch that
- *        already landed is a no-op.
- *     4. Idempotent admin upsert: re-running for an existing email
+ *     2. `IF NOT EXISTS` on every DDL so re-applying a patch that
+ *        already landed is a no-op even across concurrent isolates.
+ *     3. Idempotent admin upsert: re-running for an existing email
  *        rotates the temp password + re-arms `mustChangePassword`,
  *        which is fine — the operator can re-seed if they forget the
- *        temp.
+ *        temp. Concurrent inserts race-protect via the User_email
+ *        unique constraint; the loser treats 23505 as success.
+ *
+ * Why no Postgres advisory lock (despite the obvious appeal):
+ *   pg_(try_)advisory_lock is session-scoped. Under Hyperdrive's
+ *   connection pool the lock-acquire statement and the DDL may run
+ *   on different pooled connections — the lock isn't held on the
+ *   session that does the work. Worse, a Worker isolate that dies
+ *   mid-bootstrap can leave the lock held on an orphaned pooled
+ *   session indefinitely, permanently blocking every later isolate.
+ *   `IF NOT EXISTS` + unique-constraint races give us idempotency
+ *   without the foot-gun.
  *
  * What it does:
  *   - Adds User.mustChangePassword (migration 0009) if missing
@@ -55,10 +64,6 @@ import { getDb } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-
-/** Postgres advisory lock key — arbitrary unique int32 (fits the
- *  single-arg pg_try_advisory_lock signature without BigInt). */
-const BOOTSTRAP_LOCK_KEY = 1145394001; // "aster-bootstrap" hash, arbitrary
 
 /** Schema patch is immutable: once the column lands, no later request
  *  needs to retry. Safe to cache for the life of the isolate. */
@@ -113,29 +118,17 @@ export function ensureAdminSeeded(): Promise<void> {
 async function runSchemaPatch(): Promise<void> {
   const db = getDb();
 
-  const lockRes = await db.execute(
-    sql`SELECT pg_try_advisory_lock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())}) AS got`,
+  // No advisory lock needed: `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+  // is atomic in Postgres and a no-op if the column already exists.
+  // The session-scoped lock approach (pg_try_advisory_lock) is unsafe
+  // under Hyperdrive — different statements may run on different
+  // pooled connections, so the lock is held on a session we may not
+  // execute the DDL on, and a Worker isolate that dies mid-bootstrap
+  // can leave the lock held indefinitely.
+  await db.execute(
+    sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "mustChangePassword" boolean NOT NULL DEFAULT false`,
   );
-  const got = Array.isArray(lockRes)
-    ? Boolean((lockRes[0] as { got?: boolean } | undefined)?.got)
-    : false;
-  if (!got) {
-    console.warn('[db-bootstrap] another worker holds the schema lock; skipping');
-    return;
-  }
-
-  try {
-    // IF NOT EXISTS makes this safe to re-run after `pnpm db:push`
-    // has already added the column.
-    await db.execute(
-      sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "mustChangePassword" boolean NOT NULL DEFAULT false`,
-    );
-    console.warn('[db-bootstrap] schema patch 0009 applied');
-  } finally {
-    await db.execute(
-      sql`SELECT pg_advisory_unlock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())})`,
-    );
-  }
+  console.warn('[db-bootstrap] schema patch 0009 applied');
 }
 
 /**
@@ -153,29 +146,25 @@ async function runAdminSeed(): Promise<boolean> {
     return false;
   }
 
-  // Serialize with other workers via the same advisory lock so we
-  // don't race the insert against another isolate's seed.
-  const db = getDb();
-  const lockRes = await db.execute(
-    sql`SELECT pg_try_advisory_lock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())}) AS got`,
-  );
-  const got = Array.isArray(lockRes)
-    ? Boolean((lockRes[0] as { got?: boolean } | undefined)?.got)
-    : false;
-  if (!got) {
-    console.warn(
-      '[db-bootstrap] another worker holds the seed lock; will retry next request',
-    );
-    return false;
-  }
-
+  // No advisory lock: the seed is already idempotent
+  // (findFirst → update-or-insert), and concurrent inserts of the
+  // same email are protected by the User_email_unique constraint
+  // (the second insert will throw a unique-violation we treat as a
+  // race-lost no-op).
   try {
     await seedAdmin(adminEmailRaw, adminPassword, process.env.ADMIN_NAME);
     return true;
-  } finally {
-    await db.execute(
-      sql`SELECT pg_advisory_unlock(${sql.raw(BOOTSTRAP_LOCK_KEY.toString())})`,
-    );
+  } catch (err) {
+    // Postgres unique violation = another worker won the race.
+    // Treat as success: the row exists, we just didn't write it.
+    const code = (err as { code?: string } | null)?.code;
+    if (code === '23505') {
+      console.warn(
+        '[db-bootstrap] admin seed lost a race; another worker created the row',
+      );
+      return true;
+    }
+    throw err;
   }
 }
 
