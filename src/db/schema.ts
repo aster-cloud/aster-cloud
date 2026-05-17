@@ -273,6 +273,20 @@ export const users = pgTable(
      */
     isAdmin: boolean('isAdmin').default(false).notNull(),
 
+    /**
+     * Force password change on next login.
+     *
+     * Set to `true` when an account is provisioned with a temporary
+     * password (e.g. admin bootstrap via `pnpm seed:admin`, or future
+     * admin-issued invitations). Cleared the moment the user
+     * successfully runs the change-password flow.
+     *
+     * The login + middleware path checks this flag after auth and
+     * redirects to /onboarding/change-password before letting the user
+     * reach any other dashboard surface.
+     */
+    mustChangePassword: boolean('mustChangePassword').default(false).notNull(),
+
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },

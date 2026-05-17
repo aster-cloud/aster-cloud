@@ -203,6 +203,21 @@
       }
     }
   },
+  "changePassword": {
+    "title": "Set a new password",
+    "subtitle": "Your account ({email}) was provisioned with a temporary password. Choose a new one before continuing.",
+    "currentLabel": "Temporary password",
+    "newLabel": "New password",
+    "newHint": "At least 8 characters. Use something you don't reuse elsewhere.",
+    "confirmLabel": "Confirm new password",
+    "submit": "Set password",
+    "submitting": "Setting…",
+    "success": "Password updated. Welcome.",
+    "errorTooShort": "New password must be at least 8 characters.",
+    "errorMismatch": "Passwords don't match.",
+    "errorSame": "New password must differ from the temporary one.",
+    "errorGeneric": "Could not update password. Try again."
+  },
   "auth": {
     "signup": {
       "title": "Start your free trial",

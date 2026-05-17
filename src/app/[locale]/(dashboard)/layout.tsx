@@ -1,4 +1,7 @@
 import { Link } from '@/i18n/navigation';
+import { redirect } from 'next/navigation';
+import { eq } from 'drizzle-orm';
+import { db, users } from '@/lib/prisma';
 import { getTranslations } from 'next-intl/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import {
@@ -40,6 +43,23 @@ export default async function DashboardLayout({
 
   const session = await getSession();
   const userId = session?.user?.id ?? null;
+
+  // Force password rotation on first login for accounts provisioned
+  // with a temporary password (admin bootstrap, future invitations).
+  // The flag lives on the User row; we check it here so the gate
+  // covers every dashboard surface in one place. The change-password
+  // page sits OUTSIDE this layout (under (auth)) so the user can
+  // reach it while still flagged.
+  if (userId) {
+    const row = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { mustChangePassword: true },
+    });
+    if (row?.mustChangePassword) {
+      redirect(`/${locale}/onboarding/change-password`);
+    }
+  }
+
   const [admin, role] = await Promise.all([
     isAdminFromSession(),
     userId ? getEffectiveRole(userId) : Promise.resolve('owner' as const),

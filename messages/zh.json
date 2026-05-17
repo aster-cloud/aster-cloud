@@ -203,6 +203,21 @@
       }
     }
   },
+  "changePassword": {
+    "title": "设置新密码",
+    "subtitle": "你的账户（{email}）使用临时密码登录。请在继续前设置新密码。",
+    "currentLabel": "临时密码",
+    "newLabel": "新密码",
+    "newHint": "至少 8 位。请不要与其他网站重复。",
+    "confirmLabel": "确认新密码",
+    "submit": "设置密码",
+    "submitting": "设置中…",
+    "success": "密码已更新。欢迎。",
+    "errorTooShort": "新密码至少 8 位。",
+    "errorMismatch": "两次输入的密码不一致。",
+    "errorSame": "新密码不能与临时密码相同。",
+    "errorGeneric": "更新密码失败，请重试。"
+  },
   "auth": {
     "signup": {
       "title": "开始免费试用",
