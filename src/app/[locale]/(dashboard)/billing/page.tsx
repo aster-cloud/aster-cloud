@@ -1,7 +1,8 @@
 import { getTranslations, getLocale } from 'next-intl/server';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { getUsageStats } from '@/lib/usage';
+import { CAN_BILLING } from '@/lib/deployment-mode';
 import { getCurrencyForLocale, PLANS, PlanType, CurrencyCode } from '@/lib/plans';
 import { BillingContent } from './billing-content';
 
@@ -29,6 +30,12 @@ const BILLING_FAQ_KEYS = [
 ] as const;
 
 export default async function BillingPage() {
+  // On-prem 没有 Stripe 订阅模型，整个 billing 页面不可见。
+  // notFound() 优先于 session 检查 —— 即使未登录也不暴露页面存在。
+  if (!CAN_BILLING) {
+    notFound();
+  }
+
   const session = await getSession();
   if (!session?.user?.id) {
     redirect('/login');

@@ -1,6 +1,7 @@
 // 用户 dunning 状态查询（dashboard 横幅用）
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { CAN_DUNNING } from '@/lib/deployment-mode';
 import { db, users } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
 
@@ -8,6 +9,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  // On-prem 没有 Stripe 订阅 → 没有 dunning 状态 → 端点不可见
+  if (!CAN_DUNNING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

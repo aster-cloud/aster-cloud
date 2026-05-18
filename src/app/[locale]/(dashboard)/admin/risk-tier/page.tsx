@@ -6,6 +6,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { isAdminFromSession } from '@/lib/admin-auth';
+import { CAN_RISKTIER } from '@/lib/deployment-mode';
 import { RiskTierAdminContent } from './risk-tier-content';
 
 type Props = {
@@ -15,6 +16,12 @@ type Props = {
 export const dynamic = 'force-dynamic';
 
 export default async function RiskTierAdminPage({ params }: Props) {
+  // On-prem 不使用注册风险评分系统。优先于 admin 检查 —— 即使是 admin
+  // 在 on-prem 部署也不应看到此页面。
+  if (!CAN_RISKTIER) {
+    notFound();
+  }
+
   const { locale } = await params;
   setRequestLocale(locale);
 

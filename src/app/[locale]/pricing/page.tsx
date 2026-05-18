@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { CAN_PRICING } from '@/lib/deployment-mode';
 import {
   PUBLIC_PRO_MONTHLY_PRICE,
   getPublicCurrency,
@@ -24,6 +26,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PricingPage({ params }: Props) {
+  // On-prem 部署不公开定价表（enterprise license 协商定价）。
+  if (!CAN_PRICING) {
+    notFound();
+  }
+
   const { locale } = await params;
   setRequestLocale(locale);
 
