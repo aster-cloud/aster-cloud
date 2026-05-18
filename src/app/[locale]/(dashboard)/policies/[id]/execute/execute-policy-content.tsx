@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import {
   extractSchema,
   generateFieldValue,
@@ -594,7 +595,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                     </svg>
                     <div className="ml-3">
                       <p className="text-sm text-red-700">{displayError}</p>
-                      {needsUpgrade && (
+                      {needsUpgrade && CLIENT_CAPABILITIES.billing && (
                         <Link href={`/${locale}/billing`} className="mt-1 block text-sm font-medium text-red-700 underline">
                           {t('upgradePlan')}
                         </Link>

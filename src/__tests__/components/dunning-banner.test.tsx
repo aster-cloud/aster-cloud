@@ -3,7 +3,7 @@
 //   - SaaS + no data → renders nothing (fetch returns null)
 //   - on-prem → renders nothing AND never fetches (no /api/user/dunning-status hit)
 
-import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 
 vi.mock('next-intl', () => ({
@@ -12,14 +12,16 @@ vi.mock('next-intl', () => ({
 }));
 
 const fetchMock = vi.fn();
-beforeAll(() => {
-  // 安装全局 fetch mock。每个测试自己清理。
-  globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+beforeEach(() => {
+  // vi.stubGlobal 在 unstubAllGlobals 时自动恢复原值；避免污染其它测试。
+  vi.stubGlobal('fetch', fetchMock);
 });
 
 afterEach(() => {
   cleanup();
   vi.resetModules();
+  vi.unstubAllGlobals();
   fetchMock.mockReset();
 });
 

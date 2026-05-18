@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { Breadcrumbs } from '@/components/ui';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 
 export default function NewTeamPage() {
   const t = useTranslations('teams');
@@ -57,7 +58,14 @@ export default function NewTeamPage() {
 
       if (!res.ok) {
         if (data.upgrade) {
-          router.push('/billing');
+          // SaaS: redirect to billing to upgrade. on-prem: no billing page,
+          // surface the upgrade-required message as an inline error so the
+          // operator knows to contact admin (team caps are license-driven).
+          if (CLIENT_CAPABILITIES.billing) {
+            router.push('/billing');
+            return;
+          }
+          setError(t('upgradeRequired.contactAdmin'));
           return;
         }
         throw new Error(data.error || 'Failed to create team');

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { formatDate } from '@/lib/format';
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { Breadcrumbs, ListSearchInput } from '@/components/ui';
@@ -194,7 +195,7 @@ export function ReportsContent({
       {error && (
         <div className="mb-6 rounded-md bg-red-50 p-4">
           <p className="text-sm text-red-700">{error}</p>
-          {error.includes('subscription') && (
+          {error.includes('subscription') && CLIENT_CAPABILITIES.billing && (
             <Link href="/billing" className="text-sm font-medium text-red-700 underline">
               {t.upgradePlan}
             </Link>

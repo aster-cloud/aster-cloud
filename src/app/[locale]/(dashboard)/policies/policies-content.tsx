@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { formatDate } from '@/lib/format';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
@@ -840,14 +841,16 @@ export function PoliciesContent({
                 limit: freezeInfo.limit,
                 total: freezeInfo.total,
               })}
-              <div className="mt-2">
-                <Link
-                  href={`/${locale}/billing`}
-                  className="font-medium underline-offset-2 hover:underline"
-                >
-                  {t.freeze.upgradeLink}
-                </Link>
-              </div>
+              {CLIENT_CAPABILITIES.billing && (
+                <div className="mt-2">
+                  <Link
+                    href={`/${locale}/billing`}
+                    className="font-medium underline-offset-2 hover:underline"
+                  >
+                    {t.freeze.upgradeLink}
+                  </Link>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         )}
