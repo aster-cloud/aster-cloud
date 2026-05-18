@@ -50,6 +50,12 @@ const nextConfig: NextConfig = {
     // 让 terser 看到 `if (literal)` 死分支并消除。
     //
     // 用 Next.js 传入的 webpack 实例避免顶部 import / 额外依赖。
+    //
+    // **Next 16 注意**：Next 16 默认 Turbopack，但 webpack hook 仍可用。
+    // package.json 的 build / dev script 显式 `--webpack` 强制走 webpack 路径，
+    // 否则这个 DefinePlugin 不会执行 → on-prem 模式下 SaaS-only npm 包
+    // （stripe/resend/mixpanel-browser）不会被 dead-branch 消除，会泄露进 bundle。
+    // 等 Turbopack 等价能力（define + alias=false）成熟后再迁移。
     config.plugins.push(
       new webpack.DefinePlugin({
         __DEPLOYMENT_MODE__: JSON.stringify(DEPLOYMENT_MODE),
