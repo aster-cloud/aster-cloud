@@ -14,6 +14,12 @@ import { buildCommands } from '@/components/dashboard/command-palette-commands';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
+import {
+  CAN_BILLING,
+  CAN_RISKTIER,
+  CAN_LICENSE,
+  CAN_SSO,
+} from '@/lib/deployment-mode';
 import { getEffectiveRole, canAccess } from '@/lib/effective-role';
 import { defaultLocale } from '@/i18n/config';
 
@@ -46,6 +52,7 @@ export default async function DashboardLayout({
   const tMobile = await getTranslations('dashboardNav.mobile');
   const tAdmin = await getTranslations('admin.riskTier');
   const tAdminCircuit = await getTranslations('admin.aiCircuitBreaker');
+  const tAdminNav = await getTranslations('admin.nav');
   const tCmd = await getTranslations('dashboardNav.commandPalette');
   const tCommon = await getTranslations('common');
 
@@ -75,13 +82,19 @@ export default async function DashboardLayout({
 
   // role-aware nav 过滤：让 viewer 不看到无操作权限的入口。
   // 真实操作授权仍由 API 层 checkTeamPermission 兜底，本过滤仅决定可见性。
+  //
+  // mode-aware：CAN_RISKTIER / CAN_BILLING 是编译期常量。CAN_LICENSE /
+  // CAN_SSO 在 on-prem build 才为 true —— 占位入口（PR-8 落地实页面）。
+  // 入口对应的页面 PR-4 已守门（on-prem 404），这里隐藏入口避免点了 404。
   const navItems = [
     { href: '/dashboard', label: t('dashboard') },        // 所有 role
     { href: '/policies', label: t('policies') },           // viewer 只读，更高 role 可写
     ...(canAccess(role, 'member') ? [{ href: '/reports', label: t('reports') }] : []),
     { href: '/teams', label: t('teams') },                 // 所有 role 看自己加入的 team
     ...(canAccess(role, 'member') ? [{ href: '/security', label: t('security') }] : []),
-    ...(admin ? [{ href: '/admin/risk-tier', label: tAdmin('title') }] : []),
+    ...(admin && CAN_RISKTIER
+      ? [{ href: '/admin/risk-tier', label: tAdmin('title') }]
+      : []),
     ...(admin
       ? [
           {
@@ -90,11 +103,20 @@ export default async function DashboardLayout({
           },
         ]
       : []),
+    ...(admin && CAN_LICENSE
+      ? [{ href: '/admin/license', label: tAdminNav('license') }]
+      : []),
+    ...(admin && CAN_SSO
+      ? [{ href: '/admin/sso', label: tAdminNav('sso') }]
+      : []),
   ];
 
   const secondaryItems = [
-    // 只让能影响付费的角色（admin/owner）看到 billing 入口
-    ...(canAccess(role, 'admin') ? [{ href: '/billing', label: t('billing') }] : []),
+    // 只让能影响付费的角色（admin/owner）看到 billing 入口，且仅 SaaS 模式
+    // 有 billing 概念；on-prem 计费由 enterprise license 决定，无入口
+    ...(canAccess(role, 'admin') && CAN_BILLING
+      ? [{ href: '/billing', label: t('billing') }]
+      : []),
     { href: '/settings', label: t('settings') },           // 个人设置所有 role
   ];
 
@@ -162,7 +184,8 @@ export default async function DashboardLayout({
                   // Viewers can still navigate; gating `create` further is a
                   // role-aware concern we can revisit when the palette grows.
                   canCreate:  canAccess(role, 'member'),
-                  showBilling: canAccess(role, 'admin'),
+                  // billing 命令需要：admin/owner 角色 + SaaS 模式
+                  showBilling: canAccess(role, 'admin') && CAN_BILLING,
                 })}
                 labels={{
                   placeholder:    tCmd('placeholder'),

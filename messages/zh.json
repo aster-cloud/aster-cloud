@@ -431,7 +431,8 @@
     "upgradeRequired": {
       "title": "需要升级订阅",
       "description": "团队功能需要团队版订阅才能使用",
-      "upgradeButton": "升级计划"
+      "upgradeButton": "升级计划",
+      "contactAdmin": "联系管理员"
     },
     "roles": {
       "owner": "所有者",
@@ -1493,7 +1494,8 @@
     "team_member_invite": {
       "title": "Free 仅支持 1 人",
       "body": "Pro 支持邀请团队成员、按角色分配权限。升级 Pro 即可加人。"
-    }
+    },
+    "contactAdmin": "联系管理员"
   },
   "equivalencePage": {
     "seo": {

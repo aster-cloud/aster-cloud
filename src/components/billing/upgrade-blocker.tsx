@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { track, Events } from '@/lib/mixpanel';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import type { UpgradeReason, RecommendedPlan } from '@/lib/plan-quota';
 
 /**
@@ -34,7 +35,10 @@ export function UpgradeBlocker({
   const t = useTranslations('upgradeBlocker');
 
   useEffect(() => {
-    if (open) {
+    // Mixpanel UPGRADE_BLOCKED_AT_REVIEW 是 SaaS NSM 漏斗指标。on-prem
+    // 没有"升级"概念，埋点也无意义；mixpanel.track 自身已经在 on-prem
+    // no-op，这里多一道短路以防未来变化。
+    if (open && CLIENT_CAPABILITIES.mixpanel) {
       track(Events.UPGRADE_BLOCKED_AT_REVIEW, {
         reason,
         recommended_plan: recommendedPlan,
@@ -45,6 +49,11 @@ export function UpgradeBlocker({
   }, [open, reason, recommendedPlan, usage, limit]);
 
   if (!open) return null;
+
+  // On-prem 行为：仍可达到配额上限（license 决定上限），但 "升级到 Pro" 无意义。
+  // CTA 改为 "联系管理员"。文案分支由 CTA 段决定；标题/正文仍复用 SaaS 文案
+  // （配额超限的描述对两种模式都准确）。
+  const isOnPrem = !CLIENT_CAPABILITIES.pricing;
 
   return (
     <div
@@ -71,12 +80,18 @@ export function UpgradeBlocker({
           >
             {t('dismiss')}
           </button>
-          <Link
-            href={`/${locale}/pricing?ref=upgrade-blocker&reason=${reason}`}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-          >
-            {t('viewPlans')}
-          </Link>
+          {isOnPrem ? (
+            <span className="rounded-md bg-bg-subtle px-4 py-2 text-sm font-medium text-fg-muted">
+              {t('contactAdmin')}
+            </span>
+          ) : (
+            <Link
+              href={`/${locale}/pricing?ref=upgrade-blocker&reason=${reason}`}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+            >
+              {t('viewPlans')}
+            </Link>
+          )}
         </div>
       </div>
     </div>

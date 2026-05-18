@@ -53,6 +53,7 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import type { editor } from 'monaco-editor';
 import { Link } from '@/i18n/navigation';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { Breadcrumbs, buttonVariants, cn } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui';
 import { normalizeLocale } from '@/data/policy-examples';
@@ -479,7 +480,7 @@ export function PolicyForm({
           className="border-b border-danger/30 bg-danger/10 px-4 py-2 text-sm text-danger sm:px-6"
         >
           {serverError.message}
-          {serverError.upgrade && (
+          {serverError.upgrade && CLIENT_CAPABILITIES.billing && (
             <Link
               href={`/${uiLocale}/billing`}
               className="ml-3 underline hover:no-underline"

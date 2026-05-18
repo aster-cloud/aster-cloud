@@ -31,6 +31,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { isUnlimited } from '@/lib/plans';
 import { AiUsageCard } from '@/components/dashboard/ai-usage-card';
 import { ApiUsageCard } from '@/components/dashboard/api-usage-card';
@@ -194,8 +195,12 @@ export function DashboardContent({
           </Link>
         </Stack>
 
-        {/* Plan-state banner */}
-        {stats.plan === 'trial' && stats.trialDaysLeft !== null && (
+        {/* Plan-state banner — SaaS only.
+            stats.plan === 'trial' 在 on-prem 上理论上不可能出现（auth.ts
+            createUser 已 gate on IS_SAAS），但加 CAN_BILLING 兜底，防止
+            未来数据迁移意外引入 trial 状态时 UI 出现死链接。 */}
+        {CLIENT_CAPABILITIES.billing &&
+          stats.plan === 'trial' && stats.trialDaysLeft !== null && (
           <Alert variant="info">
             <AlertTitle>{t.trialActive}</AlertTitle>
             <AlertDescription>
@@ -239,7 +244,7 @@ export function DashboardContent({
             limit={stats.features.apiAccess ? stats.usage.apiCallsLimit : undefined}
             limitTemplate={t.stats.limitTemplate}
             footer={
-              !stats.features.apiAccess && (
+              !stats.features.apiAccess && CLIENT_CAPABILITIES.billing && (
                 <Link href="/billing" className="text-xs text-primary hover:text-primary-hover">
                   {t.stats.upgradeForApi}
                 </Link>

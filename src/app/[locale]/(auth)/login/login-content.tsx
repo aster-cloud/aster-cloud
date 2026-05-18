@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
 import { defaultLocale } from '@/i18n/config';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { Turnstile, TurnstilePlaceholder } from '@/components/turnstile';
 import {
   Alert,
@@ -172,15 +173,19 @@ function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentPr
               <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
                 {t.title}
               </h1>
-              <p className="text-sm text-fg-muted">
-                {t.noAccount}{' '}
-                <Link
-                  href="/signup"
-                  className="font-medium text-primary hover:text-primary-hover"
-                >
-                  {t.startTrial}
-                </Link>
-              </p>
+              {/* On-prem 部署不开放自助注册（账号由 admin 邀请）；隐藏
+                  "没账号？注册" 链接避免点了 404。 */}
+              {CLIENT_CAPABILITIES.signup && (
+                <p className="text-sm text-fg-muted">
+                  {t.noAccount}{' '}
+                  <Link
+                    href="/signup"
+                    className="font-medium text-primary hover:text-primary-hover"
+                  >
+                    {t.startTrial}
+                  </Link>
+                </p>
+              )}
             </Stack>
           </Stack>
 

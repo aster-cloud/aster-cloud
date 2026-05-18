@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 
 interface AiUsage {
   plan: string;
@@ -127,13 +128,19 @@ export function AiUsageCard({ locale }: { locale: string }) {
       {percent >= 80 && data.monthly.limit !== -1 && (
         <div className="mt-3 rounded bg-yellow-50 p-2 text-xs text-yellow-800">
           {t('warningHighUsage', { remaining: data.monthly.remaining })}
-          <Link
-            href={`/${locale}/pricing`}
-            className="ml-2 font-medium text-primary hover:underline"
-          >
-            {t('upgrade')} →
-          </Link>
-          <span className="mx-1">{t('or')}</span>
+          {/* SaaS: 升级链接到 /pricing；on-prem: 没有升级概念，
+              只显示 BYOK 选项（AI keys 在两种模式都可用）。 */}
+          {CLIENT_CAPABILITIES.pricing && (
+            <>
+              <Link
+                href={`/${locale}/pricing`}
+                className="ml-2 font-medium text-primary hover:underline"
+              >
+                {t('upgrade')} →
+              </Link>
+              <span className="mx-1">{t('or')}</span>
+            </>
+          )}
           <Link
             href={`/${locale}/settings/ai-keys`}
             className="font-medium text-primary hover:underline"

@@ -431,7 +431,8 @@
     "upgradeRequired": {
       "title": "Upgrade Required",
       "description": "Team features require a Team subscription to use",
-      "upgradeButton": "Upgrade Plan"
+      "upgradeButton": "Upgrade Plan",
+      "contactAdmin": "Contact your administrator"
     },
     "roles": {
       "owner": "Owner",
@@ -1493,7 +1494,8 @@
     "team_member_invite": {
       "title": "Free is single-seat",
       "body": "Pro lets you invite teammates with role-based access. Upgrade to add a member."
-    }
+    },
+    "contactAdmin": "Contact your administrator"
   },
   "equivalencePage": {
     "seo": {

@@ -24,6 +24,7 @@
  */
 import { useTranslations } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
+import { IS_SAAS } from '@/lib/deployment-mode';
 import {
   Languages,
   ShieldCheck,
@@ -78,11 +79,16 @@ function HomeContent({ locale }: { locale: string }) {
       <Hero t={t} locale={locale} />
       <TrustBand t={t} />
       <Features t={t} />
-      <PricingPreview
-        t={t}
-        currency={currency}
-        proMonthlyPrice={proMonthlyPrice}
-      />
+      {/* Pricing preview 是 SaaS 三档定价表（Free/Pro/Enterprise）。
+          On-prem 客户的"定价"是 license 协商，公开三档表会误导。
+          IS_SAAS = false 时 terser DCE 这个分支 + PricingPreview 子树。 */}
+      {IS_SAAS && (
+        <PricingPreview
+          t={t}
+          currency={currency}
+          proMonthlyPrice={proMonthlyPrice}
+        />
+      )}
       <BottomCta t={t} />
       <Footer t={t} />
     </div>
@@ -117,12 +123,12 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
             {/* Link rendered with Button visuals via buttonVariants().
                 We don't use Button-wraps-Link because that nests
                 interactive elements (invalid HTML + a11y violation). */}
-            <Link
-              href="/signup"
-              className={buttonVariants({ variant: 'primary', size: 'md' })}
-            >
-              {t('common.startFreeTrial')}
-            </Link>
+            <MarketingPrimaryCta
+              saasLabel={t('common.startFreeTrial')}
+              onPremLabel={t('common.contactSales')}
+              variant="primary"
+              size="md"
+            />
           </Stack>
         </div>
       </Container>
@@ -184,14 +190,17 @@ function Hero({
             {t('hero.description')}
           </p>
           <Stack direction="row" gap={3} className="mt-2">
-            <Link
-              href="/signup"
-              className={buttonVariants({ variant: 'primary', size: 'lg' })}
-            >
-              {t('common.getStarted')}
-            </Link>
+            <MarketingPrimaryCta
+              saasLabel={t('common.getStarted')}
+              onPremLabel={t('common.contactSales')}
+              variant="primary"
+              size="lg"
+            />
           </Stack>
-          <p className="text-xs text-fg-subtle">{t('hero.noCreditCard')}</p>
+          {/* "无需信用卡" 仅 SaaS 试用语境有意义；on-prem 销售通常需对接合同。 */}
+          {IS_SAAS && (
+            <p className="text-xs text-fg-subtle">{t('hero.noCreditCard')}</p>
+          )}
 
           {/* Live CNL demo — typewriter cycles three real, compilable
               snippets. The whole pitch of Aster is "policies written by
@@ -490,12 +499,12 @@ function BottomCta({ t }: { t: ReturnType<typeof useTranslations> }) {
           <p className="max-w-xl text-lg leading-relaxed text-violet-100">
             {t('cta.description')}
           </p>
-          <Link
-            href="/signup"
-            className={buttonVariants({ variant: 'secondary', size: 'lg' })}
-          >
-            {t('common.startFreeTrial')}
-          </Link>
+          <MarketingPrimaryCta
+            saasLabel={t('common.startFreeTrial')}
+            onPremLabel={t('common.contactSales')}
+            variant="secondary"
+            size="lg"
+          />
         </Stack>
       </Container>
     </section>
@@ -535,6 +544,41 @@ function Footer({ t }: { t: ReturnType<typeof useTranslations> }) {
         </Stack>
       </Container>
     </footer>
+  );
+}
+
+/**
+ * Marketing primary CTA — SaaS: 跳 /signup 自助注册；on-prem: mailto sales。
+ *
+ * 编译期常量 IS_SAAS 决定渲染哪个分支（terser DCE 一个分支）。在 marketing
+ * 上下文，"开始使用" 在 SaaS 和 on-prem 是不同的转化路径：SaaS 注册即用，
+ * on-prem 需销售对接 license。共用同一组件让所有 CTA 行为保持一致。
+ */
+function MarketingPrimaryCta({
+  saasLabel,
+  onPremLabel,
+  variant,
+  size,
+}: {
+  saasLabel: string;
+  onPremLabel: string;
+  variant: 'primary' | 'secondary' | 'outline';
+  size: 'sm' | 'md' | 'lg';
+}) {
+  if (IS_SAAS) {
+    return (
+      <Link href="/signup" className={buttonVariants({ variant, size })}>
+        {saasLabel}
+      </Link>
+    );
+  }
+  return (
+    <a
+      href="mailto:sales@aster-lang.cloud"
+      className={buttonVariants({ variant, size })}
+    >
+      {onPremLabel}
+    </a>
   );
 }
 

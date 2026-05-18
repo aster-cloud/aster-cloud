@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { Breadcrumbs, ListSearchInput } from '@/components/ui';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 
 interface Team {
   id: string;
@@ -75,12 +76,19 @@ export function TeamsContent({
         <h2 className="mt-4 text-xl font-semibold text-fg">{t('upgradeRequired.title')}</h2>
         <p className="mt-2 text-fg-muted">{t('upgradeRequired.description')}</p>
         <div className="mt-6">
-          <Link
-            href="/billing"
-            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
-          >
-            {t('upgradeRequired.upgradeButton')}
-          </Link>
+          {CLIENT_CAPABILITIES.billing ? (
+            <Link
+              href="/billing"
+              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+            >
+              {t('upgradeRequired.upgradeButton')}
+            </Link>
+          ) : (
+            // On-prem: 团队功能由 license 决定，不走 SaaS 升级流程
+            <span className="inline-flex items-center rounded-md bg-bg-subtle px-4 py-2 text-sm font-medium text-fg-muted">
+              {t('upgradeRequired.contactAdmin')}
+            </span>
+          )}
         </div>
       </div>
     );

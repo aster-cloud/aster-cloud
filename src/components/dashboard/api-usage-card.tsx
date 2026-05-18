@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 
 interface ApiUsage {
   plan: string;
@@ -48,12 +49,16 @@ export function ApiUsageCard({ locale }: { locale: string }) {
           </span>
         </div>
         <p className="mt-2 text-xs text-fg-muted">{t('lockedHint')}</p>
-        <Link
-          href={`/${locale}/pricing`}
-          className="mt-3 inline-block text-xs font-medium text-primary hover:underline"
-        >
-          {t('upgrade')} →
-        </Link>
+        {/* On-prem 没有 plan 升级；API 访问由 license 决定，
+            "upgrade" 链接到 pricing 不可达。隐藏 CTA。 */}
+        {CLIENT_CAPABILITIES.pricing && (
+          <Link
+            href={`/${locale}/pricing`}
+            className="mt-3 inline-block text-xs font-medium text-primary hover:underline"
+          >
+            {t('upgrade')} →
+          </Link>
+        )}
       </div>
     );
   }
@@ -95,12 +100,14 @@ export function ApiUsageCard({ locale }: { locale: string }) {
           {percent >= 100
             ? t('warningOverage', { percent })
             : t('warningHighUsage', { remaining: data.monthly.remaining })}
-          <Link
-            href={`/${locale}/pricing`}
-            className="ml-2 font-medium text-primary hover:underline"
-          >
-            {t('upgrade')} →
-          </Link>
+          {CLIENT_CAPABILITIES.pricing && (
+            <Link
+              href={`/${locale}/pricing`}
+              className="ml-2 font-medium text-primary hover:underline"
+            >
+              {t('upgrade')} →
+            </Link>
+          )}
         </div>
       )}
     </div>

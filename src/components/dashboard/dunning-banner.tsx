@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 
 interface DunningStatus {
   subscriptionStatus: string | null;
@@ -26,6 +27,13 @@ export function DunningBanner() {
   const [opening, setOpening] = useState(false);
 
   useEffect(() => {
+    // On-prem 没有 Stripe dunning 状态；/api/user/dunning-status 返回 404。
+    // 直接跳过 fetch 避免噪音日志。CLIENT_CAPABILITIES 是 build-time 字面量，
+    // 这里的条件分支会被 terser 折叠掉（on-prem 全 effect 是 setLoading(false)）。
+    if (!CLIENT_CAPABILITIES.dunning) {
+      setLoading(false);
+      return;
+    }
     fetch('/api/user/dunning-status')
       .then((r) => (r.ok ? r.json() : null))
       .then(setData)
@@ -33,6 +41,7 @@ export function DunningBanner() {
       .finally(() => setLoading(false));
   }, []);
 
+  // on-prem 路径：CLIENT_CAPABILITIES.dunning = false → data 永远是 null。
   if (loading || !data) return null;
 
   const openPortal = async () => {
