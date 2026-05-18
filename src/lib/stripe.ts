@@ -1,24 +1,64 @@
-import Stripe from 'stripe';
+/* @deployment-mode-hot-gate
+ * reason: dynamic import of stripe SDK + direct __DEPLOYMENT_MODE__ macro
+ *         required for proper DCE. Importing IS_SAAS from deployment-mode
+ *         module leaves the dead `await import('stripe')` branch in the
+ *         bundle (Webpack treats dynamic imports as side-effectful even
+ *         when the wrapping branch is dead). Spike report §3.2 / §3.3
+ *         empirically established this. The on-prem build also aliases
+ *         `stripe` to false in next.config.ts as belt-and-suspenders.
+ */
 
-// Lazy initialization to avoid build-time errors
-let stripeInstance: Stripe | null = null;
+// 注意：本模块**只能**被 SaaS 模式下的代码路径访问。On-prem build 不会
+// 物理包含 stripe npm package（webpack.resolve.alias.stripe = false）—
+// 任何在 on-prem 调用本模块函数的代码会在 dynamic import 时抛错。
+// 路由层（webhook / portal / checkout）须先用 CAN_BILLING 守门返回 404，
+// 避免错误冒到客户面前。
 
-export function getStripe(): Stripe {
-  if (!stripeInstance) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY is not set');
-    }
-    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2026-02-25.clover',
-      typescript: true,
-    });
+import type Stripe from 'stripe';
+
+type StripeCtor = typeof Stripe;
+
+let _stripeInstance: Stripe | null = null;
+let _stripeCtorPromise: Promise<StripeCtor> | null = null;
+
+async function loadStripeCtor(): Promise<StripeCtor> {
+  // 直接 macro 引用让 terser 在 on-prem build 中折叠这个分支并消除
+  // dynamic import 表达式 —— 否则 SDK 会被打入 on-prem bundle（128KB）。
+  if (__DEPLOYMENT_MODE__ !== 'saas') {
+    throw new Error(
+      '[stripe] Stripe SDK is unavailable in on-prem build. ' +
+        'Callers must gate by CAN_BILLING / IS_SAAS before reaching this module.',
+    );
   }
-  return stripeInstance;
+  if (!_stripeCtorPromise) {
+    // 缓存 Promise 而不是已 resolve 的值 —— 让并发的首次调用共享同一
+    // 加载过程，避免多次 dynamic import。
+    _stripeCtorPromise = import('stripe').then((mod) => mod.default);
+  }
+  return _stripeCtorPromise;
 }
 
-// For backwards compatibility - lazy getter
-export const stripe = new Proxy({} as Stripe, {
-  get(_, prop) {
-    return getStripe()[prop as keyof Stripe];
-  },
-});
+/**
+ * 获取/初始化 Stripe SDK 实例。
+ *
+ * - 仅 SaaS 模式可用；on-prem 调用会立即 throw（route 层应已用 CAN_BILLING 拦下）
+ * - Lazy init：首次调用时 dynamic import SDK + 实例化，后续复用
+ * - 缺 STRIPE_SECRET_KEY 时 throw（与原行为一致）
+ *
+ * **breaking change**：此前的同步 `getStripe(): Stripe` 改为异步
+ * `getStripe(): Promise<Stripe>`。原因：dynamic import 必须 await。
+ * 所有调用方都已经在 async context（route handlers / cron / lib），改动安全。
+ */
+export async function getStripe(): Promise<Stripe> {
+  if (_stripeInstance) return _stripeInstance;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY is not set');
+  }
+  const StripeCtor = await loadStripeCtor();
+  _stripeInstance = new StripeCtor(key, {
+    apiVersion: '2026-02-25.clover',
+    typescript: true,
+  });
+  return _stripeInstance;
+}

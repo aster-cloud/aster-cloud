@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-
-import { stripe } from '@/lib/stripe';
+import { CAN_BILLING } from '@/lib/deployment-mode';
+import { getStripe } from '@/lib/stripe';
 import {
   CurrencyCode,
   CURRENCY_CONFIG,
@@ -16,6 +16,11 @@ function isValidCurrency(currency: unknown): currency is CurrencyCode {
 }
 
 export async function POST(req: Request) {
+  // On-prem 部署不接 Stripe；返回 404 不泄露端点存在。
+  if (!CAN_BILLING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   try {
     const { plan, interval, currency: rawCurrency, quantity } = (await req.json()) as {
       plan: PlanType;
@@ -98,6 +103,7 @@ export async function POST(req: Request) {
       ts: new Date().toISOString(),
     });
 
+    const stripe = await getStripe();
     const sessionResponse = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],

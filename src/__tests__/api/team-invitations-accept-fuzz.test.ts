@@ -44,11 +44,19 @@ vi.mock('@/lib/prisma', () => ({
   teamMembers: {},
   users: {},
 }));
+// deployment-mode: 默认 SaaS（CAN_BILLING + IS_SAAS = true）让 syncStripeSeats 跑
+vi.mock('@/lib/deployment-mode', () => ({
+  CAN_BILLING: true,
+  IS_SAAS: true,
+  IS_ONPREM: false,
+}));
+// Stripe mock 是共享单例对象 —— 每次 getStripe() 都返回它
+const mockStripeInstance = {
+  subscriptions: { retrieve: mocks.stripeRetrieve },
+  subscriptionItems: { update: mocks.stripeUpdate },
+};
 vi.mock('@/lib/stripe', () => ({
-  stripe: {
-    subscriptions: { retrieve: mocks.stripeRetrieve },
-    subscriptionItems: { update: mocks.stripeUpdate },
-  },
+  getStripe: vi.fn(async () => mockStripeInstance),
 }));
 
 import { POST } from '@/app/api/teams/invitations/accept/route';

@@ -2,20 +2,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/stripe/checkout/route';
 import { auth } from '@/auth';
 import { getPlanStripePriceId } from '@/lib/plans';
-import { stripe } from '@/lib/stripe';
 
 vi.mock('@/auth', () => ({
   auth: vi.fn(),
 }));
 
-vi.mock('@/lib/stripe', () => ({
-  stripe: {
-    checkout: {
-      sessions: {
-        create: vi.fn(),
-      },
+// 模拟 deployment-mode 让 CAN_BILLING = true（默认）；on-prem 测试见
+// __tests__/lib/deployment-mode.test.ts。其它 deployment-mode 导出按需 stub。
+vi.mock('@/lib/deployment-mode', () => ({
+  CAN_BILLING: true,
+  IS_SAAS: true,
+  IS_ONPREM: false,
+}));
+
+// Stripe mock 是一个共享单例对象 —— 每次 getStripe() 都返回它，
+// 让 mockCreateCheckoutSession 在所有调用间稳定可断言。
+const mockStripeInstance = {
+  checkout: {
+    sessions: {
+      create: vi.fn(),
     },
   },
+};
+vi.mock('@/lib/stripe', () => ({
+  getStripe: vi.fn(async () => mockStripeInstance),
 }));
 
 vi.mock('@/lib/plans', () => ({
@@ -43,7 +53,8 @@ const mockAuth = vi.mocked(auth);
 const mockGetPlanStripePriceId = vi.mocked(getPlanStripePriceId);
 // Cast to mock function for proper typing
 type MockFn = ReturnType<typeof vi.fn>;
-const mockCreateCheckoutSession = stripe.checkout.sessions.create as unknown as MockFn;
+const mockCreateCheckoutSession =
+  mockStripeInstance.checkout.sessions.create as unknown as MockFn;
 
 function createRequest(body: Record<string, unknown>) {
   return new Request('http://localhost/api/stripe/checkout', {

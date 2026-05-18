@@ -13,7 +13,7 @@
 
 import { db, teamMembers, users, auditLogs } from '@/lib/prisma';
 import { eq, sql } from 'drizzle-orm';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 
 const PER_TEAM_DIFF_LIMIT = 5;
 const AGGREGATE_DIFF_PERCENT_LIMIT = 5;
@@ -41,6 +41,9 @@ export interface ReconcileOptions {
 }
 
 export async function reconcileStripeSeats(opts: ReconcileOptions = {}): Promise<ReconcileReport> {
+  // 调用方（cron route）已用 CAN_BILLING 守门；这里 getStripe() 也会在
+  // on-prem 误调用时 throw。dryRun 时仍需 SDK 来 retrieve subscription。
+  const stripe = await getStripe();
   const dryRun = opts.dryRun ?? process.env.STRIPE_RECONCILE_DRY_RUN === 'true';
 
   const report: ReconcileReport = {

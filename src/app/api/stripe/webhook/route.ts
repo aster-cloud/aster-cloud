@@ -1,7 +1,8 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe';
+import type Stripe from 'stripe';
+import { CAN_BILLING } from '@/lib/deployment-mode';
+import { getStripe } from '@/lib/stripe';
 import { handleCheckoutCompleted } from './handlers/checkout-completed';
 import { handleSubscriptionCreated } from './handlers/subscription-created';
 import { handleSubscriptionUpdated } from './handlers/subscription-updated';
@@ -25,6 +26,11 @@ const handlers: Record<string, AnyHandler> = {
 };
 
 export async function POST(req: Request) {
+  // On-prem 部署不接 Stripe；返回 404 不泄露端点存在。
+  if (!CAN_BILLING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error('STRIPE_WEBHOOK_SECRET is not configured');
@@ -39,6 +45,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
   }
 
+  const stripe = await getStripe();
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);

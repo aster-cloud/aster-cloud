@@ -34,11 +34,13 @@ vi.mock('@/lib/prisma', () => ({
   auditLogs: {},
 }));
 
+// 顶层共享单例：每次 getStripe() 返回同一对象，方便测试断言。
+const mockStripeInstance = {
+  subscriptions: { retrieve: mocks.stripeRetrieve },
+  subscriptionItems: { update: mocks.stripeUpdate },
+};
 vi.mock('@/lib/stripe', () => ({
-  stripe: {
-    subscriptions: { retrieve: mocks.stripeRetrieve },
-    subscriptionItems: { update: mocks.stripeUpdate },
-  },
+  getStripe: vi.fn(async () => mockStripeInstance),
 }));
 
 import { reconcileStripeSeats } from '@/lib/stripe-reconcile';

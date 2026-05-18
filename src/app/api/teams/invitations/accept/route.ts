@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, teams, teamInvitations, teamMembers, users } from '@/lib/prisma';
 import { eq, and, sql } from 'drizzle-orm';
-import { stripe } from '@/lib/stripe';
+import { IS_SAAS } from '@/lib/deployment-mode';
+import { getStripe } from '@/lib/stripe';
 
 
 // POST /api/teams/invitations/accept - 接受邀请
@@ -84,9 +85,12 @@ export async function POST(req: Request) {
       await tx.delete(teamInvitations).where(eq(teamInvitations.id, invitation.id));
     });
 
-    await syncStripeSeats(invitation.teamId).catch((err) => {
-      console.error('[invitation-accept] Stripe seat sync failed', err);
-    });
+    // On-prem 不接 Stripe；跳过 seat sync。SaaS 模式才走这一步。
+    if (IS_SAAS) {
+      await syncStripeSeats(invitation.teamId).catch((err) => {
+        console.error('[invitation-accept] Stripe seat sync failed', err);
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -126,6 +130,7 @@ async function syncStripeSeats(teamId: string): Promise<void> {
     .from(teamMembers)
     .where(eq(teamMembers.teamId, teamId));
 
+  const stripe = await getStripe();
   const subscription = await stripe.subscriptions.retrieve(owner.subscriptionId);
   const item = subscription.items.data[0];
   if (!item) return;
