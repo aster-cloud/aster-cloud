@@ -7,16 +7,28 @@
 # "可以启动切换流程"。文档：docs/workstreams/turbopack-migration/README.md。
 #
 # 用法：
-#   scripts/check-turbopack-readiness.sh
+#   scripts/check-turbopack-readiness.sh          # 人工查询，"未就绪"也算成功（exit 0）
+#   scripts/check-turbopack-readiness.sh --ci     # CI 模式，"未就绪"才 exit 1（用于
+#                                                   未来如果想把"PR 已 merge"作为升级
+#                                                   提醒接进定时任务）
 #
 # 依赖：gh CLI 已认证（`gh auth status` 应为 logged in）。无需仓库 token。
 #
-# Exit codes:
+# Exit codes（默认 / 人工模式）：
+#   0 = 脚本跑成功（无论 PR 是 merged 还是 open）
+#   2 = gh CLI 不可用或 API 调用失败
+#
+# Exit codes（--ci 模式）：
 #   0 = 全部 merged → 可以启动切换
 #   1 = 至少一个 still open → 继续等
-#   2 = gh CLI 不可用或调用失败
+#   2 = gh CLI / API 失败
 
 set -euo pipefail
+
+CI_MODE=false
+if [[ "${1:-}" == "--ci" ]]; then
+  CI_MODE=true
+fi
 
 if ! command -v gh >/dev/null 2>&1; then
   echo "ERROR: gh CLI not found. Install from https://cli.github.com/" >&2
@@ -95,5 +107,12 @@ if $all_merged; then
   exit 0
 else
   yellow "Not ready yet. Keep --webpack flag. Re-run this script in ~1 month."
-  exit 1
+  # 默认人工查询模式：脚本本身跑成功了（已生成报告），exit 0 避免 pnpm 把
+  # "尚未就绪"误显示为 ELIFECYCLE Command failed。
+  # --ci 模式专给自动化：如果想把"PR 终于 merged"接进定时任务通知，CI 期望
+  # "未就绪" exit 非零，这时返 1。
+  if $CI_MODE; then
+    exit 1
+  fi
+  exit 0
 fi
