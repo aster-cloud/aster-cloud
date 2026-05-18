@@ -1407,6 +1407,97 @@
         "cta": "配置 SSO",
         "comingSoon": "即将上线"
       }
+    },
+    "license": {
+      "title": "许可证",
+      "subtitle": "企业版 license 状态 — 由 Aster 签发，绑定本次部署。",
+      "missing": {
+        "title": "未配置 License key",
+        "body": "请在本次部署的环境变量中设置 LICENSE_KEY。在提供有效 key 之前，应用以只读 / 受限模式运行。"
+      },
+      "malformed": {
+        "title": "License key 格式错误",
+        "body": "配置的 LICENSE_KEY 无法解析。",
+        "contactSales": "联系 sales@aster-lang.cloud 获取新的 license key。",
+        "reason": {
+          "env-missing": "未配置 license key。",
+          "prefix-mismatch": "License key 前缀不匹配期望格式 'aster-ent-<year>-<payload>'。",
+          "base64-decode-failed": "License key payload 无法解码（base64url）。",
+          "json-parse-failed": "License key payload 不是合法 JSON。",
+          "payload-shape-invalid": "License payload 缺少必需字段或类型错误。"
+        }
+      },
+      "expired": {
+        "title": "License 已过期",
+        "body": "{customer} 的 license 已过期 {days} 天。高级功能可能受限。",
+        "contactSales": "联系 sales@aster-lang.cloud 续约。"
+      },
+      "active": {
+        "title": "License 有效",
+        "expiringSoonTitle": "License 还有 {days} 天到期",
+        "body": "{customer} 的 license 有效。剩余 {days} 天。"
+      },
+      "details": {
+        "heading": "License 详情",
+        "customer": "客户",
+        "tier": "档次",
+        "seatLimit": "席位上限",
+        "seatUnlimited": "无限",
+        "issuedAt": "签发日",
+        "expiresAt": "到期日",
+        "daysRemaining": "剩余天数",
+        "features": "已启用功能",
+        "noFeatures": "未启用任何可选功能。",
+        "copy": "复制",
+        "copied": "已复制",
+        "copyValue": "复制 {label} 到剪贴板"
+      },
+      "verification": {
+        "unsignedTitle": "未校验 License 签名",
+        "unsignedBody": "本版本仅解析 license payload 用于展示，**尚未**做密码学签名校验。任何能编辑 LICENSE_KEY 的人都可以伪造字段。Feature gating 和 seat enforcement 必须等签名校验版本上线后再使用。"
+      }
+    },
+    "sso": {
+      "title": "单点登录",
+      "subtitle": "配置团队的登录方式。设置 SSO_PROVIDER 环境变量启用 SAML 或 OIDC。",
+      "copy": "复制",
+      "copied": "已复制",
+      "copyValue": "复制 {label} 到剪贴板",
+      "incomplete": {
+        "title": "SSO 配置不完整",
+        "body": "以下环境变量必须配齐，SSO 才能正常认证用户："
+      },
+      "none": {
+        "title": "SSO 未启用",
+        "body": "用户当前通过默认 credentials / OAuth 流程登录。要启用 SAML 或 OIDC，请设置 SSO_PROVIDER 环境变量并重启部署。",
+        "docsHint": "请参考 on-prem 部署指南了解每种 provider 所需的完整 env 列表。"
+      },
+      "saml": {
+        "spHeading": "Service Provider (Aster) — 提供给 IdP 的值",
+        "spHint": "在身份提供商处注册 Aster 为 service provider 时，配置这些值。",
+        "idpHeading": "Identity Provider — Aster 从 env 读取的值",
+        "idpHint": "至少提供其中之一：SAML_IDP_METADATA_URL（推荐）或 SAML_IDP_CERT_FINGERPRINT。SLO 可选。",
+        "entityId": "Entity ID",
+        "acsUrl": "ACS URL（断言消费服务）",
+        "metadataUrl": "IdP metadata URL",
+        "certFingerprint": "IdP X.509 指纹",
+        "sloUrl": "单点登出 URL",
+        "notConfigured": "未配置"
+      },
+      "oidc": {
+        "appHeading": "应用 — 提供给 IdP 的值",
+        "appHint": "在 OpenID Connect 提供商处注册 Aster 为 relying party 时，配置这些值。",
+        "idpHeading": "Identity Provider — Aster 从 env 读取的值",
+        "idpHint": "提供 issuer URL、client ID 与 client secret。Scope 默认为 openid email profile。",
+        "callbackUrl": "回调 URL",
+        "issuer": "Issuer URL",
+        "clientId": "Client ID",
+        "clientSecret": "Client secret",
+        "scopes": "请求的 scope",
+        "secretConfigured": "已配置",
+        "secretMissing": "未配置",
+        "notConfigured": "未配置"
+      }
     }
   },
   "decisionTrace": {

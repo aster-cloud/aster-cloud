@@ -5,9 +5,9 @@
 //
 // 设计要点：
 //   - 卡片格栅：每个 admin 工具一张卡，链接到对应子路由
-//   - "Coming Soon" 徽章：未实施的工具（license / sso）卡片可见但不可点
-//     —— 让操作员知道未来会有，且明白当前不可用
 //   - mode 决定可见卡片：CAN_RISKTIER / CAN_LICENSE / CAN_SSO 编译期常量
+//   - PR-8 之后 license + sso 卡可点击（不再 comingSoon）；保留
+//     comingSoon 字段以便未来新工具（如 /admin/audit-log）复用同模式
 
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
@@ -53,13 +53,13 @@ const CARDS: ReadonlyArray<OverviewCard> = [
     href: '/admin/license',
     cardKey: 'licenseCard',
     show: CAN_LICENSE,
-    comingSoon: true, // PR-8 之后改 false
+    comingSoon: false, // PR-8 落地
   },
   {
     href: '/admin/sso',
     cardKey: 'ssoCard',
     show: CAN_SSO,
-    comingSoon: true,
+    comingSoon: false, // PR-8 落地
   },
 ];
 

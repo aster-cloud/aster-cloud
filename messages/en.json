@@ -1407,6 +1407,97 @@
         "cta": "Configure SSO",
         "comingSoon": "Coming soon"
       }
+    },
+    "license": {
+      "title": "License",
+      "subtitle": "Enterprise license status — issued by Aster, scoped to this deployment.",
+      "missing": {
+        "title": "License key not configured",
+        "body": "Set the LICENSE_KEY environment variable on this deployment. The application will operate in read-only / limited capacity until a valid key is provided."
+      },
+      "malformed": {
+        "title": "License key is malformed",
+        "body": "The configured LICENSE_KEY could not be parsed.",
+        "contactSales": "Contact sales@aster-lang.cloud to receive a fresh license key.",
+        "reason": {
+          "env-missing": "No license key configured.",
+          "prefix-mismatch": "License key prefix does not match the expected format 'aster-ent-<year>-<payload>'.",
+          "base64-decode-failed": "License key payload could not be decoded (base64url).",
+          "json-parse-failed": "License key payload is not valid JSON.",
+          "payload-shape-invalid": "License payload is missing required fields or has invalid types."
+        }
+      },
+      "expired": {
+        "title": "License has expired",
+        "body": "License for {customer} expired {days} days ago. Premium features may be restricted.",
+        "contactSales": "Contact sales@aster-lang.cloud to renew."
+      },
+      "active": {
+        "title": "License active",
+        "expiringSoonTitle": "License expires in {days} days",
+        "body": "Active license for {customer}. {days} days remaining."
+      },
+      "details": {
+        "heading": "License details",
+        "customer": "Customer",
+        "tier": "Tier",
+        "seatLimit": "Seat limit",
+        "seatUnlimited": "Unlimited",
+        "issuedAt": "Issued",
+        "expiresAt": "Expires",
+        "daysRemaining": "Days remaining",
+        "features": "Enabled features",
+        "noFeatures": "No optional features enabled.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyValue": "Copy {label} to clipboard"
+      },
+      "verification": {
+        "unsignedTitle": "License signature not verified",
+        "unsignedBody": "This release parses the license payload for display only — it does NOT cryptographically verify the signature yet. Anyone with edit access to LICENSE_KEY can forge fields. Feature gating and seat enforcement must wait for the signature-verification release."
+      }
+    },
+    "sso": {
+      "title": "Single sign-on",
+      "subtitle": "Configure how your team signs in. Set the SSO_PROVIDER environment variable to enable SAML or OIDC.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyValue": "Copy {label} to clipboard",
+      "incomplete": {
+        "title": "SSO configuration is incomplete",
+        "body": "The following environment variables must be set before SSO can authenticate users:"
+      },
+      "none": {
+        "title": "SSO is not enabled",
+        "body": "Users currently sign in via the default credentials / OAuth flow. To enable SAML or OIDC, set the SSO_PROVIDER environment variable and restart the deployment.",
+        "docsHint": "See the on-prem deployment guide for the full list of required env vars per provider."
+      },
+      "saml": {
+        "spHeading": "Service Provider (Aster) — values for your IdP",
+        "spHint": "Configure these values in your identity provider when registering Aster as a service provider.",
+        "idpHeading": "Identity Provider — values Aster reads from your env",
+        "idpHint": "Provide one of: SAML_IDP_METADATA_URL (recommended) or SAML_IDP_CERT_FINGERPRINT. SLO is optional.",
+        "entityId": "Entity ID",
+        "acsUrl": "ACS URL (Assertion Consumer Service)",
+        "metadataUrl": "IdP metadata URL",
+        "certFingerprint": "IdP X.509 fingerprint",
+        "sloUrl": "Single logout URL",
+        "notConfigured": "Not configured"
+      },
+      "oidc": {
+        "appHeading": "Application — values for your IdP",
+        "appHint": "Configure these values in your OpenID Connect provider when registering Aster as a relying party.",
+        "idpHeading": "Identity Provider — values Aster reads from your env",
+        "idpHint": "Provide the issuer URL, client ID, and client secret. Scopes default to openid email profile.",
+        "callbackUrl": "Callback URL",
+        "issuer": "Issuer URL",
+        "clientId": "Client ID",
+        "clientSecret": "Client secret",
+        "scopes": "Requested scopes",
+        "secretConfigured": "Configured",
+        "secretMissing": "Not configured",
+        "notConfigured": "Not configured"
+      }
     }
   },
   "decisionTrace": {

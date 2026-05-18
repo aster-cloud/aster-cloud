@@ -1407,6 +1407,97 @@
         "cta": "SSO konfigurieren",
         "comingSoon": "Demnächst verfügbar"
       }
+    },
+    "license": {
+      "title": "Lizenz",
+      "subtitle": "Enterprise-Lizenzstatus — von Aster ausgestellt, an diese Bereitstellung gebunden.",
+      "missing": {
+        "title": "Lizenzschlüssel nicht konfiguriert",
+        "body": "Setzen Sie die Umgebungsvariable LICENSE_KEY auf dieser Bereitstellung. Bis ein gültiger Schlüssel bereitgestellt wird, läuft die Anwendung im schreibgeschützten / eingeschränkten Modus."
+      },
+      "malformed": {
+        "title": "Lizenzschlüssel ist ungültig",
+        "body": "Der konfigurierte LICENSE_KEY konnte nicht analysiert werden.",
+        "contactSales": "Kontaktieren Sie sales@aster-lang.cloud für einen neuen Lizenzschlüssel.",
+        "reason": {
+          "env-missing": "Kein Lizenzschlüssel konfiguriert.",
+          "prefix-mismatch": "Lizenzschlüssel-Präfix entspricht nicht dem erwarteten Format 'aster-ent-<jahr>-<payload>'.",
+          "base64-decode-failed": "Lizenzschlüssel-Payload konnte nicht dekodiert werden (base64url).",
+          "json-parse-failed": "Lizenzschlüssel-Payload ist kein gültiges JSON.",
+          "payload-shape-invalid": "Lizenz-Payload fehlen erforderliche Felder oder hat ungültige Typen."
+        }
+      },
+      "expired": {
+        "title": "Lizenz abgelaufen",
+        "body": "Lizenz für {customer} ist vor {days} Tagen abgelaufen. Premium-Funktionen können eingeschränkt sein.",
+        "contactSales": "Kontaktieren Sie sales@aster-lang.cloud zur Verlängerung."
+      },
+      "active": {
+        "title": "Lizenz aktiv",
+        "expiringSoonTitle": "Lizenz läuft in {days} Tagen ab",
+        "body": "Aktive Lizenz für {customer}. {days} Tage verbleibend."
+      },
+      "details": {
+        "heading": "Lizenzdetails",
+        "customer": "Kunde",
+        "tier": "Stufe",
+        "seatLimit": "Sitzanzahl",
+        "seatUnlimited": "Unbegrenzt",
+        "issuedAt": "Ausgestellt",
+        "expiresAt": "Läuft ab",
+        "daysRemaining": "Verbleibende Tage",
+        "features": "Aktivierte Funktionen",
+        "noFeatures": "Keine optionalen Funktionen aktiviert.",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "copyValue": "{label} in die Zwischenablage kopieren"
+      },
+      "verification": {
+        "unsignedTitle": "Lizenzsignatur nicht überprüft",
+        "unsignedBody": "Diese Version analysiert die Lizenz-Payload nur zur Anzeige — sie überprüft die Signatur NOCH NICHT kryptografisch. Jeder mit Schreibzugriff auf LICENSE_KEY kann Felder fälschen. Feature-Gating und Seat-Enforcement müssen auf die Signaturverifizierungs-Version warten."
+      }
+    },
+    "sso": {
+      "title": "Single Sign-On",
+      "subtitle": "Konfigurieren Sie, wie sich Ihr Team anmeldet. Setzen Sie die Umgebungsvariable SSO_PROVIDER, um SAML oder OIDC zu aktivieren.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copyValue": "{label} in die Zwischenablage kopieren",
+      "incomplete": {
+        "title": "SSO-Konfiguration ist unvollständig",
+        "body": "Folgende Umgebungsvariablen müssen gesetzt werden, bevor SSO Benutzer authentifizieren kann:"
+      },
+      "none": {
+        "title": "SSO ist nicht aktiviert",
+        "body": "Benutzer melden sich derzeit über den Standard-Credentials- / OAuth-Flow an. Um SAML oder OIDC zu aktivieren, setzen Sie die Umgebungsvariable SSO_PROVIDER und starten Sie die Bereitstellung neu.",
+        "docsHint": "Siehe On-Prem-Bereitstellungshandbuch für die vollständige Liste der erforderlichen env vars pro Provider."
+      },
+      "saml": {
+        "spHeading": "Service Provider (Aster) — Werte für Ihren IdP",
+        "spHint": "Konfigurieren Sie diese Werte in Ihrem Identity Provider, wenn Sie Aster als Service Provider registrieren.",
+        "idpHeading": "Identity Provider — Werte, die Aster aus Ihrer env liest",
+        "idpHint": "Geben Sie eines an: SAML_IDP_METADATA_URL (empfohlen) oder SAML_IDP_CERT_FINGERPRINT. SLO ist optional.",
+        "entityId": "Entity-ID",
+        "acsUrl": "ACS URL (Assertion Consumer Service)",
+        "metadataUrl": "IdP-Metadaten-URL",
+        "certFingerprint": "IdP X.509-Fingerabdruck",
+        "sloUrl": "Single-Logout-URL",
+        "notConfigured": "Nicht konfiguriert"
+      },
+      "oidc": {
+        "appHeading": "Anwendung — Werte für Ihren IdP",
+        "appHint": "Konfigurieren Sie diese Werte in Ihrem OpenID Connect Provider, wenn Sie Aster als Relying Party registrieren.",
+        "idpHeading": "Identity Provider — Werte, die Aster aus Ihrer env liest",
+        "idpHint": "Geben Sie die Issuer-URL, Client-ID und Client-Secret an. Scopes sind standardmäßig openid email profile.",
+        "callbackUrl": "Callback-URL",
+        "issuer": "Issuer-URL",
+        "clientId": "Client-ID",
+        "clientSecret": "Client-Secret",
+        "scopes": "Angeforderte Scopes",
+        "secretConfigured": "Konfiguriert",
+        "secretMissing": "Nicht konfiguriert",
+        "notConfigured": "Nicht konfiguriert"
+      }
     }
   },
   "decisionTrace": {
