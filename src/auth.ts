@@ -12,6 +12,7 @@ import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { getDb, users } from '@/lib/prisma';
 import { DrizzleAdapter } from '@/db/adapter';
+import { IS_SAAS } from '@/lib/deployment-mode';
 import { sendWelcomeEmail } from '@/lib/resend';
 import { checkAccountLockout, recordFailedAttempt, resetFailedAttempts } from '@/lib/account-lockout';
 import { markDenial } from '@/lib/auth-denial';
@@ -358,6 +359,13 @@ const config: NextAuthConfig = {
   // Events
   events: {
     async createUser({ user }) {
+      // SaaS-only：trial 期限、欢迎邮件、risk-tier policy 这一整套都是
+      // SaaS 计费模型派生的。On-prem 客户用 enterprise license 决定
+      // 权限，新用户由 admin 邀请进入；无 trial 概念。
+      if (!IS_SAAS) {
+        return;
+      }
+
       const db = getDb();
 
       // 读 adapter 已经计算好的 riskTier，按 policy 给 trial 天数

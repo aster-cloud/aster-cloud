@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { CAN_BILLING } from '@/lib/deployment-mode';
 import { checkAllBYOKKeys } from '@/lib/ai-byok-healthcheck';
-import { resend } from '@/lib/resend';
+import { getResend } from '@/lib/resend';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
   const guard = requireCronAuth(request);
   if (guard) return guard;
 
+  // 解析一次 Resend 实例供闭包复用（避免每个 BYOK key 重复 await）。
+  const resend = await getResend();
   const results = await checkAllBYOKKeys(async (to, subject, body) => {
     if (!resend) return;
     await resend.emails.send({

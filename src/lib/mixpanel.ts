@@ -1,44 +1,90 @@
+/* @deployment-mode-hot-gate
+ * reason: dynamic import of mixpanel-browser gated by direct
+ *         __DEPLOYMENT_MODE__ macro. On-prem bundle aliases
+ *         mixpanel-browser to false so even a missed gate cannot pull
+ *         the SDK. All public helpers fail-soft (no-op) when SDK
+ *         unavailable, matching pre-existing behavior with unset token.
+ */
 'use client';
 
-import mixpanel from 'mixpanel-browser';
+// On-prem 客户用自己的 telemetry 系统（如 Sentry / Datadog），不接 Mixpanel。
+// Public helpers (initMixpanel / identifyUser / track) 在 on-prem 全部 no-op；
+// 调用方无需更改 —— 现有代码已经在 token 缺失时 fail-soft。
+
+import type mixpanelBrowser from 'mixpanel-browser';
+
+type MixpanelInstance = typeof mixpanelBrowser;
 
 const MIXPANEL_TOKEN = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
+const NEXT_PUBLIC_DEPLOYMENT_MODE =
+  process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'on-prem' ? 'on-prem' : 'saas';
 
-// Initialize Mixpanel (client-side only)
-let initialized = false;
+let _mixpanelInstance: MixpanelInstance | null = null;
+let _initialized = false;
+let _initInFlight: Promise<MixpanelInstance | null> | null = null;
 
-export function initMixpanel() {
-  if (typeof window === 'undefined') return;
-  if (initialized) return;
+async function ensureMixpanel(): Promise<MixpanelInstance | null> {
+  if (_mixpanelInstance) return _mixpanelInstance;
+  if (typeof window === 'undefined') return null;
+
+  // 编译期 mode 检查：on-prem 直接 no-op，dynamic import 表达式被消除。
+  if (__DEPLOYMENT_MODE__ !== 'saas') return null;
+  // 客户端镜像（同 build-time literal）也要 mode 检查，避免某些边缘
+  // hydration 路径绕过编译期常量。
+  if (NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') return null;
   if (!MIXPANEL_TOKEN) {
-    console.warn('MIXPANEL_TOKEN is not set - analytics disabled');
-    return;
+    if (!_initialized) {
+      _initialized = true;
+      console.warn('MIXPANEL_TOKEN is not set - analytics disabled');
+    }
+    return null;
   }
 
-  mixpanel.init(MIXPANEL_TOKEN, {
-    debug: process.env.NODE_ENV === 'development',
-    track_pageview: true,
-    persistence: 'localStorage',
+  if (_initInFlight) return _initInFlight;
+  _initInFlight = (async () => {
+    const mod = await import('mixpanel-browser');
+    const inst = mod.default;
+    inst.init(MIXPANEL_TOKEN, {
+      debug: process.env.NODE_ENV === 'development',
+      track_pageview: true,
+      persistence: 'localStorage',
+    });
+    _initialized = true;
+    _mixpanelInstance = inst;
+    return inst;
+  })();
+  return _initInFlight;
+}
+
+/**
+ * 显式初始化（如启动期 warmup）。等价于 await ensureMixpanel() 但不返回值。
+ * 现有调用方 fire-and-forget，签名保持同步以减少 diff。
+ */
+export function initMixpanel(): void {
+  void ensureMixpanel();
+}
+
+/** 用户登录后绑定身份。on-prem / 缺 token / SSR 全部 no-op。 */
+export function identifyUser(
+  userId: string,
+  properties?: Record<string, unknown>,
+): void {
+  void ensureMixpanel().then((mp) => {
+    if (!mp) return;
+    mp.identify(userId);
+    if (properties) mp.people.set(properties);
   });
-
-  initialized = true;
 }
 
-// Identify user after login
-export function identifyUser(userId: string, properties?: Record<string, unknown>) {
-  if (!initialized) return;
-
-  mixpanel.identify(userId);
-  if (properties) {
-    mixpanel.people.set(properties);
-  }
-}
-
-// Track events
-export function track(event: string, properties?: Record<string, unknown>) {
-  if (!initialized) return;
-
-  mixpanel.track(event, properties);
+/** 上报事件。on-prem / 缺 token / SSR 全部 no-op。 */
+export function track(
+  event: string,
+  properties?: Record<string, unknown>,
+): void {
+  void ensureMixpanel().then((mp) => {
+    if (!mp) return;
+    mp.track(event, properties);
+  });
 }
 
 // Predefined events

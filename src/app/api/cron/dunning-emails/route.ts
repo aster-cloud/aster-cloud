@@ -9,7 +9,7 @@ import { requireCronAuth } from '@/lib/cron-auth';
 import { CAN_DUNNING } from '@/lib/deployment-mode';
 import { db, users } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
-import { resend } from '@/lib/resend';
+import { getResend } from '@/lib/resend';
 import {
   pickDunningStage,
   shouldSendStage,
@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
     );
 
     let sent = false;
+    const resend = await getResend();
     if (resend) {
       try {
         await resend.emails.send({

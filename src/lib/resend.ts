@@ -1,12 +1,73 @@
-import { Resend } from 'resend';
+/* @deployment-mode-hot-gate
+ * reason: dynamic import of `resend` SDK gated by direct __DEPLOYMENT_MODE__
+ *         macro. on-prem next.config.ts also aliases `resend` package to
+ *         false so even a missed gate cannot pull the SDK into the bundle.
+ *         All public helpers fail-soft (no-op + log) when SDK unavailable,
+ *         matching pre-existing behavior when RESEND_API_KEY was unset.
+ */
 
-if (!process.env.RESEND_API_KEY) {
-  console.warn('RESEND_API_KEY is not set - emails will not be sent');
+// resend SDK is a heavy SaaS-only dep. The pre-existing module exported
+// `resend: Resend | null` as a top-level value initialised at import time.
+// That pulled `import { Resend } from 'resend'` into every bundle that
+// transitively imported this module — including on-prem, despite gates.
+//
+// The hot-gate pattern: dynamic import gated by direct macro; instance
+// cached after first await. All public helpers internally `await ensureResend()`
+// and silently return when SDK is unavailable (on-prem) or unconfigured
+// (RESEND_API_KEY missing in dev). Callers' existing fail-soft expectations
+// are preserved.
+
+import type { Resend } from 'resend';
+
+type ResendCtor = typeof Resend;
+
+let _instance: Resend | null = null;
+let _attempted = false;
+let _ctorPromise: Promise<ResendCtor> | null = null;
+
+async function loadResendCtor(): Promise<ResendCtor> {
+  // Direct macro reference for proper DCE — see header comment.
+  if (__DEPLOYMENT_MODE__ !== 'saas') {
+    throw new Error(
+      '[resend] Resend SDK is unavailable in on-prem build. ' +
+        'Callers must gate by CAN_RESEND / IS_SAAS before reaching this module.',
+    );
+  }
+  if (!_ctorPromise) {
+    _ctorPromise = import('resend').then((mod) => mod.Resend);
+  }
+  return _ctorPromise;
 }
 
-export const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+/**
+ * 获取 Resend 实例。on-prem 直接返回 null（不 throw —— 上游 helper
+ * 已经有 null-check fail-soft 行为）。SaaS 模式：首次调用时 dynamic
+ * import + 实例化；缺 RESEND_API_KEY 则返回 null + console.warn 一次。
+ *
+ * 调用方应：`const resend = await getResend(); if (!resend) return;`
+ * （等价于原 `import { resend }` + 内联 null-check 的写法）。
+ */
+export async function getResend(): Promise<Resend | null> {
+  return ensureResend();
+}
+
+async function ensureResend(): Promise<Resend | null> {
+  if (_instance) return _instance;
+  if (_attempted) return null;
+  _attempted = true;
+
+  if (__DEPLOYMENT_MODE__ !== 'saas') {
+    // on-prem 安静返回 null —— 邮件路径是 SaaS-only。
+    return null;
+  }
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY is not set - emails will not be sent');
+    return null;
+  }
+  const ResendCtor = await loadResendCtor();
+  _instance = new ResendCtor(process.env.RESEND_API_KEY);
+  return _instance;
+}
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@aster-lang.cloud';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://aster-lang.cloud';
@@ -25,6 +86,7 @@ function escapeHtml(text: string): string {
 
 // Email templates
 export async function sendWelcomeEmail(email: string, name: string) {
+  const resend = await ensureResend();
   if (!resend) return;
 
   const safeName = escapeHtml(name);
@@ -52,6 +114,7 @@ export async function sendTrialExpiringEmail(
   name: string,
   daysLeft: number
 ) {
+  const resend = await ensureResend();
   if (!resend) return;
 
   const safeName = escapeHtml(name);
@@ -76,6 +139,7 @@ export async function sendTrialExpiringEmail(
 }
 
 export async function sendTrialEndedEmail(email: string, name: string) {
+  const resend = await ensureResend();
   if (!resend) return;
 
   const safeName = escapeHtml(name);
@@ -94,6 +158,7 @@ export async function sendTrialEndedEmail(email: string, name: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
+  const resend = await ensureResend();
   if (!resend) {
     console.log(`Password reset link: ${APP_URL}/reset-password?token=${token}`);
     return;
@@ -116,6 +181,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 }
 
 export async function sendPaymentFailedEmail(email: string, name: string) {
+  const resend = await ensureResend();
   if (!resend) return;
 
   const safeName = escapeHtml(name);
@@ -144,7 +210,11 @@ export async function sendTeamInvitationEmail(
   const safeTeamName = escapeHtml(teamName);
   const safeInviterName = escapeHtml(inviterName);
 
+  const resend = await ensureResend();
   if (!resend) {
+    // On-prem 与 SaaS-without-key 行为一致：把链接 console.log 出来，
+    // 让 admin/inviter 手动复制粘贴给被邀请人。原行为已经如此处理；
+    // 这里保持兼容。
     console.log(`Team invitation link: ${inviteUrl}`);
     return { success: false, inviteUrl };
   }

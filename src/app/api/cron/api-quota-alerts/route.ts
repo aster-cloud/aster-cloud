@@ -13,7 +13,7 @@ import { requireCronAuth } from '@/lib/cron-auth';
 import { CAN_BILLING } from '@/lib/deployment-mode';
 import { db, users, apiCallRecords } from '@/lib/prisma';
 import { and, eq, sql } from 'drizzle-orm';
-import { resend } from '@/lib/resend';
+import { getResend } from '@/lib/resend';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 
 export const runtime = 'nodejs';
@@ -148,6 +148,7 @@ async function sendAlertEmail(
   percent: number,
   threshold: 80 | 100 | 200
 ): Promise<boolean> {
+  const resend = await getResend();
   if (!resend) return false;
   const { subject, body } = buildEmail(plan, used, limit, percent, threshold);
   try {
