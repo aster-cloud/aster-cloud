@@ -4,6 +4,7 @@ import tsParser from "@typescript-eslint/parser";
 import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import nextPlugin from "@next/eslint-plugin-next";
+import deploymentModePlugin from "./eslint-rules/index.js";
 
 const eslintConfig = [
   globalIgnores([
@@ -20,6 +21,7 @@ const eslintConfig = [
       "react": reactPlugin,
       "react-hooks": reactHooksPlugin,
       "@next/next": nextPlugin,
+      "deployment-mode": deploymentModePlugin,
     },
     languageOptions: {
       parser: tsParser,
@@ -53,6 +55,9 @@ const eslintConfig = [
           },
         ],
       }],
+      // PR-9: 守门 deployment-mode 直接 macro / process.env 访问。
+      // 详见 eslint-rules/no-direct-macro.js + .claude/plan/deployment-mode-flag-v2.md。
+      "deployment-mode/no-direct-macro": "error",
     },
   },
   {
@@ -64,6 +69,9 @@ const eslintConfig = [
     ],
     rules: {
       "no-restricted-imports": "off",
+      // 测试需要直接 stub process.env.DEPLOYMENT_MODE 验证模式切换；
+      // 这是测试的合法用途。生产代码仍受规则约束。
+      "deployment-mode/no-direct-macro": "off",
     },
   },
 ];

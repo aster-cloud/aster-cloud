@@ -29,11 +29,10 @@ async function ensureMixpanel(): Promise<MixpanelInstance | null> {
   if (typeof window === 'undefined') return null;
 
   // 编译期 mode 检查：on-prem 直接 no-op，整个剩余函数体（包括
-  // MIXPANEL_TOKEN 读取 + dynamic import）被 terser 消除。
+  // MIXPANEL_TOKEN 读取 + dynamic import）被 terser 消除。这是唯一
+  // 必需的 gate —— `__DEPLOYMENT_MODE__` 在 client 和 server bundle 都
+  // 被 DefinePlugin 替换为字面量，process.env 镜像是冗余的。
   if (__DEPLOYMENT_MODE__ !== 'saas') return null;
-  // 客户端镜像（同 build-time literal）双保险：handle 编译期未注入的
-  // edge case（如 hydration 拼接路径）。
-  if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') return null;
 
   const MIXPANEL_TOKEN = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
   if (!MIXPANEL_TOKEN) {
