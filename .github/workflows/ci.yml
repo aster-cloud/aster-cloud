@@ -24,9 +24,15 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - name: Verify message catalog parity (en backbone)
         run: pnpm run check:locales:strict
-      - run: pnpm test:run
-      # 仅在 coverage provider 已安装时跑（可选，不阻塞 CI）
-      - name: Coverage (optional)
+      # PR-10: pnpm test:run 通过 vitest.config.ts 的 projects 配置自动跑
+      # SaaS + on-prem 两种 deployment-mode。单 vitest 进程 + 共享 vite
+      # cache，避免 fork 开销；总时间约为单模式的 2 倍（断言数翻倍，
+      # ~9s → ~17s）—— 这是测试覆盖换来的可接受成本。
+      - name: Run tests (saas + on-prem projects)
+        run: pnpm test:run
+      # 仅在 coverage provider 已安装时跑（可选，不阻塞 CI）。
+      # Coverage 仅 saas project 收集 —— vitest.config.ts 注释解释为何。
+      - name: Coverage (optional, saas project only)
         run: pnpm test:coverage --reporter=verbose || echo "::warning::Coverage skipped (install @vitest/coverage-v8 to enable)"
         continue-on-error: true
       - run: pnpm run build:next

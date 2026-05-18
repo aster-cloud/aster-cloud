@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// 业务逻辑测试 —— 强制 CAN_RISKTIER=true，两种 vitest project (saas /
+// on-prem) 都跑同一套业务断言。on-prem 路由 404 不变量在专项测试覆盖。
+vi.mock('@/lib/deployment-mode', () => ({
+  CAN_RISKTIER: true,
+  IS_SAAS: true,
+  IS_ONPREM: false,
+}));
+
 // Hoisted mock for @/lib/prisma so the route can resolve db via the import chain
 vi.mock('@/lib/prisma', () => ({
   db: {

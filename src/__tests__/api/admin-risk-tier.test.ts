@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// 这是 SaaS 业务逻辑测试 —— 强制 CAN_RISKTIER=true，让两个 vitest project
+// (saas / on-prem) 都跑同一套业务断言。on-prem 模式下的"路由返回 404"
+// 不变量另有专项测试：src/__tests__/api/admin-risk-tier-on-prem.test.ts。
+vi.mock('@/lib/deployment-mode', () => ({
+  CAN_RISKTIER: true,
+  IS_SAAS: true,
+  IS_ONPREM: false,
+}));
+
 // Mock module BEFORE importing route handler so the dynamic imports inside
 // the handler resolve to mocked db / users / auditLogs / requireAdmin.
 vi.mock('@/lib/admin-auth', () => ({
