@@ -62,6 +62,12 @@ const eslintConfig = [
       // 或显式守门 !IS_SAAS（SaaS-only endpoint）。
       // 详见 eslint-rules/require-license-write-gate.js。
       "deployment-mode/require-license-write-gate": "error",
+      // Turbopack-compat: 禁止静态 value-import SaaS-only npm 包。
+      // 必须走 @/lib/{stripe,resend,mixpanel} wrapper，里面 `await import()`
+      // 配合 __DEPLOYMENT_MODE__ 守门让 terser 折叠死分支。
+      // 这条规则替代 webpack 的 resolve.alias = false（Turbopack 没有等价能力）。
+      // 详见 eslint-rules/no-static-saas-only-import.js。
+      "deployment-mode/no-static-saas-only-import": "error",
     },
   },
   {
@@ -77,6 +83,8 @@ const eslintConfig = [
       // 这是测试的合法用途。生产代码仍受规则约束。
       "deployment-mode/no-direct-macro": "off",
       "deployment-mode/require-license-write-gate": "off",
+      // 测试可能需要 mock 整个 stripe/resend SDK；放开。
+      "deployment-mode/no-static-saas-only-import": "off",
     },
   },
 ];
