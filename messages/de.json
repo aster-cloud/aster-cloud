@@ -1363,6 +1363,49 @@
         "submit": "Anwenden",
         "submitting": "Wird angewendet…"
       }
+    },
+    "console": {
+      "badge": "ADMIN-KONSOLE",
+      "modeSaas": "SaaS",
+      "modeOnPrem": "On-Premises",
+      "modeLabel": "Bereitstellungsmodus",
+      "scope": "Privilegierte Operationen — alle Aktionen werden protokolliert.",
+      "returnToDashboard": "Zurück zum Dashboard"
+    },
+    "nav": {
+      "overview": "Übersicht",
+      "aiBreaker": "KI-Schutzschalter",
+      "riskTier": "Risiko-Tier-Triage",
+      "license": "Lizenz",
+      "sso": "Single Sign-On",
+      "sidebarLabel": "Admin-Navigation"
+    },
+    "overview": {
+      "title": "Admin-Übersicht",
+      "subtitle": "Übergreifende operative Steuerung der Plattform.",
+      "cardsHeading": "Operative Werkzeuge",
+      "aiBreakerCard": {
+        "title": "KI-Schutzschalter",
+        "description": "LLM-Kosten plattformweit anhalten, wenn die Ausgaben unerwartet steigen.",
+        "cta": "Schutzschalter öffnen"
+      },
+      "riskTierCard": {
+        "title": "Risiko-Tier-Triage",
+        "description": "Registrierungs-Risikoklassifizierungen prüfen und überschreiben.",
+        "cta": "Triage öffnen"
+      },
+      "licenseCard": {
+        "title": "Lizenz",
+        "description": "Enterprise-Lizenzstatus, Sitzanzahl und Ablaufdatum anzeigen.",
+        "cta": "Lizenz anzeigen",
+        "comingSoon": "Demnächst verfügbar"
+      },
+      "ssoCard": {
+        "title": "Single Sign-On",
+        "description": "SAML / OIDC für Ihre Organisation konfigurieren.",
+        "cta": "SSO konfigurieren",
+        "comingSoon": "Demnächst verfügbar"
+      }
     }
   },
   "decisionTrace": {

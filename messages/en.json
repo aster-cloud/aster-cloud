@@ -1363,6 +1363,49 @@
         "submit": "Apply override",
         "submitting": "Applying…"
       }
+    },
+    "console": {
+      "badge": "ADMIN CONSOLE",
+      "modeSaas": "SaaS",
+      "modeOnPrem": "On-Prem",
+      "modeLabel": "Deployment mode",
+      "scope": "Privileged operations — all actions are logged.",
+      "returnToDashboard": "Return to dashboard"
+    },
+    "nav": {
+      "overview": "Overview",
+      "aiBreaker": "AI circuit breaker",
+      "riskTier": "Risk-tier triage",
+      "license": "License",
+      "sso": "Single sign-on",
+      "sidebarLabel": "Admin navigation"
+    },
+    "overview": {
+      "title": "Admin overview",
+      "subtitle": "Cross-cutting operational controls for the platform.",
+      "cardsHeading": "Operational tools",
+      "aiBreakerCard": {
+        "title": "AI circuit breaker",
+        "description": "Halt LLM spend platform-wide when costs spike.",
+        "cta": "Open breaker"
+      },
+      "riskTierCard": {
+        "title": "Risk-tier triage",
+        "description": "Review and override registration risk classifications.",
+        "cta": "Open triage"
+      },
+      "licenseCard": {
+        "title": "License",
+        "description": "View enterprise license status, seat count, expiry.",
+        "cta": "View license",
+        "comingSoon": "Coming soon"
+      },
+      "ssoCard": {
+        "title": "Single sign-on",
+        "description": "Configure SAML / OIDC for your organization.",
+        "cta": "Configure SSO",
+        "comingSoon": "Coming soon"
+      }
     }
   },
   "decisionTrace": {
