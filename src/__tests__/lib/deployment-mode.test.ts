@@ -75,8 +75,15 @@ describe('deployment-mode', () => {
   it('throws fail-closed in production when macro is not injected', async () => {
     // 验证 production + 无 macro = throw。模拟"代码运行在 production
     // 但 DefinePlugin 没生效"的故障模式（spike report §11 列出的实际风险）。
+    //
+    // helper 对两种合法 "production-但 macro 还没注入" 场景豁免：
+    //   - NEXT_PHASE === 'phase-production-build'（next build 时 next.config.ts 加载）
+    //   - VITEST === 'true'（vitest 默认设置；测试自身不该误伤）
+    // 本测试要触发 throw，必须同时清除这两个旗帜。
     const originalNodeEnv = process.env.NODE_ENV;
     const originalMode = process.env.DEPLOYMENT_MODE;
+    const originalPhase = process.env.NEXT_PHASE;
+    const originalVitest = process.env.VITEST;
     Object.defineProperty(process.env, 'NODE_ENV', {
       value: 'production',
       configurable: true,
@@ -84,10 +91,15 @@ describe('deployment-mode', () => {
       enumerable: true,
     });
     delete process.env.DEPLOYMENT_MODE;
+    delete process.env.NEXT_PHASE;
+    delete process.env.VITEST;
     try {
-      await expect(
-        import('@/lib/deployment-mode?fresh=fail-closed' as string),
-      ).rejects.toThrow(/was not compiled into the build/);
+      // Module import 不应 throw（避免误伤 next build 的配置加载）。
+      // 真正的 fail-closed 在 getDeploymentMode() 调用时触发。
+      const mod = await import('@/lib/deployment-mode?fresh=fail-closed' as string);
+      expect(() => mod.getDeploymentMode()).toThrow(
+        /was not compiled into the build/,
+      );
     } finally {
       Object.defineProperty(process.env, 'NODE_ENV', {
         value: originalNodeEnv ?? 'test',
@@ -95,6 +107,39 @@ describe('deployment-mode', () => {
         writable: true,
         enumerable: true,
       });
+      if (originalMode !== undefined) process.env.DEPLOYMENT_MODE = originalMode;
+      if (originalPhase !== undefined) process.env.NEXT_PHASE = originalPhase;
+      if (originalVitest !== undefined) process.env.VITEST = originalVitest;
+    }
+  });
+
+  it('does NOT throw during next build (NEXT_PHASE=phase-production-build)', async () => {
+    // next.config.ts 加载时会 import 此模块；DefinePlugin 还没运行。
+    // 必须放行，否则 next build 会被自己的 fail-closed 误伤。
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalPhase = process.env.NEXT_PHASE;
+    const originalMode = process.env.DEPLOYMENT_MODE;
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: 'production',
+      configurable: true,
+      writable: true,
+      enumerable: true,
+    });
+    process.env.NEXT_PHASE = 'phase-production-build';
+    delete process.env.DEPLOYMENT_MODE;
+    try {
+      // 期望不抛
+      const mod = await import('@/lib/deployment-mode?fresh=build-phase' as string);
+      expect(mod.getDeploymentMode()).toBe('saas'); // 回退默认
+    } finally {
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalNodeEnv ?? 'test',
+        configurable: true,
+        writable: true,
+        enumerable: true,
+      });
+      if (originalPhase !== undefined) process.env.NEXT_PHASE = originalPhase;
+      else delete process.env.NEXT_PHASE;
       if (originalMode !== undefined) process.env.DEPLOYMENT_MODE = originalMode;
     }
   });

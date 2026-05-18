@@ -23,25 +23,31 @@
 
 export type DeploymentMode = 'saas' | 'on-prem';
 
-// Fail-closed 启动断言：production 环境必须由 DefinePlugin 注入 macro。
-// 走到这里说明编译期注入失败 —— 绝不能 fallback 到 SaaS 偷偷开启计费路径。
+// Fail-closed 检查：production runtime 中 macro 必须由 DefinePlugin 注入。
+// 走到 throw 说明编译期注入失败 —— 绝不能 fallback 到 SaaS 偷偷开启计费路径。
 //
 // 触发的真实场景（spike report §11 总结）：
-//   - vitest / tsx 脚本 import 此模块（dev/test 走下面的 env 回退，OK）
-//   - 未来 Turbopack / 构建配置漂移导致 DefinePlugin 失效
-//   - middleware / edge bundle 未收到 plugin（PR-1b 之后需验证）
+//   - production 启动时 DefinePlugin 未生效（配置漂移 / Turbopack 切换）
+//   - middleware / edge bundle 未收到 plugin
 //   - 自定义 worker.js 直接 import 此模块绕过 Next pipeline
 //
-// dev / test 用 env 回退；production 缺 macro 直接 throw。
-if (
+// **设计**：在 *getDeploymentMode 调用* 而不是 *模块加载* 时检查。
+// 原因：next.config.ts 在 build 期间 import env-validation → import 本模块，
+// 此时 NEXT_PHASE 等旗帜未必已设置 —— 模块加载阶段 throw 会误杀 next build。
+// 真正消费值的场景（业务路由、admin gate、UI）都通过 getDeploymentMode()
+// 或导出的常量访问；让 throw 发生在那一刻最准确。
+//
+// 同时，导出的 IS_SAAS / CAN_* 常量在模块加载时只读 env fallback，不 throw —
+// production runtime 如果 macro 注入失败也只是常量全部走 fallback（SaaS）。
+// 但 getDeploymentMode() 在那种状况下会 throw —— 业务代码任何一处调它
+// 都会立即暴露问题。
+const _IS_RUNTIME_PRODUCTION =
   typeof __DEPLOYMENT_MODE__ === 'undefined' &&
-  process.env.NODE_ENV === 'production'
-) {
-  throw new Error(
-    '[deployment-mode] __DEPLOYMENT_MODE__ was not compiled into the build. ' +
-      'Check next.config.ts DefinePlugin wiring.',
-  );
-}
+  process.env.NODE_ENV === 'production' &&
+  // next build 期间 next.config.ts 加载本模块时 DefinePlugin 还未对配置文件生效；
+  // vitest 默认会设 VITEST=true。两者都不是真正的 runtime production。
+  process.env.NEXT_PHASE !== 'phase-production-build' &&
+  process.env.VITEST !== 'true';
 
 const _RUNTIME: DeploymentMode =
   typeof __DEPLOYMENT_MODE__ !== 'undefined'
@@ -79,6 +85,15 @@ export const CAPABILITIES = {
 } as const;
 
 // 测试 / 兜底访问（vi.mock 友好）。生产代码应优先用上面的常量。
+//
+// production runtime 中如果 DefinePlugin 未生效，调用此函数立即 throw —
+// 这是最后一道防线，避免任何业务代码默默 fallback 到 SaaS 行为。
 export function getDeploymentMode(): DeploymentMode {
+  if (_IS_RUNTIME_PRODUCTION) {
+    throw new Error(
+      '[deployment-mode] __DEPLOYMENT_MODE__ was not compiled into the build. ' +
+        'Check next.config.ts DefinePlugin wiring.',
+    );
+  }
   return _RUNTIME;
 }

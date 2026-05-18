@@ -1,77 +1,207 @@
 import { describe, it, expect } from 'vitest';
-import { checkEnv, validateEnvOrThrow } from '@/lib/env-validation';
+import {
+  checkEnv,
+  validateEnvOrThrow,
+  validateEnvOrWarn,
+} from '@/lib/env-validation';
 
 /**
  * env 校验测试
  *
- * 用 checkEnv(env) 显式注入隔离的 ProcessEnv，避免污染当前进程。
+ * 用 checkEnv(env, mode) 显式注入隔离的 ProcessEnv + deployment mode，
+ * 避免污染当前进程，也不依赖测试运行时是 SaaS 还是 on-prem build。
  */
 
-function makeFullProductionEnv(): NodeJS.ProcessEnv {
+/** SaaS production 全配齐的 env。 */
+function makeFullSaasProductionEnv(): NodeJS.ProcessEnv {
   return {
     NODE_ENV: 'production',
     DATABASE_URL: 'postgres://x',
     AUTH_SECRET: 'secret',
+    CRON_SECRET: 'cron-secret',
+    NEXT_PUBLIC_APP_URL: 'https://aster-lang.cloud',
+    ASTER_PLAN_GATE_HMAC_KEY: 'hmac-key',
+
+    // SaaS-only
     STRIPE_SECRET_KEY: 'sk_test',
     STRIPE_WEBHOOK_SECRET: 'whsec',
     NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID: 'price_pro_usd_m',
     NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID: 'price_pro_usd_y',
     NEXT_PUBLIC_STRIPE_PRO_MONTHLY_CNY_PRICE_ID: 'price_pro_cny_m',
     NEXT_PUBLIC_STRIPE_PRO_YEARLY_CNY_PRICE_ID: 'price_pro_cny_y',
+    NEXT_PUBLIC_STRIPE_PRO_MONTHLY_EUR_PRICE_ID: 'price_pro_eur_m',
+    NEXT_PUBLIC_STRIPE_PRO_YEARLY_EUR_PRICE_ID: 'price_pro_eur_y',
     NEXT_PUBLIC_MIXPANEL_TOKEN: 'mp-token',
-    ASTER_PLAN_GATE_HMAC_KEY: 'hmac-key',
-    CRON_SECRET: 'cron-secret',
     RESEND_API_KEY: 're_key',
-    NEXT_PUBLIC_APP_URL: 'https://aster-lang.cloud',
   } as NodeJS.ProcessEnv;
 }
 
-describe('env-validation', () => {
+/** On-prem production 全配齐的 env（无 SaaS-only secrets）。 */
+function makeFullOnPremProductionEnv(): NodeJS.ProcessEnv {
+  return {
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgres://x',
+    AUTH_SECRET: 'secret',
+    CRON_SECRET: 'cron-secret',
+    NEXT_PUBLIC_APP_URL: 'https://aster.acme-corp.internal',
+    ASTER_PLAN_GATE_HMAC_KEY: 'hmac-key',
+
+    // On-prem-only
+    LICENSE_KEY: 'aster-ent-2026-abcdef',
+    SSO_PROVIDER: 'saml',
+  } as NodeJS.ProcessEnv;
+}
+
+describe('env-validation — SaaS mode', () => {
   it('production 全配齐 → ok', () => {
-    const result = checkEnv(makeFullProductionEnv());
+    const result = checkEnv(makeFullSaasProductionEnv(), 'saas');
     expect(result.ok).toBe(true);
     expect(result.missing).toEqual([]);
+    expect(result.mode).toBe('saas');
   });
 
   it('production 缺 DATABASE_URL → missing', () => {
-    const env = makeFullProductionEnv();
+    const env = makeFullSaasProductionEnv();
     delete env.DATABASE_URL;
-    const result = checkEnv(env);
+    const result = checkEnv(env, 'saas');
     expect(result.ok).toBe(false);
     expect(result.missing.some((m) => m.startsWith('DATABASE_URL'))).toBe(true);
   });
 
   it('production 缺 Pro priceId 任一 → missing', () => {
-    const env = makeFullProductionEnv();
+    const env = makeFullSaasProductionEnv();
     delete env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_CNY_PRICE_ID;
-    const result = checkEnv(env);
+    const result = checkEnv(env, 'saas');
     expect(result.ok).toBe(false);
     expect(
-      result.missing.some((m) => m.includes('NEXT_PUBLIC_STRIPE_PRO_MONTHLY_CNY_PRICE_ID'))
+      result.missing.some((m) =>
+        m.includes('NEXT_PUBLIC_STRIPE_PRO_MONTHLY_CNY_PRICE_ID'),
+      ),
+    ).toBe(true);
+  });
+
+  it('production 缺 EUR Pro priceId → missing（v1 漏配修复）', () => {
+    const env = makeFullSaasProductionEnv();
+    delete env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_EUR_PRICE_ID;
+    const result = checkEnv(env, 'saas');
+    expect(result.ok).toBe(false);
+    expect(
+      result.missing.some((m) =>
+        m.includes('NEXT_PUBLIC_STRIPE_PRO_MONTHLY_EUR_PRICE_ID'),
+      ),
     ).toBe(true);
   });
 
   it('production 缺 ASTER_PLAN_GATE_HMAC_KEY → missing', () => {
-    const env = makeFullProductionEnv();
+    const env = makeFullSaasProductionEnv();
     delete env.ASTER_PLAN_GATE_HMAC_KEY;
-    const result = checkEnv(env);
+    const result = checkEnv(env, 'saas');
     expect(result.ok).toBe(false);
-    expect(result.missing.some((m) => m.includes('ASTER_PLAN_GATE_HMAC_KEY'))).toBe(true);
+    expect(
+      result.missing.some((m) => m.includes('ASTER_PLAN_GATE_HMAC_KEY')),
+    ).toBe(true);
   });
 
   it('production 缺 Mixpanel token → missing', () => {
-    const env = makeFullProductionEnv();
+    const env = makeFullSaasProductionEnv();
     delete env.NEXT_PUBLIC_MIXPANEL_TOKEN;
-    const result = checkEnv(env);
+    const result = checkEnv(env, 'saas');
     expect(result.ok).toBe(false);
   });
 
+  it('SaaS 模式不校验 LICENSE_KEY / SSO_PROVIDER', () => {
+    // 即使不配 on-prem 字段，SaaS 模式也应 ok
+    const result = checkEnv(makeFullSaasProductionEnv(), 'saas');
+    expect(result.ok).toBe(true);
+    // 既不在 missing 也不在 warnings
+    expect(
+      result.missing.some((m) => m.includes('LICENSE_KEY')),
+    ).toBe(false);
+    expect(
+      result.warnings.some((w) => w.includes('LICENSE_KEY')),
+    ).toBe(false);
+  });
+});
+
+describe('env-validation — On-Prem mode', () => {
+  it('production 全配齐 → ok（无 Stripe / Mixpanel / Resend）', () => {
+    const result = checkEnv(makeFullOnPremProductionEnv(), 'on-prem');
+    expect(result.ok).toBe(true);
+    expect(result.missing).toEqual([]);
+    expect(result.mode).toBe('on-prem');
+  });
+
+  it('on-prem 缺 LICENSE_KEY → missing', () => {
+    const env = makeFullOnPremProductionEnv();
+    delete env.LICENSE_KEY;
+    const result = checkEnv(env, 'on-prem');
+    expect(result.ok).toBe(false);
+    expect(result.missing.some((m) => m.startsWith('LICENSE_KEY'))).toBe(true);
+  });
+
+  it('on-prem 缺 SSO_PROVIDER → missing', () => {
+    const env = makeFullOnPremProductionEnv();
+    delete env.SSO_PROVIDER;
+    const result = checkEnv(env, 'on-prem');
+    expect(result.ok).toBe(false);
+    expect(result.missing.some((m) => m.startsWith('SSO_PROVIDER'))).toBe(true);
+  });
+
+  it('on-prem 不校验 STRIPE_SECRET_KEY / NEXT_PUBLIC_STRIPE_* / MIXPANEL / RESEND', () => {
+    // 完全不配 SaaS 字段，仍然 ok
+    const result = checkEnv(makeFullOnPremProductionEnv(), 'on-prem');
+    expect(result.ok).toBe(true);
+    // 关键 saas-only 字段不应出现在 missing/warnings
+    const saasKeys = [
+      'STRIPE_SECRET_KEY',
+      'STRIPE_WEBHOOK_SECRET',
+      'NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID',
+      'NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID',
+      'NEXT_PUBLIC_STRIPE_PRO_MONTHLY_CNY_PRICE_ID',
+      'NEXT_PUBLIC_STRIPE_PRO_YEARLY_CNY_PRICE_ID',
+      'NEXT_PUBLIC_STRIPE_PRO_MONTHLY_EUR_PRICE_ID',
+      'NEXT_PUBLIC_STRIPE_PRO_YEARLY_EUR_PRICE_ID',
+      'NEXT_PUBLIC_MIXPANEL_TOKEN',
+      'RESEND_API_KEY',
+    ];
+    for (const key of saasKeys) {
+      expect(
+        result.missing.some((m) => m.includes(key)),
+        `${key} should NOT be missing in on-prem mode`,
+      ).toBe(false);
+      expect(
+        result.warnings.some((w) => w.includes(key)),
+        `${key} should NOT warn in on-prem mode`,
+      ).toBe(false);
+    }
+  });
+
+  it('on-prem 仍校验 DATABASE_URL（always-required）', () => {
+    const env = makeFullOnPremProductionEnv();
+    delete env.DATABASE_URL;
+    const result = checkEnv(env, 'on-prem');
+    expect(result.ok).toBe(false);
+    expect(result.missing.some((m) => m.startsWith('DATABASE_URL'))).toBe(true);
+  });
+
+  it('on-prem 仍校验 ASTER_PLAN_GATE_HMAC_KEY（两种模式共享 — 推 plan snapshot 给 aster-api）', () => {
+    const env = makeFullOnPremProductionEnv();
+    delete env.ASTER_PLAN_GATE_HMAC_KEY;
+    const result = checkEnv(env, 'on-prem');
+    expect(result.ok).toBe(false);
+    expect(
+      result.missing.some((m) => m.startsWith('ASTER_PLAN_GATE_HMAC_KEY')),
+    ).toBe(true);
+  });
+});
+
+describe('env-validation — 通用行为', () => {
   it('development 仅缺 production-only env → ok=true，warnings 非空', () => {
     const env: NodeJS.ProcessEnv = {
       NODE_ENV: 'development',
       DATABASE_URL: 'postgres://x',
     } as NodeJS.ProcessEnv;
-    const result = checkEnv(env);
+    const result = checkEnv(env, 'saas');
     expect(result.ok).toBe(true);
     expect(result.warnings.length).toBeGreaterThan(0);
     expect(result.missing).toEqual([]);
@@ -81,29 +211,135 @@ describe('env-validation', () => {
     const env: NodeJS.ProcessEnv = {
       NODE_ENV: 'development',
     } as NodeJS.ProcessEnv;
-    const result = checkEnv(env);
+    const result = checkEnv(env, 'saas');
     expect(result.ok).toBe(false);
     expect(result.missing.some((m) => m.startsWith('DATABASE_URL'))).toBe(true);
   });
 
   it('test 模式跳过', () => {
     expect(() =>
-      validateEnvOrThrow({ NODE_ENV: 'test' } as NodeJS.ProcessEnv)
+      validateEnvOrThrow({ NODE_ENV: 'test' } as NodeJS.ProcessEnv, 'saas'),
     ).not.toThrow();
   });
 
   it('VITEST=true 跳过', () => {
     expect(() =>
-      validateEnvOrThrow({
-        NODE_ENV: 'production',
-        VITEST: 'true',
-      } as NodeJS.ProcessEnv)
+      validateEnvOrThrow(
+        {
+          NODE_ENV: 'production',
+          VITEST: 'true',
+        } as NodeJS.ProcessEnv,
+        'saas',
+      ),
     ).not.toThrow();
   });
 
-  it('production 缺 env → validateEnvOrThrow 抛 Error 含 key 名', () => {
+  it('production 缺 env → validateEnvOrThrow 抛 Error 含 key 名 + mode', () => {
+    let thrown: Error | undefined;
+    try {
+      validateEnvOrThrow(
+        { NODE_ENV: 'production' } as NodeJS.ProcessEnv,
+        'saas',
+      );
+    } catch (e) {
+      thrown = e as Error;
+    }
+    expect(thrown).toBeDefined();
+    expect(thrown!.message).toMatch(/DATABASE_URL/);
+    // 错误信息必须暴露当前部署模式，避免操作员看错清单
+    expect(thrown!.message).toMatch(/saas/);
+  });
+
+  it('on-prem 缺 env → throw 信息包含 "on-prem" 上下文', () => {
+    let thrown: Error | undefined;
+    try {
+      validateEnvOrThrow(
+        { NODE_ENV: 'production' } as NodeJS.ProcessEnv,
+        'on-prem',
+      );
+    } catch (e) {
+      thrown = e as Error;
+    }
+    expect(thrown).toBeDefined();
+    expect(thrown!.message).toMatch(/on-prem/);
+    expect(thrown!.message).toMatch(/LICENSE_KEY/);
+    // 关键反向断言：on-prem 错误信息**不应**列出 SaaS-only 字段
+    expect(thrown!.message).not.toMatch(/STRIPE_SECRET_KEY/);
+    expect(thrown!.message).not.toMatch(/MIXPANEL/);
+  });
+
+  it('result.mode 字段如实反映传入的 mode', () => {
+    expect(checkEnv({} as NodeJS.ProcessEnv, 'saas').mode).toBe('saas');
+    expect(checkEnv({} as NodeJS.ProcessEnv, 'on-prem').mode).toBe('on-prem');
+  });
+});
+
+describe('env-validation — AUTH_SECRET / NEXTAUTH_SECRET 别名', () => {
+  it('AUTH_SECRET 单独设置 → ok', () => {
+    const env = makeFullSaasProductionEnv();
+    expect(env.AUTH_SECRET).toBeDefined();
+    delete env.NEXTAUTH_SECRET;
+    const result = checkEnv(env, 'saas');
+    expect(result.ok).toBe(true);
+  });
+
+  it('NEXTAUTH_SECRET 单独设置 → ok（legacy v4 名）', () => {
+    const env = makeFullSaasProductionEnv();
+    delete env.AUTH_SECRET;
+    env.NEXTAUTH_SECRET = 'legacy-secret';
+    const result = checkEnv(env, 'saas');
+    expect(result.ok).toBe(true);
+    // 也不应在 warnings 里
+    expect(
+      result.warnings.some((w) => w.includes('AUTH_SECRET')),
+    ).toBe(false);
+  });
+
+  it('AUTH_SECRET + NEXTAUTH_SECRET 两个都不设置 → missing', () => {
+    const env = makeFullSaasProductionEnv();
+    delete env.AUTH_SECRET;
+    delete env.NEXTAUTH_SECRET;
+    const result = checkEnv(env, 'saas');
+    expect(result.ok).toBe(false);
+    // missing 信息应列出两个名字，提示操作员任一即可
+    expect(
+      result.missing.some(
+        (m) => m.includes('AUTH_SECRET') && m.includes('NEXTAUTH_SECRET'),
+      ),
+    ).toBe(true);
+  });
+
+  it('两个都设置 → ok（不重复报错）', () => {
+    const env = makeFullSaasProductionEnv();
+    env.NEXTAUTH_SECRET = 'also-set';
+    const result = checkEnv(env, 'saas');
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('env-validation — mode 默认参数惰性求值', () => {
+  it('test/VITEST 跳过路径不调 getDeploymentMode（不传 mode 也不爆）', () => {
+    // 不传 mode；env 显式声明 test 模式 → 应直接 return，不应触发
+    // getDeploymentMode 的任何副作用（哪怕 process.env 状态怪）。
     expect(() =>
-      validateEnvOrThrow({ NODE_ENV: 'production' } as NodeJS.ProcessEnv)
-    ).toThrowError(/DATABASE_URL/);
+      validateEnvOrThrow({ NODE_ENV: 'test' } as NodeJS.ProcessEnv),
+    ).not.toThrow();
+    expect(() =>
+      validateEnvOrThrow({
+        NODE_ENV: 'production',
+        VITEST: 'true',
+      } as NodeJS.ProcessEnv),
+    ).not.toThrow();
+  });
+
+  it('build phase 跳过路径不调 getDeploymentMode（next.config.ts 加载时安全）', () => {
+    // next.config.ts 调 validateEnvOrWarn 时 NEXT_PHASE 已设；
+    // 此时不该走 mode 解析，否则 production fail-closed 会误伤构建。
+    expect(() =>
+      validateEnvOrWarn({
+        NODE_ENV: 'production',
+        NEXT_PHASE: 'phase-production-build',
+      } as NodeJS.ProcessEnv),
+    ).not.toThrow();
   });
 });
