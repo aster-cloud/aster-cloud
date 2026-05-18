@@ -17,7 +17,6 @@ import {
   Button,
   Card,
   CardBody,
-  Container,
   Input,
   Label,
   Stack,
@@ -56,8 +55,9 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-subtle py-12">
-      <Container size="narrow">
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle px-4 py-12 sm:px-6">
+      {/* 与 /login + /signup 对齐：max-w-md (28rem / 448px)。 */}
+      <div className="mx-auto w-full max-w-md">
         <Stack gap={8}>
           <Stack gap={6} align="center" className="text-center">
             <Link href="/" aria-label="Aster">
@@ -128,7 +128,7 @@ export default function ForgotPasswordPage() {
             </Card>
           )}
         </Stack>
-      </Container>
+      </div>
     </div>
   );
 }

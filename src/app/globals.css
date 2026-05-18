@@ -1,6 +1,28 @@
 @import "tailwindcss";
 
 /*
+ * Tailwind v4 默认只扫描应用源（./src/**），node_modules 里的 UI 包
+ * 不在扫描范围内。@aster-cloud/ui（Container / Input / Textarea 等）
+ * 使用了 arbitrary-value 类如 max-w-[640px]、max-w-[1280px]、
+ * w-[0_0_0_3px_rgb(244_63_94/0.30)]，未注册的话 HTML 写得有但 CSS 不
+ * 生成 → 组件塌成满宽 / 缺失 ring。
+ *
+ * 把包的 dist + src 都纳入扫描（生产 bundle 只用 dist，dev 模式可能
+ * 经 source map 回到 src — 双覆盖避免漏）。仅指向我们自己的包，不
+ * 是整个 node_modules，所以 build 时间影响可忽略。
+ *
+ * 触发场景（回归案例）：
+ *   - /login /signup /forgot-password 的 <Container size="narrow">
+ *     塌成 1272px 满宽（Container.tsx max-w-[640px] 未生成）
+ *   - landing trust band / features 的 max-w-[1280px] 同源问题
+ *
+ * 验证：grep -rE 'max-w-\[|w-\[|h-\[' node_modules/@aster-cloud/ui/src
+ *   →  确认所有 arbitrary class 都在扫描范围
+ */
+@source "../../node_modules/@aster-cloud/ui/src/**/*.{ts,tsx,js,jsx}";
+@source "../../node_modules/@aster-cloud/ui/dist/**/*.{js,mjs}";
+
+/*
  * Wire Tailwind 4's `dark:` variant onto our next-themes attribute so
  * existing `dark:bg-…` utilities (notably inside @aster-cloud/ui's
  * Button "secondary" variant) flip together with our tokens. Tailwind

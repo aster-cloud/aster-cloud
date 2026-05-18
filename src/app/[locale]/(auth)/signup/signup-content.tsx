@@ -21,7 +21,6 @@ import {
   Button,
   Card,
   CardBody,
-  Container,
   Stack,
   Wordmark,
 } from '@/components/ui';
@@ -49,8 +48,10 @@ export function SignupContent() {
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-subtle py-12">
-      <Container size="narrow">
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle px-4 py-12 sm:px-6">
+      {/* 注册页与登录页保持一致的 max-w-md (28rem / 448px) 锚定；
+          OAuth-only 入口本身只有 2-3 个按钮，更宽的容器只会让卡片显得空。 */}
+      <div className="mx-auto w-full max-w-md">
         <Stack gap={8}>
           <Stack gap={6} align="center" className="text-center">
             <Link href="/" aria-label="Aster">
@@ -132,7 +133,7 @@ export function SignupContent() {
             </p>
           </Stack>
         </Stack>
-      </Container>
+      </div>
     </div>
   );
 }

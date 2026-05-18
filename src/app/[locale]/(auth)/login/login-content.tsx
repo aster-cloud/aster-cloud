@@ -14,7 +14,6 @@ import {
   Button,
   Card,
   CardBody,
-  Container,
   Input,
   Label,
   Stack,
@@ -161,8 +160,11 @@ function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentPr
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-subtle py-12">
-      <Container size="narrow">
+    <div className="flex min-h-screen items-center justify-center bg-bg-subtle px-4 py-12 sm:px-6">
+      {/* 登录卡片宽度锚定在 max-w-md (28rem / 448px)，匹配业界主流登录页
+          （Stripe / Linear / Vercel）。Container "narrow"=640px 对纯表单
+          太宽，OAuth 按钮 + 输入框被拉得过开，视觉上像设置页面而非登录。 */}
+      <div className="mx-auto w-full max-w-md">
         <Stack gap={8}>
           {/* Wordmark + page title */}
           <Stack gap={6} align="center" className="text-center">
@@ -297,7 +299,7 @@ function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentPr
             </CardBody>
           </Card>
         </Stack>
-      </Container>
+      </div>
     </div>
   );
 }
