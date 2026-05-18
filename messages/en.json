@@ -31,6 +31,11 @@
     "description": "Write business rules in your native language. AI drafts, humans approve, GraalVM executes. Hash-chained audit included.",
     "noCreditCard": "No credit card required."
   },
+  "cnlDemo": {
+    "loanEligibility": "Loan eligibility",
+    "complianceCheck": "Compliance check",
+    "workflowGuard": "Workflow guard"
+  },
   "trust": {
     "eyebrow": "Built for production",
     "items": {

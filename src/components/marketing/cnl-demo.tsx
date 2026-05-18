@@ -25,52 +25,13 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/components/ui';
-
-interface CnlSnippet {
-  /** Short label rendered above the code (e.g. "Loan eligibility") */
-  label: string;
-  /** Raw CNL source — preserve exact whitespace; the highlighter is
-   *  whitespace-sensitive in the sense that it tokenizes per line. */
-  source: string;
-}
-
-/**
- * Snippets are intentionally short (≤ 8 lines, ≤ 50 chars/line) so they
- * fit on mobile without horizontal scroll. The keywords here MUST match
- * the canonical lexicon (Module / Rule / has / given) — the whole point
- * is the marketing page renders real, compilable CNL.
- */
-const SNIPPETS: readonly CnlSnippet[] = [
-  {
-    label: 'Loan eligibility',
-    source: `Module aster.finance.loan.
-
-Rule evaluate(applicant) given:
-  applicant has income >= 50000 USD.
-  applicant has credit_score >= 680.
-  applicant has employment_years >= 2.
-  decide approve.`,
-  },
-  {
-    label: 'Compliance check',
-    source: `Module aster.compliance.gdpr.
-
-Rule may_process(record) given:
-  record has consent = true.
-  record has region in EU.
-  decide allow with audit_trail.`,
-  },
-  {
-    label: 'Workflow guard',
-    source: `Module aster.ops.deploy.
-
-Rule can_release(version) given:
-  version has tests_passed = true.
-  version has reviewers >= 2.
-  decide release otherwise hold.`,
-  },
-] as const;
+import {
+  getSnippetsForLocale,
+  getKeywordsForLocale,
+  type LocaleKeywords,
+} from './cnl-demo-snippets';
 
 /** Typewriter timing tuned by trial: 18ms/char feels alive but readable. */
 const CHAR_DELAY_MS = 18;
@@ -80,12 +41,27 @@ const HOLD_MS = 4000;
 const ERASE_DELAY_MS = 8;
 
 export function CnlDemo({ className }: { className?: string }) {
+  const locale = useLocale();
+  const t = useTranslations();
+  // Snippets + highlighter keyword set are both locale-scoped — when the
+  // user switches /en → /zh the typewriter restarts with native CNL.
+  const snippets = useMemo(() => getSnippetsForLocale(locale), [locale]);
+  const keywords = useMemo(() => getKeywordsForLocale(locale), [locale]);
+
   const [snippetIdx, setSnippetIdx] = useState(0);
   const [typedChars, setTypedChars] = useState(0);
   const [phase, setPhase] = useState<'typing' | 'hold' | 'erasing'>('typing');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const snippet = SNIPPETS[snippetIdx];
+  // Reset to first snippet whenever locale changes — index must not
+  // outlive the snippet array it indexed into.
+  useEffect(() => {
+    setSnippetIdx(0);
+    setTypedChars(0);
+    setPhase('typing');
+  }, [locale]);
+
+  const snippet = snippets[snippetIdx];
   if (!snippet) {
     throw new Error('CnlDemo invariant: snippetIdx out of range');
   }
@@ -102,7 +78,7 @@ export function CnlDemo({ className }: { className?: string }) {
       // Show each snippet fully for HOLD_MS * 2, then rotate.
       setTypedChars(snippet.source.length);
       const t = setTimeout(() => {
-        setSnippetIdx((i) => (i + 1) % SNIPPETS.length);
+        setSnippetIdx((i) => (i + 1) % snippets.length);
       }, HOLD_MS * 2);
       return () => clearTimeout(t);
     }
@@ -124,7 +100,7 @@ export function CnlDemo({ className }: { className?: string }) {
           setTypedChars((c) => c - 1);
           timerRef.current = setTimeout(step, ERASE_DELAY_MS);
         } else {
-          setSnippetIdx((i) => (i + 1) % SNIPPETS.length);
+          setSnippetIdx((i) => (i + 1) % snippets.length);
           setPhase('typing');
           timerRef.current = setTimeout(step, CHAR_DELAY_MS);
         }
@@ -134,7 +110,7 @@ export function CnlDemo({ className }: { className?: string }) {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [snippet.source, snippetIdx, typedChars, phase, prefersReducedMotion]);
+  }, [snippet.source, snippetIdx, typedChars, phase, prefersReducedMotion, snippets.length]);
 
   const displayed = snippet.source.slice(0, typedChars);
 
@@ -155,7 +131,7 @@ export function CnlDemo({ className }: { className?: string }) {
           <span className="size-2.5 rounded-full bg-amber-400/70" aria-hidden />
           <span className="size-2.5 rounded-full bg-emerald-500/70" aria-hidden />
         </div>
-        <span className="font-mono text-xs text-zinc-400">{snippet.label}</span>
+        <span className="font-mono text-xs text-zinc-400">{t(snippet.labelKey)}</span>
         <span className="font-mono text-xs text-zinc-600">.aster</span>
       </div>
 
@@ -169,7 +145,7 @@ export function CnlDemo({ className }: { className?: string }) {
         }}
       >
         <code className="block whitespace-pre text-zinc-100">
-          <Highlighted text={displayed} />
+          <Highlighted text={displayed} keywords={keywords} />
           {/* Blinking caret while typing or erasing */}
           {!prefersReducedMotion && phase !== 'hold' && (
             <span
@@ -200,7 +176,7 @@ export function CnlDemo({ className }: { className?: string }) {
  * unknown vocabulary it falls through as plain `zinc-100` text, which
  * is fine for the marketing snippets.
  */
-function Highlighted({ text }: { text: string }) {
+function Highlighted({ text, keywords }: { text: string; keywords: LocaleKeywords }) {
   // Tokenize per line so we can mix bold-keyword + neutral-text spans.
   // The display is whitespace-pre, so we emit '\n' as actual newlines.
   const lines = text.split('\n');
@@ -208,7 +184,7 @@ function Highlighted({ text }: { text: string }) {
     <>
       {lines.map((line, i) => (
         <span key={i}>
-          <Tokens line={line} />
+          <Tokens line={line} keywords={keywords} />
           {i < lines.length - 1 && '\n'}
         </span>
       ))}
@@ -232,22 +208,26 @@ const COMMENT    = 'text-zinc-500 italic';
  * Per-line tokenizer. The patterns are ordered: more-specific keywords
  * first, then numbers, then "the rest" as identifier text.
  */
-function Tokens({ line }: { line: string }) {
+function Tokens({ line, keywords }: { line: string; keywords: LocaleKeywords }) {
   // Comment line short-circuit
   const trimmed = line.trim();
   if (trimmed.startsWith('//') || trimmed.startsWith('#')) {
     return <span className={COMMENT}>{line}</span>;
   }
 
-  // Tokenize: split on word boundaries but keep separators in the output
-  // so whitespace and punctuation render correctly.
-  const parts = line.split(/(\b[A-Za-z_][A-Za-z0-9_]*\b|\d+(?:\.\d+)?)/);
+  // Tokenize: split on word/number boundaries but keep separators in the
+  // output so whitespace and punctuation render correctly.
+  //
+  // The unicode property escape `\p{L}` matches letters from any script
+  // (拉丁、CJK、希腊...)，配合 `u` flag。这样 zh `模块 评估` / de `Regel`
+  // 与 en `Module` 一视同仁。`\p{N}` 同理覆盖 ASCII + 全角数字。
+  const parts = line.split(/([\p{L}_][\p{L}\p{N}_]*|\p{N}+(?:\.\p{N}+)?)/u);
 
   return (
     <>
       {parts.map((part, i) => {
         if (!part) return null;
-        const cls = classify(part);
+        const cls = classify(part, keywords);
         if (cls) {
           return (
             <span key={i} className={cls}>
@@ -262,30 +242,14 @@ function Tokens({ line }: { line: string }) {
 }
 
 /** Token classification. Returns null for "plain identifier / punctuation". */
-function classify(token: string): string | null {
-  // Numbers
+function classify(token: string, keywords: LocaleKeywords): string | null {
+  // Numbers — ASCII digits suffice for our snippet set.
   if (/^\d/.test(token)) return NUMBER;
 
-  // Structural keywords — Module / Rule definitions
-  if (token === 'Module' || token === 'Rule') return STRUCTURAL;
-
-  // Relational
-  if (token === 'has' || token === 'given' || token === 'in') return RELATIONAL;
-
-  // Control flow
-  if (token === 'otherwise' || token === 'if' || token === 'then' || token === 'with') return CONTROL;
-
-  // Action / decision verbs at end of rules
-  if (
-    token === 'decide' ||
-    token === 'approve' ||
-    token === 'allow' ||
-    token === 'release' ||
-    token === 'hold' ||
-    token === 'audit_trail'
-  ) {
-    return ACTION;
-  }
+  if (keywords.structural.has(token)) return STRUCTURAL;
+  if (keywords.relational.has(token)) return RELATIONAL;
+  if (keywords.control.has(token)) return CONTROL;
+  if (keywords.action.has(token)) return ACTION;
 
   return null;
 }

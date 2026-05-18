@@ -31,6 +31,11 @@
     "description": "用母语撰写业务规则。AI 起草，人工审核，GraalVM 执行。哈希链审计开箱即用。",
     "noCreditCard": "无需信用卡。"
   },
+  "cnlDemo": {
+    "loanEligibility": "贷款资质",
+    "complianceCheck": "合规审查",
+    "workflowGuard": "发布门禁"
+  },
   "trust": {
     "eyebrow": "为生产而生",
     "items": {
