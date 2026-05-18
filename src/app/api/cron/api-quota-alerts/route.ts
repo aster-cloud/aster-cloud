@@ -10,6 +10,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
+import { CAN_BILLING } from '@/lib/deployment-mode';
 import { db, users, apiCallRecords } from '@/lib/prisma';
 import { and, eq, sql } from 'drizzle-orm';
 import { resend } from '@/lib/resend';
@@ -31,6 +32,12 @@ interface AlertResult {
 }
 
 export async function GET(request: NextRequest) {
+  // On-prem 客户配额由 admin 控制台监控，不通过邮件提醒 —— quota email
+  // 派生于 SaaS 计费模型。on-prem 客户不需要这类自动告警。
+  if (!CAN_BILLING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // R21-Critical-2: fail-closed cron auth via shared helper
   const guard = requireCronAuth(request);
   if (guard) return guard;

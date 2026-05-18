@@ -16,6 +16,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
+import { CAN_RISKTIER } from '@/lib/deployment-mode';
 import { db } from '@/lib/prisma';
 import { users, auditLogs } from '@/db/schema';
 import { and, eq, gte, inArray, isNull } from 'drizzle-orm';
@@ -38,6 +39,12 @@ interface DecayResult {
 }
 
 export async function POST(req: NextRequest) {
+  // On-prem 不开启注册风险评分体系；返回 404 不泄露端点存在。
+  // 同时让 cron 调度器（cloudflare scheduled triggers）即使误配也不出错。
+  if (!CAN_RISKTIER) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // R21-Critical-2: fail-closed cron auth via shared helper
   const guard = requireCronAuth(req);
   if (guard) return guard;

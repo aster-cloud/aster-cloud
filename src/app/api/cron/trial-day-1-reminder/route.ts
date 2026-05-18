@@ -11,12 +11,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
+import { CAN_BILLING } from '@/lib/deployment-mode';
 import { findUsersForT1Reminder, sendTrialEndingEmailForUser } from '@/lib/email/trial-ending';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // On-prem 没有 trial 概念（enterprise license 决定权限）。
+  if (!CAN_BILLING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // R21-Critical-2: fail-closed cron auth via shared helper
   const guard = requireCronAuth(request);
   if (guard) return guard;

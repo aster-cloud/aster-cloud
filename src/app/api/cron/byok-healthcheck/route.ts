@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
+import { CAN_BILLING } from '@/lib/deployment-mode';
 import { checkAllBYOKKeys } from '@/lib/ai-byok-healthcheck';
 import { resend } from '@/lib/resend';
 
@@ -11,6 +12,12 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // BYOK 是 SaaS Pro feature；on-prem 客户用自己的 LLM key 池由
+  // license 决定，不走此 cron 路径。
+  if (!CAN_BILLING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // R21-Critical-2: fail-closed cron auth via shared helper
   const guard = requireCronAuth(request);
   if (guard) return guard;

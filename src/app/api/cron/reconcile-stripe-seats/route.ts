@@ -11,12 +11,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
+import { CAN_BILLING } from '@/lib/deployment-mode';
 import { reconcileStripeSeats } from '@/lib/stripe-reconcile';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // On-prem 没有 Stripe 订阅 → 没有 seat 对账需求。
+  if (!CAN_BILLING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // R21-Critical-2: fail-closed cron auth via shared helper
   const guard = requireCronAuth(request);
   if (guard) return guard;

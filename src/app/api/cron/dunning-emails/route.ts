@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
+import { CAN_DUNNING } from '@/lib/deployment-mode';
 import { db, users } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
 import { resend } from '@/lib/resend';
@@ -29,6 +30,11 @@ interface DunningResult {
 }
 
 export async function GET(request: NextRequest) {
+  // On-prem 没有 Stripe 订阅 → 没有 past_due 状态 → 没有催收。
+  if (!CAN_DUNNING) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // R21-Critical-2: fail-closed cron auth via shared helper
   const guard = requireCronAuth(request);
   if (guard) return guard;
