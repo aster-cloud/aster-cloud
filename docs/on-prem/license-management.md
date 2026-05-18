@@ -24,13 +24,19 @@ Standard SKU 会访问公开的 revocation endpoint，只下载签名 JSON 文�
 
 ---
 
-## 2. 设置 LICENSE_KEY
+## 2. 设置 LICENSE_KEY + ASTER_DEPLOYMENT_ID
 
-`LICENSE_KEY` 是完整的 license 字符串：
+每张签名 license 都绑定到一个具体部署（v3 起为**强制**）。客户需要配两个环境变量：
 
 ```bash
 LICENSE_KEY='aster-ent-v2-lic-2026-01-<payload>.<signature>'
+ASTER_DEPLOYMENT_ID='<sha256-hex>'   # Aster 签发时一并交付，64 lowercase hex
 ```
+
+`ASTER_DEPLOYMENT_ID` = `sha256(<customer>|<deployment-slug>)`。Aster 签发流程
+（`scripts/license-issue.sh`）会在终端打印这串 hex；销售把 license key + 这串 id
+一起加密交付给你。**如果你把同一张 license 装到不止一个集群，只有 ASTER_DEPLOYMENT_ID
+匹配的那个能跑** —— 其他集群会进入 `binding-mismatch` read-only 状态。
 
 生产环境**不要**把 license 写进镜像。请使用 secret 管理系统注入环境变量。
 
@@ -61,6 +67,13 @@ spec:
                 secretKeyRef:
                   name: aster-license
                   key: LICENSE_KEY
+            # v3 deployment binding：必须与 license 签发时给的 hash 完全一致
+            # 否则 verify 进入 binding-mismatch 状态，admin 写操作被锁
+            - name: ASTER_DEPLOYMENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aster-license
+                  key: ASTER_DEPLOYMENT_ID
             # 必须设置 v1 兼容期 deadline，否则 v1 key 在生产模式立即失效
             - name: LICENSE_V1_DEADLINE
               value: "2026-12-31T00:00:00.000Z"

@@ -32,6 +32,7 @@ const EXPECTED: Record<DisplayStatus, { role: 'alert' | 'status'; tone: string }
   malformed: { role: 'alert', tone: 'danger' },
   'signature-invalid': { role: 'alert', tone: 'danger' },
   'signature-untrusted-key': { role: 'alert', tone: 'danger' },
+  'binding-mismatch': { role: 'alert', tone: 'danger' },
   'legacy-unsigned': { role: 'status', tone: 'warning' },
   'verified-revoked': { role: 'alert', tone: 'danger' },
   'verified-expired': { role: 'alert', tone: 'danger' },
@@ -184,7 +185,7 @@ function buildPayload(
     features: ['sso'],
     sku: 'standard',
     licenseTerm: 'annual',
-    deploymentBinding: null,
+    deploymentBinding: { deploymentId: "a".repeat(64), deploymentLabel: "test-deployment" },
     revocationCheckUrl: 'https://license.aster-lang.cloud/revoked.json',
   };
   return { ...base, ...overrides };

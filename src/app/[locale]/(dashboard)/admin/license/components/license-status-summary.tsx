@@ -53,6 +53,13 @@ const STATUS_CONFIG: Record<
     bodyKey: 'status.signatureUntrustedKey.body',
     icon: 'alert',
   },
+  'binding-mismatch': {
+    tone: 'danger',
+    role: 'alert',
+    titleKey: 'status.bindingMismatch.title',
+    bodyKey: 'status.bindingMismatch.body',
+    icon: 'alert',
+  },
   'legacy-unsigned': {
     tone: 'warning',
     role: 'status',

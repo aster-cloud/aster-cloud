@@ -46,6 +46,7 @@ export type TrustStatus =
   | 'legacy-unsigned' // v1 格式 + 仍在 30 天兼容窗口内
   | 'signature-invalid' // 签名校验失败（payload tampered 或算法错误）
   | 'signature-untrusted-key' // keyId 不在 trust bundle 或已 retired
+  | 'binding-mismatch' // payload.deploymentBinding.deploymentId 不等于 ASTER_DEPLOYMENT_ID env（或 env 未设）
   | 'verified'; // Ed25519 签名校验通过
 
 export type EntitlementStatus =
@@ -67,6 +68,7 @@ export type DisplayStatus =
   | 'legacy-unsigned'
   | 'signature-invalid'
   | 'signature-untrusted-key'
+  | 'binding-mismatch'
   | 'verified-revoked'
   | 'verified-expired'
   | 'network-grace-expired'
@@ -82,6 +84,26 @@ export type SecondaryAdvisory =
 
 // ===== Payload 与结果 =====
 
+/**
+ * Deployment binding ties a signed license to a specific on-prem deployment so
+ * the same key can't be reused across N clusters. Aster computes
+ * `deploymentId = sha256(customer|slug)` at sign time; the customer配 this
+ * value into `ASTER_DEPLOYMENT_ID` env on the running instance. Verify path
+ * compares both and fails-closed if missing or mismatched.
+ *
+ * Binding is **required** on every signed license — new project, no v1 / v2
+ * back-compat path. Old `deploymentBinding: null` payloads will fail
+ * isLicensePayloadV2().
+ */
+export interface DeploymentBinding {
+  /** Hex SHA-256 (64 chars, lowercase). */
+  deploymentId: string;
+  /** Human-readable, shown in admin UI for ops sanity-check. */
+  deploymentLabel: string;
+  /** Optional public-facing URL (for forensics; not compared in verify). */
+  deploymentUrl?: string;
+}
+
 export interface LicensePayloadV2 {
   schemaVersion: 2;
   licenseId: string;
@@ -96,8 +118,8 @@ export interface LicensePayloadV2 {
   features: ReadonlyArray<string>;
   sku: 'standard' | 'air-gapped';
   licenseTerm: 'annual' | 'five-year' | 'perpetual';
-  /** v2 留作 future-use，必须为 null。 */
-  deploymentBinding: null;
+  /** Required since v3. Aster computes server-side; client matches against ASTER_DEPLOYMENT_ID env. */
+  deploymentBinding: DeploymentBinding;
   /** standard SKU 必填 HTTPS；air-gapped 允许省略。 */
   revocationCheckUrl?: string;
 }
@@ -254,6 +276,29 @@ function isStringArray(value: unknown): value is ReadonlyArray<string> {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
+// SHA-256 hex (64 lowercase hex chars). Verify path needs an exact lexical
+// match against ASTER_DEPLOYMENT_ID env, so we reject any other shape early.
+function isDeploymentIdHex(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+}
+
+function isDeploymentBinding(value: unknown): value is DeploymentBinding {
+  if (!value || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  if (!isDeploymentIdHex(o.deploymentId)) return false;
+  if (typeof o.deploymentLabel !== 'string' || o.deploymentLabel.length === 0) return false;
+  if (o.deploymentUrl !== undefined) {
+    if (typeof o.deploymentUrl !== 'string') return false;
+    try {
+      // 不强制 https —— 仅做合法 URL 校验，forensics 用。
+      new URL(o.deploymentUrl);
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 // ===== Payload 校验 =====
 
 function isLegacyPayload(p: unknown): p is LicensePayload {
@@ -291,7 +336,7 @@ function isLicensePayloadV2(p: unknown): p is LicensePayloadV2 {
   if (o.licenseTerm !== 'annual' && o.licenseTerm !== 'five-year' && o.licenseTerm !== 'perpetual') {
     return false;
   }
-  if (o.deploymentBinding !== null) return false;
+  if (!isDeploymentBinding(o.deploymentBinding)) return false;
   if (o.revocationCheckUrl !== undefined) {
     if (typeof o.revocationCheckUrl !== 'string') return false;
     try {
@@ -432,6 +477,12 @@ export async function verifyLicenseKey(
     now?: Date;
     trustBundle?: readonly TrustBundleEntry[];
     revocationState?: RevocationState | null;
+    /**
+     * Deployment ID that the license `deploymentBinding.deploymentId` must
+     * equal. Defaults to `process.env.ASTER_DEPLOYMENT_ID`. Tests can pass
+     * an explicit value to avoid touching env.
+     */
+    expectedDeploymentId?: string;
   } = {},
 ): Promise<LicenseResult> {
   const now = opts.now ?? new Date();
@@ -580,6 +631,29 @@ export async function verifyLicenseKey(
     });
   }
 
+  // Signature 通过 → 接下来检查 deployment binding。
+  // 不在 isLicensePayloadV2 里做：那里只校验 payload 结构；binding match 是
+  // verify 时间点的运行时检查（env 可能在不同进程不同），需要在签名通过之后
+  // 与 entitlement 计算之前。失败时返回独立 trustStatus（不是 malformed —
+  // payload 本身没问题，是这台机器不该跑这张 license）。
+  const expectedDeploymentId =
+    opts.expectedDeploymentId !== undefined
+      ? opts.expectedDeploymentId
+      : process.env.ASTER_DEPLOYMENT_ID;
+  const expected = (expectedDeploymentId ?? '').trim().toLowerCase();
+  const actual = parsed.deploymentBinding.deploymentId.toLowerCase();
+  if (expected !== actual) {
+    return build({
+      trustStatus: 'binding-mismatch',
+      payload: parsed,
+      keyPreview,
+      signingKey,
+      reasonCode: expected === ''
+        ? 'deployment-id-env-missing'
+        : 'deployment-id-mismatch',
+    });
+  }
+
   const { entitlementStatus, daysRemaining } = computeEntitlement(
     parsed,
     now,
@@ -698,6 +772,7 @@ export function deriveDisplayStatus(
   if (trust === 'malformed') return 'malformed';
   if (trust === 'signature-invalid') return 'signature-invalid';
   if (trust === 'signature-untrusted-key') return 'signature-untrusted-key';
+  if (trust === 'binding-mismatch') return 'binding-mismatch';
   if (trust === 'legacy-unsigned') return 'legacy-unsigned';
 
   // trust === 'verified' 分支

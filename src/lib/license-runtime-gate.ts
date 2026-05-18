@@ -30,6 +30,7 @@ export type LicenseGateReason =
   | 'revoked'
   | 'expired'
   | 'malformed'
+  | 'binding-mismatch'
   | 'missing';
 
 export interface LicenseRuntimeGateResult {
@@ -87,6 +88,11 @@ function gateFromStatus(
   result: Awaited<ReturnType<typeof verifyLicenseKey>>,
 ): LicenseRuntimeGateResult {
   if (result.trustStatus === 'missing') return { gated: true, reason: 'missing' };
+  // binding-mismatch 单独上报，方便 admin 看到 banner 时知道是哪类问题
+  // （ASTER_DEPLOYMENT_ID 缺失 vs license 被搬到错的部署上）。
+  if (result.trustStatus === 'binding-mismatch') {
+    return { gated: true, reason: 'binding-mismatch' };
+  }
   if (result.trustStatus !== 'verified') return { gated: true, reason: 'malformed' };
   if (result.entitlementStatus === 'revoked') return { gated: true, reason: 'revoked' };
   if (result.entitlementStatus === 'expired') return { gated: true, reason: 'expired' };

@@ -1435,6 +1435,10 @@
           "title": "许可证签名密钥不受信任",
           "body": "该许可证由当前版本信任包之外的密钥签发。请联系销售团队重新签发。"
         },
+        "bindingMismatch": {
+          "title": "许可证绑定到其他部署",
+          "body": "签名校验通过，但许可证的 deploymentBinding 与当前实例上的 ASTER_DEPLOYMENT_ID 不一致。可能是把许可证用在了错误的集群，或者 ASTER_DEPLOYMENT_ID 未配置 / 配错。请联系销售团队重新签发绑定到此部署的许可证。"
+        },
         "legacyUnsigned": {
           "title": "旧版未签名许可证",
           "body": "此 v1 许可证仅在迁移窗口内临时接受。请在截止日期前升级为已签名的 v2 许可证。",
@@ -1488,6 +1492,9 @@
         "noFeatures": "未启用可选功能",
         "licenseId": "许可证 ID",
         "keyPreview": "密钥预览",
+        "deploymentLabel": "部署",
+        "deploymentId": "部署 ID",
+        "deploymentUrl": "部署 URL",
         "copy": "复制",
         "copied": "已复制",
         "copyValue": "复制{label}"
@@ -1644,6 +1651,7 @@
         "revoked": "此许可证已被撤销。请联系 Aster 销售解决。",
         "expired": "此许可证已过期。续约以恢复管理员操作。",
         "malformed": "许可证密钥格式错误。请恢复有效的 LICENSE_KEY 环境变量。",
+        "binding-mismatch": "此许可证绑定到其他部署，或 ASTER_DEPLOYMENT_ID 缺失/配错。请恢复正确的环境变量值，或联系销售重新签发。",
         "missing": "未配置 LICENSE_KEY。请设置环境变量以恢复管理员操作。"
       },
       "viewLicense": "查看许可证状态"

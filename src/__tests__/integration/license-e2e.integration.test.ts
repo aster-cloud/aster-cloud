@@ -132,7 +132,7 @@ async function signLicense(
     features: ['ai'],
     sku: 'standard',
     licenseTerm: 'annual',
-    deploymentBinding: null,
+    deploymentBinding: { deploymentId: "a".repeat(64), deploymentLabel: "test-deployment" },
     revocationCheckUrl: 'https://revocation.test/revoked.json',
     ...overrides,
   };
@@ -180,6 +180,10 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')(
     beforeAll(async () => {
       (process.env as Record<string, string>).NODE_ENV = 'test';
       process.env.DEPLOYMENT_MODE = 'on-prem';
+      // 所有 fixture license 都用 'a'.repeat(64) 作 deploymentId；让 verify
+      // 路径默认走 env 读取就能匹配，避免在每个 verifyLicenseKey 调用点都
+      // 重复传 expectedDeploymentId。
+      process.env.ASTER_DEPLOYMENT_ID = 'a'.repeat(64);
       await setupTestDb();
       keys = await createKeys();
       // 注入 test trust bundle 给 isLicenseReadOnlyGated（生产仅走 ASTER_TRUST_BUNDLE）

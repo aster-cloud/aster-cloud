@@ -12,7 +12,7 @@
 //   - LegacyLicenseResult（v1 parseLicenseKey 返回值）一律 false，因为 v1
 //     没有签名保护，features 数组可被 LICENSE_KEY 持有者任意伪造
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   parseLicenseKey,
   hasLicenseFeature,
@@ -307,7 +307,7 @@ async function makeSignedV2License(
       features: ['sso', 'audit-export'] as ReadonlyArray<string>,
       sku: 'standard' as const,
       licenseTerm: 'annual' as const,
-      deploymentBinding: null,
+      deploymentBinding: { deploymentId: "a".repeat(64), deploymentLabel: "test-deployment" },
       revocationCheckUrl: 'https://license.aster-lang.cloud/revoked.json' as string | undefined,
     },
     overrides,
@@ -336,6 +336,19 @@ async function makeSignedV2License(
 }
 
 describe('verifyLicenseKey v2', () => {
+  // 所有 fixture license 都用 'a'.repeat(64) 作 deploymentId；let the env
+  // path resolve to a matching value so existing verified-path tests don't
+  // need to thread expectedDeploymentId through every call. Restored after
+  // the suite to keep other test files unaffected.
+  const SAVED_DEPLOYMENT_ID = process.env.ASTER_DEPLOYMENT_ID;
+  beforeAll(() => {
+    process.env.ASTER_DEPLOYMENT_ID = 'a'.repeat(64);
+  });
+  afterAll(() => {
+    if (SAVED_DEPLOYMENT_ID === undefined) delete process.env.ASTER_DEPLOYMENT_ID;
+    else process.env.ASTER_DEPLOYMENT_ID = SAVED_DEPLOYMENT_ID;
+  });
+
   it('valid signature → trustStatus=verified, displayStatus=verified-active', async () => {
     const { key, bundle } = await makeSignedV2License();
     const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: bundle });
@@ -525,5 +538,66 @@ describe('verifyLicenseKey v2', () => {
     const tamperedKey = `aster-ent-v2-${payload.keyId}-${bytesToB64url(tamperedPayloadBytes)}.${sig}`;
     const r = await verifyLicenseKey(tamperedKey, { now: NOW_2026, trustBundle: bundle });
     expect(r.trustStatus).toBe('malformed');
+  });
+
+  // ── Deployment binding (v3) ─────────────────────────────────────────
+  describe('deployment binding', () => {
+    const HEX_A = 'a'.repeat(64);
+    const HEX_B = 'b'.repeat(64);
+
+    it('matching env → verified', async () => {
+      const { key, bundle } = await makeSignedV2License();
+      const r = await verifyLicenseKey(key, {
+        now: NOW_2026,
+        trustBundle: bundle,
+        expectedDeploymentId: HEX_A,
+      });
+      expect(r.trustStatus).toBe('verified');
+    });
+
+    it('missing expectedDeploymentId → binding-mismatch', async () => {
+      const { key, bundle } = await makeSignedV2License();
+      const r = await verifyLicenseKey(key, {
+        now: NOW_2026,
+        trustBundle: bundle,
+        expectedDeploymentId: '',
+      });
+      expect(r.trustStatus).toBe('binding-mismatch');
+      expect(r.displayStatus).toBe('binding-mismatch');
+      expect(r.diagnostics.reasonCode).toBe('deployment-id-env-missing');
+    });
+
+    it('wrong expectedDeploymentId → binding-mismatch', async () => {
+      const { key, bundle } = await makeSignedV2License();
+      const r = await verifyLicenseKey(key, {
+        now: NOW_2026,
+        trustBundle: bundle,
+        expectedDeploymentId: HEX_B,
+      });
+      expect(r.trustStatus).toBe('binding-mismatch');
+      expect(r.diagnostics.reasonCode).toBe('deployment-id-mismatch');
+    });
+
+    it('payload missing deploymentBinding → malformed (rejected before verify)', async () => {
+      // 直接构造没有 deploymentBinding 字段的 payload，验证 isLicensePayloadV2
+      // 会拒掉它（不会走到 binding match 阶段）。比"先签 valid 再解再删"
+      // 简单 —— 这里我们故意把签名留空，反正 payload shape 校验在签名之前。
+      const { bundle, payload } = await makeSignedV2License();
+      const noBindingPayload = { ...payload } as Record<string, unknown>;
+      delete noBindingPayload.deploymentBinding;
+      const tamperedBytes = new TextEncoder().encode(JSON.stringify(noBindingPayload));
+      const tamperedB64url = Buffer.from(tamperedBytes)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      const fakeKey = `aster-ent-v2-${payload.keyId}-${tamperedB64url}.AAAA`;
+      const r = await verifyLicenseKey(fakeKey, {
+        now: NOW_2026,
+        trustBundle: bundle,
+        expectedDeploymentId: HEX_A,
+      });
+      expect(r.trustStatus).toBe('malformed');
+    });
   });
 });

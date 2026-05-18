@@ -75,6 +75,27 @@ export function LicenseDetails({ payload, keyPreview, daysRemaining }: Props) {
             <FormattedDate iso={payload.notBefore} />
           </DetailRow>
         )}
+        <DetailRow label={t('details.deploymentLabel')}>
+          <span className="font-medium">{payload.deploymentBinding.deploymentLabel}</span>
+        </DetailRow>
+        <DetailRow label={t('details.deploymentId')}>
+          <CopyableValue
+            label={t('details.deploymentId')}
+            value={payload.deploymentBinding.deploymentId}
+          />
+        </DetailRow>
+        {payload.deploymentBinding.deploymentUrl && (
+          <DetailRow label={t('details.deploymentUrl')}>
+            <a
+              href={payload.deploymentBinding.deploymentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary hover:underline"
+            >
+              {payload.deploymentBinding.deploymentUrl}
+            </a>
+          </DetailRow>
+        )}
         {typeof daysRemaining === 'number' && (
           <DetailRow label={t('details.daysRemaining')}>
             <span

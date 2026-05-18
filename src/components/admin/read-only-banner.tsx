@@ -15,6 +15,7 @@ export type ReadOnlyReason =
   | 'revoked'
   | 'expired'
   | 'malformed'
+  | 'binding-mismatch'
   | 'missing';
 
 export async function ReadOnlyBanner({ reason }: { reason: ReadOnlyReason }) {

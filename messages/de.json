@@ -1435,6 +1435,10 @@
           "title": "Signaturschlüssel ist nicht vertrauenswürdig",
           "body": "Die Lizenz wurde mit einem Schlüssel signiert, der nicht im Trust Bundle dieses Builds enthalten ist. Kontaktieren Sie den Vertrieb für eine Neuausstellung."
         },
+        "bindingMismatch": {
+          "title": "Lizenz ist an ein anderes Deployment gebunden",
+          "body": "Die Signatur ist gültig, aber die deploymentBinding der Lizenz stimmt nicht mit ASTER_DEPLOYMENT_ID auf dieser Instanz überein. Entweder läuft die Lizenz auf dem falschen Cluster, oder die ASTER_DEPLOYMENT_ID-Umgebungsvariable fehlt bzw. ist falsch konfiguriert. Kontaktieren Sie den Vertrieb für eine an dieses Deployment gebundene Neuausstellung."
+        },
         "legacyUnsigned": {
           "title": "Unsigierte Legacy-Lizenz",
           "body": "Diese v1-Lizenz wird nur während des Migrationsfensters akzeptiert. Stellen Sie vor Ablauf auf eine signierte v2-Lizenz um.",
@@ -1488,6 +1492,9 @@
         "noFeatures": "Keine optionalen Funktionen aktiviert",
         "licenseId": "Lizenz-ID",
         "keyPreview": "Schlüsselvorschau",
+        "deploymentLabel": "Deployment",
+        "deploymentId": "Deployment-ID",
+        "deploymentUrl": "Deployment-URL",
         "copy": "Kopieren",
         "copied": "Kopiert",
         "copyValue": "{label} kopieren"
@@ -1644,6 +1651,7 @@
         "revoked": "Diese Lizenz wurde widerrufen. Kontaktieren Sie den Aster-Vertrieb.",
         "expired": "Diese Lizenz ist abgelaufen. Verlängern Sie sie, um Admin-Operationen wiederherzustellen.",
         "malformed": "Lizenzschlüssel ist fehlerhaft. Setzen Sie eine gültige LICENSE_KEY-Umgebungsvariable.",
+        "binding-mismatch": "Diese Lizenz ist an ein anderes Deployment gebunden, oder ASTER_DEPLOYMENT_ID fehlt/ist falsch konfiguriert. Setzen Sie den korrekten Wert oder kontaktieren Sie den Vertrieb für eine Neuausstellung.",
         "missing": "Keine LICENSE_KEY konfiguriert. Setzen Sie die Umgebungsvariable, um Admin-Operationen wiederherzustellen."
       },
       "viewLicense": "Lizenzstatus anzeigen"

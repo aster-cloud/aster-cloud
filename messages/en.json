@@ -1435,6 +1435,10 @@
           "title": "License signing key is not trusted",
           "body": "The license was signed by a key that is not in this build's trust bundle. Contact sales for a reissued key."
         },
+        "bindingMismatch": {
+          "title": "License is bound to a different deployment",
+          "body": "This license signature is valid, but its deploymentBinding does not match the ASTER_DEPLOYMENT_ID configured on this instance. Either you are running the license on the wrong cluster, or the ASTER_DEPLOYMENT_ID env var is missing or misconfigured. Contact sales for a reissued license bound to this deployment."
+        },
         "legacyUnsigned": {
           "title": "Unsigned legacy license",
           "body": "This v1 license is accepted only during the migration window. Upgrade to a signed v2 license before the deadline.",
@@ -1488,6 +1492,9 @@
         "noFeatures": "No optional features enabled",
         "licenseId": "License ID",
         "keyPreview": "Key preview",
+        "deploymentLabel": "Deployment",
+        "deploymentId": "Deployment ID",
+        "deploymentUrl": "Deployment URL",
         "copy": "Copy",
         "copied": "Copied",
         "copyValue": "Copy {label}"
@@ -1644,6 +1651,7 @@
         "revoked": "This license has been revoked. Contact Aster sales to resolve.",
         "expired": "This license has expired. Renew to restore admin operations.",
         "malformed": "License key is malformed. Restore a valid LICENSE_KEY environment variable.",
+        "binding-mismatch": "This license is bound to a different deployment, or ASTER_DEPLOYMENT_ID is missing/misconfigured. Restore the correct env value or contact sales for a reissued license.",
         "missing": "No LICENSE_KEY configured. Set the environment variable to restore admin operations."
       },
       "viewLicense": "View license status"
