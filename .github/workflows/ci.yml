@@ -70,10 +70,62 @@ jobs:
   # Hyperdrive at runtime. Without this dummy value, OpenNext's deploy
   # wrapper aborts with "no local hyperdrive connection string".
 
+  # On-prem build verification — ensures the deployment-mode flag work
+  # (v2 plan) is not regressed by future PRs. Runs in parallel with `build`.
+  #
+  # 失败常见原因 & 修复方向（按 verify scripts 输出的规则名）：
+  #   "stripe import"          → src/lib/stripe.ts hot-gate 或 alias 失效
+  #   "STRIPE_SECRET_KEY literal" → 某 SaaS-only 路由的 env 访问没用直接
+  #                                 __DEPLOYMENT_MODE__ macro 守门
+  #   "href to /billing"       → 某 client 组件加了 SaaS-only 链接但忘了
+  #                              wrap CLIENT_CAPABILITIES.billing
+  # 详见 .claude/plan/saas-only-inventory.md §17 PR-4 checklist。
+  on-prem-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: On-prem build
+        env:
+          DEPLOYMENT_MODE: on-prem
+        run: pnpm build
+
+      - name: Verify on-prem bundle does not bundle SaaS SDKs / secrets
+        run: pnpm verify:on-prem-bundle
+
+      - name: Verify on-prem UI does not link to SaaS-only routes
+        run: pnpm verify:on-prem-ui
+
+      - name: Audit transitive deps in on-prem build (informational)
+        run: pnpm verify:packages
+        continue-on-error: true
+
+      - name: Upload on-prem build artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: on-prem-build-failed
+          path: |
+            .open-next/worker.js
+            .open-next/server-functions/default/handler.mjs
+          if-no-files-found: ignore
+          retention-days: 7
+
   build-migrate-image:
     # 仅在 main 分支 push 时跑（PR 不构建/推镜像）
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build
+    # 必须等 SaaS build + on-prem build 都过，才推 migrate 镜像 ——
+    # 防止 on-prem 回归被推到 production
+    needs: [build, on-prem-build]
     runs-on: ubuntu-latest
     permissions:
       contents: read

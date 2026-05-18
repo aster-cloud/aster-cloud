@@ -15,9 +15,10 @@ import type mixpanelBrowser from 'mixpanel-browser';
 
 type MixpanelInstance = typeof mixpanelBrowser;
 
-const MIXPANEL_TOKEN = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
-const NEXT_PUBLIC_DEPLOYMENT_MODE =
-  process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'on-prem' ? 'on-prem' : 'saas';
+// MIXPANEL_TOKEN 故意延迟到 ensureMixpanel() 内读取（而非 module 顶部
+// 常量），让 on-prem build 完全不出现 process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
+// 引用 —— terser 在 `if (__DEPLOYMENT_MODE__ !== 'saas') return null` 后
+// 折叠剩余函数体即可。
 
 let _mixpanelInstance: MixpanelInstance | null = null;
 let _initialized = false;
@@ -27,11 +28,14 @@ async function ensureMixpanel(): Promise<MixpanelInstance | null> {
   if (_mixpanelInstance) return _mixpanelInstance;
   if (typeof window === 'undefined') return null;
 
-  // 编译期 mode 检查：on-prem 直接 no-op，dynamic import 表达式被消除。
+  // 编译期 mode 检查：on-prem 直接 no-op，整个剩余函数体（包括
+  // MIXPANEL_TOKEN 读取 + dynamic import）被 terser 消除。
   if (__DEPLOYMENT_MODE__ !== 'saas') return null;
-  // 客户端镜像（同 build-time literal）也要 mode 检查，避免某些边缘
-  // hydration 路径绕过编译期常量。
-  if (NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') return null;
+  // 客户端镜像（同 build-time literal）双保险：handle 编译期未注入的
+  // edge case（如 hydration 拼接路径）。
+  if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'saas') return null;
+
+  const MIXPANEL_TOKEN = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
   if (!MIXPANEL_TOKEN) {
     if (!_initialized) {
       _initialized = true;

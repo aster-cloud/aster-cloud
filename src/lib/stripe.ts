@@ -50,6 +50,15 @@ async function loadStripeCtor(): Promise<StripeCtor> {
  * 所有调用方都已经在 async context（route handlers / cron / lib），改动安全。
  */
 export async function getStripe(): Promise<Stripe> {
+  // 直接 macro 检查放在函数顶部 —— 让 terser 在 on-prem build 把整个
+  // 函数体（包括 process.env.STRIPE_SECRET_KEY 引用）折叠成单一 throw。
+  // 否则 verify-on-prem-bundle 会把 secret env 名当残留泄漏报错。
+  if (__DEPLOYMENT_MODE__ !== 'saas') {
+    throw new Error(
+      '[stripe] Stripe SDK is unavailable in on-prem build. ' +
+        'Callers must gate by CAN_BILLING / IS_SAAS before reaching this module.',
+    );
+  }
   if (_stripeInstance) return _stripeInstance;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) {
