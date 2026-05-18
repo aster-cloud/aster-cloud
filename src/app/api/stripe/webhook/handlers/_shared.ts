@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { db, users, teams, teamMembers } from '@/lib/prisma';
 import { lookupPriceId, type PlanType } from '@/lib/plans';
 

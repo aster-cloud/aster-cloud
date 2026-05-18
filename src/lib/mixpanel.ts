@@ -41,18 +41,25 @@ async function ensureMixpanel(): Promise<MixpanelInstance | null> {
   }
 
   if (_initInFlight) return _initInFlight;
-  _initInFlight = (async () => {
-    const mod = await import('mixpanel-browser');
-    const inst = mod.default;
-    inst.init(MIXPANEL_TOKEN, {
-      debug: process.env.NODE_ENV === 'development',
-      track_pageview: true,
-      persistence: 'localStorage',
+  // 用 chunk-load 失败 / SDK init 异常会被 catch + 重置 _initInFlight，
+  // 否则下一次调用会复用一个已 reject 的 promise，导致整会话埋点都死掉。
+  _initInFlight = import('mixpanel-browser')
+    .then((mod) => {
+      const inst = mod.default;
+      inst.init(MIXPANEL_TOKEN, {
+        debug: process.env.NODE_ENV === 'development',
+        track_pageview: true,
+        persistence: 'localStorage',
+      });
+      _initialized = true;
+      _mixpanelInstance = inst;
+      return inst;
+    })
+    .catch((err) => {
+      console.warn('[mixpanel] init failed', err);
+      _initInFlight = null;
+      return null;
     });
-    _initialized = true;
-    _mixpanelInstance = inst;
-    return inst;
-  })();
   return _initInFlight;
 }
 

@@ -9,6 +9,7 @@ import { db } from '@/lib/prisma';
 import { users, auditLogs } from '@/db/schema';
 import { and, desc, eq, gt, gte, sql } from 'drizzle-orm';
 import { requireAdmin } from '@/lib/admin-auth';
+import { CAN_RISKTIER } from '@/lib/deployment-mode';
 import { policyForTier, type RiskTier } from '@/lib/risk-tier';
 
 export const runtime = 'nodejs';
@@ -27,6 +28,10 @@ interface RiskRow {
 }
 
 export async function GET(req: NextRequest) {
+  // On-prem 不使用注册风险评分；优先于 admin 检查返回 404，避免 admin
+  // 通过端点试探得知功能存在与否。
+  if (!CAN_RISKTIER) return new NextResponse(null, { status: 404 });
+
   const check = await requireAdmin();
   if (check instanceof NextResponse) return check;
 
@@ -76,6 +81,8 @@ interface OverridePayload {
 }
 
 export async function POST(req: NextRequest) {
+  if (!CAN_RISKTIER) return new NextResponse(null, { status: 404 });
+
   const check = await requireAdmin();
   if (check instanceof NextResponse) return check;
   const adminUserId = check.userId;
@@ -153,6 +160,8 @@ export async function POST(req: NextRequest) {
  * 单独写一个 endpoint 也行，但保持路由聚合更易理解。
  */
 export async function HEAD() {
+  if (!CAN_RISKTIER) return new NextResponse(null, { status: 404 });
+
   const check = await requireAdmin();
   if (check instanceof NextResponse) return check;
 

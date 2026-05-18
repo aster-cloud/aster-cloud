@@ -1,4 +1,4 @@
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
 import { db, users } from '@/lib/prisma';
 import { invalidatePlanCache } from '@/lib/plan-gate-client';

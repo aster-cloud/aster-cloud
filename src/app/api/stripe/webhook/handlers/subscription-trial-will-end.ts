@@ -1,4 +1,4 @@
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { eq } from 'drizzle-orm';
 import { db, users, auditLogs } from '@/lib/prisma';
 import { sendTrialEndingEmailForUser } from '@/lib/email/trial-ending';
