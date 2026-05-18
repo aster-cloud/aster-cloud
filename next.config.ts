@@ -4,6 +4,11 @@ import { validateEnvOrWarn } from './src/lib/env-validation';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+// 部署模式开关 — 见 src/lib/deployment-mode.ts + .claude/plan/deployment-mode-flag-v2.md
+// 用 process.env 读 build-time 注入；DefinePlugin 把字面量植入 bundle。
+const DEPLOYMENT_MODE: 'saas' | 'on-prem' =
+  process.env.DEPLOYMENT_MODE === 'on-prem' ? 'on-prem' : 'saas';
+
 // 只在 next build 阶段做一次 warn-only 校验。
 //
 // 历史踩坑：早先在这里无条件调 validateEnvOrWarn()，
@@ -32,6 +37,41 @@ const nextConfig: NextConfig = {
   // src/middleware.ts so we can attach a per-request CSP nonce. Keeping them
   // here too would emit duplicate response headers (and the runtime had been
   // observed to 500 with the duplicates). Leave this hook empty.
+
+  // 把 build-time DEPLOYMENT_MODE 镜像给客户端 bundle —— useDeploymentMode()
+  // 与 CLIENT_CAPABILITIES 读这个变量。webpack 会编译期 inline。
+  env: {
+    NEXT_PUBLIC_DEPLOYMENT_MODE: DEPLOYMENT_MODE,
+  },
+
+  webpack: (config, { webpack }) => {
+    // 注入 __DEPLOYMENT_MODE__ ambient 字面量。
+    // 配合 src/lib/deployment-mode.ts 的 `declare const __DEPLOYMENT_MODE__`，
+    // 让 terser 看到 `if (literal)` 死分支并消除。
+    //
+    // 用 Next.js 传入的 webpack 实例避免顶部 import / 额外依赖。
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        __DEPLOYMENT_MODE__: JSON.stringify(DEPLOYMENT_MODE),
+      }),
+    );
+
+    // 双保险：on-prem 模式下硬阻断 SaaS-only npm 包。
+    // spike report §3.2 实测：仅靠 IS_SAAS 死分支不能消除
+    // `await import('stripe')` 表达式（webpack 把 dynamic import 视为
+    // side-effectful），会把 128KB Stripe SDK chunk 打进 on-prem bundle。
+    // alias = false 让 webpack 解析时直接找不到这些包，从根上排除。
+    if (DEPLOYMENT_MODE === 'on-prem') {
+      config.resolve = config.resolve || {};
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        stripe: false,
+        resend: false,
+        'mixpanel-browser': false,
+      };
+    }
+    return config;
+  },
 };
 
 export default withNextIntl(nextConfig);
