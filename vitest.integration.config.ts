@@ -20,6 +20,11 @@ export default defineConfig({
     testTimeout: 60000,
     // 详细输出
     reporters: ['verbose'],
+    // license-runtime-gate / deployment-mode 在模块加载时即固化 _RUNTIME；
+    // 集成测试必须以 on-prem 模式跑，否则 IS_SAAS=true 会让 gate 短路。
+    env: {
+      DEPLOYMENT_MODE: 'on-prem',
+    },
   },
   resolve: {
     alias: {

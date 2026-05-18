@@ -90,9 +90,15 @@ function getConnectionString(env?: CloudflareEnv): string {
 export function createDb(env?: CloudflareEnv) {
   const connectionString = getConnectionString(env);
 
+  // 集成测试用更大 pool 才能验证 advisory lock 的并发竞争；
+  // Workers / Hyperdrive 生产路径不会读这个 env，保持 max=1 行为不变。
+  const isIntegrationTest =
+    process.env.LICENSE_E2E === '1' && process.env.VITEST === 'true';
+  const max = isIntegrationTest ? 8 : 1;
+
   const client = postgres(connectionString, {
     // Hyperdrive 处理连接池，Workers 限制并发连接数
-    max: 1,
+    max,
     // 禁用 prepared statements（Hyperdrive 不支持）
     prepare: false,
   });

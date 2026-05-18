@@ -17,6 +17,8 @@ import { Link } from '@/i18n/navigation';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import { IS_SAAS } from '@/lib/deployment-mode';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { ReadOnlyBanner } from '@/components/admin/read-only-banner';
+import { isLicenseReadOnlyGated } from '@/lib/license-runtime-gate';
 
 type Props = {
   children: React.ReactNode;
@@ -37,6 +39,10 @@ export default async function AdminLayout({ children, params }: Props) {
   const t = await getTranslations('admin.console');
   const modeLabel = IS_SAAS ? t('modeSaas') : t('modeOnPrem');
 
+  // grace-expired / revoked / expired / malformed / missing 时显示 read-only banner
+  // 强提示 operator 必须先处理 license 问题（SaaS 永远 not gated）
+  const readOnlyGate = await isLicenseReadOnlyGated();
+
   // 注意：父 dashboard layout 把内容包裹在 max-w-7xl mx-auto py-6 px-* 容器里。
   // 这里的负 margin 只能抵消 padding，**无法**突破 max-w-7xl 宽度上限 ——
   // admin 壳仍然被限制在 7xl 之内。当前接受这个约束（admin 工具表格类内容
@@ -44,6 +50,9 @@ export default async function AdminLayout({ children, params }: Props) {
   // dashboard layout（拆 route group 或加 full-bleed 变体），本 PR 范围外。
   return (
     <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 flex min-h-[calc(100vh-4rem)] flex-col">
+      {readOnlyGate.gated && readOnlyGate.reason && (
+        <ReadOnlyBanner reason={readOnlyGate.reason} />
+      )}
       {/* 顶部 admin chrome 条：红色 badge + 模式标识 + 返回链接 */}
       <header
         role="banner"

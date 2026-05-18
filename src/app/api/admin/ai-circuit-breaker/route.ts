@@ -14,6 +14,7 @@ import {
   CIRCUIT_BREAKER_THRESHOLDS,
 } from '@/lib/ai-circuit-breaker';
 import { requireAdmin } from '@/lib/admin-auth';
+import { requireLicenseWriteOk } from '@/lib/license-write-gate';
 
 const ensureAdmin = requireAdmin;
 
@@ -38,6 +39,11 @@ export async function GET() {
 export async function POST(req: Request) {
   const check = await ensureAdmin();
   if (check instanceof NextResponse) return check;
+
+  // On-prem read-only mode（grace-expired / revoked / expired / malformed / missing）
+  // 禁止 admin mutate；release circuit 是 mutate 操作。SaaS 永远 noop。
+  const writeGate = await requireLicenseWriteOk();
+  if (writeGate) return writeGate;
 
   const body = (await req.json()) as { action: string };
   if (body.action === 'release') {

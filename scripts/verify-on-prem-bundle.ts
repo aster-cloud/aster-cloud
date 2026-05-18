@@ -85,6 +85,12 @@ export interface Rule {
   pattern: RegExp;
   /** 给操作员看的原因 */
   rationale: string;
+  /**
+   * 若为 true，BENIGN_PATTERNS 邻近窗口不可豁免该规则。
+   * 用于"绝不允许任何良性解释"的强约束（codex 审查 Major-4：
+   * LICENSE_PRIVATE_KEY 字面量不应被 trust bundle / verifier 标识符意外抑制）。
+   */
+  noBenignOverride?: boolean;
 }
 
 /**
@@ -119,6 +125,31 @@ export const FORBIDDEN_IMPORTS: ReadonlyArray<Rule> = [
       'mixpanel-browser SDK must be excluded. ' +
       'Check src/lib/mixpanel.ts hot-gate and resolve.alias.',
   },
+  // PR-L11: on-prem license 验证只能用 Web Crypto API；
+  // 任何 JS Ed25519 库都不应出现在 bundle 里（多余依赖 + 攻击面）
+  {
+    name: '@noble ed25519/curves import',
+    pattern:
+      /(?:from\s+["']@noble\/(?:ed25519|curves)[^"']*["']|require\(["']@noble\/(?:ed25519|curves)[^"']*["']\)|import\(["']@noble\/(?:ed25519|curves)[^"']*["']\))/,
+    rationale:
+      'on-prem license verification must use Web Crypto only; JS Ed25519 libraries must not ship in the bundle.',
+  },
+  {
+    name: 'tweetnacl import',
+    pattern:
+      /(?:from\s+["']tweetnacl["']|require\(["']tweetnacl["']\)|import\(["']tweetnacl["']\))/,
+    rationale:
+      'tweetnacl/private signing dependencies must not ship in on-prem builds.',
+  },
+  // PR-L11: license signing 代码属于 aster-deploy + Vault tooling，
+  // 任何 vault-transit / private-key / kms / signing service 客户端不该 leak 到 on-prem
+  {
+    name: 'private signing dependency import',
+    pattern:
+      /(?:from\s+["'][^"']*(?:vault-transit|license-signing|private-key|kms-client)[^"']*["']|require\(["'][^"']*(?:vault-transit|license-signing|private-key|kms-client)[^"']*["']\))/,
+    rationale:
+      'license private signing code belongs in Vault/KMS tooling; never in the on-prem verifier bundle.',
+  },
 ];
 
 /** Secret env var literals — 出现说明对应代码路径仍在 bundle 里。 */
@@ -144,6 +175,17 @@ export const FORBIDDEN_ENV_LITERALS: ReadonlyArray<Rule> = [
     name: 'RESEND_API_KEY literal',
     pattern: /RESEND_API_KEY/,
     rationale: 'RESEND_API_KEY env access leaked.',
+  },
+  // PR-L11: license private key 永远不应被 on-prem build 引用；
+  // 仅嵌入 public trust bundle 用于 verify
+  // noBenignOverride: 即便 trust bundle / verifyLicenseKey 标识符在邻近窗口，
+  // 也不能掩盖这条规则（codex 审查 Major-4）
+  {
+    name: 'LICENSE_PRIVATE_KEY literal',
+    pattern: /LICENSE_PRIVATE_KEY/,
+    rationale:
+      'license private key MUST NEVER be referenced by on-prem build; only the public trust bundle is embedded',
+    noBenignOverride: true,
   },
 ];
 
@@ -192,6 +234,17 @@ const BENIGN_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string }> = [
     // schema 列名 stripeCustomerId 等是 DB 字段，非 SDK 调用
     pattern: /\bstripeCustomerId|\bsubscriptionStatus|\bsubscriptionId/,
     reason: 'database column name (DB schema, not SDK call)',
+  },
+  // PR-L11: license trust bundle 引用是公开 verifier 代码，不是私钥访问
+  {
+    pattern: /__dev-lic-|__dev-rev-/,
+    reason:
+      'development trust bundle keyId marker; public verifier material only, not private signing state',
+  },
+  {
+    pattern: /verifyLicenseKey|license-trust-bundle|ASTER_TRUST_BUNDLE/,
+    reason:
+      'license verifier public API / trust bundle reference; expected in on-prem builds',
   },
 ];
 
@@ -289,7 +342,13 @@ export function scanContent(
     const pat = new RegExp(rule.pattern.source, rule.pattern.flags.includes('g') ? rule.pattern.flags : rule.pattern.flags + 'g');
     let m: RegExpExecArray | null;
     while ((m = pat.exec(content)) !== null) {
-      if (isBenignNeighborhood(content, m.index, m.index + m[0].length)) continue;
+      // noBenignOverride 规则跳过邻近窗口豁免（强约束）
+      if (
+        !rule.noBenignOverride &&
+        isBenignNeighborhood(content, m.index, m.index + m[0].length)
+      ) {
+        continue;
+      }
       const lineNum = offsetToLine(content, m.index);
       // 提取匹配点周边 200 字符作为可读 excerpt
       const exStart = Math.max(0, m.index - 60);

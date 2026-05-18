@@ -64,6 +64,27 @@
       "when": 1778900000000,
       "tag": "0009_user_must_change_password",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779000000000,
+      "tag": "0010_license_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779010000000,
+      "tag": "0011_revocation_pub_sequence",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779020000000,
+      "tag": "0012_license_cache_notify_record",
+      "breakpoints": true
     }
   ]
 }

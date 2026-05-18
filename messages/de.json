@@ -1384,7 +1384,8 @@
       "riskTier": "Risiko-Tier-Triage",
       "license": "Lizenz",
       "sso": "Single Sign-On",
-      "sidebarLabel": "Admin-Navigation"
+      "sidebarLabel": "Admin-Navigation",
+      "licenseRevoke": "Lizenzwiderruf"
     },
     "overview": {
       "title": "Admin-Übersicht",
@@ -1415,51 +1416,118 @@
     },
     "license": {
       "title": "Lizenz",
-      "subtitle": "Enterprise-Lizenzstatus — von Aster ausgestellt, an diese Bereitstellung gebunden.",
-      "missing": {
-        "title": "Lizenzschlüssel nicht konfiguriert",
-        "body": "Setzen Sie die Umgebungsvariable LICENSE_KEY auf dieser Bereitstellung. Bis ein gültiger Schlüssel bereitgestellt wird, läuft die Anwendung im schreibgeschützten / eingeschränkten Modus."
-      },
-      "malformed": {
-        "title": "Lizenzschlüssel ist ungültig",
-        "body": "Der konfigurierte LICENSE_KEY konnte nicht analysiert werden.",
-        "contactSales": "Kontaktieren Sie sales@aster-lang.cloud für einen neuen Lizenzschlüssel.",
-        "reason": {
-          "env-missing": "Kein Lizenzschlüssel konfiguriert.",
-          "prefix-mismatch": "Lizenzschlüssel-Präfix entspricht nicht dem erwarteten Format 'aster-ent-<jahr>-<payload>'.",
-          "base64-decode-failed": "Lizenzschlüssel-Payload konnte nicht dekodiert werden (base64url).",
-          "json-parse-failed": "Lizenzschlüssel-Payload ist kein gültiges JSON.",
-          "payload-shape-invalid": "Lizenz-Payload fehlen erforderliche Felder oder hat ungültige Typen."
+      "subtitle": "Enterprise-Lizenzstatus, Signaturvertrauen und Aktualität der Widerrufsprüfung für diese On-Prem-Bereitstellung.",
+      "status": {
+        "missing": {
+          "title": "Lizenzschlüssel nicht konfiguriert",
+          "body": "Setzen Sie die Umgebungsvariable LICENSE_KEY. Die Bereitstellung bleibt im eingeschränkten Modus, bis eine gültige Lizenz verfügbar ist.",
+          "cta": "Erforderliche Umgebungsvariable:"
+        },
+        "malformed": {
+          "title": "Lizenzschlüssel ist fehlerhaft",
+          "body": "Die konfigurierte Lizenz kann nicht analysiert werden. Kontaktieren Sie den Vertrieb für einen Ersatzschlüssel."
+        },
+        "signatureInvalid": {
+          "title": "Lizenzsignatur ist ungültig",
+          "body": "Der Lizenzinhalt passt nicht zur Signatur. Behandeln Sie dies als manipulierten Schlüssel oder als Schlüssel für eine andere Nutzlast."
+        },
+        "signatureUntrustedKey": {
+          "title": "Signaturschlüssel ist nicht vertrauenswürdig",
+          "body": "Die Lizenz wurde mit einem Schlüssel signiert, der nicht im Trust Bundle dieses Builds enthalten ist. Kontaktieren Sie den Vertrieb für eine Neuausstellung."
+        },
+        "legacyUnsigned": {
+          "title": "Unsigierte Legacy-Lizenz",
+          "body": "Diese v1-Lizenz wird nur während des Migrationsfensters akzeptiert. Stellen Sie vor Ablauf auf eine signierte v2-Lizenz um.",
+          "deadline": "Stellen Sie vor Ende des Kompatibilitätsfensters auf v2-Signaturen um."
+        },
+        "verifiedRevoked": {
+          "title": "Lizenz widerrufen",
+          "body": "Diese Lizenz ist kryptografisch gültig, steht aber auf der Widerrufsliste. Kontaktieren Sie Vertrieb oder Support."
+        },
+        "verifiedExpired": {
+          "title": "Lizenz abgelaufen",
+          "body": "{days, plural, one {Vor # Tag abgelaufen} other {Vor # Tagen abgelaufen}}"
+        },
+        "networkGraceExpired": {
+          "title": "Kulanzfrist für Widerrufsprüfung beendet",
+          "body": "Die Lizenzsignatur ist gültig, aber diese Bereitstellung hat den Widerrufsendpunkt nicht innerhalb der zulässigen Kulanzfrist erreicht."
+        },
+        "verifiedExpiringSoon": {
+          "title": "Lizenz läuft bald ab",
+          "body": "{days, plural, one {# Tag verbleibend} other {# Tage verbleibend}}"
+        },
+        "networkGrace": {
+          "title": "Widerrufsprüfung vorübergehend veraltet",
+          "body": "Vorübergehendes Verbindungsproblem. Die letzte erfolgreiche Prüfung war vor {minutes, plural, one {# Minute} other {# Minuten}}."
+        },
+        "verifiedActive": {
+          "title": "Lizenz verifiziert und aktiv",
+          "body": "Signatur, Berechtigung und Aktualität der Widerrufsprüfung sind gültig."
         }
       },
-      "expired": {
-        "title": "Lizenz abgelaufen",
-        "body": "Lizenz für {customer} ist vor {days} Tagen abgelaufen. Premium-Funktionen können eingeschränkt sein.",
-        "contactSales": "Kontaktieren Sie sales@aster-lang.cloud zur Verlängerung."
-      },
-      "active": {
-        "title": "Lizenz aktiv",
-        "expiringSoonTitle": "Lizenz läuft in {days} Tagen ab",
-        "body": "Aktive Lizenz für {customer}. {days} Tage verbleibend."
+      "advisory": {
+        "heading": "Hinweise",
+        "expiringSoon": "Die Lizenzverlängerung steht bevor: {days, plural, one {# Tag verbleibend} other {# Tage verbleibend}}.",
+        "revocationStale": "Der letzte Abruf der Widerrufsliste ist fehlgeschlagen; das letzte gültige Ergebnis wird weiterverwendet.",
+        "networkGrace": "Der Widerrufsstatus befindet sich in der Kulanzfrist. Die letzte erfolgreiche Prüfung war vor {minutes, plural, one {# Minute} other {# Minuten}}.",
+        "legacyUnsignedActive": "Diese unsignierte v1-Lizenz sollte durch eine signierte v2-Lizenz ersetzt werden."
       },
       "details": {
         "heading": "Lizenzdetails",
         "customer": "Kunde",
         "tier": "Stufe",
-        "seatLimit": "Sitzanzahl",
+        "sku": "SKU",
+        "licenseTerm": "Laufzeit",
+        "seatLimit": "Sitzlimit",
         "seatUnlimited": "Unbegrenzt",
         "issuedAt": "Ausgestellt",
         "expiresAt": "Läuft ab",
+        "notBefore": "Gültig ab",
         "daysRemaining": "Verbleibende Tage",
-        "features": "Aktivierte Funktionen",
-        "noFeatures": "Keine optionalen Funktionen aktiviert.",
+        "features": "Funktionen",
+        "noFeatures": "Keine optionalen Funktionen aktiviert",
+        "licenseId": "Lizenz-ID",
+        "keyPreview": "Schlüsselvorschau",
         "copy": "Kopieren",
         "copied": "Kopiert",
-        "copyValue": "{label} in die Zwischenablage kopieren"
+        "copyValue": "{label} kopieren"
       },
-      "verification": {
-        "unsignedTitle": "Lizenzsignatur nicht überprüft",
-        "unsignedBody": "Diese Version analysiert die Lizenz-Payload nur zur Anzeige — sie überprüft die Signatur NOCH NICHT kryptografisch. Jeder mit Schreibzugriff auf LICENSE_KEY kann Felder fälschen. Feature-Gating und Seat-Enforcement müssen auf die Signaturverifizierungs-Version warten."
+      "revocation": {
+        "heading": "Widerrufsstatus",
+        "endpoint": "Endpunkt",
+        "lastSuccess": "Letzte erfolgreiche Prüfung",
+        "lastAttempt": "Letzter Versuch",
+        "version": "Version der Widerrufsliste",
+        "fresh": "Aktuell",
+        "grace": "Vorübergehendes Verbindungsproblem — Kulanzfrist aktiv",
+        "graceExpired": "Verbindung muss wiederhergestellt werden — Kulanzfrist beendet",
+        "error": "Letzter Abruf fehlgeschlagen",
+        "notApplicable": "Nicht zutreffend",
+        "airGappedPolicy": "Widerrufsprüfung deaktiviert (Air-Gapped-SKU)"
+      },
+      "actions": {
+        "heading": "Aktionen",
+        "refresh": "Jetzt aktualisieren",
+        "refreshing": "Aktualisierung läuft…",
+        "refreshSuccess": "Cache aktualisiert",
+        "refreshError": "Aktualisierung fehlgeschlagen — siehe Diagnosedaten",
+        "contactRenewal": "Verlängerungsteam kontaktieren",
+        "downloadDiagnostics": "Diagnosepaket herunterladen"
+      },
+      "time": {
+        "minutesAgo": "{minutes, plural, one {vor # Minute} other {vor # Minuten}}",
+        "hoursAgo": "{hours, plural, one {vor # Stunde} other {vor # Stunden}}",
+        "daysAgo": "{days, plural, one {vor # Tag} other {vor # Tagen}}",
+        "neverChecked": "Nie geprüft"
+      },
+      "diagnostics": {
+        "heading": "Support-Diagnose",
+        "signingKeyId": "Signaturschlüssel-ID",
+        "fingerprint": "Fingerabdruck des öffentlichen Schlüssels",
+        "reasonCode": "Ursachencode",
+        "lastError": "Letzter Fehler",
+        "trustBundleVersion": "Trust-Bundle-Einträge",
+        "schemaVersion": "Schemaversion"
       }
     },
     "sso": {
@@ -1503,6 +1571,82 @@
         "secretMissing": "Nicht konfiguriert",
         "notConfigured": "Nicht konfiguriert"
       }
+    },
+    "licenseRevoke": {
+      "title": "Lizenzwiderruf",
+      "subtitle": "Aktive Lizenzwiderrufe verwalten und die signierte Widerrufsliste veröffentlichen.",
+      "currentPublication": {
+        "heading": "Aktuelle Widerrufsliste",
+        "version": "Version",
+        "publishedAt": "Veröffentlicht",
+        "validUntil": "Gültig bis",
+        "revokedCount": "{count, plural, one {# widerrufene Lizenz} other {# widerrufene Lizenzen}}",
+        "republish": "Manifest neu veröffentlichen",
+        "republishing": "Wird veröffentlicht…",
+        "republishSuccess": "Manifest neu veröffentlicht",
+        "republishError": "Veröffentlichung fehlgeschlagen",
+        "unavailable": "Es wurde noch kein Manifest veröffentlicht."
+      },
+      "newForm": {
+        "heading": "Lizenz widerrufen",
+        "licenseIdLabel": "Lizenz-ID",
+        "licenseIdPlaceholder": "lic_01J5N7K8Z3Q9...",
+        "licenseIdInvalid": "Lizenz-ID muss dem Muster lic_<22-30 alphanumerische Zeichen> entsprechen",
+        "reasonLabel": "Grund",
+        "reasonRequired": "Bitte einen Grund auswählen.",
+        "reasonPlaceholder": "Grund auswählen…",
+        "reasonOptions": {
+          "non-payment": "Nichtzahlung",
+          "security": "Sicherheitsvorfall",
+          "renewal-superseded": "Durch Verlängerung ersetzt",
+          "contract-terminated": "Vertrag beendet",
+          "fraud": "Betrug"
+        },
+        "notesLabel": "Interne Notizen (optional)",
+        "customerRefLabel": "Kundenreferenz (optional)",
+        "dryRun": "Probelauf (Vorschau ohne Widerruf)",
+        "submit": "Lizenz widerrufen",
+        "submitting": "Wird widerrufen…",
+        "confirmTitle": "Widerruf bestätigen",
+        "confirm": "Lizenz {licenseId} aus Grund \"{reason}\" widerrufen? Kunden verlieren in ca. 6 Stunden den Zugriff.",
+        "confirmCta": "Ja, widerrufen",
+        "cancel": "Abbrechen",
+        "success": "Lizenz {licenseId} widerrufen. Widerrufslistenversion ist jetzt {version}.",
+        "dryRunSuccess": "Probelauf für {licenseId} abgeschlossen — keine Änderungen.",
+        "dryRunNotice": "Probelauf: Es wird nichts widerrufen.",
+        "error": "Widerruf fehlgeschlagen: {error}"
+      },
+      "table": {
+        "heading": "Widerrufene Lizenzen",
+        "empty": "Keine aktiven Widerrufe.",
+        "licenseId": "Lizenz-ID",
+        "reason": "Grund",
+        "revokedAt": "Widerrufen",
+        "revokedBy": "Von",
+        "notes": "Notizen",
+        "customerRef": "Kundenreferenz",
+        "undo": "Rückgängig",
+        "revokedHoursAgo": "{hours, plural, one {vor # Stunde} other {vor # Stunden}}",
+        "undoExpired": "Abgelaufen",
+        "undoConfirm": "Widerruf für {licenseId} rückgängig machen?",
+        "undoSuccess": "Widerruf für {licenseId} rückgängig gemacht",
+        "undoError": "Rückgängig fehlgeschlagen: {error}",
+        "undoCountdown": "{hours, plural, one {Rückgängig (# Stunde)} other {Rückgängig (# Stunden)}}",
+        "undoAriaLabel": "Widerruf für {licenseId} rückgängig machen, noch {hours, plural, one {# Stunde} other {# Stunden}}",
+        "undoExpiredAriaLabel": "Rückgängig-Fenster für {licenseId} abgelaufen"
+      }
+    },
+    "readOnly": {
+      "heading": "NUR-LESEN-MODUS",
+      "subheading": "Administrative Schreiboperationen sind deaktiviert.",
+      "reason": {
+        "grace-expired": "Die Kulanzfrist der Widerrufsprüfung ist abgelaufen. Verbindung zum Widerrufsendpunkt wiederherstellen.",
+        "revoked": "Diese Lizenz wurde widerrufen. Kontaktieren Sie den Aster-Vertrieb.",
+        "expired": "Diese Lizenz ist abgelaufen. Verlängern Sie sie, um Admin-Operationen wiederherzustellen.",
+        "malformed": "Lizenzschlüssel ist fehlerhaft. Setzen Sie eine gültige LICENSE_KEY-Umgebungsvariable.",
+        "missing": "Keine LICENSE_KEY konfiguriert. Setzen Sie die Umgebungsvariable, um Admin-Operationen wiederherzustellen."
+      },
+      "viewLicense": "Lizenzstatus anzeigen"
     }
   },
   "decisionTrace": {

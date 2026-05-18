@@ -10,6 +10,7 @@ import { users, auditLogs } from '@/db/schema';
 import { and, desc, eq, gt, gte, sql } from 'drizzle-orm';
 import { requireAdmin } from '@/lib/admin-auth';
 import { CAN_RISKTIER } from '@/lib/deployment-mode';
+import { requireLicenseWriteOk } from '@/lib/license-write-gate';
 import { policyForTier, type RiskTier } from '@/lib/risk-tier';
 
 export const runtime = 'nodejs';
@@ -86,6 +87,12 @@ export async function POST(req: NextRequest) {
   const check = await requireAdmin();
   if (check instanceof NextResponse) return check;
   const adminUserId = check.userId;
+
+  // 当前 CAN_RISKTIER === IS_SAAS，gate 永远 noop；保留调用是防御性纵深 +
+  // 满足 ESLint require-license-write-gate 规则，未来若 risk-tier 扩展到
+  // on-prem 自动获得 read-only 软降级。
+  const writeGate = await requireLicenseWriteOk();
+  if (writeGate) return writeGate;
 
   let body: OverridePayload;
   try {

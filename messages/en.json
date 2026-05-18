@@ -1384,7 +1384,8 @@
       "riskTier": "Risk-tier triage",
       "license": "License",
       "sso": "Single sign-on",
-      "sidebarLabel": "Admin navigation"
+      "sidebarLabel": "Admin navigation",
+      "licenseRevoke": "License Revocation"
     },
     "overview": {
       "title": "Admin overview",
@@ -1415,51 +1416,118 @@
     },
     "license": {
       "title": "License",
-      "subtitle": "Enterprise license status — issued by Aster, scoped to this deployment.",
-      "missing": {
-        "title": "License key not configured",
-        "body": "Set the LICENSE_KEY environment variable on this deployment. The application will operate in read-only / limited capacity until a valid key is provided."
-      },
-      "malformed": {
-        "title": "License key is malformed",
-        "body": "The configured LICENSE_KEY could not be parsed.",
-        "contactSales": "Contact sales@aster-lang.cloud to receive a fresh license key.",
-        "reason": {
-          "env-missing": "No license key configured.",
-          "prefix-mismatch": "License key prefix does not match the expected format 'aster-ent-<year>-<payload>'.",
-          "base64-decode-failed": "License key payload could not be decoded (base64url).",
-          "json-parse-failed": "License key payload is not valid JSON.",
-          "payload-shape-invalid": "License payload is missing required fields or has invalid types."
+      "subtitle": "Enterprise license status, signature trust, and revocation freshness for this on-prem deployment.",
+      "status": {
+        "missing": {
+          "title": "License key not configured",
+          "body": "Set the LICENSE_KEY environment variable. The deployment will remain in limited mode until a valid license is available.",
+          "cta": "Required environment variable:"
+        },
+        "malformed": {
+          "title": "License key is malformed",
+          "body": "The configured license cannot be parsed. Contact sales for a replacement license key."
+        },
+        "signatureInvalid": {
+          "title": "License signature is invalid",
+          "body": "The license payload does not match its signature. Treat this as a tampered key or a key signed for another payload."
+        },
+        "signatureUntrustedKey": {
+          "title": "License signing key is not trusted",
+          "body": "The license was signed by a key that is not in this build's trust bundle. Contact sales for a reissued key."
+        },
+        "legacyUnsigned": {
+          "title": "Unsigned legacy license",
+          "body": "This v1 license is accepted only during the migration window. Upgrade to a signed v2 license before the deadline.",
+          "deadline": "Upgrade to v2 signing before the compatibility window closes."
+        },
+        "verifiedRevoked": {
+          "title": "License revoked",
+          "body": "This license is cryptographically valid but appears on the revocation list. Contact sales or support."
+        },
+        "verifiedExpired": {
+          "title": "License expired",
+          "body": "{days, plural, one {Expired # day ago} other {Expired # days ago}}"
+        },
+        "networkGraceExpired": {
+          "title": "Revocation grace period ended",
+          "body": "The license signature is valid, but this deployment has not reached the revocation endpoint within the allowed grace period."
+        },
+        "verifiedExpiringSoon": {
+          "title": "License expires soon",
+          "body": "{days, plural, one {# day remaining} other {# days remaining}}"
+        },
+        "networkGrace": {
+          "title": "Revocation check temporarily stale",
+          "body": "Temporary connectivity issue. Last successful check was {minutes, plural, one {# minute ago} other {# minutes ago}}."
+        },
+        "verifiedActive": {
+          "title": "License verified active",
+          "body": "Signature, entitlement, and revocation freshness are valid."
         }
       },
-      "expired": {
-        "title": "License has expired",
-        "body": "License for {customer} expired {days} days ago. Premium features may be restricted.",
-        "contactSales": "Contact sales@aster-lang.cloud to renew."
-      },
-      "active": {
-        "title": "License active",
-        "expiringSoonTitle": "License expires in {days} days",
-        "body": "Active license for {customer}. {days} days remaining."
+      "advisory": {
+        "heading": "Advisories",
+        "expiringSoon": "License renewal is approaching: {days, plural, one {# day remaining} other {# days remaining}}.",
+        "revocationStale": "The latest revocation fetch failed; the last known-good result is still being used.",
+        "networkGrace": "Revocation status is in grace. Last successful check was {minutes, plural, one {# minute ago} other {# minutes ago}}.",
+        "legacyUnsignedActive": "This unsigned v1 license should be replaced with a signed v2 license."
       },
       "details": {
-        "heading": "License details",
+        "heading": "License Details",
         "customer": "Customer",
         "tier": "Tier",
-        "seatLimit": "Seat limit",
+        "sku": "SKU",
+        "licenseTerm": "Term",
+        "seatLimit": "Seat Limit",
         "seatUnlimited": "Unlimited",
         "issuedAt": "Issued",
         "expiresAt": "Expires",
+        "notBefore": "Not before",
         "daysRemaining": "Days remaining",
-        "features": "Enabled features",
-        "noFeatures": "No optional features enabled.",
+        "features": "Features",
+        "noFeatures": "No optional features enabled",
+        "licenseId": "License ID",
+        "keyPreview": "Key preview",
         "copy": "Copy",
         "copied": "Copied",
-        "copyValue": "Copy {label} to clipboard"
+        "copyValue": "Copy {label}"
       },
-      "verification": {
-        "unsignedTitle": "License signature not verified",
-        "unsignedBody": "This release parses the license payload for display only — it does NOT cryptographically verify the signature yet. Anyone with edit access to LICENSE_KEY can forge fields. Feature gating and seat enforcement must wait for the signature-verification release."
+      "revocation": {
+        "heading": "Revocation Status",
+        "endpoint": "Endpoint",
+        "lastSuccess": "Last successful check",
+        "lastAttempt": "Last attempt",
+        "version": "Revocation list version",
+        "fresh": "Up to date",
+        "grace": "Temporary connectivity issue — grace period active",
+        "graceExpired": "Connectivity restored required — grace period ended",
+        "error": "Last fetch failed",
+        "notApplicable": "Not applicable",
+        "airGappedPolicy": "Revocation check disabled (air-gapped SKU)"
+      },
+      "actions": {
+        "heading": "Actions",
+        "refresh": "Refresh now",
+        "refreshing": "Refreshing…",
+        "refreshSuccess": "Cache updated",
+        "refreshError": "Refresh failed — see diagnostics",
+        "contactRenewal": "Contact renewal team",
+        "downloadDiagnostics": "Download diagnostics bundle"
+      },
+      "time": {
+        "minutesAgo": "{minutes, plural, one {# minute ago} other {# minutes ago}}",
+        "hoursAgo": "{hours, plural, one {# hour ago} other {# hours ago}}",
+        "daysAgo": "{days, plural, one {# day ago} other {# days ago}}",
+        "neverChecked": "Never checked"
+      },
+      "diagnostics": {
+        "heading": "Support diagnostics",
+        "signingKeyId": "Signing key ID",
+        "fingerprint": "Public key fingerprint",
+        "reasonCode": "Reason code",
+        "lastError": "Last error",
+        "trustBundleVersion": "Trust bundle entries",
+        "schemaVersion": "Schema version"
       }
     },
     "sso": {
@@ -1503,6 +1571,82 @@
         "secretMissing": "Not configured",
         "notConfigured": "Not configured"
       }
+    },
+    "licenseRevoke": {
+      "title": "License Revocation",
+      "subtitle": "Manage active license revocations and publish the signed revocation list.",
+      "currentPublication": {
+        "heading": "Current Revocation List",
+        "version": "Version",
+        "publishedAt": "Published",
+        "validUntil": "Valid until",
+        "revokedCount": "{count, plural, one {# revoked license} other {# revoked licenses}}",
+        "republish": "Republish manifest",
+        "republishing": "Republishing…",
+        "republishSuccess": "Manifest republished",
+        "republishError": "Republish failed",
+        "unavailable": "No manifest has been published yet."
+      },
+      "newForm": {
+        "heading": "Revoke a license",
+        "licenseIdLabel": "License ID",
+        "licenseIdPlaceholder": "lic_01J5N7K8Z3Q9...",
+        "licenseIdInvalid": "License ID must match lic_<22-30 uppercase alphanumeric chars>",
+        "reasonLabel": "Reason",
+        "reasonRequired": "Select a reason.",
+        "reasonPlaceholder": "Select a reason…",
+        "reasonOptions": {
+          "non-payment": "Non-payment",
+          "security": "Security incident",
+          "renewal-superseded": "Replaced by renewal",
+          "contract-terminated": "Contract terminated",
+          "fraud": "Fraud"
+        },
+        "notesLabel": "Internal notes (optional)",
+        "customerRefLabel": "Customer reference (optional)",
+        "dryRun": "Dry run (preview without revoking)",
+        "submit": "Revoke license",
+        "submitting": "Revoking…",
+        "confirmTitle": "Confirm revocation",
+        "confirm": "Revoke license {licenseId} for reason \"{reason}\"? Customers will lose access within ~6 hours.",
+        "confirmCta": "Yes, revoke",
+        "cancel": "Cancel",
+        "success": "License {licenseId} revoked. Revocation list version is now {version}.",
+        "dryRunSuccess": "Dry run for {licenseId} completed — no changes made.",
+        "dryRunNotice": "Dry run: nothing will be revoked.",
+        "error": "Revocation failed: {error}"
+      },
+      "table": {
+        "heading": "Revoked licenses",
+        "empty": "No active revocations.",
+        "licenseId": "License ID",
+        "reason": "Reason",
+        "revokedAt": "Revoked",
+        "revokedBy": "By",
+        "notes": "Notes",
+        "customerRef": "Customer ref",
+        "undo": "Undo",
+        "revokedHoursAgo": "{hours, plural, one {# hour ago} other {# hours ago}}",
+        "undoExpired": "Expired",
+        "undoConfirm": "Undo revocation for {licenseId}?",
+        "undoSuccess": "Revocation undone for {licenseId}",
+        "undoError": "Undo failed: {error}",
+        "undoCountdown": "{hours, plural, one {Undo (# hour)} other {Undo (# hours)}}",
+        "undoAriaLabel": "Undo revocation for {licenseId}, {hours, plural, one {# hour remaining} other {# hours remaining}}",
+        "undoExpiredAriaLabel": "Undo window expired for {licenseId}"
+      }
+    },
+    "readOnly": {
+      "heading": "READ-ONLY MODE",
+      "subheading": "Administrative write operations are disabled.",
+      "reason": {
+        "grace-expired": "Revocation check grace period has ended. Restore connectivity to the revocation endpoint.",
+        "revoked": "This license has been revoked. Contact Aster sales to resolve.",
+        "expired": "This license has expired. Renew to restore admin operations.",
+        "malformed": "License key is malformed. Restore a valid LICENSE_KEY environment variable.",
+        "missing": "No LICENSE_KEY configured. Set the environment variable to restore admin operations."
+      },
+      "viewLicense": "View license status"
     }
   },
   "decisionTrace": {

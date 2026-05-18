@@ -7,10 +7,19 @@
 //   - expiresAt 过期 → expired，含 daysRemaining < 0
 //   - 一切正常 → active
 //
-// hasLicenseFeature：非 active 始终 false；active 看 features 数组
+// hasLicenseFeature 安全契约（PR-L2 收紧）：
+//   - 永远只接受 v2 verified + active 的 LicenseResult
+//   - LegacyLicenseResult（v1 parseLicenseKey 返回值）一律 false，因为 v1
+//     没有签名保护，features 数组可被 LICENSE_KEY 持有者任意伪造
 
 import { describe, it, expect } from 'vitest';
-import { parseLicenseKey, hasLicenseFeature } from '@/lib/license';
+import {
+  parseLicenseKey,
+  hasLicenseFeature,
+  verifyLicenseKey,
+  type LicensePayloadV2,
+} from '@/lib/license';
+import type { TrustBundleEntry } from '@/lib/license-trust-bundle';
 
 /** 帮助函数：base64url 编码。 */
 function b64url(s: string): string {
@@ -216,33 +225,305 @@ describe('parseLicenseKey', () => {
   });
 });
 
-describe('hasLicenseFeature', () => {
-  it('active license + feature 在列表 → true', () => {
+describe('hasLicenseFeature (LegacyLicenseResult — 永远拒绝授权)', () => {
+  // PR-L2 收紧：v1 parseLicenseKey 路径的 result 不能授权，因为没有签名保护。
+  it('v1 active license → 永远 false（fail-closed）', () => {
     const k = makeKey(VALID_PAYLOAD);
     const r = parseLicenseKey(k, NOW_2026);
-    expect(hasLicenseFeature(r, 'sso')).toBe(true);
+    expect(r.status).toBe('active');
+    expect(hasLicenseFeature(r, 'sso')).toBe(false);
   });
 
-  it('active license + feature 不在列表 → false', () => {
+  it('v1 active license + feature 不在列表 → false', () => {
     const k = makeKey(VALID_PAYLOAD);
     const r = parseLicenseKey(k, NOW_2026);
     expect(hasLicenseFeature(r, 'never-shipped-feature')).toBe(false);
   });
 
-  it('expired license → 始终 false（即使 feature 列出）', () => {
+  it('v1 expired license → false', () => {
     const k = makeKey(VALID_PAYLOAD);
     const r = parseLicenseKey(k, NOW_2028);
     expect(r.status).toBe('expired');
     expect(hasLicenseFeature(r, 'sso')).toBe(false);
   });
 
-  it('missing license → 始终 false', () => {
+  it('missing license → false', () => {
     const r = parseLicenseKey(undefined, NOW_2026);
     expect(hasLicenseFeature(r, 'sso')).toBe(false);
   });
 
-  it('malformed license → 始终 false', () => {
+  it('malformed license → false', () => {
     const r = parseLicenseKey('garbage', NOW_2026);
     expect(hasLicenseFeature(r, 'sso')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v2: verifyLicenseKey 签名校验
+// ---------------------------------------------------------------------------
+
+function bytesToB64url(bytes: Uint8Array): string {
+  return Buffer.from(bytes)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes.slice().buffer);
+  return Buffer.from(digest).toString('hex');
+}
+
+/** 用一次性 Ed25519 keypair 签出真实 v2 license key。 */
+async function makeSignedV2License(
+  overrides: Partial<LicensePayloadV2> = {},
+): Promise<{
+  key: string;
+  bundle: readonly TrustBundleEntry[];
+  payload: LicensePayloadV2;
+  publicKeyBytes: Uint8Array;
+}> {
+  const keyPair = (await crypto.subtle.generateKey(
+    { name: 'Ed25519' },
+    true,
+    ['sign', 'verify'],
+  )) as CryptoKeyPair;
+  const publicKeyBytes = new Uint8Array(
+    await crypto.subtle.exportKey('raw', keyPair.publicKey),
+  );
+  const keyId = overrides.keyId ?? 'test-lic-2026-01';
+  // base + overrides, 然后强制覆盖 keyId 确保与 URL keyId 一致。
+  const payload: LicensePayloadV2 = Object.assign(
+    {
+      schemaVersion: 2 as const,
+      licenseId: 'lic_test_01',
+      keyId,
+      customer: 'Acme Corp',
+      issuedAt: '2026-01-15T00:00:00.000Z',
+      expiresAt: '2027-01-15T00:00:00.000Z',
+      seatLimit: 500,
+      tier: 'enterprise' as const,
+      features: ['sso', 'audit-export'] as ReadonlyArray<string>,
+      sku: 'standard' as const,
+      licenseTerm: 'annual' as const,
+      deploymentBinding: null,
+      revocationCheckUrl: 'https://license.aster-lang.cloud/revoked.json' as string | undefined,
+    },
+    overrides,
+    { keyId },
+  );
+  const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
+  const signature = new Uint8Array(
+    await crypto.subtle.sign('Ed25519', keyPair.privateKey, payloadBytes.slice().buffer),
+  );
+  const bundle: readonly TrustBundleEntry[] = [
+    {
+      keyId,
+      purpose: 'license',
+      pubKey: Buffer.from(publicKeyBytes).toString('base64'),
+      status: 'active',
+      activatedAt: '2026-01-01T00:00:00.000Z',
+      fingerprint: await sha256Hex(publicKeyBytes),
+    },
+  ];
+  return {
+    key: `aster-ent-v2-${keyId}-${bytesToB64url(payloadBytes)}.${bytesToB64url(signature)}`,
+    bundle,
+    payload,
+    publicKeyBytes,
+  };
+}
+
+describe('verifyLicenseKey v2', () => {
+  it('valid signature → trustStatus=verified, displayStatus=verified-active', async () => {
+    const { key, bundle } = await makeSignedV2License();
+    const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: bundle });
+    expect(r.trustStatus).toBe('verified');
+    expect(r.entitlementStatus).toBe('active');
+    expect(r.displayStatus).toBe('verified-active');
+    expect(r.payload?.customer).toBe('Acme Corp');
+    expect(r.diagnostics.signingKeyId).toBe(r.payload?.keyId);
+    expect(r.diagnostics.fingerprint).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('tampered payload → trustStatus=signature-invalid', async () => {
+    const { key, bundle, payload } = await makeSignedV2License();
+    const [, sig] = key.split('.');
+    const tamperedBytes = new TextEncoder().encode(
+      JSON.stringify({ ...payload, customer: 'Mallory' }),
+    );
+    const tampered = `aster-ent-v2-${payload.keyId}-${bytesToB64url(tamperedBytes)}.${sig}`;
+    const r = await verifyLicenseKey(tampered, { now: NOW_2026, trustBundle: bundle });
+    expect(r.trustStatus).toBe('signature-invalid');
+    expect(r.displayStatus).toBe('signature-invalid');
+  });
+
+  it('unknown keyId → trustStatus=signature-untrusted-key', async () => {
+    const { key } = await makeSignedV2License();
+    const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: [] });
+    expect(r.trustStatus).toBe('signature-untrusted-key');
+    expect(r.displayStatus).toBe('signature-untrusted-key');
+  });
+
+  it('retired key → trustStatus=signature-untrusted-key', async () => {
+    const { key, bundle } = await makeSignedV2License();
+    const retiredBundle: readonly TrustBundleEntry[] = bundle.map((e) => ({
+      ...e,
+      status: 'retired' as const,
+      retiredAt: '2026-06-01T00:00:00.000Z',
+    }));
+    const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: retiredBundle });
+    expect(r.trustStatus).toBe('signature-untrusted-key');
+  });
+
+  it('notBefore in future → trustStatus=malformed', async () => {
+    const { key, bundle } = await makeSignedV2License({
+      notBefore: '2026-12-01T00:00:00.000Z',
+    });
+    const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: bundle });
+    expect(r.trustStatus).toBe('malformed');
+    expect(r.diagnostics.reasonCode).toBe('not-before-in-future');
+  });
+
+  it('revocationCheckUrl 非 https → trustStatus=malformed', async () => {
+    const { key, bundle } = await makeSignedV2License({
+      revocationCheckUrl: 'http://license.aster-lang.cloud/revoked.json',
+    });
+    const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: bundle });
+    expect(r.trustStatus).toBe('malformed');
+    expect(r.diagnostics.reasonCode).toBe('payload-shape-invalid');
+  });
+
+  it('air-gapped SKU → connectivityStatus 强制 not-applicable', async () => {
+    const { key, bundle } = await makeSignedV2License({
+      sku: 'air-gapped',
+      licenseTerm: 'five-year',
+      revocationCheckUrl: undefined,
+    });
+    const r = await verifyLicenseKey(key, {
+      now: NOW_2026,
+      trustBundle: bundle,
+      // 即使提供 grace 也应被 coerce
+      revocationState: { isRevoked: false, connectivityStatus: 'grace' },
+    });
+    expect(r.trustStatus).toBe('verified');
+    expect(r.connectivityStatus).toBe('not-applicable');
+    expect(r.displayStatus).toBe('verified-active');
+  });
+
+  it('revocationState.isRevoked → entitlementStatus=revoked', async () => {
+    const { key, bundle } = await makeSignedV2License();
+    const r = await verifyLicenseKey(key, {
+      now: NOW_2026,
+      trustBundle: bundle,
+      revocationState: {
+        isRevoked: true,
+        revokedAt: '2026-05-01T00:00:00.000Z',
+        revokedReason: 'security',
+        revocationVersion: 42,
+        connectivityStatus: 'fresh',
+      },
+    });
+    expect(r.trustStatus).toBe('verified');
+    expect(r.entitlementStatus).toBe('revoked');
+    expect(r.displayStatus).toBe('verified-revoked');
+    expect(r.diagnostics.revocationVersion).toBe(42);
+  });
+
+  it('expiresAt within 14 days → entitlementStatus=expiring-soon', async () => {
+    const { key, bundle } = await makeSignedV2License({
+      expiresAt: '2026-06-20T00:00:00.000Z',
+    });
+    const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: bundle });
+    expect(r.entitlementStatus).toBe('expiring-soon');
+    expect(r.displayStatus).toBe('verified-expiring-soon');
+  });
+
+  it('grace-expired primary 强占 expiring-soon', async () => {
+    const { key, bundle } = await makeSignedV2License({
+      expiresAt: '2026-06-20T00:00:00.000Z',
+    });
+    const r = await verifyLicenseKey(key, {
+      now: NOW_2026,
+      trustBundle: bundle,
+      revocationState: { isRevoked: false, connectivityStatus: 'grace-expired' },
+    });
+    expect(r.displayStatus).toBe('network-grace-expired');
+    expect(r.secondaryAdvisories).toContain('expiring-soon');
+  });
+
+  it('v1 within deadline → trustStatus=legacy-unsigned', async () => {
+    const k = makeKey(VALID_PAYLOAD);
+    const r = await verifyLicenseKey(k, { now: NOW_2026 });
+    expect(r.trustStatus).toBe('legacy-unsigned');
+    expect(r.entitlementStatus).toBe('active');
+    expect(r.displayStatus).toBe('legacy-unsigned');
+  });
+
+  it('hasLicenseFeature returns false for legacy-unsigned even when active', async () => {
+    const k = makeKey(VALID_PAYLOAD);
+    const r = await verifyLicenseKey(k, { now: NOW_2026 });
+    expect(r.trustStatus).toBe('legacy-unsigned');
+    expect(r.entitlementStatus).toBe('active');
+    // 核心不变量：v1 不可用于授权
+    expect(hasLicenseFeature(r, 'sso')).toBe(false);
+  });
+
+  it('hasLicenseFeature returns true only for verified+active+listed feature', async () => {
+    const { key, bundle } = await makeSignedV2License();
+    const r = await verifyLicenseKey(key, { now: NOW_2026, trustBundle: bundle });
+    expect(hasLicenseFeature(r, 'sso')).toBe(true);
+    expect(hasLicenseFeature(r, 'custom-domain')).toBe(false);
+  });
+
+  it('verified + entitlement=revoked → hasLicenseFeature false', async () => {
+    const { key, bundle } = await makeSignedV2License();
+    const r = await verifyLicenseKey(key, {
+      now: NOW_2026,
+      trustBundle: bundle,
+      revocationState: { isRevoked: true, connectivityStatus: 'fresh' },
+    });
+    expect(r.entitlementStatus).toBe('revoked');
+    expect(hasLicenseFeature(r, 'sso')).toBe(false);
+  });
+
+  it('missing key → trustStatus=missing, displayStatus=missing', async () => {
+    const r = await verifyLicenseKey(undefined);
+    expect(r.trustStatus).toBe('missing');
+    expect(r.displayStatus).toBe('missing');
+    expect(r.diagnostics.reasonCode).toBe('env-missing');
+  });
+
+  it('garbage v2 prefix → trustStatus=malformed', async () => {
+    const r = await verifyLicenseKey('aster-ent-v2-bad-format', { now: NOW_2026 });
+    expect(r.trustStatus).toBe('malformed');
+    expect(r.diagnostics.reasonCode).toBe('prefix-mismatch');
+  });
+
+  it('v2 URL keyId 不在 trust bundle → signature-untrusted-key', async () => {
+    // splitV2Key 按 trust bundle 已知 keyId 做前缀匹配（修复 codex Critical-3
+    // 歧义正则）。替换 URL 里的 keyId 后 trust bundle 找不到匹配项 →
+    // signature-untrusted-key，而不是走解析失败的 malformed 分支。
+    const { key, bundle, payload } = await makeSignedV2License();
+    const wrongKey = key.replace(payload.keyId, 'totally-different-key-id');
+    const r = await verifyLicenseKey(wrongKey, { now: NOW_2026, trustBundle: bundle });
+    expect(r.trustStatus).toBe('signature-untrusted-key');
+    expect(r.diagnostics.reasonCode).toBe('unknown-signing-key');
+  });
+
+  it('v2 payload keyId 与 URL keyId 篡改不一致 → malformed', async () => {
+    // 攻击者保留 URL keyId（trust bundle 有），但 payload 内塞错 keyId。
+    // splitV2Key 切分按 URL keyId，但 isLicensePayloadV2 后的
+    // parsed.keyId !== keyId 校验会捕获，返回 malformed。
+    const { key, bundle, payload, publicKeyBytes: _unused } = await makeSignedV2License();
+    void _unused;
+    const tamperedPayloadBytes = new TextEncoder().encode(
+      JSON.stringify({ ...payload, keyId: 'inner-mismatch-keyid' }),
+    );
+    const [, sig] = key.split('.');
+    const tamperedKey = `aster-ent-v2-${payload.keyId}-${bytesToB64url(tamperedPayloadBytes)}.${sig}`;
+    const r = await verifyLicenseKey(tamperedKey, { now: NOW_2026, trustBundle: bundle });
+    expect(r.trustStatus).toBe('malformed');
   });
 });

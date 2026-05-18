@@ -1,0 +1,97 @@
+{
+  "title": "Aster License Operations",
+  "tags": ["aster", "license", "on-prem"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "title": "License verification counter",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (trust_status) (rate(aster_license_verified_total[5m]))",
+          "legendFormat": "{{trust_status}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Active revoked licenses",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "aster_license_revoked_active",
+          "legendFormat": "revoked"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "Current manifest version",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "aster_revocation_manifest_version",
+          "legendFormat": "version"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 }
+    },
+    {
+      "id": 4,
+      "title": "Revocation cache age (seconds)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "aster_license_cache_age_seconds",
+          "legendFormat": "seconds since last successful check"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 90000 },
+              { "color": "red", "value": 604800 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "id": 5,
+      "title": "Refresh outcome breakdown (1h)",
+      "type": "barchart",
+      "targets": [
+        {
+          "expr": "sum by (outcome) (increase(aster_license_refresh_total[1h]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "options": { "stacking": "normal" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "id": 6,
+      "title": "Read-only gate triggers (logs)",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{app=\"aster-cloud\"} |= \"license-read-only-mode\"",
+          "legendFormat": "read-only gate"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 }
+    }
+  ]
+}

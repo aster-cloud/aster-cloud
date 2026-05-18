@@ -62,8 +62,13 @@ localConnectionString = "postgres://placeholder:placeholder@localhost:5432/aster
 # Cron triggers
 # - 04:30 UTC: /api/cron/user-purge (软删 30d 后 hard-delete)
 # - 05:00 UTC: /api/cron/risk-tier-decay (≥7d 无风险事件 → tier -1)
+# - 每 6 小时: /api/cron/license-revocation-refresh
+#   仅 on-prem build 有意义；SaaS 部署中该 route 返回 404。
+#   6h 比 plan 默认 24h 更保守，缩短 revocation 触达时间，
+#   缓解 OSS Vault 缺 control_group 时的 Witness 旁路风险（PR-L0 codex 审查）。
 [triggers]
-crons = ["30 4 * * *", "0 5 * * *"]
+# - 每周一 08:00 UTC: /api/cron/license-renewal-warning（on-prem 续费提醒）
+crons = ["30 4 * * *", "0 5 * * *", "0 */6 * * *", "0 8 * * 1"]
 
 # 环境变量（公开的，非敏感信息）
 [vars]

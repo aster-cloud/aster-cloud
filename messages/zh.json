@@ -1384,7 +1384,8 @@
       "riskTier": "风险等级处理台",
       "license": "许可证",
       "sso": "单点登录",
-      "sidebarLabel": "管理员导航"
+      "sidebarLabel": "管理员导航",
+      "licenseRevoke": "许可证撤销"
     },
     "overview": {
       "title": "管理员概览",
@@ -1415,51 +1416,118 @@
     },
     "license": {
       "title": "许可证",
-      "subtitle": "企业版 license 状态 — 由 Aster 签发，绑定本次部署。",
-      "missing": {
-        "title": "未配置 License key",
-        "body": "请在本次部署的环境变量中设置 LICENSE_KEY。在提供有效 key 之前，应用以只读 / 受限模式运行。"
-      },
-      "malformed": {
-        "title": "License key 格式错误",
-        "body": "配置的 LICENSE_KEY 无法解析。",
-        "contactSales": "联系 sales@aster-lang.cloud 获取新的 license key。",
-        "reason": {
-          "env-missing": "未配置 license key。",
-          "prefix-mismatch": "License key 前缀不匹配期望格式 'aster-ent-<year>-<payload>'。",
-          "base64-decode-failed": "License key payload 无法解码（base64url）。",
-          "json-parse-failed": "License key payload 不是合法 JSON。",
-          "payload-shape-invalid": "License payload 缺少必需字段或类型错误。"
+      "subtitle": "本私有化部署的企业许可证状态、签名可信度与撤销检查新鲜度。",
+      "status": {
+        "missing": {
+          "title": "未配置许可证密钥",
+          "body": "请设置 LICENSE_KEY 环境变量。在提供有效许可证之前，本部署将保持受限模式。",
+          "cta": "必需环境变量："
+        },
+        "malformed": {
+          "title": "许可证密钥格式错误",
+          "body": "当前配置的许可证无法解析。请联系销售团队获取替换密钥。"
+        },
+        "signatureInvalid": {
+          "title": "许可证签名无效",
+          "body": "许可证内容与签名不匹配。请按密钥被篡改或使用了错误密钥处理。"
+        },
+        "signatureUntrustedKey": {
+          "title": "许可证签名密钥不受信任",
+          "body": "该许可证由当前版本信任包之外的密钥签发。请联系销售团队重新签发。"
+        },
+        "legacyUnsigned": {
+          "title": "旧版未签名许可证",
+          "body": "此 v1 许可证仅在迁移窗口内临时接受。请在截止日期前升级为已签名的 v2 许可证。",
+          "deadline": "请在兼容窗口关闭前升级到 v2 签名许可证。"
+        },
+        "verifiedRevoked": {
+          "title": "许可证已被撤销",
+          "body": "该许可证签名有效，但已出现在撤销列表中。请联系销售或支持团队。"
+        },
+        "verifiedExpired": {
+          "title": "许可证已过期",
+          "body": "{days, plural, one {已过期 # 天} other {已过期 # 天}}"
+        },
+        "networkGraceExpired": {
+          "title": "撤销检查宽限期已结束",
+          "body": "许可证签名有效，但本部署未能在允许的宽限期内访问撤销检查端点。"
+        },
+        "verifiedExpiringSoon": {
+          "title": "许可证即将到期",
+          "body": "{days, plural, one {剩余 # 天} other {剩余 # 天}}"
+        },
+        "networkGrace": {
+          "title": "撤销检查暂时过期",
+          "body": "当前存在临时连接问题。上次成功检查是在 {minutes, plural, one {# 分钟前} other {# 分钟前}}。"
+        },
+        "verifiedActive": {
+          "title": "许可证已验证且有效",
+          "body": "签名、授权状态和撤销检查新鲜度均有效。"
         }
       },
-      "expired": {
-        "title": "License 已过期",
-        "body": "{customer} 的 license 已过期 {days} 天。高级功能可能受限。",
-        "contactSales": "联系 sales@aster-lang.cloud 续约。"
-      },
-      "active": {
-        "title": "License 有效",
-        "expiringSoonTitle": "License 还有 {days} 天到期",
-        "body": "{customer} 的 license 有效。剩余 {days} 天。"
+      "advisory": {
+        "heading": "附加提示",
+        "expiringSoon": "许可证即将续约：{days, plural, one {剩余 # 天} other {剩余 # 天}}。",
+        "revocationStale": "最近一次撤销列表拉取失败；系统仍在使用上一次已知有效结果。",
+        "networkGrace": "撤销状态处于宽限期。上次成功检查是在 {minutes, plural, one {# 分钟前} other {# 分钟前}}。",
+        "legacyUnsignedActive": "建议将此未签名 v1 许可证替换为已签名 v2 许可证。"
       },
       "details": {
-        "heading": "License 详情",
+        "heading": "许可证详情",
         "customer": "客户",
         "tier": "档次",
+        "sku": "SKU",
+        "licenseTerm": "期限",
         "seatLimit": "席位上限",
         "seatUnlimited": "无限",
         "issuedAt": "签发日",
         "expiresAt": "到期日",
+        "notBefore": "生效时间",
         "daysRemaining": "剩余天数",
-        "features": "已启用功能",
-        "noFeatures": "未启用任何可选功能。",
+        "features": "功能",
+        "noFeatures": "未启用可选功能",
+        "licenseId": "许可证 ID",
+        "keyPreview": "密钥预览",
         "copy": "复制",
         "copied": "已复制",
-        "copyValue": "复制 {label} 到剪贴板"
+        "copyValue": "复制{label}"
       },
-      "verification": {
-        "unsignedTitle": "未校验 License 签名",
-        "unsignedBody": "本版本仅解析 license payload 用于展示，**尚未**做密码学签名校验。任何能编辑 LICENSE_KEY 的人都可以伪造字段。Feature gating 和 seat enforcement 必须等签名校验版本上线后再使用。"
+      "revocation": {
+        "heading": "撤销状态",
+        "endpoint": "端点",
+        "lastSuccess": "上次成功检查",
+        "lastAttempt": "上次尝试",
+        "version": "撤销列表版本",
+        "fresh": "已是最新",
+        "grace": "临时连接问题 — 宽限期生效中",
+        "graceExpired": "需要恢复连接 — 宽限期已结束",
+        "error": "上次拉取失败",
+        "notApplicable": "不适用",
+        "airGappedPolicy": "撤销检查已禁用（air-gapped SKU）"
+      },
+      "actions": {
+        "heading": "操作",
+        "refresh": "立即刷新",
+        "refreshing": "正在刷新…",
+        "refreshSuccess": "缓存已更新",
+        "refreshError": "刷新失败 — 请查看诊断信息",
+        "contactRenewal": "联系续约团队",
+        "downloadDiagnostics": "下载诊断包"
+      },
+      "time": {
+        "minutesAgo": "{minutes, plural, one {# 分钟前} other {# 分钟前}}",
+        "hoursAgo": "{hours, plural, one {# 小时前} other {# 小时前}}",
+        "daysAgo": "{days, plural, one {# 天前} other {# 天前}}",
+        "neverChecked": "从未检查"
+      },
+      "diagnostics": {
+        "heading": "支持诊断",
+        "signingKeyId": "签名密钥 ID",
+        "fingerprint": "公钥指纹",
+        "reasonCode": "原因代码",
+        "lastError": "最近错误",
+        "trustBundleVersion": "信任包条目",
+        "schemaVersion": "Schema 版本"
       }
     },
     "sso": {
@@ -1503,6 +1571,82 @@
         "secretMissing": "未配置",
         "notConfigured": "未配置"
       }
+    },
+    "licenseRevoke": {
+      "title": "许可证撤销",
+      "subtitle": "管理活动的许可证撤销并发布签名撤销列表。",
+      "currentPublication": {
+        "heading": "当前撤销列表",
+        "version": "版本",
+        "publishedAt": "发布时间",
+        "validUntil": "有效期至",
+        "revokedCount": "{count, plural, one {# 个已撤销许可证} other {# 个已撤销许可证}}",
+        "republish": "重新发布清单",
+        "republishing": "发布中…",
+        "republishSuccess": "清单已重新发布",
+        "republishError": "重新发布失败",
+        "unavailable": "尚未发布任何清单。"
+      },
+      "newForm": {
+        "heading": "撤销许可证",
+        "licenseIdLabel": "许可证 ID",
+        "licenseIdPlaceholder": "lic_01J5N7K8Z3Q9...",
+        "licenseIdInvalid": "许可证 ID 必须匹配 lic_<22-30 个大写字母数字>",
+        "reasonLabel": "原因",
+        "reasonRequired": "请选择原因。",
+        "reasonPlaceholder": "选择原因…",
+        "reasonOptions": {
+          "non-payment": "未付款",
+          "security": "安全事件",
+          "renewal-superseded": "已续约取代",
+          "contract-terminated": "合同终止",
+          "fraud": "欺诈"
+        },
+        "notesLabel": "内部备注（可选）",
+        "customerRefLabel": "客户参考（可选）",
+        "dryRun": "演练模式（预览，不实际撤销）",
+        "submit": "撤销许可证",
+        "submitting": "撤销中…",
+        "confirmTitle": "确认撤销",
+        "confirm": "撤销许可证 {licenseId}，原因 \"{reason}\"？客户将在约 6 小时内失去访问权限。",
+        "confirmCta": "确认撤销",
+        "cancel": "取消",
+        "success": "许可证 {licenseId} 已撤销。撤销列表版本现为 {version}。",
+        "dryRunSuccess": "{licenseId} 演练完成 — 未做更改。",
+        "dryRunNotice": "演练模式：不会实际撤销任何许可证。",
+        "error": "撤销失败：{error}"
+      },
+      "table": {
+        "heading": "已撤销许可证",
+        "empty": "无活动撤销。",
+        "licenseId": "许可证 ID",
+        "reason": "原因",
+        "revokedAt": "撤销时间",
+        "revokedBy": "操作人",
+        "notes": "备注",
+        "customerRef": "客户参考",
+        "undo": "撤回",
+        "revokedHoursAgo": "{hours, plural, one {# 小时前} other {# 小时前}}",
+        "undoExpired": "已过期",
+        "undoConfirm": "撤回 {licenseId} 的撤销操作？",
+        "undoSuccess": "已撤回 {licenseId} 的撤销",
+        "undoError": "撤回失败：{error}",
+        "undoCountdown": "{hours, plural, one {撤回（# 小时）} other {撤回（# 小时）}}",
+        "undoAriaLabel": "撤回 {licenseId} 的撤销，剩余 {hours, plural, one {# 小时} other {# 小时}}",
+        "undoExpiredAriaLabel": "{licenseId} 的撤回窗口已过期"
+      }
+    },
+    "readOnly": {
+      "heading": "只读模式",
+      "subheading": "管理员写操作已禁用。",
+      "reason": {
+        "grace-expired": "撤销检查宽限期已结束。请恢复到撤销端点的连接。",
+        "revoked": "此许可证已被撤销。请联系 Aster 销售解决。",
+        "expired": "此许可证已过期。续约以恢复管理员操作。",
+        "malformed": "许可证密钥格式错误。请恢复有效的 LICENSE_KEY 环境变量。",
+        "missing": "未配置 LICENSE_KEY。请设置环境变量以恢复管理员操作。"
+      },
+      "viewLicense": "查看许可证状态"
     }
   },
   "decisionTrace": {

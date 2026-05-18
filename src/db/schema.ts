@@ -8,12 +8,15 @@ import {
   timestamp,
   integer,
   boolean,
+  bigint,
   json,
+  jsonb,
   pgEnum,
   uniqueIndex,
   index,
+  check,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { desc, relations, sql } from 'drizzle-orm';
 
 // ============================================
 // Enums
@@ -940,6 +943,114 @@ export const aiKeyBindings = pgTable(
 // 在现有 users 表定义末尾追加（已在 priceLockedAt / legacyTier 旁边）
 
 // ============================================
+// License v2 / Revocation
+// ============================================
+
+/**
+ * On-prem license verification cache（单行表 id='current'）。
+ *
+ * 设计意图：
+ *   - 每个 on-prem 部署只追踪 *自己* 的 license，不存别人的
+ *   - SaaS 模式下表存在但不写入，保持两种部署 schema 一致
+ *   - check 约束强制 id='current'，防止意外写入多行
+ */
+export const licenseCache = pgTable(
+  'LicenseCache',
+  {
+    id: text('id').primaryKey().notNull().default('current'),
+    licenseId: text('license_id').notNull(),
+    licenseKeyHash: text('license_key_hash').notNull(),
+    payloadJson: jsonb('payload_json').notNull(),
+    signingKeyId: text('signing_key_id').notNull(),
+    verifiedAt: timestamp('verified_at', { mode: 'date', withTimezone: true }).notNull(),
+    revocationVersion: bigint('revocation_version', { mode: 'bigint' }),
+    revocationPublishedAt: timestamp('revocation_published_at', {
+      mode: 'date',
+      withTimezone: true,
+    }),
+    revocationFetchedAt: timestamp('revocation_fetched_at', {
+      mode: 'date',
+      withTimezone: true,
+    }),
+    lastSuccessfulRevocationCheckAt: timestamp('last_successful_revocation_check_at', {
+      mode: 'date',
+      withTimezone: true,
+    }),
+    lastRevocationError: jsonb('last_revocation_error'),
+    isRevoked: boolean('is_revoked').default(false).notNull(),
+    revokedAt: timestamp('revoked_at', { mode: 'date', withTimezone: true }),
+    revokedReason: text('revoked_reason'),
+    // 续费提醒幂等记录（PR-C）：{ version: 'signingKeyId:verifiedAtIso', thresholds: { '14': iso } }
+    renewalNotifyRecord: jsonb('renewal_notify_record').default({}).notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [check('LicenseCache_id_current_check', sql`${table.id} = 'current'`)]
+);
+
+/**
+ * SaaS revocation 源表。
+ *
+ * 设计意图：
+ *   - 只存 opaque licenseId + 运维原因，不存客户身份信息
+ *   - 发布器按 revoked_at 排序合成签名 revocation.json
+ *   - on-prem 端只通过签名 JSON 拉取，不直接读这张表
+ */
+export const revokedLicenses = pgTable(
+  'RevokedLicense',
+  {
+    licenseId: text('license_id').primaryKey().notNull(),
+    revokedAt: timestamp('revoked_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    revokedBy: text('revoked_by').notNull(),
+    reason: text('reason').notNull(),
+    notes: text('notes'),
+    customerRef: text('customer_ref'),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index('RevokedLicense_revokedAt_idx').on(table.revokedAt)]
+);
+
+/**
+ * 不可变 revocation publications。
+ *
+ * version 由 PR-L7 的 publisher 单调递增分配；当前仅用 check 约束确保正整数。
+ * 索引按 published_at desc 加速"最新版"查询。
+ *
+ * mode='bigint'（codex Minor-7）：version 是 anti-rollback 数值，必须支持
+ * 64-bit 精度。Number.MAX_SAFE_INTEGER 也够用，但 bigint 更明确表达意图，
+ * 避免日后超过 2^53 时静默 truncate。
+ */
+export const revocationPublications = pgTable(
+  'RevocationPublication',
+  {
+    version: bigint('version', { mode: 'bigint' }).primaryKey().notNull(),
+    publishedAt: timestamp('published_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    validUntil: timestamp('valid_until', { mode: 'date', withTimezone: true }).notNull(),
+    revokedCount: integer('revoked_count').notNull(),
+    signedDoc: text('signed_doc').notNull(),
+    signature: text('signature').notNull(),
+  },
+  (table) => [
+    index('RevocationPub_publishedAt_idx').on(desc(table.publishedAt)),
+    check(
+      'RevocationPublication_version_positive_check',
+      sql`${table.version} > 0`,
+    ),
+    check(
+      'RevocationPublication_revoked_count_nonnegative_check',
+      sql`${table.revokedCount} >= 0`,
+    ),
+  ]
+);
+
+// ============================================
 // Relations
 // ============================================
 
@@ -1188,3 +1299,12 @@ export type NewComplianceReport = InferInsertModel<typeof complianceReports>;
 
 export type AuditLog = InferSelectModel<typeof auditLogs>;
 export type NewAuditLog = InferInsertModel<typeof auditLogs>;
+
+export type LicenseCache = InferSelectModel<typeof licenseCache>;
+export type NewLicenseCache = InferInsertModel<typeof licenseCache>;
+
+export type RevokedLicense = InferSelectModel<typeof revokedLicenses>;
+export type NewRevokedLicense = InferInsertModel<typeof revokedLicenses>;
+
+export type RevocationPublication = InferSelectModel<typeof revocationPublications>;
+export type NewRevocationPublication = InferInsertModel<typeof revocationPublications>;

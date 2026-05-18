@@ -58,6 +58,10 @@ const eslintConfig = [
       // PR-9: 守门 deployment-mode 直接 macro / process.env 访问。
       // 详见 eslint-rules/no-direct-macro.js + .claude/plan/deployment-mode-flag-v2.md。
       "deployment-mode/no-direct-macro": "error",
+      // PR-license-v2: admin mutate routes 必须调用 requireLicenseWriteOk()
+      // 或显式守门 !IS_SAAS（SaaS-only endpoint）。
+      // 详见 eslint-rules/require-license-write-gate.js。
+      "deployment-mode/require-license-write-gate": "error",
     },
   },
   {
@@ -72,6 +76,7 @@ const eslintConfig = [
       // 测试需要直接 stub process.env.DEPLOYMENT_MODE 验证模式切换；
       // 这是测试的合法用途。生产代码仍受规则约束。
       "deployment-mode/no-direct-macro": "off",
+      "deployment-mode/require-license-write-gate": "off",
     },
   },
 ];

@@ -22,6 +22,7 @@ import {
   CAN_RISKTIER,
   CAN_LICENSE,
   CAN_SSO,
+  IS_SAAS,
 } from '@/lib/deployment-mode';
 
 type AdminNavItem = {
@@ -32,6 +33,7 @@ type AdminNavItem = {
     | 'aiBreaker'
     | 'riskTier'
     | 'license'
+    | 'licenseRevoke'
     | 'sso';
   /** Build-time visibility flag. Filter happens at module top — false items
    *  are dropped from the rendered <ul> entirely (no display:none games). */
@@ -64,6 +66,12 @@ const ADMIN_NAV_ITEMS: ReadonlyArray<AdminNavItem> = [
     href: '/admin/license',
     labelKey: 'license',
     show: CAN_LICENSE, // on-prem only — PR-8 添加占位页
+    matchStrategy: 'prefix',
+  },
+  {
+    href: '/admin/license-revoke',
+    labelKey: 'licenseRevoke',
+    show: IS_SAAS, // SaaS only — Aster ops 撤销客户 license
     matchStrategy: 'prefix',
   },
   {

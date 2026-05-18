@@ -52,6 +52,7 @@ describe('AdminSidebar — SaaS mode', () => {
       CAN_RISKTIER: true,
       CAN_LICENSE: false,
       CAN_SSO: false,
+      IS_SAAS: true,
     }));
     const { AdminSidebar } = await import('@/components/admin/admin-sidebar');
     render(<AdminSidebar />);
@@ -63,6 +64,8 @@ describe('AdminSidebar — SaaS mode', () => {
     expect(screen.getByText('admin.nav.riskTier')).toBeInTheDocument();
     expect(screen.queryByText('admin.nav.license')).not.toBeInTheDocument();
     expect(screen.queryByText('admin.nav.sso')).not.toBeInTheDocument();
+    // SaaS 模式有 /admin/license-revoke（Aster ops 撤销客户 license）
+    expect(screen.getByText('admin.nav.licenseRevoke')).toBeInTheDocument();
   });
 
   it('overview 路径精确匹配高亮（不会被子路由误中）', async () => {
@@ -72,6 +75,7 @@ describe('AdminSidebar — SaaS mode', () => {
       CAN_RISKTIER: true,
       CAN_LICENSE: false,
       CAN_SSO: false,
+      IS_SAAS: true,
     }));
     const { AdminSidebar } = await import('@/components/admin/admin-sidebar');
     render(<AdminSidebar />);
@@ -90,6 +94,7 @@ describe('AdminSidebar — SaaS mode', () => {
       CAN_RISKTIER: true,
       CAN_LICENSE: false,
       CAN_SSO: false,
+      IS_SAAS: true,
     }));
     const { AdminSidebar } = await import('@/components/admin/admin-sidebar');
     render(<AdminSidebar />);
@@ -110,6 +115,7 @@ describe('AdminSidebar — On-Prem mode', () => {
       CAN_RISKTIER: false,
       CAN_LICENSE: true,
       CAN_SSO: true,
+      IS_SAAS: false,
     }));
     const { AdminSidebar } = await import('@/components/admin/admin-sidebar');
     render(<AdminSidebar />);
@@ -118,6 +124,8 @@ describe('AdminSidebar — On-Prem mode', () => {
     expect(screen.queryByText('admin.nav.riskTier')).not.toBeInTheDocument();
     expect(screen.getByText('admin.nav.license')).toBeInTheDocument();
     expect(screen.getByText('admin.nav.sso')).toBeInTheDocument();
+    // on-prem 模式不能看到 SaaS-only /admin/license-revoke 链接
+    expect(screen.queryByText('admin.nav.licenseRevoke')).not.toBeInTheDocument();
   });
 
   it('on-prem 中 license 路径高亮', async () => {
@@ -127,6 +135,7 @@ describe('AdminSidebar — On-Prem mode', () => {
       CAN_RISKTIER: false,
       CAN_LICENSE: true,
       CAN_SSO: true,
+      IS_SAAS: false,
     }));
     const { AdminSidebar } = await import('@/components/admin/admin-sidebar');
     render(<AdminSidebar />);
@@ -143,6 +152,7 @@ describe('AdminSidebar — accessibility', () => {
       CAN_RISKTIER: true,
       CAN_LICENSE: false,
       CAN_SSO: false,
+      IS_SAAS: true,
     }));
     const { AdminSidebar } = await import('@/components/admin/admin-sidebar');
     render(<AdminSidebar />);
@@ -157,6 +167,7 @@ describe('AdminSidebar — accessibility', () => {
       CAN_RISKTIER: true,
       CAN_LICENSE: false,
       CAN_SSO: false,
+      IS_SAAS: true,
     }));
     const { AdminSidebar } = await import('@/components/admin/admin-sidebar');
     render(<AdminSidebar />);
