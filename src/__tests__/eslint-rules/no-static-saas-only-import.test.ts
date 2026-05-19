@@ -23,7 +23,8 @@
 
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
-// @ts-expect-error JS plugin without types
+// JS plugin — TS resolves it via allowJs (tsconfig.json) and infers
+// shape from module.exports. No @ts-expect-error needed.
 import rule from '../../../eslint-rules/no-static-saas-only-import.js';
 
 const ruleTester = new RuleTester({
