@@ -1101,6 +1101,12 @@ export const licenseTelemetry = pgTable(
     signatureKid: text('signature_kid').notNull(),
     signatureAlg: text('signature_alg').notNull(),
     signatureB64: text('signature_b64').notNull(),
+    /**
+     * GDPR Art 44 evidence: which SaaS region accepted/stored this row
+     * (us / eu / apac / unknown for pre-J2 rows). Set from
+     * ASTER_DATA_REGION env at ingest time.
+     */
+    dataRegion: text('data_region'),
   },
   (table) => [
     index('LicenseTelemetry_license_received_idx').on(

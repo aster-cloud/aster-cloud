@@ -1530,6 +1530,10 @@
         "lastAttempt": "Last attempt:",
         "viewSentBody": "View payload sent to Aster",
         "unknownError": "Unknown error",
+        "dataRegion": "Data region",
+        "customerHeader": "Customer field",
+        "customerMaskedYes": "masked (anonymous token)",
+        "customerMaskedNo": "literal name",
         "outcome": {
           "accepted": "Accepted",
           "deduped": "Deduped (same window already received)",

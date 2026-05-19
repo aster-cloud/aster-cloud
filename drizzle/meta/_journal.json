@@ -120,6 +120,13 @@
       "when": 1779070000000,
       "tag": "0017_telemetry_access_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779080000000,
+      "tag": "0018_telemetry_data_region",
+      "breakpoints": true
     }
   ]
 }

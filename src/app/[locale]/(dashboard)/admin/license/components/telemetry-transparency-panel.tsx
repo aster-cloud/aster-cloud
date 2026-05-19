@@ -34,6 +34,10 @@ export interface TelemetryUploadRecord {
   errorKind?: string;
   errorStatus?: number | null;
   errorMessage?: string;
+  /** GDPR Art 44 evidence — where the SaaS persisted this row (us/eu/apac/unknown). */
+  dataRegion?: string;
+  /** Whether the customer-name header was masked (ASTER_TELEMETRY_MASK_CUSTOMER=1). */
+  customerMasked?: boolean;
 }
 
 interface Props {
@@ -127,6 +131,16 @@ function RenderUpload({
               <dd>{record.ingestId}</dd>
             </>
           )}
+          {record.dataRegion && (
+            <>
+              <dt className="text-fg-muted">{t('dataRegion')}</dt>
+              <dd>{record.dataRegion}</dd>
+            </>
+          )}
+          <>
+            <dt className="text-fg-muted">{t('customerHeader')}</dt>
+            <dd>{record.customerMasked ? t('customerMaskedYes') : t('customerMaskedNo')}</dd>
+          </>
         </dl>
       </details>
     </div>

@@ -1530,6 +1530,10 @@
         "lastAttempt": "上次尝试：",
         "viewSentBody": "查看发送到 Aster 的具体内容",
         "unknownError": "未知错误",
+        "dataRegion": "数据所在区域",
+        "customerHeader": "客户字段",
+        "customerMaskedYes": "已脱敏（匿名 token）",
+        "customerMaskedNo": "明文名称",
         "outcome": {
           "accepted": "已接受",
           "deduped": "已去重（同窗口已收到）",

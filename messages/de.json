@@ -1530,6 +1530,10 @@
         "lastAttempt": "Letzter Versuch:",
         "viewSentBody": "An Aster gesendeten Inhalt anzeigen",
         "unknownError": "Unbekannter Fehler",
+        "dataRegion": "Datenregion",
+        "customerHeader": "Kundenfeld",
+        "customerMaskedYes": "maskiert (anonymes Token)",
+        "customerMaskedNo": "Klartext-Name",
         "outcome": {
           "accepted": "Akzeptiert",
           "deduped": "Dedupliziert (gleiches Fenster bereits empfangen)",

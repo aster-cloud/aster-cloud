@@ -22,9 +22,28 @@
  *         no use for this module; marker keeps it from accidental import.
  */
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { canonicalizeTelemetry, type TelemetryPayload } from './payload-builder';
+
+/**
+ * Mask a customer name to an opaque-but-correlatable token.
+ *
+ * Output shape: "anon-<12-hex>-<len>" — first 12 hex of sha256(customer)
+ * + the original string length. SaaS ops can still group "all reports
+ * from the same anonymous customer" but the literal name is not on the
+ * wire and not in our DB.
+ *
+ * Used when the deployment sets ASTER_TELEMETRY_MASK_CUSTOMER=1. This
+ * is the privacy-conservative default for new opt-ins; existing
+ * deployments can adopt it without restart cost. We keep the original
+ * "Acme Corp" format opt-out path because some customers explicitly
+ * want their name attached for renewal conversations.
+ */
+export function maskCustomer(customer: string): string {
+  const hex = createHash('sha256').update(customer, 'utf8').digest('hex').slice(0, 12);
+  return `anon-${hex}-${customer.length}`;
+}
 
 export interface UploadConfig {
   /** Full https URL to the ingest endpoint (no trailing slash). */
@@ -47,6 +66,8 @@ export interface UploadResult {
   id: string;
   /** Whether the row was newly inserted vs treated as duplicate. */
   deduped: boolean;
+  /** SaaS-side region that accepted the row (us / eu / apac / unknown). */
+  dataRegion?: string;
 }
 
 export class TelemetryUploadError extends Error {
@@ -113,7 +134,7 @@ export async function uploadTelemetry(
   }
 
   const parsed = (await res.json().catch(() => null)) as
-    | { id?: string; deduped?: boolean }
+    | { id?: string; deduped?: boolean; dataRegion?: string }
     | null;
   if (!parsed || typeof parsed.id !== 'string') {
     throw new TelemetryUploadError(
@@ -122,7 +143,11 @@ export async function uploadTelemetry(
       'malformed ingest response (missing id)',
     );
   }
-  return { id: parsed.id, deduped: parsed.deduped === true };
+  return {
+    id: parsed.id,
+    deduped: parsed.deduped === true,
+    dataRegion: typeof parsed.dataRegion === 'string' ? parsed.dataRegion : undefined,
+  };
 }
 
 function hmacBase64Url(secret: string, message: string): string {

@@ -205,6 +205,67 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('telemetry ingest', () => {
     expect(res.status).toBe(400);
   });
 
+  it('accepts masked customer token (anon-<hex>-<len>) when license customer matches', async () => {
+    const licenseId = `lic_ing_${randomUUID().slice(0, 8)}`;
+    await seedIssuedLicense({ licenseId, customer: 'Acme Telemetry' });
+    // import in the test scope to avoid name clash with seed helper
+    const { maskCustomer } = await import('@/lib/telemetry/uploader');
+    const masked = maskCustomer('Acme Telemetry');
+    const res = await postTelemetry({
+      payload: buildPayload(),
+      licenseId,
+      customer: masked,
+    });
+    expect(res.status).toBe(200);
+    const rows = await db.query.licenseTelemetry.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].customer).toBe(masked);
+  });
+
+  it('rejects masked token for a different customer (wrong hash prefix)', async () => {
+    const licenseId = `lic_ing_${randomUUID().slice(0, 8)}`;
+    await seedIssuedLicense({ licenseId, customer: 'Acme Telemetry' });
+    const { maskCustomer } = await import('@/lib/telemetry/uploader');
+    const wrong = maskCustomer('SomeoneElse');
+    const res = await postTelemetry({
+      payload: buildPayload(),
+      licenseId,
+      customer: wrong,
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('stamps data_region from ASTER_DATA_REGION env on accepted row', async () => {
+    const licenseId = `lic_ing_${randomUUID().slice(0, 8)}`;
+    await seedIssuedLicense({ licenseId });
+    const prev = process.env.ASTER_DATA_REGION;
+    process.env.ASTER_DATA_REGION = 'eu';
+    try {
+      const res = await postTelemetry({ payload: buildPayload(), licenseId });
+      expect(res.status).toBe(200);
+      expect((res.body as { dataRegion: string }).dataRegion).toBe('eu');
+      const rows = await db.query.licenseTelemetry.findMany();
+      expect(rows[0].dataRegion).toBe('eu');
+    } finally {
+      if (prev === undefined) delete process.env.ASTER_DATA_REGION;
+      else process.env.ASTER_DATA_REGION = prev;
+    }
+  });
+
+  it('falls back to "unknown" region when ASTER_DATA_REGION not set', async () => {
+    const licenseId = `lic_ing_${randomUUID().slice(0, 8)}`;
+    await seedIssuedLicense({ licenseId });
+    const prev = process.env.ASTER_DATA_REGION;
+    delete process.env.ASTER_DATA_REGION;
+    try {
+      const res = await postTelemetry({ payload: buildPayload(), licenseId });
+      expect(res.status).toBe(200);
+      expect((res.body as { dataRegion: string }).dataRegion).toBe('unknown');
+    } finally {
+      if (prev !== undefined) process.env.ASTER_DATA_REGION = prev;
+    }
+  });
+
   it('retired kid → rejected', async () => {
     const licenseId = `lic_ing_${randomUUID().slice(0, 8)}`;
     await seedIssuedLicense({

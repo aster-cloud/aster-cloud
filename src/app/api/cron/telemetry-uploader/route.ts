@@ -28,7 +28,7 @@ import {
   buildTelemetryPayload,
   type TelemetryPayload,
 } from '@/lib/telemetry/payload-builder';
-import { TelemetryUploadError, uploadTelemetry } from '@/lib/telemetry/uploader';
+import { TelemetryUploadError, maskCustomer, uploadTelemetry } from '@/lib/telemetry/uploader';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,6 +39,7 @@ interface TelemetryResponse {
   reason?: string;
   payload?: TelemetryPayload;
   ingestId?: string;
+  dataRegion?: string;
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -92,6 +93,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const payload = await buildTelemetryPayload({ license: result.payload });
   const attemptedAt = new Date();
 
+  // GDPR data-minimization control: when ASTER_TELEMETRY_MASK_CUSTOMER=1
+  // we replace the customer-name header with an opaque token that still
+  // lets SaaS ops correlate reports from the same deployment but
+  // doesn't leak the customer name into the SaaS DB. Default is
+  // unmasked (existing customers who configured renewal conversations
+  // around the named field aren't affected).
+  const maskCustomerHeader = process.env.ASTER_TELEMETRY_MASK_CUSTOMER === '1';
+  const customerHeader = maskCustomerHeader
+    ? maskCustomer(result.payload.customer)
+    : result.payload.customer;
+
   const persistLocalRecord = async (record: Record<string, unknown>) => {
     // 写本地审计记录给 admin/license 透明视图。失败不阻塞上报。
     try {
@@ -111,19 +123,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       secretKid,
       licenseId: result.payload.licenseId,
       deploymentId: result.payload.deploymentBinding.deploymentId,
-      customer: result.payload.customer,
+      customer: customerHeader,
     });
     await persistLocalRecord({
       payload,
       attemptedAt: attemptedAt.toISOString(),
       outcome: upload.deduped ? 'deduped' : 'accepted',
       ingestId: upload.id,
+      dataRegion: upload.dataRegion ?? 'unknown',
+      customerMasked: maskCustomerHeader,
     });
     return NextResponse.json({
       uploaded: true,
       deduped: upload.deduped,
       payload,
       ingestId: upload.id,
+      dataRegion: upload.dataRegion,
     } satisfies TelemetryResponse);
   } catch (err) {
     if (err instanceof TelemetryUploadError) {

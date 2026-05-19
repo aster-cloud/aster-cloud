@@ -54,7 +54,7 @@ the recipient (SaaS) confirms the schema bump.
 
 ## How to enable
 
-Set three env vars on your aster-cloud deployment:
+Set these env vars on your aster-cloud deployment:
 
 ```bash
 ASTER_TELEMETRY_OPT_IN=1
@@ -62,6 +62,11 @@ ASTER_TELEMETRY_ENDPOINT=https://api.aster-lang.cloud/api/v1/telemetry
 ASTER_TELEMETRY_SECRET=<32+ char secret given at license sign time>
 # Optional — if you ever rotate the secret with sales
 ASTER_TELEMETRY_SECRET_KID=default
+
+# RECOMMENDED for GDPR-sensitive deployments: replace literal customer
+# name with `anon-<hash>-<len>` token. SaaS still correlates reports
+# from the same customer but never stores the legal entity name.
+ASTER_TELEMETRY_MASK_CUSTOMER=1
 ```
 
 Then schedule the cron (daily is plenty):
@@ -99,15 +104,35 @@ next section.
 
 ## Deleting prior reports
 
-Email `support@aster-lang.cloud` with your license ID and the time
-window. We delete:
+For a GDPR Art 17 / CCPA right-to-delete request:
 
-- All `LicenseTelemetry` rows for that license_id in SaaS DB.
-- Any backups still in retention (12 months rolling).
+1. Email `dpo@aster-lang.cloud` with your license ID (or customer name)
+   and DSAR reference number.
+2. Aster operations runs the
+   `POST /api/admin/telemetry/dsar-delete` endpoint:
+   - `subject=license` deletes one license's rows
+   - `subject=customer` deletes all licenses under one customer
+3. A `delete-by-dsar` row lands in `TelemetryAccessAudit` with the
+   `dsarRef` so we can show regulators "request X received on Y,
+   fulfilled on Z" (legal-hold retention: 7 years).
+4. The nightly retention GC also auto-deletes any LicenseTelemetry row
+   past 365 days (default; customizable via env).
 
-A delete confirmation is logged in our SOC 2 audit trail with the
-license ID + delete-request timestamp + operator who performed it.
-No proxy delete-then-restore path exists.
+The 1-month GDPR fulfillment SLA is comfortably within reach — actual
+deletion happens within seconds of the admin running the endpoint.
+
+## Data residency
+
+Aster runs SaaS in `<region>` (current single region; multi-region in
+roadmap). Every `LicenseTelemetry` row carries a `data_region` column
+recording exactly where it was processed. The transparency panel on
+`/admin/license` shows the region for every upload your deployment has
+made.
+
+For customers requiring data localization (EU / APAC residency), see
+the executed Data Processing Agreement template at
+[`dpa-template.md`](./dpa-template.md) — sales executes a per-customer
+copy with the agreed residency region.
 
 ## Configuration on Aster (SaaS) side — for reference
 

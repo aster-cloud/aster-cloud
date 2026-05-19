@@ -22,7 +22,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { IS_SAAS } from '@/lib/deployment-mode';
 import { db, issuedLicenses, licenseTelemetry } from '@/lib/prisma';
-import { verifyTelemetrySignature } from '@/lib/telemetry/uploader';
+import { maskCustomer, verifyTelemetrySignature } from '@/lib/telemetry/uploader';
 import {
   resolveTelemetrySecret,
   type ResolvedSecret,
@@ -102,7 +102,14 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (expectedBinding && expectedBinding !== deploymentId) {
     return bad('deployment-id-mismatch');
   }
-  if (license.customer !== customer) return bad('customer-mismatch');
+  // Accept either the real customer name or the deterministic anon mask
+  // form maskCustomer(license.customer). Lets deployments opt-in to
+  // ASTER_TELEMETRY_MASK_CUSTOMER without breaking the cross-check.
+  // Persistence stores whatever the producer sent (so masked stays masked).
+  const expectedMasked = maskCustomer(license.customer);
+  if (customer !== license.customer && customer !== expectedMasked) {
+    return bad('customer-mismatch');
+  }
 
   // Parse + minimal shape validation. Anything funky → 400.
   let payload: InboundPayload;
@@ -142,6 +149,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     req.headers.get('cf-connecting-ip') ??
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     null;
+  // GDPR Art 44 evidence: stamp which SaaS region accepted this row so
+  // we can prove residency to regulators / auditors. Default 'unknown'
+  // until ASTER_DATA_REGION is set (one of us / eu / apac).
+  const dataRegion = (process.env.ASTER_DATA_REGION || 'unknown').toLowerCase();
 
   // We can't ON CONFLICT via drizzle's generic insert easily here without
   // raw SQL; do a 2-step check + insert. The UNIQUE constraint catches
@@ -154,7 +165,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     ),
   });
   if (existing) {
-    return NextResponse.json({ id: existing.id, deduped: true });
+    return NextResponse.json({
+      id: existing.id,
+      deduped: true,
+      dataRegion: existing.dataRegion ?? 'unknown',
+    });
   }
 
   try {
@@ -170,6 +185,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       signatureKid: sigKid,
       signatureAlg: sigAlg,
       signatureB64: signature,
+      dataRegion,
     });
   } catch (err) {
     // UNIQUE violation = concurrent dedup race. Read back + return.
@@ -180,9 +196,15 @@ export async function POST(req: Request): Promise<NextResponse> {
         eq(licenseTelemetry.periodEnd, periodEnd),
       ),
     });
-    if (dup) return NextResponse.json({ id: dup.id, deduped: true });
+    if (dup) {
+      return NextResponse.json({
+        id: dup.id,
+        deduped: true,
+        dataRegion: dup.dataRegion ?? 'unknown',
+      });
+    }
     throw err;
   }
 
-  return NextResponse.json({ id, deduped: false });
+  return NextResponse.json({ id, deduped: false, dataRegion });
 }

@@ -156,6 +156,7 @@ describe('IssuedLicensesTable telemetry recency', () => {
           signatureKid: 'default',
           signatureAlg: 'HMAC-SHA256',
           signatureB64: 'sig',
+          dataRegion: 'us',
         },
       }),
     ]);
@@ -178,6 +179,7 @@ describe('IssuedLicensesTable telemetry recency', () => {
           signatureKid: 'default',
           signatureAlg: 'HMAC-SHA256',
           signatureB64: 'sig',
+          dataRegion: 'us',
         },
       }),
     ]);
