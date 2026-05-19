@@ -21,9 +21,13 @@ function PrivacyContent() {
     'collection',
     'usage',
     'sharing',
+    'telemetry',
+    'transfers',
+    'subprocessors',
     'security',
     'retention',
     'rights',
+    'dsar',
     'cookies',
     'contact',
   ] as const;
@@ -53,7 +57,7 @@ function PrivacyContent() {
           {t('legal.privacy.title')}
         </h1>
         <p className="text-gray-500 mb-8">
-          {t('legal.privacy.lastUpdated', { date: 'January 1, 2026' })}
+          {t('legal.privacy.lastUpdated', { date: 'May 19, 2026' })}
         </p>
 
         <div className="prose prose-indigo max-w-none">

@@ -167,6 +167,52 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('telemetry access audit', () =>
       expect(audit).toBeTruthy();
       expect((audit?.metadata as { rowsDeleted: number }).rowsDeleted).toBe(0);
     });
+
+    it('dryRun=true returns the count but preserves rows and audits as dry-run-preview', async () => {
+      const licenseId = `lic_${randomUUID().slice(0, 8)}`;
+      await seedIssuedLicense(licenseId, 'PreserveMe');
+      for (let i = 0; i < 3; i++) {
+        await db.insert(licenseTelemetry).values({
+          id: randomUUID(),
+          licenseId,
+          deploymentId: HEX,
+          customer: 'PreserveMe',
+          periodStart: new Date(Date.now() - (i + 7) * 86_400_000),
+          periodEnd: new Date(Date.now() - i * 86_400_000),
+          payload: { schemaVersion: 1, activeSeats: i },
+          receivedAt: new Date(Date.now() - i * 60_000),
+          sourceIp: null,
+          signatureKid: 'default',
+          signatureAlg: 'HMAC-SHA256',
+          signatureB64: 'sig',
+          dataRegion: 'us',
+        });
+      }
+
+      const result = await deleteTelemetryByLicense({
+        licenseId,
+        actorId: 'admin_dryrun',
+        reason: 'dsar',
+        dsarRef: 'DSAR-DRY',
+        dryRun: true,
+      });
+      expect(result.rowsDeleted).toBe(3);
+      expect(result.dryRun).toBe(true);
+      // rows unchanged
+      const rows = await db.query.licenseTelemetry.findMany({
+        where: eq(licenseTelemetry.licenseId, licenseId),
+      });
+      expect(rows).toHaveLength(3);
+      // audit shows dry-run-preview, not delete-by-dsar
+      const audit = await db.query.telemetryAccessAudit.findFirst({
+        where: and(
+          eq(telemetryAccessAudit.subjectKey, licenseId),
+          eq(telemetryAccessAudit.action, 'dry-run-preview'),
+        ),
+      });
+      expect(audit).toBeTruthy();
+      expect((audit?.metadata as { dryRun: boolean }).dryRun).toBe(true);
+    });
   });
 
   describe('deleteTelemetryByCustomer', () => {

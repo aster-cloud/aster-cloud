@@ -32,7 +32,12 @@ export type AuditAction =
   | 'delete-customer'
   | 'delete-license'
   | 'delete-by-dsar'
-  | 'retention-gc';
+  | 'retention-gc'
+  // J5: previews — written when DSAR API runs in dry-run, so a future
+  // auditor can prove "the customer asked, ops scoped it, here's the
+  // count they saw before confirming". Counted as a READ for retention
+  // (90 days, not the 7-year delete window).
+  | 'dry-run-preview';
 
 export type SubjectKind = 'license' | 'customer' | 'row' | 'all-customer';
 
@@ -63,14 +68,21 @@ export async function appendAccessAudit(input: AuditInput): Promise<void> {
 // ────────────── Delete operations ──────────────
 
 export interface DeleteResult {
-  /** How many LicenseTelemetry rows were physically removed. */
+  /** How many LicenseTelemetry rows were/would-be physically removed. */
   rowsDeleted: number;
+  /** True when called with dryRun — no rows were actually removed. */
+  dryRun: boolean;
 }
 
 /**
  * Delete every telemetry row for a single license. Writes audit row first
  * (so we have a record even if the delete itself errors). Use for DSAR
  * "delete my deployment's telemetry" requests.
+ *
+ * When `dryRun: true`, the row count + audit is recorded but no rows are
+ * removed — used by ops to preview a deletion before the customer signs
+ * off, and by the customer self-service DSAR endpoint to scope the
+ * request before committing.
  */
 export async function deleteTelemetryByLicense(args: {
   licenseId: string;
@@ -79,9 +91,12 @@ export async function deleteTelemetryByLicense(args: {
   reason: 'dsar' | 'support-request' | 'retention-gc';
   requestId?: string;
   dsarRef?: string;
+  dryRun?: boolean;
 }): Promise<DeleteResult> {
-  const action: AuditAction =
-    args.reason === 'dsar'
+  const dryRun = args.dryRun === true;
+  const action: AuditAction = dryRun
+    ? 'dry-run-preview'
+    : args.reason === 'dsar'
       ? 'delete-by-dsar'
       : args.reason === 'retention-gc'
         ? 'retention-gc'
@@ -103,15 +118,17 @@ export async function deleteTelemetryByLicense(args: {
     metadata: {
       reason: args.reason,
       rowsDeleted,
+      ...(dryRun ? { dryRun: true } : {}),
       ...(args.dsarRef ? { dsarRef: args.dsarRef } : {}),
     },
     requestId: args.requestId,
   });
 
-  if (rowsDeleted === 0) return { rowsDeleted: 0 };
+  if (dryRun) return { rowsDeleted, dryRun: true };
+  if (rowsDeleted === 0) return { rowsDeleted: 0, dryRun: false };
 
   await db.delete(licenseTelemetry).where(eq(licenseTelemetry.licenseId, args.licenseId));
-  return { rowsDeleted };
+  return { rowsDeleted, dryRun: false };
 }
 
 /** Delete every telemetry row for a customer (all their licenses). */
@@ -122,7 +139,9 @@ export async function deleteTelemetryByCustomer(args: {
   reason: 'dsar' | 'support-request';
   requestId?: string;
   dsarRef?: string;
+  dryRun?: boolean;
 }): Promise<DeleteResult> {
+  const dryRun = args.dryRun === true;
   const existing = await db.query.licenseTelemetry.findMany({
     where: eq(licenseTelemetry.customer, args.customer),
     columns: { id: true },
@@ -130,7 +149,7 @@ export async function deleteTelemetryByCustomer(args: {
   const rowsDeleted = existing.length;
 
   await appendAccessAudit({
-    action: 'delete-customer',
+    action: dryRun ? 'dry-run-preview' : 'delete-customer',
     actorId: args.actorId,
     actorEmail: args.actorEmail,
     subjectKind: 'customer',
@@ -138,14 +157,16 @@ export async function deleteTelemetryByCustomer(args: {
     metadata: {
       reason: args.reason,
       rowsDeleted,
+      ...(dryRun ? { dryRun: true } : {}),
       ...(args.dsarRef ? { dsarRef: args.dsarRef } : {}),
     },
     requestId: args.requestId,
   });
 
-  if (rowsDeleted === 0) return { rowsDeleted: 0 };
+  if (dryRun) return { rowsDeleted, dryRun: true };
+  if (rowsDeleted === 0) return { rowsDeleted: 0, dryRun: false };
   await db.delete(licenseTelemetry).where(eq(licenseTelemetry.customer, args.customer));
-  return { rowsDeleted };
+  return { rowsDeleted, dryRun: false };
 }
 
 // ────────────── Retention GC ──────────────

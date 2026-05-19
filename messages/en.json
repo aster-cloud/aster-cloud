@@ -171,39 +171,55 @@
       "sections": {
         "intro": {
           "title": "Introduction",
-          "content": "This Privacy Policy explains how Aster Cloud collects, uses, and protects your personal information when you use our services."
+          "content": "Aster offers two deployment modes: a multi-tenant SaaS at aster-lang.cloud, and a self-hosted on-prem build that you operate yourself. This policy covers both. The on-prem build never sends data to Aster except for opt-in usage telemetry described below — your policy content, decision traces, and end-user data stay on infrastructure you control."
         },
         "collection": {
-          "title": "1. Information We Collect",
-          "content": "We collect information you provide directly to us, such as your name, email address, and payment information. We also collect usage data including policy execution logs and API usage statistics."
+          "title": "1. Information we collect",
+          "content": "SaaS account: name, email, billing address, payment method (Stripe-tokenized; we never see raw card data). Usage: workspace, policy, and API call metadata required to run the service. On-prem deployments only send what you explicitly opt into; see the Telemetry section below."
         },
         "usage": {
-          "title": "2. How We Use Your Information",
-          "content": "We use your information to provide and improve our services, process transactions, send communications, and comply with legal obligations."
+          "title": "2. How we use your information",
+          "content": "Operating the service (provisioning, billing, authentication), preventing abuse (rate limiting, fraud detection), customer support, legal compliance, and capacity planning. We do not sell personal data and do not use customer data to train AI models."
         },
         "sharing": {
-          "title": "3. Information Sharing",
-          "content": "We do not sell your personal information. We may share information with service providers who assist us in operating our platform, or when required by law."
+          "title": "3. Information sharing",
+          "content": "We share with sub-processors (Stripe for billing, Resend for transactional email, Cloudflare for edge protection, our cloud provider for hosting). Each is bound by a written agreement and processes data only on our instructions. See the Sub-processors section for the current list."
+        },
+        "telemetry": {
+          "title": "4. On-prem usage telemetry (opt-in)",
+          "content": "If you opt in with ASTER_TELEMETRY_OPT_IN=1, your on-prem deployment sends a weekly batch of aggregate counters (active seats, policy execution counts, features used) to our SaaS ingest endpoint. Every field is an integer or boolean; no user identifiers, no policy content, no decision traces. The full machine-readable contract is at /api/v1/telemetry/schema and the per-field necessity rationale is documented in docs/on-prem/telemetry-fields.md."
+        },
+        "transfers": {
+          "title": "5. International data transfers",
+          "content": "Aster SaaS currently operates from a single region. Each telemetry row is tagged with the SaaS region that accepted it (us / eu / apac / unknown), exposed in the admin transparency panel and in DSAR access responses. For customers in restricted jurisdictions we offer Standard Contractual Clauses (SCC) via our DPA template."
+        },
+        "subprocessors": {
+          "title": "6. Sub-processors",
+          "content": "Stripe (payment processing, US), Resend (transactional email, US), Cloudflare (edge protection, global), Oracle Cloud (hosting, US/EU regions as contracted). New sub-processors are announced via the changelog at least 30 days before they begin processing data; existing customers may object before that window closes."
         },
         "security": {
-          "title": "4. Data Security",
-          "content": "We implement industry-standard security measures including encryption in transit (TLS 1.3) and at rest (AES-256) to protect your data."
+          "title": "7. Data security",
+          "content": "TLS 1.3 in transit. Database encrypted at rest with provider-managed AES-256. Telemetry HMAC verification keys are additionally envelope-encrypted (AES-256-GCM) under a key held in our secrets manager — a database compromise alone does not yield usable keys. Access to production data is logged for SOC 2 evidence; every read of telemetry rows generates an audit record."
         },
         "retention": {
-          "title": "5. Data Retention",
-          "content": "We retain your data for as long as your account is active or as needed to provide services. You may request deletion of your data at any time."
+          "title": "8. Data retention",
+          "content": "SaaS account data is retained while the account is active and for a brief wind-down after cancellation. On-prem telemetry rows are deleted automatically 365 days after receipt by a nightly retention job. Access-audit records have a 90-day window; deletion-audit records have a 7-year hold for regulatory evidence. Configurable via TELEMETRY_RETENTION_DAYS."
         },
         "rights": {
-          "title": "6. Your Rights",
-          "content": "You have the right to access, correct, or delete your personal data. You may also request a copy of your data or object to certain processing activities."
+          "title": "9. Your rights",
+          "content": "Subject to GDPR / CCPA: rights of access, rectification, erasure, portability, restriction, and objection. For SaaS account data, contact privacy@aster-lang.cloud. For on-prem telemetry, use the self-service DSAR API below — no Aster support ticket required."
+        },
+        "dsar": {
+          "title": "10. Self-service DSAR for telemetry",
+          "content": "POST /api/v1/dsar with HMAC-signed body to request access (action='access') or deletion (action='delete'). dryRun=true previews the affected row count without committing. Both actions are recorded in the immutable audit log so we can prove fulfillment to regulators. Full curl examples and the request schema are in docs/on-prem/dsar.md."
         },
         "cookies": {
-          "title": "7. Cookies and Tracking",
-          "content": "We use cookies and similar technologies to maintain sessions, remember preferences, and analyze usage patterns."
+          "title": "11. Cookies and tracking",
+          "content": "We use first-party cookies for session continuity (auth, preferences). We do not use third-party advertising cookies. Mixpanel product-analytics is loaded on SaaS pages with anonymized identifiers only; you can disable it via your account preferences."
         },
         "contact": {
-          "title": "8. Contact Us",
-          "content": "If you have questions about this Privacy Policy, please contact us at privacy@aster-lang.cloud."
+          "title": "12. Contact us",
+          "content": "Privacy questions: privacy@aster-lang.cloud. Data Protection Officer: dpo@aster-lang.cloud. EU representative: see the DPA template in docs/on-prem/dpa-template.md. Supervisory-authority complaints may be filed in the jurisdiction where you reside."
         }
       }
     }

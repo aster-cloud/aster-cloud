@@ -171,39 +171,55 @@
       "sections": {
         "intro": {
           "title": "Einleitung",
-          "content": "Diese Datenschutzrichtlinie erläutert, wie Aster Cloud Ihre personenbezogenen Daten sammelt, verwendet und schützt, wenn Sie unsere Dienste nutzen."
+          "content": "Aster bietet zwei Bereitstellungsmodelle: ein Multi-Tenant-SaaS unter aster-lang.cloud und eine selbstgehostete On-Prem-Variante, die Sie selbst betreiben. Diese Richtlinie deckt beide ab. Die On-Prem-Variante sendet außer der unten beschriebenen, freiwilligen Nutzungs-Telemetrie keine Daten an Aster — Ihre Richtlinieninhalte, Entscheidungsspuren und Endnutzerdaten verbleiben auf der von Ihnen kontrollierten Infrastruktur."
         },
         "collection": {
           "title": "1. Welche Daten wir erheben",
-          "content": "Wir erfassen Informationen, die Sie uns direkt bereitstellen, wie Name, E-Mail-Adresse und Zahlungsdaten. Außerdem sammeln wir Nutzungsdaten wie Richtlinienausführungen und API-Nutzungsstatistiken."
+          "content": "SaaS-Konto: Name, E-Mail, Rechnungsadresse, Zahlungsmittel (Stripe-tokenisiert; wir sehen niemals Klartext-Kartendaten). Nutzungsdaten: Workspace-, Richtlinien- und API-Aufruf-Metadaten, die zum Betrieb des Dienstes erforderlich sind. On-Prem-Installationen senden nur, was Sie ausdrücklich aktiviert haben — siehe Abschnitt Telemetrie."
         },
         "usage": {
           "title": "2. Wie wir Ihre Daten verwenden",
-          "content": "Wir verwenden Ihre Daten, um unsere Dienste bereitzustellen und zu verbessern, Transaktionen zu verarbeiten, Mitteilungen zu senden und gesetzliche Verpflichtungen zu erfüllen."
+          "content": "Betrieb des Dienstes (Provisionierung, Abrechnung, Authentifizierung), Missbrauchsabwehr (Rate-Limiting, Betrugserkennung), Kundensupport, Erfüllung gesetzlicher Pflichten und Kapazitätsplanung. Wir verkaufen keine personenbezogenen Daten und trainieren keine KI-Modelle mit Kundendaten."
         },
         "sharing": {
           "title": "3. Weitergabe von Informationen",
-          "content": "Wir verkaufen Ihre personenbezogenen Daten nicht. Wir teilen Informationen nur mit Dienstleistern, die uns beim Betrieb unserer Plattform unterstützen, oder wenn dies gesetzlich erforderlich ist."
+          "content": "Wir geben Daten an Auftragsverarbeiter weiter: Stripe (Zahlungsabwicklung), Resend (Transaktionsmails), Cloudflare (Edge-Schutz), Cloud-Anbieter (Hosting). Jeder ist durch einen schriftlichen Vertrag gebunden und verarbeitet ausschließlich nach unserer Weisung. Die aktuelle Liste finden Sie im Abschnitt Auftragsverarbeiter."
+        },
+        "telemetry": {
+          "title": "4. On-Prem-Nutzungstelemetrie (opt-in)",
+          "content": "Wenn Sie ASTER_TELEMETRY_OPT_IN=1 aktivieren, sendet Ihre On-Prem-Installation wöchentlich ein Bündel aggregierter Kennzahlen (aktive Sitze, Anzahl Richtlinien­ausführungen, genutzte Features) an unseren SaaS-Ingest-Endpoint. Jedes Feld ist eine ganze Zahl oder ein Boolean; keine Nutzer-IDs, keine Richtlinieninhalte, keine Entscheidungsspuren. Der maschinenlesbare Vertrag liegt unter /api/v1/telemetry/schema, die Begründung pro Feld in docs/on-prem/telemetry-fields.md."
+        },
+        "transfers": {
+          "title": "5. Internationale Datenübermittlung",
+          "content": "Aster SaaS wird derzeit in einer einzigen Region betrieben. Jede Telemetrie-Zeile wird mit der akzeptierenden SaaS-Region markiert (us / eu / apac / unknown), sichtbar im Admin-Transparenz-Panel und in DSAR-Antworten. Für Kunden in eingeschränkten Rechtsräumen bieten wir Standardvertragsklauseln (SCC) über unsere DPA-Vorlage an."
+        },
+        "subprocessors": {
+          "title": "6. Auftragsverarbeiter",
+          "content": "Stripe (Zahlungsabwicklung, USA), Resend (Transaktionsmails, USA), Cloudflare (Edge-Schutz, weltweit), Oracle Cloud (Hosting, US/EU je nach Vertrag). Neue Auftragsverarbeiter werden mindestens 30 Tage vor Verarbeitungsbeginn im Changelog angekündigt; Bestandskunden können innerhalb dieser Frist widersprechen."
         },
         "security": {
-          "title": "4. Datensicherheit",
-          "content": "Wir setzen branchenübliche Sicherheitsmaßnahmen wie Verschlüsselung bei der Übertragung (TLS 1.3) und im Ruhezustand (AES-256) ein, um Ihre Daten zu schützen."
+          "title": "7. Datensicherheit",
+          "content": "TLS 1.3 bei der Übertragung. Datenbank im Ruhezustand mit AES-256 durch den Cloud-Anbieter verschlüsselt. Telemetrie-HMAC-Schlüssel zusätzlich mit AES-256-GCM-Umhüllung unter einem Schlüssel aus unserer Secret-Management-Lösung verschlüsselt — eine bloße Datenbank-Kompromittierung ergibt keinen verwendbaren Schlüssel. Zugriffe auf Produktionsdaten werden für SOC-2-Nachweise protokolliert; jeder Lesevorgang auf Telemetriezeilen erzeugt einen Audit-Eintrag."
         },
         "retention": {
-          "title": "5. Datenspeicherung",
-          "content": "Wir bewahren Ihre Daten auf, solange Ihr Konto aktiv ist oder wie zur Bereitstellung der Dienste erforderlich. Sie können jederzeit die Löschung Ihrer Daten anfordern."
+          "title": "8. Datenspeicherung",
+          "content": "SaaS-Kontodaten werden so lange aufbewahrt, wie das Konto aktiv ist, plus eine kurze Auslaufphase nach Kündigung. On-Prem-Telemetriezeilen werden 365 Tage nach Empfang durch einen nächtlichen Job automatisch gelöscht. Zugriffs-Audits 90 Tage; Lösch-Audits 7 Jahre als regulatorischer Nachweis. Konfigurierbar über TELEMETRY_RETENTION_DAYS."
         },
         "rights": {
-          "title": "6. Ihre Rechte",
-          "content": "Sie haben das Recht, auf Ihre personenbezogenen Daten zuzugreifen, sie zu korrigieren oder zu löschen. Sie können außerdem eine Kopie Ihrer Daten anfordern oder bestimmten Verarbeitungen widersprechen."
+          "title": "9. Ihre Rechte",
+          "content": "Nach DSGVO / CCPA: Auskunft, Berichtigung, Löschung, Datenübertragbarkeit, Einschränkung, Widerspruch. SaaS-Kontodaten: privacy@aster-lang.cloud. Für On-Prem-Telemetrie nutzen Sie die unten beschriebene Self-Service-DSAR-API — kein Support-Ticket erforderlich."
+        },
+        "dsar": {
+          "title": "10. Self-Service-DSAR für Telemetrie",
+          "content": "POST /api/v1/dsar mit HMAC-signiertem Body, um Auskunft (action='access') oder Löschung (action='delete') anzufordern. dryRun=true zeigt die betroffene Zeilenanzahl ohne Commit. Beide Aktionen werden im unveränderlichen Audit-Log festgehalten, damit wir Erfüllung gegenüber Aufsichtsbehörden nachweisen können. Vollständige curl-Beispiele und Schema in docs/on-prem/dsar.md."
         },
         "cookies": {
-          "title": "7. Cookies und Tracking",
-          "content": "Wir verwenden Cookies und ähnliche Technologien, um Sitzungen aufrechtzuerhalten, Präferenzen zu speichern und Nutzungsstatistiken zu analysieren."
+          "title": "11. Cookies und Tracking",
+          "content": "Wir verwenden First-Party-Cookies für Sitzungskontinuität (Auth, Präferenzen). Keine Werbe-Cookies Dritter. Mixpanel-Produktanalytik wird auf SaaS-Seiten ausschließlich mit anonymisierten Kennungen geladen und kann in den Kontoeinstellungen deaktiviert werden."
         },
         "contact": {
-          "title": "8. Kontakt",
-          "content": "Wenn Sie Fragen zu dieser Datenschutzrichtlinie haben, kontaktieren Sie uns unter privacy@aster-lang.cloud."
+          "title": "12. Kontakt",
+          "content": "Datenschutzfragen: privacy@aster-lang.cloud. Datenschutzbeauftragter: dpo@aster-lang.cloud. EU-Vertreter: siehe docs/on-prem/dpa-template.md. Beschwerden können bei der Aufsichtsbehörde Ihres Wohnsitzes eingereicht werden."
         }
       }
     }

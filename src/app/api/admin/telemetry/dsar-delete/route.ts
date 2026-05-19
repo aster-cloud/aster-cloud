@@ -32,8 +32,8 @@ export const dynamic = 'force-dynamic';
 // Inline validator (zod isn't in this project's runtime deps).
 type Reason = 'dsar' | 'support-request';
 type ParsedRequest =
-  | { subject: 'license'; licenseId: string; reason: Reason; dsarRef?: string }
-  | { subject: 'customer'; customer: string; reason: Reason; dsarRef?: string };
+  | { subject: 'license'; licenseId: string; reason: Reason; dsarRef?: string; dryRun: boolean }
+  | { subject: 'customer'; customer: string; reason: Reason; dsarRef?: string; dryRun: boolean };
 
 function isReason(v: unknown): v is Reason {
   return v === 'dsar' || v === 'support-request';
@@ -46,6 +46,14 @@ function parseRequest(body: unknown): ParsedRequest | { error: string } {
   if (b.dsarRef !== undefined && (typeof b.dsarRef !== 'string' || b.dsarRef.length === 0)) {
     return { error: 'invalid-dsarRef' };
   }
+  // dryRun is optional, defaults false. Anything other than a literal
+  // boolean is rejected so a JSON typo doesn't accidentally apply a
+  // deletion that the operator thought they were previewing.
+  let dryRun = false;
+  if (b.dryRun !== undefined) {
+    if (typeof b.dryRun !== 'boolean') return { error: 'invalid-dryRun' };
+    dryRun = b.dryRun;
+  }
   if (b.subject === 'license') {
     if (typeof b.licenseId !== 'string' || b.licenseId.length === 0 || b.licenseId.length > 256) {
       return { error: 'invalid-licenseId' };
@@ -55,6 +63,7 @@ function parseRequest(body: unknown): ParsedRequest | { error: string } {
       licenseId: b.licenseId,
       reason: b.reason,
       dsarRef: b.dsarRef as string | undefined,
+      dryRun,
     };
   }
   if (b.subject === 'customer') {
@@ -66,6 +75,7 @@ function parseRequest(body: unknown): ParsedRequest | { error: string } {
       customer: b.customer,
       reason: b.reason,
       dsarRef: b.dsarRef as string | undefined,
+      dryRun,
     };
   }
   return { error: 'invalid-subject' };
@@ -99,11 +109,13 @@ export async function POST(req: Request): Promise<NextResponse> {
       reason: parsed.reason,
       requestId,
       dsarRef: parsed.dsarRef,
+      dryRun: parsed.dryRun,
     });
     return NextResponse.json({
       subject: 'license',
       licenseId: parsed.licenseId,
       rowsDeleted: result.rowsDeleted,
+      dryRun: result.dryRun,
     });
   }
 
@@ -113,10 +125,12 @@ export async function POST(req: Request): Promise<NextResponse> {
     reason: parsed.reason,
     requestId,
     dsarRef: parsed.dsarRef,
+    dryRun: parsed.dryRun,
   });
   return NextResponse.json({
     subject: 'customer',
     customer: parsed.customer,
     rowsDeleted: result.rowsDeleted,
+    dryRun: result.dryRun,
   });
 }

@@ -141,7 +141,12 @@ Controller may, by giving Aster `<N>` days written notice:
 - Object to a proposed sub-processor (Aster responds with mitigation or
   termination option).
 - Issue a data subject request — Aster fulfills within GDPR Art 12(3) 1-month
-  window via the DSAR delete endpoint.
+  window. Two equivalent paths:
+  - **Self-service**: controller signs a POST to `/api/v1/dsar` with the
+    per-license HMAC secret; supports `dryRun=true` preview. See
+    `docs/on-prem/dsar.md`.
+  - **Operator-assisted**: email `dpo@aster-lang.cloud` and Aster ops
+    runs the admin DSAR endpoint on controller's behalf.
 
 ## 12. Data Breach Notification
 

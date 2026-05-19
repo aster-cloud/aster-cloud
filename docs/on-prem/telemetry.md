@@ -108,14 +108,21 @@ next section.
 
 ## Deleting prior reports
 
-For a GDPR Art 17 / CCPA right-to-delete request:
+There are two paths for a GDPR Art 17 / CCPA right-to-delete request:
+
+**Self-service (recommended)** — your deployment calls
+`POST /api/v1/dsar` directly with HMAC-signed body. Supports `dryRun`
+preview before commit, returns the exact row count, writes the audit
+row immediately. Full curl examples in [`dsar.md`](./dsar.md).
+
+**Operator-assisted** — for cases where you no longer have access to
+the per-license HMAC secret (e.g. license is fully decommissioned):
 
 1. Email `dpo@aster-lang.cloud` with your license ID (or customer name)
    and DSAR reference number.
 2. Aster operations runs the
-   `POST /api/admin/telemetry/dsar-delete` endpoint:
-   - `subject=license` deletes one license's rows
-   - `subject=customer` deletes all licenses under one customer
+   `POST /api/admin/telemetry/dsar-delete` endpoint (admin-only;
+   supports the same `dryRun` flag as the self-service one).
 3. A `delete-by-dsar` row lands in `TelemetryAccessAudit` with the
    `dsarRef` so we can show regulators "request X received on Y,
    fulfilled on Z" (legal-hold retention: 7 years).
@@ -123,7 +130,7 @@ For a GDPR Art 17 / CCPA right-to-delete request:
    past 365 days (default; customizable via env).
 
 The 1-month GDPR fulfillment SLA is comfortably within reach — actual
-deletion happens within seconds of the admin running the endpoint.
+deletion happens within seconds of either endpoint being called.
 
 ## Data residency
 
