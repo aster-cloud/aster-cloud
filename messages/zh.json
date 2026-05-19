@@ -1385,7 +1385,8 @@
       "license": "许可证",
       "sso": "单点登录",
       "sidebarLabel": "管理员导航",
-      "licenseRevoke": "许可证撤销"
+      "licenseRevoke": "许可证撤销",
+      "issuedLicenses": "已签发许可证"
     },
     "overview": {
       "title": "管理员概览",
@@ -1591,6 +1592,43 @@
         "secretConfigured": "已配置",
         "secretMissing": "未配置",
         "notConfigured": "未配置"
+      }
+    },
+    "issuedLicenses": {
+      "title": "已签发许可证",
+      "subtitle": "Aster 签发过的所有许可证，含续约谱系和最新遥测信号。",
+      "searchPlaceholder": "按客户或许可证 ID 搜索…",
+      "searchButton": "搜索",
+      "emptyMatching": "没有匹配的许可证。",
+      "shownCount": "共 {n} 条。",
+      "cols": {
+        "customer": "客户",
+        "licenseId": "许可证 ID",
+        "tier": "档位",
+        "term": "期限",
+        "signedAt": "签发日",
+        "expiresAt": "到期日",
+        "phase": "状态",
+        "lineage": "谱系",
+        "telemetry": "遥测"
+      },
+      "phase": {
+        "active": "活跃",
+        "expiring-soon": "即将到期",
+        "expired": "已过期",
+        "superseded": "已替代",
+        "pending-renewal": "续约待生效"
+      },
+      "lineage": {
+        "renewedFrom": "← 续自 {id}…",
+        "supersededBy": "→ 由 {id}… 替代"
+      },
+      "telemetry": {
+        "recent": "24 小时内上报",
+        "daysAgo": "{days} 天前上报",
+        "stale": "陈旧（{days}d）",
+        "silent": "已开启但未上报",
+        "notOptedIn": "未开启"
       }
     },
     "licenseRevoke": {

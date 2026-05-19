@@ -34,6 +34,7 @@ type AdminNavItem = {
     | 'riskTier'
     | 'license'
     | 'licenseRevoke'
+    | 'issuedLicenses'
     | 'sso';
   /** Build-time visibility flag. Filter happens at module top — false items
    *  are dropped from the rendered <ul> entirely (no display:none games). */
@@ -72,6 +73,12 @@ const ADMIN_NAV_ITEMS: ReadonlyArray<AdminNavItem> = [
     href: '/admin/license-revoke',
     labelKey: 'licenseRevoke',
     show: IS_SAAS, // SaaS only — Aster ops 撤销客户 license
+    matchStrategy: 'prefix',
+  },
+  {
+    href: '/admin/issued-licenses',
+    labelKey: 'issuedLicenses',
+    show: IS_SAAS, // SaaS only — Aster ops 查看 license 全生命周期
     matchStrategy: 'prefix',
   },
   {

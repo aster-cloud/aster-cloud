@@ -1385,7 +1385,8 @@
       "license": "Lizenz",
       "sso": "Single Sign-On",
       "sidebarLabel": "Admin-Navigation",
-      "licenseRevoke": "Lizenzwiderruf"
+      "licenseRevoke": "Lizenzwiderruf",
+      "issuedLicenses": "Ausgestellte Lizenzen"
     },
     "overview": {
       "title": "Admin-Übersicht",
@@ -1591,6 +1592,43 @@
         "secretConfigured": "Konfiguriert",
         "secretMissing": "Nicht konfiguriert",
         "notConfigured": "Nicht konfiguriert"
+      }
+    },
+    "issuedLicenses": {
+      "title": "Ausgestellte Lizenzen",
+      "subtitle": "Alle jemals von Aster signierten Lizenzen, mit Verlängerungs-Lineage und neuester Telemetrie.",
+      "searchPlaceholder": "Nach Kunde oder Lizenz-ID suchen…",
+      "searchButton": "Suchen",
+      "emptyMatching": "Keine Lizenz entspricht der Suche.",
+      "shownCount": "{n, plural, one {# Zeile} other {# Zeilen}} angezeigt.",
+      "cols": {
+        "customer": "Kunde",
+        "licenseId": "Lizenz-ID",
+        "tier": "Tier",
+        "term": "Laufzeit",
+        "signedAt": "Signiert",
+        "expiresAt": "Läuft ab",
+        "phase": "Phase",
+        "lineage": "Lineage",
+        "telemetry": "Telemetrie"
+      },
+      "phase": {
+        "active": "Aktiv",
+        "expiring-soon": "Läuft bald ab",
+        "expired": "Abgelaufen",
+        "superseded": "Ersetzt",
+        "pending-renewal": "Verlängerung ausstehend"
+      },
+      "lineage": {
+        "renewedFrom": "← verlängert aus {id}…",
+        "supersededBy": "→ ersetzt durch {id}…"
+      },
+      "telemetry": {
+        "recent": "Innerhalb 24h gemeldet",
+        "daysAgo": "Vor {days} Tagen gemeldet",
+        "stale": "Veraltet ({days}d)",
+        "silent": "Aktiviert, schweigt",
+        "notOptedIn": "Nicht aktiviert"
       }
     },
     "licenseRevoke": {

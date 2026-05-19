@@ -1385,7 +1385,8 @@
       "license": "License",
       "sso": "Single sign-on",
       "sidebarLabel": "Admin navigation",
-      "licenseRevoke": "License Revocation"
+      "licenseRevoke": "License Revocation",
+      "issuedLicenses": "Issued licenses"
     },
     "overview": {
       "title": "Admin overview",
@@ -1591,6 +1592,43 @@
         "secretConfigured": "Configured",
         "secretMissing": "Not configured",
         "notConfigured": "Not configured"
+      }
+    },
+    "issuedLicenses": {
+      "title": "Issued licenses",
+      "subtitle": "All licenses ever signed by Aster, with renewal lineage and latest telemetry.",
+      "searchPlaceholder": "Search by customer or license id…",
+      "searchButton": "Search",
+      "emptyMatching": "No licenses match.",
+      "shownCount": "Showing {n, plural, one {# row} other {# rows}}.",
+      "cols": {
+        "customer": "Customer",
+        "licenseId": "License ID",
+        "tier": "Tier",
+        "term": "Term",
+        "signedAt": "Signed",
+        "expiresAt": "Expires",
+        "phase": "Phase",
+        "lineage": "Lineage",
+        "telemetry": "Telemetry"
+      },
+      "phase": {
+        "active": "Active",
+        "expiring-soon": "Expiring soon",
+        "expired": "Expired",
+        "superseded": "Superseded",
+        "pending-renewal": "Pending renewal"
+      },
+      "lineage": {
+        "renewedFrom": "← renewed from {id}…",
+        "supersededBy": "→ superseded by {id}…"
+      },
+      "telemetry": {
+        "recent": "Reported within 1 day",
+        "daysAgo": "Reported {days} days ago",
+        "stale": "Stale ({days}d)",
+        "silent": "Opted-in, silent",
+        "notOptedIn": "Not opted in"
       }
     },
     "licenseRevoke": {
