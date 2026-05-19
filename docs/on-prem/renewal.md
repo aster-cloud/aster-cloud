@@ -76,6 +76,23 @@ NEXT_PUBLIC_LICENSE_RENEWAL_PORTAL_URL=https://aster-lang.cloud/renew
 
 When unset, the admin page falls back to a `mailto:sales` link.
 
+## Where the renewal email goes
+
+The renewal-warning cron uses the `contactEmail` field on the license
+payload (set at sign time by Aster sales) as primary recipient. If that
+field is absent or rejected by Resend, the cron logs the portal URL to
+the `#licenses-ops` Slack channel as a fallback so ops can forward
+manually.
+
+In the SaaS Resend dashboard, renewal email traffic is tagged:
+
+| Tag | Value | Meaning |
+|-----|-------|---------|
+| `flow` | `license-renewal` | All renewal-related traffic |
+| `stage` | `invite` | Pre-payment, contains portal link |
+| `stage` | `success` | Post-payment, contains license key |
+| `threshold` | `30` / `14` / `7` / `1` | Which warning threshold triggered this invite |
+
 ## What if the renewal email never arrives
 
 - Check spam.

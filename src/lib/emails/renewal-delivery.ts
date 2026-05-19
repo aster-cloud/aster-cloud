@@ -21,6 +21,18 @@
 
 import { getResend } from '@/lib/resend';
 
+export interface RenewalInviteEmailInput {
+  to?: string;
+  customer: string;
+  /** Full portal URL with the raw token already appended. */
+  portalUrl: string;
+  daysRemaining: number;
+  /** Current license's expiry — what the email asks the customer to renew before. */
+  expiresAt: Date;
+  /** Threshold that triggered this email (30 / 14 / 7 / 1) — shown for context. */
+  thresholdDays: number;
+}
+
 export interface RenewalSuccessEmailInput {
   to?: string;
   customer: string;
@@ -29,6 +41,41 @@ export interface RenewalSuccessEmailInput {
   deploymentId?: string;
   expiresAt: Date;
   overlapDays: number;
+}
+
+/**
+ * Send the renewal-invitation email — the one that carries the portal
+ * URL when the renewal-warning cron crosses a threshold (30/14/7/1d).
+ *
+ * Throws if no `to` address available or if Resend isn't configured —
+ * cron caller wraps in try/catch + Slack alert so missing email path
+ * doesn't black-hole the trigger.
+ */
+export async function sendRenewalInviteEmail(input: RenewalInviteEmailInput): Promise<void> {
+  if (!input.to) {
+    throw new Error('[renewal-invite-email] no recipient address available');
+  }
+  const resend = await getResend();
+  if (!resend) {
+    throw new Error('[renewal-invite-email] Resend not configured');
+  }
+  const from = process.env.RENEWAL_EMAIL_FROM ?? 'Aster Licensing <licensing@aster-lang.cloud>';
+  const subject =
+    input.daysRemaining <= 1
+      ? `URGENT: Your Aster license expires in less than a day`
+      : `Your Aster license expires in ${input.daysRemaining} days — renew now`;
+  await resend.emails.send({
+    from,
+    to: input.to,
+    subject,
+    text: renderInviteText(input),
+    html: renderInviteHtml(input),
+    tags: [
+      { name: 'flow', value: 'license-renewal' },
+      { name: 'stage', value: 'invite' },
+      { name: 'threshold', value: String(input.thresholdDays) },
+    ],
+  });
 }
 
 export async function sendRenewalSuccessEmail(input: RenewalSuccessEmailInput): Promise<void> {
@@ -142,6 +189,65 @@ ${input.deploymentId ? `ASTER_DEPLOYMENT_ID=${escape(input.deploymentId)}` : 'AS
     `<p>Your previous license key will keep verifying for <strong>${input.overlapDays} days</strong> so you have time to roll out the new env. After that overlap window it will be added to the revocation list automatically.</p>`,
     `<p><strong>New expiry:</strong> ${escape(input.expiresAt.toISOString().slice(0, 10))}</p>`,
     `<p>Questions? Reply to this email or contact <a href="mailto:support@aster-lang.cloud">support@aster-lang.cloud</a>.</p>`,
+    `<p>— Aster Licensing</p>`,
+  ].join('\n');
+}
+
+// ─────────── Invite (pre-renewal) templates ───────────
+
+function renderInviteText(input: RenewalInviteEmailInput): string {
+  const expiryStr = input.expiresAt.toISOString().slice(0, 10);
+  const urgency =
+    input.daysRemaining <= 1
+      ? `Your license expires in less than 24 hours.`
+      : `Your license expires in ${input.daysRemaining} days (${expiryStr}).`;
+  return [
+    `Hi ${input.customer},`,
+    ``,
+    urgency,
+    ``,
+    `Renew now via our self-serve portal (one-time payment, no auto-renew):`,
+    ``,
+    `  ${input.portalUrl}`,
+    ``,
+    `What happens after you click:`,
+    `  1. Confirm the license summary (we re-use your existing tier + deployment binding).`,
+    `  2. Pay via Stripe (one-time, per term).`,
+    `  3. Receive a follow-up email with the new license key + env vars.`,
+    `  4. Update the env on your deployment, restart aster-cloud.`,
+    `  5. Your old license keeps verifying for 7 days so you have time to roll out.`,
+    ``,
+    `This renewal link is valid for 14 days. Need a different tier, multi-license`,
+    `renewal, or to change your deployment binding? Contact sales@aster-lang.cloud.`,
+    ``,
+    `— Aster Licensing`,
+  ].join('\n');
+}
+
+function renderInviteHtml(input: RenewalInviteEmailInput): string {
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const expiryStr = input.expiresAt.toISOString().slice(0, 10);
+  const urgency =
+    input.daysRemaining <= 1
+      ? `Your license expires in less than 24 hours.`
+      : `Your license expires in <strong>${input.daysRemaining} days</strong> (${escape(expiryStr)}).`;
+  return [
+    `<p>Hi ${escape(input.customer)},</p>`,
+    `<p>${urgency}</p>`,
+    `<p style="margin: 24px 0;">`,
+    `  <a href="${escape(input.portalUrl)}" style="background: #6d28d9; color: #fff; padding: 12px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-family: -apple-system, system-ui, sans-serif;">Renew now</a>`,
+    `</p>`,
+    `<p style="font-size: 12px; color: #6b7280;">Or copy this link: <a href="${escape(input.portalUrl)}">${escape(input.portalUrl)}</a></p>`,
+    `<p><strong>What happens after you click:</strong></p>`,
+    `<ol>`,
+    `  <li>Confirm the license summary (we re-use your existing tier + deployment binding).</li>`,
+    `  <li>Pay via Stripe (one-time, per term — no auto-renew).</li>`,
+    `  <li>Receive a follow-up email with the new license key + env vars.</li>`,
+    `  <li>Update env on your deployment, restart aster-cloud.</li>`,
+    `  <li>Your old license keeps verifying for 7 days so you have time to roll out.</li>`,
+    `</ol>`,
+    `<p style="font-size: 12px; color: #6b7280;">This renewal link is valid for 14 days. Need a different tier, multi-license renewal, or to change your deployment binding? Contact <a href="mailto:sales@aster-lang.cloud">sales@aster-lang.cloud</a>.</p>`,
     `<p>— Aster Licensing</p>`,
   ].join('\n');
 }

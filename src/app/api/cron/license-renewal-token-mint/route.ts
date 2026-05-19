@@ -37,6 +37,7 @@ import { requireCronAuth } from '@/lib/cron-auth';
 import { IS_SAAS } from '@/lib/deployment-mode';
 import { db, issuedLicenses, renewalTokens } from '@/lib/prisma';
 import { mintRenewalToken, markTokenEmailSent } from '@/lib/renewal-tokens';
+import { sendRenewalInviteEmail } from '@/lib/emails/renewal-delivery';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,8 +85,22 @@ interface MintReport {
   customer: string;
   daysRemaining: number;
   threshold: number;
-  outcome: 'minted' | 'skipped-existing-token' | 'mint-failed' | 'email-failed';
+  outcome:
+    | 'emailed'
+    | 'skipped-existing-token'
+    | 'mint-failed'
+    | 'email-failed-slack-fallback'
+    | 'email-failed-no-recipient'
+    | 'fully-failed';
   portalUrl?: string;
+  emailRecipient?: string;
+}
+
+/** Best-effort extract contact email from a v3 license payload. */
+function extractContactEmail(payloadJson: unknown): string | undefined {
+  if (!payloadJson || typeof payloadJson !== 'object') return undefined;
+  const v = (payloadJson as Record<string, unknown>).contactEmail;
+  return typeof v === 'string' && v.includes('@') ? v : undefined;
 }
 
 export async function POST(req: NextRequest) {
@@ -169,30 +184,68 @@ export async function POST(req: NextRequest) {
       ? `${portalBase}/renew/${minted.raw}`
       : `/renew/${minted.raw}`;
 
-    // 邮件实际发送由 A8 的 email module 接管；本 cron 先打 Slack 通知 ops 拿到链接，
-    // 让产品早期能人工兜底；email module 上线后这里同步发邮件 + markTokenEmailSent。
+    // Email delivery path. Order of preference:
+    //   1. Real customer email (Resend) — primary contract.
+    //   2. Ops Slack — fallback so ops can forward the link manually if email
+    //      bounces or env's not set yet.
+    // Token is marked email-sent if *either* succeeded — at least one channel
+    // got the link out. Cron tick won't re-mint inside the threshold window.
+    const recipient = extractContactEmail(row.payloadJson);
+    let emailOk = false;
+    let emailError: string | null = null;
+    if (recipient) {
+      try {
+        await sendRenewalInviteEmail({
+          to: recipient,
+          customer: row.customer,
+          portalUrl,
+          daysRemaining,
+          expiresAt: row.expiresAt,
+          thresholdDays: threshold,
+        });
+        emailOk = true;
+      } catch (err) {
+        emailError = err instanceof Error ? err.message : String(err);
+      }
+    }
+
+    // Always Slack-audit so ops have visibility regardless of email status.
     const slackOk = await postSlack(
-      `[renewal-mint] license=${row.licenseId} customer=${row.customer} daysRemaining=${daysRemaining} threshold=${threshold}d portal=${portalUrl}`,
+      `[renewal-mint] license=${row.licenseId} customer=${row.customer} daysRemaining=${daysRemaining} threshold=${threshold}d portal=${portalUrl} email=${emailOk ? 'sent' : recipient ? `FAILED (${emailError})` : 'NO_RECIPIENT'}`,
     );
-    if (slackOk) {
+
+    if (emailOk || slackOk) {
       await markTokenEmailSent(minted.hash, { now });
     }
+
+    let outcome: MintReport['outcome'];
+    if (emailOk) outcome = 'emailed';
+    else if (!recipient) outcome = 'email-failed-no-recipient';
+    else if (slackOk) outcome = 'email-failed-slack-fallback';
+    else outcome = 'fully-failed';
 
     report.push({
       licenseId: row.licenseId,
       customer: row.customer,
       daysRemaining,
       threshold,
-      outcome: slackOk ? 'minted' : 'email-failed',
+      outcome,
       portalUrl,
+      emailRecipient: recipient,
     });
   }
 
   return NextResponse.json({
     scanned: rows.length,
-    minted: report.filter((r) => r.outcome === 'minted').length,
+    emailed: report.filter((r) => r.outcome === 'emailed').length,
     skipped: report.filter((r) => r.outcome === 'skipped-existing-token').length,
-    failed: report.filter((r) => r.outcome === 'mint-failed' || r.outcome === 'email-failed').length,
+    failed: report.filter(
+      (r) =>
+        r.outcome === 'mint-failed' ||
+        r.outcome === 'fully-failed' ||
+        r.outcome === 'email-failed-no-recipient',
+    ).length,
+    slackFallback: report.filter((r) => r.outcome === 'email-failed-slack-fallback').length,
     items: report,
   });
 }
