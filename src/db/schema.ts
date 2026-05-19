@@ -1115,6 +1115,29 @@ export const licenseTelemetry = pgTable(
   ]
 );
 
+// Access + deletion audit for LicenseTelemetry rows.
+// SOC 2 CC6.1 / ISO 27001 A.12.4.1 require recording who-touched-what-when
+// on personal-context data. Reads kept 90d, deletes kept 7y (legal hold).
+export const telemetryAccessAudit = pgTable(
+  'TelemetryAccessAudit',
+  {
+    id: text('id').primaryKey().notNull(),
+    at: timestamp('at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    action: text('action').notNull(),
+    actorId: text('actor_id').notNull(),
+    actorEmail: text('actor_email'),
+    subjectKind: text('subject_kind').notNull(),
+    subjectKey: text('subject_key').notNull(),
+    metadata: jsonb('metadata'),
+    requestId: text('request_id'),
+  },
+  (table) => [
+    index('TelemetryAccessAudit_at_idx').on(desc(table.at)),
+    index('TelemetryAccessAudit_subject_idx').on(table.subjectKind, table.subjectKey),
+    index('TelemetryAccessAudit_actor_idx').on(table.actorId, desc(table.at)),
+  ]
+);
+
 // Audit trail of every license ever signed. License key bytes are not
 // stored (show-once contract); we keep enough metadata to drive lifecycle
 // + ops UI + replay reconstruction.
@@ -1419,3 +1442,6 @@ export type NewIssuedLicense = InferInsertModel<typeof issuedLicenses>;
 
 export type LicenseTelemetry = InferSelectModel<typeof licenseTelemetry>;
 export type NewLicenseTelemetry = InferInsertModel<typeof licenseTelemetry>;
+
+export type TelemetryAccessAudit = InferSelectModel<typeof telemetryAccessAudit>;
+export type NewTelemetryAccessAudit = InferInsertModel<typeof telemetryAccessAudit>;

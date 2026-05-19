@@ -1,0 +1,64 @@
+/**
+ * POST /api/cron/telemetry-retention-gc — daily retention sweep on
+ * LicenseTelemetry + TelemetryAccessAudit.
+ *
+ * GDPR Art 5(1)(e) storage limitation: we promise 12-month rolling
+ * retention to customers; this cron makes that contract self-executing
+ * (not a docs-only promise). Run nightly; idempotent — once a row is
+ * past cutoff it's gone, repeat runs no-op until new rows age out.
+ *
+ * Defaults in DEFAULT_RETENTION:
+ *   LicenseTelemetry          365 d
+ *   read audit rows            90 d (lower-sensitivity, cheap to sweep)
+ *   delete audit rows        7 * 365 d (legal hold; rarely reaches)
+ *
+ * Each tick also writes its own retention-gc audit row (in deleteTelemetryByLicense
+ * style) so the audit trail has "yes the cleanup actually ran on date X
+ * and reaped N rows".
+ *
+ * SaaS-only.
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { requireCronAuth } from '@/lib/cron-auth';
+import { IS_SAAS } from '@/lib/deployment-mode';
+import { runRetentionGc } from '@/lib/telemetry/access-audit';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  if (!IS_SAAS) return new NextResponse(null, { status: 404 });
+  const guard = requireCronAuth(req);
+  if (guard) return guard;
+
+  // Optional env overrides for emergencies (e.g. shrink retention to 30d
+  // for incident response). Default sticks to the privacy notice.
+  const cfg = {
+    telemetryMaxAgeDays: parseDays(
+      process.env.TELEMETRY_RETENTION_DAYS,
+      365,
+    ),
+    auditReadMaxAgeDays: parseDays(
+      process.env.TELEMETRY_AUDIT_READ_RETENTION_DAYS,
+      90,
+    ),
+    auditDeleteMaxAgeDays: parseDays(
+      process.env.TELEMETRY_AUDIT_DELETE_RETENTION_DAYS,
+      7 * 365,
+    ),
+  };
+
+  const result = await runRetentionGc({ config: cfg });
+  return NextResponse.json({
+    ok: true,
+    config: cfg,
+    ...result,
+  });
+}
+
+function parseDays(value: string | undefined, fallback: number): number {
+  const n = Number.parseInt(value ?? '', 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  return fallback;
+}

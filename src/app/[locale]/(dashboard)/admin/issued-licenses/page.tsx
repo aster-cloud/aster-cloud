@@ -23,6 +23,7 @@ import { desc, eq } from 'drizzle-orm';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import { IS_SAAS } from '@/lib/deployment-mode';
 import { db, issuedLicenses, licenseTelemetry } from '@/lib/prisma';
+import { appendAccessAudit } from '@/lib/telemetry/access-audit';
 import { IssuedLicensesTable } from './components/issued-licenses-table';
 
 export const runtime = 'nodejs';
@@ -75,6 +76,26 @@ export default async function IssuedLicensesPage({ params, searchParams }: Props
       return { ...row, latestTelemetry: latest ?? null };
     }),
   );
+
+  // SOC 2 CC6.1 access audit. Single row per page render (not per result
+  // row) — the action is "ops viewed the list", granularity at session.
+  // Best-effort: failure here does NOT block render. We log to console
+  // so misconfigured DB shows up in ops alerts but customer ops can
+  // still see their data. (Strict mode is on the delete paths, not reads.)
+  try {
+    await appendAccessAudit({
+      action: 'read-list',
+      actorId: admin.userId,
+      subjectKind: 'all-customer',
+      subjectKey: q ? `q=${q}` : 'all',
+      metadata: {
+        resultCount: enriched.length,
+        scannedCount: rows.length,
+      },
+    });
+  } catch (auditErr) {
+    console.error('[issued-licenses] access audit write failed', auditErr);
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
