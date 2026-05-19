@@ -1,5 +1,10 @@
 # 实施计划 v2：deploymentMode 特性开关（SaaS / On-Prem）
 
+> **🔖 已落地（2026-05）。架构决策摘要见
+> [docs/architecture/decisions](../../docs/architecture/decisions/README.md)
+> 的 ADR-0001 / 0002 / 0003。** 本文件保留为详细 plan 历史档案，新代码
+> 改动只需理解 ADR 即可。
+>
 > 工作区：`/Users/rpang/IdeaProjects/aster-cloud`
 > 日期：2026-05-18
 > v2 修订基于 codex MCP 审查（session `019e387c-0c75-7e51-bcbd-4dfb3e96a201`）
