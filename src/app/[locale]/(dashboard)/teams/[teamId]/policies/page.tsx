@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
@@ -46,11 +46,7 @@ export default function TeamPoliciesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, [teamId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [teamRes, policiesRes] = await Promise.all([
         fetch(`/api/teams/${teamId}`),
@@ -75,7 +71,11 @@ export default function TeamPoliciesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [teamId, t]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const canCreatePolicy = userRole === 'owner' || userRole === 'admin' || userRole === 'member';
 

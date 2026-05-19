@@ -52,7 +52,6 @@ export function buildPersonalTeamSlug(opts: {
 
   const stripped = baseLabel
     .normalize('NFKD')
-    // eslint-disable-next-line no-misleading-character-class
     .replace(/[̀-ͯ]/g, '');
 
   const safeBase =

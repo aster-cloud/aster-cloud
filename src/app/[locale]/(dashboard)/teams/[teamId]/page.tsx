@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
@@ -51,11 +51,7 @@ export default function TeamDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchTeamData();
-  }, [teamId]);
-
-  const fetchTeamData = async () => {
+  const fetchTeamData = useCallback(async () => {
     try {
       // 并行获取所有数据
       const [teamRes, membersRes, policiesRes, invitationsRes] = await Promise.all([
@@ -94,7 +90,11 @@ export default function TeamDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [teamId, t]);
+
+  useEffect(() => {
+    fetchTeamData();
+  }, [fetchTeamData]);
 
   const canManageSettings = userRole === 'owner' || userRole === 'admin';
 

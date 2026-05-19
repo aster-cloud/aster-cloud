@@ -42,8 +42,6 @@ interface MonacoPolicyEditorProps {
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
   /** 启用 AI inline 补全（需要后端 /api/v1/ai/complete 端点） */
   enableAICompletion?: boolean;
-  /** 租户 ID（AI 补全请求使用） */
-  tenantId?: string;
   /** AI Panel 切换回调（Ctrl+Shift+G 触发） */
   onToggleAIPanel?: () => void;
   /** AI 解释选中代码回调（Ctrl+Shift+E 触发） */
@@ -366,7 +364,6 @@ export function MonacoPolicyEditor({
   debounceDelay = 300,
   onEditorReady,
   enableAICompletion = false,
-  tenantId,
   onToggleAIPanel,
   onExplainSelection,
 }: MonacoPolicyEditorProps) {
@@ -560,7 +557,10 @@ export function MonacoPolicyEditor({
       (globalThis as { monaco?: typeof import('monaco-editor') }).monaco = monaco;
       onEditorReady?.(editor);
     },
-    [lexicon, isDark, vocabulary, onEditorReady, enableAICompletion, tenantId, locale, onToggleAIPanel, onExplainSelection]
+    // tenantId 在 callback body 内已不再被引用（R23 之后 server-side
+    // proxy 从 session 取 tenantId，不再依赖 caller-supplied X-Tenant-Id），
+    // 故从 deps 移除，避免不必要的 callback 重建。
+    [lexicon, isDark, vocabulary, onEditorReady, enableAICompletion, locale, onToggleAIPanel, onExplainSelection]
   );
 
   // 主题切换时更新

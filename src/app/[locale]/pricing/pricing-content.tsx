@@ -107,7 +107,6 @@ export function PricingContent({
     <main className="min-h-screen bg-bg text-fg">
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 

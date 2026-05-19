@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -75,11 +75,7 @@ export default function TeamMembersPage() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isActioning, setIsActioning] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [teamId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [teamRes, membersRes, invitationsRes] = await Promise.all([
         fetch(`/api/teams/${teamId}`),
@@ -123,7 +119,11 @@ export default function TeamMembersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [teamId, t]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // 加载更多成员
   const loadMoreMembers = async () => {

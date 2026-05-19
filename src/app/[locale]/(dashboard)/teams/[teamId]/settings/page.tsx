@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
@@ -42,11 +42,7 @@ export default function TeamSettingsPage() {
   const [transferTargetId, setTransferTargetId] = useState<string>('');
   const [isTransferring, setIsTransferring] = useState(false);
 
-  useEffect(() => {
-    fetchTeam();
-  }, [teamId]);
-
-  const fetchTeam = async () => {
+  const fetchTeam = useCallback(async () => {
     try {
       const res = await fetch(`/api/teams/${teamId}`);
       if (!res.ok) {
@@ -63,7 +59,11 @@ export default function TeamSettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [teamId, t]);
+
+  useEffect(() => {
+    fetchTeam();
+  }, [fetchTeam]);
 
   const canEdit = userRole === 'owner' || userRole === 'admin';
   const canDelete = userRole === 'owner';
