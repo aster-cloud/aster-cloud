@@ -5,8 +5,17 @@ import { invalidatePlanCache } from '@/lib/plan-gate-client';
 import { pushUserSnapshot } from '@/lib/snapshot-pusher';
 import type { PlanType } from '@/lib/plans';
 import { ensurePersonalTeam, type WebhookHandler } from './_shared';
+import { handleRenewalCheckoutCompleted } from './renewal-checkout-completed';
 
 export const handleCheckoutCompleted: WebhookHandler<Stripe.Checkout.Session> = async (session) => {
+  // 路由分叉：renewal 流程的 checkout session 自带 renewalTokenHash metadata
+  // → 不写 users 表，而是触发 license 签发 + IssuedLicense 写入 + 邮件
+  // 交付。SaaS subscription 走原有路径，二者 metadata 互斥。
+  if (session.metadata?.renewalTokenHash) {
+    await handleRenewalCheckoutCompleted(session);
+    return;
+  }
+
   const userId = session.client_reference_id;
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;

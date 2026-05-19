@@ -20,6 +20,9 @@ export default defineConfig({
     testTimeout: 60000,
     // 详细输出
     reporters: ['verbose'],
+    // 集成测试共用一个 Postgres + 部分共用容器；并行跑会出现 race
+    // （license-e2e 和 renewal-flow 都 TRUNCATE 同一组表）。强制串行。
+    fileParallelism: false,
     // license-runtime-gate / deployment-mode 在模块加载时即固化 _RUNTIME；
     // 集成测试必须以 on-prem 模式跑，否则 IS_SAAS=true 会让 gate 短路。
     env: {

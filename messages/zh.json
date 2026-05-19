@@ -1519,6 +1519,7 @@
         "refreshSuccess": "缓存已更新",
         "refreshError": "刷新失败 — 请查看诊断信息",
         "contactRenewal": "联系续约团队",
+        "renewNow": "立即续约",
         "downloadDiagnostics": "下载诊断包"
       },
       "time": {
@@ -1655,6 +1656,38 @@
         "missing": "未配置 LICENSE_KEY。请设置环境变量以恢复管理员操作。"
       },
       "viewLicense": "查看许可证状态"
+    }
+  },
+  "renewal": {
+    "portal": {
+      "valid": {
+        "title": "续约你的 Aster 许可证",
+        "subtitle": "一键完成订阅延续。",
+        "footer": "续约即代表同意 Aster 标准企业条款。"
+      },
+      "summary": {
+        "customer": "客户",
+        "licenseId": "当前许可证 ID",
+        "deployment": "部署",
+        "currentExpiry": "当前到期日"
+      },
+      "checkout": {
+        "continue": "继续到结账页",
+        "starting": "正在打开 Stripe…",
+        "genericError": "无法启动结账。请重试或联系客服。"
+      },
+      "invalid": {
+        "title": "续约链接无效",
+        "body": "此链接无效。如果是从邮件复制粘贴，请确认未被截断。"
+      },
+      "expired": {
+        "title": "续约链接已过期",
+        "body": "续约链接 14 天内有效。请联系销售获取新链接。"
+      },
+      "alreadyConsumed": {
+        "title": "续约已在进行",
+        "body": "此链接已被使用。如已完成支付，请检查邮箱获取新许可证；否则请联系客服。"
+      }
     }
   },
   "decisionTrace": {

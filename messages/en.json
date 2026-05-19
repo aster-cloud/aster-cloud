@@ -1519,6 +1519,7 @@
         "refreshSuccess": "Cache updated",
         "refreshError": "Refresh failed — see diagnostics",
         "contactRenewal": "Contact renewal team",
+        "renewNow": "Renew now",
         "downloadDiagnostics": "Download diagnostics bundle"
       },
       "time": {
@@ -1655,6 +1656,38 @@
         "missing": "No LICENSE_KEY configured. Set the environment variable to restore admin operations."
       },
       "viewLicense": "View license status"
+    }
+  },
+  "renewal": {
+    "portal": {
+      "valid": {
+        "title": "Renew your Aster license",
+        "subtitle": "One click to continue your subscription.",
+        "footer": "By renewing you agree to Aster's standard enterprise terms."
+      },
+      "summary": {
+        "customer": "Customer",
+        "licenseId": "Current license ID",
+        "deployment": "Deployment",
+        "currentExpiry": "Current expiry"
+      },
+      "checkout": {
+        "continue": "Continue to checkout",
+        "starting": "Opening Stripe…",
+        "genericError": "Could not start checkout. Please try again or contact support."
+      },
+      "invalid": {
+        "title": "Renewal link not recognised",
+        "body": "This link is invalid. If you copy-pasted it from email, double check it isn't truncated."
+      },
+      "expired": {
+        "title": "Renewal link expired",
+        "body": "Renewal links are valid for 14 days. Please request a fresh link."
+      },
+      "alreadyConsumed": {
+        "title": "Renewal already in progress",
+        "body": "This link was already used. If you completed payment, check your email for the new license key. Otherwise contact support."
+      }
     }
   },
   "decisionTrace": {

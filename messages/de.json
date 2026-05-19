@@ -1519,6 +1519,7 @@
         "refreshSuccess": "Cache aktualisiert",
         "refreshError": "Aktualisierung fehlgeschlagen — siehe Diagnosedaten",
         "contactRenewal": "Verlängerungsteam kontaktieren",
+        "renewNow": "Jetzt verlängern",
         "downloadDiagnostics": "Diagnosepaket herunterladen"
       },
       "time": {
@@ -1655,6 +1656,38 @@
         "missing": "Keine LICENSE_KEY konfiguriert. Setzen Sie die Umgebungsvariable, um Admin-Operationen wiederherzustellen."
       },
       "viewLicense": "Lizenzstatus anzeigen"
+    }
+  },
+  "renewal": {
+    "portal": {
+      "valid": {
+        "title": "Aster-Lizenz verlängern",
+        "subtitle": "Ein Klick zur Verlängerung Ihres Abonnements.",
+        "footer": "Mit der Verlängerung akzeptieren Sie die Aster-Enterprise-Bedingungen."
+      },
+      "summary": {
+        "customer": "Kunde",
+        "licenseId": "Aktuelle Lizenz-ID",
+        "deployment": "Deployment",
+        "currentExpiry": "Aktuelles Ablaufdatum"
+      },
+      "checkout": {
+        "continue": "Weiter zur Kasse",
+        "starting": "Stripe wird geöffnet…",
+        "genericError": "Kasse konnte nicht gestartet werden. Bitte erneut versuchen oder Support kontaktieren."
+      },
+      "invalid": {
+        "title": "Verlängerungslink ungültig",
+        "body": "Dieser Link ist ungültig. Falls Sie ihn aus einer E-Mail kopiert haben, prüfen Sie auf Abschnitte."
+      },
+      "expired": {
+        "title": "Verlängerungslink abgelaufen",
+        "body": "Verlängerungslinks sind 14 Tage gültig. Kontaktieren Sie den Vertrieb für einen neuen Link."
+      },
+      "alreadyConsumed": {
+        "title": "Verlängerung läuft bereits",
+        "body": "Dieser Link wurde bereits genutzt. Falls Sie die Zahlung abgeschlossen haben, prüfen Sie Ihre E-Mails. Andernfalls kontaktieren Sie den Support."
+      }
     }
   },
   "decisionTrace": {

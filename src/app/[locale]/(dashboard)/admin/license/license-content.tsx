@@ -29,9 +29,15 @@ export interface LicenseCacheMeta {
 interface Props {
   result: LicenseResult;
   cacheMeta?: LicenseCacheMeta | null;
+  /** SaaS renewal portal URL (per-deployment env). undefined → mailto fallback. */
+  renewalPortalBaseUrl?: string;
 }
 
-export function LicenseStatusContent({ result, cacheMeta = null }: Props) {
+export function LicenseStatusContent({
+  result,
+  cacheMeta = null,
+  renewalPortalBaseUrl,
+}: Props) {
   const t = useTranslations('admin.license');
 
   return (
@@ -51,7 +57,11 @@ export function LicenseStatusContent({ result, cacheMeta = null }: Props) {
         />
       )}
       <RevocationStatusPanel result={result} cacheMeta={cacheMeta} />
-      <OperatorActions result={result} cacheMeta={cacheMeta} />
+      <OperatorActions
+        result={result}
+        cacheMeta={cacheMeta}
+        renewalPortalBaseUrl={renewalPortalBaseUrl}
+      />
       <SupportDiagnostics result={result} />
     </div>
   );

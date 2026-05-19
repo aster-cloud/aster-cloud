@@ -1051,6 +1051,70 @@ export const revocationPublications = pgTable(
 );
 
 // ============================================
+// Renewal portal (v3) — see ADR + drizzle 0013/0014
+// ============================================
+
+// Hash-only token store (plaintext never persisted). One row per renewal
+// invitation; ops uses token to reach /renew/<token> which kicks off
+// Stripe checkout. After checkout success the row's consumedAt is stamped.
+export const renewalTokens = pgTable(
+  'RenewalToken',
+  {
+    tokenHash: text('token_hash').primaryKey().notNull(),
+    licenseId: text('license_id').notNull(),
+    customer: text('customer').notNull(),
+    oldDeploymentBinding: jsonb('old_deployment_binding').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: true }).notNull(),
+    emailSentAt: timestamp('email_sent_at', { mode: 'date', withTimezone: true }),
+    consumedAt: timestamp('consumed_at', { mode: 'date', withTimezone: true }),
+  },
+  (table) => [
+    index('RenewalToken_license_expires_idx').on(table.licenseId, desc(table.expiresAt)),
+    index('RenewalToken_expires_idx').on(table.expiresAt),
+  ]
+);
+
+// Audit trail of every license ever signed. License key bytes are not
+// stored (show-once contract); we keep enough metadata to drive lifecycle
+// + ops UI + replay reconstruction.
+export const issuedLicenses = pgTable(
+  'IssuedLicense',
+  {
+    licenseId: text('license_id').primaryKey().notNull(),
+    customer: text('customer').notNull(),
+    deploymentBinding: jsonb('deployment_binding').notNull(),
+    payloadJson: jsonb('payload_json').notNull(),
+    payloadHash: text('payload_hash').notNull(),
+    signingKeyId: text('signing_key_id').notNull(),
+    signedAt: timestamp('signed_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: true }).notNull(),
+    tier: text('tier').notNull(),
+    licenseTerm: text('license_term').notNull(),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id'),
+    renewedFromLicenseId: text('renewed_from_license_id'),
+    supersededAt: timestamp('superseded_at', { mode: 'date', withTimezone: true }),
+    supersededBy: text('superseded_by'),
+  },
+  (table) => [
+    index('IssuedLicense_stripe_session_idx').on(table.stripeCheckoutSessionId),
+    index('IssuedLicense_stripe_subscription_idx').on(table.stripeSubscriptionId),
+    index('IssuedLicense_customer_expires_idx').on(table.customer, desc(table.expiresAt)),
+    index('IssuedLicense_renewed_from_idx').on(table.renewedFromLicenseId),
+    // Partial index for the overlap-expiry cron: rows pending supersede
+    index('IssuedLicense_pending_supersede_idx').on(
+      table.supersededBy,
+      table.expiresAt,
+    ),
+  ]
+);
+
+// ============================================
 // Relations
 // ============================================
 
@@ -1308,3 +1372,9 @@ export type NewRevokedLicense = InferInsertModel<typeof revokedLicenses>;
 
 export type RevocationPublication = InferSelectModel<typeof revocationPublications>;
 export type NewRevocationPublication = InferInsertModel<typeof revocationPublications>;
+
+export type RenewalToken = InferSelectModel<typeof renewalTokens>;
+export type NewRenewalToken = InferInsertModel<typeof renewalTokens>;
+
+export type IssuedLicense = InferSelectModel<typeof issuedLicenses>;
+export type NewIssuedLicense = InferInsertModel<typeof issuedLicenses>;

@@ -85,6 +85,20 @@
       "when": 1779020000000,
       "tag": "0012_license_cache_notify_record",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779030000000,
+      "tag": "0013_renewal_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779040000000,
+      "tag": "0014_issued_licenses",
+      "breakpoints": true
     }
   ]
 }

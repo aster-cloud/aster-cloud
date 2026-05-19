@@ -43,7 +43,19 @@ export default async function LicensePage({ params }: Props) {
     revocationState,
   });
 
-  return <LicenseStatusContent result={result} cacheMeta={cacheMeta} />;
+  // 当 on-prem deployment 配了 SaaS-hosted renewal portal URL 时，把它
+  // 透传给 client component；客户在邮件里拿到带 token 的具体 URL，admin
+  // 上的 "Renew now" 按钮跳到那个 token URL 完成 self-serve 续约。
+  // 未配置则 client 端 fallback 到 mailto sales。
+  const renewalPortalBaseUrl = process.env.NEXT_PUBLIC_LICENSE_RENEWAL_PORTAL_URL?.trim() || undefined;
+
+  return (
+    <LicenseStatusContent
+      result={result}
+      cacheMeta={cacheMeta}
+      renewalPortalBaseUrl={renewalPortalBaseUrl}
+    />
+  );
 }
 
 export const metadata = {

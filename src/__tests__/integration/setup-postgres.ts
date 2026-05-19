@@ -50,7 +50,9 @@ export async function cleanupTestDb(): Promise<void> {
       TRUNCATE TABLE
         "LicenseCache",
         "RevokedLicense",
-        "RevocationPublication"
+        "RevocationPublication",
+        "RenewalToken",
+        "IssuedLicense"
       RESTART IDENTITY CASCADE
     `,
     new Promise((_, reject) =>

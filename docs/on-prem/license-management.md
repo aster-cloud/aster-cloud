@@ -189,16 +189,22 @@ Standard SKU 在 revocation endpoint 不可达时使用 7 天 grace period（来
 
 ## 7. 续期流程
 
-建议在到期前 60 天联系销售续期。系统会在剩余不足 14 天时显示 `verified-expiring-soon`。
+**v3 起：默认走自助续约 portal**（详见 [`renewal.md`](./renewal.md)）。
+ops 在 30/14/7/1 天阈值会收到带 portal 链接的邮件 → 一键 Stripe 支付 →
+系统自动签发新 license + 邮件交付。`/admin/license` 页面的 "Renew now"
+按钮（当配置了 `NEXT_PUBLIC_LICENSE_RENEWAL_PORTAL_URL` 时）会跳到 portal。
 
-续期步骤：
+旧式 sales-managed 续期（仍可用）：
 
 1. 联系销售或 support 获取新 v2 license
 2. 更新 secret 中的 `LICENSE_KEY`
 3. 重启 Aster on-prem 服务（或滚动重启 pods）
 4. 打开 admin license 页面确认状态为 `verified-active`
 
-> 关键：v2 license 是 Ed25519 签名 payload，签名工具在 Aster Vault 上运行（2 人 ceremony 审批）。客户不能自己签发或延期 license。
+> 关键：v2/v3 license 都是 Ed25519 签名 payload，签名走 Aster Vault 上的
+> license-signing-api（2 人 ceremony 审批或 service-account 自助续约）。
+> 客户不能自己签发或延期 license。换 deployment slug 仍需走 sales（自助
+> 续约会保留原 binding）。
 
 ---
 
