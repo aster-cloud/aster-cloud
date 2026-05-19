@@ -1522,6 +1522,19 @@
         "renewNow": "Jetzt verlängern",
         "downloadDiagnostics": "Diagnosepaket herunterladen"
       },
+      "telemetry": {
+        "heading": "Nutzungsdaten (Opt-in)",
+        "optedOut": "Telemetrie ist deaktiviert. Nichts verlässt dieses Deployment.",
+        "optedInNoUpload": "Telemetrie ist aktiviert. Es wurde noch nichts gesendet.",
+        "lastAttempt": "Letzter Versuch:",
+        "viewSentBody": "An Aster gesendeten Inhalt anzeigen",
+        "unknownError": "Unbekannter Fehler",
+        "outcome": {
+          "accepted": "Akzeptiert",
+          "deduped": "Dedupliziert (gleiches Fenster bereits empfangen)",
+          "failed": "Fehlgeschlagen"
+        }
+      },
       "time": {
         "minutesAgo": "{minutes, plural, one {vor # Minute} other {vor # Minuten}}",
         "hoursAgo": "{hours, plural, one {vor # Stunde} other {vor # Stunden}}",

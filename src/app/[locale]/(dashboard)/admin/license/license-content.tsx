@@ -17,6 +17,10 @@ import { LicenseDetails } from './components/license-details';
 import { RevocationStatusPanel } from './components/revocation-status-panel';
 import { OperatorActions } from './components/operator-actions';
 import { SupportDiagnostics } from './components/support-diagnostics';
+import {
+  TelemetryTransparencyPanel,
+  type TelemetryUploadRecord,
+} from './components/telemetry-transparency-panel';
 
 export interface LicenseCacheMeta {
   lastSuccessfulRevocationCheckAt?: string;
@@ -31,12 +35,18 @@ interface Props {
   cacheMeta?: LicenseCacheMeta | null;
   /** SaaS renewal portal URL (per-deployment env). undefined → mailto fallback. */
   renewalPortalBaseUrl?: string;
+  /** Whether ASTER_TELEMETRY_OPT_IN is set on this deployment. */
+  telemetryOptedIn?: boolean;
+  /** Last telemetry upload record from LicenseCache.last_telemetry_upload; null if none. */
+  lastTelemetryUpload?: unknown;
 }
 
 export function LicenseStatusContent({
   result,
   cacheMeta = null,
   renewalPortalBaseUrl,
+  telemetryOptedIn = false,
+  lastTelemetryUpload = null,
 }: Props) {
   const t = useTranslations('admin.license');
 
@@ -61,6 +71,10 @@ export function LicenseStatusContent({
         result={result}
         cacheMeta={cacheMeta}
         renewalPortalBaseUrl={renewalPortalBaseUrl}
+      />
+      <TelemetryTransparencyPanel
+        optedIn={telemetryOptedIn}
+        lastUpload={(lastTelemetryUpload as TelemetryUploadRecord | null) ?? null}
       />
       <SupportDiagnostics result={result} />
     </div>

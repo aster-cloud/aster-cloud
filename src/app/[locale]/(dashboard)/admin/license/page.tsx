@@ -38,7 +38,7 @@ export default async function LicensePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { revocationState, cacheMeta } = await loadCacheAsRevocationState();
+  const { revocationState, cacheMeta, lastTelemetryUpload } = await loadCacheAsRevocationState();
   const result = await verifyLicenseKey(process.env.LICENSE_KEY, {
     revocationState,
   });
@@ -48,12 +48,15 @@ export default async function LicensePage({ params }: Props) {
   // 上的 "Renew now" 按钮跳到那个 token URL 完成 self-serve 续约。
   // 未配置则 client 端 fallback 到 mailto sales。
   const renewalPortalBaseUrl = process.env.NEXT_PUBLIC_LICENSE_RENEWAL_PORTAL_URL?.trim() || undefined;
+  const telemetryOptedIn = process.env.ASTER_TELEMETRY_OPT_IN === '1';
 
   return (
     <LicenseStatusContent
       result={result}
       cacheMeta={cacheMeta}
       renewalPortalBaseUrl={renewalPortalBaseUrl}
+      telemetryOptedIn={telemetryOptedIn}
+      lastTelemetryUpload={lastTelemetryUpload}
     />
   );
 }
@@ -72,6 +75,7 @@ export const metadata = {
 async function loadCacheAsRevocationState(): Promise<{
   revocationState: RevocationState | null;
   cacheMeta: LicenseCacheMeta | null;
+  lastTelemetryUpload: unknown;
 }> {
   try {
     const now = new Date();
@@ -80,7 +84,7 @@ async function loadCacheAsRevocationState(): Promise<{
     });
 
     if (!cache) {
-      return { revocationState: null, cacheMeta: null };
+      return { revocationState: null, cacheMeta: null, lastTelemetryUpload: null };
     }
 
     const connectivity = evaluateGracePeriod(
@@ -121,9 +125,10 @@ async function loadCacheAsRevocationState(): Promise<{
           : undefined,
         graceEndedAt: graceEndedAt?.toISOString(),
       },
+      lastTelemetryUpload: cache.lastTelemetryUpload,
     };
   } catch {
-    return { revocationState: null, cacheMeta: null };
+    return { revocationState: null, cacheMeta: null, lastTelemetryUpload: null };
   }
 }
 

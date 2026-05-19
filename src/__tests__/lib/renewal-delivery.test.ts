@@ -7,7 +7,18 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockSend = vi.fn(async () => ({ data: { id: 'mock-email-id' }, error: null }));
+type ResendSendArgs = {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  tags?: Array<{ name: string; value: string }>;
+};
+
+const mockSend = vi.fn(
+  async (_args: ResendSendArgs) => ({ data: { id: 'mock-email-id' }, error: null }),
+);
 
 vi.mock('@/lib/resend', () => ({
   getResend: vi.fn(async () => ({ emails: { send: mockSend } })),

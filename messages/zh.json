@@ -1522,6 +1522,19 @@
         "renewNow": "立即续约",
         "downloadDiagnostics": "下载诊断包"
       },
+      "telemetry": {
+        "heading": "使用数据上报（自愿开启）",
+        "optedOut": "未启用上报；本部署不会向外发送任何数据。",
+        "optedInNoUpload": "已启用上报，但尚未发送过任何数据。",
+        "lastAttempt": "上次尝试：",
+        "viewSentBody": "查看发送到 Aster 的具体内容",
+        "unknownError": "未知错误",
+        "outcome": {
+          "accepted": "已接受",
+          "deduped": "已去重（同窗口已收到）",
+          "failed": "失败"
+        }
+      },
       "time": {
         "minutesAgo": "{minutes, plural, one {# 分钟前} other {# 分钟前}}",
         "hoursAgo": "{hours, plural, one {# 小时前} other {# 小时前}}",

@@ -982,6 +982,9 @@ export const licenseCache = pgTable(
     revokedReason: text('revoked_reason'),
     // 续费提醒幂等记录（PR-C）：{ version: 'signingKeyId:verifiedAtIso', thresholds: { '14': iso } }
     renewalNotifyRecord: jsonb('renewal_notify_record').default({}).notNull(),
+    // 最近一次 telemetry 上传记录（G）：{ payload, attemptedAt, outcome, ingestId? }
+    // 让 admin/license 页面有"我们上次发了什么"的透明视图。null = 未启用 / 未上传过。
+    lastTelemetryUpload: jsonb('last_telemetry_upload'),
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1074,6 +1077,41 @@ export const renewalTokens = pgTable(
   (table) => [
     index('RenewalToken_license_expires_idx').on(table.licenseId, desc(table.expiresAt)),
     index('RenewalToken_expires_idx').on(table.expiresAt),
+  ]
+);
+
+// Opt-in usage telemetry from on-prem deployments. Aggregate only — no
+// PII / no event content. Driven by ASTER_TELEMETRY_OPT_IN=1 + a
+// shared secret issued at sign time. Used at renewal review to ground
+// pricing / tier conversations in actual usage.
+export const licenseTelemetry = pgTable(
+  'LicenseTelemetry',
+  {
+    id: text('id').primaryKey().notNull(),
+    licenseId: text('license_id').notNull(),
+    deploymentId: text('deployment_id').notNull(),
+    customer: text('customer').notNull(),
+    periodStart: timestamp('period_start', { mode: 'date', withTimezone: true }).notNull(),
+    periodEnd: timestamp('period_end', { mode: 'date', withTimezone: true }).notNull(),
+    payload: jsonb('payload').notNull(),
+    receivedAt: timestamp('received_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    sourceIp: text('source_ip'),
+    signatureKid: text('signature_kid').notNull(),
+    signatureAlg: text('signature_alg').notNull(),
+    signatureB64: text('signature_b64').notNull(),
+  },
+  (table) => [
+    index('LicenseTelemetry_license_received_idx').on(
+      table.licenseId,
+      desc(table.receivedAt),
+    ),
+    index('LicenseTelemetry_received_idx').on(table.receivedAt),
+    index('LicenseTelemetry_customer_received_idx').on(
+      table.customer,
+      desc(table.receivedAt),
+    ),
   ]
 );
 
@@ -1378,3 +1416,6 @@ export type NewRenewalToken = InferInsertModel<typeof renewalTokens>;
 
 export type IssuedLicense = InferSelectModel<typeof issuedLicenses>;
 export type NewIssuedLicense = InferInsertModel<typeof issuedLicenses>;
+
+export type LicenseTelemetry = InferSelectModel<typeof licenseTelemetry>;
+export type NewLicenseTelemetry = InferInsertModel<typeof licenseTelemetry>;

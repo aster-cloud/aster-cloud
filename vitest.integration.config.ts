@@ -14,6 +14,9 @@ export default defineConfig({
     globals: true,
     // 只包含集成测试
     include: ['src/__tests__/integration/**/*.integration.test.ts'],
+    // saas-only integration suites run under vitest.integration.saas.config.ts
+    // because IS_SAAS is module-load-frozen — can't mix in one process.
+    exclude: ['src/__tests__/integration/**/*.saas.integration.test.ts'],
     // 不使用 jsdom 的 setup 文件
     setupFiles: [],
     // 更长的超时时间

@@ -1522,6 +1522,19 @@
         "renewNow": "Renew now",
         "downloadDiagnostics": "Download diagnostics bundle"
       },
+      "telemetry": {
+        "heading": "Usage telemetry (opt-in)",
+        "optedOut": "Telemetry is disabled. Nothing leaves this deployment.",
+        "optedInNoUpload": "Telemetry is enabled. No upload has been sent yet.",
+        "lastAttempt": "Last attempt:",
+        "viewSentBody": "View payload sent to Aster",
+        "unknownError": "Unknown error",
+        "outcome": {
+          "accepted": "Accepted",
+          "deduped": "Deduped (same window already received)",
+          "failed": "Failed"
+        }
+      },
       "time": {
         "minutesAgo": "{minutes, plural, one {# minute ago} other {# minutes ago}}",
         "hoursAgo": "{hours, plural, one {# hour ago} other {# hours ago}}",
