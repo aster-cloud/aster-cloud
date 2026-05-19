@@ -115,7 +115,10 @@ the regional add-on (see sales).
 - **In transit**: TLS 1.3 from on-prem to SaaS ingest; HMAC-SHA256
   signature on every payload with a per-license secret.
 - **At rest**: PostgreSQL with provider-managed encryption (AES-256).
-  HMAC secret bytes envelope-encrypted (see J3 — planned).
+  HMAC verification secrets are additionally envelope-encrypted with
+  AES-256-GCM under a Key Encryption Key held in Vault; DB-only
+  compromise does not yield usable secrets. Rotation runbook is
+  internal (`docs/saas/kek-rotation.md`).
 - **Access**: SaaS admin sessions only; every read of
   `LicenseTelemetry` is audited per §4.
 - **Network**: SaaS ingest behind Cloudflare WAF with rate-limit rules

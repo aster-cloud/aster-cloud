@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from 'node:path';
 import createNextIntlPlugin from 'next-intl/plugin';
 import { validateEnvOrWarn } from './src/lib/env-validation';
 
@@ -69,11 +70,29 @@ const nextConfig: NextConfig = {
     // alias = false 让 webpack 解析时直接找不到这些包，从根上排除。
     if (DEPLOYMENT_MODE === 'on-prem') {
       config.resolve = config.resolve || {};
+      // J3: telemetry envelope module reads ASTER_TELEMETRY_SECRET_KEK,
+      // which is a SaaS-only secret. The IS_SAAS runtime guard alone
+      // leaves the env literal in dead branches that webpack DCE can't
+      // fold. Aliasing the three modules to `false` makes webpack
+      // resolve them to an empty module → env literal absent from bundle.
+      //
+      // These modules are only imported by SaaS-only route files
+      // (api/v1/telemetry, stripe webhook → renewal handler), and the
+      // route files themselves return 404 in on-prem at runtime, so the
+      // alias is safe — nothing in on-prem actually calls the symbols.
+      const srcDir = path.resolve(__dirname, 'src');
       config.resolve.alias = {
         ...(config.resolve.alias || {}),
         stripe: false,
         resend: false,
         'mixpanel-browser': false,
+        // J3: alias on the resolved absolute path — `@/` is a tsconfig
+        // alias that webpack resolves via tsconfig-paths *before*
+        // consulting resolve.alias, so the `@/`-keyed entries below
+        // never match. Anchor by the file system path instead.
+        [path.join(srcDir, 'lib/telemetry/envelope')]: false,
+        [path.join(srcDir, 'lib/telemetry/secret-store')]: false,
+        [path.join(srcDir, 'lib/telemetry/issuance')]: false,
       };
     }
     return config;

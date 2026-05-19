@@ -41,6 +41,13 @@ export interface RenewalSuccessEmailInput {
   deploymentId?: string;
   expiresAt: Date;
   overlapDays: number;
+  /**
+   * Plaintext telemetry HMAC secret minted for this renewal — set only
+   * when the predecessor license had telemetry enabled. The customer
+   * pastes this into ASTER_TELEMETRY_SECRET on their on-prem cron;
+   * SaaS holds only the wrapped envelope (envelope.ts).
+   */
+  telemetrySecret?: string;
 }
 
 /**
@@ -133,6 +140,15 @@ export async function postRenewalSlackAlert(message: string): Promise<void> {
 // ─────────── Templates ───────────
 
 function renderTextBody(input: RenewalSuccessEmailInput): string {
+  const envLines = [
+    `  LICENSE_KEY=<the key above>`,
+    input.deploymentId
+      ? `  ASTER_DEPLOYMENT_ID=${input.deploymentId}`
+      : `  ASTER_DEPLOYMENT_ID=<unchanged from previous license>`,
+  ];
+  if (input.telemetrySecret) {
+    envLines.push(`  ASTER_TELEMETRY_SECRET=${input.telemetrySecret}`);
+  }
   return [
     `Hi ${input.customer},`,
     ``,
@@ -144,11 +160,15 @@ function renderTextBody(input: RenewalSuccessEmailInput): string {
     ``,
     `On-prem env vars to set / update:`,
     ``,
-    `  LICENSE_KEY=<the key above>`,
-    input.deploymentId
-      ? `  ASTER_DEPLOYMENT_ID=${input.deploymentId}`
-      : `  ASTER_DEPLOYMENT_ID=<unchanged from previous license>`,
+    ...envLines,
     ``,
+    ...(input.telemetrySecret
+      ? [
+          `The telemetry secret is shown ONCE — we only keep the encrypted`,
+          `form. Lost it? Email support and we'll mint a new one.`,
+          ``,
+        ]
+      : []),
     `Next steps:`,
     `  1. Update the env vars in your deployment.`,
     `  2. Restart your aster-cloud instance.`,
@@ -179,7 +199,12 @@ function renderHtmlBody(input: RenewalSuccessEmailInput): string {
     `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 12px; background: #f4f4f5; border: 1px solid #d4d4d8; border-radius: 4px; word-break: break-all; white-space: pre-wrap;">${escape(input.licenseKey)}</pre>`,
     `<p><strong>On-prem env vars to set / update:</strong></p>`,
     `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 12px; background: #f4f4f5; border: 1px solid #d4d4d8; border-radius: 4px;">LICENSE_KEY=&lt;the key above&gt;
-${input.deploymentId ? `ASTER_DEPLOYMENT_ID=${escape(input.deploymentId)}` : 'ASTER_DEPLOYMENT_ID=&lt;unchanged from previous license&gt;'}</pre>`,
+${input.deploymentId ? `ASTER_DEPLOYMENT_ID=${escape(input.deploymentId)}` : 'ASTER_DEPLOYMENT_ID=&lt;unchanged from previous license&gt;'}${input.telemetrySecret ? `\nASTER_TELEMETRY_SECRET=${escape(input.telemetrySecret)}` : ''}</pre>`,
+    ...(input.telemetrySecret
+      ? [
+          `<p style="font-size: 12px; color: #6b7280;">The telemetry secret is shown <strong>once</strong> — we only keep the encrypted form. Lost it? Email <a href="mailto:support@aster-lang.cloud">support</a> and we'll mint a new one.</p>`,
+        ]
+      : []),
     `<p><strong>Next steps:</strong></p>`,
     `<ol>`,
     `  <li>Update the env vars in your deployment.</li>`,

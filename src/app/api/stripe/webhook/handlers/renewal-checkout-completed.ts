@@ -34,6 +34,7 @@ import { eq } from 'drizzle-orm';
 import { db, issuedLicenses, type IssuedLicense } from '@/lib/prisma';
 import { signLicensePayload } from '@/lib/license-signing-client';
 import { sendRenewalSuccessEmail, postRenewalSlackAlert } from '@/lib/emails/renewal-delivery';
+import { mintTelemetrySecret } from '@/lib/telemetry/issuance';
 
 function termToExpiry(term: string, issuedAt: Date): Date {
   // 与 aster-deploy/scripts/license-issue.sh::utc_add 同语义
@@ -126,6 +127,20 @@ export async function handleRenewalCheckoutCompleted(
     if (payload[k] === undefined) delete payload[k];
   }
 
+  // Telemetry inheritance: if the predecessor license had telemetry
+  // enabled, mint a fresh wrapped HMAC secret for the renewal. The
+  // plaintext is shipped in the email body so the on-prem cron can
+  // configure ASTER_TELEMETRY_SECRET; only the envelope persists in
+  // payload_json. Inheriting opt-in (rather than re-asking) keeps the
+  // self-serve renewal silent for customers who already opted in.
+  let telemetryPlaintext: string | undefined;
+  const oldTelemetry = oldHasTelemetry(oldLicense.payloadJson);
+  if (oldTelemetry) {
+    const minted = mintTelemetrySecret({});
+    telemetryPlaintext = minted.plaintext;
+    payload.telemetry = { secrets: [minted.storedEntry] };
+  }
+
   // Step 3: sign via signing-api
   let signed;
   try {
@@ -182,6 +197,7 @@ export async function handleRenewalCheckoutCompleted(
       deploymentId: deploymentBinding.deploymentId,
       expiresAt: newRow.expiresAt,
       overlapDays: Number.parseInt(process.env.RENEWAL_OVERLAP_DAYS ?? '7', 10),
+      telemetrySecret: telemetryPlaintext,
     });
   } catch (err) {
     await postRenewalSlackAlert(
@@ -203,6 +219,14 @@ function extractField(json: unknown, field: string, kind: FieldKind): unknown {
   if (kind === 'number' && typeof v === 'number') return v;
   if (kind === 'array' && Array.isArray(v)) return v;
   return undefined;
+}
+
+function oldHasTelemetry(payloadJson: unknown): boolean {
+  if (!payloadJson || typeof payloadJson !== 'object') return false;
+  const tel = (payloadJson as Record<string, unknown>).telemetry;
+  if (!tel || typeof tel !== 'object') return false;
+  const secrets = (tel as Record<string, unknown>).secrets;
+  return Array.isArray(secrets) && secrets.length > 0;
 }
 
 function deriveEmail(session: Stripe.Checkout.Session): string | undefined {

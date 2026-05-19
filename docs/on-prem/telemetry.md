@@ -142,8 +142,16 @@ entry gets `retiredAt` populated and stops verifying. Customers can
 have multiple active kids during rotation; cron picks up `kid`
 specified by `ASTER_TELEMETRY_SECRET_KID` env.
 
+**At-rest encryption (J3)**: each entry is stored as an AES-256-GCM
+envelope under a SaaS-managed Key Encryption Key (KEK). The HMAC
+plaintext bytes only ever materialize in memory at upload-verification
+time; a database compromise alone does not yield usable secrets. The
+KEK is held in Vault and rotated independently via the KEK rotation
+runbook (`docs/saas/kek-rotation.md`, SaaS ops only).
+
 Retention: 12 months rolling. Older rows are GC'd by a separate cron
-not documented here (ops only).
+(`/api/cron/telemetry-retention-gc`); deletion is audit-logged for 7
+years per GDPR Art 30.
 
 ## Threat model
 
@@ -153,4 +161,4 @@ not documented here (ops only).
 | Replaying a captured payload | SaaS dedupes by (license_id, period_start, period_end); replay is a no-op |
 | Sending from a different deployment than the license is bound to | x-aster-deployment-id header cross-checked against license deploymentBinding |
 | Sending wildly wrong counts | Out of scope — no anomaly detection; this is signal for sales conversations, not a billing meter |
-| DB compromise letting attacker derive someone's HMAC secret | Secrets stored on IssuedLicense; same compromise that exposes them lets attacker mint licenses anyway. Rotate via sales when concerned. |
+| DB compromise leaking other customers' HMAC secrets | AES-256-GCM envelope encryption with KEK in Vault. DB-only attacker sees ciphertext + auth tag, no plaintext. (J3) |

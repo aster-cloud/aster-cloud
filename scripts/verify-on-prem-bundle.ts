@@ -187,6 +187,17 @@ export const FORBIDDEN_ENV_LITERALS: ReadonlyArray<Rule> = [
       'license private key MUST NEVER be referenced by on-prem build; only the public trust bundle is embedded',
     noBenignOverride: true,
   },
+  // J3: SaaS-only KEK for telemetry envelope encryption. on-prem never
+  // unwraps other customers' secrets — only its own ASTER_TELEMETRY_SECRET.
+  // Leaking the KEK env access into on-prem means the envelope module
+  // (or secret-store) got pulled into the bundle by mistake.
+  {
+    name: 'ASTER_TELEMETRY_SECRET_KEK literal',
+    pattern: /ASTER_TELEMETRY_SECRET_KEK/,
+    rationale:
+      'telemetry envelope KEK is SaaS-only; presence indicates secret-store or envelope module leaked into on-prem bundle',
+    noBenignOverride: true,
+  },
 ];
 
 /** SDK 内部符号 — 真正的 npm 包源码被打进 bundle 的强信号。 */

@@ -10,7 +10,7 @@
 // don't need to spin a dev server.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes as randomBytesSync, randomUUID } from 'node:crypto';
 import { db, issuedLicenses, licenseTelemetry } from '@/lib/prisma';
 import { POST as telemetryPOST } from '@/app/api/v1/telemetry/route';
 import {
@@ -338,5 +338,153 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('telemetry ingest', () => {
     });
     const res = await telemetryPOST(req);
     expect(res.status).toBe(400);
+  });
+});
+
+// J3: envelope-encrypted secrets at rest. Seed an IssuedLicense whose
+// telemetry.secrets entry is in the {v, alg, kekKid, iv, ct, tag} shape
+// and verify ingest unwraps via the configured KEK.
+describe.skipIf(process.env.LICENSE_E2E !== '1')('telemetry ingest: envelope-wrapped secrets (J3)', () => {
+  const KEK_HEX = randomBytesSync(32).toString('hex');
+  let prevKek: string | undefined;
+  let prevKekKid: string | undefined;
+  let envelopeMod: typeof import('@/lib/telemetry/envelope');
+
+  beforeAll(async () => {
+    (process.env as Record<string, string>).NODE_ENV = 'test';
+    process.env.DEPLOYMENT_MODE = 'saas';
+    prevKek = process.env.ASTER_TELEMETRY_SECRET_KEK;
+    prevKekKid = process.env.ASTER_TELEMETRY_SECRET_KEK_KID;
+    process.env.ASTER_TELEMETRY_SECRET_KEK = KEK_HEX;
+    process.env.ASTER_TELEMETRY_SECRET_KEK_KID = 'kek-it-A';
+    envelopeMod = await import('@/lib/telemetry/envelope');
+    envelopeMod.__resetKekCacheForTests();
+    await setupTestDb();
+  }, 120_000);
+
+  afterAll(async () => {
+    if (prevKek === undefined) delete process.env.ASTER_TELEMETRY_SECRET_KEK;
+    else process.env.ASTER_TELEMETRY_SECRET_KEK = prevKek;
+    if (prevKekKid === undefined) delete process.env.ASTER_TELEMETRY_SECRET_KEK_KID;
+    else process.env.ASTER_TELEMETRY_SECRET_KEK_KID = prevKekKid;
+    envelopeMod.__resetKekCacheForTests();
+    await teardownTestDb();
+  });
+
+  beforeEach(async () => {
+    await cleanupTestDb();
+    await db.delete(issuedLicenses);
+    await db.delete(licenseTelemetry);
+  });
+
+  async function seedWithWrappedSecret(licenseId: string, plaintext: string): Promise<void> {
+    const envelope = envelopeMod.wrapSecret(plaintext);
+    const wrappedEntry = {
+      kid: 'default',
+      activatedAt: new Date().toISOString(),
+      ...envelope,
+    };
+    await db.insert(issuedLicenses).values({
+      licenseId,
+      customer: 'Acme Telemetry',
+      deploymentBinding: { deploymentId: HEX, deploymentLabel: 'Acme-prod' },
+      payloadJson: {
+        schemaVersion: 2,
+        licenseId,
+        customer: 'Acme Telemetry',
+        tier: 'enterprise',
+        sku: 'standard',
+        features: [],
+        seatLimit: 100,
+        revocationCheckUrl: 'https://license.aster-lang.cloud/revoked.json',
+        telemetry: { secrets: [wrappedEntry] },
+      },
+      payloadHash: '1'.repeat(64),
+      signingKeyId: 'license-signing-v2-2026-01',
+      signedAt: new Date(),
+      expiresAt: new Date(Date.now() + 365 * 86_400_000),
+      tier: 'enterprise',
+      licenseTerm: 'annual',
+      stripeSubscriptionId: null,
+      stripeCheckoutSessionId: null,
+      renewedFromLicenseId: null,
+      supersededAt: null,
+      supersededBy: null,
+    });
+  }
+
+  it('unwraps wrapped secret and accepts a valid HMAC upload', async () => {
+    const licenseId = `lic_env_${randomUUID().slice(0, 8)}`;
+    const plaintext = randomBytesSync(32).toString('base64url');
+    await seedWithWrappedSecret(licenseId, plaintext);
+
+    const res = await postTelemetry({ payload: buildPayload(), licenseId, secret: plaintext });
+    expect(res.status).toBe(200);
+    const rows = await db.query.licenseTelemetry.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].licenseId).toBe(licenseId);
+  });
+
+  it('rejects upload signed with wrong key (envelope unwraps to real secret)', async () => {
+    const licenseId = `lic_env_${randomUUID().slice(0, 8)}`;
+    const plaintext = randomBytesSync(32).toString('base64url');
+    await seedWithWrappedSecret(licenseId, plaintext);
+
+    // Sign with a different secret than the one in the envelope.
+    const res = await postTelemetry({
+      payload: buildPayload(),
+      licenseId,
+      secret: 'wrong-secret-not-the-envelope-plaintext',
+    });
+    expect(res.status).toBe(400);
+    expect((res.body as { error: string }).error).toBe('rejected');
+  });
+
+  it('rejects upload when envelope is tampered (auth tag fails)', async () => {
+    const licenseId = `lic_env_${randomUUID().slice(0, 8)}`;
+    const plaintext = randomBytesSync(32).toString('base64url');
+    // Wrap, then flip one byte of ciphertext.
+    const env = envelopeMod.wrapSecret(plaintext);
+    const ctBytes = Buffer.from(env.ct, 'base64');
+    ctBytes[0] ^= 0xff;
+    const tampered = { ...env, ct: ctBytes.toString('base64') };
+    const wrappedEntry = {
+      kid: 'default',
+      activatedAt: new Date().toISOString(),
+      ...tampered,
+    };
+    await db.insert(issuedLicenses).values({
+      licenseId,
+      customer: 'Acme Telemetry',
+      deploymentBinding: { deploymentId: HEX, deploymentLabel: 'Acme-prod' },
+      payloadJson: {
+        schemaVersion: 2,
+        licenseId,
+        customer: 'Acme Telemetry',
+        tier: 'enterprise',
+        sku: 'standard',
+        features: [],
+        seatLimit: 100,
+        revocationCheckUrl: 'https://license.aster-lang.cloud/revoked.json',
+        telemetry: { secrets: [wrappedEntry] },
+      },
+      payloadHash: '1'.repeat(64),
+      signingKeyId: 'license-signing-v2-2026-01',
+      signedAt: new Date(),
+      expiresAt: new Date(Date.now() + 365 * 86_400_000),
+      tier: 'enterprise',
+      licenseTerm: 'annual',
+      stripeSubscriptionId: null,
+      stripeCheckoutSessionId: null,
+      renewedFromLicenseId: null,
+      supersededAt: null,
+      supersededBy: null,
+    });
+
+    // Even with a syntactically-correct signature, secret-store returns
+    // null (decrypt fails) and ingest rejects.
+    const res = await postTelemetry({ payload: buildPayload(), licenseId, secret: plaintext });
+    expect(res.status).toBe(400);
+    expect((res.body as { error: string }).error).toBe('rejected');
   });
 });
