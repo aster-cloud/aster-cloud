@@ -1534,6 +1534,7 @@
         "customerHeader": "Kundenfeld",
         "customerMaskedYes": "maskiert (anonymes Token)",
         "customerMaskedNo": "Klartext-Name",
+        "schemaVersionUpgradeRequired": "Dieses Build sendet eine veraltete Schema-Version. SaaS akzeptiert derzeit: v{versions}. Aktualisieren Sie aster-cloud, um die Telemetrie fortzusetzen.",
         "outcome": {
           "accepted": "Akzeptiert",
           "deduped": "Dedupliziert (gleiches Fenster bereits empfangen)",

@@ -49,6 +49,12 @@ in their deployment, plus the retention period for stored data (see
 
 ## 5. Types of Personal Data
 
+The complete per-field justification (GDPR Art 5(1)(c) data
+minimization evidence) is documented in
+[`docs/on-prem/telemetry-fields.md`](./telemetry-fields.md). The
+machine-readable schema contract is served at
+`/api/v1/telemetry/schema`. Summary below.
+
 When `ASTER_TELEMETRY_MASK_CUSTOMER` is **unset or != "1"** (default):
 
 | Field | Source | Personal data? |

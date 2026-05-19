@@ -194,4 +194,58 @@ describe('uploadTelemetry', () => {
     expect(err).toBeInstanceOf(TelemetryUploadError);
     expect((err as TelemetryUploadError).kind).toBe('fatal');
   });
+
+  // J4: schema-version negotiation. SaaS reply distinguishes a generic
+  // 4xx (bad sig / wrong deployment) from "your schema version is no
+  // longer supported, upgrade and stop retrying".
+  it('translates 400 unsupported-schema-version → distinct error kind with supportedVersions', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          error: 'rejected',
+          reason: 'unsupported-schema-version',
+          received: 99,
+          supportedVersions: [1, 2],
+        }),
+        {
+          status: 400,
+          headers: { 'x-aster-telemetry-supported-versions': '1,2' },
+        },
+      ),
+    ) as typeof fetch;
+    const err = await uploadTelemetry(SAMPLE_PAYLOAD, CFG_BASE).catch((e) => e);
+    expect(err).toBeInstanceOf(TelemetryUploadError);
+    expect((err as TelemetryUploadError).kind).toBe('unsupported-schema-version');
+    expect((err as TelemetryUploadError).status).toBe(400);
+    expect((err as TelemetryUploadError).supportedVersions).toEqual([1, 2]);
+  });
+
+  it('falls back to header when body omits supportedVersions list', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ error: 'rejected', reason: 'unsupported-schema-version' }),
+        {
+          status: 400,
+          headers: { 'x-aster-telemetry-supported-versions': '1,3' },
+        },
+      ),
+    ) as typeof fetch;
+    const err = await uploadTelemetry(SAMPLE_PAYLOAD, CFG_BASE).catch((e) => e);
+    expect(err).toBeInstanceOf(TelemetryUploadError);
+    expect((err as TelemetryUploadError).kind).toBe('unsupported-schema-version');
+    expect((err as TelemetryUploadError).supportedVersions).toEqual([1, 3]);
+  });
+
+  it('treats 400 with other reasons as generic fatal (not version-negotiation)', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ error: 'rejected', reason: 'signature-verify-failed' }),
+        { status: 400 },
+      ),
+    ) as typeof fetch;
+    const err = await uploadTelemetry(SAMPLE_PAYLOAD, CFG_BASE).catch((e) => e);
+    expect(err).toBeInstanceOf(TelemetryUploadError);
+    expect((err as TelemetryUploadError).kind).toBe('fatal');
+    expect((err as TelemetryUploadError).supportedVersions).toEqual([]);
+  });
 });

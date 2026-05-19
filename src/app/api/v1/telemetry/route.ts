@@ -27,6 +27,10 @@ import {
   resolveTelemetrySecret,
   type ResolvedSecret,
 } from '@/lib/telemetry/secret-store';
+import {
+  SUPPORTED_TELEMETRY_SCHEMA_VERSIONS,
+  isSupportedSchemaVersion,
+} from '@/lib/telemetry/schema-contract';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,6 +53,29 @@ function bad(reason: string, status = 400): NextResponse {
   // Don't echo specifics that would help an attacker probe for a
   // valid license id; "rejected" is enough for the customer's logs.
   return NextResponse.json({ error: 'rejected', reason }, { status });
+}
+
+/**
+ * Version-negotiation rejection. Unlike generic `bad()`, this one is
+ * safe to be loud — the supported-versions list is public information
+ * (served by /api/v1/telemetry/schema). On-prem cron reads this body
+ * + header on 4xx and decides whether to back off or re-encode.
+ */
+function unsupportedSchemaVersionResponse(received: unknown): NextResponse {
+  const headers = new Headers({ 'content-type': 'application/json' });
+  headers.set(
+    'x-aster-telemetry-supported-versions',
+    SUPPORTED_TELEMETRY_SCHEMA_VERSIONS.join(','),
+  );
+  return new NextResponse(
+    JSON.stringify({
+      error: 'rejected',
+      reason: 'unsupported-schema-version',
+      received,
+      supportedVersions: SUPPORTED_TELEMETRY_SCHEMA_VERSIONS,
+    }),
+    { status: 400, headers },
+  );
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
@@ -130,6 +157,14 @@ export async function POST(req: Request): Promise<NextResponse> {
     !Array.isArray(payload.featuresUsed)
   ) {
     return bad('malformed-payload');
+  }
+  // J4: schema-version negotiation. Once shape is well-formed, the
+  // wire version itself must be one we currently support — older
+  // versions get deprecated, future versions need a contract bump.
+  // The on-prem cron treats this 400 specially: it pre-flights the
+  // /schema endpoint and abstains rather than retrying.
+  if (!isSupportedSchemaVersion(payload.schemaVersion)) {
+    return unsupportedSchemaVersionResponse(payload.schemaVersion);
   }
   const periodStart = new Date(payload.periodStart);
   const periodEnd = new Date(payload.periodEnd);

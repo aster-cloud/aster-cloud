@@ -72,9 +72,15 @@ export interface UploadResult {
 
 export class TelemetryUploadError extends Error {
   constructor(
-    public readonly kind: 'transient' | 'fatal',
+    public readonly kind: 'transient' | 'fatal' | 'unsupported-schema-version',
     public readonly status: number | null,
     message: string,
+    /**
+     * J4: SaaS-published supported versions, parsed from the 400 body
+     * or x-aster-telemetry-supported-versions header when the kind is
+     * 'unsupported-schema-version'. Empty otherwise.
+     */
+    public readonly supportedVersions: readonly number[] = [],
   ) {
     super(`[telemetry-upload] ${kind} (status=${status ?? 'n/a'}): ${message}`);
     this.name = 'TelemetryUploadError';
@@ -126,11 +132,19 @@ export async function uploadTelemetry(
     );
   }
   if (res.status >= 400) {
-    throw new TelemetryUploadError(
-      'fatal',
-      res.status,
-      await res.text().catch(() => ''),
-    );
+    const text = await res.text().catch(() => '');
+    // J4: detect "your schema version is no longer accepted" so cron
+    // can stop wasting tries until ops upgrades the on-prem build.
+    const parsedReason = parseSchemaVersionRejection(text, res.headers);
+    if (parsedReason) {
+      throw new TelemetryUploadError(
+        'unsupported-schema-version',
+        res.status,
+        `SaaS rejected schemaVersion; supported=${parsedReason.supportedVersions.join(',')}`,
+        parsedReason.supportedVersions,
+      );
+    }
+    throw new TelemetryUploadError('fatal', res.status, text);
   }
 
   const parsed = (await res.json().catch(() => null)) as
@@ -148,6 +162,50 @@ export async function uploadTelemetry(
     deduped: parsed.deduped === true,
     dataRegion: typeof parsed.dataRegion === 'string' ? parsed.dataRegion : undefined,
   };
+}
+
+/**
+ * Parse a 4xx body / headers to detect the J4 version-negotiation
+ * rejection shape. Returns null when the response is some other 4xx
+ * (bad signature, deployment mismatch, etc.) so callers don't conflate
+ * "ops mistake" with "upgrade required". Tolerates both header-only
+ * and JSON-body forms so a future contract change can drop one without
+ * breaking older on-prem builds.
+ */
+function parseSchemaVersionRejection(
+  body: string,
+  headers: Headers,
+): { supportedVersions: number[] } | null {
+  let supportedFromHeader: number[] | null = null;
+  const headerRaw = headers.get('x-aster-telemetry-supported-versions');
+  if (headerRaw) {
+    const nums = headerRaw
+      .split(',')
+      .map((s) => Number.parseInt(s.trim(), 10))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (nums.length > 0) supportedFromHeader = nums;
+  }
+
+  try {
+    const parsed = JSON.parse(body) as { reason?: string; supportedVersions?: unknown };
+    if (parsed && parsed.reason === 'unsupported-schema-version') {
+      const fromBody = Array.isArray(parsed.supportedVersions)
+        ? parsed.supportedVersions
+            .filter((v): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0)
+        : null;
+      return {
+        supportedVersions: fromBody ?? supportedFromHeader ?? [],
+      };
+    }
+  } catch {
+    // not JSON; fall through
+  }
+  // Header alone is also a positive signal — body could be empty in
+  // edge-case proxies that strip JSON.
+  if (supportedFromHeader) {
+    return { supportedVersions: supportedFromHeader };
+  }
+  return null;
 }
 
 function hmacBase64Url(secret: string, message: string): string {

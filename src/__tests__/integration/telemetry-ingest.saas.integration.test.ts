@@ -339,6 +339,21 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('telemetry ingest', () => {
     const res = await telemetryPOST(req);
     expect(res.status).toBe(400);
   });
+
+  // J4: schema-version negotiation. Unknown version is a recognized
+  // 4xx with the supported-versions list echoed both in body and
+  // header so on-prem cron can stop retrying.
+  it('rejects unknown schemaVersion with unsupported-schema-version + header', async () => {
+    const licenseId = `lic_ing_${randomUUID().slice(0, 8)}`;
+    await seedIssuedLicense({ licenseId });
+    const res = await postTelemetry({
+      payload: buildPayload({ schemaVersion: 99 as 1 }),
+      licenseId,
+    });
+    expect(res.status).toBe(400);
+    expect((res.body as { reason: string }).reason).toBe('unsupported-schema-version');
+    expect((res.body as { supportedVersions: number[] }).supportedVersions).toEqual([1]);
+  });
 });
 
 // J3: envelope-encrypted secrets at rest. Seed an IssuedLicense whose

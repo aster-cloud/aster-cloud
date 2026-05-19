@@ -13,7 +13,11 @@ This document covers (1) exactly what gets sent, (2) how to enable it,
 
 Every field is an integer count or boolean. **No** user identifiers,
 **no** email addresses, **no** policy source, **no** decision-trace
-content. Full schema:
+content. Per-field GDPR justification (legal basis, necessity, retention
+window) is enumerated in [`telemetry-fields.md`](./telemetry-fields.md);
+the machine-readable contract lives at `/api/v1/telemetry/schema` (J4).
+
+Full schema:
 
 ```jsonc
 {

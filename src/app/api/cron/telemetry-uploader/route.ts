@@ -142,14 +142,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } satisfies TelemetryResponse);
   } catch (err) {
     if (err instanceof TelemetryUploadError) {
-      await persistLocalRecord({
+      const auditRecord: Record<string, unknown> = {
         payload,
         attemptedAt: attemptedAt.toISOString(),
         outcome: 'failed',
         errorKind: err.kind,
         errorStatus: err.status,
         errorMessage: err.message.slice(0, 500),
-      });
+      };
+      // J4: when SaaS says "your schema is no longer accepted", carry the
+      // SaaS-supplied supported list into the audit record so the
+      // admin/license transparency panel shows ops exactly which versions
+      // they need to upgrade to. Retrying with the current build is
+      // pointless; cron returns 200 to signal "no further automation will
+      // help here" (the K8s CronJob has no notion of "permanently failed";
+      // 200 stops the retry-loop blast radius).
+      if (err.kind === 'unsupported-schema-version') {
+        auditRecord.supportedVersions = err.supportedVersions;
+        await persistLocalRecord(auditRecord);
+        return NextResponse.json(
+          {
+            uploaded: false,
+            reason: `unsupported-schema-version:[${err.supportedVersions.join(',')}]`,
+          } satisfies TelemetryResponse,
+          { status: 200 },
+        );
+      }
+      await persistLocalRecord(auditRecord);
       const status = err.kind === 'transient' ? 503 : 400;
       return NextResponse.json(
         {

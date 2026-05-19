@@ -1534,6 +1534,7 @@
         "customerHeader": "客户字段",
         "customerMaskedYes": "已脱敏（匿名 token）",
         "customerMaskedNo": "明文名称",
+        "schemaVersionUpgradeRequired": "当前构建上报了过时的 schema 版本。SaaS 仅接受 v{versions}。请升级 aster-cloud 以恢复遥测上报。",
         "outcome": {
           "accepted": "已接受",
           "deduped": "已去重（同窗口已收到）",

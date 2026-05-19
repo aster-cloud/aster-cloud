@@ -38,6 +38,8 @@ export interface TelemetryUploadRecord {
   dataRegion?: string;
   /** Whether the customer-name header was masked (ASTER_TELEMETRY_MASK_CUSTOMER=1). */
   customerMasked?: boolean;
+  /** J4: SaaS-published versions when outcome=failed + errorKind=unsupported-schema-version. */
+  supportedVersions?: number[];
 }
 
 interface Props {
@@ -99,6 +101,15 @@ function RenderUpload({
           {record.errorKind}: {record.errorMessage ?? t('unknownError')}
         </p>
       )}
+      {record.outcome === 'failed' &&
+        record.errorKind === 'unsupported-schema-version' &&
+        record.supportedVersions && (
+          <p className="text-xs text-amber-400">
+            {t('schemaVersionUpgradeRequired', {
+              versions: record.supportedVersions.join(', '),
+            })}
+          </p>
+        )}
 
       <details className="text-xs">
         <summary className="cursor-pointer text-fg-muted">{t('viewSentBody')}</summary>

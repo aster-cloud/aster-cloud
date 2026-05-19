@@ -1534,6 +1534,7 @@
         "customerHeader": "Customer field",
         "customerMaskedYes": "masked (anonymous token)",
         "customerMaskedNo": "literal name",
+        "schemaVersionUpgradeRequired": "This build sends an outdated schema version. SaaS currently accepts: v{versions}. Upgrade aster-cloud to resume telemetry.",
         "outcome": {
           "accepted": "Accepted",
           "deduped": "Deduped (same window already received)",
