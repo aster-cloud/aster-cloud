@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { db, users, auditLogs } from '@/lib/prisma';
 import { and, eq, isNotNull, lt } from 'drizzle-orm';
+import { runCronOnce } from '@/lib/cron-lease';
+import { parseCronWindow } from '@/lib/cron-window';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,66 +29,80 @@ export async function POST(req: NextRequest) {
   const guard = requireCronAuth(req);
   if (guard) return guard;
 
-  const now = new Date();
-
-  const expired = await db.query.users.findMany({
-    where: and(
-      isNotNull(users.deletedAt),
-      isNotNull(users.purgePendingUntil),
-      lt(users.purgePendingUntil, now),
-    ),
-    columns: {
-      id: true,
-      email: true,
-      emailNormalized: true,
-      deletedAt: true,
-    },
-  });
-
-  const results: PurgeResult[] = [];
-
-  for (const u of expired) {
-    // emailNormalized 在 softDeleteUser 时已变成 "{原值}#deleted-{ts}"，
-    // 从中剥出原值用于 audit log 写入。
-    const historicalNormalized = u.emailNormalized?.split('#deleted-')[0] ?? null;
-
-    // 1) audit log：未来同邮箱新注册可查到此事件做 priorPurgeCount 累计
-    try {
-      await db.insert(auditLogs).values({
-        id: crypto.randomUUID(),
-        userId: u.id,
-        action: 'user.hard_purged',
-        resource: 'user',
-        resourceId: u.id,
-        metadata: {
-          emailNormalizedHistorical: historicalNormalized,
-          tombstonedAt: u.deletedAt?.toISOString() ?? null,
-          purgedAt: now.toISOString(),
+  const { acquiredBy, windowStart } = parseCronWindow(req, 'user-purge');
+  const outcome = await runCronOnce(
+    'user-purge',
+    async () => {
+      const now = new Date();
+      const expired = await db.query.users.findMany({
+        where: and(
+          isNotNull(users.deletedAt),
+          isNotNull(users.purgePendingUntil),
+          lt(users.purgePendingUntil, now),
+        ),
+        columns: {
+          id: true,
+          email: true,
+          emailNormalized: true,
+          deletedAt: true,
         },
-        createdAt: now,
       });
-    } catch (e) {
-      console.error(`[user-purge] failed to write audit log for ${u.id}:`, e);
-      // 继续删，不让 audit 失败阻塞 GDPR 删除义务
-    }
 
-    // 2) 物理删除（schema 上的级联 FK 会自动清掉 accounts/sessions/policies/...）
-    try {
-      await db.delete(users).where(eq(users.id, u.id));
-      results.push({
-        userId: u.id,
-        emailNormalizedHistorical: historicalNormalized,
-        tombstonedAt: u.deletedAt?.toISOString() ?? '',
-      });
-    } catch (e) {
-      console.error(`[user-purge] hard-delete failed for ${u.id}:`, e);
-    }
+      const results: PurgeResult[] = [];
+      for (const u of expired) {
+        // emailNormalized 在 softDeleteUser 时已变成 "{原值}#deleted-{ts}"，
+        // 从中剥出原值用于 audit log 写入。
+        const historicalNormalized = u.emailNormalized?.split('#deleted-')[0] ?? null;
+
+        // 1) audit log：未来同邮箱新注册可查到此事件做 priorPurgeCount 累计
+        try {
+          await db.insert(auditLogs).values({
+            id: crypto.randomUUID(),
+            userId: u.id,
+            action: 'user.hard_purged',
+            resource: 'user',
+            resourceId: u.id,
+            metadata: {
+              emailNormalizedHistorical: historicalNormalized,
+              tombstonedAt: u.deletedAt?.toISOString() ?? null,
+              purgedAt: now.toISOString(),
+            },
+            createdAt: now,
+          });
+        } catch (e) {
+          console.error(`[user-purge] failed to write audit log for ${u.id}:`, e);
+          // 继续删，不让 audit 失败阻塞 GDPR 删除义务
+        }
+
+        // 2) 物理删除（schema 上的级联 FK 会自动清掉 accounts/sessions/policies/...）
+        try {
+          await db.delete(users).where(eq(users.id, u.id));
+          results.push({
+            userId: u.id,
+            emailNormalizedHistorical: historicalNormalized,
+            tombstonedAt: u.deletedAt?.toISOString() ?? '',
+          });
+        } catch (e) {
+          console.error(`[user-purge] hard-delete failed for ${u.id}:`, e);
+        }
+      }
+      console.log(`[user-purge] purged ${results.length} tombstoned user(s) past grace`);
+      return results;
+    },
+    { acquiredBy, windowStart },
+  );
+
+  if (!outcome.ran) {
+    return NextResponse.json({
+      skipped: true,
+      reason: outcome.skippedReason,
+      windowStart: outcome.windowStart,
+    });
   }
-
-  console.log(`[user-purge] purged ${results.length} tombstoned user(s) past grace`);
-
+  const results = outcome.result ?? [];
   return NextResponse.json({
     purged: results.length,
     results,
+    windowStart: outcome.windowStart,
   });
 }

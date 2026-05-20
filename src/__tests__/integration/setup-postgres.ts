@@ -54,7 +54,8 @@ export async function cleanupTestDb(): Promise<void> {
         "RenewalToken",
         "IssuedLicense",
         "LicenseTelemetry",
-        "TelemetryAccessAudit"
+        "TelemetryAccessAudit",
+        "CronJobLease"
       RESTART IDENTITY CASCADE
     `,
     new Promise((_, reject) =>

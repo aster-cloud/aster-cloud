@@ -1451,3 +1451,38 @@ export type NewLicenseTelemetry = InferInsertModel<typeof licenseTelemetry>;
 
 export type TelemetryAccessAudit = InferSelectModel<typeof telemetryAccessAudit>;
 export type NewTelemetryAccessAudit = InferInsertModel<typeof telemetryAccessAudit>;
+
+// CronJobLease — mutex for any cron job that can be triggered from
+// more than one place (Cloudflare Workers scheduled() + external HTTP
+// callers + manual ops curl). The `(job_name, window_start)` unique
+// constraint plus an INSERT…ON CONFLICT DO NOTHING acquire makes the
+// "first writer wins" semantics atomic at the DB layer; we don't need
+// distributed locks or extra coordination.
+//
+// `status` evolves: 'running' (acquired) → 'done' | 'failed'. Both
+// terminal states are kept in-table for a short retention window so
+// ops can read "did the 04:30 user-purge happen?" without parsing
+// Worker logs. A periodic GC drops rows past `LEASE_RETENTION_DAYS`.
+export const cronJobLease = pgTable(
+  'CronJobLease',
+  {
+    id: text('id').primaryKey().notNull(),
+    jobName: text('job_name').notNull(),
+    windowStart: timestamp('window_start', { mode: 'date', withTimezone: true }).notNull(),
+    acquiredAt: timestamp('acquired_at', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    acquiredBy: text('acquired_by').notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date', withTimezone: true }),
+    status: text('status').notNull(),
+    errorMessage: text('error_message'),
+  },
+  (table) => [
+    uniqueIndex('CronJobLease_job_window_unique').on(table.jobName, table.windowStart),
+    index('CronJobLease_status_idx').on(table.status, desc(table.acquiredAt)),
+    index('CronJobLease_acquired_at_idx').on(desc(table.acquiredAt)),
+  ]
+);
+
+export type CronJobLease = InferSelectModel<typeof cronJobLease>;
+export type NewCronJobLease = InferInsertModel<typeof cronJobLease>;

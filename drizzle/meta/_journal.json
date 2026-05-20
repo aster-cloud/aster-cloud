@@ -134,6 +134,13 @@
       "when": 1779090000000,
       "tag": "0019_dry_run_preview_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1779100000000,
+      "tag": "0020_cron_job_lease",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,8 @@ import { CAN_RISKTIER } from '@/lib/deployment-mode';
 import { db } from '@/lib/prisma';
 import { users, auditLogs } from '@/db/schema';
 import { and, eq, gte, inArray, isNull } from 'drizzle-orm';
+import { runCronOnce } from '@/lib/cron-lease';
+import { parseCronWindow } from '@/lib/cron-window';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,92 +51,112 @@ export async function POST(req: NextRequest) {
   const guard = requireCronAuth(req);
   if (guard) return guard;
 
-  const now = new Date();
-  const windowStart = new Date(now.getTime() - QUIET_WINDOW_DAYS * 86400_000);
+  const { acquiredBy, windowStart: cronWindowStart } = parseCronWindow(req, 'risk-tier-decay');
+  const outcome = await runCronOnce(
+    'risk-tier-decay',
+    async () => {
+      const now = new Date();
+      const quietSince = new Date(now.getTime() - QUIET_WINDOW_DAYS * 86400_000);
 
-  // 1) 候选集：tier ≥ 2，非软删
-  const candidates = await db.query.users.findMany({
-    where: and(gte(users.riskTier, 2), isNull(users.deletedAt)),
-    columns: {
-      id: true,
-      riskTier: true,
-      riskTierReason: true,
-      aiBannedUntil: true,
-      updatedAt: true,
-    },
-  });
-
-  if (candidates.length === 0) {
-    return NextResponse.json({ decayed: 0, results: [] });
-  }
-
-  const candidateIds = candidates.map((c) => c.id);
-
-  // 2) 用一次 IN 查询拿到所有"有风险事件"的 userId 集合
-  const noisyRows = await db
-    .select({ userId: auditLogs.userId })
-    .from(auditLogs)
-    .where(
-      and(
-        inArray(auditLogs.userId, candidateIds),
-        inArray(auditLogs.action, RISK_AUDIT_ACTIONS),
-        gte(auditLogs.createdAt, windowStart),
-      ),
-    )
-    .groupBy(auditLogs.userId);
-
-  const noisy = new Set(noisyRows.map((r) => r.userId).filter((id): id is string => id !== null));
-
-  // 3) 决策 + 写入
-  const results: DecayResult[] = [];
-  for (const c of candidates) {
-    if (noisy.has(c.id)) continue;
-    if (c.aiBannedUntil && c.aiBannedUntil > windowStart) continue;
-    // tier 在 7d 内被改过（manual override 或上次 decay）→ 跳过，等下一轮
-    if (c.updatedAt > windowStart) continue;
-
-    const previousTier = c.riskTier;
-    const newTier = previousTier - 1;
-    const newReason = `auto_decay:was=${previousTier}:after=${QUIET_WINDOW_DAYS}d_quiet:was_reason=${c.riskTierReason ?? 'unknown'}`;
-
-    try {
-      await db.update(users)
-        .set({
-          riskTier: newTier,
-          riskTierReason: newReason,
-          updatedAt: now,
-        })
-        .where(eq(users.id, c.id));
-
-      await db.insert(auditLogs).values({
-        id: crypto.randomUUID(),
-        userId: c.id,
-        action: 'user.risk_tier_decayed',
-        resource: 'user',
-        resourceId: c.id,
-        metadata: {
-          previousTier,
-          newTier,
-          previousReason: c.riskTierReason,
-          quietWindowDays: QUIET_WINDOW_DAYS,
+      // 1) 候选集：tier ≥ 2，非软删
+      const candidates = await db.query.users.findMany({
+        where: and(gte(users.riskTier, 2), isNull(users.deletedAt)),
+        columns: {
+          id: true,
+          riskTier: true,
+          riskTierReason: true,
+          aiBannedUntil: true,
+          updatedAt: true,
         },
-        createdAt: now,
       });
 
-      results.push({ userId: c.id, previousTier, newTier });
-    } catch (e) {
-      console.error(`[risk-tier-decay] failed for ${c.id}:`, e);
-    }
-  }
+      if (candidates.length === 0) {
+        return { candidates: 0, noisy: 0, results: [] as DecayResult[] };
+      }
 
-  console.log(
-    `[risk-tier-decay] candidates=${candidates.length} noisy=${noisy.size} decayed=${results.length}`,
+      const candidateIds = candidates.map((c) => c.id);
+
+      // 2) 用一次 IN 查询拿到所有"有风险事件"的 userId 集合
+      const noisyRows = await db
+        .select({ userId: auditLogs.userId })
+        .from(auditLogs)
+        .where(
+          and(
+            inArray(auditLogs.userId, candidateIds),
+            inArray(auditLogs.action, RISK_AUDIT_ACTIONS),
+            gte(auditLogs.createdAt, quietSince),
+          ),
+        )
+        .groupBy(auditLogs.userId);
+
+      const noisy = new Set(
+        noisyRows.map((r) => r.userId).filter((id): id is string => id !== null),
+      );
+
+      // 3) 决策 + 写入
+      const results: DecayResult[] = [];
+      for (const c of candidates) {
+        if (noisy.has(c.id)) continue;
+        if (c.aiBannedUntil && c.aiBannedUntil > quietSince) continue;
+        if (c.updatedAt > quietSince) continue;
+
+        const previousTier = c.riskTier;
+        const newTier = previousTier - 1;
+        const newReason = `auto_decay:was=${previousTier}:after=${QUIET_WINDOW_DAYS}d_quiet:was_reason=${c.riskTierReason ?? 'unknown'}`;
+
+        try {
+          await db
+            .update(users)
+            .set({
+              riskTier: newTier,
+              riskTierReason: newReason,
+              updatedAt: now,
+            })
+            .where(eq(users.id, c.id));
+
+          await db.insert(auditLogs).values({
+            id: crypto.randomUUID(),
+            userId: c.id,
+            action: 'user.risk_tier_decayed',
+            resource: 'user',
+            resourceId: c.id,
+            metadata: {
+              previousTier,
+              newTier,
+              previousReason: c.riskTierReason,
+              quietWindowDays: QUIET_WINDOW_DAYS,
+            },
+            createdAt: now,
+          });
+
+          results.push({ userId: c.id, previousTier, newTier });
+        } catch (e) {
+          console.error(`[risk-tier-decay] failed for ${c.id}:`, e);
+        }
+      }
+
+      console.log(
+        `[risk-tier-decay] candidates=${candidates.length} noisy=${noisy.size} decayed=${results.length}`,
+      );
+
+      return { candidates: candidates.length, noisy: noisy.size, results };
+    },
+    { acquiredBy, windowStart: cronWindowStart },
   );
 
+  if (!outcome.ran) {
+    return NextResponse.json({
+      skipped: true,
+      reason: outcome.skippedReason,
+      windowStart: outcome.windowStart,
+    });
+  }
+  const r = outcome.result!;
   return NextResponse.json({
-    decayed: results.length,
-    candidates: candidates.length,
+    decayed: r.results.length,
+    candidates: r.candidates,
     quietWindowDays: QUIET_WINDOW_DAYS,
-    results,
+    results: r.results,
+    windowStart: outcome.windowStart,
   });
 }

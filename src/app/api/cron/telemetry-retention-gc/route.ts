@@ -23,6 +23,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { IS_SAAS } from '@/lib/deployment-mode';
 import { runRetentionGc } from '@/lib/telemetry/access-audit';
+import { runCronOnce } from '@/lib/cron-lease';
+import { parseCronWindow } from '@/lib/cron-window';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,11 +51,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ),
   };
 
-  const result = await runRetentionGc({ config: cfg });
+  const { acquiredBy, windowStart } = parseCronWindow(req, 'telemetry-retention-gc');
+  const outcome = await runCronOnce(
+    'telemetry-retention-gc',
+    () => runRetentionGc({ config: cfg }),
+    { acquiredBy, windowStart },
+  );
+
+  if (!outcome.ran) {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: outcome.skippedReason,
+      windowStart: outcome.windowStart,
+    });
+  }
+
   return NextResponse.json({
     ok: true,
     config: cfg,
-    ...result,
+    windowStart: outcome.windowStart,
+    ...outcome.result,
   });
 }
 

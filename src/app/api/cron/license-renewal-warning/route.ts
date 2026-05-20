@@ -13,6 +13,8 @@ import { eq } from 'drizzle-orm';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { CAN_LICENSE } from '@/lib/deployment-mode';
 import { db, licenseCache } from '@/lib/prisma';
+import { runCronOnce } from '@/lib/cron-lease';
+import { parseCronWindow } from '@/lib/cron-window';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,80 +95,90 @@ export async function POST(req: NextRequest) {
   const guard = requireCronAuth(req);
   if (guard) return guard;
 
-  const cache = await db.query.licenseCache.findFirst({
-    where: eq(licenseCache.id, 'current'),
-  });
-  if (!cache) return new NextResponse(null, { status: 204 });
+  const { acquiredBy, windowStart } = parseCronWindow(req, 'license-renewal-warning');
+  const outcome = await runCronOnce(
+    'license-renewal-warning',
+    async () => {
+      const cache = await db.query.licenseCache.findFirst({
+        where: eq(licenseCache.id, 'current'),
+      });
+      if (!cache) return { notified: false, reason: 'no-license-cache' as const };
 
-  const payload = cache.payloadJson as LicensePayloadLike;
-  if (!payload?.licenseId || !payload.expiresAt) {
-    return NextResponse.json({ error: 'license-cache-payload-invalid' }, { status: 500 });
-  }
+      const payload = cache.payloadJson as LicensePayloadLike;
+      if (!payload?.licenseId || !payload.expiresAt) {
+        return { notified: false, reason: 'license-cache-payload-invalid' as const };
+      }
+      const expiresAtMs = Date.parse(payload.expiresAt);
+      if (Number.isNaN(expiresAtMs)) {
+        return { notified: false, reason: 'license-cache-expiry-invalid' as const };
+      }
+      const now = new Date();
+      const daysRemaining = Math.ceil((expiresAtMs - now.getTime()) / DAY_MS);
+      const threshold = pickThreshold(daysRemaining, parseThresholds());
+      if (threshold === null) {
+        return { notified: false, reason: 'outside-thresholds' as const, daysRemaining };
+      }
+      // version = signingKeyId + verifiedAtIso；license 换 key 自动重置 thresholds
+      const version = `${cache.signingKeyId}:${cache.verifiedAt.toISOString()}`;
+      const record = normalizeRecord(cache.renewalNotifyRecord);
+      const thresholds = record.version === version ? record.thresholds ?? {} : {};
+      const thresholdKey = String(threshold);
+      if (thresholds[thresholdKey]) {
+        return {
+          notified: false,
+          reason: 'already-notified' as const,
+          threshold,
+          daysRemaining,
+        };
+      }
 
-  const expiresAtMs = Date.parse(payload.expiresAt);
-  if (Number.isNaN(expiresAtMs)) {
-    return NextResponse.json({ error: 'license-cache-expiry-invalid' }, { status: 500 });
-  }
+      const sent = await postSlack(
+        `License renewal warning: licenseId=${payload.licenseId}, customer=${payload.customer ?? 'unknown'}, daysRemaining=${daysRemaining}, threshold=${threshold}. Contact support@aster-lang.cloud.`,
+      );
 
-  const now = new Date();
-  const daysRemaining = Math.ceil((expiresAtMs - now.getTime()) / DAY_MS);
-  const threshold = pickThreshold(daysRemaining, parseThresholds());
-  if (threshold === null) {
-    return NextResponse.json({
-      notified: false,
-      reason: 'outside-thresholds',
-      daysRemaining,
-    });
-  }
+      // codex 审查 Major-2：Slack 失败时不写 record，下次 cron 会重试同 threshold；
+      // 避免 webhook 一次性故障永久压制提醒。
+      if (!sent) {
+        return {
+          notified: false,
+          reason: 'slack-delivery-failed' as const,
+          threshold,
+          daysRemaining,
+        };
+      }
 
-  // version = signingKeyId + verifiedAtIso；license 换 key 自动重置 thresholds
-  const version = `${cache.signingKeyId}:${cache.verifiedAt.toISOString()}`;
-  const record = normalizeRecord(cache.renewalNotifyRecord);
-  const thresholds = record.version === version ? record.thresholds ?? {} : {};
-  const thresholdKey = String(threshold);
-  if (thresholds[thresholdKey]) {
-    return NextResponse.json({
-      notified: false,
-      reason: 'already-notified',
-      threshold,
-      daysRemaining,
-    });
-  }
+      const nextRecord: RenewalNotifyRecord = {
+        version,
+        thresholds: {
+          ...thresholds,
+          [thresholdKey]: now.toISOString(),
+        },
+      };
+      await db
+        .update(licenseCache)
+        .set({
+          renewalNotifyRecord: nextRecord,
+          updatedAt: now,
+        })
+        .where(eq(licenseCache.id, 'current'));
 
-  const sent = await postSlack(
-    `License renewal warning: licenseId=${payload.licenseId}, customer=${payload.customer ?? 'unknown'}, daysRemaining=${daysRemaining}, threshold=${threshold}. Contact support@aster-lang.cloud.`,
+      return { notified: true, threshold, daysRemaining };
+    },
+    { acquiredBy, windowStart },
   );
 
-  // codex 审查 Major-2：Slack 失败时不写 record，下次 cron 会重试同 threshold；
-  // 避免 webhook 一次性故障永久压制提醒。
-  if (!sent) {
+  if (!outcome.ran) {
     return NextResponse.json({
-      notified: false,
-      reason: 'slack-delivery-failed',
-      threshold,
-      daysRemaining,
+      skipped: true,
+      reason: outcome.skippedReason,
+      windowStart: outcome.windowStart,
     });
   }
-
-  const nextRecord: RenewalNotifyRecord = {
-    version,
-    thresholds: {
-      ...thresholds,
-      [thresholdKey]: now.toISOString(),
-    },
-  };
-
-  await db
-    .update(licenseCache)
-    .set({
-      renewalNotifyRecord: nextRecord,
-      updatedAt: now,
-    })
-    .where(eq(licenseCache.id, 'current'));
-
-  return NextResponse.json({
-    notified: true,
-    threshold,
-    daysRemaining,
-  });
+  // Preserve the pre-V2 behavior where "no license cache" returns 204
+  // (no-content) so existing alerting/cron schedulers that key on the
+  // 204 signal keep working.
+  if (outcome.result?.reason === 'no-license-cache') {
+    return new NextResponse(null, { status: 204 });
+  }
+  return NextResponse.json({ ...outcome.result, windowStart: outcome.windowStart });
 }

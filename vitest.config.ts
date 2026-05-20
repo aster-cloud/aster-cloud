@@ -65,6 +65,11 @@ export default defineConfig({
           env: {
             DEPLOYMENT_MODE: 'saas',
             NEXT_PUBLIC_DEPLOYMENT_MODE: 'saas',
+            // Unit tests that drive cron route handlers don't stub the
+            // CronJobLease table; the lease-acquire layer is exercised
+            // separately by the cron-lease integration test against
+            // real Postgres.
+            BYPASS_CRON_LEASE: '1',
           },
         },
       },
@@ -77,6 +82,7 @@ export default defineConfig({
           env: {
             DEPLOYMENT_MODE: 'on-prem',
             NEXT_PUBLIC_DEPLOYMENT_MODE: 'on-prem',
+            BYPASS_CRON_LEASE: '1',
           },
         },
       },

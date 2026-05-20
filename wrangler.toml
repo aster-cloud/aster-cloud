@@ -60,15 +60,20 @@ id = "b712d2c83ffe41f0b4d0ec615314a935"
 localConnectionString = "postgres://placeholder:placeholder@localhost:5432/aster_cloud_dev"
 
 # Cron triggers
+# 这些表达式由 worker.js 的 scheduled() 处理函数派发到对应路由，详见
+# src/lib/cron-registry.ts。同一窗口的并发触发（Workers + 外部 curl）
+# 由 Postgres CronJobLease 表自动去重。
+#
 # - 04:30 UTC: /api/cron/user-purge (软删 30d 后 hard-delete)
 # - 05:00 UTC: /api/cron/risk-tier-decay (≥7d 无风险事件 → tier -1)
 # - 每 6 小时: /api/cron/license-revocation-refresh
 #   仅 on-prem build 有意义；SaaS 部署中该 route 返回 404。
 #   6h 比 plan 默认 24h 更保守，缩短 revocation 触达时间，
 #   缓解 OSS Vault 缺 control_group 时的 Witness 旁路风险（PR-L0 codex 审查）。
-[triggers]
 # - 每周一 08:00 UTC: /api/cron/license-renewal-warning（on-prem 续费提醒）
-crons = ["30 4 * * *", "0 5 * * *", "0 */6 * * *", "0 8 * * 1"]
+# - 03:15 UTC: /api/cron/telemetry-retention-gc（J1 — 删除超 365d 的 LicenseTelemetry 行 + 90d/7y 审计窗口）
+[triggers]
+crons = ["30 4 * * *", "0 5 * * *", "0 */6 * * *", "0 8 * * 1", "15 3 * * *"]
 
 # 环境变量（公开的，非敏感信息）
 [vars]
@@ -101,3 +106,19 @@ AUTH_TRUST_HOST = "true"
 # Aster API URL（可选，默认 https://policy.aster-lang.dev）：
 # 编辑器 / AI 客户端会读 NEXT_PUBLIC_ASTER_POLICY_API_URL 作为运行时 baseUrl
 # wrangler secret put NEXT_PUBLIC_ASTER_POLICY_API_URL
+#
+# Cron 鉴权（worker.js scheduled() 派发 + 外部 curl 调用都用）：
+# wrangler secret put CRON_SECRET  # `openssl rand -hex 24`
+#
+# 遥测信封加密 KEK（J3 — AES-256，hex 64 字符或 base64 32 字节）：
+# wrangler secret put ASTER_TELEMETRY_SECRET_KEK
+# wrangler secret put ASTER_TELEMETRY_SECRET_KEK_KID  # 例 "kek-2026-05"
+#
+# 遥测数据驻留区域（J2 — 标记 LicenseTelemetry.data_region；默认 'unknown'）：
+# wrangler secret put ASTER_DATA_REGION  # us | eu | apac
+#
+# 遥测客户字段脱敏（J2 — 默认明文；启用后 SaaS 仅保存 anon-<hex>-<len>）：
+# wrangler secret put ASTER_TELEMETRY_MASK_CUSTOMER  # "1" to enable
+#
+# 遥测保留天数（J1 — 默认 365）：
+# wrangler secret put TELEMETRY_RETENTION_DAYS
