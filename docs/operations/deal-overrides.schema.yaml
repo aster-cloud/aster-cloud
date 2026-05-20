@@ -1,0 +1,25 @@
+# Glossary Contract — PUBLIC reference schema for deal-overrides.yaml
+# Real deal data lives in aster-deploy/private/glossary/deal-overrides.yaml
+# (git-crypt encrypted). See ./deal-override-process.md.
+#
+# v7 §13.1.1 — values are illustrative redactions, NEVER real customer data.
+
+version: 1
+pending-overrides:
+  - deal-id: <DEAL-ID-redacted>
+    customer: <CUSTOMER-redacted>
+    requested-at: <ISO date>
+    approved-by:
+      - role: deal-desk
+        actor: <actor email>
+      - role: glossary-steward
+        actor: <actor email>
+    affected-terms:
+      - <glossary-term-id>             # MUST have tenant-overridable: true in glossary
+    requested-substitution:
+      en-US:
+        <glossary-term-id>: <substitution string>
+    adr-commitment-deadline: <ISO date or quarter>   # ≤ 6 months from requested-at
+    runtime-readiness-status: pending | scheduled | shipped
+    revisit-at: <ISO renewal date>
+    notes: <free text — NO deal financials, NO customer-internal terms>
