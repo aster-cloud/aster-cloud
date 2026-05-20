@@ -1,0 +1,406 @@
+{
+  "version": 1,
+  "fmt-config-version": 1,
+  "blocks": {
+    "cron-cron-jobs-dual-trigger-model-with-postgres-dedup-paragraph-1": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "cron-cron-jobs-dual-trigger-model-with-postgres-dedup-paragraph-2": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 10
+        }
+      },
+      "alias-of": null
+    },
+    "cron-registry-single-source-of-truth-paragraph-3": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 50
+        }
+      },
+      "alias-of": null
+    },
+    "cron-registry-single-source-of-truth-paragraph-4": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 56
+        }
+      },
+      "alias-of": null
+    },
+    "cron-lease-semantics-paragraph-5": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 65
+        }
+      },
+      "alias-of": null
+    },
+    "cron-lease-semantics-paragraph-6": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 76
+        }
+      },
+      "alias-of": null
+    },
+    "cron-how-to-add-a-new-cron-list-item-7": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 82
+        }
+      },
+      "alias-of": null
+    },
+    "cron-how-to-add-a-new-cron-list-item-8": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 85
+        }
+      },
+      "alias-of": null
+    },
+    "cron-how-to-add-a-new-cron-list-item-9": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 88
+        }
+      },
+      "alias-of": null
+    },
+    "cron-how-to-add-a-new-cron-list-item-10": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 90
+        }
+      },
+      "alias-of": null
+    },
+    "cron-how-to-add-a-new-cron-list-item-11": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 92
+        }
+      },
+      "alias-of": null
+    },
+    "cron-how-to-add-a-new-cron-list-item-12": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 115
+        }
+      },
+      "alias-of": null
+    },
+    "cron-manual-invocation-ops-github-actions-paragraph-13": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 129
+        }
+      },
+      "alias-of": null
+    },
+    "cron-manual-invocation-ops-github-actions-paragraph-14": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 138
+        }
+      },
+      "alias-of": null
+    },
+    "cron-observability-paragraph-15": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 144
+        }
+      },
+      "alias-of": null
+    },
+    "cron-test-seams-list-item-16": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 170
+        }
+      },
+      "alias-of": null
+    },
+    "cron-test-seams-list-item-17": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 174
+        }
+      },
+      "alias-of": null
+    },
+    "cron-test-seams-list-item-18": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "cron.md": {
+          "line-hint": 177
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-telemetry-kek-rotation-runbook-saas-paragraph-1": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-what-the-kek-protects-paragraph-2": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 9
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-what-the-kek-protects-paragraph-3": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 16
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-when-to-rotate-list-item-4": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 22
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-when-to-rotate-list-item-5": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 23
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-when-to-rotate-paragraph-6": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 28
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-pre-flight-checks-list-item-7": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 33
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-pre-flight-checks-list-item-8": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 37
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-rotation-procedure-paragraph-9": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 50
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-2-roll-out-the-env-to-saas-workloads-paragraph-10": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 73
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-2-roll-out-the-env-to-saas-workloads-list-item-11": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 76
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-2-roll-out-the-env-to-saas-workloads-list-item-12": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 77
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-2-roll-out-the-env-to-saas-workloads-paragraph-13": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 79
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-3-rewrap-all-existing-rows-paragraph-14": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 84
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-3-rewrap-all-existing-rows-paragraph-15": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 95
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-4-drop-the-prior-kek-paragraph-16": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 112
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-step-4-drop-the-prior-kek-paragraph-17": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 121
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-failure-modes-paragraph-18": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 125
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-cross-references-list-item-19": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 133
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-cross-references-list-item-20": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 134
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-cross-references-list-item-21": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 135
+        }
+      },
+      "alias-of": null
+    },
+    "kek-rotation-cross-references-list-item-22": {
+      "created-at": "2026-05-20T11:29:25.017Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "kek-rotation.md": {
+          "line-hint": 136
+        }
+      },
+      "alias-of": null
+    }
+  }
+}

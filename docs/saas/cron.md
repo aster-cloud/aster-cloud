@@ -1,15 +1,19 @@
 # Cron jobs — dual-trigger model with Postgres dedup
 
+<!-- glossary:block id=cron-cron-jobs-dual-trigger-model-with-postgres-dedup-paragraph-1 -->
 The SaaS Worker schedules five cron jobs through Cloudflare's
 `[triggers]` block in `wrangler.toml`. Every job is also invokable as
 a regular HTTP route (`POST /api/cron/<job>` with the `CRON_SECRET`
 bearer), so ops or a GitHub Actions runner can fire the same job
 ad-hoc. The two trigger paths can race; a Postgres lease serializes
 them so the work runs at most once per scheduled window.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=cron-cron-jobs-dual-trigger-model-with-postgres-dedup-paragraph-2 -->
 This document is the contract for adding, deduping, and observing
 cron jobs. The pre-V2 history was that the `[triggers]` block was
 unwired — Cloudflare fired events with no handler.
+<!-- /glossary:block -->
 
 ## Architecture
 
@@ -47,21 +51,26 @@ unwired — Cloudflare fired events with no handler.
 
 ## Registry — single source of truth
 
+<!-- glossary:block id=cron-registry-single-source-of-truth-paragraph-3 -->
 `src/lib/cron-registry.ts` declares every scheduled cron. Each entry
 has `(jobName, cron, routePath, windowStartFor)`. The `windowStartFor`
 function maps "now" to the canonical boundary for that schedule
 (e.g. 04:30 UTC for `30 4 * * *`). Two callers in the same bucket
 produce the same window-start, which is what the lease keys on.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=cron-registry-single-source-of-truth-paragraph-4 -->
 The Cloudflare-side mirror lives in `worker.js` as a plain object
 literal because the Worker entrypoint can't import `src/`. A unit
 test (`cron-registry-worker-sync.test.ts`) refuses CI if the two
 drift.
+<!-- /glossary:block -->
 
 ## Lease semantics
 
 `CronJobLease` table:
 
+<!-- glossary:block id=cron-lease-semantics-paragraph-5 -->
 | column | type | role |
 |---|---|---|
 | `id` | text PK | uuid |
@@ -72,23 +81,35 @@ drift.
 | `completed_at` | timestamptz | set on done/failed |
 | `status` | enum | `'running'` → `'done'` \| `'failed'` |
 | `error_message` | text | truncated to 500 chars on failure |
+<!-- /glossary:block -->
 
+<!-- glossary:block id=cron-lease-semantics-paragraph-6 -->
 `UNIQUE (job_name, window_start)` + `INSERT … ON CONFLICT DO NOTHING`
 gives first-writer-wins atomicity at the DB layer. We don't need a
 distributed lock service.
+<!-- /glossary:block -->
 
 ## How to add a new cron
 
+<!-- glossary:block id=cron-how-to-add-a-new-cron-list-item-7 -->
 1. **Pick a schedule** that doesn't collide with the cron field's
    reading of "today's window". Avoid `* * * * *` — windows must be
    well-defined intervals (daily, hourly bucket, weekly).
+<!-- /glossary:block -->
+<!-- glossary:block id=cron-how-to-add-a-new-cron-list-item-8 -->
 2. **Add an entry to `CRON_REGISTRY`** in
    `src/lib/cron-registry.ts` with `windowStartFor` computing the
    canonical window-start for that schedule.
+<!-- /glossary:block -->
+<!-- glossary:block id=cron-how-to-add-a-new-cron-list-item-9 -->
 3. **Mirror in `worker.js`**: add `"<cron>": "<routePath>"` to the
    `CRON_DISPATCH` object. The sync test enforces parity.
+<!-- /glossary:block -->
+<!-- glossary:block id=cron-how-to-add-a-new-cron-list-item-10 -->
 4. **Add the cron expression** to the `crons = [...]` array in
    `wrangler.toml`'s `[triggers]` block.
+<!-- /glossary:block -->
+<!-- glossary:block id=cron-how-to-add-a-new-cron-list-item-11 -->
 5. **Wrap the route body** in `runCronOnce`:
 
    ```ts
@@ -111,9 +132,12 @@ distributed lock service.
      return NextResponse.json({ ...outcome.result, windowStart: outcome.windowStart });
    }
    ```
+<!-- /glossary:block -->
 
+<!-- glossary:block id=cron-how-to-add-a-new-cron-list-item-12 -->
 6. **Deploy** — `wrangler deploy`. Cloudflare picks up the new cron
    on next deploy reconciliation.
+<!-- /glossary:block -->
 
 ## Manual invocation (ops / GitHub Actions)
 
@@ -126,7 +150,9 @@ curl -sS -X POST https://aster-lang.cloud/api/cron/telemetry-retention-gc \
   -H "x-cron-source: ops-curl"
 ```
 
+<!-- glossary:block id=cron-manual-invocation-ops-github-actions-paragraph-13 -->
 If you need to backfill a *specific* prior window:
+<!-- /glossary:block -->
 
 ```sh
 curl -sS -X POST https://aster-lang.cloud/api/cron/telemetry-retention-gc \
@@ -135,14 +161,18 @@ curl -sS -X POST https://aster-lang.cloud/api/cron/telemetry-retention-gc \
   -H "x-cron-window-start: 2026-05-10T03:15:00.000Z"
 ```
 
+<!-- glossary:block id=cron-manual-invocation-ops-github-actions-paragraph-14 -->
 The `x-cron-window-start` header overrides the registry computation —
 useful for replaying a window that failed (lease will be `'failed'` so
 your backfill won't run; clear the row first or pick a different window).
+<!-- /glossary:block -->
 
 ## Observability
 
+<!-- glossary:block id=cron-observability-paragraph-15 -->
 Lease rows are the source of truth for "did the 04:30 user-purge
 happen?". Query examples:
+<!-- /glossary:block -->
 
 ```sql
 -- Latest 50 cron executions across all jobs
@@ -167,13 +197,19 @@ SELECT job_name, window_start, error_message
 
 ## Test seams
 
+<!-- glossary:block id=cron-test-seams-list-item-16 -->
 - **Unit tests**: route-handler unit tests stub `db` and don't know
   about the lease layer. The `BYPASS_CRON_LEASE=1` env (set globally
   in `vitest.config.ts`) makes `runCronOnce` execute the inner
   function directly. Production never reads this env.
+<!-- /glossary:block -->
+<!-- glossary:block id=cron-test-seams-list-item-17 -->
 - **Integration tests**: `src/__tests__/integration/cron-lease.saas.integration.test.ts`
   exercises the real DB path — concurrency, error propagation,
   registry guard.
+<!-- /glossary:block -->
+<!-- glossary:block id=cron-test-seams-list-item-18 -->
 - **Sync test**: `src/__tests__/lib/cron-registry-worker-sync.test.ts`
   fails CI if `worker.js`'s `CRON_DISPATCH` diverges from
   `CRON_REGISTRY`.
+<!-- /glossary:block -->

@@ -1,21 +1,27 @@
 # License Usage Telemetry (Opt-in)
 
+<!-- glossary:block id=telemetry-license-usage-telemetry-opt-in-paragraph-1 -->
 Aster ships an **opt-in** telemetry uploader. By default it does
 nothing — your on-prem deployment makes zero outbound calls related to
 licensing. When you turn it on, a daily cron sends a small aggregate
 report to SaaS so that, at renewal time, the conversation is grounded
 in actual usage.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-license-usage-telemetry-opt-in-paragraph-2 -->
 This document covers (1) exactly what gets sent, (2) how to enable it,
 (3) how to verify it, and (4) how to opt out / delete prior reports.
+<!-- /glossary:block -->
 
 ## What is sent
 
+<!-- glossary:block id=telemetry-what-is-sent-paragraph-3 -->
 Every field is an integer count or boolean. **No** user identifiers,
 **no** email addresses, **no** policy source, **no** decision-trace
 content. Per-field GDPR justification (legal basis, necessity, retention
 window) is enumerated in [`telemetry-fields.md`](./telemetry-fields.md);
 the machine-readable contract lives at `/api/v1/telemetry/schema` (J4).
+<!-- /glossary:block -->
 
 Full schema:
 
@@ -39,26 +45,44 @@ Full schema:
 }
 ```
 
+<!-- glossary:block id=telemetry-what-is-sent-paragraph-4 -->
 Stable canonical JSON (keys sorted recursively) is signed with
 HMAC-SHA256 using a secret Aster issued to you at license sign time.
+<!-- /glossary:block -->
 
 ## What is NOT sent
 
+<!-- glossary:block id=telemetry-what-is-not-sent-list-item-5 -->
 - Tenant names / organization names beyond the `customer` field
   already in the license payload (you negotiated that with sales).
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-what-is-not-sent-list-item-6 -->
 - User emails, names, IDs, IPs.
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-what-is-not-sent-list-item-7 -->
 - Policy source code or names.
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-what-is-not-sent-list-item-8 -->
 - Decision-trace content.
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-what-is-not-sent-list-item-9 -->
 - Logs, errors with stack traces, request bodies.
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-what-is-not-sent-list-item-10 -->
 - Anything from `executions.input` / `executions.output`.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-what-is-not-sent-paragraph-11 -->
 If a future schema version proposes adding a new field, it'll show up
 in this doc before it ships, and the producer will emit it only after
 the recipient (SaaS) confirms the schema bump.
+<!-- /glossary:block -->
 
 ## How to enable
 
+<!-- glossary:block id=telemetry-how-to-enable-paragraph-12 -->
 Set these env vars on your aster-cloud deployment:
+<!-- /glossary:block -->
 
 ```bash
 ASTER_TELEMETRY_OPT_IN=1
@@ -73,7 +97,9 @@ ASTER_TELEMETRY_SECRET_KID=default
 ASTER_TELEMETRY_MASK_CUSTOMER=1
 ```
 
+<!-- glossary:block id=telemetry-how-to-enable-paragraph-13 -->
 Then schedule the cron (daily is plenty):
+<!-- /glossary:block -->
 
 ```bash
 # 示例 Kubernetes CronJob 调用方式
@@ -82,90 +108,133 @@ curl -fsS -X POST \
   https://your-aster-cloud.example.com/api/cron/telemetry-uploader
 ```
 
+<!-- glossary:block id=telemetry-how-to-enable-paragraph-14 -->
 Failure handling: the cron is idempotent (SaaS dedupes by license_id +
 period window), so safe to retry. Transient errors (network /
 upstream 5xx) return HTTP 503; fatal errors (wrong secret / schema
 mismatch) return HTTP 400. Both are also recorded in the on-prem
 admin/license page under "Usage telemetry (opt-in)".
+<!-- /glossary:block -->
 
 ## How to verify what was sent
 
+<!-- glossary:block id=telemetry-how-to-verify-what-was-sent-paragraph-15 -->
 Open `/admin/license`. The "Usage telemetry (opt-in)" panel shows:
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-how-to-verify-what-was-sent-list-item-16 -->
 - Whether telemetry is enabled.
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-how-to-verify-what-was-sent-list-item-17 -->
 - Last attempt timestamp (UTC).
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-how-to-verify-what-was-sent-list-item-18 -->
 - Outcome (Accepted / Deduped / Failed).
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-how-to-verify-what-was-sent-list-item-19 -->
 - A collapsible "View payload sent to Aster" with the exact counters.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-how-to-verify-what-was-sent-paragraph-20 -->
 This is the same JSON that hit the wire — no paraphrasing.
+<!-- /glossary:block -->
 
 ## Opting out
 
+<!-- glossary:block id=telemetry-opting-out-paragraph-21 -->
 Unset `ASTER_TELEMETRY_OPT_IN` (or set to anything other than `"1"`).
 The cron returns 204 immediately without touching the DB or opening
 sockets. Existing reports already received by SaaS stay there — see
 next section.
+<!-- /glossary:block -->
 
 ## Deleting prior reports
 
+<!-- glossary:block id=telemetry-deleting-prior-reports-paragraph-22 -->
 There are two paths for a GDPR Art 17 / CCPA right-to-delete request:
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-deleting-prior-reports-paragraph-23 -->
 **Self-service (recommended)** — your deployment calls
 `POST /api/v1/dsar` directly with HMAC-signed body. Supports `dryRun`
 preview before commit, returns the exact row count, writes the audit
 row immediately. Full curl examples in [`dsar.md`](./dsar.md).
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-deleting-prior-reports-paragraph-24 -->
 **Operator-assisted** — for cases where you no longer have access to
 the per-license HMAC secret (e.g. license is fully decommissioned):
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-deleting-prior-reports-list-item-25 -->
 1. Email `dpo@aster-lang.cloud` with your license ID (or customer name)
    and DSAR reference number.
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-deleting-prior-reports-list-item-26 -->
 2. Aster operations runs the
    `POST /api/admin/telemetry/dsar-delete` endpoint (admin-only;
    supports the same `dryRun` flag as the self-service one).
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-deleting-prior-reports-list-item-27 -->
 3. A `delete-by-dsar` row lands in `TelemetryAccessAudit` with the
    `dsarRef` so we can show regulators "request X received on Y,
    fulfilled on Z" (legal-hold retention: 7 years).
+<!-- /glossary:block -->
+<!-- glossary:block id=telemetry-deleting-prior-reports-list-item-28 -->
 4. The nightly retention GC also auto-deletes any LicenseTelemetry row
    past 365 days (default; customizable via env).
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-deleting-prior-reports-paragraph-29 -->
 The 1-month GDPR fulfillment SLA is comfortably within reach — actual
 deletion happens within seconds of either endpoint being called.
+<!-- /glossary:block -->
 
 ## Data residency
 
+<!-- glossary:block id=telemetry-data-residency-paragraph-30 -->
 Aster runs SaaS in `<region>` (current single region; multi-region in
 roadmap). Every `LicenseTelemetry` row carries a `data_region` column
 recording exactly where it was processed. The transparency panel on
 `/admin/license` shows the region for every upload your deployment has
 made.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-data-residency-paragraph-31 -->
 For customers requiring data localization (EU / APAC residency), see
 the executed Data Processing Agreement template at
 [`dpa-template.md`](./dpa-template.md) — sales executes a per-customer
 copy with the agreed residency region.
+<!-- /glossary:block -->
 
 ## Configuration on Aster (SaaS) side — for reference
 
+<!-- glossary:block id=telemetry-configuration-on-aster-saas-side-for-reference-paragraph-32 -->
 Secrets live on the `IssuedLicense.payload_json.telemetry.secrets`
 array, set at sign time. Rotation appends a new entry; the previous
 entry gets `retiredAt` populated and stops verifying. Customers can
 have multiple active kids during rotation; cron picks up `kid`
 specified by `ASTER_TELEMETRY_SECRET_KID` env.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-configuration-on-aster-saas-side-for-reference-paragraph-33 -->
 **At-rest encryption (J3)**: each entry is stored as an AES-256-GCM
 envelope under a SaaS-managed Key Encryption Key (KEK). The HMAC
 plaintext bytes only ever materialize in memory at upload-verification
 time; a database compromise alone does not yield usable secrets. The
 KEK is held in Vault and rotated independently via the KEK rotation
 runbook (`docs/saas/kek-rotation.md`, SaaS ops only).
+<!-- /glossary:block -->
 
+<!-- glossary:block id=telemetry-configuration-on-aster-saas-side-for-reference-paragraph-34 -->
 Retention: 12 months rolling. Older rows are GC'd by a separate cron
 (`/api/cron/telemetry-retention-gc`); deletion is audit-logged for 7
 years per GDPR Art 30.
+<!-- /glossary:block -->
 
 ## Threat model
 
+<!-- glossary:block id=telemetry-threat-model-paragraph-35 -->
 | Attack | Defense |
 |--------|---------|
 | Forging telemetry for someone else's license | HMAC sign with per-license secret — attacker without secret can't produce a valid signature |
@@ -173,3 +242,4 @@ years per GDPR Art 30.
 | Sending from a different deployment than the license is bound to | x-aster-deployment-id header cross-checked against license deploymentBinding |
 | Sending wildly wrong counts | Out of scope — no anomaly detection; this is signal for sales conversations, not a billing meter |
 | DB compromise leaking other customers' HMAC secrets | AES-256-GCM envelope encryption with KEK in Vault. DB-only attacker sees ciphertext + auth tag, no plaintext. (J3) |
+<!-- /glossary:block -->

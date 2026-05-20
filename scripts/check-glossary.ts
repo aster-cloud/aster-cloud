@@ -165,6 +165,37 @@ function hasMatch(haystack: string, needle: string, match: MatchSpec): boolean {
          (wordChar.test(before) !== wordChar.test(ch[idx]!) && wordChar.test(after) !== wordChar.test(ch[idx + cn.length - 1]!));
 }
 
+/**
+ * Extract `<!-- glossary:block id=X -->…<!-- /glossary:block -->` block-paired
+ * regions from a Markdown file. Code fences inside the block are stripped
+ * (their content is not glossary-scanned).
+ */
+function extractGlossaryBlocks(markdown: string): Array<{ id: string; text: string }> {
+  const blocks: Array<{ id: string; text: string }> = [];
+  const re = /<!--\s*glossary:block\s+id=([a-z0-9][a-z0-9-]*)\s*-->([\s\S]*?)<!--\s*\/glossary:block\s*-->/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(markdown)) !== null) {
+    const body = m[2]!
+      .replace(/```[\s\S]*?```/g, ' ')  // fenced code
+      .replace(/`[^`]*`/g, ' ')          // inline code
+      .replace(/\[([^\]]*)\]\(([^)]*)\)/g, '$1')  // [text](url) → text
+      .replace(/<[^>]+>/g, ' ')          // remaining HTML tags
+      .replace(/\s+/g, ' ')
+      .trim();
+    blocks.push({ id: m[1]!, text: body });
+  }
+  return blocks;
+}
+
+/** Extract `locale:` from YAML frontmatter, if present. */
+function extractFrontmatterLocale(markdown: string): string | null {
+  const m = /^---\n([\s\S]*?)\n---/.exec(markdown);
+  if (!m) return null;
+  const fm = m[1]!;
+  const localeLine = /^locale:\s*(\S+)\s*$/m.exec(fm);
+  return localeLine ? localeLine[1]! : null;
+}
+
 function flattenJson(obj: unknown, prefix = ''): Array<{ keyPath: string; value: string }> {
   const out: Array<{ keyPath: string; value: string }> = [];
   const walk = (n: unknown, p: string): void => {
@@ -350,10 +381,38 @@ function main(): void {
     }
 
     if (surface.type === 'markdown') {
-      // Stage 1 inventory: for now just verify ignored-surfaces glob hygiene + count files.
-      // Block-id pairing is exercised after the markdown tree has been annotated by
-      // `glossary-fmt insert` (planned for Stage 2).
-      console.log(`[check-glossary] markdown surface "${surfaceName}" matched ${files.length} files (block-id annotation deferred to Stage 2)`);
+      // Stage 2: block-id-aware scanning. For each file, extract paired
+      // <!-- glossary:block id=X -->…<!-- /glossary:block --> regions,
+      // strip code-fences within them, then run forbidden-alias matching
+      // against the registered locale (frontmatter `locale:` or fallback).
+      const ANNOTATED = files.filter((f) => /\<\!--\s*glossary:block\s+id=/.test(readFileSync(join(repoRoot, f), 'utf8')));
+      console.log(`[check-glossary] markdown surface "${surfaceName}" matched ${files.length} files (${ANNOTATED.length} annotated)`);
+
+      for (const f of ANNOTATED) {
+        const content = readFileSync(join(repoRoot, f), 'utf8');
+        const fileLocale = extractFrontmatterLocale(content) ?? surface['fallback-locale'] ?? backboneLocale;
+        const blocks = extractGlossaryBlocks(content);
+
+        // Forbidden-alias scan for this locale.
+        for (const block of blocks) {
+          for (const term of Object.values(glossary.terms)) {
+            const aliases = term['forbidden-aliases']?.[fileLocale] ?? [];
+            for (const alias of aliases) {
+              if (hasMatch(block.text, alias.text, alias.match)) {
+                issues.push({
+                  severity: 'error',
+                  rule: 'forbidden-alias',
+                  path: f,
+                  locale: fileLocale,
+                  termId: term.id,
+                  anchor: block.id,
+                  detail: `forbidden alias "${alias.text}" of term "${term.id}" in block "${block.id}" (registered: "${term.translations[fileLocale] ?? '???'}")`,
+                });
+              }
+            }
+          }
+        }
+      }
     }
   }
 

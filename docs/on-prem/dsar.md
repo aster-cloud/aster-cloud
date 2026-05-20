@@ -1,16 +1,22 @@
 # Self-service DSAR API for telemetry data
 
+<!-- glossary:block id=dsar-self-service-dsar-api-for-telemetry-data-paragraph-1 -->
 The customer-facing **Data Subject Access Request** endpoint lets your
 deployment exercise GDPR Art 15 (access) and Art 17 (erasure) against
 the telemetry rows we hold on the Aster SaaS side — without filing a
 support ticket or logging in to a SaaS dashboard.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=dsar-self-service-dsar-api-for-telemetry-data-paragraph-2 -->
 Endpoint: `POST https://aster-lang.cloud/api/v1/dsar`
+<!-- /glossary:block -->
 
+<!-- glossary:block id=dsar-self-service-dsar-api-for-telemetry-data-paragraph-3 -->
 Authentication: per-license HMAC-SHA256 (the **same** secret you already
 use for the telemetry uploader). If you have a working
 `/api/cron/telemetry-uploader` setup, you already have the credentials
 you need.
+<!-- /glossary:block -->
 
 ## Request shape
 
@@ -27,6 +33,7 @@ Body (HMAC-signed canonical JSON):
 }
 ```
 
+<!-- glossary:block id=dsar-request-shape-paragraph-4 -->
 | Field | Required | Notes |
 |-------|----------|-------|
 | `action` | yes | `access` returns rows; `delete` purges. |
@@ -35,6 +42,7 @@ Body (HMAC-signed canonical JSON):
 | `dsarRef` | yes | Your internal ticket number; we record it so regulators can match Aster's audit to your own. |
 | `nonce` | yes | Anti-replay random bytes (≥ 16 chars). |
 | `timestamp` | yes | ISO-8601; rejected if more than ±5 minutes from server time. |
+<!-- /glossary:block -->
 
 Headers (identical to ingest):
 
@@ -102,9 +110,12 @@ BODY=$(jq -c -n --arg ref "DSAR-ACCESS-001" --arg ts "$NOW" --arg n "$NONCE" '
 
 ## Error responses
 
+<!-- glossary:block id=dsar-error-responses-paragraph-5 -->
 All authentication failures return the same `{ "error": "rejected" }`
 shape so an attacker cannot probe which licenses exist:
+<!-- /glossary:block -->
 
+<!-- glossary:block id=dsar-error-responses-paragraph-6 -->
 | HTTP | `reason` | Meaning |
 |------|----------|---------|
 | 400 | `signature-verify-failed` | Wrong secret / wrong license id / wrong kid. |
@@ -115,25 +126,44 @@ shape so an attacker cannot probe which licenses exist:
 | 400 | `invalid-nonce` | Missing or <16 chars. |
 | 400 | `dsarRef-required` | Missing audit-trail reference. |
 | 404 | (empty body) | Endpoint hit on the on-prem build. SaaS only. |
+<!-- /glossary:block -->
 
 ## Audit trail
 
+<!-- glossary:block id=dsar-audit-trail-paragraph-7 -->
 Every request — including `dryRun` previews — writes a row to the
 `TelemetryAccessAudit` table on the SaaS side:
+<!-- /glossary:block -->
 
+<!-- glossary:block id=dsar-audit-trail-list-item-8 -->
 - Action: `read-list` for access, `delete-by-dsar` for committed
   deletes, `dry-run-preview` for previews.
+<!-- /glossary:block -->
+<!-- glossary:block id=dsar-audit-trail-list-item-9 -->
 - Actor: `customer-dsar:<licenseId>` so the source of the request is
   unambiguous in regulator-facing reports.
+<!-- /glossary:block -->
+<!-- glossary:block id=dsar-audit-trail-list-item-10 -->
 - Metadata: `dsarRef`, row count, optional request id.
+<!-- /glossary:block -->
 
+<!-- glossary:block id=dsar-audit-trail-paragraph-11 -->
 Delete-audit rows are retained 7 years (legal hold); read and dry-run
 audits 90 days. See [`telemetry.md`](./telemetry.md) for the retention
 contract.
+<!-- /glossary:block -->
 
 ## Related
 
+<!-- glossary:block id=dsar-related-list-item-12 -->
 - Telemetry overview: `docs/on-prem/telemetry.md`
+<!-- /glossary:block -->
+<!-- glossary:block id=dsar-related-list-item-13 -->
 - Per-field GDPR justification: `docs/on-prem/telemetry-fields.md`
+<!-- /glossary:block -->
+<!-- glossary:block id=dsar-related-list-item-14 -->
 - DPA template (Art 28): `docs/on-prem/dpa-template.md`
+<!-- /glossary:block -->
+<!-- glossary:block id=dsar-related-list-item-15 -->
 - Privacy notice (live, customer-facing): `<saas-host>/<locale>/privacy`
+<!-- /glossary:block -->

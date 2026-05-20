@@ -1,21 +1,36 @@
 # Aster Cloud 企业级部署指南
 
+<!-- glossary:block id=enterprise-deployment-guide-aster-cloud-paragraph-1 -->
 本文档面向企业平台团队、SRE、安全团队和审计团队。客户日常 license 操作请参考 `docs/on-prem/license-management.md`。
+<!-- /glossary:block -->
 
 ## 1. 概览与威胁模型
 
+<!-- glossary:block id=enterprise-deployment-guide-1-paragraph-2 -->
 Aster Cloud on-prem 运行在客户环境。Aster SaaS 端负责签发 license、发布签名 revocation manifest 和提供支持。
+<!-- /glossary:block -->
 
 核心信任边界：
 
+<!-- glossary:block id=enterprise-deployment-guide-1-list-item-3 -->
 - license payload 使用 Ed25519 license key 签名
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-1-list-item-4 -->
 - revocation manifest 使用独立 Ed25519 revocation key 签名（two-key separation）
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-1-list-item-5 -->
 - on-prem 镜像只内嵌 public trust bundle，**不包含私钥**
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-1-list-item-6 -->
 - revocation endpoint 可公开访问；真实性来自签名，不来自 endpoint 访问控制
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-1-list-item-7 -->
 - license/revocation **不是遥测通道**，不上传客户代码、策略、用户数据或使用量
+<!-- /glossary:block -->
 
 威胁矩阵：
 
+<!-- glossary:block id=enterprise-deployment-guide-1-paragraph-8 -->
 | 威胁 | 控制 |
 |---|---|
 | license payload 被篡改 | Ed25519 签名校验 |
@@ -25,17 +40,34 @@ Aster Cloud on-prem 运行在客户环境。Aster SaaS 端负责签发 license�
 | signing-api Witness 旁路 | 独立 service 唯一持有 transit/sign 权限 + dual JWT |
 | on-prem admin 误操作 | admin gate + audit log + read-only gate |
 | 续期遗忘 | 30/14/7/1 days Slack 提醒 cron |
+<!-- /glossary:block -->
 
 ## 2. 前置条件
 
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-9 -->
 - K3S 或兼容 Kubernetes 1.29+
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-10 -->
 - PostgreSQL 15+
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-11 -->
 - Vault 或等价 KMS（生产签名必经）
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-12 -->
 - cert-manager（mTLS 证书自动化）
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-13 -->
 - Prometheus + Grafana（监控告警）
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-14 -->
 - 日志系统：Loki / OpenSearch / Splunk
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-15 -->
 - 出站 HTTPS 到 Aster revocation endpoint
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-2-list-item-16 -->
 - 定期备份 Postgres 和 Kubernetes Secret
+<!-- /glossary:block -->
 
 ## 3. K3S 部署阶段
 
@@ -76,13 +108,21 @@ kubectl -n aster-cloud run migrate --rm -it \
 ### 阶段 5：部署 application
 
 部署 Deployment、Service、Ingress。确认：
+<!-- glossary:block id=enterprise-deployment-guide-5-application-list-item-17 -->
 - `/api/cron/*` 路由仅允许 cron secret 调用
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-5-application-list-item-18 -->
 - `/api/admin/*` 仅允许 admin session
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-5-application-list-item-19 -->
 - `/api/admin/metrics` 仅允许 Prometheus scrape
+<!-- /glossary:block -->
 
 ### 阶段 6：配置 cron 触发
 
+<!-- glossary:block id=enterprise-deployment-guide-6-cron-paragraph-20 -->
 Cloudflare Workers 自动触发 wrangler.toml 中声明的 cron。其他环境用 K8s CronJob：
+<!-- /glossary:block -->
 
 ```yaml
 apiVersion: batch/v1
@@ -120,53 +160,99 @@ curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
   -X POST https://aster.example.com/api/cron/license-revocation-refresh
 ```
 
+<!-- glossary:block id=enterprise-deployment-guide-7-paragraph-21 -->
 打开 `https://aster.example.com/admin/license` 验证 `verified-active`。
+<!-- /glossary:block -->
 
 ## 4. License ceremony reference
 
+<!-- glossary:block id=enterprise-deployment-guide-4-license-ceremony-reference-paragraph-22 -->
 License signing ceremony 由 Aster 内部执行。流程：
+<!-- /glossary:block -->
 
+<!-- glossary:block id=enterprise-deployment-guide-4-license-ceremony-reference-list-item-23 -->
 - `aster-deploy/docs/license-key-ceremony.md`
+<!-- /glossary:block -->
 
 客户需保存：
+<!-- glossary:block id=enterprise-deployment-guide-4-license-ceremony-reference-list-item-24 -->
 - licenseId
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-4-license-ceremony-reference-list-item-25 -->
 - expiresAt
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-4-license-ceremony-reference-list-item-26 -->
 - support contact (`support@aster-lang.cloud`)
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-4-license-ceremony-reference-list-item-27 -->
 - revocation endpoint URL
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-4-license-ceremony-reference-list-item-28 -->
 - trust bundle fingerprint（启动日志可见）
+<!-- /glossary:block -->
 
 ## 5. signing-api 部署 reference
 
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-paragraph-29 -->
 生产签名必经 Vault/KMS 或 signing-api。**禁止**在 SaaS Web 进程持久化私钥。
+<!-- /glossary:block -->
 
 参考：
 
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-list-item-30 -->
 - `aster-deploy/services/license-signing-api/`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-list-item-31 -->
 - `aster-deploy/services/license-signing-api/k8s/`（K3S raw manifests）
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-list-item-32 -->
 - `aster-deploy/services/license-signing-api/helm/`（Helm chart，可分发给客户）
+<!-- /glossary:block -->
 
 关键控制：
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-list-item-33 -->
 - signing-api 独立 namespace `aster-license-signing`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-list-item-34 -->
 - Vault policy 只允许 `transit/sign/license-signing-*` 和 `transit/sign/revocation-signing-*` update
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-list-item-35 -->
 - 所有签名请求写 audit log（JSONL + Prometheus + Slack）
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-5-signing-api-reference-list-item-36 -->
 - break-glass 操作需要 dual JWT (Operator + Witness)
+<!-- /glossary:block -->
 
 ## 6. SaaS-side revocation endpoint setup
 
 配置：
+<!-- glossary:block id=enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-37 -->
 - DNS：`license.aster-lang.cloud`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-38 -->
 - CDN：`Cache-Control: public, max-age=3600, must-revalidate`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-39 -->
 - ETag：`"v<version>"`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-40 -->
 - TLS：public CA
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-41 -->
 - Body：signed JSON manifest
+<!-- /glossary:block -->
 
+<!-- glossary:block id=enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-paragraph-42 -->
 on-prem 客户**只信任 manifest 签名**。CDN / DNS / TLS 是可用性 + 传输保护，不是数据根信任。
+<!-- /glossary:block -->
 
 ## 7. Monitoring
 
 导入 Grafana dashboard：
 
+<!-- glossary:block id=enterprise-deployment-guide-7-monitoring-list-item-43 -->
 - `docs/on-prem/grafana-license-dashboard.json`
+<!-- /glossary:block -->
 
 建议告警：
 
@@ -198,6 +284,7 @@ on-prem 客户**只信任 manifest 签名**。CDN / DNS / TLS 是可用性 + 传
 
 ## 8. Disaster recovery
 
+<!-- glossary:block id=enterprise-deployment-guide-8-disaster-recovery-paragraph-44 -->
 | 场景 | 恢复动作 |
 |---|---|
 | license signing key 轮换 | 发布新 trust bundle，旧 key 设为 verify-only，6 个月后 retired |
@@ -206,9 +293,11 @@ on-prem 客户**只信任 manifest 签名**。CDN / DNS / TLS 是可用性 + 传
 | signing-api crash | 恢复 pod，核对 audit log 无缺口 |
 | on-prem Postgres 恢复 | 备份恢复后立即执行 revocation refresh |
 | revocation endpoint DNS 切换 | client 7d grace 内自动恢复；超时手动 refresh |
+<!-- /glossary:block -->
 
 ## 9. Audit retention
 
+<!-- glossary:block id=enterprise-deployment-guide-9-audit-retention-paragraph-45 -->
 | 数据 | 默认保留 | SOC2 建议 | 说明 |
 |---|---|---|---|
 | admin license revoke | 7 年 | 7 年 | 合同与安全证据 |
@@ -216,9 +305,11 @@ on-prem 客户**只信任 manifest 签名**。CDN / DNS / TLS 是可用性 + 传
 | on-prem refresh event | 90 天 | 1 年 | 运维排障 |
 | signing-api request | 7 年 | 7 年 | 密钥使用证据 |
 | license verification metric | 30 天 | 90 天 | Prometheus retention |
+<!-- /glossary:block -->
 
 ## 10. SOC2 control mapping
 
+<!-- glossary:block id=enterprise-deployment-guide-10-soc2-control-mapping-paragraph-46 -->
 | Control | 证据位置 | 采集方式 |
 |---|---|---|
 | CC6.1 access control | admin audit log | `SELECT * FROM AuditLog WHERE action LIKE 'license.%'` |
@@ -226,20 +317,38 @@ on-prem 客户**只信任 manifest 签名**。CDN / DNS / TLS 是可用性 + 传
 | CC7.2 monitoring | Grafana dashboard | dashboard export + alert history |
 | CC8.1 change management | drizzle migrations | Git PR + CI run history |
 | A1 availability | cron logs | log query for `license-revocation-refresh` outcome |
+<!-- /glossary:block -->
 
 ## 11. Customer onboarding checklist
 
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-47 -->
 - [ ] 创建 Kubernetes Secret 含 `LICENSE_KEY` `CRON_SECRET` `DATABASE_URL`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-48 -->
 - [ ] 配置出站 HTTPS firewall 到 `license.aster-lang.cloud`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-49 -->
 - [ ] 部署 application + cron triggers
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-50 -->
 - [ ] 执行 `/api/cron/license-revocation-refresh` 首次冷启动
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-51 -->
 - [ ] 打开 `/admin/license` 确认 `verified-active`
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-52 -->
 - [ ] 导入 Grafana dashboard
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-53 -->
 - [ ] 配置告警接收人
+<!-- /glossary:block -->
+<!-- glossary:block id=enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-54 -->
 - [ ] 验证 read-only gate（人为破坏 license 后所有 admin mutate 应被 503）
+<!-- /glossary:block -->
 
 ## 12. Troubleshooting matrix
 
+<!-- glossary:block id=enterprise-deployment-guide-12-troubleshooting-matrix-paragraph-55 -->
 | 状态 / 错误 | 检查项 | 修复 |
 |---|---|---|
 | `missing` | `LICENSE_KEY` 未配置 | 更新 Secret 并重启 |
@@ -252,3 +361,4 @@ on-prem 客户**只信任 manifest 签名**。CDN / DNS / TLS 是可用性 + 传
 | `network-grace-expired` | 7 天未成功检查 | 恢复网络后手动 refresh |
 | `license-read-only-mode` | admin write gate 生效 | 先修复 license 状态再重试 |
 | `concurrent-refresh-in-progress` | 多个 refresh 并发 | 正常 — advisory lock 去重；不需处理 |
+<!-- /glossary:block -->

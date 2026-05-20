@@ -1,0 +1,2676 @@
+{
+  "version": 1,
+  "fmt-config-version": 1,
+  "blocks": {
+    "dpa-template-data-processing-agreement-dpa-template-aster-telem-blockquote-1": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-data-processing-agreement-dpa-template-aster-telem-paragraph-2": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 8
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-1-parties-list-item-3": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 19
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-1-parties-list-item-4": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 21
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-2-subject-matter-paragraph-5": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 26
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-3-duration-paragraph-6": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 33
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-4-nature-and-purpose-of-processing-paragraph-7": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 40
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-5-types-of-personal-data-paragraph-8": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 52
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-5-types-of-personal-data-paragraph-9": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 58
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-5-types-of-personal-data-paragraph-10": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 60
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-5-types-of-personal-data-paragraph-11": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 71
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-5-types-of-personal-data-paragraph-12": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 76
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-6-categories-of-data-subjects-list-item-13": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 82
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-7-retention-paragraph-14": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 88
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-7-retention-paragraph-15": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 94
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-8-sub-processors-list-item-16": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 102
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-8-sub-processors-list-item-17": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 103
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-8-sub-processors-list-item-18": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 104
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-8-sub-processors-paragraph-19": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 107
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-9-international-transfers-paragraph-20": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 112
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-10-security-measures-list-item-21": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 121
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-10-security-measures-list-item-22": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 123
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-10-security-measures-list-item-23": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 128
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-10-security-measures-list-item-24": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 130
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-10-security-measures-list-item-25": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 132
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-11-controller-rights-paragraph-26": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 137
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-11-controller-rights-list-item-27": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 139
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-11-controller-rights-list-item-28": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 141
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-11-controller-rights-list-item-29": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 143
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-12-data-breach-notification-paragraph-30": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 153
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-12-data-breach-notification-list-item-31": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 157
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-12-data-breach-notification-list-item-32": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 159
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-12-data-breach-notification-list-item-33": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 160
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-12-data-breach-notification-list-item-34": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 161
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-13-return-deletion-on-termination-paragraph-35": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 165
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-how-to-execute-list-item-36": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 175
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-how-to-execute-list-item-37": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 176
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-how-to-execute-list-item-38": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 177
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-how-to-execute-list-item-39": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 179
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-related-documents-list-item-40": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 184
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-related-documents-list-item-41": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 185
+        }
+      },
+      "alias-of": null
+    },
+    "dpa-template-related-documents-list-item-42": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dpa-template.md": {
+          "line-hint": 186
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-self-service-dsar-api-for-telemetry-data-paragraph-1": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-self-service-dsar-api-for-telemetry-data-paragraph-2": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 8
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-self-service-dsar-api-for-telemetry-data-paragraph-3": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 10
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-request-shape-paragraph-4": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 30
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-error-responses-paragraph-5": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 105
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-error-responses-paragraph-6": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 108
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-audit-trail-paragraph-7": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 121
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-audit-trail-list-item-8": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 124
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-audit-trail-list-item-9": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 126
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-audit-trail-list-item-10": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 128
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-audit-trail-paragraph-11": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 130
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-related-list-item-12": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 136
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-related-list-item-13": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 137
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-related-list-item-14": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 138
+        }
+      },
+      "alias-of": null
+    },
+    "dsar-related-list-item-15": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "dsar.md": {
+          "line-hint": 139
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-aster-cloud-paragraph-1": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-1-paragraph-2": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 7
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-1-list-item-3": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 11
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-1-list-item-4": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 12
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-1-list-item-5": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 13
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-1-list-item-6": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 14
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-1-list-item-7": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 15
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-1-paragraph-8": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 19
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-9": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 31
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-10": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 32
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-11": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 33
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-12": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 34
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-13": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 35
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-14": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 36
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-15": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 37
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-2-list-item-16": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 38
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-application-list-item-17": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 79
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-application-list-item-18": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 80
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-application-list-item-19": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 81
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-6-cron-paragraph-20": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 85
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-7-paragraph-21": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 123
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-4-license-ceremony-reference-paragraph-22": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 127
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-4-license-ceremony-reference-list-item-23": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 129
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-4-license-ceremony-reference-list-item-24": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 132
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-4-license-ceremony-reference-list-item-25": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 133
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-4-license-ceremony-reference-list-item-26": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 134
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-4-license-ceremony-reference-list-item-27": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 135
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-4-license-ceremony-reference-list-item-28": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 136
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-paragraph-29": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 140
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-list-item-30": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 144
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-list-item-31": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 145
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-list-item-32": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 146
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-list-item-33": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 149
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-list-item-34": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 150
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-list-item-35": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 151
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-5-signing-api-reference-list-item-36": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 152
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-37": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 157
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-38": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 158
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-39": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 159
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-40": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 160
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-list-item-41": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 161
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-6-saas-side-revocation-endpoint-setup-paragraph-42": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 163
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-7-monitoring-list-item-43": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 169
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-8-disaster-recovery-paragraph-44": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 201
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-9-audit-retention-paragraph-45": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 212
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-10-soc2-control-mapping-paragraph-46": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 222
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-47": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 232
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-48": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 233
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-49": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 234
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-50": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 235
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-51": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 236
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-52": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 237
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-53": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 238
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-11-customer-onboarding-checklist-list-item-54": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 239
+        }
+      },
+      "alias-of": null
+    },
+    "enterprise-deployment-guide-12-troubleshooting-matrix-paragraph-55": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "enterprise-deployment-guide.md": {
+          "line-hint": 243
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-on-prem-license-paragraph-1": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-2": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 11
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-3": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 12
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-4": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 13
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-5": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 14
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-6": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 18
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-7": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 19
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-8": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 20
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-list-item-9": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 21
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-1-paragraph-10": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 23
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-2-license-key-aster-deployment-id-paragraph-11": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 29
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-2-license-key-aster-deployment-id-paragraph-12": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 36
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-2-license-key-aster-deployment-id-paragraph-13": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 41
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-docker-secret-paragraph-14": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 108
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-3-ui-paragraph-15": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 114
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-3-ui-paragraph-16": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 116
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-3-ui-paragraph-17": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 130
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-4-paragraph-18": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 136
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-4-list-item-19": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 144
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-4-list-item-20": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 145
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-4-list-item-21": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 146
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-4-list-item-22": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 147
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-4-list-item-23": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 148
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-4-paragraph-24": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 157
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-5-air-gapped-paragraph-25": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 163
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-5-air-gapped-list-item-26": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 167
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-5-air-gapped-list-item-27": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 168
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-5-air-gapped-list-item-28": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 169
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-5-air-gapped-paragraph-29": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 171
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-6-grace-period-faq-paragraph-30": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 177
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-6-grace-period-faq-paragraph-31": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 179
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-6-grace-period-faq-paragraph-32": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 186
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-7-paragraph-33": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 192
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-7-list-item-34": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 199
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-7-list-item-35": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 200
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-7-list-item-36": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 201
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-7-list-item-37": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 202
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-7-blockquote-38": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 204
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-8-troubleshooting-paragraph-39": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 213
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-refresh-paragraph-40": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 226
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-cron-paragraph-41": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 245
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-9-hooks-paragraph-42": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 253
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-9-hooks-paragraph-43": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 265
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-10-list-item-44": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 273
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-10-list-item-45": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 274
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-10-list-item-46": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 275
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-10-list-item-47": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 279
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-10-list-item-48": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 280
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-10-list-item-49": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 281
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-10-paragraph-50": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 283
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-11-v1-paragraph-51": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 289
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-11-v1-blockquote-52": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 291
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-11-v1-list-item-53": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 295
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-11-v1-list-item-54": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 296
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-11-v1-list-item-55": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 297
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-11-v1-list-item-56": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 298
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-12-paragraph-57": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 308
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-12-list-item-58": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 310
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-12-list-item-59": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 311
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-12-list-item-60": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 312
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-12-list-item-61": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 313
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-12-list-item-62": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 314
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-12-paragraph-63": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 316
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-13-paragraph-64": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 322
+        }
+      },
+      "alias-of": null
+    },
+    "license-management-13-paragraph-65": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "license-management.md": {
+          "line-hint": 334
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-license-renewal-self-serve-paragraph-1": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-license-renewal-self-serve-paragraph-2": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 9
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-3": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 41
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-4": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 42
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-5": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 43
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-6": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 44
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-7": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 45
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-8": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 46
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-9": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 51
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-needs-to-do-list-item-10": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 53
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-cannot-do-via-self-serve-paragraph-11": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 58
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-cannot-do-via-self-serve-list-item-12": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 60
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-cannot-do-via-self-serve-list-item-13": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 62
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-cannot-do-via-self-serve-list-item-14": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 64
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-ops-cannot-do-via-self-serve-list-item-15": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 66
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-configuration-on-prem-side-paragraph-16": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 71
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-configuration-on-prem-side-paragraph-17": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 77
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-where-the-renewal-email-goes-paragraph-18": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 81
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-where-the-renewal-email-goes-paragraph-19": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 87
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-where-the-renewal-email-goes-paragraph-20": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 89
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-if-the-renewal-email-never-arrives-list-item-21": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 98
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-if-the-renewal-email-never-arrives-list-item-22": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 99
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-what-if-the-renewal-email-never-arrives-list-item-23": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 102
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-configuration-on-aster-saas-side-paragraph-24": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 108
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-configuration-on-aster-saas-side-paragraph-25": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 110
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-configuration-on-aster-saas-side-list-item-26": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 127
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-configuration-on-aster-saas-side-list-item-27": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 129
+        }
+      },
+      "alias-of": null
+    },
+    "renewal-configuration-on-aster-saas-side-paragraph-28": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "renewal.md": {
+          "line-hint": 132
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-telemetry-per-field-data-minimization-justificatio-paragraph-1": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-telemetry-per-field-data-minimization-justificatio-paragraph-2": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 8
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-telemetry-per-field-data-minimization-justificatio-paragraph-3": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 12
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-schema-v1-current-paragraph-4": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 20
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-5": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 38
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-6": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 39
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-7": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 42
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-8": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 44
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-9": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 46
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-10": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 48
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-11": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 50
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-list-item-12": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 51
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-what-we-deliberately-do-not-collect-paragraph-13": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 54
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-add-a-new-field-list-item-14": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 64
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-add-a-new-field-list-item-15": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 69
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-add-a-new-field-list-item-16": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 72
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-add-a-new-field-list-item-17": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 73
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-add-a-new-field-list-item-18": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 76
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-add-a-new-field-paragraph-19": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 81
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-remove-a-field-list-item-20": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 89
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-remove-a-field-list-item-21": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 91
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-remove-a-field-list-item-22": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 92
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-how-to-remove-a-field-list-item-23": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 94
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-related-documents-list-item-24": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 103
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-related-documents-list-item-25": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 104
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-related-documents-list-item-26": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 106
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-fields-related-documents-list-item-27": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry-fields.md": {
+          "line-hint": 108
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-license-usage-telemetry-opt-in-paragraph-1": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 3
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-license-usage-telemetry-opt-in-paragraph-2": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 9
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-sent-paragraph-3": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 14
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-sent-paragraph-4": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 42
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-not-sent-list-item-5": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 47
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-not-sent-list-item-6": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 49
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-not-sent-list-item-7": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 50
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-not-sent-list-item-8": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 51
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-not-sent-list-item-9": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 52
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-not-sent-list-item-10": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 53
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-what-is-not-sent-paragraph-11": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 55
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-enable-paragraph-12": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 61
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-enable-paragraph-13": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 76
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-enable-paragraph-14": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 85
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-verify-what-was-sent-paragraph-15": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 93
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-verify-what-was-sent-list-item-16": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 95
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-verify-what-was-sent-list-item-17": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 96
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-verify-what-was-sent-list-item-18": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 97
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-verify-what-was-sent-list-item-19": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 98
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-how-to-verify-what-was-sent-paragraph-20": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 100
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-opting-out-paragraph-21": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 104
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-paragraph-22": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 111
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-paragraph-23": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 113
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-paragraph-24": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 118
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-list-item-25": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 121
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-list-item-26": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 123
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-list-item-27": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 126
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-list-item-28": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 129
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-deleting-prior-reports-paragraph-29": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 132
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-data-residency-paragraph-30": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 137
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-data-residency-paragraph-31": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 143
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-configuration-on-aster-saas-side-for-reference-paragraph-32": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 150
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-configuration-on-aster-saas-side-for-reference-paragraph-33": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 156
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-configuration-on-aster-saas-side-for-reference-paragraph-34": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 163
+        }
+      },
+      "alias-of": null
+    },
+    "telemetry-threat-model-paragraph-35": {
+      "created-at": "2026-05-20T11:29:13.575Z",
+      "created-by": "glossary-fmt insert v0.1.0",
+      "occurrences": {
+        "telemetry.md": {
+          "line-hint": 169
+        }
+      },
+      "alias-of": null
+    }
+  }
+}
