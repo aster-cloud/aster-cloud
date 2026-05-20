@@ -1,0 +1,92 @@
+# Glossary Contract — consumer-side configuration for aster-cloud.
+# Plan reference: .claude/plan/glossary-contract.md (v7) §1.4
+#
+# Stage 1 (current): tier=community, scanner runs report-only.
+# Stage 4 (post-remediation): flip to tier=official + strict CI.
+
+version: 1
+tier: community              # Stage 1 of 4-stage remediation; flips to "official" in Stage 4 PR
+localesVersion: 1            # matches @aster-cloud/glossary's locales.yaml.localesVersion
+
+# Once @aster-cloud/glossary is published to npm (G8a), pin the exact version + integrity.
+# Currently the scanner driver uses a filesystem-relative path during Stage 1.
+glossary-pin:
+  version: 0.1.0
+  npm-integrity: pending-g8a-publish
+  maven-sha256: pending-g8a-publish
+
+surfaces:
+  messages:
+    type: json
+    paths:
+      - messages/en.json
+      - messages/zh.json
+      - messages/de.json
+    backbone-locale: en-US
+    locale-from-filename: true     # messages/<locale>.json
+  docs-onprem:
+    type: markdown
+    paths: docs/on-prem/**/*.md
+    locale-from-frontmatter: true
+    fallback-locale: en-US
+    alignment: block-id
+    block-map: .glossary/block-map.json
+  docs-saas:
+    type: markdown
+    paths: docs/saas/**/*.md
+    locale-from-frontmatter: true
+    fallback-locale: en-US
+    alignment: block-id
+    block-map: .glossary/block-map.json
+
+ignored-surfaces:
+  - path: docs/architecture/decisions/**/*.md
+    reason: ADRs are en-only by policy
+    expires: never
+  - path: docs/operations/**/*.md
+    reason: ops runbooks include private GPG/KMS/PagerDuty terms not in glossary
+    expires: never
+  - path: docs/workstreams/**/*.md
+    reason: workstream logs are internal implementation history
+    expires: never
+  - path: src/**/*.ts
+    reason: code symbols, not user-facing text
+    expires: never
+  - path: src/__tests__/**/*
+    reason: test fixtures may include intentionally-bad strings for assertion
+    expires: never
+
+# Product / company / technical names that should never be flagged as glossary misses
+untranslated-tokens:
+  - Aster
+  - Stripe
+  - Resend
+  - Cloudflare
+  - OSSRH
+  - GitHub
+  - PagerDuty
+  - OpsGenie
+  - Slack
+  - GDPR
+  - SOC 2
+  - HIPAA
+  - GraalVM
+  - Truffle
+  - ANTLR
+  - PostgreSQL
+  - Postgres
+  - Kubernetes
+  - K3S
+  - ArgoCD
+  - Mixpanel
+  - JSON
+  - YAML
+  - HTTP
+  - HTTPS
+  - API
+  - CLI
+  - CI
+  - SDK
+
+overlay-classification:
+  unmanaged-policy: warn       # Stage 1: warn-only on new overlay keys without classification; flips to "error" in Stage 4

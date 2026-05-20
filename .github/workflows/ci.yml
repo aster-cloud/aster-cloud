@@ -24,6 +24,19 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - name: Verify message catalog parity (en backbone)
         run: pnpm run check:locales:strict
+      # Glossary Contract (v7) — Stage 1 of 4-stage remediation: report-only.
+      # See .claude/plan/glossary-contract.md §4.4 + glossary.config.yaml.
+      # Flips to `check:glossary:strict` in Stage 4 once findings reach zero.
+      - name: Glossary contract (Stage 1 — report-only)
+        run: pnpm run check:glossary || true
+        continue-on-error: true
+      - name: Upload glossary findings artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glossary-findings
+          path: glossary-findings.json
+          if-no-files-found: ignore
       # PR-10: pnpm test:run 通过 vitest.config.ts 的 projects 配置自动跑
       # SaaS + on-prem 两种 deployment-mode。单 vitest 进程 + 共享 vite
       # cache，避免 fork 开销；总时间约为单模式的 2 倍（断言数翻倍，

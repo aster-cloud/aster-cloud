@@ -58,3 +58,7 @@ next-env.d.ts
 # R21-Major-4: aster-cloud uses pnpm. package-lock.json is forbidden — drift
 # between two lockfiles caused stale @aster-cloud/aster-lang-ts resolution.
 package-lock.json
+
+# Glossary Contract (v7) — CI-populated cache + per-run finding artifacts
+.glossary/cache/
+glossary-findings.json

@@ -30,6 +30,8 @@
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "check:locales": "tsx scripts/check-locales.ts",
     "check:locales:strict": "tsx scripts/check-locales.ts --strict",
+    "check:glossary": "tsx scripts/check-glossary.ts",
+    "check:glossary:strict": "tsx scripts/check-glossary.ts --strict",
     "verify:on-prem-bundle": "tsx scripts/verify-on-prem-bundle.ts",
     "verify:on-prem-ui": "tsx scripts/verify-on-prem-ui.ts",
     "verify:on-prem": "DEPLOYMENT_MODE=on-prem pnpm build && pnpm verify:on-prem-bundle && pnpm verify:on-prem-ui",
@@ -97,7 +99,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18",
-    "wrangler": "^4.60.0"
+    "wrangler": "^4.60.0",
+    "yaml": "^2.9.0"
   },
   "pnpm": {
     "overrides": {
