@@ -143,10 +143,9 @@ async function loadConfig(repoRoot: string): Promise<GlossaryConfig> {
     throw new Error(`[check-glossary] glossary.config.yaml not found at ${path}`);
   }
   const raw = parseYaml(readFileSync(path, 'utf8'));
-  // Validate via canonical Zod schema if available. The dist module is
-  // built before this script runs (`pnpm install` triggers postinstall).
-  // If unavailable (Stage 1 with no build), fall back to raw and warn —
-  // we don't want CI to break only because schema isn't built yet.
+  // Validate via the canonical Zod schema. Fail closed if the schema
+  // module isn't built — silently degrading to raw parse defeats the
+  // purpose of contract validation.
   const schemaCandidates = [
     join(repoRoot, 'node_modules', '@aster-cloud', 'glossary', 'dist', 'schema.js'),
     join(repoRoot, '..', 'aster-design-system', 'packages', 'glossary', 'dist', 'schema.js'),
@@ -165,8 +164,11 @@ async function loadConfig(repoRoot: string): Promise<GlossaryConfig> {
       return parsed.data as GlossaryConfig;
     }
   }
-  console.warn('[check-glossary] schema module not built; skipping config Zod validation');
-  return raw as GlossaryConfig;
+  throw new Error(
+    '[check-glossary] @aster-cloud/glossary dist/schema.js not found; ' +
+    'cannot validate glossary.config.yaml. Run `pnpm build` in ' +
+    'aster-design-system/packages/glossary before invoking this script.',
+  );
 }
 
 // ─────────── Issue model + driver helpers ───────────
@@ -212,17 +214,19 @@ function shortLocale(full: string): string {
 
 /**
  * Strip a locale directory segment from a path so cross-locale mirrors
- * produce identical pairKeys. Known locales: zh, de (+ any 2-3 letter
- * BCP-47-ish region prefix). Order-stable: only strips ONE locale segment.
- * Example: `docs/on-prem/zh/intro.md` → `docs/on-prem/intro.md`.
+ * produce identical pairKeys. Known locales are derived from the glossary
+ * (full locale id → short token, e.g. `zh-CN` → `zh`). This removes the
+ * previous hardcoded list that had to be hand-edited every time a locale
+ * was added.
+ *
+ * Example: with glossary locales = [en-US, zh-CN, de-DE], known set =
+ * {en, zh, de}; `docs/on-prem/zh/intro.md` → `docs/on-prem/intro.md`,
+ * but `docs/api/intro.md` stays unchanged.
  */
-function stripLocaleSegment(p: string): string {
+function stripLocaleSegment(p: string, knownLocaleTokens: ReadonlySet<string>): string {
   return p.replace(/(^|\/)([a-z]{2,3}(-[a-z]{2,4})?)\//i, (m, pre, code) => {
-    // Conservatively only strip if `code` is a known locale token. Otherwise
-    // a content directory like `docs/api/` would be eaten.
-    const knownLocales = new Set(['zh', 'de', 'ja', 'ko', 'fr', 'es', 'pt', 'it', 'ru', 'ar', 'hi']);
     const base = code.toLowerCase().split('-')[0];
-    return knownLocales.has(base) ? `${pre}` : m;
+    return knownLocaleTokens.has(base) ? `${pre}` : m;
   });
 }
 
@@ -299,6 +303,11 @@ async function main(): Promise<void> {
   // matching, normalisation, pairing, parity. This driver only does I/O.
   const shortToFull = new Map<string, string>();
   for (const l of glossary.locales) shortToFull.set(shortLocale(l.id), l.id);
+  // Known locale tokens derived from glossary — single source of truth.
+  // stripLocaleSegment uses this to strip ONLY registered locale dirs.
+  const knownLocaleTokens = new Set(shortToFull.keys());
+  // Full locale id set for typo detection in Markdown frontmatter.
+  const registeredFullLocales = new Set(glossary.locales.map((l) => l.id));
 
   const jsonSurfaces: Array<{ path: string; locale: string; content: unknown; pairKey?: string }> = [];
   const markdownSurfaces: Array<{ path: string; locale: string; content: string; pairKey?: string }> = [];
@@ -342,11 +351,23 @@ async function main(): Promise<void> {
       for (const f of annotated) {
         const content = readFileSync(join(repoRoot, f), 'utf8');
         const fileLocale = extractFrontmatterLocale(content) ?? surface['fallback-locale'] ?? backboneLocale;
+        // Round-3 codex finding: frontmatter typos (e.g. `locale: zh-cn` lower-case
+        // region) silently bypassed scanner because they don't match any registered
+        // locale id. Flag unregistered locales so the typo is visible.
+        if (!registeredFullLocales.has(fileLocale)) {
+          issues.push({
+            severity: 'warning',
+            rule: 'surface-coverage',
+            path: f,
+            detail: `markdown frontmatter/path locale "${fileLocale}" not registered in glossary.locales (known: ${[...registeredFullLocales].join(', ')}) — possible typo`,
+          });
+          continue;
+        }
         // pairKey scope: `<surfaceName>:<relative path with locale segment stripped>`.
         // Bare basename was ambiguous across surfaces — docs/on-prem/foo/intro.md
         // and docs/saas/bar/intro.md would have shared 'intro.md' and been falsely
         // paired across product lines.
-        const pairKey = `${surfaceName}:${stripLocaleSegment(f)}`;
+        const pairKey = `${surfaceName}:${stripLocaleSegment(f, knownLocaleTokens)}`;
         markdownSurfaces.push({ path: f, locale: fileLocale, content, pairKey });
       }
     }
