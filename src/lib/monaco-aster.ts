@@ -76,14 +76,21 @@ export function registerAsterLanguage(monaco: Monaco): void {
     mimetypes: ['text/x-aster-cnl'],
   });
 
-  // 从词法表动态生成关键词列表
-  const keywords = extractMonarchKeywords(EN_US);
-  const chineseKeywords = extractMonarchKeywords(ZH_CN);
-  const germanKeywords = extractMonarchKeywords(DE_DE);
   // 原语类型（Text/Int/Float/Bool）从 lang-ts 词法表派生 — 避免手写双源；
   // 扩展类型（Decimal/Date/Money 等）暂保留在 EXTRA_TYPE_KEYWORDS。
   const primitiveTypeKeywords = extractPrimitiveTypeKeywordsAll([EN_US, ZH_CN, DE_DE]);
   const typeKeywords = [...new Set([...primitiveTypeKeywords, ...EXTRA_TYPE_KEYWORDS])];
+
+  // Tokens that should render as `type` MUST be removed from the generic
+  // keyword sets — Monarch's `cases` evaluates in declaration order with
+  // first-hit-wins. If Text/Int/Float/Bool stayed in `keywords`, the
+  // `@keywords -> 'keyword'` arm would match first and the primitive types
+  // would render as plain keywords instead of types (R-fix 7 codex finding).
+  const typeKeywordSet = new Set(typeKeywords);
+  const filterTypes = (xs: string[]) => xs.filter((w) => !typeKeywordSet.has(w));
+  const keywords = filterTypes(extractMonarchKeywords(EN_US));
+  const chineseKeywords = filterTypes(extractMonarchKeywords(ZH_CN));
+  const germanKeywords = filterTypes(extractMonarchKeywords(DE_DE));
 
   // Set language configuration
   monaco.languages.setLanguageConfiguration('aster-cnl', {
@@ -168,11 +175,15 @@ export function registerAsterLanguage(monaco: Monaco): void {
         [
           /[a-zA-Z_\u4e00-\u9fa5\u00C0-\u024F][\w\u4e00-\u9fa5\u00C0-\u024F]*/,
           {
+            // typeKeywords evaluated FIRST so primitive type tokens render as
+            // 'type' rather than being eaten by the generic 'keyword' arm.
+            // (Defense in depth: the keyword arrays above also have type
+            // tokens filtered out, but this ordering keeps the contract clear.)
             cases: {
+              '@typeKeywords': 'type',
               '@keywords': 'keyword',
               '@chineseKeywords': 'keyword',
               '@germanKeywords': 'keyword',
-              '@typeKeywords': 'type',
               '@default': 'identifier',
             },
           },

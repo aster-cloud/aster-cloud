@@ -82,23 +82,32 @@ export function extractVocabularyTerms(vocabulary: DomainVocabulary): string[] {
 }
 
 /**
- * 从词法表提取原语类型关键词（Text/Int/Float/Bool 对应的本地化形式）。
- * 用于 Monaco Monarch 的 typeKeywords，避免在 monaco-aster.ts 里硬编码
- * 多语言类型字面量（之前 Decimal/整数/Ganzzahl 等列表手写双源）。
+ * 从词法表提取原语类型关键词（Text/Int/Float/Bool）和类型构造关键词
+ * （Maybe/Option of/Result of）的本地化形式。用于 Monaco Monarch 的
+ * typeKeywords，避免在 monaco-aster.ts 里硬编码多语言类型字面量。
  *
- * 注意：仅返回 lang-ts SemanticTokenKind 已定义的原语类型；Decimal、
+ * 注意：仅返回 lang-ts SemanticTokenKind 已定义的类型 token；Decimal、
  * Money、Date 等扩展类型仍由 monaco-aster 的 EXTRA_TYPE_KEYWORDS 提供，
  * 等 lang-ts 把它们加进 token-kind 后即可下沉到这里。
  */
 export function extractPrimitiveTypeKeywords(lexicon: Lexicon): string[] {
   const out = new Set<string>();
-  const primitiveKinds = [
+  // Type tokens recognised by the lang-ts type-parser as type constructors.
+  // R-fix 9 codex finding: Maybe/Option of/Result of were rendering as
+  // plain keywords. They're semantically type-level and should highlight
+  // as 'type' across all three locales.
+  const typeKinds = [
+    // primitive types
     SemanticTokenKind.TEXT,
     SemanticTokenKind.INT_TYPE,
     SemanticTokenKind.FLOAT_TYPE,
     SemanticTokenKind.BOOL_TYPE,
+    // type constructors
+    SemanticTokenKind.MAYBE,
+    SemanticTokenKind.OPTION_OF,
+    SemanticTokenKind.RESULT_OF,
   ];
-  for (const kind of primitiveKinds) {
+  for (const kind of typeKinds) {
     const value = lexicon.keywords[kind];
     if (typeof value === 'string' && value) out.add(value);
   }
