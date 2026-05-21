@@ -19,7 +19,7 @@
  *     from node_modules automatically.
  */
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 
@@ -80,6 +80,44 @@ function resolveGlossary(): GlossaryExport {
   );
 }
 
+/**
+ * Resolve the canonical scanner module. Returns `scan` (the full scanner
+ * pipeline) so this driver can build a `ScanInput` and delegate the entire
+ * pass — not just the matcher. This closes the Round-2 contract-drift gap:
+ * previously consumers re-implemented surface extraction + parity locally.
+ */
+type CanonicalScanModule = {
+  scan: (input: any, config: { glossary: GlossaryExport; strict?: boolean }) => {
+    issues: Array<{
+      severity: 'error' | 'warning';
+      rule: string;
+      surfacePath: string;
+      locale?: string;
+      termId?: string;
+      anchor?: string;
+      detail: string;
+    }>;
+    errorCount: number;
+    warningCount: number;
+  };
+};
+
+async function resolveScanner(): Promise<CanonicalScanModule> {
+  const __filename = fileURLToPath(import.meta.url);
+  const repoRoot = resolvePath(dirname(__filename), '..');
+  const candidates = [
+    join(repoRoot, 'node_modules', '@aster-cloud', 'glossary', 'dist', 'scanner.js'),
+    join(repoRoot, '..', 'aster-design-system', 'packages', 'glossary', 'dist', 'scanner.js'),
+  ];
+  for (const path of candidates) {
+    if (existsSync(path)) {
+      const mod = await import(pathToFileURL(path).href);
+      return { scan: mod.scan };
+    }
+  }
+  throw new Error('[check-glossary] canonical scanner not found; run `pnpm build` in aster-design-system/packages/glossary');
+}
+
 // ─────────── Config + surfaces ───────────
 
 interface GlossaryConfig {
@@ -99,15 +137,48 @@ interface GlossaryConfig {
   'untranslated-tokens'?: string[];
 }
 
-function loadConfig(repoRoot: string): GlossaryConfig {
+async function loadConfig(repoRoot: string): Promise<GlossaryConfig> {
   const path = join(repoRoot, 'glossary.config.yaml');
   if (!existsSync(path)) {
     throw new Error(`[check-glossary] glossary.config.yaml not found at ${path}`);
   }
-  return parseYaml(readFileSync(path, 'utf8')) as GlossaryConfig;
+  const raw = parseYaml(readFileSync(path, 'utf8'));
+  // Validate via canonical Zod schema if available. The dist module is
+  // built before this script runs (`pnpm install` triggers postinstall).
+  // If unavailable (Stage 1 with no build), fall back to raw and warn —
+  // we don't want CI to break only because schema isn't built yet.
+  const schemaCandidates = [
+    join(repoRoot, 'node_modules', '@aster-cloud', 'glossary', 'dist', 'schema.js'),
+    join(repoRoot, '..', 'aster-design-system', 'packages', 'glossary', 'dist', 'schema.js'),
+  ];
+  for (const sp of schemaCandidates) {
+    if (existsSync(sp)) {
+      const mod = await import(pathToFileURL(sp).href);
+      const parsed = mod.GlossaryConfigSchema.safeParse(raw);
+      if (!parsed.success) {
+        throw new Error(
+          `[check-glossary] glossary.config.yaml failed schema validation:\n  ${parsed.error.issues
+            .map((i: any) => `${i.path.join('.')}: ${i.message}`)
+            .join('\n  ')}`,
+        );
+      }
+      return parsed.data as GlossaryConfig;
+    }
+  }
+  console.warn('[check-glossary] schema module not built; skipping config Zod validation');
+  return raw as GlossaryConfig;
 }
 
-// ─────────── Tiny scanner subset (no package install required for Stage 1) ───────────
+// ─────────── Issue model + driver helpers ───────────
+//
+// IMPORTANT: contract semantics — matching, forbidden-alias, parity,
+// pairing, freshness — all live in `@aster-cloud/glossary/scanner.scan()`.
+// This script only handles I/O: glob-walking, locale inference, surface
+// collection into `ScanInput`, then artifact output. Previously this file
+// contained a hand-written matcher subset that drifted from the canonical
+// implementation (different word-boundary heuristic, no Unicode segmenter,
+// no parity logic). That drift allowed CI passes that the source scanner
+// would have failed. Do NOT re-introduce a local scanner — call `scan()`.
 
 interface Issue {
   severity: 'error' | 'warning';
@@ -119,74 +190,6 @@ interface Issue {
   detail: string;
 }
 
-function normalize(s: string, ops: Array<string>): string {
-  let out = s.normalize('NFC');
-  out = out.replace(/[​-‏‪-‮⁠﻿]/g, '');
-  if (ops.includes('width')) {
-    out = out.replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-  }
-  if (ops.includes('whitespace')) {
-    out = out.replace(/\s+/g, ' ').trim();
-  }
-  if (ops.includes('punctuation')) {
-    out = out
-      .replace(/[‘’]/g, "'")
-      .replace(/[“”]/g, '"')
-      .replace(/[‐-―]/g, '-')
-      .replace(/　/g, ' ');
-  }
-  return out;
-}
-
-function hasMatch(haystack: string, needle: string, match: MatchSpec): boolean {
-  if (!haystack || !needle) return false;
-  if (match.mode === 'literal') {
-    const cs = match['case-sensitive'] ?? false;
-    return cs ? haystack.includes(needle) : haystack.toLowerCase().includes(needle.toLowerCase());
-  }
-  if (match.mode === 'reviewed-regex') {
-    const flags = (match['case-sensitive'] ?? false) ? 'u' : 'iu';
-    try { return new RegExp(needle, flags).test(haystack); } catch { return false; }
-  }
-  // phrase
-  const ops = match.normalize ?? [];
-  const cs = match['case-sensitive'] ?? false;
-  const nh = normalize(haystack, ops);
-  const nn = normalize(needle, ops);
-  const ch = cs ? nh : nh.toLowerCase();
-  const cn = cs ? nn : nn.toLowerCase();
-  const idx = ch.indexOf(cn);
-  if (idx === -1) return false;
-  // Word-boundary check (cheap approximation; full Intl.Segmenter is in @aster-cloud/glossary/scanner)
-  const wordChar = /[\p{L}\p{N}_]/u;
-  const before = idx > 0 ? ch[idx - 1]! : ' ';
-  const after = idx + cn.length < ch.length ? ch[idx + cn.length]! : ' ';
-  return !wordChar.test(before) && !wordChar.test(after) ||
-         (wordChar.test(before) !== wordChar.test(ch[idx]!) && wordChar.test(after) !== wordChar.test(ch[idx + cn.length - 1]!));
-}
-
-/**
- * Extract `<!-- glossary:block id=X -->…<!-- /glossary:block -->` block-paired
- * regions from a Markdown file. Code fences inside the block are stripped
- * (their content is not glossary-scanned).
- */
-function extractGlossaryBlocks(markdown: string): Array<{ id: string; text: string }> {
-  const blocks: Array<{ id: string; text: string }> = [];
-  const re = /<!--\s*glossary:block\s+id=([a-z0-9][a-z0-9-]*)\s*-->([\s\S]*?)<!--\s*\/glossary:block\s*-->/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(markdown)) !== null) {
-    const body = m[2]!
-      .replace(/```[\s\S]*?```/g, ' ')  // fenced code
-      .replace(/`[^`]*`/g, ' ')          // inline code
-      .replace(/\[([^\]]*)\]\(([^)]*)\)/g, '$1')  // [text](url) → text
-      .replace(/<[^>]+>/g, ' ')          // remaining HTML tags
-      .replace(/\s+/g, ' ')
-      .trim();
-    blocks.push({ id: m[1]!, text: body });
-  }
-  return blocks;
-}
-
 /** Extract `locale:` from YAML frontmatter, if present. */
 function extractFrontmatterLocale(markdown: string): string | null {
   const m = /^---\n([\s\S]*?)\n---/.exec(markdown);
@@ -194,19 +197,6 @@ function extractFrontmatterLocale(markdown: string): string | null {
   const fm = m[1]!;
   const localeLine = /^locale:\s*(\S+)\s*$/m.exec(fm);
   return localeLine ? localeLine[1]! : null;
-}
-
-function flattenJson(obj: unknown, prefix = ''): Array<{ keyPath: string; value: string }> {
-  const out: Array<{ keyPath: string; value: string }> = [];
-  const walk = (n: unknown, p: string): void => {
-    if (typeof n === 'string') { out.push({ keyPath: p, value: n }); return; }
-    if (Array.isArray(n)) { n.forEach((x, i) => walk(x, `${p}[${i}]`)); return; }
-    if (n !== null && typeof n === 'object') {
-      for (const [k, v] of Object.entries(n)) walk(v, p ? `${p}.${k}` : k);
-    }
-  };
-  walk(obj, prefix);
-  return out;
 }
 
 function localeFromFilename(p: string): string | null {
@@ -218,6 +208,22 @@ function localeFromFilename(p: string): string | null {
 function shortLocale(full: string): string {
   // "en-US" → "en" (because aster-cloud's messages/*.json files are named en.json, not en-US.json)
   return full.split('-')[0]!;
+}
+
+/**
+ * Strip a locale directory segment from a path so cross-locale mirrors
+ * produce identical pairKeys. Known locales: zh, de (+ any 2-3 letter
+ * BCP-47-ish region prefix). Order-stable: only strips ONE locale segment.
+ * Example: `docs/on-prem/zh/intro.md` → `docs/on-prem/intro.md`.
+ */
+function stripLocaleSegment(p: string): string {
+  return p.replace(/(^|\/)([a-z]{2,3}(-[a-z]{2,4})?)\//i, (m, pre, code) => {
+    // Conservatively only strip if `code` is a known locale token. Otherwise
+    // a content directory like `docs/api/` would be eaten.
+    const knownLocales = new Set(['zh', 'de', 'ja', 'ko', 'fr', 'es', 'pt', 'it', 'ru', 'ar', 'hi']);
+    const base = code.toLowerCase().split('-')[0];
+    return knownLocales.has(base) ? `${pre}` : m;
+  });
 }
 
 function isIgnored(path: string, config: GlossaryConfig): boolean {
@@ -274,22 +280,29 @@ function listMatches(repoRoot: string, glob: string | string[]): string[] {
   return [...new Set(results)];
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const strict = process.argv.includes('--strict');
   const __filename = fileURLToPath(import.meta.url);
   const repoRoot = resolvePath(dirname(__filename), '..');
 
   const glossary = resolveGlossary();
-  const config = loadConfig(repoRoot);
+  const config = await loadConfig(repoRoot);
+  const { scan } = await resolveScanner();
 
   console.log(`[check-glossary] glossary v${glossary.localesVersion} loaded ${Object.keys(glossary.terms).length} terms × ${glossary.locales.length} locales`);
   console.log(`[check-glossary] config tier=${config.tier} strict=${strict}`);
 
   const issues: Issue[] = [];
   const backboneLocale = glossary.locales.find((l) => l.role === 'backbone')?.id ?? 'en-US';
-  const backboneShort = shortLocale(backboneLocale);
 
-  // Iterate surfaces.
+  // Build ScanInput from config surfaces. The canonical scan() does all
+  // matching, normalisation, pairing, parity. This driver only does I/O.
+  const shortToFull = new Map<string, string>();
+  for (const l of glossary.locales) shortToFull.set(shortLocale(l.id), l.id);
+
+  const jsonSurfaces: Array<{ path: string; locale: string; content: unknown; pairKey?: string }> = [];
+  const markdownSurfaces: Array<{ path: string; locale: string; content: string; pairKey?: string }> = [];
+
   for (const [surfaceName, surface] of Object.entries(config.surfaces)) {
     const files = listMatches(repoRoot, surface.paths).filter((f) => !isIgnored(f, config));
     if (files.length === 0) {
@@ -303,117 +316,57 @@ function main(): void {
     }
 
     if (surface.type === 'json') {
-      // Group by locale (filename-derived).
-      const byLocale = new Map<string, Array<{ path: string; flat: ReturnType<typeof flattenJson> }>>();
       for (const f of files) {
-        const localeFull = surface['locale-from-filename'] ? localeFromFilename(f) : null;
-        if (!localeFull) continue;
+        if (!surface['locale-from-filename']) continue;
+        const short = localeFromFilename(f);
+        if (!short) continue;
+        const full = shortToFull.get(short);
+        if (!full) {
+          issues.push({
+            severity: 'warning',
+            rule: 'surface-coverage',
+            path: f,
+            detail: `file locale "${short}" not registered in glossary.locales (known: ${[...shortToFull.keys()].join(', ')})`,
+          });
+          continue;
+        }
         const content = JSON.parse(readFileSync(join(repoRoot, f), 'utf8'));
-        const arr = byLocale.get(localeFull) ?? [];
-        arr.push({ path: f, flat: flattenJson(content) });
-        byLocale.set(localeFull, arr);
-      }
-
-      // 1. Forbidden-alias scan across every locale present.
-      for (const [localeFull, surfs] of byLocale) {
-        for (const { path, flat } of surfs) {
-          for (const { keyPath, value } of flat) {
-            for (const term of Object.values(glossary.terms)) {
-              const aliases = term['forbidden-aliases']?.[localeFull] ?? [];
-              for (const alias of aliases) {
-                if (hasMatch(value, alias.text, alias.match)) {
-                  issues.push({
-                    severity: 'error',
-                    rule: 'forbidden-alias',
-                    path,
-                    locale: localeFull,
-                    termId: term.id,
-                    anchor: keyPath,
-                    detail: `forbidden alias "${alias.text}" of term "${term.id}" found in ${localeFull} (registered: "${term.translations[localeFull] ?? '???'}")`,
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // 2. Term-mention parity (backbone → target). Use the SHORT locale to look up files,
-      //    since aster-cloud's filenames are en.json, zh.json, de.json — not en-US.json.
-      const localeMap = new Map<string, string>();      // short → full
-      for (const l of glossary.locales) localeMap.set(shortLocale(l.id), l.id);
-
-      const backboneSurfs = byLocale.get(localeMap.get(backboneShort) ?? backboneLocale) ?? [];
-      for (const backboneSurf of backboneSurfs) {
-        // Match each backbone file to its sibling in other locales by directory + basename pattern.
-        const sameDir = dirname(backboneSurf.path);
-        for (const [targetFull, targetSurfs] of byLocale) {
-          if (targetFull === (localeMap.get(backboneShort) ?? backboneLocale)) continue;
-          const targetShort = shortLocale(targetFull);
-          const targetPath = join(sameDir, `${targetShort}.json`);
-          const target = targetSurfs.find((s) => s.path === targetPath);
-          if (!target) continue;
-          const targetByKey = new Map(target.flat.map((s) => [s.keyPath, s.value]));
-
-          for (const { keyPath, value } of backboneSurf.flat) {
-            for (const term of Object.values(glossary.terms)) {
-              const backboneTrans = term.translations[localeMap.get(backboneShort) ?? backboneLocale];
-              const targetTrans = term.translations[targetFull];
-              if (!backboneTrans || !targetTrans) continue;
-              if (!hasMatch(value, backboneTrans, term.match)) continue;
-              const targetValue = targetByKey.get(keyPath);
-              if (targetValue === undefined) continue;          // missing-key handled by check-locales
-              if (!hasMatch(targetValue, targetTrans, term.match)) {
-                issues.push({
-                  severity: 'error',
-                  rule: 'term-mention-parity',
-                  path: target.path,
-                  locale: targetFull,
-                  termId: term.id,
-                  anchor: keyPath,
-                  detail: `term "${term.id}" in backbone but ${targetFull} value "${truncate(targetValue)}" lacks registered translation "${targetTrans}"`,
-                });
-              }
-            }
-          }
-        }
+        // pairKey = parent directory (messages/), so messages/en.json + messages/de.json pair.
+        jsonSurfaces.push({ path: f, locale: full, content, pairKey: dirname(f) });
       }
     }
 
     if (surface.type === 'markdown') {
-      // Stage 2: block-id-aware scanning. For each file, extract paired
-      // <!-- glossary:block id=X -->…<!-- /glossary:block --> regions,
-      // strip code-fences within them, then run forbidden-alias matching
-      // against the registered locale (frontmatter `locale:` or fallback).
-      const ANNOTATED = files.filter((f) => /\<\!--\s*glossary:block\s+id=/.test(readFileSync(join(repoRoot, f), 'utf8')));
-      console.log(`[check-glossary] markdown surface "${surfaceName}" matched ${files.length} files (${ANNOTATED.length} annotated)`);
-
-      for (const f of ANNOTATED) {
+      const annotated = files.filter((f) => /<!--\s*glossary:block\s+id=/.test(readFileSync(join(repoRoot, f), 'utf8')));
+      console.log(`[check-glossary] markdown surface "${surfaceName}" matched ${files.length} files (${annotated.length} annotated)`);
+      for (const f of annotated) {
         const content = readFileSync(join(repoRoot, f), 'utf8');
         const fileLocale = extractFrontmatterLocale(content) ?? surface['fallback-locale'] ?? backboneLocale;
-        const blocks = extractGlossaryBlocks(content);
-
-        // Forbidden-alias scan for this locale.
-        for (const block of blocks) {
-          for (const term of Object.values(glossary.terms)) {
-            const aliases = term['forbidden-aliases']?.[fileLocale] ?? [];
-            for (const alias of aliases) {
-              if (hasMatch(block.text, alias.text, alias.match)) {
-                issues.push({
-                  severity: 'error',
-                  rule: 'forbidden-alias',
-                  path: f,
-                  locale: fileLocale,
-                  termId: term.id,
-                  anchor: block.id,
-                  detail: `forbidden alias "${alias.text}" of term "${term.id}" in block "${block.id}" (registered: "${term.translations[fileLocale] ?? '???'}")`,
-                });
-              }
-            }
-          }
-        }
+        // pairKey scope: `<surfaceName>:<relative path with locale segment stripped>`.
+        // Bare basename was ambiguous across surfaces — docs/on-prem/foo/intro.md
+        // and docs/saas/bar/intro.md would have shared 'intro.md' and been falsely
+        // paired across product lines.
+        const pairKey = `${surfaceName}:${stripLocaleSegment(f)}`;
+        markdownSurfaces.push({ path: f, locale: fileLocale, content, pairKey });
       }
     }
+  }
+
+  // Single delegated scan pass — canonical surface.
+  const scanResult = scan(
+    { jsonSurfaces, markdownSurfaces },
+    { glossary, strict },
+  );
+  for (const i of scanResult.issues) {
+    issues.push({
+      severity: i.severity,
+      rule: i.rule,
+      path: i.surfacePath,
+      locale: i.locale,
+      termId: i.termId,
+      anchor: i.anchor,
+      detail: i.detail,
+    });
   }
 
   // ───── Reporting ─────
@@ -459,8 +412,7 @@ function main(): void {
   process.exit(failable ? 1 : 0);
 }
 
-function truncate(s: string, max = 60): string {
-  return s.length > max ? `${s.slice(0, max)}…` : s;
-}
-
-main();
+main().catch((err) => {
+  console.error('[check-glossary] fatal:', err instanceof Error ? err.message : err);
+  process.exit(1);
+});
