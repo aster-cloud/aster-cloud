@@ -82,6 +82,42 @@ export function extractVocabularyTerms(vocabulary: DomainVocabulary): string[] {
 }
 
 /**
+ * 从词法表提取原语类型关键词（Text/Int/Float/Bool 对应的本地化形式）。
+ * 用于 Monaco Monarch 的 typeKeywords，避免在 monaco-aster.ts 里硬编码
+ * 多语言类型字面量（之前 Decimal/整数/Ganzzahl 等列表手写双源）。
+ *
+ * 注意：仅返回 lang-ts SemanticTokenKind 已定义的原语类型；Decimal、
+ * Money、Date 等扩展类型仍由 monaco-aster 的 EXTRA_TYPE_KEYWORDS 提供，
+ * 等 lang-ts 把它们加进 token-kind 后即可下沉到这里。
+ */
+export function extractPrimitiveTypeKeywords(lexicon: Lexicon): string[] {
+  const out = new Set<string>();
+  const primitiveKinds = [
+    SemanticTokenKind.TEXT,
+    SemanticTokenKind.INT_TYPE,
+    SemanticTokenKind.FLOAT_TYPE,
+    SemanticTokenKind.BOOL_TYPE,
+  ];
+  for (const kind of primitiveKinds) {
+    const value = lexicon.keywords[kind];
+    if (typeof value === 'string' && value) out.add(value);
+  }
+  return [...out];
+}
+
+/**
+ * 跨多个词法表提取所有原语类型关键词的并集。Monaco Monarch 在加载时
+ * 需要同时识别 EN/ZH/DE 三套类型字面量（因为同一文档可能含多语言注释）。
+ */
+export function extractPrimitiveTypeKeywordsAll(lexicons: readonly Lexicon[]): string[] {
+  const out = new Set<string>();
+  for (const lex of lexicons) {
+    for (const kw of extractPrimitiveTypeKeywords(lex)) out.add(kw);
+  }
+  return [...out];
+}
+
+/**
  * 按类别获取关键词（用于 Monaco 分类着色）。
  */
 export function getKeywordsByCategory(lexicon: Lexicon) {

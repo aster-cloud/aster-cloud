@@ -11,7 +11,52 @@
  */
 
 import type { Monaco } from '@monaco-editor/react';
-import { EN_US, ZH_CN, DE_DE, extractMonarchKeywords } from './aster-lexicon';
+import {
+  EN_US,
+  ZH_CN,
+  DE_DE,
+  extractMonarchKeywords,
+  extractPrimitiveTypeKeywordsAll,
+} from './aster-lexicon';
+
+/**
+ * Extension types not yet present in {@link SemanticTokenKind} (Decimal,
+ * Date, Duration, Money, etc). Will migrate to the lexicon registry once
+ * lang-ts adds the corresponding token kinds; until then they live here
+ * as a small Monaco-only addendum.
+ *
+ * Keep these grouped by locale + alphabetized so the diff stays clean
+ * when the migration happens.
+ */
+const EXTRA_TYPE_KEYWORDS = [
+  // English
+  'Date',
+  'DateTime',
+  'Decimal',
+  'Duration',
+  'List',
+  'Money',
+  'Option',
+  'Percentage',
+  // Chinese
+  '可选',
+  '小数',  // duplicate of zh FLOAT_TYPE — but extra extension types may share base
+  '时间',
+  '时长',
+  '日期',
+  '列表',
+  '百分比',
+  '金额',
+  // German
+  'Dauer',
+  'Datum',
+  'Dezimal',
+  'Geld',
+  'Liste',
+  'Optional',
+  'Prozent',
+  'Zeitstempel',
+];
 
 /**
  * Register Aster CNL language with Monaco editor
@@ -35,6 +80,10 @@ export function registerAsterLanguage(monaco: Monaco): void {
   const keywords = extractMonarchKeywords(EN_US);
   const chineseKeywords = extractMonarchKeywords(ZH_CN);
   const germanKeywords = extractMonarchKeywords(DE_DE);
+  // 原语类型（Text/Int/Float/Bool）从 lang-ts 词法表派生 — 避免手写双源；
+  // 扩展类型（Decimal/Date/Money 等）暂保留在 EXTRA_TYPE_KEYWORDS。
+  const primitiveTypeKeywords = extractPrimitiveTypeKeywordsAll([EN_US, ZH_CN, DE_DE]);
+  const typeKeywords = [...new Set([...primitiveTypeKeywords, ...EXTRA_TYPE_KEYWORDS])];
 
   // Set language configuration
   monaco.languages.setLanguageConfiguration('aster-cnl', {
@@ -82,44 +131,10 @@ export function registerAsterLanguage(monaco: Monaco): void {
     chineseKeywords,
     germanKeywords,
 
-    // Type keywords (all languages)
-    typeKeywords: [
-      // English
-      'Int',
-      'Text',
-      'Bool',
-      'Decimal',
-      'List',
-      'Option',
-      'Date',
-      'DateTime',
-      'Duration',
-      'Money',
-      'Percentage',
-      // Chinese
-      '整数',
-      '文本',
-      '布尔',
-      '小数',
-      '列表',
-      '可选',
-      '日期',
-      '时间',
-      '时长',
-      '金额',
-      '百分比',
-      // German
-      'Ganzzahl',
-      'Dezimal',
-      'Wahrheitswert',
-      'Liste',
-      'Optional',
-      'Datum',
-      'Zeitstempel',
-      'Dauer',
-      'Geld',
-      'Prozent',
-    ],
+    // Type keywords come from the lexicon (primitives) + monaco-only extras.
+    // Previous version hardcoded 27 string literals across 3 locales; that
+    // doubled with lang-ts's lexicon and drifted on every locale change.
+    typeKeywords,
 
     operators: [
       '=',
