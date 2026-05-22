@@ -58,7 +58,12 @@ interface MatchSpec {
 // (the pre-Round-4 pattern) could silently mix versions when node_modules
 // and the sibling checkout disagreed.
 
-type CanonicalScan = (input: any, config: { glossary: GlossaryExport; strict?: boolean }) => {
+interface ScanInput {
+  jsonSurfaces: Array<{ path: string; locale: string; content: unknown; pairKey?: string }>;
+  markdownSurfaces: Array<{ path: string; locale: string; content: string; pairKey?: string }>;
+}
+
+type CanonicalScan = (input: ScanInput, config: { glossary: GlossaryExport; strict?: boolean }) => {
   issues: Array<{
     severity: 'error' | 'warning';
     rule: string;
@@ -155,7 +160,7 @@ async function loadPackageArtifacts(root: string): Promise<GlossaryPackage> {
   };
 }
 
-function assertExport(mod: any, name: string, kind: 'function' | 'object', source: string): void {
+function assertExport(mod: Record<string, unknown>, name: string, kind: 'function' | 'object', source: string): void {
   const v = mod[name];
   const ok = kind === 'function' ? typeof v === 'function' : (v !== null && typeof v === 'object');
   if (!ok) {
@@ -386,7 +391,7 @@ async function main(): Promise<void> {
         // pairKey scope: `<surfaceName>:<relative path with locale segment stripped>`.
         // stripLocaleSegment now uses canonical full-BCP-47 matching from
         // @aster-cloud/glossary/locale-utils.
-        const pairKey = `${surfaceName}:${stripLocaleSegment(f, 'docs', glossary.locales as any)}`;
+        const pairKey = `${surfaceName}:${stripLocaleSegment(f, 'docs', glossary.locales)}`;
         markdownSurfaces.push({ path: f, locale: fileLocale, content, pairKey });
       }
     }
