@@ -72,8 +72,8 @@
     "vscode-ws-jsonrpc": "^3.5.0",
     "ws": "8.20.1"
   },
-  "//glossary": "@aster-cloud/glossary is not yet published. scripts/check-glossary.ts resolves it dynamically from ../aster-design-system/packages/glossary/dist via pathToFileURL. Add it to devDependencies (^0.1.0) once G8a publishes the package.",
   "devDependencies": {
+    "@aster-cloud/glossary": "^0.1.1",
     "@next/eslint-plugin-next": "16.2.6",
     "@opennextjs/cloudflare": "^1.16.5",
     "@tailwindcss/postcss": "^4.1.18",
