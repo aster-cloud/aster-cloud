@@ -15,7 +15,7 @@ jobs:
   nuclei:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Nuclei scan (aster-lang.cloud)
         uses: projectdiscovery/nuclei-action@v3
@@ -33,7 +33,7 @@ jobs:
 
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nuclei-${{ github.run_id }}
           path: nuclei-*.json
@@ -52,7 +52,7 @@ jobs:
   zap-baseline-cloud:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: ZAP baseline (aster-lang.cloud)
         uses: zaproxy/action-baseline@v0.12.0
         with:
@@ -62,7 +62,7 @@ jobs:
   zap-baseline-api:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: ZAP baseline (policy.aster-lang.dev)
         uses: zaproxy/action-baseline@v0.12.0
         with:
