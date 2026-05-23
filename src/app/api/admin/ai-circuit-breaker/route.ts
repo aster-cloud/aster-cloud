@@ -15,6 +15,7 @@ import {
 } from '@/lib/ai-circuit-breaker';
 import { requireAdmin } from '@/lib/admin-auth';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
+import { errorEnvelope } from '@/lib/api/error-envelope';
 
 const ensureAdmin = requireAdmin;
 
@@ -41,11 +42,17 @@ export async function GET() {
       },
     });
   } catch (err) {
-    console.error('[ai-circuit-breaker GET] handler failed', err);
-    return NextResponse.json(
-      { error: 'service_unavailable', reason: 'circuit_state_unavailable' },
-      { status: 503 },
+    const env = errorEnvelope({
+      status: 503,
+      code: 'service_unavailable',
+      message: 'AI circuit state is currently unavailable. Please retry.',
+    });
+    console.error(
+      '[ai-circuit-breaker GET] handler failed',
+      env.headers.get('x-request-id'),
+      err,
     );
+    return env;
   }
 }
 
@@ -69,10 +76,16 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (err) {
-    console.error('[ai-circuit-breaker POST] handler failed', err);
-    return NextResponse.json(
-      { error: 'service_unavailable', reason: 'circuit_release_failed' },
-      { status: 503 },
+    const env = errorEnvelope({
+      status: 503,
+      code: 'service_unavailable',
+      message: 'AI circuit release failed. Please retry; the failure has been logged.',
+    });
+    console.error(
+      '[ai-circuit-breaker POST] handler failed',
+      env.headers.get('x-request-id'),
+      err,
     );
+    return env;
   }
 }

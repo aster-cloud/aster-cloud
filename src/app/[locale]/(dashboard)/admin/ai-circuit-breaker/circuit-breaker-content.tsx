@@ -120,11 +120,28 @@ export function CircuitBreakerContent() {
         />
 
         {error && (
+          // Never render error.message — it can carry stack-trace
+          // fragments. The BFF now returns a structured envelope with
+          // a stable requestId we can surface for support correlation.
           <div
             role="alert"
             className="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger"
           >
-            {error.message}
+            <p className="font-medium">{tCommon('loadFailed')}</p>
+            {typeof error.body === 'object' &&
+              error.body !== null &&
+              'error' in error.body &&
+              typeof (error.body as { error?: unknown }).error === 'object' &&
+              (error.body as { error: { requestId?: string } }).error
+                ?.requestId && (
+                <p className="mt-1 font-mono text-xs opacity-80">
+                  {tCommon('errorId')}:{' '}
+                  {
+                    (error.body as { error: { requestId: string } }).error
+                      .requestId
+                  }
+                </p>
+              )}
           </div>
         )}
 

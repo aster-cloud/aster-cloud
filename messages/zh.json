@@ -24,10 +24,14 @@
     "somethingWrongBody": "此页面无法加载。问题已记录给我们团队。",
     "tryAgain": "重试",
     "errorId": "错误编号",
-    "contactSupport": "联系支持"
+    "contactSupport": "联系支持",
+    "loadFailed": "无法加载此视图。"
   },
   "nav": {
-    "brand": "Aster Cloud"
+    "brand": "Aster Cloud",
+    "pricing": "定价",
+    "docs": "文档",
+    "blog": "博客"
   },
   "hero": {
     "title": "用母语写策略",
@@ -1742,6 +1746,27 @@
       "title": "管理工具不可用",
       "body": "此管理控件无法加载。失败已记录待排查。",
       "backToOverview": "返回管理台首页"
+    },
+    "pulse": {
+      "heading": "管理台脉搏",
+      "circuit": {
+        "title": "AI 熔断器",
+        "healthy": "健康",
+        "tripped": "已熔断",
+        "error": "不可用",
+        "spendToday": "今日支出"
+      },
+      "riskTier": {
+        "title": "风险用户队列",
+        "empty": "没有风险账户",
+        "count": "个标记账户",
+        "error": "查询失败"
+      },
+      "audit": {
+        "title": "最近管理事件",
+        "empty": "暂无管理事件。",
+        "error": "审计日志加载失败。"
+      }
     }
   },
   "renewal": {

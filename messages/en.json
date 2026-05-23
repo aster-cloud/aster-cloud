@@ -24,10 +24,14 @@
     "somethingWrongBody": "This page could not load. The problem has been logged with our team.",
     "tryAgain": "Try again",
     "errorId": "Error ID",
-    "contactSupport": "Contact support"
+    "contactSupport": "Contact support",
+    "loadFailed": "Could not load this view."
   },
   "nav": {
-    "brand": "Aster Cloud"
+    "brand": "Aster Cloud",
+    "pricing": "Pricing",
+    "docs": "Docs",
+    "blog": "Blog"
   },
   "hero": {
     "title": "Policy as Code in native language",
@@ -1742,6 +1746,27 @@
       "title": "Admin tool unavailable",
       "body": "This admin control could not load. The failure has been logged for triage.",
       "backToOverview": "Back to Admin Overview"
+    },
+    "pulse": {
+      "heading": "Admin Pulse",
+      "circuit": {
+        "title": "AI Circuit Breaker",
+        "healthy": "Healthy",
+        "tripped": "Tripped",
+        "error": "Unavailable",
+        "spendToday": "Spend today"
+      },
+      "riskTier": {
+        "title": "Risk-tier queue",
+        "empty": "No risky accounts",
+        "count": "flagged accounts",
+        "error": "Lookup failed"
+      },
+      "audit": {
+        "title": "Recent admin events",
+        "empty": "No recent admin events.",
+        "error": "Could not load audit log."
+      }
     }
   },
   "renewal": {

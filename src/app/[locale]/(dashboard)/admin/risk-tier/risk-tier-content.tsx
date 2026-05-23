@@ -51,13 +51,27 @@ export function RiskTierAdminContent() {
     try {
       const res = await fetch(`/api/admin/risk-tier?minTier=${minTier}&limit=200`);
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
+        // Prefer the BFF's structured envelope (lib/api/error-envelope):
+        //   { error: { code, message, requestId } }
+        // Fall back to the x-request-id header when the body is not
+        // parseable. Never display raw stack-trace text — surface the
+        // requestId so support can correlate to the Worker log.
+        const body = (await res.json().catch(() => null)) as
+          | { error?: { requestId?: string } }
+          | null;
+        const requestId =
+          body?.error?.requestId ??
+          res.headers.get('x-request-id') ??
+          '';
+        setError(requestId ? `id:${requestId}` : `HTTP ${res.status}`);
+        return;
       }
       const data = (await res.json()) as { users: RiskRow[] };
       setRows(data.users);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'unknown error');
+    } catch {
+      // Network-tier failure (offline, DNS, etc.) — no requestId
+      // possible; flag a transient error without leaking exception text.
+      setError('network');
     } finally {
       setLoading(false);
     }
@@ -146,11 +160,7 @@ export function RiskTierAdminContent() {
       </section>
 
       {loading && <p className="text-sm text-fg-muted">{t('loading')}</p>}
-      {error && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <ErrorBlock error={error} />}
 
       {!loading && !error && (
         <div className="overflow-x-auto rounded-lg border border-border dark:border-gray-700">
@@ -276,12 +286,29 @@ function OverrideModal({
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
+        // 4xx validation responses keep the old envelope shape
+        // ({error: 'userId_required'}). 5xx server failures use the
+        // structured envelope ({error: {code, message, requestId}}).
+        // Both are surfaced via ErrorBlock — by-id for the latter,
+        // by-code for the former so the operator sees an actionable
+        // hint without leaking stack-trace text.
+        const body = (await res.json().catch(() => null)) as
+          | { error?: string | { code?: string; requestId?: string } }
+          | null;
+        if (body?.error && typeof body.error === 'object') {
+          const reqId =
+            body.error.requestId ?? res.headers.get('x-request-id') ?? '';
+          setError(reqId ? `id:${reqId}` : `HTTP ${res.status}`);
+        } else if (typeof body?.error === 'string') {
+          setError(`code:${body.error}`);
+        } else {
+          setError(`HTTP ${res.status}`);
+        }
+        return;
       }
       onDone();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'unknown error');
+    } catch {
+      setError('network');
     } finally {
       setSubmitting(false);
     }
@@ -338,11 +365,7 @@ function OverrideModal({
             />
           </label>
 
-          {error && (
-            <p className="rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300">
-              {error}
-            </p>
-          )}
+          {error && <ErrorBlock error={error} compact />}
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
@@ -362,6 +385,46 @@ function OverrideModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Localized error renderer that never displays raw exception text.
+ *
+ * The setError() callers above encode the failure mode as a short
+ * tagged string:
+ *   `id:<requestId>`  → server failure with a structured envelope.
+ *   `code:<code>`     → 4xx validation error from the BFF (e.g.
+ *                       'userId_required', 'cannot_override_self').
+ *   `network`         → fetch threw before any response (offline / DNS).
+ *   anything else     → HTTP status fallback, treat as generic.
+ *
+ * Display rules:
+ *   - For id: → "Could not load this view. Error ID: <uuid>"
+ *   - For code: → "Could not load this view. Code: <code>"
+ *   - Otherwise → just the generic line.
+ */
+function ErrorBlock({ error, compact }: { error: string; compact?: boolean }) {
+  const tCommon = useTranslations('common');
+  const colorClass = compact
+    ? 'rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300'
+    : 'rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300';
+
+  const idMatch = /^id:(.+)$/.exec(error);
+  const codeMatch = /^code:(.+)$/.exec(error);
+
+  return (
+    <div role="alert" className={colorClass}>
+      <p className="font-medium">{tCommon('loadFailed')}</p>
+      {idMatch && (
+        <p className="mt-1 font-mono text-xs opacity-80">
+          {tCommon('errorId')}: {idMatch[1]}
+        </p>
+      )}
+      {codeMatch && (
+        <p className="mt-1 font-mono text-xs opacity-80">{codeMatch[1]}</p>
+      )}
     </div>
   );
 }

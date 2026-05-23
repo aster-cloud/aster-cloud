@@ -12,6 +12,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { CAN_RISKTIER } from '@/lib/deployment-mode';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
 import { policyForTier, type RiskTier } from '@/lib/risk-tier';
+import { errorEnvelope } from '@/lib/api/error-envelope';
 
 export const runtime = 'nodejs';
 
@@ -80,11 +81,19 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ users: data });
   } catch (err) {
-    console.error('[risk-tier GET] handler failed', err);
-    return NextResponse.json(
-      { error: 'service_unavailable', reason: 'admin_lookup_failed' },
-      { status: 503 },
+    const env = errorEnvelope({
+      status: 503,
+      code: 'service_unavailable',
+      message: 'Risk-tier lookup failed. Please retry; the failure has been logged.',
+    });
+    // Log with the same requestId so on-call can correlate the user-
+    // visible Error ID back to this exception.
+    console.error(
+      '[risk-tier GET] handler failed',
+      env.headers.get('x-request-id'),
+      err,
     );
+    return env;
   }
 }
 

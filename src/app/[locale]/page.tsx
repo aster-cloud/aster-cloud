@@ -100,6 +100,16 @@ function HomeContent({ locale }: { locale: string }) {
 /* ------------------------------------------------------------------ */
 
 function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
+  // Public landing nav — evaluator-grade. Three rows of links exist
+  // in the IA proposal (Product, Pricing, Docs, Blog, Sign in,
+  // Start free trial). We surface the four that have real
+  // destinations today: Pricing (SaaS only), Docs (aster-lang.dev),
+  // Blog (aster-lang.dev/blog). "Product" / "Security" placeholders
+  // are deferred until those pages exist — a dead link is worse for
+  // an evaluator than a missing one.
+  //
+  // External links use a plain <a> with rel="noopener" so next-intl's
+  // <Link /> doesn't try to map them through the locale-aware router.
   return (
     <nav
       className={cn(
@@ -112,23 +122,54 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
           <Link href="/" aria-label={t('nav.brand')}>
             <Wordmark variant="product" size="md" />
           </Link>
-          <Stack direction="row" gap={4} align="center">
-            <LanguageSwitcher />
-            <Link
-              href="/login"
-              className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
-            >
-              {t('common.signIn')}
-            </Link>
-            {/* Link rendered with Button visuals via buttonVariants().
-                We don't use Button-wraps-Link because that nests
-                interactive elements (invalid HTML + a11y violation). */}
-            <MarketingPrimaryCta
-              saasLabel={t('common.startFreeTrial')}
-              onPremLabel={t('common.contactSales')}
-              variant="primary"
-              size="md"
-            />
+          <Stack direction="row" gap={6} align="center">
+            {/* Primary evaluator links — middle of the bar, separated
+                from sign-in / CTA on the right so the visual weight
+                stays on the trial CTA. */}
+            <Stack direction="row" gap={4} align="center" className="hidden md:flex">
+              {IS_SAAS && (
+                <Link
+                  href="/pricing"
+                  className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+                >
+                  {t('nav.pricing')}
+                </Link>
+              )}
+              <a
+                href="https://aster-lang.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+              >
+                {t('nav.docs')}
+              </a>
+              <a
+                href="https://aster-lang.dev/blog/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+              >
+                {t('nav.blog')}
+              </a>
+            </Stack>
+            <Stack direction="row" gap={4} align="center">
+              <LanguageSwitcher />
+              <Link
+                href="/login"
+                className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+              >
+                {t('common.signIn')}
+              </Link>
+              {/* Link rendered with Button visuals via buttonVariants().
+                  We don't use Button-wraps-Link because that nests
+                  interactive elements (invalid HTML + a11y violation). */}
+              <MarketingPrimaryCta
+                saasLabel={t('common.startFreeTrial')}
+                onPremLabel={t('common.contactSales')}
+                variant="primary"
+                size="md"
+              />
+            </Stack>
           </Stack>
         </div>
       </Container>

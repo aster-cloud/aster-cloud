@@ -24,10 +24,14 @@
     "somethingWrongBody": "Diese Seite konnte nicht geladen werden. Das Problem wurde protokolliert.",
     "tryAgain": "Erneut versuchen",
     "errorId": "Fehler-ID",
-    "contactSupport": "Support kontaktieren"
+    "contactSupport": "Support kontaktieren",
+    "loadFailed": "Diese Ansicht konnte nicht geladen werden."
   },
   "nav": {
-    "brand": "Aster Cloud"
+    "brand": "Aster Cloud",
+    "pricing": "Preise",
+    "docs": "Doku",
+    "blog": "Blog"
   },
   "hero": {
     "title": "Policy as Code in der Muttersprache",
@@ -1742,6 +1746,27 @@
       "title": "Admin-Werkzeug nicht verfügbar",
       "body": "Diese Admin-Steuerung konnte nicht geladen werden. Der Fehler wurde zur Analyse protokolliert.",
       "backToOverview": "Zurück zur Admin-Übersicht"
+    },
+    "pulse": {
+      "heading": "Admin-Pulse",
+      "circuit": {
+        "title": "KI-Schutzschalter",
+        "healthy": "Gesund",
+        "tripped": "Ausgelöst",
+        "error": "Nicht verfügbar",
+        "spendToday": "Heute ausgegeben"
+      },
+      "riskTier": {
+        "title": "Risiko-Warteschlange",
+        "empty": "Keine riskanten Konten",
+        "count": "markierte Konten",
+        "error": "Abfrage fehlgeschlagen"
+      },
+      "audit": {
+        "title": "Letzte Admin-Ereignisse",
+        "empty": "Keine kürzlichen Admin-Ereignisse.",
+        "error": "Audit-Log konnte nicht geladen werden."
+      }
     }
   },
   "renewal": {

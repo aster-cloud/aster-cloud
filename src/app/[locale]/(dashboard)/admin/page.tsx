@@ -1,27 +1,107 @@
-// /admin —— admin 概览索引页。
+// /admin —— admin 概览页 + 实时 pulse。
 //
-// 列出所有 admin 子工具入口，按 deployment-mode 过滤可见性。
-// admin 权限闸门由 admin/layout.tsx 守门，本页不再重复检查。
+// Two sections:
+//   1. Admin Pulse — health signals visible in the first viewport so an
+//      admin who lands here immediately knows the state of the platform.
+//      Cards render in parallel: AI circuit, risk-tier queue size,
+//      recent admin audit events. Each card is independent and fail-soft
+//      (a single query failure shows that one card as "unavailable",
+//      not the whole page).
+//   2. Tools — the existing card grid that links into each admin sub-tool.
 //
-// 设计要点：
-//   - 卡片格栅：每个 admin 工具一张卡，链接到对应子路由
-//   - mode 决定可见卡片：CAN_RISKTIER / CAN_LICENSE / CAN_SSO 编译期常量
-//   - PR-8 之后 license + sso 卡可点击（不再 comingSoon）；保留
-//     comingSoon 字段以便未来新工具（如 /admin/audit-log）复用同模式
+// Permission gate lives on admin/layout.tsx; this page does not re-check.
 
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { desc, gte, sql } from 'drizzle-orm';
+import { db, users, auditLogs } from '@/lib/prisma';
 import { Link } from '@/i18n/navigation';
 import {
   CAN_RISKTIER,
   CAN_LICENSE,
   CAN_SSO,
 } from '@/lib/deployment-mode';
+import {
+  todayPlatformCostCents,
+  evaluateCircuit,
+  type CircuitState,
+} from '@/lib/ai-circuit-breaker';
 
 type Props = {
   params: Promise<{ locale: string }>;
 };
 
 export const dynamic = 'force-dynamic';
+
+type CircuitPulseState = CircuitState | 'error';
+
+interface PulseSignals {
+  circuit: {
+    state: CircuitPulseState;
+    todayUsd: string | null;
+  };
+  riskTierQueue: { count: number | null };
+  recentAudit: {
+    rows: Array<{ id: string; action: string; createdAt: string }>;
+    error: boolean;
+  };
+}
+
+/**
+ * Resolve the three pulse signals in parallel. Each .catch wraps the
+ * specific failure into a sentinel value so the page never throws at
+ * the segment level — admin/error.tsx is a backstop, not a happy path.
+ */
+async function loadPulse(): Promise<PulseSignals> {
+  const [circuit, riskCount, audit] = await Promise.all([
+    (async () => {
+      try {
+        const cents = await todayPlatformCostCents();
+        return {
+          state: evaluateCircuit(cents),
+          todayUsd: (cents / 100).toFixed(2),
+        } as const;
+      } catch {
+        return { state: 'error' as const, todayUsd: null };
+      }
+    })(),
+    (async () => {
+      if (!CAN_RISKTIER) return { count: null };
+      try {
+        const rows = await db
+          .select({ c: sql<number>`count(*)::int` })
+          .from(users)
+          .where(gte(users.riskTier, 1));
+        return { count: rows[0]?.c ?? 0 };
+      } catch {
+        return { count: null };
+      }
+    })(),
+    (async () => {
+      try {
+        const rows = await db.query.auditLogs.findMany({
+          orderBy: [desc(auditLogs.createdAt)],
+          limit: 5,
+          columns: { id: true, action: true, createdAt: true },
+        });
+        return {
+          rows: rows.map((r) => ({
+            id: r.id,
+            action: r.action,
+            createdAt: r.createdAt.toISOString(),
+          })),
+          error: false,
+        };
+      } catch {
+        return { rows: [], error: true };
+      }
+    })(),
+  ]);
+  return {
+    circuit,
+    riskTierQueue: riskCount,
+    recentAudit: audit,
+  };
+}
 
 type OverviewCard = {
   href: string;
@@ -68,14 +148,62 @@ export default async function AdminOverviewPage({ params }: Props) {
   setRequestLocale(locale);
 
   const t = await getTranslations('admin.overview');
+  const tPulse = await getTranslations('admin.pulse');
   const cards = CARDS.filter((c) => c.show);
+  const pulse = await loadPulse();
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-8">
       <header>
         <h1 className="text-2xl font-semibold text-fg">{t('title')}</h1>
         <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
       </header>
+
+      {/* Admin Pulse — first viewport health signals. Each card is
+          independent: if one fails to load, the others still render. */}
+      <section aria-labelledby="admin-pulse-heading">
+        <h2
+          id="admin-pulse-heading"
+          className="mb-3 text-sm font-semibold uppercase tracking-wider text-fg-muted"
+        >
+          {tPulse('heading')}
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <PulseCircuitCard
+            state={pulse.circuit.state}
+            todayUsd={pulse.circuit.todayUsd}
+            labels={{
+              title: tPulse('circuit.title'),
+              healthy: tPulse('circuit.healthy'),
+              tripped: tPulse('circuit.tripped'),
+              error: tPulse('circuit.error'),
+              spendToday: tPulse('circuit.spendToday'),
+            }}
+            href="/admin/ai-circuit-breaker"
+          />
+          {CAN_RISKTIER && (
+            <PulseRiskTierCard
+              count={pulse.riskTierQueue.count}
+              labels={{
+                title: tPulse('riskTier.title'),
+                empty: tPulse('riskTier.empty'),
+                count: tPulse('riskTier.count'),
+                error: tPulse('riskTier.error'),
+              }}
+              href="/admin/risk-tier"
+            />
+          )}
+          <PulseAuditCard
+            rows={pulse.recentAudit.rows}
+            errored={pulse.recentAudit.error}
+            labels={{
+              title: tPulse('audit.title'),
+              empty: tPulse('audit.empty'),
+              error: tPulse('audit.error'),
+            }}
+          />
+        </div>
+      </section>
 
       <section aria-labelledby="admin-overview-tools-heading">
         <h2
@@ -105,6 +233,159 @@ export default async function AdminOverviewPage({ params }: Props) {
         </ul>
       </section>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Pulse card components                                                */
+/* ------------------------------------------------------------------ */
+
+function PulseCard({
+  title,
+  href,
+  tone,
+  children,
+}: {
+  title: string;
+  href?: string;
+  tone: 'ok' | 'warn' | 'error' | 'neutral';
+  children: React.ReactNode;
+}) {
+  const toneClass = {
+    ok: 'border-success/30 bg-success-subtle',
+    warn: 'border-warning/30 bg-warning-subtle',
+    error: 'border-danger/30 bg-danger-subtle',
+    neutral: 'border-border bg-bg',
+  }[tone];
+  const inner = (
+    <article
+      className={`flex h-full flex-col rounded-lg border p-4 ${toneClass}`}
+    >
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+        {title}
+      </h3>
+      <div className="mt-2 flex-1">{children}</div>
+    </article>
+  );
+  if (!href) return inner;
+  return (
+    <Link
+      href={href}
+      className="block transition-shadow hover:shadow-md focus-visible:shadow-md focus-visible:outline-none"
+    >
+      {inner}
+    </Link>
+  );
+}
+
+function PulseCircuitCard({
+  state,
+  todayUsd,
+  labels,
+  href,
+}: {
+  state: CircuitPulseState;
+  todayUsd: string | null;
+  labels: {
+    title: string;
+    healthy: string;
+    tripped: string;
+    error: string;
+    spendToday: string;
+  };
+  href: string;
+}) {
+  // 'closed' = healthy (circuit is closed, traffic flowing normally).
+  // 'free_stopped' / 'free_trial_stopped' = tripped at one of the
+  // platform-cost thresholds. 'error' = state lookup itself failed.
+  const tripped = state === 'free_stopped' || state === 'free_trial_stopped';
+  const tone: 'ok' | 'warn' | 'error' =
+    state === 'error' ? 'error' : tripped ? 'warn' : 'ok';
+  const label =
+    state === 'error'
+      ? labels.error
+      : tripped
+        ? labels.tripped
+        : labels.healthy;
+  return (
+    <PulseCard title={labels.title} tone={tone} href={href}>
+      <p className="text-lg font-semibold text-fg">{label}</p>
+      {todayUsd !== null && (
+        <p className="mt-1 text-xs text-fg-muted">
+          {labels.spendToday}: ${todayUsd}
+        </p>
+      )}
+    </PulseCard>
+  );
+}
+
+function PulseRiskTierCard({
+  count,
+  labels,
+  href,
+}: {
+  count: number | null;
+  labels: { title: string; empty: string; count: string; error: string };
+  href: string;
+}) {
+  if (count === null) {
+    return (
+      <PulseCard title={labels.title} tone="error" href={href}>
+        <p className="text-sm text-fg">{labels.error}</p>
+      </PulseCard>
+    );
+  }
+  if (count === 0) {
+    return (
+      <PulseCard title={labels.title} tone="ok" href={href}>
+        <p className="text-lg font-semibold text-fg">{labels.empty}</p>
+      </PulseCard>
+    );
+  }
+  return (
+    <PulseCard title={labels.title} tone="warn" href={href}>
+      <p className="text-2xl font-semibold text-fg tabular-nums">{count}</p>
+      <p className="mt-1 text-xs text-fg-muted">{labels.count}</p>
+    </PulseCard>
+  );
+}
+
+function PulseAuditCard({
+  rows,
+  errored,
+  labels,
+}: {
+  rows: PulseSignals['recentAudit']['rows'];
+  errored: boolean;
+  labels: { title: string; empty: string; error: string };
+}) {
+  if (errored) {
+    return (
+      <PulseCard title={labels.title} tone="error">
+        <p className="text-sm text-fg">{labels.error}</p>
+      </PulseCard>
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <PulseCard title={labels.title} tone="neutral">
+        <p className="text-sm text-fg-muted">{labels.empty}</p>
+      </PulseCard>
+    );
+  }
+  return (
+    <PulseCard title={labels.title} tone="neutral">
+      <ul className="space-y-1 text-xs">
+        {rows.slice(0, 3).map((r) => (
+          <li key={r.id} className="flex items-baseline justify-between gap-2">
+            <span className="truncate font-mono text-fg">{r.action}</span>
+            <span className="shrink-0 text-fg-subtle">
+              {new Date(r.createdAt).toLocaleDateString()}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </PulseCard>
   );
 }
 
