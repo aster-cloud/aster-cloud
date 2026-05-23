@@ -20,7 +20,11 @@
     "themeLight": "Helles Thema",
     "themeDark": "Dunkles Thema",
     "themeSystem": "Systemthema",
-    "skipToContent": "Zum Hauptinhalt springen"
+    "skipToContent": "Zum Hauptinhalt springen",
+    "somethingWrongBody": "Diese Seite konnte nicht geladen werden. Das Problem wurde protokolliert.",
+    "tryAgain": "Erneut versuchen",
+    "errorId": "Fehler-ID",
+    "contactSupport": "Support kontaktieren"
   },
   "nav": {
     "brand": "Aster Cloud"
@@ -1337,6 +1341,11 @@
       "autoDetectDesc": "Erkennen Sie Ihre bevorzugte Sprache automatisch aus den Browsereinstellungen.",
       "enabled": "Aktiviert",
       "disabled": "Deaktiviert"
+    },
+    "aiKeys": {
+      "title": "KI-Schlüssel",
+      "subtitle": "Eigenen OpenAI- / Anthropic- / Vertex-AI-Schlüssel binden. KI-Aufrufe nutzen dein Kontingent und umgehen das Plattform-Monatslimit.",
+      "manageKeys": "KI-Schlüssel verwalten"
     }
   },
   "security": {
@@ -1728,6 +1737,11 @@
         "missing": "Keine LICENSE_KEY konfiguriert. Setzen Sie die Umgebungsvariable, um Admin-Operationen wiederherzustellen."
       },
       "viewLicense": "Lizenzstatus anzeigen"
+    },
+    "errorBoundary": {
+      "title": "Admin-Werkzeug nicht verfügbar",
+      "body": "Diese Admin-Steuerung konnte nicht geladen werden. Der Fehler wurde zur Analyse protokolliert.",
+      "backToOverview": "Zurück zur Admin-Übersicht"
     }
   },
   "renewal": {
@@ -1971,5 +1985,38 @@
         "deployment": "Bereitstellung"
       }
     }
+  },
+  "adminLaunchpad": {
+    "title": "Aster in 60 Sekunden einrichten",
+    "body": "Du bist als Admin angemeldet. Diese fünf Punkte bringen die Plattform vom leeren Start zur Produktionsreife.",
+    "progress": "{done} von {total} erledigt",
+    "steps": {
+      "createPolicy": {
+        "label": "Erste Policy erstellen",
+        "desc": "CNL-Regel + Decision Schema schreiben. Aster kompiliert und führt direkt im Browser aus.",
+        "cta": "Policy-Editor öffnen"
+      },
+      "addApiKey": {
+        "label": "API-Schlüssel ausstellen",
+        "desc": "Programmatischer Zugriff auf /api/v1/policies/evaluate von deinem Stack aus.",
+        "cta": "API-Schlüssel verwalten"
+      },
+      "addAiKey": {
+        "label": "KI-Schlüssel verbinden (BYOK)",
+        "desc": "Eigenen OpenAI- / Anthropic- / Vertex-AI-Schlüssel binden, damit KI-Entwürfe das Plattform-Monatslimit umgehen.",
+        "cta": "KI-Schlüssel binden"
+      },
+      "inviteTeam": {
+        "label": "Teammitglied einladen",
+        "desc": "Prüfer und Genehmiger einrichten, damit Policy-Änderungen deinem bestehenden Prozess folgen.",
+        "cta": "Mitglieder einladen"
+      },
+      "reviewBilling": {
+        "label": "Abrechnung & Sitzplätze prüfen",
+        "desc": "Verbleibende Testtage prüfen, Zahlungsmittel hinzufügen, Plan-Funktionen ansehen.",
+        "cta": "Abrechnung öffnen"
+      }
+    },
+    "dismiss": "Diese Checkliste ausblenden"
   }
 }

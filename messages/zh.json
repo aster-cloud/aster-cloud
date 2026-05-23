@@ -20,7 +20,11 @@
     "themeLight": "浅色主题",
     "themeDark": "深色主题",
     "themeSystem": "跟随系统",
-    "skipToContent": "跳到主内容"
+    "skipToContent": "跳到主内容",
+    "somethingWrongBody": "此页面无法加载。问题已记录给我们团队。",
+    "tryAgain": "重试",
+    "errorId": "错误编号",
+    "contactSupport": "联系支持"
   },
   "nav": {
     "brand": "Aster Cloud"
@@ -1337,6 +1341,11 @@
       "autoDetectDesc": "根据浏览器设置自动检测您的首选语言。",
       "enabled": "已启用",
       "disabled": "已禁用"
+    },
+    "aiKeys": {
+      "title": "AI 密钥",
+      "subtitle": "绑定你自己的 OpenAI / Anthropic / Vertex AI 密钥。AI 调用走你的配额，不占用平台月度额度。",
+      "manageKeys": "管理 AI 密钥"
     }
   },
   "security": {
@@ -1728,6 +1737,11 @@
         "missing": "未配置 LICENSE_KEY。请设置环境变量以恢复管理员操作。"
       },
       "viewLicense": "查看许可证状态"
+    },
+    "errorBoundary": {
+      "title": "管理工具不可用",
+      "body": "此管理控件无法加载。失败已记录待排查。",
+      "backToOverview": "返回管理台首页"
     }
   },
   "renewal": {
@@ -1971,5 +1985,38 @@
         "deployment": "部署模式"
       }
     }
+  },
+  "adminLaunchpad": {
+    "title": "60 秒完成 Aster 上手",
+    "body": "你以 admin 身份登录。完成下面五步，把平台从空白带到可投产。",
+    "progress": "已完成 {done} / {total}",
+    "steps": {
+      "createPolicy": {
+        "label": "创建第一条策略",
+        "desc": "写 CNL 规则 + 决策 schema。Aster 在浏览器里直接编译并执行。",
+        "cta": "打开策略编辑器"
+      },
+      "addApiKey": {
+        "label": "签发 API 密钥",
+        "desc": "让你的业务系统通过 /api/v1/policies/evaluate 访问 Aster。",
+        "cta": "管理 API 密钥"
+      },
+      "addAiKey": {
+        "label": "绑定 AI 密钥（BYOK）",
+        "desc": "绑定自己的 OpenAI / Anthropic / Vertex AI 密钥，AI 草稿不再占用平台月度配额。",
+        "cta": "绑定 AI 密钥"
+      },
+      "inviteTeam": {
+        "label": "邀请团队成员",
+        "desc": "配置审阅人和批准人，让策略变更走你现有的流程。",
+        "cta": "邀请成员"
+      },
+      "reviewBilling": {
+        "label": "查看订阅与席位",
+        "desc": "查看试用天数、添加付款方式、了解每个套餐的功能。",
+        "cta": "打开订阅"
+      }
+    },
+    "dismiss": "隐藏此清单"
   }
 }

@@ -33,45 +33,59 @@ export async function GET(req: NextRequest) {
   // 通过端点试探得知功能存在与否。
   if (!CAN_RISKTIER) return new NextResponse(null, { status: 404 });
 
-  const check = await requireAdmin();
-  if (check instanceof NextResponse) return check;
+  // Structured try/catch covers the whole handler so any unexpected
+  // throw (Hyperdrive cold start, drizzle schema drift, missing env,
+  // …) lands as a 503 JSON envelope rather than Next.js's default
+  // text "Internal Server Error" page. The admin UI now has an error
+  // boundary to handle this, but we still want the response to be
+  // machine-parseable for the client retry path.
+  try {
+    const check = await requireAdmin();
+    if (check instanceof NextResponse) return check;
 
-  const url = new URL(req.url);
-  const minTier = Math.max(1, Math.min(4, Number(url.searchParams.get('minTier') ?? 1)));
-  const limit = Math.max(1, Math.min(500, Number(url.searchParams.get('limit') ?? 100)));
+    const url = new URL(req.url);
+    const minTier = Math.max(1, Math.min(4, Number(url.searchParams.get('minTier') ?? 1)));
+    const limit = Math.max(1, Math.min(500, Number(url.searchParams.get('limit') ?? 100)));
 
-  const rows = await db.query.users.findMany({
-    where: gte(users.riskTier, minTier),
-    orderBy: [desc(users.riskTier), desc(users.createdAt)],
-    limit,
-    columns: {
-      id: true,
-      email: true,
-      emailNormalized: true,
-      plan: true,
-      riskTier: true,
-      riskTierReason: true,
-      priorPurgeCount: true,
-      reactivationCount: true,
-      createdAt: true,
-      deletedAt: true,
-    },
-  });
+    const rows = await db.query.users.findMany({
+      where: gte(users.riskTier, minTier),
+      orderBy: [desc(users.riskTier), desc(users.createdAt)],
+      limit,
+      columns: {
+        id: true,
+        email: true,
+        emailNormalized: true,
+        plan: true,
+        riskTier: true,
+        riskTierReason: true,
+        priorPurgeCount: true,
+        reactivationCount: true,
+        createdAt: true,
+        deletedAt: true,
+      },
+    });
 
-  const data: RiskRow[] = rows.map((r) => ({
-    id: r.id,
-    email: r.email,
-    emailNormalized: r.emailNormalized,
-    plan: r.plan,
-    riskTier: r.riskTier,
-    riskTierReason: r.riskTierReason,
-    priorPurgeCount: r.priorPurgeCount,
-    reactivationCount: r.reactivationCount,
-    createdAt: r.createdAt.toISOString(),
-    deletedAt: r.deletedAt?.toISOString() ?? null,
-  }));
+    const data: RiskRow[] = rows.map((r) => ({
+      id: r.id,
+      email: r.email,
+      emailNormalized: r.emailNormalized,
+      plan: r.plan,
+      riskTier: r.riskTier,
+      riskTierReason: r.riskTierReason,
+      priorPurgeCount: r.priorPurgeCount,
+      reactivationCount: r.reactivationCount,
+      createdAt: r.createdAt.toISOString(),
+      deletedAt: r.deletedAt?.toISOString() ?? null,
+    }));
 
-  return NextResponse.json({ users: data });
+    return NextResponse.json({ users: data });
+  } catch (err) {
+    console.error('[risk-tier GET] handler failed', err);
+    return NextResponse.json(
+      { error: 'service_unavailable', reason: 'admin_lookup_failed' },
+      { status: 503 },
+    );
+  }
 }
 
 interface OverridePayload {

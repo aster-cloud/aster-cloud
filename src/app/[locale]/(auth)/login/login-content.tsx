@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Suspense, useCallback } from 'react';
-import { signIn, signOut, useSession } from 'next-auth/react';
+import { signIn, signOut, useSession, getSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useLocale } from 'next-intl';
@@ -76,8 +76,24 @@ function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentPr
   // Build locale-aware default callback URL
   const localePrefix = locale === defaultLocale ? '' : `/${locale}`;
   const defaultCallbackUrl = `${localePrefix}/dashboard`;
-  const callbackUrl = searchParams.get('callbackUrl') || defaultCallbackUrl;
+  const explicitCallback = searchParams.get('callbackUrl');
+  const callbackUrl = explicitCallback || defaultCallbackUrl;
   const errorParam = searchParams.get('error');
+
+  /**
+   * Pick the post-login landing route based on the just-authenticated
+   * session. Honour an explicit `?callbackUrl=` (deep link from a
+   * protected page) verbatim — admins clicking a policy link want to
+   * land on that policy, not be hijacked to /admin. Only override the
+   * default destination.
+   */
+  function resolvePostLoginUrl(
+    explicit: string | null,
+    isAdmin: boolean,
+  ): string {
+    if (explicit) return explicit;
+    return isAdmin ? `${localePrefix}/admin` : defaultCallbackUrl;
+  }
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -146,7 +162,22 @@ function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentPr
       // 重置 Turnstile
       setTurnstileToken(null);
     } else if (result?.url) {
-      window.location.href = result.url;
+      // Role-aware destination: re-read the session that NextAuth just
+      // minted so we can branch on isAdmin. getSession() hits the
+      // /api/auth/session endpoint, which serializes the JWT we just
+      // populated in auth.ts (token.isAdmin). If the lookup fails we
+      // fall back to whatever NextAuth's signIn() returned — the user
+      // still lands somewhere sane.
+      try {
+        const session = await getSession();
+        const target = resolvePostLoginUrl(
+          explicitCallback,
+          session?.user?.isAdmin === true,
+        );
+        window.location.href = target;
+      } catch {
+        window.location.href = result.url;
+      }
     }
   };
 

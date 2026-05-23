@@ -92,6 +92,22 @@ export default async function SettingsPage({ params }: PageProps) {
           }
         />
 
+        {/* AI Keys (BYOK). Was previously only reachable via cmdk — surfacing
+            it as a Settings card so admins/users on a fresh tenant can find
+            the OpenAI/Anthropic/Vertex binding flow without a keyboard shortcut. */}
+        <SettingCard
+          title={t('aiKeys.title')}
+          description={t('aiKeys.subtitle')}
+          action={
+            <Link
+              href="/settings/ai-keys"
+              className={buttonVariants({ variant: 'secondary', size: 'md' })}
+            >
+              {t('aiKeys.manageKeys')}
+            </Link>
+          }
+        />
+
         {/* GDPR data — Article 15 (access) + Article 17 (erasure). */}
         <SettingCard
           title={t('dataCard.title')}

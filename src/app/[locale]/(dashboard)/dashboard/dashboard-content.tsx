@@ -38,6 +38,11 @@ import { ApiUsageCard } from '@/components/dashboard/api-usage-card';
 import { AhaStatusCard } from '@/components/dashboard/aha-status-card';
 import { DunningBanner } from '@/components/dashboard/dunning-banner';
 import {
+  AdminLaunchpad,
+  type SetupSignals,
+  type LaunchpadTranslations,
+} from '@/components/dashboard/admin-launchpad';
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -127,6 +132,15 @@ interface Translations {
 interface DashboardContentProps {
   stats: DashboardStats;
   policies: Policy[];
+  /**
+   * Admin launchpad — only rendered when the viewer is an admin AND
+   * the checklist still has outstanding steps. Driven by JWT-side
+   * `isAdmin` + four DB-side signal counts; component hides itself
+   * when complete or dismissed (localStorage flag).
+   */
+  isAdmin: boolean;
+  setupSignals: SetupSignals;
+  launchpadTranslations: LaunchpadTranslations;
   totalPiiFields: number;
   translations: Translations;
   locale: string;
@@ -146,6 +160,9 @@ function formatTemplate(template: string, values: Record<string, string | number
 export function DashboardContent({
   stats,
   policies,
+  isAdmin,
+  setupSignals,
+  launchpadTranslations,
   totalPiiFields,
   translations: t,
   locale,
@@ -194,6 +211,16 @@ export function DashboardContent({
             {t.newPolicy}
           </Link>
         </Stack>
+
+        {/* Admin setup launchpad — first viewport for SaaS admins on a
+            fresh tenant. The component self-hides when all five signals
+            are satisfied or when the user explicitly dismissed it. */}
+        {isAdmin && (
+          <AdminLaunchpad
+            signals={setupSignals}
+            translations={launchpadTranslations}
+          />
+        )}
 
         {/* Plan-state banner — SaaS only.
             stats.plan === 'trial' 在 on-prem 上理论上不可能出现（auth.ts

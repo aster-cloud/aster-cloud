@@ -177,12 +177,14 @@ const config: NextAuthConfig = {
             plan: true,
             trialEndsAt: true,
             stripeCustomerId: true,
+            isAdmin: true,
           },
         });
 
         if (dbUser) {
           token.plan = dbUser.plan;
           token.trialEndsAt = dbUser.trialEndsAt?.toISOString();
+          token.isAdmin = dbUser.isAdmin === true;
         }
       }
 
@@ -191,12 +193,13 @@ const config: NextAuthConfig = {
         const db = getDb();
         const dbUser = await db.query.users.findFirst({
           where: eq(users.id, token.id as string),
-          columns: { plan: true, trialEndsAt: true },
+          columns: { plan: true, trialEndsAt: true, isAdmin: true },
         });
 
         if (dbUser) {
           token.plan = dbUser.plan;
           token.trialEndsAt = dbUser.trialEndsAt?.toISOString();
+          token.isAdmin = dbUser.isAdmin === true;
         }
       }
 
@@ -208,6 +211,7 @@ const config: NextAuthConfig = {
         session.user.id = token.id as string;
         session.user.plan = token.plan as string;
         session.user.trialEndsAt = token.trialEndsAt as string | undefined;
+        session.user.isAdmin = token.isAdmin === true;
       }
       return session;
     },

@@ -20,7 +20,11 @@
     "themeLight": "Light theme",
     "themeDark": "Dark theme",
     "themeSystem": "System theme",
-    "skipToContent": "Skip to main content"
+    "skipToContent": "Skip to main content",
+    "somethingWrongBody": "This page could not load. The problem has been logged with our team.",
+    "tryAgain": "Try again",
+    "errorId": "Error ID",
+    "contactSupport": "Contact support"
   },
   "nav": {
     "brand": "Aster Cloud"
@@ -1337,6 +1341,11 @@
       "autoDetectDesc": "Automatically detect your preferred language from browser settings.",
       "enabled": "Enabled",
       "disabled": "Disabled"
+    },
+    "aiKeys": {
+      "title": "AI Keys",
+      "subtitle": "Bring your own OpenAI / Anthropic / Vertex AI key. AI calls use your quota and bypass the platform monthly limit.",
+      "manageKeys": "Manage AI Keys"
     }
   },
   "security": {
@@ -1728,6 +1737,11 @@
         "missing": "No LICENSE_KEY configured. Set the environment variable to restore admin operations."
       },
       "viewLicense": "View license status"
+    },
+    "errorBoundary": {
+      "title": "Admin tool unavailable",
+      "body": "This admin control could not load. The failure has been logged for triage.",
+      "backToOverview": "Back to Admin Overview"
     }
   },
   "renewal": {
@@ -1971,5 +1985,38 @@
         "deployment": "Deployment"
       }
     }
+  },
+  "adminLaunchpad": {
+    "title": "Set Aster up in 60 seconds",
+    "body": "You’re signed in as an admin. Tick these five boxes to take the platform from empty to ready-for-production.",
+    "progress": "{done} of {total} done",
+    "steps": {
+      "createPolicy": {
+        "label": "Create your first policy",
+        "desc": "Write a CNL rule + decision schema. Aster compiles and runs it from the browser.",
+        "cta": "Open policy editor"
+      },
+      "addApiKey": {
+        "label": "Issue an API key",
+        "desc": "Programmatic access to /api/v1/policies/evaluate from your stack.",
+        "cta": "Manage API keys"
+      },
+      "addAiKey": {
+        "label": "Connect an AI key (BYOK)",
+        "desc": "Bring your own OpenAI / Anthropic / Vertex AI key so AI drafts bypass the platform monthly cap.",
+        "cta": "Bind AI key"
+      },
+      "inviteTeam": {
+        "label": "Invite a teammate",
+        "desc": "Set up reviewers and approvers so policy changes flow through your existing process.",
+        "cta": "Invite members"
+      },
+      "reviewBilling": {
+        "label": "Review billing & seats",
+        "desc": "Check trial days left, add a payment method, see what each plan unlocks.",
+        "cta": "Open billing"
+      }
+    },
+    "dismiss": "Hide this checklist"
   }
 }

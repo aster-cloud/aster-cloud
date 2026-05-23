@@ -1,0 +1,208 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus, Check, Sparkles, KeyRound, Users, CreditCard } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
+import {
+  Badge,
+  Card,
+  CardBody,
+  Stack,
+  buttonVariants,
+  cn,
+} from '@/components/ui';
+
+/*
+ * Admin launchpad — first-viewport setup checklist for SaaS admins
+ * on a fresh tenant. Replaces the zero-stat first impression with a
+ * five-step "ready in 60 seconds" runway.
+ *
+ * Visibility rules (decided by the caller, not this component):
+ *   - Render only when session.user.isAdmin is true.
+ *   - Hide when all five signals are satisfied (checklist done).
+ *   - Local-storage "dismissed" flag persists across reloads so a
+ *     paid admin who already set everything up doesn't see it
+ *     resurrected after a transient signal flip.
+ *
+ * Each step row stays interactive after completion — the CTA links
+ * remain useful (e.g. "Manage API keys" after the first key is
+ * issued) so the launchpad doubles as quick navigation to the
+ * relevant org-config pages.
+ */
+
+export interface SetupSignals {
+  hasPolicy: boolean;
+  hasApiKey: boolean;
+  hasAiKey: boolean;
+  hasTeammate: boolean;
+  hasReviewedBilling: boolean;
+}
+
+export interface LaunchpadTranslations {
+  title: string;
+  body: string;
+  progressTemplate: string;
+  dismiss: string;
+  steps: {
+    createPolicy: { label: string; desc: string; cta: string };
+    addApiKey: { label: string; desc: string; cta: string };
+    addAiKey: { label: string; desc: string; cta: string };
+    inviteTeam: { label: string; desc: string; cta: string };
+    reviewBilling: { label: string; desc: string; cta: string };
+  };
+}
+
+interface AdminLaunchpadProps {
+  signals: SetupSignals;
+  translations: LaunchpadTranslations;
+}
+
+const DISMISS_KEY = 'aster.admin.launchpad.dismissed';
+
+export function AdminLaunchpad({ signals, translations: t }: AdminLaunchpadProps) {
+  // Lazy init from localStorage; SSR returns false so the launchpad
+  // renders on first paint and the client may hide it on hydrate. A
+  // brief flash is acceptable — preferable to a layout shift toward
+  // *showing* it on rehydrate for a paid admin who dismissed it.
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(DISMISS_KEY) === '1';
+  });
+
+  if (dismissed) return null;
+
+  const steps = [
+    {
+      id: 'createPolicy',
+      done: signals.hasPolicy,
+      icon: Plus,
+      copy: t.steps.createPolicy,
+      href: '/policies/new',
+    },
+    {
+      id: 'addApiKey',
+      done: signals.hasApiKey,
+      icon: KeyRound,
+      copy: t.steps.addApiKey,
+      href: '/settings/api-keys',
+    },
+    {
+      id: 'addAiKey',
+      done: signals.hasAiKey,
+      icon: Sparkles,
+      copy: t.steps.addAiKey,
+      href: '/settings/ai-keys',
+    },
+    {
+      id: 'inviteTeam',
+      done: signals.hasTeammate,
+      icon: Users,
+      copy: t.steps.inviteTeam,
+      href: '/teams',
+    },
+    {
+      id: 'reviewBilling',
+      done: signals.hasReviewedBilling,
+      icon: CreditCard,
+      copy: t.steps.reviewBilling,
+      href: '/billing',
+    },
+  ] as const;
+
+  const done = steps.filter((s) => s.done).length;
+  if (done === steps.length) return null; // all five satisfied → hide
+
+  const progress = t.progressTemplate
+    .replace('{done}', String(done))
+    .replace('{total}', String(steps.length));
+
+  return (
+    <Card>
+      <CardBody className="pt-6">
+        <Stack gap={5}>
+          <Stack
+            direction="row"
+            justify="between"
+            align="start"
+            gap={3}
+            wrap
+          >
+            <Stack gap={1} className="min-w-0 flex-1">
+              <Stack direction="row" gap={2} align="center">
+                <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                  {t.title}
+                </h2>
+                <Badge variant="primary">{progress}</Badge>
+              </Stack>
+              <p className="text-sm text-fg-muted">{t.body}</p>
+            </Stack>
+            <button
+              type="button"
+              onClick={() => {
+                window.localStorage.setItem(DISMISS_KEY, '1');
+                setDismissed(true);
+              }}
+              className="text-xs text-fg-subtle hover:text-fg focus-visible:outline-none focus-visible:underline"
+            >
+              {t.dismiss}
+            </button>
+          </Stack>
+
+          <ol className="flex flex-col gap-3">
+            {steps.map((s) => {
+              const Icon = s.icon;
+              return (
+                <li
+                  key={s.id}
+                  className={cn(
+                    'flex items-start gap-3 rounded-md border border-border p-3',
+                    s.done ? 'bg-success-subtle' : 'bg-bg',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border',
+                      s.done
+                        ? 'border-success bg-success text-success-fg'
+                        : 'border-border bg-bg-subtle text-fg-muted',
+                    )}
+                    aria-hidden
+                  >
+                    {s.done ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Icon className="size-4" />
+                    )}
+                  </span>
+                  <Stack gap={1} className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        'text-sm font-medium',
+                        s.done ? 'text-success line-through' : 'text-fg',
+                      )}
+                    >
+                      {s.copy.label}
+                    </p>
+                    <p className="text-sm text-fg-muted">{s.copy.desc}</p>
+                  </Stack>
+                  <Link
+                    href={s.href}
+                    className={cn(
+                      buttonVariants({
+                        variant: s.done ? 'secondary' : 'primary',
+                        size: 'sm',
+                      }),
+                      'shrink-0',
+                    )}
+                  >
+                    {s.copy.cta}
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </Stack>
+      </CardBody>
+    </Card>
+  );
+}

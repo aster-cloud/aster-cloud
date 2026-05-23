@@ -1,10 +1,18 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getUsageStats } from '@/lib/usage';
-import { db, policies, executions } from '@/lib/prisma';
-import { eq, desc, sql, inArray } from 'drizzle-orm';
+import {
+  db,
+  policies,
+  executions,
+  apiKeys,
+  aiKeyBindings,
+  teamMembers,
+} from '@/lib/prisma';
+import { eq, desc, sql, inArray, and } from 'drizzle-orm';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { isAdminFromSession } from '@/lib/admin-auth';
 import { DashboardContent } from './dashboard-content';
 
 // 服务端数据获取
@@ -67,6 +75,50 @@ export default async function DashboardPage() {
   const t = await getTranslations('dashboard');
   const locale = await getLocale();
 
+  /*
+   * Admin launchpad signals — five booleans that drive the first-run
+   * checklist component. We resolve them in parallel; each query is a
+   * primary-key / user-id-scoped lookup, so the round trip is cheap.
+   * The launchpad component itself decides whether to render based on
+   * `isAdmin && setupSignals.outstanding > 0`.
+   *
+   * Why server-side: NextAuth's JWT exposes `isAdmin`, but the other
+   * four flags need DB lookups anyway, so co-locating them keeps the
+   * first-paint a single render with no client fetch.
+   */
+  const adminContext = await isAdminFromSession();
+  const isAdmin = adminContext !== null;
+  const [aiKeyCount, apiKeyCount, teamMemberCount] = await Promise.all([
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(aiKeyBindings)
+      .where(
+        and(
+          eq(aiKeyBindings.userId, session.user.id),
+          eq(aiKeyBindings.active, true),
+        ),
+      )
+      .then((r) => r[0]?.c ?? 0),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, session.user.id))
+      .then((r) => r[0]?.c ?? 0),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, session.user.id))
+      .then((r) => r[0]?.c ?? 0),
+  ]);
+
+  const setupSignals = {
+    hasPolicy: (stats.usage.policies ?? 0) > 0,
+    hasApiKey: apiKeyCount > 0,
+    hasAiKey: aiKeyCount > 0,
+    hasTeammate: teamMemberCount > 1, // 1 = solo (just the admin themselves)
+    hasReviewedBilling: stats.plan !== 'trial' && stats.plan !== 'free',
+  };
+
   // 预计算 PII 总数
   const totalPiiFields = policies.reduce(
     (sum, p) => sum + (p.piiFields?.length || 0),
@@ -114,10 +166,50 @@ export default async function DashboardPage() {
     },
   };
 
+  // adminLaunchpad lives in its own root namespace so it can be shared
+  // by other admin surfaces later without a dashboard.* prefix.
+  const tLaunch = await getTranslations('adminLaunchpad');
+  const launchpadTranslations = {
+    title: tLaunch('title'),
+    body: tLaunch('body'),
+    progressTemplate: tLaunch.raw('progress'),
+    dismiss: tLaunch('dismiss'),
+    steps: {
+      createPolicy: {
+        label: tLaunch('steps.createPolicy.label'),
+        desc: tLaunch('steps.createPolicy.desc'),
+        cta: tLaunch('steps.createPolicy.cta'),
+      },
+      addApiKey: {
+        label: tLaunch('steps.addApiKey.label'),
+        desc: tLaunch('steps.addApiKey.desc'),
+        cta: tLaunch('steps.addApiKey.cta'),
+      },
+      addAiKey: {
+        label: tLaunch('steps.addAiKey.label'),
+        desc: tLaunch('steps.addAiKey.desc'),
+        cta: tLaunch('steps.addAiKey.cta'),
+      },
+      inviteTeam: {
+        label: tLaunch('steps.inviteTeam.label'),
+        desc: tLaunch('steps.inviteTeam.desc'),
+        cta: tLaunch('steps.inviteTeam.cta'),
+      },
+      reviewBilling: {
+        label: tLaunch('steps.reviewBilling.label'),
+        desc: tLaunch('steps.reviewBilling.desc'),
+        cta: tLaunch('steps.reviewBilling.cta'),
+      },
+    },
+  };
+
   return (
     <DashboardContent
       stats={stats}
       policies={policies}
+      isAdmin={isAdmin}
+      setupSignals={setupSignals}
+      launchpadTranslations={launchpadTranslations}
       totalPiiFields={totalPiiFields}
       translations={translations}
       locale={locale}

@@ -13,6 +13,13 @@ declare module 'next-auth' {
       image?: string | null;
       plan?: string;
       trialEndsAt?: string;
+      /**
+       * Mirrors the DB `users.isAdmin` column. Granted by DBA only
+       * (see lib/admin-auth.ts). Exposed on the session so the
+       * client-side login redirect + the (dashboard)/layout can branch
+       * without a server roundtrip.
+       */
+      isAdmin?: boolean;
     };
   }
 
@@ -20,6 +27,7 @@ declare module 'next-auth' {
     id: string;
     plan?: string;
     trialEndsAt?: string;
+    isAdmin?: boolean;
   }
 }
 
@@ -28,5 +36,6 @@ declare module 'next-auth/jwt' {
     id?: string;
     plan?: string;
     trialEndsAt?: string;
+    isAdmin?: boolean;
   }
 }
