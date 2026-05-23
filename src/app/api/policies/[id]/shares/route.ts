@@ -27,7 +27,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
 import {
   db,
@@ -98,8 +98,12 @@ export async function GET(req: Request, { params }: RouteParams) {
       return new NextResponse(null, { status: 404 });
     }
 
+    // Newest first — matches the "I just shared this" mental model
+    // when the owner opens the policy and looks for the row they
+    // just added.
     const rows = await db.query.policyShares.findMany({
       where: eq(policyShares.policyId, id),
+      orderBy: [desc(policyShares.createdAt)],
     });
 
     // Hydrate team names so the UI doesn't need a second roundtrip.

@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { eq, inArray, isNull, and } from 'drizzle-orm';
+import { eq, inArray, isNull, and, desc } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
 import {
   db,
@@ -45,9 +45,12 @@ export async function GET() {
       return NextResponse.json({ shares: [] });
     }
 
-    // Step 2: every share targeting one of those teams.
+    // Step 2: every share targeting one of those teams. Newest first
+    // — when a policy is shared and the user lands on /policies, the
+    // freshly-arrived row should sit at the top.
     const shareRows = await db.query.policyShares.findMany({
       where: inArray(policyShares.teamId, myTeamIds),
+      orderBy: [desc(policyShares.createdAt)],
     });
     if (shareRows.length === 0) {
       return NextResponse.json({ shares: [] });

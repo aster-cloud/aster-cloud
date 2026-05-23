@@ -9,7 +9,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { eq, inArray, isNull, and } from 'drizzle-orm';
+import { eq, inArray, isNull, and, desc } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
 import {
   db,
@@ -51,6 +51,7 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     const shareRows = await db.query.policyShares.findMany({
       where: eq(policyShares.teamId, teamId),
+      orderBy: [desc(policyShares.createdAt)],
     });
     if (shareRows.length === 0) {
       return NextResponse.json({ shares: [] });
