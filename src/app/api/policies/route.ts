@@ -5,6 +5,7 @@ import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
 import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
 import { detectPII } from '@/services/pii/detector';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
+import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { eq, isNull, desc, sql, and, inArray } from 'drizzle-orm';
 
 // GET /api/policies - List user's policies
@@ -82,13 +83,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, content, description, isPublic, groupId } = await req.json();
+    const { name, content, description, isPublic, groupId, teamId } =
+      await req.json();
 
     if (!name || !content) {
       return NextResponse.json(
         { error: 'Name and content are required' },
         { status: 400 }
       );
+    }
+
+    // When teamId is provided, verify the caller has POLICY_CREATE on
+    // that team. This consolidates "create policy under a team" into
+    // the same endpoint as personal policies — the team-specific
+    // /api/teams/[teamId]/policies route stays available for compat
+    // but new UI uses ?teamId= on /policies/new.
+    if (teamId) {
+      if (typeof teamId !== 'string') {
+        return NextResponse.json(
+          { error: 'teamId must be a string' },
+          { status: 400 }
+        );
+      }
+      const perm = await checkTeamPermission(
+        session.user.id,
+        teamId,
+        TeamPermission.POLICY_CREATE,
+      );
+      if (!perm.allowed) {
+        return NextResponse.json(
+          { error: perm.error ?? 'Forbidden' },
+          { status: perm.status ?? 403 },
+        );
+      }
     }
 
     // 如果指定了分组，验证分组存在且用户有权限
@@ -171,6 +198,7 @@ export async function POST(req: Request) {
       isPublic: boolean;
       piiFields?: string[] | null;
       groupId?: string | null;
+      teamId?: string | null;
       createdAt: Date;
       updatedAt: Date;
     } = {
@@ -192,6 +220,11 @@ export async function POST(req: Request) {
     // Only add groupId if it's a valid UUID string
     if (groupId && typeof groupId === 'string' && groupId.trim() !== '') {
       insertValues.groupId = groupId;
+    }
+
+    // Team ownership — already permission-checked above.
+    if (teamId && typeof teamId === 'string') {
+      insertValues.teamId = teamId;
     }
 
     // Test raw SQL to see if connection works

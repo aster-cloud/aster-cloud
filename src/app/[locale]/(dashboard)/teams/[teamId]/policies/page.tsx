@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
-import { Input, Label, Textarea } from '@/components/ui';
 
 interface Policy {
   id: string;
@@ -41,11 +40,11 @@ export default function TeamPoliciesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // 创建策略表单
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newPolicy, setNewPolicy] = useState({ name: '', content: '', description: '' });
-  const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
+  // Inline create-policy form removed (was a separate process duplicate
+  // of /policies/new). The "+ New policy" buttons below now link to
+  // `/policies/new?teamId=<id>` which routes through the shared
+  // PolicyForm + /api/policies POST. POLICY_CREATE permission is
+  // checked server-side on that endpoint.
 
   const fetchData = useCallback(async () => {
     try {
@@ -79,34 +78,6 @@ export default function TeamPoliciesPage() {
   }, [fetchData]);
 
   const canCreatePolicy = userRole === 'owner' || userRole === 'admin' || userRole === 'member';
-
-  const handleCreatePolicy = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsCreating(true);
-    setCreateError('');
-
-    try {
-      const res = await fetch(`/api/teams/${teamId}/policies`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPolicy),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create policy');
-      }
-
-      // 刷新策略列表
-      await fetchData();
-      setShowCreateForm(false);
-      setNewPolicy({ name: '', content: '', description: '' });
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : t('policies.createFailed'));
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -149,15 +120,19 @@ export default function TeamPoliciesPage() {
         </div>
         {canCreatePolicy && (
           <div className="mt-4 sm:mt-0">
-            <button
-              onClick={() => setShowCreateForm(true)}
+            {/* Routes through the shared /policies/new editor — see
+                page.tsx comment at the top. teamId in the query string
+                is read by NewPolicyContent and forwarded into the
+                POST /api/policies body. */}
+            <Link
+              href={`/policies/new?teamId=${teamId}`}
               className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
             >
               <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
               </svg>
               {t('policies.newPolicy')}
-            </button>
+            </Link>
           </div>
         )}
       </div>
@@ -165,82 +140,6 @@ export default function TeamPoliciesPage() {
       {error && (
         <div className="mt-4 rounded-md bg-red-50 p-4">
           <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-
-      {/* 创建策略模态框 */}
-      {showCreateForm && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-bg rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-border">
-              <h3 className="text-lg font-medium text-fg">{t('policies.createTitle')}</h3>
-            </div>
-            <form onSubmit={handleCreatePolicy} className="px-6 py-4 space-y-4">
-              {createError && (
-                <div className="rounded-md bg-red-50 p-3">
-                  <p className="text-sm text-red-700">{createError}</p>
-                </div>
-              )}
-              {/* Design-system primitives so the Create-Team-Policy
-                  form matches the Storybook contract — was diverging
-                  with a hand-rolled <input>/<textarea> markup that
-                  used the wrong border tone and no focus-visible
-                  shadow ring. The Textarea keeps its font-mono so the
-                  CNL preview reads with monospace alignment. */}
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="name">{t('policies.nameLabel')}</Label>
-                <Input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  value={newPolicy.name}
-                  onChange={(e) => setNewPolicy((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder={t('policies.namePlaceholder')}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="description">{t('policies.descriptionLabel')}</Label>
-                <Input
-                  type="text"
-                  id="description"
-                  name="description"
-                  value={newPolicy.description}
-                  onChange={(e) => setNewPolicy((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder={t('policies.descriptionPlaceholder')}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="content">{t('policies.contentLabel')}</Label>
-                <Textarea
-                  id="content"
-                  name="content"
-                  required
-                  rows={10}
-                  value={newPolicy.content}
-                  onChange={(e) => setNewPolicy((prev) => ({ ...prev, content: e.target.value }))}
-                  className="font-mono"
-                  placeholder={t('policies.contentPlaceholder')}
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="rounded-md border border-border-strong bg-bg px-4 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreating}
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
-                >
-                  {isCreating ? t('creating') : t('policies.create')}
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 
@@ -264,15 +163,15 @@ export default function TeamPoliciesPage() {
           <p className="mt-1 text-sm text-fg-muted">{t('policies.getStarted')}</p>
           {canCreatePolicy && (
             <div className="mt-6">
-              <button
-                onClick={() => setShowCreateForm(true)}
+              <Link
+                href={`/policies/new?teamId=${teamId}`}
                 className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
               >
                 <svg className="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                 </svg>
                 {t('policies.newPolicy')}
-              </button>
+              </Link>
             </div>
           )}
         </div>

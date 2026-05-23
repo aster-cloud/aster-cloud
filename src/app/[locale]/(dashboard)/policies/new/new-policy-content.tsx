@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { PolicyForm } from '@/components/policy/policy-form';
 import type { PolicyDraftFields } from '@/components/policy/policy-form/use-policy-draft';
@@ -12,6 +13,13 @@ import type { PolicyDraftFields } from '@/components/policy/policy-form/use-poli
  * autosave + shortcuts). This wrapper only owns the create-specific
  * concerns: POST /api/policies on save, navigate to the new detail
  * page, surface upgrade prompts.
+ *
+ * Team-scoped creation: when the URL carries `?teamId=<id>` (the
+ * "+ New policy" button on /teams/[id]/policies routes here), the
+ * same endpoint persists the policy under that team. Permission
+ * (POLICY_CREATE on the team) is checked server-side in
+ * /api/policies POST. This unifies the old standalone team policy
+ * form into the single shared editor.
  */
 
 interface NewPolicyContentProps {
@@ -28,13 +36,15 @@ const EMPTY: PolicyDraftFields = {
 
 export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   const t = useTranslations('policies');
+  const searchParams = useSearchParams();
+  const teamId = searchParams.get('teamId') || undefined;
 
   const handleSave = useCallback(
     async (fields: PolicyDraftFields) => {
       const res = await fetch('/api/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fields),
+        body: JSON.stringify({ ...fields, teamId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -45,7 +55,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       }
       return { id: data.id as string };
     },
-    [t],
+    [t, teamId],
   );
 
   return (

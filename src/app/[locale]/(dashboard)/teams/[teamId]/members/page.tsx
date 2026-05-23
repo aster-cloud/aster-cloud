@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
-import { ConfirmDialog } from '@/components/ui';
+import { ConfirmDialog, Input, Label, Select } from '@/components/ui';
 
 interface Member {
   id: string;
@@ -392,36 +392,34 @@ export default function TeamMembersPage() {
                   <p className="text-sm text-red-700">{inviteError}</p>
                 </div>
               )}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-fg">
-                  {t('members.emailLabel')}
-                </label>
-                <input
+              {/* Design-system Input + Select replace bare <input>
+                  + <select> so this invite form matches the rest of
+                  the post-login UI (token-driven border, focus-
+                  visible shadow ring). */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="email">{t('members.emailLabel')}</Label>
+                <Input
                   type="email"
                   id="email"
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('members.emailPlaceholder')}
                 />
               </div>
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-fg">
-                  {t('members.roleLabel')}
-                </label>
-                <select
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="role">{t('members.roleLabel')}</Label>
+                <Select
                   id="role"
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as TeamRole)}
-                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                 >
                   {getAvailableRoles().map((role) => (
                     <option key={role} value={role}>
                       {t(`roles.${role}`)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <button
