@@ -377,7 +377,13 @@
       "apiKeys": "API keys",
       "aiKeys": "AI keys",
       "aiAssistant": "AI assistant"
-    }
+    },
+    "groupWorkspace": "Workspace",
+    "groupAdmin": "Admin",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "apiKeys": "API keys",
+    "aiKeys": "AI keys"
   },
   "teams": {
     "title": "Teams",
@@ -773,6 +779,30 @@
         "slaGuarantee": "SLA guarantee",
         "dedicatedSupport": "Dedicated support"
       }
+    },
+    "overview": {
+      "overviewTitle": "Billing",
+      "overviewSubtitle": "Plan, usage, seats, invoices.",
+      "planCardTitle": "Plan",
+      "planTrial": "{plan} (trial)",
+      "planActive": "Active",
+      "trialDaysLeft": "{days} days left",
+      "trialNoActive": "No active trial",
+      "nextInvoiceTitle": "Next invoice",
+      "nextInvoiceAmount": "{amount} on {date}",
+      "nextInvoicePending": "Plan picker payment method not yet added.",
+      "seatsTitle": "Seats",
+      "seatsUsedTemplate": "{used} of {limit} used",
+      "seatsInvite": "Invite teammate",
+      "usageTitle": "Usage this cycle",
+      "invoicesTitle": "Invoices",
+      "invoicesEmpty": "No invoices yet.",
+      "invoiceUnpaid": "unpaid",
+      "invoicePaid": "paid",
+      "invoiceVoid": "void",
+      "invoiceViewReceipt": "View receipt",
+      "changePlan": "Change plan",
+      "managePayment": "Manage payment method"
     }
   },
   "policies": {

@@ -453,7 +453,7 @@ interface BillingContentProps {
   locale: string;
 }
 
-export function BillingContent(props: BillingContentProps) {
+export function PlansContent(props: BillingContentProps) {
   return (
     <Suspense fallback={<div className="animate-pulse">Loading billing...</div>}>
       <BillingContentInner {...props} />

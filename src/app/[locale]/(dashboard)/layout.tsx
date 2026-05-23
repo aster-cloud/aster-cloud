@@ -1,17 +1,14 @@
-import { Link } from '@/i18n/navigation';
 import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { db, users } from '@/lib/prisma';
 import { ensureSchemaApplied } from '@/lib/db-bootstrap';
 import { getTranslations } from 'next-intl/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
-import {
-  DashboardNavClient,
-  UserDropdown,
-} from '@/components/dashboard-nav';
+import { UserDropdown } from '@/components/dashboard-nav';
 import { CommandPalette } from '@/components/dashboard/command-palette';
 import { buildCommands } from '@/components/dashboard/command-palette-commands';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { DashboardSidebar } from '@/components/dashboard-sidebar';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import {
@@ -22,6 +19,23 @@ import {
 } from '@/lib/deployment-mode';
 import { getEffectiveRole, canAccess } from '@/lib/effective-role';
 import { defaultLocale } from '@/i18n/config';
+
+/*
+ * Dashboard shell — sidebar + slim topbar.
+ *
+ * IA decision from the SaaS-admin audit (P1-1):
+ *   - Left sidebar carries the primary nav. Two groups: Workspace +
+ *     Admin (the latter only for isAdmin sessions). Billing + Settings
+ *     sit as account-scoped footer items below the groups.
+ *   - Topbar carries only: brand (mobile only — sidebar shows it on
+ *     desktop), Cmd-K search, theme + lang toggles, user dropdown.
+ *   - The previous data-array-driven horizontal nav is gone. The
+ *     (dashboard)/admin/* sub-shell no longer renders its red badge
+ *     or AdminSidebar — admin links now live in the main sidebar's
+ *     ADMIN group.
+ *   - Sidebar collapses to a 64px icon rail on desktop (localStorage
+ *     persisted). Mobile breaks to a hamburger-triggered drawer.
+ */
 
 export default async function DashboardLayout({
   children,
@@ -49,9 +63,9 @@ export default async function DashboardLayout({
   const t = await getTranslations('dashboardNav');
   const tSettings = await getTranslations('settings.account');
   const tNav = await getTranslations('nav');
-  const tMobile = await getTranslations('dashboardNav.mobile');
-  const tAdmin = await getTranslations('admin.riskTier');
+  const tAdminRisk = await getTranslations('admin.riskTier');
   const tAdminCircuit = await getTranslations('admin.aiCircuitBreaker');
+  const tAdminOverview = await getTranslations('admin.overview');
   const tAdminNav = await getTranslations('admin.nav');
   const tCmd = await getTranslations('dashboardNav.commandPalette');
   const tCommon = await getTranslations('common');
@@ -80,46 +94,6 @@ export default async function DashboardLayout({
     userId ? getEffectiveRole(userId) : Promise.resolve('owner' as const),
   ]);
 
-  // role-aware nav 过滤：让 viewer 不看到无操作权限的入口。
-  // 真实操作授权仍由 API 层 checkTeamPermission 兜底，本过滤仅决定可见性。
-  //
-  // mode-aware：CAN_RISKTIER / CAN_BILLING 是编译期常量。CAN_LICENSE /
-  // CAN_SSO 在 on-prem build 才为 true —— 占位入口（PR-8 落地实页面）。
-  // 入口对应的页面 PR-4 已守门（on-prem 404），这里隐藏入口避免点了 404。
-  const navItems = [
-    { href: '/dashboard', label: t('dashboard') },        // 所有 role
-    { href: '/policies', label: t('policies') },           // viewer 只读，更高 role 可写
-    ...(canAccess(role, 'member') ? [{ href: '/reports', label: t('reports') }] : []),
-    { href: '/teams', label: t('teams') },                 // 所有 role 看自己加入的 team
-    ...(canAccess(role, 'member') ? [{ href: '/security', label: t('security') }] : []),
-    ...(admin && CAN_RISKTIER
-      ? [{ href: '/admin/risk-tier', label: tAdmin('title') }]
-      : []),
-    ...(admin
-      ? [
-          {
-            href: '/admin/ai-circuit-breaker',
-            label: tAdminCircuit('title'),
-          },
-        ]
-      : []),
-    ...(admin && CAN_LICENSE
-      ? [{ href: '/admin/license', label: tAdminNav('license') }]
-      : []),
-    ...(admin && CAN_SSO
-      ? [{ href: '/admin/sso', label: tAdminNav('sso') }]
-      : []),
-  ];
-
-  const secondaryItems = [
-    // 只让能影响付费的角色（admin/owner）看到 billing 入口，且仅 SaaS 模式
-    // 有 billing 概念；on-prem 计费由 enterprise license 决定，无入口
-    ...(canAccess(role, 'admin') && CAN_BILLING
-      ? [{ href: '/billing', label: t('billing') }]
-      : []),
-    { href: '/settings', label: t('settings') },           // 个人设置所有 role
-  ];
-
   const userMenuLabels = {
     profile: t('userMenu.profile'),
     settings: t('settings'),
@@ -127,44 +101,79 @@ export default async function DashboardLayout({
     signingOut: tSettings('signingOut'),
   };
 
-  const mobileMenuLabels = {
-    openMenu: tMobile('openMenu'),
-    closeMenu: tMobile('closeMenu'),
-  };
+  const showBilling = canAccess(role, 'admin') && CAN_BILLING;
 
   return (
     <div className="min-h-screen bg-bg-subtle text-fg">
       {/* Keyboard-only "skip to main content" link — visually hidden
           until focused. Lets screen-reader / keyboard users bypass the
-          nav block on every page load. */}
+          sidebar on every page load. */}
       <a
         href="#dashboard-main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-fg focus:shadow-lg"
       >
         {tCommon('skipToContent')}
       </a>
-      {/* Top Navigation */}
-      <nav className="bg-bg border-b border-border relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/dashboard" className="flex items-center">
-                <span className="text-xl font-bold text-primary">{tNav('brand')}</span>
-              </Link>
-              {/* Desktop nav and Mobile menu (hamburger + mobile nav drawer) */}
-              <DashboardNavClient
-                navItems={navItems}
-                secondaryItems={secondaryItems}
-                userMenuLabels={userMenuLabels}
-                mobileMenuLabels={mobileMenuLabels}
-                userName={session?.user?.name || undefined}
-                userEmail={session?.user?.email || undefined}
-              />
-            </div>
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              {/* ⌘K command palette — trigger + dialog. Mounted at layout
-                  level so the keyboard shortcut is global across every
-                  dashboard page. */}
+
+      <DashboardSidebar
+        localePrefix={routePrefix}
+        isAdmin={admin !== null}
+        showBilling={showBilling}
+        labels={{
+          brand: tNav('brand'),
+          groupWorkspace: t('groupWorkspace'),
+          groupAdmin: t('groupAdmin'),
+          dashboard: t('dashboard'),
+          policies: t('policies'),
+          reports: t('reports'),
+          teams: t('teams'),
+          security: t('security'),
+          apiKeys: t('apiKeys'),
+          aiKeys: t('aiKeys'),
+          adminOverview: tAdminOverview('title'),
+          aiBreaker: tAdminCircuit('title'),
+          riskTier: tAdminRisk('title'),
+          license: tAdminNav('license'),
+          sso: tAdminNav('sso'),
+          billing: t('billing'),
+          settings: t('settings'),
+          collapseSidebar: t('collapseSidebar'),
+          expandSidebar: t('expandSidebar'),
+          openMenu: t('mobile.openMenu'),
+          closeMenu: t('mobile.closeMenu'),
+        }}
+        adminCapabilities={{
+          riskTier: CAN_RISKTIER,
+          license: CAN_LICENSE,
+          sso: CAN_SSO,
+        }}
+      />
+
+      {/*
+        Topbar + content shell — sits to the right of the sidebar on
+        desktop. We can't statically know the sidebar width here (the
+        client can collapse it), so the sidebar component publishes
+        `--aster-sidebar-width` on <html> and we read it via inline
+        style on md+. CSS transition keeps the shift smooth.
+
+        Default fallback: 15rem (240px) so SSR has the right gutter
+        before client hydration runs.
+       */}
+      <div
+        className="md:transition-[padding-left] md:duration-200 md:ease-out"
+        style={{
+          paddingLeft: 'var(--aster-shell-pad-left, 0px)',
+        }}
+        data-shell="dashboard"
+      >
+        <header className="sticky top-0 z-20 border-b border-border bg-bg/80 backdrop-blur-md">
+          <div className="flex h-16 items-center justify-end gap-3 px-4 pl-16 sm:px-6 lg:px-8 md:pl-4">
+            {/* Mobile: the hamburger button is a fixed-positioned
+                element rendered inside <DashboardSidebar>. We reserve
+                the left-16 padding (pl-16) on mobile so the topbar
+                content doesn't sit underneath it. md+ removes the
+                reservation since the sidebar replaces the hamburger. */}
+            <div className="flex items-center gap-3 sm:gap-4">
               <CommandPalette
                 commands={buildCommands({
                   routePrefix,
@@ -181,11 +190,8 @@ export default async function DashboardLayout({
                     aiKeys:      tCmd('aiKeys'),
                     aiAssistant: tCmd('aiAssistant'),
                   },
-                  // Viewers can still navigate; gating `create` further is a
-                  // role-aware concern we can revisit when the palette grows.
                   canCreate:  canAccess(role, 'member'),
-                  // billing 命令需要：admin/owner 角色 + SaaS 模式
-                  showBilling: canAccess(role, 'admin') && CAN_BILLING,
+                  showBilling,
                 })}
                 labels={{
                   placeholder:    tCmd('placeholder'),
@@ -196,17 +202,6 @@ export default async function DashboardLayout({
                   hintOpen:       tCmd('hintOpen'),
                 }}
               />
-              <div className="hidden sm:flex sm:items-center sm:space-x-4">
-                {secondaryItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="text-sm text-fg-muted hover:text-fg"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
               <ThemeToggle
                 labels={{
                   light: tCommon('themeLight'),
@@ -215,7 +210,6 @@ export default async function DashboardLayout({
                 }}
               />
               <LanguageSwitcher />
-              {/* User dropdown with sign out */}
               <UserDropdown
                 userMenuLabels={userMenuLabels}
                 userName={session?.user?.name || undefined}
@@ -223,17 +217,16 @@ export default async function DashboardLayout({
               />
             </div>
           </div>
-        </div>
-      </nav>
+        </header>
 
-      {/* Main Content */}
-      <main
-        id="dashboard-main"
-        tabIndex={-1}
-        className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8"
-      >
-        {children}
-      </main>
+        <main
+          id="dashboard-main"
+          tabIndex={-1}
+          className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"
+        >
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

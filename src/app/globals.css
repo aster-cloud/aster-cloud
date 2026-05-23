@@ -144,6 +144,33 @@
   }
 }
 
+/*
+ * Dashboard shell padding driver.
+ *
+ * The dashboard sidebar is a client component that toggles between
+ * 240px (expanded) and 64px (rail) via localStorage state. The
+ * shell (topbar + main content) needs to know that width to set its
+ * `padding-left` — but it lives in a server component.
+ *
+ * Solution: the sidebar publishes `--aster-sidebar-width` on <html>
+ * after hydrate (see DashboardSidebar.useEffect). On md+ we promote
+ * that value to `--aster-shell-pad-left`, which is the var the shell
+ * <div> reads. Below md the sidebar is a drawer (overlay), so the
+ * shell stays at padding-left: 0.
+ *
+ * Fallback before hydrate / on SSR: 15rem (expanded), so the first
+ * paint already shows the right gutter.
+ */
+:root {
+  --aster-sidebar-width: 15rem;
+  --aster-shell-pad-left: 0px;
+}
+@media (min-width: 768px) {
+  :root {
+    --aster-shell-pad-left: var(--aster-sidebar-width);
+  }
+}
+
 :root {
   --background: var(--aster-bg);
   --foreground: var(--aster-fg);

@@ -1,37 +1,45 @@
+// /billing — admin billing overview.
+//
+// Was a direct plan picker pre P1-2; the plan picker moved to
+// /billing/plans. This page now answers an admin's first question:
+// "what's the state of my account billing?" — plan, trial countdown,
+// usage caps, seat allocation, and a link into the Stripe Customer
+// Portal for full invoice history + payment method changes.
+//
+// We deliberately don't render a custom invoice list here. Stripe's
+// hosted portal already does that (with refunds / disputes / receipt
+// downloads) and pulling the same data into our UI would duplicate
+// state without adding value. The "Manage in Stripe" link below is
+// the single source of truth for invoice ops.
+
 import { getTranslations, getLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
+import { eq, sql, and } from 'drizzle-orm';
+import { Link } from '@/i18n/navigation';
 import { getSession } from '@/lib/auth';
 import { getUsageStats } from '@/lib/usage';
 import { CAN_BILLING } from '@/lib/deployment-mode';
-import { getCurrencyForLocale, PLANS, PlanType, CurrencyCode } from '@/lib/plans';
-import { BillingContent } from './billing-content';
+import {
+  formatPrice,
+  getCurrencyForLocale,
+  getPlanPrice,
+  isUnlimited,
+  PLANS,
+  type PlanType,
+  type CurrencyCode,
+} from '@/lib/plans';
+import { db, teams, teamMembers } from '@/lib/prisma';
+import {
+  buttonVariants,
+  Card,
+  CardBody,
+  Container,
+  Stack,
+  cn,
+} from '@/components/ui';
 
-// FAQ item keys organized by category
-const PRODUCT_FAQ_KEYS = [
-  'whatIsAster',
-  'whatIsPolicy',
-  'piiDetection',
-  'complianceStandards',
-  'integration',
-  'selfHosted',
-] as const;
-
-const BILLING_FAQ_KEYS = [
-  'apiVsExecutions',
-  'freeLimits',
-  'upgradePlan',
-  'downgrade',
-  'trialEnds',
-  'cancelAnytime',
-  'refunds',
-  'invoices',
-  'dataSecurity',
-  'support',
-] as const;
-
-export default async function BillingPage() {
-  // On-prem 没有 Stripe 订阅模型，整个 billing 页面不可见。
-  // notFound() 优先于 session 检查 —— 即使未登录也不暴露页面存在。
+export default async function BillingOverviewPage() {
+  // On-prem 没有 Stripe — overview 同样不存在。
   if (!CAN_BILLING) {
     notFound();
   }
@@ -42,107 +50,266 @@ export default async function BillingPage() {
   }
 
   const t = await getTranslations('billing');
-  const tNav = await getTranslations('dashboardNav');
+  const tOv = await getTranslations('billing.overview');
   const locale = await getLocale();
-  const defaultCurrency = getCurrencyForLocale(locale) as CurrencyCode;
+  const currency = getCurrencyForLocale(locale) as CurrencyCode;
+  const userId = session.user.id;
 
-  // 获取用量统计
-  const usageStats = await getUsageStats(session.user.id);
+  const usageStats = await getUsageStats(userId);
+  const planType = (usageStats.plan || 'free') as PlanType;
+  const planDef = PLANS[planType];
 
-  // 序列化用量数据
-  const initialUsage = {
-    executions: usageStats.usage.executions,
-    executionsLimit: usageStats.usage.executionsLimit,
-    policies: usageStats.usage.policies,
-    policiesLimit: usageStats.usage.policiesLimit,
-    apiCalls: usageStats.usage.apiCalls,
-    apiCallsLimit: usageStats.usage.apiCallsLimit,
-  };
-
-  // 获取当前计划和试用结束时间
-  const currentPlan = (usageStats.plan || 'free') as PlanType;
-  const trialEndsAt = session.user.trialEndsAt
-    ? new Date(session.user.trialEndsAt).toISOString()
+  // Trial countdown: session.user.trialEndsAt is the source of truth
+  // (set by auth.createUser on signup, refreshed by the jwt callback).
+  const trialEndsAtRaw = session.user.trialEndsAt
+    ? new Date(session.user.trialEndsAt)
     : null;
+  const now = Date.now();
+  const trialDaysLeft = trialEndsAtRaw
+    ? Math.max(
+        0,
+        Math.ceil((trialEndsAtRaw.getTime() - now) / (24 * 60 * 60 * 1000)),
+      )
+    : null;
+  const isTrial = planType === 'trial' || (trialDaysLeft !== null && trialDaysLeft > 0);
 
-  // 预渲染 Plan 名称
-  const planNames: Record<string, string> = {};
-  for (const planKey of Object.keys(PLANS)) {
-    planNames[planKey] = t(`plans.names.${planKey}`);
-  }
+  // Seats: count teams the user owns, then sum members across those
+  // teams. SaaS plans cap seats via PLANS[plan].limits; below the cap
+  // is the user-facing "X of Y used" number.
+  const [seatRows] = await Promise.all([
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+      .where(and(eq(teams.ownerId, userId))),
+  ]);
+  const seatsUsed = seatRows[0]?.c ?? 1;
+  // seatLimit === null → "unlimited" for display (the plan cap is
+  // -1 in the schema). Free tier caps at 1 so the user always sees
+  // either a real number ("1 of 1") or no cap.
+  const rawSeatLimit = planDef.limits?.teamMembers;
+  const seatLimit =
+    rawSeatLimit === undefined || isUnlimited(rawSeatLimit)
+      ? null
+      : rawSeatLimit;
 
-  // 预渲染 Plan 功能特性
-  const planFeatures: Record<string, string> = {};
-  const allFeatureKeys = new Set<string>();
-  for (const planKey of Object.keys(PLANS)) {
-    const plan = PLANS[planKey as PlanType];
-    for (const featureKey of plan.featureKeys) {
-      allFeatureKeys.add(featureKey);
-    }
-  }
-  for (const featureKey of allFeatureKeys) {
-    planFeatures[featureKey] = t(`plans.features.${featureKey}`);
-  }
+  // Format a sample "next invoice" price using PLANS pricing. Real
+  // next-invoice amount lives on Stripe; the card just gives a
+  // ballpark + a portal link for accuracy.
+  //
+  // Enterprise plans return null monthly (custom-priced) — surface
+  // that as a "contact sales" hint via planPriceDisplay === null.
+  // Free / trial tiers price at 0.
+  const monthly =
+    planType === 'free' ? 0 : getPlanPrice(planType, currency).monthly;
+  const planPriceDisplay =
+    monthly === null ? null : formatPrice(monthly, currency);
 
-  // 预渲染 FAQ 项目
-  const faqItems: Record<string, { question: string; answer: string }> = {};
-  const allFaqKeys = [...PRODUCT_FAQ_KEYS, ...BILLING_FAQ_KEYS];
-  for (const faqKey of allFaqKeys) {
-    faqItems[faqKey] = {
-      question: t(`faq.${faqKey}.question`),
-      answer: t(`faq.${faqKey}.answer`),
-    };
-  }
-
-  // 预渲染所有翻译字符串
-  const translations = {
-    title: t('title'),
-    subtitle: t('subtitle'),
-    subscriptionActivated: t('subscriptionActivated'),
-    checkoutCanceled: t('checkoutCanceled'),
-    currentPlan: t('currentPlan'),
-    trialEndsTemplate: t.raw('trialEnds'),
-    executionsThisMonth: t('executionsThisMonth'),
-    apiCallsThisMonth: t('apiCallsThisMonth'),
-    savedPolicies: t('savedPolicies'),
-    monthly: t('monthly'),
-    yearly: t('yearly'),
-    save20: t('save20'),
-    mostPopular: t('mostPopular'),
-    contactSales: t('contactSales'),
-    year: t('year'),
-    month: t('month'),
-    perUser: t('perUser'),
-    teamUsers: t('teamUsers'),
-    minUsersTemplate: t.raw('minUsers'),
-    currentPlanButton: t('currentPlanButton'),
-    loading: t('loading'),
-    upgradeToTemplate: t.raw('upgradeTo'),
-    freeTier: t('freeTier'),
-    plans: {
-      names: planNames,
-      features: planFeatures,
-    },
-    faq: {
-      title: t('faq.title'),
-      productQuestions: t('faq.productQuestions'),
-      billingQuestions: t('faq.billingQuestions'),
-      items: faqItems,
-    },
-    nav: {
-      dashboard: tNav('dashboard'),
-      billing: tNav('billing'),
-    },
-  };
+  // Helper to interpolate i18n templates like '{used} of {limit} used'.
+  const tpl = (key: string, values: Record<string, string | number>) =>
+    tOv(key).replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
 
   return (
-    <BillingContent
-      currentPlan={currentPlan}
-      trialEndsAt={trialEndsAt}
-      initialUsage={initialUsage}
-      defaultCurrency={defaultCurrency}
-      translations={translations}
-      locale={locale}
-    />
+    <Container size="xl" className="py-6 sm:py-10">
+      <Stack gap={8}>
+        <Stack gap={2}>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+            {tOv('overviewTitle')}
+          </h1>
+          <p className="text-sm text-fg-muted">{tOv('overviewSubtitle')}</p>
+        </Stack>
+
+        {/* Row 1: Plan / Trial / Next invoice */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <OverviewCard title={tOv('planCardTitle')}>
+            <p className="font-display text-2xl font-semibold tracking-tight text-fg">
+              {t(`plans.names.${planType}`)}
+            </p>
+            <p className="mt-1 text-sm text-fg-muted">
+              {isTrial ? tOv('planTrial').replace('{plan}', '') : tOv('planActive')}
+            </p>
+          </OverviewCard>
+
+          <OverviewCard title="Trial">
+            {trialDaysLeft !== null && trialDaysLeft > 0 ? (
+              <p className="font-display text-2xl font-semibold tracking-tight text-fg">
+                {tpl('trialDaysLeft', { days: trialDaysLeft })}
+              </p>
+            ) : (
+              <p className="text-sm text-fg-muted">{tOv('trialNoActive')}</p>
+            )}
+          </OverviewCard>
+
+          <OverviewCard title={tOv('nextInvoiceTitle')}>
+            {planType === 'free' ? (
+              <p className="text-sm text-fg-muted">—</p>
+            ) : planPriceDisplay === null ? (
+              <p className="text-sm text-fg-muted">{t('contactSales')}</p>
+            ) : monthly && monthly > 0 ? (
+              <>
+                <p className="font-display text-2xl font-semibold tracking-tight text-fg">
+                  {planPriceDisplay}
+                </p>
+                <p className="mt-1 text-sm text-fg-muted">{t('month')}</p>
+              </>
+            ) : (
+              <p className="text-sm text-fg-muted">
+                {tOv('nextInvoicePending')}
+              </p>
+            )}
+          </OverviewCard>
+        </div>
+
+        {/* Row 2: Usage + Seats */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <OverviewCard title={tOv('usageTitle')}>
+            <Stack gap={2}>
+              <UsageRow
+                label={t('executionsThisMonth')}
+                used={usageStats.usage.executions}
+                limit={usageStats.usage.executionsLimit}
+              />
+              <UsageRow
+                label={t('apiCallsThisMonth')}
+                used={usageStats.usage.apiCalls}
+                limit={usageStats.usage.apiCallsLimit}
+              />
+              <UsageRow
+                label={t('savedPolicies')}
+                used={usageStats.usage.policies}
+                limit={usageStats.usage.policiesLimit}
+              />
+            </Stack>
+          </OverviewCard>
+
+          <OverviewCard title={tOv('seatsTitle')}>
+            <Stack gap={3}>
+              <p className="font-display text-2xl font-semibold tracking-tight text-fg">
+                {seatLimit !== null
+                  ? tpl('seatsUsedTemplate', { used: seatsUsed, limit: seatLimit })
+                  : seatsUsed}
+              </p>
+              <Link
+                href="/teams"
+                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+              >
+                {tOv('seatsInvite')}
+              </Link>
+            </Stack>
+          </OverviewCard>
+        </div>
+
+        {/* Row 3: Invoices stub + actions */}
+        <Card>
+          <CardBody className="pt-6">
+            <Stack
+              direction="row"
+              justify="between"
+              align="center"
+              gap={4}
+              wrap
+            >
+              <Stack gap={1} className="min-w-0 flex-1">
+                <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                  {tOv('invoicesTitle')}
+                </h2>
+                <p className="text-sm text-fg-muted">
+                  {tOv('managePayment')} · {tOv('invoicesEmpty')}
+                </p>
+              </Stack>
+              <Stack direction="row" gap={3} className="shrink-0">
+                {/* Stripe Customer Portal session API at
+                    /api/stripe/portal accepts POST only (mints a
+                    one-shot session URL then 302s into Stripe's
+                    hosted portal). Wrap a button in a <form> with
+                    method="post" so the click triggers a POST without
+                    needing client JS. The Next.js lint rule against
+                    bare <a href="/api/…"> is satisfied because the
+                    form action is the submission target, not an <a>. */}
+                <form action="/api/stripe/portal" method="post">
+                  <button
+                    type="submit"
+                    className={buttonVariants({
+                      variant: 'secondary',
+                      size: 'md',
+                    })}
+                  >
+                    {tOv('managePayment')}
+                  </button>
+                </form>
+                <Link
+                  href="/billing/plans"
+                  className={buttonVariants({ variant: 'primary', size: 'md' })}
+                >
+                  {tOv('changePlan')} →
+                </Link>
+              </Stack>
+            </Stack>
+          </CardBody>
+        </Card>
+      </Stack>
+    </Container>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Subcomponents                                                       */
+/* ------------------------------------------------------------------ */
+
+function OverviewCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardBody className="pt-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+          {title}
+        </h3>
+        <div className="mt-2">{children}</div>
+      </CardBody>
+    </Card>
+  );
+}
+
+function UsageRow({
+  label,
+  used,
+  limit,
+}: {
+  label: string;
+  used: number;
+  limit: number;
+}) {
+  const limitText = isUnlimited(limit) ? '∞' : limit.toLocaleString();
+  const usedText = used.toLocaleString();
+  const pct = !isUnlimited(limit) && limit > 0
+    ? Math.min(100, Math.round((used / limit) * 100))
+    : 0;
+  return (
+    <div>
+      <Stack direction="row" justify="between" align="baseline" gap={3}>
+        <p className="text-sm font-medium text-fg">{label}</p>
+        <p className="font-mono text-xs text-fg-muted">
+          {usedText} / {limitText}
+        </p>
+      </Stack>
+      {!isUnlimited(limit) && limit > 0 && (
+        <div className="mt-1 h-1 overflow-hidden rounded bg-bg-subtle">
+          <div
+            className={cn(
+              'h-full bg-primary transition-[width]',
+              pct >= 90 && 'bg-danger',
+              pct >= 70 && pct < 90 && 'bg-warning',
+            )}
+            style={{ width: `${pct}%` }}
+            aria-hidden
+          />
+        </div>
+      )}
+    </div>
   );
 }

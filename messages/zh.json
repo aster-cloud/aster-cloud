@@ -377,7 +377,13 @@
       "apiKeys": "API 密钥",
       "aiKeys": "AI 密钥",
       "aiAssistant": "AI 助手"
-    }
+    },
+    "groupWorkspace": "工作区",
+    "groupAdmin": "管理",
+    "collapseSidebar": "收起侧栏",
+    "expandSidebar": "展开侧栏",
+    "apiKeys": "API 密钥",
+    "aiKeys": "AI 密钥"
   },
   "teams": {
     "title": "团队",
@@ -773,6 +779,30 @@
         "slaGuarantee": "SLA 保障",
         "dedicatedSupport": "专属支持"
       }
+    },
+    "overview": {
+      "overviewTitle": "订阅",
+      "overviewSubtitle": "套餐、用量、席位、发票。",
+      "planCardTitle": "当前套餐",
+      "planTrial": "{plan}（试用中）",
+      "planActive": "已激活",
+      "trialDaysLeft": "还剩 {days} 天",
+      "trialNoActive": "当前没有试用",
+      "nextInvoiceTitle": "下一张发票",
+      "nextInvoiceAmount": "{amount}，{date}",
+      "nextInvoicePending": "还未添加付款方式。",
+      "seatsTitle": "席位",
+      "seatsUsedTemplate": "已用 {used} / {limit}",
+      "seatsInvite": "邀请成员",
+      "usageTitle": "本周期用量",
+      "invoicesTitle": "发票",
+      "invoicesEmpty": "暂无发票。",
+      "invoiceUnpaid": "未付",
+      "invoicePaid": "已付",
+      "invoiceVoid": "已作废",
+      "invoiceViewReceipt": "查看收据",
+      "changePlan": "更改套餐",
+      "managePayment": "管理付款方式"
     }
   },
   "policies": {

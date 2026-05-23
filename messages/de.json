@@ -377,7 +377,13 @@
       "apiKeys": "API-Schlüssel",
       "aiKeys": "KI-Schlüssel",
       "aiAssistant": "KI-Assistent"
-    }
+    },
+    "groupWorkspace": "Workspace",
+    "groupAdmin": "Admin",
+    "collapseSidebar": "Seitenleiste einklappen",
+    "expandSidebar": "Seitenleiste ausklappen",
+    "apiKeys": "API-Schlüssel",
+    "aiKeys": "KI-Schlüssel"
   },
   "teams": {
     "title": "Teams",
@@ -773,6 +779,30 @@
         "slaGuarantee": "SLA-Garantie",
         "dedicatedSupport": "Dedizierter Support"
       }
+    },
+    "overview": {
+      "overviewTitle": "Abrechnung",
+      "overviewSubtitle": "Plan, Nutzung, Sitzplätze, Rechnungen.",
+      "planCardTitle": "Plan",
+      "planTrial": "{plan} (Testphase)",
+      "planActive": "Aktiv",
+      "trialDaysLeft": "Noch {days} Tage",
+      "trialNoActive": "Keine aktive Testphase",
+      "nextInvoiceTitle": "Nächste Rechnung",
+      "nextInvoiceAmount": "{amount} am {date}",
+      "nextInvoicePending": "Zahlungsmittel noch nicht hinzugefügt.",
+      "seatsTitle": "Sitzplätze",
+      "seatsUsedTemplate": "{used} von {limit} belegt",
+      "seatsInvite": "Mitglied einladen",
+      "usageTitle": "Nutzung dieses Zyklus",
+      "invoicesTitle": "Rechnungen",
+      "invoicesEmpty": "Noch keine Rechnungen.",
+      "invoiceUnpaid": "unbezahlt",
+      "invoicePaid": "bezahlt",
+      "invoiceVoid": "storniert",
+      "invoiceViewReceipt": "Beleg ansehen",
+      "changePlan": "Plan ändern",
+      "managePayment": "Zahlungsmittel verwalten"
     }
   },
   "policies": {
