@@ -98,7 +98,27 @@ assertNoLowOrderPubKeys(ASTER_TRUST_BUNDLE);
 
 // 生产 runtime 必须没有 *任何* dev 占位（some 而非 every），否则混合的 dev key
 // 仍然会成为 verify 的可信路径（codex 审查 Major-5）。
+//
+// SaaS exception: the trust bundle exists only to verify on-prem licenses.
+// A SaaS build never reaches the verify path (isLicenseReadOnlyGated()
+// short-circuits on IS_SAAS), but admin/layout.tsx imports
+// license-runtime-gate which transitively imports this module — so the
+// module-load-time assertion below would crash every /admin/* page on a
+// SaaS prod build that still ships the dev placeholder bundle. We
+// skip the assertion on SaaS builds; on-prem builds still enforce it.
+//
+// We read process.env.DEPLOYMENT_MODE directly (not IS_ONPREM imported
+// from '@/lib/deployment-mode') because this assertion runs at module
+// load and the vi.mock factory in license-runtime-gate.test.ts hoists
+// above its `let isSaas` binding — a static IS_ONPREM import via that
+// mock crashes the mocked getter with TDZ during module init. The
+// process.env path keeps this module dependency-free for the test
+// hoist while still being correct at production runtime (vitest
+// projects + next.config DefinePlugin both set DEPLOYMENT_MODE).
+//
+/* eslint-disable deployment-mode/no-direct-macro -- see comment above */
 if (
+  process.env.DEPLOYMENT_MODE === 'on-prem' &&
   process.env.NODE_ENV === 'production' &&
   process.env.NEXT_PHASE !== 'phase-production-build' &&
   ASTER_TRUST_BUNDLE.some((entry) => entry.keyId.startsWith('__dev-'))
@@ -107,6 +127,7 @@ if (
     '[license-trust-bundle] production runtime contains development placeholder public keys',
   );
 }
+/* eslint-enable deployment-mode/no-direct-macro */
 
 export function findTrustedKey(
   keyId: string,

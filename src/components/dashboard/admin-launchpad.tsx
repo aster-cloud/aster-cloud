@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, Check, Sparkles, KeyRound, Users, CreditCard } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import {
   Badge,
   Card,
@@ -71,6 +72,11 @@ export function AdminLaunchpad({ signals, translations: t }: AdminLaunchpadProps
 
   if (dismissed) return null;
 
+  // The billing step is SaaS-only — on-prem builds never have a /billing
+  // route. Conditionally appending it (rather than always rendering with
+  // a runtime hide) keeps the verify-on-prem-ui scanner happy: the on-
+  // prem bundle never sees the string '/billing' in the launchpad's
+  // emitted code path.
   const steps = [
     {
       id: 'createPolicy',
@@ -100,13 +106,17 @@ export function AdminLaunchpad({ signals, translations: t }: AdminLaunchpadProps
       copy: t.steps.inviteTeam,
       href: '/teams',
     },
-    {
-      id: 'reviewBilling',
-      done: signals.hasReviewedBilling,
-      icon: CreditCard,
-      copy: t.steps.reviewBilling,
-      href: '/billing',
-    },
+    ...(CLIENT_CAPABILITIES.billing
+      ? [
+          {
+            id: 'reviewBilling' as const,
+            done: signals.hasReviewedBilling,
+            icon: CreditCard,
+            copy: t.steps.reviewBilling,
+            href: '/billing',
+          },
+        ]
+      : []),
   ] as const;
 
   const done = steps.filter((s) => s.done).length;
