@@ -91,9 +91,27 @@ function makeRequest(url: string, method = 'GET', body?: Record<string, unknown>
   });
 }
 
-// Helper to setup a count select chain returning a given count
+// Helper to setup a count select chain returning a given count.
+// The GET handler now uses one GROUP BY query over the full set of
+// group ids — so the chain is select().from().where().groupBy() and
+// resolves to an array of { groupId, count } rows. The POST handler
+// kept its per-call shape (select().from().where() → [{count}]). We
+// model both: the .where() result is awaited as the single-row
+// shape, and .where().groupBy() returns the grouped-rows shape (in
+// these tests both default to "no policies", so the grouped result
+// is an empty array — the route then falls back to count: 0).
 function setupCountSelect(count: number) {
-  const where = vi.fn().mockResolvedValue([{ count }]);
+  const where = vi.fn(() => {
+    const thenable = Promise.resolve([{ count }]) as unknown as Promise<
+      { count: number }[]
+    > & {
+      groupBy: () => Promise<Array<{ groupId: string; count: number }>>;
+    };
+    thenable.groupBy = vi
+      .fn()
+      .mockResolvedValue([] as Array<{ groupId: string; count: number }>);
+    return thenable;
+  });
   const from = vi.fn().mockReturnValue({ where });
   mockSelect.mockReturnValue({ from });
 }

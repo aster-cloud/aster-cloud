@@ -594,8 +594,33 @@ export function MonacoPolicyEditor({
     [onChange]
   );
 
+  // When height is "100%" (set by policy-form/index.tsx so Monaco
+  // fills the clamp-sized editor row), the wrapping <div> needs to be
+  // a fixed-height flex column so Monaco's container has a concrete
+  // height to measure. Without this, the wrapper's auto height resolves
+  // to "whatever Monaco itself reports", which Monaco resolves to its
+  // parent's offset height — a 0-height circular dependency. The
+  // symptom: editor renders one screen of code, but its internal
+  // scroller never activates and lines past the visible viewport
+  // become unreachable.
+  //
+  // Layout chain inside the wrapper:
+  //   - `editor-shell` (flex-1 min-h-0): claims remaining column space
+  //     so Editor (height="100%" relative to it) gets a real number.
+  //   - status row + optional diagnostics list: auto-height siblings
+  //     stacked below.
+  //
+  // min-h-0 on the inner shell is the standard flex-shrink fix — its
+  // default min-content is "everything Monaco reports it wants", which
+  // pushes the column taller than its parent and re-introduces the
+  // overflow loss.
+  const fillsParent = height === '100%';
+  const wrapperClass = fillsParent ? 'h-full flex flex-col' : '';
   return (
-    <div className="relative rounded-lg border border-border-strong dark:border-gray-600 [&_.monaco-editor]:rounded-lg">
+    <div
+      className={`relative rounded-lg border border-border-strong dark:border-gray-600 [&_.monaco-editor]:rounded-lg ${wrapperClass}`}
+    >
+      <div className={fillsParent ? 'relative min-h-0 flex-1' : 'relative'}>
       <Editor
         height={height}
         language={ASTER_LANG_ID}
@@ -638,6 +663,7 @@ export function MonacoPolicyEditor({
           {placeholder}
         </div>
       )}
+      </div>
       <div className="mt-2 flex items-center justify-between text-xs text-fg-muted">
         <div className="flex items-center gap-2" role="status" aria-live="polite">
           {errorCount > 0 && (

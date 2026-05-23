@@ -48,25 +48,38 @@ export async function GET() {
 
     const allGroups = Array.from(groupsMap.values());
 
-    // 获取每个分组的策略计数
-    const groupsWithCount = await Promise.all(
-      allGroups.map(async (group) => {
-        const [{ count }] = await db
-          .select({ count: sql<number>`count(*)::int` })
+    // Aggregate policy counts in a single GROUP BY query instead of
+    // one count(*) per group. The previous Promise.all+map fanned out
+    // N round-trips per /api/policy-groups call; on Hyperdrive cold
+    // starts that exhausted the per-request connection budget and
+    // surfaced as a 500. The dashboard/page.tsx server already uses
+    // this single-aggregate pattern (see L73-79).
+    const groupIds = allGroups.map((g) => g.id);
+    const countRows = groupIds.length
+      ? await db
+          .select({
+            groupId: policies.groupId,
+            count: sql<number>`count(*)::int`,
+          })
           .from(policies)
-          .where(and(
-            eq(policies.groupId, group.id),
-            isNull(policies.deletedAt)
-          ));
-
-        return {
-          ...group,
-          _count: { policies: count },
-        };
-      })
+          .where(
+            and(
+              inArray(policies.groupId, groupIds),
+              isNull(policies.deletedAt),
+            ),
+          )
+          .groupBy(policies.groupId)
+      : [];
+    const countByGroup = new Map<string, number>(
+      countRows
+        .filter((r): r is { groupId: string; count: number } => r.groupId !== null)
+        .map((r) => [r.groupId, r.count]),
     );
 
-    const groups = groupsWithCount;
+    const groups = allGroups.map((group) => ({
+      ...group,
+      _count: { policies: countByGroup.get(group.id) ?? 0 },
+    }));
 
     // 构建树形结构
     const groupMap = new Map(groups.map((g) => [g.id, { ...g, children: [] as typeof groups }]));
