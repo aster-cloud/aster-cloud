@@ -44,29 +44,27 @@ export function SharedWithTeamSection({ teamId, locale }: Props) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const ctrl = new AbortController();
     void (async () => {
       try {
-        const res = await fetch(`/api/teams/${teamId}/shared-policies`);
-        if (cancelled) return;
-        if (res.status === 404) {
-          setEnabled(false);
-          return;
-        }
-        if (!res.ok) {
+        const res = await fetch(`/api/teams/${teamId}/shared-policies`, {
+          signal: ctrl.signal,
+        });
+        if (ctrl.signal.aborted) return;
+        if (res.status === 404 || !res.ok) {
           setEnabled(false);
           return;
         }
         const data = (await res.json()) as { shares: SharedPolicy[] };
+        if (ctrl.signal.aborted) return;
         setEnabled(true);
         setItems(data.shares);
-      } catch {
-        if (!cancelled) setEnabled(false);
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return;
+        setEnabled(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => ctrl.abort();
   }, [teamId]);
 
   if (enabled !== true || items === null || items.length === 0) return null;

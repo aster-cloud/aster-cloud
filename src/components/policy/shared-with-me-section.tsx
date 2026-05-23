@@ -45,30 +45,29 @@ export function SharedWithMeSection({ locale }: Props) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const ctrl = new AbortController();
     void (async () => {
       try {
-        const res = await fetch('/api/policies/shared-with-me');
-        if (cancelled) return;
-        if (res.status === 404) {
-          // Feature off or caller has no team memberships — render nothing.
-          setEnabled(false);
-          return;
-        }
-        if (!res.ok) {
+        const res = await fetch('/api/policies/shared-with-me', {
+          signal: ctrl.signal,
+        });
+        if (ctrl.signal.aborted) return;
+        if (res.status === 404 || !res.ok) {
+          // 404 = feature off or no team memberships. Other non-2xx
+          // = transient; render nothing rather than a broken section.
           setEnabled(false);
           return;
         }
         const data = (await res.json()) as { shares: SharedPolicy[] };
+        if (ctrl.signal.aborted) return;
         setEnabled(true);
         setItems(data.shares);
-      } catch {
-        if (!cancelled) setEnabled(false);
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return;
+        setEnabled(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => ctrl.abort();
   }, []);
 
   if (enabled !== true || items === null || items.length === 0) return null;
