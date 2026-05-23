@@ -4,6 +4,7 @@ import { db, teams, teamMembers, policies } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { hasFeatureAccess } from '@/lib/usage';
 import { validateTeamName, validateSlug } from '@/lib/validation';
+import { errorEnvelope } from '@/lib/api/error-envelope';
 
 
 // GET /api/teams - 列出用户的团队
@@ -110,12 +111,21 @@ export async function POST(req: Request) {
     const teamId = globalThis.crypto.randomUUID();
     const memberId = globalThis.crypto.randomUUID();
 
+    // Defensive: pass createdAt + updatedAt explicitly. The schema
+    // declares defaultNow() but some historic migrations shipped
+    // without the PG `DEFAULT now()` clause — same root cause as the
+    // policy-groups POST fix. Passing them is a no-op when the
+    // default exists.
+    const nowTs = new Date();
+
     await db.transaction(async (tx) => {
       await tx.insert(teams).values({
         id: teamId,
         name,
         slug,
         ownerId: session.user.id,
+        createdAt: nowTs,
+        updatedAt: nowTs,
       });
 
       await tx.insert(teamMembers).values({
@@ -123,6 +133,7 @@ export async function POST(req: Request) {
         teamId,
         userId: session.user.id,
         role: 'owner',
+        createdAt: nowTs,
       });
     });
 
@@ -145,8 +156,17 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error('Error creating team:', error);
-    return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
+  } catch (err) {
+    const env = errorEnvelope({
+      status: 500,
+      code: 'service_unavailable',
+      message: 'Could not create the team. Please retry; the failure has been logged.',
+    });
+    console.error(
+      '[teams POST] handler failed',
+      env.headers.get('x-request-id'),
+      err,
+    );
+    return env;
   }
 }

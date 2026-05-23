@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Breadcrumbs, ConfirmDialog } from '@/components/ui';
+import { Breadcrumbs, ConfirmDialog, Input, Label, Select } from '@/components/ui';
 
 interface BYOKBinding {
   id: string;
@@ -142,38 +142,39 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       <section className="mt-6 rounded-lg border border-border bg-bg p-6">
         <h2 className="text-lg font-semibold text-fg">{t('addTitle')}</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-fg">
-              {t('provider')}
-            </label>
-            <select
+          {/* Use the @aster-cloud/ui primitives so the form inputs match
+              the design-system standard (token-driven border, focus ring,
+              size variants) — replaces the previous hand-rolled
+              `<input>` / `<select>` markup that diverged from
+              Storybook's component contracts. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="ai-keys-provider">{t('provider')}</Label>
+            <Select
+              id="ai-keys-provider"
               value={provider}
               onChange={(e) =>
                 setProvider(
                   e.target.value as 'openai' | 'anthropic' | 'vertex',
                 )
               }
-              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary"
             >
               <option value="openai">{t('providerOpenai')}</option>
               <option value="anthropic">{t('providerAnthropic')}</option>
               <option value="vertex">{t('providerVertex')}</option>
-            </select>
+            </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-fg">
-              {t('apiKey')}
-            </label>
-            <input
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="ai-keys-secret">{t('apiKey')}</Label>
+            <Input
+              id="ai-keys-secret"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               autoComplete="off"
               placeholder="sk-..."
-              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary"
               required
             />
-            <p className="mt-1 text-xs text-fg-muted">{t('apiKeyHint')}</p>
+            <p className="text-xs text-fg-muted">{t('apiKeyHint')}</p>
           </div>
 
           {error && (

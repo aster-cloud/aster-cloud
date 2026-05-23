@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { ConfirmDialog, Select, toast } from '@/components/ui';
+import { ConfirmDialog, Input, Label, Select, toast } from '@/components/ui';
 
 interface Team {
   id: string;
@@ -230,11 +230,9 @@ export default function TeamSettingsPage() {
             </div>
           )}
 
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-fg">
-              {t('settings.nameLabel')}
-            </label>
-            <input
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="name">{t('settings.nameLabel')}</Label>
+            <Input
               type="text"
               id="name"
               name="name"
@@ -243,26 +241,25 @@ export default function TeamSettingsPage() {
               maxLength={50}
               value={formData.name}
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
             />
           </div>
 
-          <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-fg">
-              {t('settings.slugLabel')}
-            </label>
-            <div className="mt-1 flex rounded-md shadow-sm">
-              <span className="inline-flex items-center rounded-l-md border border-r-0 border-border-strong bg-bg-subtle px-3 text-fg-muted sm:text-sm">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="slug">{t('settings.slugLabel')}</Label>
+            <div className="flex">
+              <span className="inline-flex items-center rounded-l-md border border-r-0 border-border bg-bg-subtle px-3 text-sm text-fg-muted">
                 /teams/
               </span>
-              <input
+              {/* Pattern escaped for unicode-sets ('v') regex mode —
+                  see teams/new/page.tsx for the same fix. */}
+              <Input
                 type="text"
                 id="slug"
                 name="slug"
                 required
                 minLength={2}
                 maxLength={50}
-                pattern="[a-z0-9-]+"
+                pattern="[a-z0-9\-]+"
                 value={formData.slug}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -270,10 +267,10 @@ export default function TeamSettingsPage() {
                     slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
                   }))
                 }
-                className="block w-full flex-1 rounded-none rounded-r-md border-border-strong focus:border-primary focus:ring-primary sm:text-sm"
+                className="rounded-l-none"
               />
             </div>
-            <p className="mt-1 text-xs text-fg-muted">{t('settings.slugHint')}</p>
+            <p className="text-xs text-fg-muted">{t('settings.slugHint')}</p>
           </div>
 
           <div className="pt-4">

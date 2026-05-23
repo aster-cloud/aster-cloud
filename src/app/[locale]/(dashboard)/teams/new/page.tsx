@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { Breadcrumbs } from '@/components/ui';
+import { Breadcrumbs, Input, Label } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 
 export default function NewTeamPage() {
@@ -103,11 +103,12 @@ export default function NewTeamPage() {
             </div>
           )}
 
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-fg">
-              {t('createTeam.nameLabel')}
-            </label>
-            <input
+          {/* Design-system Input replaces the previous hand-rolled
+              <input> so border / focus ring / typography match the
+              Storybook contract. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="name">{t('createTeam.nameLabel')}</Label>
+            <Input
               type="text"
               id="name"
               name="name"
@@ -116,35 +117,40 @@ export default function NewTeamPage() {
               maxLength={50}
               value={formData.name}
               onChange={handleNameChange}
-              className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
               placeholder={t('createTeam.namePlaceholder')}
             />
-            <p className="mt-1 text-xs text-fg-muted">{t('createTeam.nameHint')}</p>
+            <p className="text-xs text-fg-muted">{t('createTeam.nameHint')}</p>
           </div>
 
-          <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-fg">
-              {t('createTeam.slugLabel')}
-            </label>
-            <div className="mt-1 flex rounded-md shadow-sm">
-              <span className="inline-flex items-center rounded-l-md border border-r-0 border-border-strong bg-bg-subtle px-3 text-fg-muted sm:text-sm">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="slug">{t('createTeam.slugLabel')}</Label>
+            <div className="flex">
+              <span className="inline-flex items-center rounded-l-md border border-r-0 border-border bg-bg-subtle px-3 text-sm text-fg-muted">
                 /teams/
               </span>
-              <input
+              {/*
+                Pattern needs the dash escaped so the regex parses under
+                the unicode-sets ('v') flag — modern Chrome rejects the
+                bare `[a-z0-9-]+` with "Invalid character class" because
+                the `-` between two literal ranges is reserved for class
+                subtraction in `v`-mode. `\\-` (escaped) or moving the
+                dash to start/end resolves it. We escape; reads identical.
+              */}
+              <Input
                 type="text"
                 id="slug"
                 name="slug"
                 required
                 minLength={2}
                 maxLength={50}
-                pattern="[a-z0-9-]+"
+                pattern="[a-z0-9\-]+"
                 value={formData.slug}
                 onChange={handleSlugChange}
-                className="block w-full flex-1 rounded-none rounded-r-md border-border-strong focus:border-primary focus:ring-primary sm:text-sm"
+                className="rounded-l-none"
                 placeholder={t('createTeam.slugPlaceholder')}
               />
             </div>
-            <p className="mt-1 text-xs text-fg-muted">{t('createTeam.slugHint')}</p>
+            <p className="text-xs text-fg-muted">{t('createTeam.slugHint')}</p>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4 border-t border-border">
