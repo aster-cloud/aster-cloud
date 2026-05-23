@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
+import { Input, Label, Textarea } from '@/components/ui';
 
 interface Policy {
   id: string;
@@ -180,47 +181,45 @@ export default function TeamPoliciesPage() {
                   <p className="text-sm text-red-700">{createError}</p>
                 </div>
               )}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-fg">
-                  {t('policies.nameLabel')}
-                </label>
-                <input
+              {/* Design-system primitives so the Create-Team-Policy
+                  form matches the Storybook contract — was diverging
+                  with a hand-rolled <input>/<textarea> markup that
+                  used the wrong border tone and no focus-visible
+                  shadow ring. The Textarea keeps its font-mono so the
+                  CNL preview reads with monospace alignment. */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="name">{t('policies.nameLabel')}</Label>
+                <Input
                   type="text"
                   id="name"
                   name="name"
                   required
                   value={newPolicy.name}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, name: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('policies.namePlaceholder')}
                 />
               </div>
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-fg">
-                  {t('policies.descriptionLabel')}
-                </label>
-                <input
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="description">{t('policies.descriptionLabel')}</Label>
+                <Input
                   type="text"
                   id="description"
                   name="description"
                   value={newPolicy.description}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, description: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
                   placeholder={t('policies.descriptionPlaceholder')}
                 />
               </div>
-              <div>
-                <label htmlFor="content" className="block text-sm font-medium text-fg">
-                  {t('policies.contentLabel')}
-                </label>
-                <textarea
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="content">{t('policies.contentLabel')}</Label>
+                <Textarea
                   id="content"
                   name="content"
                   required
                   rows={10}
                   value={newPolicy.content}
                   onChange={(e) => setNewPolicy((prev) => ({ ...prev, content: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-border-strong shadow-sm focus:border-primary focus:ring-primary sm:text-sm font-mono"
+                  className="font-mono"
                   placeholder={t('policies.contentPlaceholder')}
                 />
               </div>

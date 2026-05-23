@@ -9,7 +9,15 @@ import { eq, and, sql } from 'drizzle-orm';
 function encryptionSecret(): string {
   const s = process.env.AI_KEY_ENCRYPTION_SECRET;
   if (!s || s.length < 16) {
-    throw new Error('AI_KEY_ENCRYPTION_SECRET 未设置或长度 < 16');
+    // Distinct error code so the BFF can tell deploy-config-missing
+    // from runtime crypto failure. The route catches both as 503,
+    // but the Worker log captures the .code for triage.
+    const err = new Error(
+      'AI_KEY_ENCRYPTION_SECRET is not set on the Worker (or < 16 chars). ' +
+        'Set it via `wrangler secret put AI_KEY_ENCRYPTION_SECRET`.',
+    );
+    (err as Error & { code?: string }).code = 'ENCRYPTION_SECRET_MISSING';
+    throw err;
   }
   return s;
 }
