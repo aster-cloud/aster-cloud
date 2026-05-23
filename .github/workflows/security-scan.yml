@@ -64,30 +64,36 @@ jobs:
   #                                   Disabling issue writes is what fixes
   #                                   the "Resource not accessible by
   #                                   integration" failure on prior runs.
-  #   artifact_name                — namespaced per target so both jobs'
-  #                                   HTML/JSON reports survive on the
-  #                                   workflow run rather than colliding
-  #                                   on the default "zap_scan" key.
+  #
+  # Action pinned to @v0.15.0 (not v0.12.0): v0.12.0 calls
+  # @actions/upload-artifact v3, which GitHub retired on 2025-01-30 —
+  # every upload now fails with "Create Artifact Container failed".
+  # v0.15.0 uses @actions/artifact v2.x (artifacts v4 service) and runs
+  # on Node 24.
+  #
+  # artifact_name is namespaced per target so both jobs' HTML/JSON
+  # reports survive on the workflow run rather than colliding on the
+  # default "zap_scan" key.
   zap-baseline-cloud:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: ZAP baseline (aster-lang.cloud)
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: https://aster-lang.cloud
           fail_action: false
           allow_issue_writing: false
-          artifact_name: zap-baseline-cloud
+          artifact_name: zap_baseline_cloud
 
   zap-baseline-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: ZAP baseline (policy.aster-lang.dev)
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: https://policy.aster-lang.dev
           fail_action: false
           allow_issue_writing: false
-          artifact_name: zap-baseline-api
+          artifact_name: zap_baseline_api
