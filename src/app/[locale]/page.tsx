@@ -125,15 +125,20 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
           <Stack direction="row" gap={6} align="center">
             {/* Primary evaluator links — middle of the bar, separated
                 from sign-in / CTA on the right so the visual weight
-                stays on the trial CTA. */}
+                stays on the trial CTA.
+                Pricing is an in-page anchor (#pricing) so the click
+                smooth-scrolls to the PricingPreview section already
+                rendered on the home page rather than a full route
+                change. The dedicated /pricing route remains for SEO
+                and direct linking. */}
             <Stack direction="row" gap={4} align="center" className="hidden md:flex">
               {IS_SAAS && (
-                <Link
-                  href="/pricing"
+                <a
+                  href="#pricing"
                   className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
                 >
                   {t('nav.pricing')}
-                </Link>
+                </a>
               )}
               <a
                 href="https://aster-lang.dev"
@@ -142,14 +147,6 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
                 className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
               >
                 {t('nav.docs')}
-              </a>
-              <a
-                href="https://aster-lang.dev/blog/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
-              >
-                {t('nav.blog')}
               </a>
             </Stack>
             <Stack direction="row" gap={4} align="center">
@@ -390,7 +387,11 @@ function PricingPreview({
   proMonthlyPrice: string;
 }) {
   return (
-    <section className="py-20">
+    // id="pricing" is the anchor target for the nav's Pricing link —
+    // clicking the nav scrolls the landing page to this section
+    // (smooth-scroll behaviour comes from CSS, see globals.css). The
+    // dedicated /pricing route still exists for direct linking and SEO.
+    <section id="pricing" className="scroll-mt-20 py-20">
       <Container size="xl">
         <Stack gap={12} align="center">
           <Stack gap={3} align="center" className="text-center">

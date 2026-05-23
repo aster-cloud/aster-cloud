@@ -30,8 +30,7 @@
   "nav": {
     "brand": "Aster Cloud",
     "pricing": "Preise",
-    "docs": "Doku",
-    "blog": "Blog"
+    "docs": "Doku"
   },
   "hero": {
     "title": "Policy as Code in der Muttersprache",

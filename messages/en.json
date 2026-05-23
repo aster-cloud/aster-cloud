@@ -30,8 +30,7 @@
   "nav": {
     "brand": "Aster Cloud",
     "pricing": "Pricing",
-    "docs": "Docs",
-    "blog": "Blog"
+    "docs": "Docs"
   },
   "hero": {
     "title": "Policy as Code in native language",

@@ -132,6 +132,18 @@
  * `--font-geist-*` names. Redirecting them onto Aster tokens means the
  * brand swap shows up immediately even before we touch component code.
  */
+
+/*
+ * Smooth-scroll for in-page anchor links (e.g. landing nav "Pricing"
+ * → #pricing section). prefers-reduced-motion users keep the instant
+ * jump so vestibular accessibility is preserved.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 :root {
   --background: var(--aster-bg);
   --foreground: var(--aster-fg);
