@@ -200,8 +200,15 @@ export function AIAssistantPanel({
   );
 
   return (
+    // min-w-0 + max-w-full belt-and-suspenders: when this panel
+    // lives inside the side-panel's 28rem column on the policy
+    // form, child Monaco editors (diff preview, code blocks) can
+    // request widths that exceed the parent. The min-w-0 lets the
+    // flex parent shrink past content's "intrinsic" min-width,
+    // and max-w-full caps absolute overflow from leaking sideways
+    // into the main editor pane.
     <aside
-      className="flex flex-col border border-border dark:border-gray-700 rounded-xl bg-bg dark:bg-gray-800 shadow-lg overflow-hidden"
+      className="flex flex-col border border-border dark:border-gray-700 rounded-xl bg-bg dark:bg-gray-800 shadow-lg overflow-hidden min-w-0 max-w-full"
       role="complementary"
       aria-label={t('panelTitle')}
     >

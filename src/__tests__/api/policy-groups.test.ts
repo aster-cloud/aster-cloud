@@ -214,8 +214,17 @@ describe('Policy Groups API - Drizzle Migration', () => {
       const response = await GET();
       const body = await response.json();
 
+      // P1-5 envelope: { error: { code, message, requestId } }.
+      // Raw exception text no longer leaks into the response — the
+      // operator-actionable detail lives on the requestId, which
+      // matches the x-request-id header for log correlation.
       expect(response.status).toBe(500);
-      expect(body.error).toBe('Internal server error');
+      expect(body.error).toMatchObject({
+        code: 'service_unavailable',
+        message: expect.stringContaining('Could not load policy groups'),
+        requestId: expect.any(String),
+      });
+      expect(response.headers.get('x-request-id')).toBe(body.error.requestId);
     });
   });
 

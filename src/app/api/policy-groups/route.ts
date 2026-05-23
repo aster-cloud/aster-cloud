@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policyGroups, policies, teamMembers } from '@/lib/prisma';
 import { eq, and, isNull, sql, asc, inArray } from 'drizzle-orm';
+import { errorEnvelope } from '@/lib/api/error-envelope';
 
 
 // GET /api/policy-groups - 获取用户的策略分组树
@@ -100,9 +101,18 @@ export async function GET() {
       groups: rootGroups,
       flatGroups: groups, // 同时返回平铺列表，方便前端某些场景使用
     });
-  } catch (error) {
-    console.error('Error fetching policy groups:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (err) {
+    const env = errorEnvelope({
+      status: 500,
+      code: 'service_unavailable',
+      message: 'Could not load policy groups. Please retry; the failure has been logged.',
+    });
+    console.error(
+      '[policy-groups GET] handler failed',
+      env.headers.get('x-request-id'),
+      err,
+    );
+    return env;
   }
 }
 
@@ -178,6 +188,12 @@ export async function POST(req: Request) {
 
     const maxSortOrder = maxResult[0]?.max ?? 0;
 
+    // Defensive: pass createdAt + updatedAt explicitly even though the
+    // schema declares defaultNow(). Some migrations historically
+    // skipped the PG `DEFAULT now()` clause, in which case omitting
+    // the columns trips the NOT NULL constraint. Passing them is a
+    // no-op when the default exists.
+    const nowTs = new Date();
     const [group] = await db
       .insert(policyGroups)
       .values({
@@ -189,6 +205,8 @@ export async function POST(req: Request) {
         sortOrder: maxSortOrder + 1,
         teamId: teamId || null,
         userId: teamId ? null : session.user.id,
+        createdAt: nowTs,
+        updatedAt: nowTs,
       })
       .returning();
 
@@ -202,8 +220,17 @@ export async function POST(req: Request) {
       ));
 
     return NextResponse.json({ ...group, _count: { policies: count } }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating policy group:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (err) {
+    const env = errorEnvelope({
+      status: 500,
+      code: 'service_unavailable',
+      message: 'Could not create the group. Please retry; the failure has been logged.',
+    });
+    console.error(
+      '[policy-groups POST] handler failed',
+      env.headers.get('x-request-id'),
+      err,
+    );
+    return env;
   }
 }

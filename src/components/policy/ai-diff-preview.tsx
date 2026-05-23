@@ -54,6 +54,16 @@ export function AIDiffPreview({ original, generated, onAccept, onReject }: AIDif
           </button>
         </div>
       </div>
+      {/*
+        Inline diff (renderSideBySide: false) is mandatory here.
+        The AI Assistant panel lives inside the policy form's
+        right rail at w-[28rem] (~448px). Side-by-side mode adds
+        a second column plus a gutter — Monaco's minimum widths
+        push the diff editor past 448px and the rail overflows
+        into the editor column, breaking the page layout.
+        Inline mode shows additions / deletions stacked in a
+        single column and fits the rail cleanly.
+       */}
       <DiffEditor
         height="300px"
         language="aster-cnl"
@@ -62,7 +72,7 @@ export function AIDiffPreview({ original, generated, onAccept, onReject }: AIDif
         theme={isDark ? 'vs-dark' : 'vs'}
         options={{
           readOnly: true,
-          renderSideBySide: true,
+          renderSideBySide: false,
           minimap: { enabled: false },
           fontSize: 13,
           scrollBeyondLastLine: false,
