@@ -6,6 +6,7 @@ import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { formatDate } from '@/lib/format';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
+import { SharedWithMeSection } from '@/components/policy/shared-with-me-section';
 import { ConfirmDialog } from '@/components/ui';
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { ErrorState } from '@/components/feedback/error-state';
@@ -900,6 +901,11 @@ export function PoliciesContent({
             </ul>
           </div>
         )}
+
+        {/* Policies shared with caller's teams. Self-gates: returns
+            nothing when sharing is off or the caller has no inbound
+            shares. */}
+        <SharedWithMeSection locale={locale} />
       </div>
 
       {/* 拖拽覆盖层 */}

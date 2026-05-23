@@ -187,6 +187,12 @@ async function runSchemaPatch(): Promise<void> {
   await db.execute(sql`
     CREATE INDEX IF NOT EXISTS "PolicyShare_policyId_idx" ON "PolicyShare" ("policyId")
   `);
+  // Permission tier (view / execute). Existing rows default to
+  // 'execute' so pre-tier shares keep their original behaviour.
+  await db.execute(sql`
+    ALTER TABLE "PolicyShare"
+    ADD COLUMN IF NOT EXISTS "permission" text NOT NULL DEFAULT 'execute'
+  `);
 
   console.warn(
     '[db-bootstrap] schema patch 0009 + notifications + policy-sharing applied',

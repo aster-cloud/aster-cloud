@@ -459,6 +459,14 @@
       "contentLabel": "Policy source",
       "contentPlaceholder": "Module example.policy.\\nRule decide given input:\\n  ..."
     },
+    "sharedPolicies": {
+      "title": "Shared with this team",
+      "subtitle": "Policies that owners outside this team have shared in.",
+      "permissionView": "View only",
+      "permissionExecute": "View + execute",
+      "fromOwner": "From {owner}",
+      "sharedOn": "shared on {date}"
+    },
     "memberCount": "{count} members",
     "policyCount": "{count} policies",
     "viewTeam": "View Team",
@@ -1152,7 +1160,7 @@
     },
     "share": {
       "title": "Share with teams",
-      "subtitle": "Grant other teams view + execute access to this policy. Members of those teams can run it but not edit.",
+      "subtitle": "Grant other teams access to this policy. Members of those teams can view it; execute access lets them run it.",
       "selectTeam": "Team",
       "placeholderSelect": "Select a team…",
       "noEligibleTeams": "No eligible teams to share with.",
@@ -1160,8 +1168,21 @@
       "sharing": "Sharing…",
       "revoke": "Revoke",
       "viewExecute": "View + execute",
+      "permissionLabel": "Access",
+      "permissionView": "View only",
+      "permissionExecute": "View + execute",
+      "permissionHelp": "Execute access automatically includes view. Re-sharing with a different tier updates the existing permission.",
       "addFailed": "Could not share the policy. Please try again.",
       "revokeFailed": "Could not revoke the share. Please try again."
+    },
+    "sharedWithMe": {
+      "title": "Shared with my teams",
+      "subtitle": "Policies that other owners have shared with teams you belong to.",
+      "permissionView": "View only",
+      "permissionExecute": "View + execute",
+      "viaTeam": "Shared with {team}",
+      "fromOwner": "by {owner}",
+      "updated": "updated {date}"
     }
   },
   "reports": {
@@ -2118,6 +2139,8 @@
     "timeAgoMin": "{n} min ago",
     "timeAgoHour": "{n} h ago",
     "timeAgoDay": "{n} d ago",
-    "policyShared": "A policy {policyName} was shared with {teamName}."
+    "policyShared": "Policy {policyName} was shared with {teamName} ({permission}).",
+    "permissionView": "view only",
+    "permissionExecute": "view + execute"
   }
 }

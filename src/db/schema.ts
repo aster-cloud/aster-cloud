@@ -732,6 +732,16 @@ export const policyShares = pgTable(
     id: text('id').primaryKey().notNull(),
     policyId: text('policyId').notNull(),
     teamId: text('teamId').notNull(),
+    /**
+     * Permission bundle granted to the team.
+     *   'view'    — read policy + see version history
+     *   'execute' — view + run /api/policies/:id/execute
+     *
+     * 'execute' implies 'view'; the access checks treat them as a
+     * ladder, not parallel sets. Default 'execute' so historical
+     * rows (pre-tier) stay functional.
+     */
+    permission: text('permission').notNull().default('execute'),
     /** User who created the share (audit). */
     sharedByUserId: text('sharedByUserId').notNull(),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
@@ -742,6 +752,18 @@ export const policyShares = pgTable(
     index('PolicyShare_policyId_idx').on(table.policyId),
   ]
 );
+
+export type SharePermission = 'view' | 'execute';
+export const SHARE_PERMISSIONS: readonly SharePermission[] = ['view', 'execute'];
+
+/** execute >= view in the permission ladder. */
+export function shareCovers(
+  granted: SharePermission,
+  required: SharePermission,
+): boolean {
+  if (required === 'view') return granted === 'view' || granted === 'execute';
+  return granted === 'execute';
+}
 
 // ============================================
 // Notification

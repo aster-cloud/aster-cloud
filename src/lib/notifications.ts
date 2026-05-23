@@ -41,6 +41,8 @@ export interface NotificationPayloads {
     policyName: string;
     teamId: string;
     teamName: string;
+    /** Permission tier the share was granted at — view or execute. */
+    permission?: 'view' | 'execute';
   };
 }
 

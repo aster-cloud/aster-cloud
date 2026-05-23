@@ -173,22 +173,40 @@ export async function POST(req: Request, { params }: RouteParams) {
     // platform admin can disable sharing via the
     // policy_sharing.enabled flag; when OFF, shares are ignored
     // entirely so a leftover row can't grant access.
+    // The share's `permission` column gates execute vs view-only.
+    // This route requires 'execute'; a 'view'-only share returns
+    // 403 (not 404) so the user isn't gaslit about whether the
+    // policy exists when they can read it via GET /policies/:id.
+    // Pick the highest-tier share if multiple teams of the caller
+    // share the same policy (ORDER BY puts 'execute' first).
     let isSharedMember = false;
     if (!isOwner && !isPublic && !isTeamMember) {
       const { isPolicySharingEnabled } = await import(
         '@/lib/platform-settings'
       );
       if (await isPolicySharingEnabled()) {
-        const sharedRow = await db.execute<{ ok: number }>(sql`
-          SELECT 1 AS ok
+        const sharedRow = await db.execute<{ permission: string }>(sql`
+          SELECT ps."permission" AS permission
           FROM "PolicyShare" ps
           JOIN "TeamMember" tm ON tm."teamId" = ps."teamId"
           WHERE ps."policyId" = ${id}
             AND tm."userId" = ${userId}
+          ORDER BY (ps."permission" = 'execute') DESC
           LIMIT 1
         `);
-        const sharedRows = sharedRow as unknown as Array<{ ok: number }>;
-        isSharedMember = sharedRows.length > 0;
+        const sharedRows = sharedRow as unknown as Array<{ permission: string }>;
+        const grant = sharedRows[0]?.permission;
+        if (grant === 'execute') {
+          isSharedMember = true;
+        } else if (grant === 'view') {
+          return NextResponse.json(
+            {
+              error: 'Execute not permitted for this share (view-only)',
+              code: 'share_view_only',
+            },
+            { status: 403 },
+          );
+        }
       }
       if (!isSharedMember) {
         return NextResponse.json({ error: 'Policy not found' }, { status: 404 });

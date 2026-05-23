@@ -459,6 +459,14 @@
       "contentLabel": "策略源码",
       "contentPlaceholder": "Module example.policy.\\nRule decide given input:\\n  ..."
     },
+    "sharedPolicies": {
+      "title": "共享给本团队的策略",
+      "subtitle": "由其他团队所有者共享给本团队的策略。",
+      "permissionView": "只读",
+      "permissionExecute": "只读 + 执行",
+      "fromOwner": "来自 {owner}",
+      "sharedOn": "共享于 {date}"
+    },
     "memberCount": "{count} 位成员",
     "policyCount": "{count} 个策略",
     "viewTeam": "查看团队",
@@ -1152,7 +1160,7 @@
     },
     "share": {
       "title": "共享给团队",
-      "subtitle": "将此策略只读+执行权限授予其他团队。被共享团队的成员可以执行但不能编辑。",
+      "subtitle": "将此策略授权给其他团队。被共享团队的成员可以查看；执行权限允许其运行策略。",
       "selectTeam": "团队",
       "placeholderSelect": "选择一个团队…",
       "noEligibleTeams": "没有可共享的团队。",
@@ -1160,8 +1168,21 @@
       "sharing": "共享中…",
       "revoke": "撤销",
       "viewExecute": "只读 + 执行",
+      "permissionLabel": "权限",
+      "permissionView": "只读",
+      "permissionExecute": "只读 + 执行",
+      "permissionHelp": "执行权限自动包含只读。重新共享时若选择不同等级，将更新原有权限。",
       "addFailed": "共享失败，请重试。",
       "revokeFailed": "撤销失败，请重试。"
+    },
+    "sharedWithMe": {
+      "title": "共享给我所在团队的策略",
+      "subtitle": "其他所有者共享给您所在团队的策略。",
+      "permissionView": "只读",
+      "permissionExecute": "只读 + 执行",
+      "viaTeam": "共享给 {team}",
+      "fromOwner": "来自 {owner}",
+      "updated": "更新于 {date}"
     }
   },
   "reports": {
@@ -2118,6 +2139,8 @@
     "timeAgoMin": "{n} 分钟前",
     "timeAgoHour": "{n} 小时前",
     "timeAgoDay": "{n} 天前",
-    "policyShared": "策略 {policyName} 已共享给 {teamName}。"
+    "policyShared": "策略 {policyName} 已共享给 {teamName}（{permission}）。",
+    "permissionView": "只读",
+    "permissionExecute": "只读 + 执行"
   }
 }

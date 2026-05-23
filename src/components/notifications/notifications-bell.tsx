@@ -52,6 +52,8 @@ function useLabels() {
     invitationReceived: t.raw('invitationReceived') as string,
     invitationAccepted: t.raw('invitationAccepted') as string,
     policyShared: t.raw('policyShared') as string,
+    permissionView: t('permissionView'),
+    permissionExecute: t('permissionExecute'),
     timeAgoNow: t('timeAgoNow'),
     timeAgoMin: t.raw('timeAgoMin') as string,
     timeAgoHour: t.raw('timeAgoHour') as string,
@@ -101,11 +103,17 @@ function renderText(
         policyName?: string;
         teamName?: string;
         policyId?: string;
+        permission?: 'view' | 'execute';
       };
+      const tier =
+        d.permission === 'view'
+          ? labels.permissionView
+          : labels.permissionExecute;
       return {
         text: labels.policyShared
           .replace('{policyName}', d.policyName ?? 'a policy')
-          .replace('{teamName}', d.teamName ?? 'your team'),
+          .replace('{teamName}', d.teamName ?? 'your team')
+          .replace('{permission}', tier),
         href: d.policyId ? `/policies/${d.policyId}` : '/policies',
       };
     }

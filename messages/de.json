@@ -459,6 +459,14 @@
       "contentLabel": "Richtlinien-Quelltext",
       "contentPlaceholder": "Module example.policy.\\nRule decide given input:\\n  ..."
     },
+    "sharedPolicies": {
+      "title": "Mit diesem Team geteilt",
+      "subtitle": "Policies, die von Eigentümern außerhalb dieses Teams hier geteilt wurden.",
+      "permissionView": "Nur lesen",
+      "permissionExecute": "Lesen + Ausführen",
+      "fromOwner": "Von {owner}",
+      "sharedOn": "geteilt am {date}"
+    },
     "memberCount": "{count} Mitglieder",
     "policyCount": "{count} Richtlinien",
     "viewTeam": "Team anzeigen",
@@ -1152,7 +1160,7 @@
     },
     "share": {
       "title": "Mit Teams teilen",
-      "subtitle": "Lese- + Ausführungszugriff auf diese Policy an andere Teams gewähren. Mitglieder können ausführen, aber nicht bearbeiten.",
+      "subtitle": "Anderen Teams Zugriff auf diese Policy gewähren. Mitglieder können sehen; Ausführungsrechte erlauben das Ausführen.",
       "selectTeam": "Team",
       "placeholderSelect": "Team wählen…",
       "noEligibleTeams": "Keine geeigneten Teams zum Teilen.",
@@ -1160,8 +1168,21 @@
       "sharing": "Wird geteilt…",
       "revoke": "Widerrufen",
       "viewExecute": "Lesen + Ausführen",
+      "permissionLabel": "Zugriff",
+      "permissionView": "Nur lesen",
+      "permissionExecute": "Lesen + Ausführen",
+      "permissionHelp": "Ausführungsrechte beinhalten automatisch Lesezugriff. Erneutes Teilen mit anderer Stufe aktualisiert die bestehende Berechtigung.",
       "addFailed": "Teilen fehlgeschlagen. Bitte erneut versuchen.",
       "revokeFailed": "Widerruf fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "sharedWithMe": {
+      "title": "Mit meinen Teams geteilt",
+      "subtitle": "Policies, die andere Eigentümer mit Ihren Teams geteilt haben.",
+      "permissionView": "Nur lesen",
+      "permissionExecute": "Lesen + Ausführen",
+      "viaTeam": "Geteilt mit {team}",
+      "fromOwner": "von {owner}",
+      "updated": "aktualisiert {date}"
     }
   },
   "reports": {
@@ -2118,6 +2139,8 @@
     "timeAgoMin": "vor {n} Min.",
     "timeAgoHour": "vor {n} Std.",
     "timeAgoDay": "vor {n} T.",
-    "policyShared": "Policy {policyName} wurde mit {teamName} geteilt."
+    "policyShared": "Policy {policyName} wurde mit {teamName} geteilt ({permission}).",
+    "permissionView": "nur lesen",
+    "permissionExecute": "lesen + ausführen"
   }
 }

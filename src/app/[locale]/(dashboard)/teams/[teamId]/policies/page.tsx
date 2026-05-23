@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
+import { SharedWithTeamSection } from '@/components/policy/shared-with-team-section';
 
 interface Policy {
   id: string;
@@ -244,6 +245,10 @@ export default function TeamPoliciesPage() {
           </ul>
         </div>
       )}
+
+      {/* Policies shared *with* this team. Self-gates: returns nothing
+          when sharing is off or no shares exist. */}
+      <SharedWithTeamSection teamId={teamId} locale={locale} />
     </div>
   );
 }

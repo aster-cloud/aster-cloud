@@ -31,11 +31,14 @@ import {
  * api/policies/[id]/shares/route.ts top-of-file comment).
  */
 
+type SharePermission = 'view' | 'execute';
+
 interface Share {
   id: string;
   teamId: string;
   teamName: string;
   teamSlug: string;
+  permission: SharePermission;
   sharedByUserId: string;
   createdAt: string;
 }
@@ -53,6 +56,7 @@ export function ShareWithTeamsCard({ policyId }: { policyId: string }) {
   const [shares, setShares] = useState<Share[]>([]);
   const [myTeams, setMyTeams] = useState<MyTeam[]>([]);
   const [selected, setSelected] = useState<string>('');
+  const [permission, setPermission] = useState<SharePermission>('execute');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,7 +114,7 @@ export function ShareWithTeamsCard({ policyId }: { policyId: string }) {
       const res = await fetch(`/api/policies/${policyId}/shares`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId: selected }),
+        body: JSON.stringify({ teamId: selected, permission }),
       });
       if (!res.ok) {
         setError(t('addFailed'));
@@ -178,6 +182,20 @@ export function ShareWithTeamsCard({ policyId }: { policyId: string }) {
                 ))}
               </Select>
             </div>
+            <div className="flex flex-col gap-2 w-40 shrink-0">
+              <Label htmlFor="share-permission-select">
+                {t('permissionLabel')}
+              </Label>
+              <Select
+                id="share-permission-select"
+                value={permission}
+                onChange={(e) => setPermission(e.target.value as SharePermission)}
+                disabled={busy}
+              >
+                <option value="view">{t('permissionView')}</option>
+                <option value="execute">{t('permissionExecute')}</option>
+              </Select>
+            </div>
             <button
               type="button"
               onClick={onShare}
@@ -190,6 +208,7 @@ export function ShareWithTeamsCard({ policyId }: { policyId: string }) {
               {busy ? t('sharing') : t('share')}
             </button>
           </Stack>
+          <p className="text-xs text-fg-subtle">{t('permissionHelp')}</p>
 
           {error && (
             <p className="text-xs text-danger" role="alert">
@@ -209,7 +228,13 @@ export function ShareWithTeamsCard({ policyId }: { policyId: string }) {
                     <p className="truncate text-sm font-medium text-fg">
                       {s.teamName}
                     </p>
-                    <Badge variant="neutral">{t('viewExecute')}</Badge>
+                    <Badge
+                      variant={s.permission === 'execute' ? 'success' : 'neutral'}
+                    >
+                      {s.permission === 'execute'
+                        ? t('permissionExecute')
+                        : t('permissionView')}
+                    </Badge>
                   </Stack>
                   <button
                     type="button"
