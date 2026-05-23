@@ -7,6 +7,14 @@ import { getStripe } from '@/lib/stripe';
 
 
 // POST /api/teams/invitations/accept - 接受邀请
+//
+// Body accepts EITHER:
+//   { token: "<hex-from-email-link>" }       — legacy email-click flow
+//   { invitationId: "<uuid>" }               — in-app inbox flow
+// Both routes converge on the same invitation record, then run the
+// identical email-match + member-create transaction. Email-match is
+// the security gate either way: the token alone is not enough — the
+// caller's session email must match the invitation's email column.
 export async function POST(req: Request) {
   try {
     const session = await getSession();
@@ -14,15 +22,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '未授权' }, { status: 401 });
     }
 
-    const { token } = await req.json();
+    const body = (await req.json()) as {
+      token?: string;
+      invitationId?: string;
+    };
+    const { token, invitationId } = body;
 
-    if (!token || typeof token !== 'string') {
-      return NextResponse.json({ error: '无效的邀请令牌' }, { status: 400 });
+    if (
+      (!token || typeof token !== 'string') &&
+      (!invitationId || typeof invitationId !== 'string')
+    ) {
+      return NextResponse.json(
+        { error: 'token or invitationId is required' },
+        { status: 400 },
+      );
     }
 
-    // 查找邀请
+    // 查找邀请 — by token (email-link) or by id (in-app inbox).
     const invitation = await db.query.teamInvitations.findFirst({
-      where: eq(teamInvitations.token, token),
+      where: token
+        ? eq(teamInvitations.token, token)
+        : eq(teamInvitations.id, invitationId!),
       with: {
         team: {
           columns: {

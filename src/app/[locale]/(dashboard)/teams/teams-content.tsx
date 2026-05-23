@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { Breadcrumbs, ListSearchInput } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
+import { PendingInvitationsCard } from '@/components/teams/pending-invitations-card';
 
 interface Team {
   id: string;
@@ -119,6 +120,13 @@ export function TeamsContent({
             {t('newTeam')}
           </Link>
         </div>
+      </div>
+
+      {/* In-app inbox: invitations addressed to the current user's
+          email. Self-hides when empty, so users with nothing pending
+          don't see a permanent "Pending invitations (0)" header. */}
+      <div className="mt-6">
+        <PendingInvitationsCard />
       </div>
 
       {teams.length > 0 && (

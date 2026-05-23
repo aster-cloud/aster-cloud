@@ -576,7 +576,19 @@
     "saving": "Wird gespeichert...",
     "teamNotFound": "Team nicht gefunden",
     "viewAll": "Alle ansehen",
-    "viewDetails": "Details ansehen"
+    "viewDetails": "Details ansehen",
+    "inbox": {
+      "title": "Offene Einladungen",
+      "subtitle": "Teams, die dich eingeladen haben. Annahme direkt in der App, ohne E-Mail-Link.",
+      "expiresOn": "Läuft am {date} ab",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "accepting": "Wird angenommen…",
+      "declining": "Wird abgelehnt…",
+      "acceptFailed": "Einladung konnte nicht angenommen werden. Bitte erneut versuchen.",
+      "declineFailed": "Einladung konnte nicht abgelehnt werden. Bitte erneut versuchen.",
+      "rolePrefix": "Eingeladen als {role}"
+    }
   },
   "dashboard": {
     "welcomeBack": "Willkommen zurück, {name}!",

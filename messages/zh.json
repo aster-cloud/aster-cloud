@@ -576,7 +576,19 @@
     "saving": "保存中...",
     "teamNotFound": "未找到团队",
     "viewAll": "查看全部",
-    "viewDetails": "查看详情"
+    "viewDetails": "查看详情",
+    "inbox": {
+      "title": "待处理邀请",
+      "subtitle": "其他团队向你发出的邀请。无需点击邮件链接，直接在站内接受。",
+      "expiresOn": "{date} 过期",
+      "accept": "接受",
+      "decline": "拒绝",
+      "accepting": "接受中…",
+      "declining": "拒绝中…",
+      "acceptFailed": "接受邀请失败，请重试。",
+      "declineFailed": "拒绝邀请失败，请重试。",
+      "rolePrefix": "邀请角色：{role}"
+    }
   },
   "dashboard": {
     "welcomeBack": "欢迎回来，{name}！",

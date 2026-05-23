@@ -576,7 +576,19 @@
     "saving": "Saving...",
     "teamNotFound": "Team not found",
     "viewAll": "View all",
-    "viewDetails": "View details"
+    "viewDetails": "View details",
+    "inbox": {
+      "title": "Pending invitations",
+      "subtitle": "Teams that have invited you. Accept to join without leaving the app.",
+      "expiresOn": "Expires {date}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "accepting": "Accepting…",
+      "declining": "Declining…",
+      "acceptFailed": "Could not accept the invitation. Please try again.",
+      "declineFailed": "Could not decline the invitation. Please try again.",
+      "rolePrefix": "Invited as {role}"
+    }
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {name}!",
