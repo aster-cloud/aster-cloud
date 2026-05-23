@@ -50,6 +50,29 @@ export async function GET(req: Request, { params }: RouteParams) {
       if (teamPolicy?.team?.members.some(m => m.userId === session.user.id)) {
         policy = teamPolicy;
       }
+
+      // Final fallback: the policy was shared with one of the
+      // caller's teams via PolicyShare. Only consult when sharing
+      // is platform-enabled — flag off → shares are dormant data,
+      // not access grants.
+      if (!policy && teamPolicy) {
+        const { isPolicySharingEnabled } = await import(
+          '@/lib/platform-settings'
+        );
+        if (await isPolicySharingEnabled()) {
+          const sharedRows = (await db.execute(sql`
+            SELECT 1 AS ok
+            FROM "PolicyShare" ps
+            JOIN "TeamMember" tm ON tm."teamId" = ps."teamId"
+            WHERE ps."policyId" = ${id}
+              AND tm."userId" = ${session.user.id}
+            LIMIT 1
+          `)) as unknown as Array<{ ok: number }>;
+          if (sharedRows.length > 0) {
+            policy = teamPolicy;
+          }
+        }
+      }
     }
 
     if (!policy) {

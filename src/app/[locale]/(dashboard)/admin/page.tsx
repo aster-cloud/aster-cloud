@@ -15,6 +15,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { desc, gte, sql } from 'drizzle-orm';
 import { db, users, auditLogs } from '@/lib/prisma';
 import { Link } from '@/i18n/navigation';
+import { FeatureFlagsCard } from '@/components/admin/feature-flags-card';
 import {
   CAN_RISKTIER,
   CAN_LICENSE,
@@ -203,6 +204,20 @@ export default async function AdminOverviewPage({ params }: Props) {
             }}
           />
         </div>
+      </section>
+
+      {/* Feature flags — admin-controlled platform toggles. Lives
+          between Admin Pulse and the Tools section so a SaaS admin
+          can flip a switch without scrolling past the day-to-day
+          control surfaces. */}
+      <section aria-labelledby="admin-flags-heading">
+        <h2
+          id="admin-flags-heading"
+          className="mb-3 text-sm font-semibold uppercase tracking-wider text-fg-muted sr-only"
+        >
+          Feature flags
+        </h2>
+        <FeatureFlagsCard />
       </section>
 
       <section aria-labelledby="admin-overview-tools-heading">

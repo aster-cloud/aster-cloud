@@ -152,7 +152,45 @@ async function runSchemaPatch(): Promise<void> {
     CREATE INDEX IF NOT EXISTS "Notification_createdAt_idx" ON "Notification" ("createdAt")
   `);
 
-  console.warn('[db-bootstrap] schema patch 0009 + notifications applied');
+  // PlatformSetting — generic admin-controlled key/value flags
+  // (e.g. policy_sharing.enabled). No row is inserted here; the
+  // read helper enforces the per-flag default (OFF) when the row
+  // is missing.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "PlatformSetting" (
+      "key" text PRIMARY KEY NOT NULL,
+      "value" jsonb NOT NULL,
+      "updatedAt" timestamp NOT NULL DEFAULT now(),
+      "updatedBy" text
+    )
+  `);
+
+  // PolicyShare — many-to-many policy → team grants. Unique on
+  // (policyId, teamId) so creating the same share twice is a no-op
+  // at the DB layer; the API still hits the unique violation as a
+  // soft success.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "PolicyShare" (
+      "id" text PRIMARY KEY NOT NULL,
+      "policyId" text NOT NULL,
+      "teamId" text NOT NULL,
+      "sharedByUserId" text NOT NULL,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "PolicyShare_policy_team_key" ON "PolicyShare" ("policyId", "teamId")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "PolicyShare_teamId_idx" ON "PolicyShare" ("teamId")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "PolicyShare_policyId_idx" ON "PolicyShare" ("policyId")
+  `);
+
+  console.warn(
+    '[db-bootstrap] schema patch 0009 + notifications + policy-sharing applied',
+  );
 }
 
 /**

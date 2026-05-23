@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ConfirmDialog } from '@/components/ui';
 import { PolicyVersionsTab } from '@/components/policy/policy-versions-tab';
+import { ShareWithTeamsCard } from '@/components/policy/share-with-teams-card';
 
 interface PolicyVersion {
   id: string;
@@ -212,6 +213,15 @@ export function PolicyDetailContent({
             {policy.content}
           </pre>
         </div>
+      </div>
+
+      {/* Share with teams — self-hides when the platform admin
+          disables the policy_sharing.enabled flag, or when the
+          caller isn't the policy owner. See
+          src/components/policy/share-with-teams-card.tsx for the
+          gating model. */}
+      <div className="mt-6">
+        <ShareWithTeamsCard policyId={policy.id} />
       </div>
 
       {/* Version Management with Approval Workflow */}

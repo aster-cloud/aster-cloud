@@ -1149,6 +1149,19 @@
       "actionError": "操作失败，请重试。",
       "itemCount": "回收站中有 {count} 个项目",
       "daysRemaining": "剩余 {days} 天"
+    },
+    "share": {
+      "title": "共享给团队",
+      "subtitle": "将此策略只读+执行权限授予其他团队。被共享团队的成员可以执行但不能编辑。",
+      "selectTeam": "团队",
+      "placeholderSelect": "选择一个团队…",
+      "noEligibleTeams": "没有可共享的团队。",
+      "share": "共享",
+      "sharing": "共享中…",
+      "revoke": "撤销",
+      "viewExecute": "只读 + 执行",
+      "addFailed": "共享失败，请重试。",
+      "revokeFailed": "撤销失败，请重试。"
     }
   },
   "reports": {
@@ -1808,6 +1821,16 @@
         "empty": "暂无管理事件。",
         "error": "审计日志加载失败。"
       }
+    },
+    "flags": {
+      "flagsHeading": "功能开关",
+      "policySharingTitle": "跨团队策略共享",
+      "policySharingDesc": "开启后，策略所有者可将策略共享给其他团队（只读 + 执行）。默认关闭。",
+      "on": "已开启",
+      "off": "已关闭",
+      "enable": "开启",
+      "disable": "关闭",
+      "saving": "保存中…"
     }
   },
   "renewal": {
@@ -2094,6 +2117,7 @@
     "timeAgoNow": "刚刚",
     "timeAgoMin": "{n} 分钟前",
     "timeAgoHour": "{n} 小时前",
-    "timeAgoDay": "{n} 天前"
+    "timeAgoDay": "{n} 天前",
+    "policyShared": "策略 {policyName} 已共享给 {teamName}。"
   }
 }

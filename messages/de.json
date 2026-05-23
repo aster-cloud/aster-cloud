@@ -1149,6 +1149,19 @@
       "actionError": "Aktion fehlgeschlagen. Bitte erneut versuchen.",
       "itemCount": "{count} Elemente im Papierkorb",
       "daysRemaining": "{days} Tage verbleibend"
+    },
+    "share": {
+      "title": "Mit Teams teilen",
+      "subtitle": "Lese- + Ausführungszugriff auf diese Policy an andere Teams gewähren. Mitglieder können ausführen, aber nicht bearbeiten.",
+      "selectTeam": "Team",
+      "placeholderSelect": "Team wählen…",
+      "noEligibleTeams": "Keine geeigneten Teams zum Teilen.",
+      "share": "Teilen",
+      "sharing": "Wird geteilt…",
+      "revoke": "Widerrufen",
+      "viewExecute": "Lesen + Ausführen",
+      "addFailed": "Teilen fehlgeschlagen. Bitte erneut versuchen.",
+      "revokeFailed": "Widerruf fehlgeschlagen. Bitte erneut versuchen."
     }
   },
   "reports": {
@@ -1808,6 +1821,16 @@
         "empty": "Keine kürzlichen Admin-Ereignisse.",
         "error": "Audit-Log konnte nicht geladen werden."
       }
+    },
+    "flags": {
+      "flagsHeading": "Feature-Flags",
+      "policySharingTitle": "Policy-Sharing über Teams",
+      "policySharingDesc": "Wenn aktiviert, können Policy-Besitzer eine Policy mit weiteren Teams teilen (lesen + ausführen). Standard AUS.",
+      "on": "An",
+      "off": "Aus",
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren",
+      "saving": "Wird gespeichert…"
     }
   },
   "renewal": {
@@ -2094,6 +2117,7 @@
     "timeAgoNow": "gerade eben",
     "timeAgoMin": "vor {n} Min.",
     "timeAgoHour": "vor {n} Std.",
-    "timeAgoDay": "vor {n} T."
+    "timeAgoDay": "vor {n} T.",
+    "policyShared": "Policy {policyName} wurde mit {teamName} geteilt."
   }
 }

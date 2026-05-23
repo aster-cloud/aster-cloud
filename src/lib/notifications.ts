@@ -20,7 +20,8 @@ import { db, notifications } from '@/lib/prisma';
  */
 export type NotificationKind =
   | 'team.invitation_received'
-  | 'team.invitation_accepted';
+  | 'team.invitation_accepted'
+  | 'policy.shared';
 
 export interface NotificationPayloads {
   'team.invitation_received': {
@@ -34,6 +35,12 @@ export interface NotificationPayloads {
     teamName: string;
     /** Display name of the user who accepted. */
     memberName: string;
+  };
+  'policy.shared': {
+    policyId: string;
+    policyName: string;
+    teamId: string;
+    teamName: string;
   };
 }
 

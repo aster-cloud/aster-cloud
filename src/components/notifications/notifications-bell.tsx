@@ -51,6 +51,7 @@ function useLabels() {
     viewAll: t('viewAll'),
     invitationReceived: t.raw('invitationReceived') as string,
     invitationAccepted: t.raw('invitationAccepted') as string,
+    policyShared: t.raw('policyShared') as string,
     timeAgoNow: t('timeAgoNow'),
     timeAgoMin: t.raw('timeAgoMin') as string,
     timeAgoHour: t.raw('timeAgoHour') as string,
@@ -93,6 +94,19 @@ function renderText(
           .replace('{memberName}', d.memberName ?? 'A teammate')
           .replace('{teamName}', d.teamName ?? 'a team'),
         href: `/teams/${(row.data as { teamId?: string }).teamId ?? ''}`,
+      };
+    }
+    case 'policy.shared': {
+      const d = row.data as {
+        policyName?: string;
+        teamName?: string;
+        policyId?: string;
+      };
+      return {
+        text: labels.policyShared
+          .replace('{policyName}', d.policyName ?? 'a policy')
+          .replace('{teamName}', d.teamName ?? 'your team'),
+        href: d.policyId ? `/policies/${d.policyId}` : '/policies',
       };
     }
     default:

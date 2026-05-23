@@ -689,6 +689,61 @@ export const teamInvitations = pgTable(
 );
 
 // ============================================
+// Platform Setting (admin-controlled feature flags)
+// ============================================
+//
+// Generic key-value store for platform-wide toggles a SaaS admin
+// flips at runtime. First inhabitant: `policy_sharing.enabled` —
+// gates the policy → team sharing feature. Default OFF.
+//
+// Why a row-per-flag rather than envs:
+//   Workers can change envs only via a redeploy. Admins need an
+//   immediate kill-switch they can drive from /admin. Reads are
+//   cheap (small table, indexed by key) and the helper layer
+//   caches per-isolate.
+export const platformSettings = pgTable(
+  'PlatformSetting',
+  {
+    key: text('key').primaryKey().notNull(),
+    value: json('value').notNull(),
+    updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
+    updatedBy: text('updatedBy'),
+  },
+);
+
+// ============================================
+// Policy Share
+// ============================================
+//
+// Many-to-many: one policy can be shared with multiple teams.
+// The policy's *owner* (policies.userId, or policies.teamId for
+// team-owned policies) is separate from these share rows — owner
+// stays unique, shares are read/execute grants to additional teams.
+//
+// Permissions: a single fixed bundle ('view + execute') for now.
+// Edit access deliberately stays with the owner — multi-team edit
+// needs a conflict-resolution story we haven't designed yet.
+//
+// Composite unique on (policyId, teamId) so the same team can't be
+// double-added; the UI re-uses this for idempotent share creation.
+export const policyShares = pgTable(
+  'PolicyShare',
+  {
+    id: text('id').primaryKey().notNull(),
+    policyId: text('policyId').notNull(),
+    teamId: text('teamId').notNull(),
+    /** User who created the share (audit). */
+    sharedByUserId: text('sharedByUserId').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('PolicyShare_policy_team_key').on(table.policyId, table.teamId),
+    index('PolicyShare_teamId_idx').on(table.teamId),
+    index('PolicyShare_policyId_idx').on(table.policyId),
+  ]
+);
+
+// ============================================
 // Notification
 // ============================================
 //
@@ -1454,6 +1509,12 @@ export type NewTeamInvitation = InferInsertModel<typeof teamInvitations>;
 
 export type Notification = InferSelectModel<typeof notifications>;
 export type NewNotification = InferInsertModel<typeof notifications>;
+
+export type PlatformSetting = InferSelectModel<typeof platformSettings>;
+export type NewPlatformSetting = InferInsertModel<typeof platformSettings>;
+
+export type PolicyShare = InferSelectModel<typeof policyShares>;
+export type NewPolicyShare = InferInsertModel<typeof policyShares>;
 
 export type ApiKey = InferSelectModel<typeof apiKeys>;
 export type NewApiKey = InferInsertModel<typeof apiKeys>;

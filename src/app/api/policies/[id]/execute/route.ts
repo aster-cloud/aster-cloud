@@ -165,9 +165,34 @@ export async function POST(req: Request, { params }: RouteParams) {
     const isOwner = policy.userId === userId;
     const isPublic = policy.isPublic;
 
-    // 权限验证（团队成员资格已在 SQL 查询中获取）
+    // 权限验证（团队成员资格已在 SQL 查询中获取）。
+    // Slow-path fallback: policy may have been shared with one of
+    // the caller's teams via PolicyShare. Only consult that table
+    // when the fast path fails — most executions are owner / team-
+    // member, and a second query would slow the hot path. The
+    // platform admin can disable sharing via the
+    // policy_sharing.enabled flag; when OFF, shares are ignored
+    // entirely so a leftover row can't grant access.
+    let isSharedMember = false;
     if (!isOwner && !isPublic && !isTeamMember) {
-      return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
+      const { isPolicySharingEnabled } = await import(
+        '@/lib/platform-settings'
+      );
+      if (await isPolicySharingEnabled()) {
+        const sharedRow = await db.execute<{ ok: number }>(sql`
+          SELECT 1 AS ok
+          FROM "PolicyShare" ps
+          JOIN "TeamMember" tm ON tm."teamId" = ps."teamId"
+          WHERE ps."policyId" = ${id}
+            AND tm."userId" = ${userId}
+          LIMIT 1
+        `);
+        const sharedRows = sharedRow as unknown as Array<{ ok: number }>;
+        isSharedMember = sharedRows.length > 0;
+      }
+      if (!isSharedMember) {
+        return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
+      }
     }
 
     // 阶段3：乐观执行 - 尽早启动 API 调用

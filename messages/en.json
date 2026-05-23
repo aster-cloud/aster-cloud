@@ -1149,6 +1149,19 @@
       "actionError": "Action failed. Please try again.",
       "itemCount": "{count} items in trash",
       "daysRemaining": "{days} days remaining"
+    },
+    "share": {
+      "title": "Share with teams",
+      "subtitle": "Grant other teams view + execute access to this policy. Members of those teams can run it but not edit.",
+      "selectTeam": "Team",
+      "placeholderSelect": "Select a team…",
+      "noEligibleTeams": "No eligible teams to share with.",
+      "share": "Share",
+      "sharing": "Sharing…",
+      "revoke": "Revoke",
+      "viewExecute": "View + execute",
+      "addFailed": "Could not share the policy. Please try again.",
+      "revokeFailed": "Could not revoke the share. Please try again."
     }
   },
   "reports": {
@@ -1808,6 +1821,16 @@
         "empty": "No recent admin events.",
         "error": "Could not load audit log."
       }
+    },
+    "flags": {
+      "flagsHeading": "Feature flags",
+      "policySharingTitle": "Policy sharing across teams",
+      "policySharingDesc": "When enabled, policy owners can share a policy with additional teams (read + execute). Default OFF.",
+      "on": "On",
+      "off": "Off",
+      "enable": "Enable",
+      "disable": "Disable",
+      "saving": "Saving…"
     }
   },
   "renewal": {
@@ -2094,6 +2117,7 @@
     "timeAgoNow": "just now",
     "timeAgoMin": "{n} min ago",
     "timeAgoHour": "{n} h ago",
-    "timeAgoDay": "{n} d ago"
+    "timeAgoDay": "{n} d ago",
+    "policyShared": "A policy {policyName} was shared with {teamName}."
   }
 }
