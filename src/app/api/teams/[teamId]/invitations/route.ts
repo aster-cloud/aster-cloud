@@ -14,6 +14,7 @@ import {
 import { sendTeamInvitationEmail } from '@/lib/resend';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
+import { createNotification } from '@/lib/notifications';
 import { sql } from 'drizzle-orm';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
@@ -215,6 +216,24 @@ export async function POST(req: Request, { params }: RouteParams) {
       inviter?.name || '团队成员',
       token
     );
+
+    // In-app notification: if the invitee already has an account
+    // under this email, drop a notification into their bell feed so
+    // they see it without ever opening the invitation email. Done
+    // best-effort (createNotification swallows its own errors); a
+    // missing notification is not a reason to fail the invite.
+    if (userWithEmail) {
+      await createNotification({
+        userId: userWithEmail.id,
+        kind: 'team.invitation_received',
+        data: {
+          teamId,
+          teamName: team?.name ?? 'Team',
+          invitationId: invitation.id,
+          role,
+        },
+      });
+    }
 
     return NextResponse.json(
       {

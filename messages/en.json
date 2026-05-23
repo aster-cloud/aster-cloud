@@ -2084,5 +2084,16 @@
       }
     },
     "dismiss": "Hide this checklist"
+  },
+  "notifications": {
+    "label": "Notifications",
+    "empty": "No new notifications.",
+    "viewAll": "View all",
+    "invitationReceived": "You were invited to join {teamName} as {role}.",
+    "invitationAccepted": "{memberName} joined {teamName}.",
+    "timeAgoNow": "just now",
+    "timeAgoMin": "{n} min ago",
+    "timeAgoHour": "{n} h ago",
+    "timeAgoDay": "{n} d ago"
   }
 }

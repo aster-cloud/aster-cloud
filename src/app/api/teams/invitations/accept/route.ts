@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, teams, teamInvitations, teamMembers, users } from '@/lib/prisma';
+import { db, teams, teamInvitations, teamMembers, users, notifications } from '@/lib/prisma';
 import { eq, and, sql } from 'drizzle-orm';
 import { IS_SAAS } from '@/lib/deployment-mode';
 import { getStripe } from '@/lib/stripe';
+import { createNotification } from '@/lib/notifications';
 
 
 // POST /api/teams/invitations/accept - 接受邀请
@@ -105,11 +106,64 @@ export async function POST(req: Request) {
       await tx.delete(teamInvitations).where(eq(teamInvitations.id, invitation.id));
     });
 
+    // Tidy the originating "team.invitation_received" notification
+    // for this user so the bell drops the row immediately, instead
+    // of waiting for the user to dismiss it manually. Best-effort —
+    // a leftover row is harmless (clicking through it just lands on
+    // /teams where the invitation is already gone) so we don't fail
+    // the accept on a delete error.
+    try {
+      await db
+        .delete(notifications)
+        .where(
+          and(
+            eq(notifications.userId, session.user.id),
+            eq(notifications.kind, 'team.invitation_received'),
+            sql`(${notifications.data} ->> 'invitationId') = ${invitation.id}`,
+          ),
+        );
+    } catch (e) {
+      console.error('[invitation-accept] notification cleanup failed', e);
+    }
+
     // On-prem 不接 Stripe；跳过 seat sync。SaaS 模式才走这一步。
     if (IS_SAAS) {
       await syncStripeSeats(invitation.teamId).catch((err) => {
         console.error('[invitation-accept] Stripe seat sync failed', err);
       });
+    }
+
+    // Notify the team owner that someone joined. Best-effort —
+    // notification failures don't block the success response.
+    // We look up the owner + the new member's display name here
+    // rather than at write time so the inviter's bell shows the
+    // current (possibly post-rename) member name.
+    try {
+      const team = await db.query.teams.findFirst({
+        where: eq(teams.id, invitation.teamId),
+        columns: { ownerId: true, name: true },
+      });
+      const newMember = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+        columns: { name: true, email: true },
+      });
+      if (team && team.ownerId !== session.user.id) {
+        await createNotification({
+          userId: team.ownerId,
+          kind: 'team.invitation_accepted',
+          data: {
+            teamId: invitation.teamId,
+            teamName: team.name,
+            memberName:
+              newMember?.name ?? newMember?.email ?? 'A teammate',
+          },
+        });
+      }
+    } catch (notifErr) {
+      console.error(
+        '[invitation-accept] notify owner failed (non-fatal)',
+        notifErr,
+      );
     }
 
     return NextResponse.json({

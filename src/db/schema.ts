@@ -689,6 +689,42 @@ export const teamInvitations = pgTable(
 );
 
 // ============================================
+// Notification
+// ============================================
+//
+// Generic in-app notification feed. Powers the topbar bell + a future
+// drop-down inbox surface. Writers append; readers can mark-read or
+// dismiss. The schema is intentionally generic so we can add new
+// notification kinds (policy.shared, billing.dunning, etc.) without
+// migrations — the kind goes in the `kind` column and the rendering
+// payload in `data` JSON.
+//
+// Current kinds:
+//   - team.invitation_received  data: { teamId, teamName, invitationId, role }
+//   - team.invitation_accepted  data: { teamId, teamName, memberName }
+//
+// The pending-invitations card on /teams continues to read live data
+// from teamInvitations directly (so an invite that's still pending
+// after the user dismisses its notification still shows up); the
+// notifications table only drives the bell + transient feed.
+export const notifications = pgTable(
+  'Notification',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId').notNull(),
+    kind: text('kind').notNull(),
+    data: json('data').notNull(),
+    readAt: timestamp('readAt', { mode: 'date' }),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('Notification_userId_idx').on(table.userId),
+    index('Notification_userId_readAt_idx').on(table.userId, table.readAt),
+    index('Notification_createdAt_idx').on(table.createdAt),
+  ]
+);
+
+// ============================================
 // Compliance Report
 // ============================================
 
@@ -1415,6 +1451,9 @@ export type NewTeamMember = InferInsertModel<typeof teamMembers>;
 
 export type TeamInvitation = InferSelectModel<typeof teamInvitations>;
 export type NewTeamInvitation = InferInsertModel<typeof teamInvitations>;
+
+export type Notification = InferSelectModel<typeof notifications>;
+export type NewNotification = InferInsertModel<typeof notifications>;
 
 export type ApiKey = InferSelectModel<typeof apiKeys>;
 export type NewApiKey = InferInsertModel<typeof apiKeys>;

@@ -2084,5 +2084,16 @@
       }
     },
     "dismiss": "Diese Checkliste ausblenden"
+  },
+  "notifications": {
+    "label": "Benachrichtigungen",
+    "empty": "Keine neuen Benachrichtigungen.",
+    "viewAll": "Alle anzeigen",
+    "invitationReceived": "Du wurdest in {teamName} als {role} eingeladen.",
+    "invitationAccepted": "{memberName} ist {teamName} beigetreten.",
+    "timeAgoNow": "gerade eben",
+    "timeAgoMin": "vor {n} Min.",
+    "timeAgoHour": "vor {n} Std.",
+    "timeAgoDay": "vor {n} T."
   }
 }

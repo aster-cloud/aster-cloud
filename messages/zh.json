@@ -2084,5 +2084,16 @@
       }
     },
     "dismiss": "隐藏此清单"
+  },
+  "notifications": {
+    "label": "通知",
+    "empty": "暂无新通知。",
+    "viewAll": "查看全部",
+    "invitationReceived": "你被邀请加入 {teamName}，角色：{role}。",
+    "invitationAccepted": "{memberName} 加入了 {teamName}。",
+    "timeAgoNow": "刚刚",
+    "timeAgoMin": "{n} 分钟前",
+    "timeAgoHour": "{n} 小时前",
+    "timeAgoDay": "{n} 天前"
   }
 }

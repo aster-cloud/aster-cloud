@@ -9,6 +9,7 @@ import { CommandPalette } from '@/components/dashboard/command-palette';
 import { buildCommands } from '@/components/dashboard/command-palette-commands';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
+import { NotificationsBell } from '@/components/notifications/notifications-bell';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import {
@@ -202,6 +203,14 @@ export default async function DashboardLayout({
                   hintOpen:       tCmd('hintOpen'),
                 }}
               />
+              {/*
+                NotificationsBell sits between Cmd-K (search) and the
+                Theme/Lang switchers so the user's eye lands on it
+                naturally — same column as the user avatar. Polls
+                /api/notifications/count every 30s for the badge; the
+                drop-down lazy-loads the list on first open.
+              */}
+              <NotificationsBell />
               <ThemeToggle
                 labels={{
                   light: tCommon('themeLight'),

@@ -126,7 +126,33 @@ async function runSchemaPatch(): Promise<void> {
   await db.execute(
     sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "mustChangePassword" boolean NOT NULL DEFAULT false`,
   );
-  console.warn('[db-bootstrap] schema patch 0009 applied');
+
+  // Notification table — in-app notification feed used by the topbar
+  // bell + future inbox surfaces. Created here (rather than via a
+  // drizzle migration) so SaaS deploys self-heal on cold start, same
+  // pattern as the 0009 column above. `IF NOT EXISTS` keeps it
+  // idempotent across isolates.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "Notification" (
+      "id" text PRIMARY KEY NOT NULL,
+      "userId" text NOT NULL,
+      "kind" text NOT NULL,
+      "data" jsonb NOT NULL,
+      "readAt" timestamp,
+      "createdAt" timestamp NOT NULL DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "Notification_userId_idx" ON "Notification" ("userId")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "Notification_userId_readAt_idx" ON "Notification" ("userId", "readAt")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "Notification_createdAt_idx" ON "Notification" ("createdAt")
+  `);
+
+  console.warn('[db-bootstrap] schema patch 0009 + notifications applied');
 }
 
 /**

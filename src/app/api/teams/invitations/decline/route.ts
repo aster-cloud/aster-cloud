@@ -14,9 +14,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
-import { db, teamInvitations, users } from '@/lib/prisma';
+import { db, teamInvitations, users, notifications } from '@/lib/prisma';
 import { errorEnvelope } from '@/lib/api/error-envelope';
 
 export async function POST(req: Request) {
@@ -62,6 +62,21 @@ export async function POST(req: Request) {
     await db
       .delete(teamInvitations)
       .where(and(eq(teamInvitations.id, invitationId)));
+
+    // Clean up the bell-feed notification too. Best-effort.
+    try {
+      await db
+        .delete(notifications)
+        .where(
+          and(
+            eq(notifications.userId, session.user.id),
+            eq(notifications.kind, 'team.invitation_received'),
+            sql`(${notifications.data} ->> 'invitationId') = ${invitationId}`,
+          ),
+        );
+    } catch (e) {
+      console.error('[invitations decline] notification cleanup failed', e);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

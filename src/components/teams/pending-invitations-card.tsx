@@ -88,6 +88,12 @@ export function PendingInvitationsCard() {
 
   useEffect(() => {
     reload();
+    // Same 30s cadence as the topbar bell so an invite that lands
+    // while the user is sitting on /teams surfaces without a manual
+    // refresh. Cheap query (single email-matched select), bounded by
+    // the user's actual pending count.
+    const id = window.setInterval(reload, 30_000);
+    return () => window.clearInterval(id);
   }, [reload]);
 
   const onAccept = useCallback(
