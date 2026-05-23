@@ -27,14 +27,13 @@
  */
 
 import { NextResponse } from 'next/server';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
 import {
   db,
   policies,
   policyShares,
   teams,
-  teamMembers,
   auditLogs,
   SHARE_PERMISSIONS,
   type SharePermission,
@@ -201,44 +200,44 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
 
-    const shareId = globalThis.crypto.randomUUID();
-    let prevPermission: SharePermission | null = null;
-    try {
-      await db.insert(policyShares).values({
-        id: shareId,
-        policyId: id,
-        teamId,
-        permission,
-        sharedByUserId: session.user.id,
-        createdAt: new Date(),
-      });
-    } catch (insertErr) {
-      // Unique-constraint violation → already shared. Update the
-      // existing row's permission so re-sharing with a different
-      // tier is the upgrade/downgrade path, not a noop.
-      const msg = insertErr instanceof Error ? insertErr.message : String(insertErr);
-      if (!msg.includes('PolicyShare_policy_team_key') && !msg.includes('duplicate key')) {
-        throw insertErr;
-      }
-      const existing = await db.query.policyShares.findFirst({
-        where: and(
-          eq(policyShares.policyId, id),
-          eq(policyShares.teamId, teamId),
-        ),
-      });
-      prevPermission = (existing?.permission ?? 'execute') as SharePermission;
-      if (existing && existing.permission !== permission) {
-        await db
-          .update(policyShares)
-          .set({ permission })
-          .where(
-            and(
-              eq(policyShares.policyId, id),
-              eq(policyShares.teamId, teamId),
-            ),
-          );
-      }
+    // Atomic upsert: a re-share with a different tier becomes an
+    // in-place permission update. The CTE returns (id, prev) so we
+    // know whether this was a first share (prev IS NULL) or a tier
+    // change. Avoids the brittle "catch unique violation by string-
+    // matching the error message" pattern and closes the TOCTOU race
+    // window where two concurrent shares could both see "no row".
+    const newId = globalThis.crypto.randomUUID();
+    const upsertRows = (await db.execute(sql`
+      WITH prev AS (
+        SELECT id, "permission"
+        FROM "PolicyShare"
+        WHERE "policyId" = ${id} AND "teamId" = ${teamId}
+      ),
+      upserted AS (
+        INSERT INTO "PolicyShare" (id, "policyId", "teamId", "permission", "sharedByUserId", "createdAt")
+        VALUES (${newId}, ${id}, ${teamId}, ${permission}, ${session.user.id}, NOW())
+        ON CONFLICT ("policyId", "teamId") DO UPDATE
+          SET "permission" = EXCLUDED."permission"
+        RETURNING id
+      )
+      SELECT upserted.id AS share_id,
+             prev."permission" AS prev_permission
+      FROM upserted
+      LEFT JOIN prev ON TRUE
+    `)) as unknown as Array<{ share_id: string; prev_permission: string | null }>;
+
+    const shareRow = upsertRows[0];
+    if (!shareRow) {
+      // Defensive: the upsert always returns a row (INSERT or UPDATE).
+      // If we hit this branch, treat as a hard failure so the client
+      // sees a 5xx instead of a silently-empty success.
+      throw new Error('Upsert returned no row');
     }
+    const shareId = shareRow.share_id;
+    const prevPermission =
+      shareRow.prev_permission === null
+        ? null
+        : (shareRow.prev_permission as SharePermission);
 
     // Audit log — every share / permission change. Never blocks the
     // response; failures land in the Worker log alongside the
@@ -396,8 +395,3 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     return env;
   }
 }
-
-// Avoid unused-import warning on teamMembers (used transitively via
-// checkTeamPermission). Re-export type to keep the import alive for
-// future expansions (e.g. listing members on owner role checks).
-export type _TeamMembersAlive = typeof teamMembers;
