@@ -49,6 +49,25 @@ jobs:
             fi
           done
 
+  # ZAP baseline jobs share two non-default settings:
+  #   fail_action: false           — warn-only; baseline noise (CSP wildcard,
+  #                                   STS header, X-Powered-By, etc.) is
+  #                                   reported in the artifact but never
+  #                                   blocks the schedule.
+  #   allow_issue_writing: false   — the action's default behavior is to
+  #                                   POST one GitHub issue per WARN-NEW
+  #                                   finding, which (a) needs `issues:
+  #                                   write` permission we intentionally
+  #                                   don't grant the workflow, and (b)
+  #                                   floods the repo issue tracker every
+  #                                   Sunday with the same baseline noise.
+  #                                   Disabling issue writes is what fixes
+  #                                   the "Resource not accessible by
+  #                                   integration" failure on prior runs.
+  #   artifact_name                — namespaced per target so both jobs'
+  #                                   HTML/JSON reports survive on the
+  #                                   workflow run rather than colliding
+  #                                   on the default "zap_scan" key.
   zap-baseline-cloud:
     runs-on: ubuntu-latest
     steps:
@@ -57,7 +76,9 @@ jobs:
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: https://aster-lang.cloud
-          fail_action: false  # 报告但不阻塞（避免误报阻挡）
+          fail_action: false
+          allow_issue_writing: false
+          artifact_name: zap-baseline-cloud
 
   zap-baseline-api:
     runs-on: ubuntu-latest
@@ -68,3 +89,5 @@ jobs:
         with:
           target: https://policy.aster-lang.dev
           fail_action: false
+          allow_issue_writing: false
+          artifact_name: zap-baseline-api
