@@ -25,11 +25,31 @@ const MIXPANEL_DOMAINS = [
   'https://api.mixpanel.com',
 ];
 
-// aster-api 直连域名（AI generate/explain/complete SSE 走客户端 fetch，
-// 不经 Next.js server proxy，所以必须在 connect-src 列白）
-const ASTER_API_DOMAINS = [
-  'https://policy.aster-lang.dev',
-];
+// aster-api 直连域名（AI generate/explain/complete SSE + lexicons stream
+// 走客户端 fetch，不经 Next.js server proxy，所以必须在 connect-src 列白）。
+//
+// On-prem 部署通过 NEXT_PUBLIC_ASTER_POLICY_API_URL 把 aster-api 指向
+// 客户内网（e.g. https://policy.internal.example.com 或
+// http://localhost:58080 for local dry-run）。CSP allow-list 也必须跟着
+// 走，否则浏览器拦掉 fetch — 这是 May 2026 E2E 暴露的 bug 之一。
+//
+// 数据流：next.config.ts 没有镜像这个 env 到 NEXT_PUBLIC_*（已经是公开
+// 前缀的不需要镜像）；server-side CSP 直接读 process.env 即可。SaaS
+// 部署不设这个 env → 回落到生产 SaaS 域名，行为不变。
+function computeAsterApiDomains(): string[] {
+  const configured = process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL;
+  if (!configured) return ['https://policy.aster-lang.dev'];
+  try {
+    const u = new URL(configured);
+    // CSP 只接受 scheme://host[:port]，剥掉 path / trailing slash
+    return [`${u.protocol}//${u.host}`];
+  } catch {
+    // 配置不是合法 URL — 退回默认避免在 boot 时炸；运维会在浏览器看到
+    // CORS / connect-src 报错很快意识到。
+    return ['https://policy.aster-lang.dev'];
+  }
+}
+const ASTER_API_DOMAINS = computeAsterApiDomains();
 
 // Monaco Editor 默认从 jsDelivr 加载 worker/loader/main bundle 和 sourcemap
 // （@monaco-editor/react 的运行时行为）。需要在 script/style/connect 三处都列白。
