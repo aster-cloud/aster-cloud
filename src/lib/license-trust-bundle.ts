@@ -52,7 +52,10 @@ const KNOWN_LOW_ORDER_PUBKEYS: ReadonlySet<string> = new Set([
   'XOcCqGY6moRZqAcg++qXa4P5pQ3lkF8Y6vRTNNn/8j8=',
 ]);
 
-export const ASTER_TRUST_BUNDLE: readonly TrustBundleEntry[] = [
+// Base bundle baked into the binary. Release pipeline rewrites the
+// __dev-* entries to real Vault-extracted public keys (see
+// license-key-ceremony.md §4) before producing the on-prem image.
+const BASE_BUNDLE: readonly TrustBundleEntry[] = [
   {
     keyId: '__dev-lic-2026-01__',
     purpose: 'license',
@@ -70,6 +73,53 @@ export const ASTER_TRUST_BUNDLE: readonly TrustBundleEntry[] = [
     fingerprint: DEV_REV_FINGERPRINT,
   },
 ] as const;
+
+// E2E hook: ASTER_TEST_TRUST_BUNDLE_EXTRA carries a JSON array of
+// extra TrustBundleEntry objects to append at module load. Required
+// for the on-prem license-flow E2E harness in
+// docs/on-prem/testing/, where we mint our own Ed25519 keypair, sign
+// a license payload locally, then need the freshly-generated public
+// key to be recognized by the verify path.
+//
+// Only honored when ASTER_ALLOW_DEV_TRUST_BUNDLE=true (= explicit
+// operator escape hatch — see comment block at the dev-key assert
+// below). SaaS builds never set either env. Production on-prem
+// deployments must not set either env; if they do, the
+// dev-placeholder assert will fail-fast because the base bundle
+// still contains __dev-* entries.
+function readExtraBundle(): readonly TrustBundleEntry[] {
+  const raw = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env?.ASTER_TEST_TRUST_BUNDLE_EXTRA;
+  if (!raw) return [];
+  const allowDev =
+    (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process?.env?.ASTER_ALLOW_DEV_TRUST_BUNDLE === 'true';
+  if (!allowDev) {
+    throw new Error(
+      '[license-trust-bundle] ASTER_TEST_TRUST_BUNDLE_EXTRA is set but ' +
+        'ASTER_ALLOW_DEV_TRUST_BUNDLE is not "true". Refusing to extend the ' +
+        'trust bundle from env in a production-shaped runtime.',
+    );
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error('ASTER_TEST_TRUST_BUNDLE_EXTRA must be a JSON array');
+    }
+    return parsed as TrustBundleEntry[];
+  } catch (err) {
+    throw new Error(
+      `[license-trust-bundle] ASTER_TEST_TRUST_BUNDLE_EXTRA parse failed: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+}
+
+export const ASTER_TRUST_BUNDLE: readonly TrustBundleEntry[] = [
+  ...BASE_BUNDLE,
+  ...readExtraBundle(),
+];
 
 function assertUniqueKeyIds(bundle: readonly TrustBundleEntry[]): void {
   const seen = new Set<string>();
