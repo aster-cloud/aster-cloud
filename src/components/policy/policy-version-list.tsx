@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import type { PolicyVersionStatus } from '@/lib/prisma';
 import { VersionStatusBadge } from './version-status-badge';
 import { ConfirmDialog } from '@/components/ui';
@@ -54,6 +55,8 @@ export function PolicyVersionList({
   onReject,
   onViewSource,
 }: PolicyVersionListProps) {
+  const t = useTranslations('policies.versions');
+  const locale = useLocale();
   const [actionDialog, setActionDialog] = useState<ActionDialogState>({
     open: false,
     type: null,
@@ -147,9 +150,9 @@ export function PolicyVersionList({
         };
       case 'submit':
         return {
-          title: '提交审批',
-          description: `确定要将 v${v?.version} 提交审批吗？`,
-          confirmLabel: '提交',
+          title: t('submitDialogTitle', { n: v?.version ?? 0 }),
+          description: t('submitDialogBody', { n: v?.version ?? 0 }),
+          confirmLabel: t('submitForApproval'),
           variant: 'info' as const,
           showComment: false,
         };
@@ -181,7 +184,7 @@ export function PolicyVersionList({
           showComment: false,
         };
     }
-  }, [actionDialog]);
+  }, [actionDialog, t]);
 
   const dialogConfig = getDialogConfig();
 
@@ -236,7 +239,9 @@ export function PolicyVersionList({
 
                 <div className="mt-2 flex items-center gap-4 text-xs text-fg-muted dark:text-fg-muted">
                   <span>
-                    创建于 {new Date(version.createdAt).toLocaleString('zh-CN')}
+                    {t('createdOn', {
+                      date: new Date(version.createdAt).toLocaleString(locale),
+                    })}
                   </span>
                   {version.sourceHash && (
                     <span className="font-mono">
@@ -268,7 +273,7 @@ export function PolicyVersionList({
                     onClick={() => onViewSource(version.version)}
                     className="text-sm text-fg-muted dark:text-fg-subtle hover:text-fg dark:hover:text-white px-2 py-1"
                   >
-                    查看源码
+                    {t('viewSource')}
                   </button>
                 )}
 
@@ -278,7 +283,7 @@ export function PolicyVersionList({
                     onClick={() => openActionDialog('submit', version)}
                     className="text-sm bg-primary hover:bg-primary-hover text-white px-3 py-1.5 rounded-md"
                   >
-                    提交审批
+                    {t('submitForApproval')}
                   </button>
                 )}
 

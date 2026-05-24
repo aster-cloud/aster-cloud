@@ -971,6 +971,13 @@
     "versions": {
       "title": "Versionen & Freigaben",
       "subtitle": "Jedes Speichern erzeugt eine neue Version. Freigabe-Gates steuern, welche Versionen ausgeführt werden dürfen.",
+      "panelTitle": "Versionen",
+      "compare": "Versionen vergleichen",
+      "createdOn": "Erstellt {date}",
+      "viewSource": "Quelle anzeigen",
+      "submitForApproval": "Zur Freigabe einreichen",
+      "submitDialogTitle": "Version {n} zur Freigabe einreichen",
+      "submitDialogBody": "Möchten Sie v{n} wirklich zur Freigabe einreichen?",
       "breadcrumb": "Versionen",
       "newVersion": "Neue Version",
       "noVersions": "Noch keine Versionen",

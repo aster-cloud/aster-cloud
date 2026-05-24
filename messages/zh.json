@@ -971,6 +971,13 @@
     "versions": {
       "title": "版本与审批",
       "subtitle": "每次保存生成新版本，审批闸门决定哪些版本可以执行。",
+      "panelTitle": "版本管理",
+      "compare": "版本对比",
+      "createdOn": "创建于 {date}",
+      "viewSource": "查看源码",
+      "submitForApproval": "提交审批",
+      "submitDialogTitle": "提交 v{n} 审批",
+      "submitDialogBody": "确定要将 v{n} 提交审批吗？",
       "breadcrumb": "版本",
       "newVersion": "新建版本",
       "noVersions": "暂无版本",

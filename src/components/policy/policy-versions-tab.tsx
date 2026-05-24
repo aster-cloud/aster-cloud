@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { PolicyVersionList, type PolicyVersionInfo } from './policy-version-list';
 import { VersionDetailPanel } from './version-detail-panel';
 import { VersionComparePanel } from './version-compare-panel';
@@ -15,6 +16,8 @@ type ViewMode = 'list' | 'detail' | 'compare';
 
 export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
   const { data: session } = useSession();
+  const t = useTranslations('policies.versions');
+  const tCommon = useTranslations('common');
   const {
     versions,
     loading,
@@ -128,7 +131,7 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
           onClick={refresh}
           className="mt-4 text-primary dark:text-primary hover:underline"
         >
-          重试
+          {tCommon('retry')}
         </button>
       </div>
     );
@@ -140,14 +143,14 @@ export function PolicyVersionsTab({ policyId }: PolicyVersionsTabProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-fg dark:text-white">
-            版本管理
+            {t('panelTitle')}
           </h3>
           {viewMode === 'list' && (versions as PolicyVersionInfo[]).length >= 2 && (
             <button
               onClick={handleOpenCompare}
               className="text-sm text-primary dark:text-primary hover:underline"
             >
-              版本对比
+              {t('compare')}
             </button>
           )}
         </div>

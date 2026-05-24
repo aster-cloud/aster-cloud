@@ -971,6 +971,13 @@
     "versions": {
       "title": "Versions & approvals",
       "subtitle": "Every save is a new version. Approval gates govern which versions can execute.",
+      "panelTitle": "Versions",
+      "compare": "Compare versions",
+      "createdOn": "Created {date}",
+      "viewSource": "View source",
+      "submitForApproval": "Submit for approval",
+      "submitDialogTitle": "Submit version {n} for approval",
+      "submitDialogBody": "Are you sure you want to submit v{n} for approval?",
       "breadcrumb": "Versions",
       "newVersion": "New version",
       "noVersions": "No versions yet",
