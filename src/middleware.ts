@@ -125,6 +125,64 @@ export default async function middleware(request: NextRequest) {
   // request headers; otherwise we just attach security headers and return.
   const response = handleI18nRouting(request);
 
+  // Standalone-runtime loop-breaker for next-intl 4.x + `localePrefix:
+  // 'as-needed'`.
+  //
+  // The interaction that creates the loop:
+  //   1. GET /          → next-intl rewrites to /en (sets
+  //                       x-middleware-rewrite, status 200)
+  //   2. Node internally re-routes to /en and re-runs middleware
+  //   3. next-intl on /en (default locale prefixed) returns a redirect
+  //      back to / with status 307 + `Location: /`
+  //   4. Browser navigates / → step 1 → ERR_TOO_MANY_REDIRECTS
+  //
+  // On Cloudflare Workers (= SaaS), the runtime flags internal re-routes
+  // so middleware is NOT re-invoked for the rewritten hop, step 3 never
+  // fires, and the user sees the / URL with /en's content. On Node
+  // standalone (= on-prem), middleware DOES re-run, and we hit the loop.
+  //
+  // Fix: when next-intl wants to redirect a default-locale-prefixed
+  // path back to its unprefixed form, just serve the prefixed path
+  // as-is. The user-visible URL becomes /en/foo instead of /foo for
+  // default locale on standalone — slightly suboptimal vs SaaS but
+  // functional, and avoids the loop entirely. Non-default locales
+  // (/de/foo, /zh/foo) are unaffected: they always retain their prefix
+  // in `as-needed` mode by design and next-intl never asks for a strip.
+  //
+  // SaaS impact: zero. Cloudflare runtime intercepts the rewrite before
+  // middleware re-runs, so the conditions in this branch (status 307 +
+  // Location pointing back to the unprefixed form) never simultaneously
+  // hold there. The branch is a no-op on SaaS.
+  if (response.status === 307 && response.headers.has('location')) {
+    const loc = response.headers.get('location') ?? '';
+    let locPath: string;
+    try {
+      locPath = new URL(loc, request.url).pathname;
+    } catch {
+      locPath = loc;
+    }
+    const defaultPrefix = `/${defaultLocale}`;
+    const isDefaultPrefixStrip =
+      pathname === defaultPrefix ||
+      pathname.startsWith(`${defaultPrefix}/`);
+    const wouldBeUnprefixed =
+      isDefaultPrefixStrip &&
+      (locPath === '/' ||
+        locPath === pathname.slice(defaultPrefix.length) ||
+        locPath === pathname.slice(defaultPrefix.length) + '/');
+    if (wouldBeUnprefixed) {
+      const passthrough = NextResponse.next({
+        request: { headers: downstreamHeaders },
+      });
+      // Preserve cookies that next-intl set on the original response.
+      for (const cookie of response.cookies.getAll()) {
+        passthrough.cookies.set(cookie);
+      }
+      applySecurityHeaders(passthrough, nonce);
+      return passthrough;
+    }
+  }
+
   // Attach our enriched request headers via the x-middleware-request-* mechanism
   // that NextResponse.next uses. The cleanest path: if i18n returned a rewrite
   // (most common case), it already has the request headers baked in; we just
