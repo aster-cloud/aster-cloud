@@ -1820,7 +1820,8 @@
         "expired": "Diese Lizenz ist abgelaufen. Verlängern Sie sie, um Admin-Operationen wiederherzustellen.",
         "malformed": "Lizenzschlüssel ist fehlerhaft. Setzen Sie eine gültige LICENSE_KEY-Umgebungsvariable.",
         "binding-mismatch": "Diese Lizenz ist an ein anderes Deployment gebunden, oder ASTER_DEPLOYMENT_ID fehlt/ist falsch konfiguriert. Setzen Sie den korrekten Wert oder kontaktieren Sie den Vertrieb für eine Neuausstellung.",
-        "missing": "Keine LICENSE_KEY konfiguriert. Setzen Sie die Umgebungsvariable, um Admin-Operationen wiederherzustellen."
+        "missing": "Keine LICENSE_KEY konfiguriert. Setzen Sie die Umgebungsvariable, um Admin-Operationen wiederherzustellen.",
+        "clock-rollback": "Die Systemuhr scheint über die Sicherheitstoleranz hinaus zurückgesetzt worden zu sein. Korrekte Zeit per NTP wiederherstellen — die Lizenzprüfung wurde ausgesetzt, um den Replay einer abgelaufenen Lizenz zu verhindern."
       },
       "viewLicense": "Lizenzstatus anzeigen"
     },

@@ -1820,7 +1820,8 @@
         "expired": "This license has expired. Renew to restore admin operations.",
         "malformed": "License key is malformed. Restore a valid LICENSE_KEY environment variable.",
         "binding-mismatch": "This license is bound to a different deployment, or ASTER_DEPLOYMENT_ID is missing/misconfigured. Restore the correct env value or contact sales for a reissued license.",
-        "missing": "No LICENSE_KEY configured. Set the environment variable to restore admin operations."
+        "missing": "No LICENSE_KEY configured. Set the environment variable to restore admin operations.",
+        "clock-rollback": "The system clock appears to have moved backwards beyond the safety tolerance. Restore correct time via NTP — license verification has been suspended to prevent expired-license replay."
       },
       "viewLicense": "View license status"
     },

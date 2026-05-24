@@ -16,7 +16,8 @@ export type ReadOnlyReason =
   | 'expired'
   | 'malformed'
   | 'binding-mismatch'
-  | 'missing';
+  | 'missing'
+  | 'clock-rollback';
 
 export async function ReadOnlyBanner({ reason }: { reason: ReadOnlyReason }) {
   const t = await getTranslations('admin.readOnly');

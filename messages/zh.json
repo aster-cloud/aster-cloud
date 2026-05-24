@@ -1820,7 +1820,8 @@
         "expired": "此许可证已过期。续约以恢复管理员操作。",
         "malformed": "许可证密钥格式错误。请恢复有效的 LICENSE_KEY 环境变量。",
         "binding-mismatch": "此许可证绑定到其他部署，或 ASTER_DEPLOYMENT_ID 缺失/配错。请恢复正确的环境变量值，或联系销售重新签发。",
-        "missing": "未配置 LICENSE_KEY。请设置环境变量以恢复管理员操作。"
+        "missing": "未配置 LICENSE_KEY。请设置环境变量以恢复管理员操作。",
+        "clock-rollback": "系统时钟看起来已超出安全容差向后回拨。请通过 NTP 恢复正确时间——许可证验证已挂起，以防止已过期许可证被重放使用。"
       },
       "viewLicense": "查看许可证状态"
     },
