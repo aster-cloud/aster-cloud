@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface InvitationInfo {
   teamName: string;
@@ -49,7 +50,7 @@ export default function AcceptInvitePage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to accept invitation');
+        throw new Error(extractErrorMessage(data) || 'Failed to accept invitation');
       }
 
       // 接受成功，跳转到团队页面

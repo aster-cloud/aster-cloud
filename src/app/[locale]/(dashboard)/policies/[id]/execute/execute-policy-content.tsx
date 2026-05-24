@@ -24,6 +24,7 @@ const FUNCTION_LABEL: Record<string, string> = {
 };
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 // Map policy locale to CNL Lexicon objects
 type PolicyLocale = 'zh' | 'de' | 'en';
@@ -257,7 +258,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
 
       if (!res.ok) {
         // 优先显示详细消息，支持冻结和配额超限场景
-        const errorMessage = data.message || data.error || t('executionFailed');
+        const errorMessage = data.message || extractErrorMessage(data) || t('executionFailed');
         setError(errorMessage);
         // 保存是否需要升级的标志
         if (data.upgrade || data.frozen) {

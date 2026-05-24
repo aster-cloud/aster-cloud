@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { PolicyVersionStatus } from '@/lib/prisma';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 /**
  * 版本信息
@@ -129,7 +130,7 @@ export function usePolicyVersions({
       if (response.ok) {
         setVersions(data.versions || []);
       } else {
-        setError(data.error || '获取版本列表失败');
+        setError(extractErrorMessage(data) || '获取版本列表失败');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误');
@@ -166,7 +167,7 @@ export function usePolicyVersions({
           await refresh();
           return data;
         } else {
-          setError(data.error || '创建版本失败');
+          setError(extractErrorMessage(data) || '创建版本失败');
           return null;
         }
       } catch (err) {
@@ -194,7 +195,7 @@ export function usePolicyVersions({
           await refresh();
           return true;
         } else {
-          setError(data.error || '设置默认版本失败');
+          setError(extractErrorMessage(data) || '设置默认版本失败');
           return false;
         }
       } catch (err) {
@@ -226,7 +227,7 @@ export function usePolicyVersions({
           await refresh();
           return true;
         } else {
-          setError(data.error || '废弃版本失败');
+          setError(extractErrorMessage(data) || '废弃版本失败');
           return false;
         }
       } catch (err) {
@@ -258,7 +259,7 @@ export function usePolicyVersions({
           await refresh();
           return true;
         } else {
-          setError(data.error || '归档版本失败');
+          setError(extractErrorMessage(data) || '归档版本失败');
           return false;
         }
       } catch (err) {
@@ -286,7 +287,7 @@ export function usePolicyVersions({
           await refresh();
           return true;
         } else {
-          setError(data.error || '提交审批失败');
+          setError(extractErrorMessage(data) || '提交审批失败');
           return false;
         }
       } catch (err) {
@@ -356,7 +357,7 @@ export function usePolicyVersions({
           await refresh();
           return true;
         } else {
-          setError(data.error || '拒绝失败');
+          setError(extractErrorMessage(data) || '拒绝失败');
           return false;
         }
       } catch (err) {
@@ -409,7 +410,7 @@ export function useDefaultVersion(policyId: string) {
           versions.find((v) => v.isDefault) || versions[0] || null;
         setDefaultVersion(defaultVer);
       } else {
-        setError(data.error || '获取版本失败');
+        setError(extractErrorMessage(data) || '获取版本失败');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误');

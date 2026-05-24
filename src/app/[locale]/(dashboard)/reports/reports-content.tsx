@@ -7,6 +7,7 @@ import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { formatDate } from '@/lib/format';
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { Breadcrumbs, ListSearchInput } from '@/components/ui';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface ComplianceReport {
   id: string;
@@ -116,9 +117,9 @@ export function ReportsContent({
 
       if (!res.ok) {
         if (data.upgrade) {
-          setError(data.error);
+          setError(extractErrorMessage(data) || 'Upgrade required');
         } else {
-          throw new Error(data.error || 'Failed to generate report');
+          throw new Error(extractErrorMessage(data) || 'Failed to generate report');
         }
         return;
       }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { PolicyVersionStatus } from '@/lib/prisma';
 import { VersionStatusBadge } from './version-status-badge';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface ApprovalRecord {
   id: string;
@@ -64,7 +65,7 @@ export function VersionDetailPanel({
       if (response.ok) {
         setDetail(data);
       } else {
-        setError(data.error || '获取版本详情失败');
+        setError(extractErrorMessage(data) || '获取版本详情失败');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '未知错误');

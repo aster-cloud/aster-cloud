@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 import {
   Alert,
   AlertDescription,
@@ -44,7 +45,7 @@ export default function ForgotPasswordPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Something went wrong');
+        throw new Error(extractErrorMessage(data) || 'Something went wrong');
       }
       setIsSubmitted(true);
     } catch (err) {

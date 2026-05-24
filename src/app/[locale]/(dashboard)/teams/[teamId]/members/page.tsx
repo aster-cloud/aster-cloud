@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
 import { ConfirmDialog, Input, Label, Select } from '@/components/ui';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Member {
   id: string;
@@ -86,7 +87,7 @@ export default function TeamMembersPage() {
       // 检查团队请求
       if (!teamRes.ok) {
         const data = await teamRes.json();
-        throw new Error(data.error || 'Failed to fetch team');
+        throw new Error(extractErrorMessage(data) || 'Failed to fetch team');
       }
 
       const teamData = await teamRes.json();
@@ -96,7 +97,7 @@ export default function TeamMembersPage() {
       // 检查成员列表请求
       if (!membersRes.ok) {
         const data = await membersRes.json();
-        throw new Error(data.error || t('members.loadFailed'));
+        throw new Error(extractErrorMessage(data) || t('members.loadFailed'));
       }
       const membersData = await membersRes.json();
       setMembers(membersData.members);
@@ -110,7 +111,7 @@ export default function TeamMembersPage() {
       // 检查邀请列表请求
       if (!invitationsRes.ok) {
         const data = await invitationsRes.json();
-        throw new Error(data.error || t('members.invitationsLoadFailed'));
+        throw new Error(extractErrorMessage(data) || t('members.invitationsLoadFailed'));
       }
       const invitationsData = await invitationsRes.json();
       setInvitations(invitationsData.invitations);
@@ -133,7 +134,7 @@ export default function TeamMembersPage() {
       const res = await fetch(`/api/teams/${teamId}/members?limit=100&offset=${members.length}`);
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || t('members.loadFailed'));
+        throw new Error(extractErrorMessage(data) || t('members.loadFailed'));
       }
       const data = await res.json();
       setMembers((prev) => [...prev, ...data.members]);
@@ -166,7 +167,7 @@ export default function TeamMembersPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to send invitation');
+        throw new Error(extractErrorMessage(data) || 'Failed to send invitation');
       }
 
       setInvitations((prev) => [...prev, data]);
@@ -198,7 +199,7 @@ export default function TeamMembersPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to update role');
+        throw new Error(extractErrorMessage(data) || 'Failed to update role');
       }
 
       setMembers((prev) =>
@@ -226,7 +227,7 @@ export default function TeamMembersPage() {
         );
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || t('members.revokeFailed'));
+          throw new Error(extractErrorMessage(data) || t('members.revokeFailed'));
         }
         setInvitations((prev) =>
           prev.filter((i) => i.id !== pendingAction.invitationId),
@@ -238,7 +239,7 @@ export default function TeamMembersPage() {
         );
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || 'Failed to remove member');
+          throw new Error(extractErrorMessage(data) || 'Failed to remove member');
         }
         setMembers((prev) => prev.filter((m) => m.id !== pendingAction.memberId));
         setTotalMembers((prev) => Math.max(0, prev - 1));
@@ -252,7 +253,7 @@ export default function TeamMembersPage() {
         );
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || 'Failed to leave team');
+          throw new Error(extractErrorMessage(data) || 'Failed to leave team');
         }
         router.push(`/${locale}/teams`);
         return; // skip clearing — navigation away kills this component

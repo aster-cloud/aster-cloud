@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Breadcrumbs, ConfirmDialog, Input, Label, Select } from '@/components/ui';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface BYOKBinding {
   id: string;
@@ -75,7 +76,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(data.error || t('saveFailed', { status: r.status }));
+        setError(extractErrorMessage(data) || t('saveFailed', { status: r.status }));
         return;
       }
       setApiKey('');
@@ -101,7 +102,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       );
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(data.error || t('revokeFailed', { status: r.status }));
+        setError(extractErrorMessage(data) || t('revokeFailed', { status: r.status }));
         return;
       }
       await refresh();

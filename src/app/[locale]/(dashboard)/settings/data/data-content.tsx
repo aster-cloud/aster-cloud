@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 import {
   Breadcrumbs,
   Button,
@@ -41,7 +42,7 @@ export function DataContent() {
       const res = await fetch('/api/user/ai-data-export');
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(t('downloadFailure', { error: data.error || res.status }));
+        toast.error(t('downloadFailure', { error: extractErrorMessage(data) || res.status }));
         return;
       }
       const blob = await res.blob();
@@ -74,7 +75,7 @@ export function DataContent() {
         error?: string;
       };
       if (!res.ok) {
-        toast.error(t('deleteCard.failure', { error: data.error || res.status }));
+        toast.error(t('deleteCard.failure', { error: extractErrorMessage(data) || res.status }));
         return;
       }
       toast.success(

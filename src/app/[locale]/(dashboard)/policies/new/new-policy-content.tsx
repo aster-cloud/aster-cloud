@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { PolicyForm } from '@/components/policy/policy-form';
 import type { PolicyDraftFields } from '@/components/policy/policy-form/use-policy-draft';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 /**
  * /policies/new — thin wrapper around <PolicyForm>.
@@ -49,7 +50,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       const data = await res.json();
       if (!res.ok) {
         return {
-          message: data.message || data.error || t('form.failedToCreate'),
+          message: data.message || extractErrorMessage(data) || t('form.failedToCreate'),
           upgrade: !!data.upgrade,
         };
       }

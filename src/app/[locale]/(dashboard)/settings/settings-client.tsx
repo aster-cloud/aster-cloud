@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { ConfirmDialog } from '@/components/ui';
 import { Alert, AlertDescription, Button, cn } from '@/components/ui';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
 
@@ -157,7 +158,7 @@ export function DeleteAccountFlow({
       const response = await fetch('/api/user/delete', { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to delete account');
+        throw new Error(extractErrorMessage(data) || 'Failed to delete account');
       }
       await signOut({ callbackUrl });
     } catch (error) {

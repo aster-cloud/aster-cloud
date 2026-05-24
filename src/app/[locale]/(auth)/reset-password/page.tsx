@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Link, useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 function ResetPasswordContent() {
   const t = useTranslations('auth.resetPassword');
@@ -50,7 +51,7 @@ function ResetPasswordContent() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Something went wrong');
+        throw new Error(extractErrorMessage(data) || 'Something went wrong');
       }
 
       setIsSuccess(true);

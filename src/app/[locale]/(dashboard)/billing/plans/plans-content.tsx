@@ -15,6 +15,7 @@ import {
   PlanType,
 } from '@/lib/plans';
 import FAQSection from './FAQSection';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 // PM v1.1：Pricing 页只展示 Free / Pro / Enterprise 三档
 const DISPLAY_PLANS: PlanType[] = ['free', 'pro', 'enterprise'];
@@ -140,7 +141,7 @@ function BillingContentInner({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create checkout session');
+        throw new Error(extractErrorMessage(data) || 'Failed to create checkout session');
       }
 
       // Redirect to Stripe Checkout

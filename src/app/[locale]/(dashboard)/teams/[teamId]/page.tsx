@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Team {
   id: string;
@@ -63,7 +64,7 @@ export default function TeamDashboardPage() {
 
       if (!teamRes.ok) {
         const data = await teamRes.json();
-        throw new Error(data.error || 'Failed to fetch team');
+        throw new Error(extractErrorMessage(data) || 'Failed to fetch team');
       }
 
       const teamData = await teamRes.json();

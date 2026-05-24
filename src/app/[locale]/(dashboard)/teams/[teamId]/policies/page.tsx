@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
 import { SharedWithTeamSection } from '@/components/policy/shared-with-team-section';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Policy {
   id: string;
@@ -56,7 +57,7 @@ export default function TeamPoliciesPage() {
 
       if (!teamRes.ok) {
         const data = await teamRes.json();
-        throw new Error(data.error || 'Failed to fetch team');
+        throw new Error(extractErrorMessage(data) || 'Failed to fetch team');
       }
 
       const teamData = await teamRes.json();

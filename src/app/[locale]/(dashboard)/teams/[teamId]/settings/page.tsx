@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { ConfirmDialog, Input, Label, Select, toast } from '@/components/ui';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Team {
   id: string;
@@ -47,7 +48,7 @@ export default function TeamSettingsPage() {
       const res = await fetch(`/api/teams/${teamId}`);
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch team');
+        throw new Error(extractErrorMessage(data) || 'Failed to fetch team');
       }
 
       const data = await res.json();
@@ -83,7 +84,7 @@ export default function TeamSettingsPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to update team');
+        throw new Error(extractErrorMessage(data) || 'Failed to update team');
       }
 
       setTeam(data.team);
@@ -129,7 +130,7 @@ export default function TeamSettingsPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(t('settings.transferFailed', { error: data.error || res.status }));
+        toast.error(t('settings.transferFailed', { error: extractErrorMessage(data) || res.status }));
         return;
       }
       toast.success(t('settings.transferSuccess'));
@@ -152,7 +153,7 @@ export default function TeamSettingsPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to delete team');
+        throw new Error(extractErrorMessage(data) || 'Failed to delete team');
       }
 
       router.push('/teams');

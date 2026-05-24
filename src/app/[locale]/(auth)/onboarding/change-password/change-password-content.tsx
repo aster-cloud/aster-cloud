@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 import {
   Alert,
   AlertDescription,
@@ -67,7 +68,7 @@ export function ChangePasswordContent({ email }: { email: string }) {
         error?: string;
       };
       if (!res.ok) {
-        setError(data.error || t('errorGeneric'));
+        setError(extractErrorMessage(data) || t('errorGeneric'));
         return;
       }
       toast.success(t('success'));

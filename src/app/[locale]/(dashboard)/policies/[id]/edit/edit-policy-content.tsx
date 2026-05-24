@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { PolicyForm } from '@/components/policy/policy-form';
 import type { PolicyDraftFields } from '@/components/policy/policy-form/use-policy-draft';
 import { track, Events, levenshtein } from '@/lib/mixpanel';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 /**
  * /policies/[id]/edit — thin wrapper around <PolicyForm>.
@@ -72,7 +73,7 @@ export function EditPolicyContent({
       if (!res.ok) {
         const data = await res.json();
         return {
-          message: data.message || data.error || t.form.failedToUpdate,
+          message: data.message || extractErrorMessage(data) || t.form.failedToUpdate,
           upgrade: !!(data.upgrade || data.frozen),
         };
       }

@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { Breadcrumbs, Input, Label } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
+import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 export default function NewTeamPage() {
   const t = useTranslations('teams');
@@ -68,7 +69,7 @@ export default function NewTeamPage() {
           setError(t('upgradeRequired.contactAdmin'));
           return;
         }
-        throw new Error(data.error || 'Failed to create team');
+        throw new Error(extractErrorMessage(data) || 'Failed to create team');
       }
 
       router.push(`/teams/${data.id}`);
