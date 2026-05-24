@@ -116,15 +116,46 @@ assertNoLowOrderPubKeys(ASTER_TRUST_BUNDLE);
 // hoist while still being correct at production runtime (vitest
 // projects + next.config DefinePlugin both set DEPLOYMENT_MODE).
 //
+// Build-time pitfall (caught during May 2026 E2E session): webpack's
+// DefinePlugin inlines `process.env.NODE_ENV` at compile time, so the
+// `NODE_ENV === 'production'` check becomes either `'production' ===
+// 'production'` (true, fires unconditionally at runtime — bad: blocks
+// local on-prem dry-runs against dev keys) or `'development' ===
+// 'production'` (false, dead-stripped — bad: prod build with dev keys
+// no longer fail-fast). Two mitigations stacked:
+//
+//   1. Read NODE_ENV via the read() indirection below — DefinePlugin
+//      pattern-matches on the literal `process.env.NODE_ENV` member
+//      access, not on a property lookup through a variable. This keeps
+//      the check observing the real runtime value of NODE_ENV (so
+//      `NODE_ENV=development node server.js` against an on-prem build
+//      doesn't trip the assertion).
+//
+//   2. Explicit operator opt-out: ASTER_ALLOW_DEV_TRUST_BUNDLE=true
+//      bypasses the assertion entirely. Required for local integration
+//      runs that *must* use NODE_ENV=production (e.g. testing the
+//      production-only env-validation paths) without committing real
+//      Ed25519 keys to the dev tree.
+//
 /* eslint-disable deployment-mode/no-direct-macro -- see comment above */
+function readEnv(name: string): string | undefined {
+  // Indirect lookup defeats webpack DefinePlugin's static replacement,
+  // which only matches direct `process.env.NAME` accesses.
+  return (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env?.[name];
+}
+const _trustBundleNodeEnv = readEnv('NODE_ENV');
+const _trustBundleAllowDev = readEnv('ASTER_ALLOW_DEV_TRUST_BUNDLE') === 'true';
 if (
   process.env.DEPLOYMENT_MODE === 'on-prem' &&
-  process.env.NODE_ENV === 'production' &&
+  _trustBundleNodeEnv === 'production' &&
   process.env.NEXT_PHASE !== 'phase-production-build' &&
+  !_trustBundleAllowDev &&
   ASTER_TRUST_BUNDLE.some((entry) => entry.keyId.startsWith('__dev-'))
 ) {
   throw new Error(
-    '[license-trust-bundle] production runtime contains development placeholder public keys',
+    '[license-trust-bundle] production runtime contains development placeholder public keys. ' +
+      'Set ASTER_ALLOW_DEV_TRUST_BUNDLE=true to bypass (local dry-runs only — NEVER in real prod).',
   );
 }
 /* eslint-enable deployment-mode/no-direct-macro */
