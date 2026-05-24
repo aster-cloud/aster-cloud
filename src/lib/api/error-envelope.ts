@@ -82,3 +82,67 @@ export function errorEnvelope(opts: ErrorEnvelopeOptions): NextResponse {
     headers: merged,
   });
 }
+
+/**
+ * Client-side helper: pull a human-readable string out of an error
+ * response body, regardless of which envelope shape it uses.
+ *
+ * Three shapes exist in the wild:
+ *
+ *   1. Structured envelope (current contract):
+ *        { "error": { "code": "...", "message": "...", "requestId": "..." } }
+ *   2. Legacy flat string (older routes):
+ *        { "error": "Invalid API key" }
+ *   3. Free-form `message` field (a few hand-written routes):
+ *        { "message": "Something failed" }
+ *
+ * The structured shape broke every caller that did
+ *   setError(data.error || fallback)
+ * because `data.error` became an object, and React refuses to render
+ * objects as children (`Minified React error #31`). This helper
+ * normalizes all three shapes to a string suitable for direct UI use.
+ *
+ * Returns `null` when no message can be extracted, so callers can
+ * fall back to a localized default with `?? t('failed')`.
+ */
+export function extractErrorMessage(body: unknown): string | null {
+  if (body == null || typeof body !== 'object') return null;
+  const rec = body as Record<string, unknown>;
+  const err = rec.error;
+
+  // Shape 1: structured envelope
+  if (
+    err &&
+    typeof err === 'object' &&
+    typeof (err as Record<string, unknown>).message === 'string'
+  ) {
+    return (err as { message: string }).message;
+  }
+  // Shape 2: legacy flat string under `error`
+  if (typeof err === 'string') {
+    return err;
+  }
+  // Shape 3: top-level `message`
+  if (typeof rec.message === 'string') {
+    return rec.message;
+  }
+  return null;
+}
+
+/**
+ * Companion: extract the requestId so callers can surface "Error ID:
+ * abc123" alongside the user-facing message. Returns `null` if the
+ * body is not in structured-envelope shape.
+ */
+export function extractRequestId(body: unknown): string | null {
+  if (body == null || typeof body !== 'object') return null;
+  const err = (body as Record<string, unknown>).error;
+  if (
+    err &&
+    typeof err === 'object' &&
+    typeof (err as Record<string, unknown>).requestId === 'string'
+  ) {
+    return (err as { requestId: string }).requestId;
+  }
+  return null;
+}
