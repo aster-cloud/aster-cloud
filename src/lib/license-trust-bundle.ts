@@ -81,24 +81,52 @@ const BASE_BUNDLE: readonly TrustBundleEntry[] = [
 // a license payload locally, then need the freshly-generated public
 // key to be recognized by the verify path.
 //
-// Only honored when ASTER_ALLOW_DEV_TRUST_BUNDLE=true (= explicit
-// operator escape hatch — see comment block at the dev-key assert
-// below). SaaS builds never set either env. Production on-prem
-// deployments must not set either env; if they do, the
-// dev-placeholder assert will fail-fast because the base bundle
-// still contains __dev-* entries.
+// Two safety guards stack:
+//
+//   1. ASTER_ALLOW_DEV_TRUST_BUNDLE=true required. Without it the
+//      env-injection path throws — no silent trust-bundle extension
+//      from env in any runtime.
+//
+//   2. NODE_ENV=production is a hard veto. Even if allow-dev is set,
+//      env injection is refused in a production-shaped runtime. This
+//      closes the post-b7f61db attack surface where an operator with
+//      pod-exec access could flip both envs and inject their own
+//      signing pubkey. The harness only runs in NODE_ENV=development
+//      anyway (release-pipeline production builds replace __dev-*
+//      keys with Vault-extracted pubkeys, so the test hook isn't
+//      needed at all in real prod).
+//
+// SaaS builds never set either env (SaaS doesn't reach the verify
+// path; the trust bundle exists purely for on-prem licence checks).
+// Production on-prem deployments must not set either env; if they do,
+// guard 2 short-circuits, and even if NODE_ENV is wrong, the
+// dev-placeholder assert below catches a production runtime that still
+// contains __dev-* entries.
 function readExtraBundle(): readonly TrustBundleEntry[] {
-  const raw = (globalThis as { process?: { env?: Record<string, string | undefined> } })
-    .process?.env?.ASTER_TEST_TRUST_BUNDLE_EXTRA;
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env;
+  const raw = env?.ASTER_TEST_TRUST_BUNDLE_EXTRA;
   if (!raw) return [];
-  const allowDev =
-    (globalThis as { process?: { env?: Record<string, string | undefined> } })
-      .process?.env?.ASTER_ALLOW_DEV_TRUST_BUNDLE === 'true';
+  const allowDev = env?.ASTER_ALLOW_DEV_TRUST_BUNDLE === 'true';
   if (!allowDev) {
     throw new Error(
       '[license-trust-bundle] ASTER_TEST_TRUST_BUNDLE_EXTRA is set but ' +
         'ASTER_ALLOW_DEV_TRUST_BUNDLE is not "true". Refusing to extend the ' +
         'trust bundle from env in a production-shaped runtime.',
+    );
+  }
+  // Hard veto: env injection is never honored in a production runtime,
+  // even with allow-dev. Read NODE_ENV via the same indirection trick
+  // the dev-key assert uses (defeats webpack DefinePlugin's compile-
+  // time replacement; see the assert comment below).
+  if (env?.NODE_ENV === 'production') {
+    throw new Error(
+      '[license-trust-bundle] ASTER_TEST_TRUST_BUNDLE_EXTRA cannot be honored ' +
+        'when NODE_ENV=production, even with ASTER_ALLOW_DEV_TRUST_BUNDLE=true. ' +
+        'This env exists solely for development-only license-ceremony dry-runs ' +
+        '(see docs/on-prem/testing/README.md). For production on-prem deploys, ' +
+        'the release pipeline must embed real Vault-extracted pubkeys into the ' +
+        'base trust bundle (license-key-ceremony.md §4).',
     );
   }
   try {
@@ -143,8 +171,65 @@ function assertNoLowOrderPubKeys(bundle: readonly TrustBundleEntry[]): void {
   }
 }
 
+function base64ToBytes(s: string): Uint8Array {
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i++) {
+    out += bytes[i].toString(16).padStart(2, '0');
+  }
+  return out;
+}
+
+/**
+ * Defense-in-depth check: every entry's `fingerprint` field must equal
+ * `sha256(base64-decode(pubKey))` rendered as lowercase hex. Both fields
+ * are baked into the binary by the release pipeline; they're redundant
+ * by design so any partial tampering (e.g. an attacker swaps pubKey
+ * bytes but doesn't recompute fingerprint, or swaps fingerprint but
+ * misses a pubKey edit elsewhere) is caught at module load instead of
+ * silently letting the verify path accept the swapped key.
+ *
+ * Async because we lean on Web Crypto (works in both Node and the
+ * Cloudflare Workers runtime). Module top-level `await` is supported
+ * in our ESM target. If this assert ever blocks startup latency the
+ * fingerprint count is so small (handful of entries) that the cost is
+ * well under a millisecond.
+ */
+async function assertFingerprintsMatch(
+  bundle: readonly TrustBundleEntry[],
+): Promise<void> {
+  for (const entry of bundle) {
+    let pubBytes: Uint8Array;
+    try {
+      pubBytes = base64ToBytes(entry.pubKey);
+    } catch (err) {
+      throw new Error(
+        `[license-trust-bundle] entry ${entry.keyId} pubKey is not valid base64: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+    const digest = await crypto.subtle.digest('SHA-256', pubBytes as BufferSource);
+    const actual = bytesToHex(new Uint8Array(digest));
+    if (actual !== entry.fingerprint.toLowerCase()) {
+      throw new Error(
+        `[license-trust-bundle] entry ${entry.keyId} fingerprint mismatch: ` +
+          `declared ${entry.fingerprint}, computed ${actual}. Bundle has been ` +
+          `tampered with (or the release pipeline output is corrupt).`,
+      );
+    }
+  }
+}
+
 assertUniqueKeyIds(ASTER_TRUST_BUNDLE);
 assertNoLowOrderPubKeys(ASTER_TRUST_BUNDLE);
+await assertFingerprintsMatch(ASTER_TRUST_BUNDLE);
 
 // 生产 runtime 必须没有 *任何* dev 占位（some 而非 every），否则混合的 dev key
 // 仍然会成为 verify 的可信路径（codex 审查 Major-5）。
