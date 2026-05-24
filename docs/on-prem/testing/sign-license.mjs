@@ -45,7 +45,7 @@
  */
 
 import { generateKeyPairSync, sign, createPrivateKey, createPublicKey, createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, chmodSync } from 'node:fs';
 
 const args = process.argv.slice(2);
 const cmd = args.shift();
@@ -97,11 +97,39 @@ function isoIn(ms) {
 
 if (cmd === 'keygen') {
   const keyId = flag('key-id', 'e2e-lic');
+  const outFile = flag('out-file');
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
   const pubB64 = pubKeyRawBase64(publicKey);
   const fp = fingerprintHex(pubB64);
   const pemPriv = privateKey.export({ format: 'pem', type: 'pkcs8' }).toString();
-  // PEM goes to stdout, metadata to stderr so user can `... > e2e.pem` cleanly
+
+  if (outFile) {
+    // Atomic write + chmod 0600 so the private key never sits on disk
+    // with default 644 readable by other users on a shared machine. The
+    // previous interface used shell redirect (`> key.pem`), which
+    // honored the user's umask — typically 022 → 644, leaving the
+    // private key world-readable in /tmp on macOS. Setting --out-file
+    // bypasses the shell and locks permissions before the file is
+    // written.
+    writeFileSync(outFile, pemPriv, { mode: 0o600, flag: 'w' });
+    // chmod is redundant if open(2) honors mode, but some filesystems
+    // (e.g. SMB mounts) ignore mode on creation. Belt-and-suspenders.
+    chmodSync(outFile, 0o600);
+    process.stderr.write(
+      JSON.stringify({ keyId, pubKey: pubB64, fingerprint: fp, outFile, mode: '0600' }, null, 2) + '\n',
+    );
+    process.exit(0);
+  }
+
+  // Legacy stdout path. Print a security warning to stderr — shell
+  // redirect (`> e2e.pem`) creates the file with umask-default perms
+  // (typically 644 on macOS, world-readable in /tmp). Prefer --out-file
+  // for production-shaped harnesses.
+  process.stderr.write(
+    '[sign-license] WARNING: PEM written to stdout — shell redirect creates the file with umask\n' +
+      '                 default permissions. On a multi-user host this can leak the signing key.\n' +
+      '                 Prefer: --out-file <path> (creates file with mode 0600 atomically).\n',
+  );
   process.stderr.write(JSON.stringify({ keyId, pubKey: pubB64, fingerprint: fp }, null, 2) + '\n');
   process.stdout.write(pemPriv);
   process.exit(0);

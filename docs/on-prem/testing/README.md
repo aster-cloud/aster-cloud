@@ -33,10 +33,12 @@ The full 8-stage flow takes ~30 minutes by hand. Each stage assumes the previous
 ### Bootstrap (run once)
 
 ```bash
-# 1. Generate license + revocation keypairs (process-exit destroys the in-memory
-#    keys; PEM files contain the private keys — delete after the test session).
-node sign-license.mjs keygen --key-id e2e-lic-2026 2>e2e-lic.meta.json > e2e-lic.pem
-node sign-license.mjs keygen --key-id e2e-rev-2026 2>e2e-rev.meta.json > e2e-rev.pem
+# 1. Generate license + revocation keypairs. Use --out-file so the CLI
+#    creates the PEM with mode 0600 atomically (shell redirect would
+#    leave the private key world-readable in /tmp on macOS — umask
+#    default is 022).
+node sign-license.mjs keygen --key-id e2e-lic-2026 --out-file e2e-lic.pem 2>e2e-lic.meta.json
+node sign-license.mjs keygen --key-id e2e-rev-2026 --out-file e2e-rev.pem 2>e2e-rev.meta.json
 
 # 2. Build the JSON extra-bundle payload for ASTER_TEST_TRUST_BUNDLE_EXTRA.
 #    (jq makes this less tedious; the format is documented in license-trust-bundle.ts)
@@ -158,7 +160,7 @@ Expected:
 Generate a stranger key whose pubKey is NOT in the trust bundle:
 
 ```bash
-node sign-license.mjs keygen --key-id stranger-lic-2026 2>stranger.meta > stranger.pem
+node sign-license.mjs keygen --key-id stranger-lic-2026 --out-file stranger.pem 2>stranger.meta
 node sign-license.mjs sign --priv-key-file stranger.pem --key-id stranger-lic-2026 \
   --license-id e2e-005-stranger --customer "Stranger" --tier enterprise \
   --expires-in 90d --deployment-id "$DEPLOY_ID" > lic-stranger.key
