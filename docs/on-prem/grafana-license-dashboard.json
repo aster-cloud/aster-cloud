@@ -3,7 +3,7 @@
   "tags": ["aster", "license", "on-prem"],
   "timezone": "utc",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "1m",
   "panels": [
     {
@@ -92,6 +92,103 @@
         }
       ],
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 }
+    },
+    {
+      "id": 7,
+      "title": "Read-only gate trigger rate (by reason, 5m)",
+      "description": "Time-series of which trust/entitlement reason is causing the read-only gate to fire. A sudden spike on clock-rollback usually means the host's NTP died; on grace-expired means the revocation endpoint is unreachable; on revoked means a tenant got cut off.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (reason) (rate(aster_license_read_only_gate_total[5m]))",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "stacking": { "mode": "normal" } }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 }
+    },
+    {
+      "id": 8,
+      "title": "Clock-rollback detections",
+      "description": "Count of license verifications that observed wall clock < licenseCache.updated_at - 5min tolerance. Non-zero = host clock is going backwards, either via NTP correction overshoot, VM resume, or malicious tampering. Investigate at any non-zero count — false positives are <0.1/day even on flaky NTP.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "increase(aster_license_read_only_gate_total{reason=\"clock-rollback\"}[24h])",
+          "legendFormat": "24h count"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 24 }
+    },
+    {
+      "id": 9,
+      "title": "License days remaining",
+      "description": "Days until current license expires. Falls below 14 → expiring-soon banner shows in /admin/license (operator-friendly nudge); falls below 0 → expired write-gate triggers. The renewal cron alerts at 30 / 14 / 7 / 1 day thresholds.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "aster_license_days_remaining",
+          "legendFormat": "days"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "yellow", "value": 14 },
+              { "color": "green", "value": 30 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 24 }
+    },
+    {
+      "id": 10,
+      "title": "Trust bundle assertion failures (boot)",
+      "description": "Counter for fingerprint mismatch / duplicate keyId / low-order pubkey assertions that throw at module load. Non-zero = a build went out with a tampered or corrupt trust bundle. Should be 0 in production; any non-zero requires an emergency rebuild.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "increase(aster_license_trust_bundle_assert_failed_total[7d])",
+          "legendFormat": "7d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 28 }
     }
   ]
 }
