@@ -166,6 +166,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Close GA-readiness with ADR-0007 + DR runbook + master checklist *(ga)*
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - SLO definitions + uptime monitoring spec *(operations)*
 - Update [skip ci] *(changelog)*
