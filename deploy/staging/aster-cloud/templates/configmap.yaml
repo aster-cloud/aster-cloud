@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aster-cloud-config
+  namespace: aster-cloud-staging
+  labels:
+    app.kubernetes.io/name: aster-cloud
+data:
+  {{- range $key, $value := .Values.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: aster-api
+description: Quarkus JVM back-end for staging.aster-lang.cloud (policy execution + AI)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

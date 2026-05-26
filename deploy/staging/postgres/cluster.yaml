@@ -1,0 +1,73 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-staging
+  namespace: aster-cloud-staging
+  labels:
+    app.kubernetes.io/name: postgres-staging
+    app.kubernetes.io/part-of: aster-staging
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.4
+
+  primaryUpdateStrategy: unsupervised
+
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "1GB"
+      effective_cache_size: "3GB"
+      maintenance_work_mem: "256MB"
+      work_mem: "8MB"
+      wal_compression: "on"
+      log_statement: "ddl"
+      log_min_duration_statement: "500"
+
+  bootstrap:
+    initdb:
+      database: aster_cloud
+      owner: aster_admin
+      secret:
+        name: postgres-staging-app
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS pgcrypto;
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+  storage:
+    size: 50Gi
+    storageClass: oci-bv
+
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  monitoring:
+    enablePodMonitor: true
+
+  backup:
+    barmanObjectStore:
+      destinationPath: "s3://bucket-backup/postgres-staging"
+      endpointURL: "https://axuwdowxwpud.compat.objectstorage.ap-melbourne-1.oraclecloud.com"
+      s3Credentials:
+        accessKeyId:
+          name: oci-object-storage-creds
+          key: access-key-id
+        secretAccessKey:
+          name: oci-object-storage-creds
+          key: secret-access-key
+      wal:
+        compression: gzip
+        maxParallel: 4
+      data:
+        compression: gzip
+        immediateCheckpoint: true
+        jobs: 2
+    retentionPolicy: "30d"
+
+  affinity:
+    podAntiAffinityType: preferred
+    topologyKey: kubernetes.io/hostname

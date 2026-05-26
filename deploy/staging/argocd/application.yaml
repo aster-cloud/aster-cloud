@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aster-cloud-staging
+  labels:
+    app.kubernetes.io/part-of: aster-staging
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: aster-staging
+  namespace: argocd
+spec:
+  description: Aster staging environment (staging.aster-lang.cloud)
+  sourceRepos:
+    - https://github.com/aster-cloud/aster-cloud.git
+  destinations:
+    - namespace: aster-cloud-staging
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: cert-manager.io
+      kind: ClusterIssuer
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aster-cloud-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: aster-staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: aster-staging
+  source:
+    repoURL: https://github.com/aster-cloud/aster-cloud.git
+    targetRevision: main
+    path: deploy/staging/aster-cloud
+    helm:
+      releaseName: aster-cloud
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aster-cloud-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aster-api-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: aster-staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: aster-staging
+  source:
+    repoURL: https://github.com/aster-cloud/aster-cloud.git
+    targetRevision: main
+    path: deploy/staging/aster-api
+    helm:
+      releaseName: aster-api
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aster-cloud-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: aster-staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: aster-staging
+  source:
+    repoURL: https://github.com/aster-cloud/aster-cloud.git
+    targetRevision: main
+    path: deploy/staging/postgres
+    directory:
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aster-cloud-staging
+  syncPolicy:
+    automated:
+      prune: false  # never prune the DB cluster
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

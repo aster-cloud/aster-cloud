@@ -1,0 +1,51 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: oci-object-storage-creds
+  namespace: aster-cloud-staging
+  labels:
+    app.kubernetes.io/part-of: aster-staging
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: oci-vault-store
+    kind: ClusterSecretStore
+  target:
+    name: oci-object-storage-creds
+    creationPolicy: Owner
+  data:
+    - secretKey: access-key-id
+      remoteRef:
+        key: secret/infra/oci-object-storage
+        property: access-key-id
+    - secretKey: secret-access-key
+      remoteRef:
+        key: secret/infra/oci-object-storage
+        property: secret-access-key
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: postgres-staging-app
+  namespace: aster-cloud-staging
+  labels:
+    app.kubernetes.io/part-of: aster-staging
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: oci-vault-store
+    kind: ClusterSecretStore
+  target:
+    name: postgres-staging-app
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/basic-auth
+  data:
+    - secretKey: username
+      remoteRef:
+        key: secret/apps/postgres-staging
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: secret/apps/postgres-staging
+        property: password

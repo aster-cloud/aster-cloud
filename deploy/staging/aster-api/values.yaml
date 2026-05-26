@@ -1,0 +1,46 @@
+image:
+  repository: wontlost/aster-api
+  tag: jvm-latest
+  pullPolicy: Always
+
+replicaCount: 2
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+env:
+  QUARKUS_PROFILE: prod
+  QUARKUS_HTTP_PORT: "8080"
+  QUARKUS_THREAD_POOL_MAX_THREADS: "16"
+  QUARKUS_THREAD_POOL_CORE_THREADS: "4"
+  QUARKUS_THREAD_POOL_QUEUE_SIZE: "8"
+  ASTER_POLICY_EVAL_MAX_CONCURRENT: "12"
+  ASTER_HEAP_LOW_WATERMARK_MB: "256"
+  JAVA_OPTS_APPEND: "-Xms512m -Xmx1536m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: oci-vault-store
+    kind: ClusterSecretStore
+  remoteKey: secret/apps/aster-api-staging
+
+probes:
+  liveness:
+    path: /q/health/live
+    initialDelaySeconds: 60
+    periodSeconds: 30
+  readiness:
+    path: /q/health/ready
+    initialDelaySeconds: 15
+    periodSeconds: 10

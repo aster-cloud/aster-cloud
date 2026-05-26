@@ -1,0 +1,53 @@
+image:
+  repository: wontlost/aster-cloud
+  tag: staging-latest
+  pullPolicy: Always
+
+replicaCount: 2
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: traefik
+  host: staging.aster-lang.cloud
+  tls:
+    enabled: true
+    secretName: aster-cloud-staging-tls
+    clusterIssuer: letsencrypt-prod
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+env:
+  NODE_ENV: production
+  DEPLOYMENT_MODE: saas
+  PORT: "3000"
+  NEXT_PUBLIC_SITE_URL: https://staging.aster-lang.cloud
+  NEXT_PUBLIC_ASTER_API_BASE: https://staging.aster-lang.cloud/api/policy
+  NEXTAUTH_URL: https://staging.aster-lang.cloud
+
+externalSecret:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: oci-vault-store
+    kind: ClusterSecretStore
+  remoteKey: secret/apps/aster-cloud-staging
+
+probes:
+  liveness:
+    path: /api/health
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  readiness:
+    path: /api/health
+    initialDelaySeconds: 10
+    periodSeconds: 10

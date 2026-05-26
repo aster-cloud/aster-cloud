@@ -1,0 +1,14 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgres-staging-daily
+  namespace: aster-cloud-staging
+  labels:
+    app.kubernetes.io/part-of: aster-staging
+spec:
+  # Daily at 14:00 UTC (00:00 AEST), well outside business hours
+  schedule: "0 0 14 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: postgres-staging
+  immediate: false
