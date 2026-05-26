@@ -59,6 +59,15 @@ export interface CronJob {
    * distinct lease and both execute.
    */
   windowStartFor(now: Date): Date;
+  /**
+   * 心跳环境变量名（可选）。当 cron 在 ops 编排（Healthchecks.io）中注册，
+   * 把对应 ping URL 的 env 名填这里；runCronOnce 包装器会在执行前后
+   * 自动上报。未填写则不上报（适用于 on-prem 或尚未编排的 cron）。
+   *
+   * 命名约定 `HEALTHCHECKS_<JOB_UPPER>_URL`，对应
+   * docs/operations/uptime-monitoring.md 的清单。
+   */
+  healthcheckEnv?: string;
 }
 
 // ───────── Window helpers ─────────
@@ -103,18 +112,21 @@ export const CRON_REGISTRY: ReadonlyArray<CronJob> = [
     cron: '30 4 * * *',
     routePath: '/api/cron/user-purge',
     windowStartFor: (now) => floorToUtcDayAtHour(now, 4, 30),
+    healthcheckEnv: 'HEALTHCHECKS_USER_PURGE_URL',
   },
   {
     jobName: 'risk-tier-decay',
     cron: '0 5 * * *',
     routePath: '/api/cron/risk-tier-decay',
     windowStartFor: (now) => floorToUtcDayAtHour(now, 5, 0),
+    healthcheckEnv: 'HEALTHCHECKS_RISK_TIER_DECAY_URL',
   },
   {
     jobName: 'license-revocation-refresh',
     cron: '0 */6 * * *',
     routePath: '/api/cron/license-revocation-refresh',
     windowStartFor: (now) => floorToHourBucket(now, 6),
+    healthcheckEnv: 'HEALTHCHECKS_LICENSE_REVOCATION_URL',
   },
   {
     jobName: 'license-renewal-warning',
@@ -122,6 +134,7 @@ export const CRON_REGISTRY: ReadonlyArray<CronJob> = [
     routePath: '/api/cron/license-renewal-warning',
     // Mondays at 08:00 UTC.
     windowStartFor: (now) => floorToWeekdayAtHour(now, 1, 8),
+    healthcheckEnv: 'HEALTHCHECKS_LICENSE_RENEWAL_WARNING_URL',
   },
   {
     jobName: 'telemetry-retention-gc',
@@ -129,6 +142,7 @@ export const CRON_REGISTRY: ReadonlyArray<CronJob> = [
     routePath: '/api/cron/telemetry-retention-gc',
     // 03:15 UTC daily — purposely offset from other crons to spread load.
     windowStartFor: (now) => floorToUtcDayAtHour(now, 3, 15),
+    healthcheckEnv: 'HEALTHCHECKS_TELEMETRY_GC_URL',
   },
 ] as const;
 

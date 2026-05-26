@@ -95,12 +95,12 @@ The master roll-up of everything that must be true before we declare General Ava
 - ✅ Spec for 11 Healthchecks.io cron heartbeats
 - ⬜ Pingdom account provisioned + checks live
 - ⬜ Healthchecks.io account provisioned + check URLs distributed via env
-- ⬜ Each cron route updated to call `recordHealthcheckHeartbeat()` at start + finish
+- ✅ Heartbeat hook wired into `runCronOnce` (lease wrapper) — `src/lib/healthcheck-heartbeat.ts`. Registry entries declare `healthcheckEnv`; all registered crons auto-emit start/success/fail.
 
 ### Dashboards
 - ✅ License dashboard (`docs/on-prem/grafana-license-dashboard.json`) — 10 panels
-- ⬜ SaaS overview dashboard (request rate, p99 latency, error rate, active orgs)
-- ⬜ AI usage dashboard (per-provider token consumption, cache hit rate, circuit-breaker state)
+- ✅ SaaS overview dashboard (`docs/observability/grafana-saas-overview.json`) — 10 panels: req rate, error rate, p95/p99 by route, active orgs, login success, Stripe ack, Hyperdrive wait, SLO burn-rate, incidents
+- ✅ AI usage dashboard (`docs/observability/grafana-ai-usage.json`) — 10 panels: tokens by provider, req rate by endpoint, BYOK cache hit, circuit-breaker state, fail rate, $/hr estimate, top-10 tenants, anomaly detections, p99 by provider, audit log
 
 ---
 

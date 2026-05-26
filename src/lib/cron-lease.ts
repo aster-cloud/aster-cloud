@@ -23,6 +23,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import { db, cronJobLease } from '@/lib/prisma';
 import { currentWindowStart, getCronByJobName } from '@/lib/cron-registry';
+import { recordHealthcheckHeartbeat } from '@/lib/healthcheck-heartbeat';
 
 export interface RunCronResult<T> {
   /** True when this caller acquired the lease and ran the function. */
@@ -131,12 +132,23 @@ export async function runCronOnce<T>(
   // 3) Won the race. Run the body. Always update the lease (success or
   //    failure) so a future scheduled tick can read the outcome
   //    without re-reading worker logs.
+  //
+  // 心跳：抢到 lease 后立即上报 start；fn 成功上报 success；fn 抛错上报 fail。
+  // 跳过路径（步骤 2）不上报 —— 另一个实例会代发，重复心跳会让仪表板
+  // 看上去有重复的健康事件。
+  if (job.healthcheckEnv) {
+    await recordHealthcheckHeartbeat(job.healthcheckEnv, 'start');
+  }
+
   try {
     const result = await fn();
     await db
       .update(cronJobLease)
       .set({ status: 'done', completedAt: sql`now()` })
       .where(eq(cronJobLease.id, leaseId));
+    if (job.healthcheckEnv) {
+      await recordHealthcheckHeartbeat(job.healthcheckEnv, 'success');
+    }
     return { ran: true, result, windowStart, leaseId };
   } catch (err) {
     await db
@@ -147,6 +159,9 @@ export async function runCronOnce<T>(
         errorMessage: (err instanceof Error ? err.message : String(err)).slice(0, 500),
       })
       .where(eq(cronJobLease.id, leaseId));
+    if (job.healthcheckEnv) {
+      await recordHealthcheckHeartbeat(job.healthcheckEnv, 'fail');
+    }
     throw err;
   }
 }

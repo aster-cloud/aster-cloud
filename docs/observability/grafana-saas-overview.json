@@ -1,0 +1,219 @@
+{
+  "title": "Aster SaaS — Production Overview",
+  "tags": ["aster", "saas", "production"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate (5m)",
+      "description": "Total request throughput across all routes. Drop = customers can't reach us; spike beyond historical norm = potential scrape/DDoS, check IP distribution.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_requests_total[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Error rate (5xx, 5m)",
+      "description": "5xx as fraction of total. SLO target < 0.1%. Spike + a deploy = revert via wrangler rollback per runbooks/rollback.md.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "5xx ratio"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.001 },
+              { "color": "red", "value": 0.01 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "p95 latency by route",
+      "description": "5-min rolling p95. /evaluate target < 50ms, /evaluate-source target < 500ms (SLO A2/A3). Sustained breach = check for cold engines, DB lock contention, or a slow N+1 query.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (route, le) (rate(http_request_duration_ms_bucket[5m])))",
+          "legendFormat": "p95 {{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "p99 latency by route",
+      "description": "5-min rolling p99. The tail. If p99 spikes but p95 is flat, you have a few very slow requests (lock wait? GC pause? AI provider tail?).",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (route, le) (rate(http_request_duration_ms_bucket[5m])))",
+          "legendFormat": "p99 {{route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "id": 5,
+      "title": "Active organizations (last 15m)",
+      "description": "Distinct orgs that made at least one authenticated request. Sudden drop = login outage; sudden spike beyond historical norm = automation or scrape.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(count by (org_id) (rate(http_requests_total{authenticated=\"true\"}[15m])))",
+          "legendFormat": "active orgs"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 16 }
+    },
+    {
+      "id": 6,
+      "title": "Login success rate (30m)",
+      "description": "SLO A4 target ≥ 99.5%. Drop = NextAuth issue, OAuth callback broken, or AUTH_SECRET out of sync.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(auth_callback_success[30m])) / sum(rate(auth_callback_attempt[30m]))",
+          "legendFormat": "login success"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.99 },
+              { "color": "green", "value": 0.995 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 16 }
+    },
+    {
+      "id": 7,
+      "title": "Stripe webhook ack rate (1h)",
+      "description": "SLO A6 = 100% (zero tolerance). Anything below 100% means billing state is drifting from Stripe; treat as P0.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(stripe_webhook_acked[1h])) / sum(rate(stripe_webhook_received[1h]))",
+          "legendFormat": "webhook ack"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1.0 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 16 }
+    },
+    {
+      "id": 8,
+      "title": "Hyperdrive pool wait (p99, 5m)",
+      "description": "How long requests sit waiting for a DB connection. > 50ms means the pool is saturated; bump the pool size or investigate slow queries holding connections.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(hyperdrive_pool_wait_ms_bucket[5m])))",
+          "legendFormat": "p99 pool wait"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 16 }
+    },
+    {
+      "id": 9,
+      "title": "SLO burn rate — A1 dashboard availability (1h vs 24h)",
+      "description": "Multi-window burn-rate per SRE workbook Ch.5. 1h > 14.4× normal = fast burn (page); 24h > 6× normal = slow burn (Slack). See slo.md for formulas.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "(sum(rate(http_requests_total{route=~\"/dashboard.*\",status=~\"5..\"}[1h])) / sum(rate(http_requests_total{route=~\"/dashboard.*\"}[1h]))) / 0.001",
+          "legendFormat": "1h burn × normal"
+        },
+        {
+          "expr": "(sum(rate(http_requests_total{route=~\"/dashboard.*\",status=~\"5..\"}[24h])) / sum(rate(http_requests_total{route=~\"/dashboard.*\"}[24h]))) / 0.001",
+          "legendFormat": "24h burn × normal"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 6 },
+              { "color": "red", "value": 14.4 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 }
+    },
+    {
+      "id": 10,
+      "title": "Active incidents (logs)",
+      "description": "Tail of /api/internal/incidents emissions. If the alerts-prod Slack channel says one thing and this panel says another, trust this panel — it's source-of-truth.",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{app=\"aster-cloud\"} |= \"incident.open\""
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 }
+    }
+  ]
+}

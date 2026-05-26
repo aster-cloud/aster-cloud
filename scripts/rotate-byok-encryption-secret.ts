@@ -33,21 +33,24 @@ interface Checkpoint {
   completedRowIds: string[];
 }
 
-const DATABASE_URL = process.env.DATABASE_URL;
-const OLD = process.env.OLD_AI_KEY_ENCRYPTION_SECRET;
-const NEW = process.env.NEW_AI_KEY_ENCRYPTION_SECRET;
-const DRY_RUN = process.env.ROTATION_DRY_RUN === 'true';
-const CHECKPOINT_PATH =
-  process.env.ROTATION_CHECKPOINT_FILE ?? '/tmp/byok-rotation-progress.json';
-
 function fail(msg: string): never {
   console.error(`[rotate-byok] ${msg}`);
   process.exit(1);
 }
 
-if (!DATABASE_URL) fail('DATABASE_URL is required');
-if (!OLD) fail('OLD_AI_KEY_ENCRYPTION_SECRET is required');
-if (!NEW) fail('NEW_AI_KEY_ENCRYPTION_SECRET is required');
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) fail(`${name} is required`);
+  return v;
+}
+
+const DATABASE_URL = requireEnv('DATABASE_URL');
+const OLD = requireEnv('OLD_AI_KEY_ENCRYPTION_SECRET');
+const NEW = requireEnv('NEW_AI_KEY_ENCRYPTION_SECRET');
+const DRY_RUN = process.env.ROTATION_DRY_RUN === 'true';
+const CHECKPOINT_PATH =
+  process.env.ROTATION_CHECKPOINT_FILE ?? '/tmp/byok-rotation-progress.json';
+
 if (OLD === NEW) fail('OLD and NEW secrets are identical — nothing to rotate');
 if (NEW.length < 16) fail('NEW secret must be ≥16 chars (matches encryption guard)');
 
@@ -77,14 +80,14 @@ async function main() {
   // a sentinel (decrypt with OLD should succeed; decrypt with NEW
   // should fail) to figure out which rows still need work, in case
   // someone added new BYOK keys mid-rotation.
-  const candidates = await sql<{ id: string }[]>`
+  const candidates = (await sql`
     SELECT id FROM "AiKeyBinding"
     WHERE active = true
       AND pgp_sym_decrypt("encryptedKey"::bytea, ${OLD}::text) IS NOT NULL
     ORDER BY "createdAt" ASC
-  `;
+  `) as ReadonlyArray<{ id: string }>;
   const remaining = candidates.filter(
-    (r) => !checkpoint.completedRowIds.includes(r.id),
+    (r: { id: string }) => !checkpoint.completedRowIds.includes(r.id),
   );
   console.log(
     `[rotate-byok] ${candidates.length} active rows decryptable with OLD secret; ` +

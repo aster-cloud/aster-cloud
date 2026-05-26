@@ -1,0 +1,199 @@
+{
+  "title": "Aster SaaS — AI Provider Usage",
+  "tags": ["aster", "saas", "ai", "byok"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Tokens consumed (5m, by provider)",
+      "description": "Tokens out of LLM providers (OpenAI, Anthropic, RightCode). Sustained spike beyond budget = a tenant looped on /ai/generate; check the per-tenant panel below for the culprit.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (provider) (rate(ai_tokens_consumed_total[5m]))",
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "AI request rate (5m, by endpoint)",
+      "description": "Request volume to /ai/generate, /ai/explain, /ai/complete. /complete is the highest-traffic (autocomplete); the other two are user-initiated.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (endpoint) (rate(ai_requests_total[5m]))",
+          "legendFormat": "{{endpoint}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "BYOK cache hit rate",
+      "description": "We cache decrypted BYOK keys in process memory for 5min. < 80% hit rate = cache eviction pressure or AI traffic spread thin across many tenants.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(ai_byok_cache_hit[15m])) / sum(rate(ai_byok_cache_lookup[15m]))",
+          "legendFormat": "BYOK cache hit"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.6 },
+              { "color": "green", "value": 0.8 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "Circuit breaker state",
+      "description": "Per-provider breaker: 0=closed (healthy), 1=half-open (probing), 2=open (failing). Anything > 0 for >5 min = provider outage; ai-circuit-check cron auto-resets when healthy.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "max by (provider) (ai_circuit_breaker_state)",
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "CLOSED" } } },
+            { "type": "value", "options": { "1": { "text": "HALF" } } },
+            { "type": "value", "options": { "2": { "text": "OPEN" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 }
+    },
+    {
+      "id": 5,
+      "title": "Provider failure rate (5m)",
+      "description": "Per-provider error fraction. Persistent > 5% means the breaker will trip soon (see ai-circuit-check cron).",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum by (provider) (rate(ai_provider_call_total{status=\"error\"}[5m])) / sum by (provider) (rate(ai_provider_call_total[5m]))",
+          "legendFormat": "{{provider}} fail rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 8 }
+    },
+    {
+      "id": 6,
+      "title": "Estimated cost / hour ($USD)",
+      "description": "Multiplies tokens by per-provider per-1k-tokens rate (loaded from ai_provider_pricing recording rule). If a tenant blows the AI budget, ai-anomaly-scan cron flags it within 1 hour.",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(ai_tokens_consumed_total[1h]) * on(provider) group_left ai_provider_cost_per_1k_tokens / 1000)",
+          "legendFormat": "USD/hr"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "currencyUSD" }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 }
+    },
+    {
+      "id": 7,
+      "title": "Top 10 tenants by AI token use (1h)",
+      "description": "Identifies the heavy hitters. If one org consumes > 50% of total, that's either healthy (enterprise) or a runaway loop (check their org for anomalies via ai-anomaly-scan).",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "topk(10, sum by (org_id) (rate(ai_tokens_consumed_total[1h])) * 3600)",
+          "legendFormat": "{{org_id}}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 14 }
+    },
+    {
+      "id": 8,
+      "title": "Anomaly detections (1h)",
+      "description": "Output of ai-anomaly-scan cron — counts tenants flagged for unusual usage (compared to their 7-day baseline). Auto-throttle kicks in if > 3x baseline sustained.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (severity) (rate(ai_anomaly_detected_total[1h]) * 3600)",
+          "legendFormat": "{{severity}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 14 }
+    },
+    {
+      "id": 9,
+      "title": "AI request p99 latency (5m, by provider)",
+      "description": "Provider tail latency. OpenAI p99 typically 2-5s; Anthropic 3-8s; RightCode 1-3s. A 2x deviation means the provider is degraded (check their status page).",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (provider, le) (rate(ai_provider_call_duration_ms_bucket[5m])))",
+          "legendFormat": "p99 {{provider}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 }
+    },
+    {
+      "id": 10,
+      "title": "Audit log emissions (logs)",
+      "description": "Every BYOK key use is audited. This tails the audit stream — use it to spot patterns during a security investigation.",
+      "type": "logs",
+      "targets": [
+        {
+          "expr": "{app=\"aster-cloud\"} |= \"ai.byok.use\""
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 }
+    }
+  ]
+}
