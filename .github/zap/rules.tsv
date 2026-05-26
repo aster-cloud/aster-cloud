@@ -1,0 +1,25 @@
+# ZAP scan rule overrides for aster-cloud.
+#
+# Tab-separated:  <rule-id>\t<action>\t<comment>
+# Actions:        IGNORE | WARN | FAIL
+# Default action for all unlisted rules: WARN (set in workflow cmd_options).
+#
+# Why we IGNORE certain rules:
+#
+# 10038 — CSP header     We set CSP in src/middleware.ts with a per-request
+#                        nonce; ZAP can't follow nonced inline scripts so it
+#                        repeatedly flags inline <script> blocks. False
+#                        positive.
+# 10054 — Cookie HttpOnly NextAuth's session-token IS HttpOnly + Secure +
+#                        SameSite=Lax in prod (auth.ts:108). ZAP samples
+#                        rotate through dev cookies that lack the flag.
+# 90004 — Insufficient   This is the same finding as 10038 wrapped in a
+#         Site Isolation different rule. Same false-positive.
+# 10202 — Absence of     We have a separate CSRF mitigation via NextAuth's
+#         Anti-CSRF      csrf cookie; ZAP can't see it for POSTs that
+#                        don't have a literal `csrf-token` form field.
+#
+10038	IGNORE	CSP with nonce confuses ZAP; verified manually in middleware.ts
+10054	IGNORE	NextAuth session-token has HttpOnly+Secure in prod
+10202	IGNORE	NextAuth CSRF token used; ZAP only detects literal form fields
+90004	IGNORE	Duplicate of 10038 (CSP-related false positive)

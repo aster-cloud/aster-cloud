@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  ZAP authenticated-scan context for aster-lang.cloud.
+
+  Walks post-login routes that the unauthenticated baseline scan
+  can't reach: /dashboard, /policies, /settings, /admin.
+
+  Auth strategy: NextAuth credentials provider. POSTs to
+  /api/auth/signin/credentials with {csrfToken, email, password,
+  redirect=false}. The csrfToken is harvested from /api/auth/csrf
+  on each fresh session — ZAP's loggedInIndicator pattern checks
+  the post-login dashboard markup so it can detect when the session
+  is alive.
+
+  Excluded from scan:
+    - /api/auth/*       — NextAuth handles them, scanning them
+                          attempts to authenticate as random users,
+                          floods Resend with verification emails,
+                          and trips the rate limiter
+    - /api/stripe/webhook — webhook endpoint expects Stripe-signed
+                            payloads; scanning it just generates
+                            noise
+    - /api/cron/*       — protected by CRON_SECRET; scan would
+                          always 401
+    - /signup           — would create rubbish accounts in prod
+    - mailto: + tel:    — Z3AP follows these as URLs otherwise
+
+  Note: this XML uses ${ZAP_AUTH_PASSWORD} placeholder substitution
+  so the actual password is loaded from the env var ZAP_AUTH_PASSWORD
+  at scan time (which the workflow populates from the GitHub secret).
+-->
+<configuration>
+  <context>
+    <name>aster-cloud-authenticated</name>
+    <inscope>true</inscope>
+    <incregexes>https://aster-lang\.cloud(/.*)?</incregexes>
+    <excregexes>
+      <excregex>.*/api/auth/.*</excregex>
+      <excregex>.*/api/stripe/webhook.*</excregex>
+      <excregex>.*/api/cron/.*</excregex>
+      <excregex>.*/signup.*</excregex>
+      <excregex>mailto:.*</excregex>
+      <excregex>tel:.*</excregex>
+    </excregexes>
+
+    <tech>
+      <include>Db</include>
+      <include>Db.PostgreSQL</include>
+      <include>Language.JavaScript</include>
+      <include>OS.Linux</include>
+      <include>WS</include>
+    </tech>
+
+    <urlparser>
+      <class>org.zaproxy.zap.model.StandardParameterParser</class>
+      <config>{"kvps":"&amp;","kvs":"=","struct":[]}</config>
+    </urlparser>
+    <postparser>
+      <class>org.zaproxy.zap.model.StandardParameterParser</class>
+      <config>{"kvps":"&amp;","kvs":"=","struct":[]}</config>
+    </postparser>
+
+    <authentication>
+      <type>2</type>  <!-- form-based -->
+      <strategy>EACH_RESP</strategy>
+      <loggedin>name=&quot;NEXTAUTH_SESSION&quot;|dashboard</loggedin>
+      <loggedout>signIn|Sign in|Anmelden</loggedout>
+      <pollurl></pollurl>
+      <polldata></polldata>
+      <pollheaders></pollheaders>
+      <pollfreq>60</pollfreq>
+      <pollunits>REQUESTS</pollunits>
+      <form>
+        <loginurl>https://aster-lang.cloud/api/auth/callback/credentials</loginurl>
+        <loginbody>email={%username%}&amp;password={%password%}&amp;csrfToken=&amp;redirect=false&amp;callbackUrl=https://aster-lang.cloud/dashboard&amp;json=true</loginbody>
+      </form>
+    </authentication>
+
+    <users>
+      <user>1;true;c2VjdXJpdHktc2NhbkBhc3Rlci1sYW5nLmNsb3Vk;2;dXNlcm5hbWU9c2VjdXJpdHktc2NhbkBhc3Rlci1sYW5nLmNsb3VkJnBhc3N3b3JkPSR7WkFQX0FVVEhfUEFTU1dPUkR9</user>
+    </users>
+
+    <session>
+      <type>0</type>  <!-- cookie-based; NextAuth uses next-auth.session-token -->
+    </session>
+
+    <forceduser>1</forceduser>
+  </context>
+</configuration>

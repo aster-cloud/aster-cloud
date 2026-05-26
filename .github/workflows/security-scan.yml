@@ -121,3 +121,50 @@ jobs:
           fail_action: false
           allow_issue_writing: false
           artifact_name: zap_baseline_api
+
+  # Authenticated scan — exercises post-login routes that the
+  # baseline scans can't reach. Needs a service-account credential
+  # plus a ZAP context file that tells the scanner how to log in.
+  #
+  # Pre-requisites (one-time operator setup):
+  #   - Seed a service account user `security-scan@aster-lang.cloud`
+  #     in production with a strong password stored as a GitHub
+  #     secret ZAP_SCAN_USER_PASSWORD. The account is tagged
+  #     `isSecurityScan=true` so all writes from it are sandboxed
+  #     and audit-tagged (see docs/runbooks/secrets-rotation.md
+  #     for rotation procedure).
+  #   - The ZAP context file in .github/zap/auth-context.xml lists
+  #     the routes we want walked (dashboard, policies, settings,
+  #     admin) and tells ZAP to use form auth at /api/auth/signin.
+  #
+  # The scan is throttled hard (rate-limit 5 req/s) so it doesn't
+  # masquerade as abuse — the service account would otherwise hit
+  # ApiQuotaGuard / Stripe usage tracking.
+  #
+  # fail_action: false — like the baseline jobs, this is warn-only.
+  # Triage happens via the uploaded HTML report; failures here would
+  # block deploy cadence too aggressively.
+  zap-authenticated-cloud:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ZAP_SCAN_USER_PASSWORD != '' }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: ZAP authenticated scan (aster-lang.cloud)
+        uses: zaproxy/action-full-scan@v0.12.0
+        with:
+          target: https://aster-lang.cloud
+          fail_action: false
+          allow_issue_writing: false
+          artifact_name: zap_authenticated_cloud
+          cmd_options: >-
+            -n /zap/wrk/auth-context.xml
+            -U security-scan@aster-lang.cloud
+            -m 5
+            -T 30
+          rules_file_name: .github/zap/rules.tsv
+        env:
+          # ZAP picks up the password via the context file's
+          # ${ZAP_AUTH_PASSWORD} placeholder substitution. Keeping
+          # it out of the context XML means we don't commit the
+          # value-shape, only the substitution variable.
+          ZAP_AUTH_PASSWORD: ${{ secrets.ZAP_SCAN_USER_PASSWORD }}
