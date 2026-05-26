@@ -167,6 +167,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- ADR-0008 — zh-CN v2 keywords + CJK punctuation soft boundary *(adr)*
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Close GA-readiness with ADR-0007 + DR runbook + master checklist *(ga)*
 - Update [skip ci] *(changelog)*
@@ -191,6 +193,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Wire source + locale to DecisionTracePanel (P0-2) *(execute)*
 - Wire policy-version-list confirm dialogs to translation bundle *(i18n)*
 - Clock-rollback detection in license-runtime-gate *(license)*
 - NODE_ENV=production veto + fingerprint cross-check on trust bundle *(license)*
