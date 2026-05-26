@@ -167,6 +167,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- ADR-0009 — PII enforcement default-on across all runtimes *(adr)*
+- Update [skip ci] *(changelog)*
 - ADR-0008 — zh-CN v2 keywords + CJK punctuation soft boundary *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
