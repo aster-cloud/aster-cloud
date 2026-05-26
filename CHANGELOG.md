@@ -165,6 +165,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Incident response set (5 docs) *(runbooks)*
+- Update [skip ci] *(changelog)*
 - Secrets rotation + license-key ceremony rehearsal *(runbooks)*
 - Update [skip ci] *(changelog)*
 - Keygen --out-file with mode 0600 + legacy warning *(on-prem testing)*
