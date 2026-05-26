@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Healthchecks heartbeats + SaaS/AI Grafana dashboards *(observability)*
 - OCI K3S deployment + Helm charts + ArgoCD apps *(staging)*
 - DSAR e2e + 4 new license Grafana panels *(observability)*
 - ASTER_TEST_TRUST_BUNDLE_EXTRA env-driven bundle extension *(license)*
@@ -166,6 +167,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Close GA-readiness with ADR-0007 + DR runbook + master checklist *(ga)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
