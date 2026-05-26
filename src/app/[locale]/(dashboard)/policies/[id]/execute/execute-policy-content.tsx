@@ -139,7 +139,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // 策略源码用于 DecisionTracePanel 的 AI Explain 功能 —— 之前未读导致
+  // AI Explain 按钮在生产链路永远不显示，详见 ADR-0009 P0-2 修复。
   const [policyContent, setPolicyContent] = useState('');
 
 
@@ -706,7 +707,11 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
           </div>
         </div>
         {result?.decisionTrace && (
-          <DecisionTracePanel trace={result.decisionTrace} />
+          <DecisionTracePanel
+            trace={result.decisionTrace}
+            source={policyContent}
+            locale={policyLocale === 'zh' ? 'zh-CN' : policyLocale === 'de' ? 'de-DE' : 'en-US'}
+          />
         )}
       </div>
     </div>
