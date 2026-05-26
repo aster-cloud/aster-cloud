@@ -25,7 +25,8 @@
     "tryAgain": "Erneut versuchen",
     "errorId": "Fehler-ID",
     "contactSupport": "Support kontaktieren",
-    "loadFailed": "Diese Ansicht konnte nicht geladen werden."
+    "loadFailed": "Diese Ansicht konnte nicht geladen werden.",
+    "confirm": "Bestätigen"
   },
   "nav": {
     "brand": "Aster Cloud",

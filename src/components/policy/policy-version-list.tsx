@@ -56,6 +56,7 @@ export function PolicyVersionList({
   onViewSource,
 }: PolicyVersionListProps) {
   const t = useTranslations('policies.versions');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
   const [actionDialog, setActionDialog] = useState<ActionDialogState>({
     open: false,
@@ -121,70 +122,71 @@ export function PolicyVersionList({
 
   const getDialogConfig = useCallback(() => {
     const v = actionDialog.version;
+    const n = v?.version ?? 0;
     switch (actionDialog.type) {
       case 'set-default':
         return {
-          title: '设置默认版本',
-          description: `确定要将 v${v?.version} 设为默认执行版本吗？`,
-          confirmLabel: '确认设置',
+          title: t('setDefaultDialog.title', { n }),
+          description: t('setDefaultDialog.body', { n }),
+          confirmLabel: t('setDefaultDialog.confirm'),
           variant: 'info' as const,
           showComment: false,
         };
       case 'deprecate':
         return {
-          title: '废弃版本',
-          description: `确定要废弃 v${v?.version} 吗？废弃后该版本仍可执行，但会显示警告。`,
-          confirmLabel: '确认废弃',
+          title: t('deprecateDialog.title', { n }),
+          description: t('deprecateDialog.body', { n }),
+          confirmLabel: t('deprecateDialog.confirm'),
           variant: 'warning' as const,
           showComment: true,
-          commentPlaceholder: '废弃原因（可选）',
+          commentPlaceholder: t('deprecateDialog.reasonLabel'),
         };
       case 'archive':
         return {
-          title: '归档版本',
-          description: `确定要归档 v${v?.version} 吗？归档后该版本将不可执行。`,
-          confirmLabel: '确认归档',
+          title: t('archiveDialog.title', { n }),
+          description: t('archiveDialog.body', { n }),
+          confirmLabel: t('archiveDialog.confirm'),
           variant: 'danger' as const,
           showComment: true,
-          commentPlaceholder: '归档原因（可选）',
+          commentPlaceholder: t('archiveDialog.reasonLabel'),
         };
       case 'submit':
         return {
-          title: t('submitDialogTitle', { n: v?.version ?? 0 }),
-          description: t('submitDialogBody', { n: v?.version ?? 0 }),
+          title: t('submitDialogTitle', { n }),
+          description: t('submitDialogBody', { n }),
           confirmLabel: t('submitForApproval'),
           variant: 'info' as const,
           showComment: false,
         };
       case 'approve':
         return {
-          title: '批准版本',
-          description: `确定要批准 v${v?.version} 吗？批准后该版本可被执行。`,
-          confirmLabel: '批准',
+          title: t('approveDialog.title', { n }),
+          description: t('approveDialog.body', { n }),
+          confirmLabel: t('approveDialog.confirm'),
           variant: 'info' as const,
           showComment: true,
-          commentPlaceholder: '审批意见（可选）',
+          commentPlaceholder: t('approveDialog.commentPlaceholder'),
         };
       case 'reject':
         return {
-          title: '拒绝版本',
-          description: `确定要拒绝 v${v?.version} 吗？`,
-          confirmLabel: '拒绝',
+          title: t('rejectDialog.title', { n }),
+          description: t('rejectDialog.body', { n }),
+          confirmLabel: t('rejectDialog.confirm'),
           variant: 'danger' as const,
           showComment: true,
-          commentPlaceholder: '拒绝原因（必填）',
+          commentPlaceholder: t('rejectDialog.commentPlaceholder'),
           commentRequired: true,
         };
       default:
         return {
           title: '',
           description: '',
-          confirmLabel: '确认',
+          confirmLabel: tCommon('confirm'),
           variant: 'info' as const,
           showComment: false,
         };
     }
-  }, [actionDialog, t]);
+  }, [actionDialog, t, tCommon]);
 
   const dialogConfig = getDialogConfig();
 

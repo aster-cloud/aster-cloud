@@ -25,7 +25,8 @@
     "tryAgain": "重试",
     "errorId": "错误编号",
     "contactSupport": "联系支持",
-    "loadFailed": "无法加载此视图。"
+    "loadFailed": "无法加载此视图。",
+    "confirm": "确认"
   },
   "nav": {
     "brand": "Aster Cloud",
