@@ -1,0 +1,135 @@
+# Dependabot configuration for aster-cloud.
+#
+# We update on a weekly cadence (Mondays UTC) to batch reviewer
+# attention rather than spreading 30 PRs across the week. Critical
+# security patches are an exception — `vulnerability-alerts` runs
+# out-of-band when GitHub Security Advisories report a CVE on a
+# direct dep.
+#
+# Grouping strategy:
+#   - Auth / Next.js / React core get their own groups so a major
+#     Next bump (frequent breaking changes) doesn't drag in the rest
+#   - Dev-only tooling (vitest, eslint, drizzle-kit) batched together
+#     since their failures only affect CI, not prod
+#   - aster-cloud workspace packages (@aster-cloud/ui, etc.) ignored
+#     here — they are owned by us and updated by the design-system
+#     repo's release cycle, not by Dependabot
+#
+# Author auto-assignment: PRs land with no assignee on purpose; the
+# weekly batch is reviewed by whoever is on-call that week (see
+# docs/runbooks/on-call.md).
+
+version: 2
+updates:
+  # ──────────────────────────────────────────────────────────────
+  # npm (pnpm) deps — aster-cloud root
+  # ──────────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Australia/Melbourne
+    open-pull-requests-limit: 8
+    versioning-strategy: increase
+    labels:
+      - dependencies
+      - npm
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: scope
+
+    # Don't auto-bump packages we own and pin deliberately.
+    ignore:
+      - dependency-name: "@aster-cloud/*"
+      # Major bumps on Next.js / React land manually after a smoke
+      # cycle on staging — see docs/runbooks/staging-deploy.md.
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+
+    groups:
+      auth-stack:
+        patterns:
+          - "next-auth"
+          - "@auth/*"
+          - "bcryptjs"
+          - "jose"
+        update-types: ["minor", "patch"]
+      nextjs:
+        patterns:
+          - "next"
+          - "@next/*"
+          - "next-intl"
+        update-types: ["minor", "patch"]
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+        update-types: ["minor", "patch"]
+      drizzle:
+        patterns:
+          - "drizzle-orm"
+          - "drizzle-kit"
+          - "postgres"
+        update-types: ["minor", "patch"]
+      design-system-3p:
+        patterns:
+          - "@radix-ui/*"
+          - "lucide-react"
+          - "sonner"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+        update-types: ["minor", "patch"]
+      test-tooling:
+        dependency-type: development
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "eslint"
+          - "@eslint/*"
+          - "typescript"
+          - "@types/*"
+          - "jsdom"
+        update-types: ["minor", "patch"]
+      cloudflare:
+        patterns:
+          - "wrangler"
+          - "@opennextjs/*"
+          - "@cloudflare/*"
+        update-types: ["minor", "patch"]
+      stripe:
+        patterns:
+          - "stripe"
+        update-types: ["minor", "patch"]
+
+  # ──────────────────────────────────────────────────────────────
+  # GitHub Actions — weekly to catch deprecated runners + image bumps
+  # ──────────────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Australia/Melbourne
+    open-pull-requests-limit: 4
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "ci(deps)"
+      include: scope
+    groups:
+      actions-core:
+        patterns:
+          - "actions/*"
+      docker-actions:
+        patterns:
+          - "docker/*"

@@ -1,0 +1,52 @@
+# Changelog generator.
+#
+# Trigger: push to main, AND release tag creation.
+#   - On push: refresh the [unreleased] section so reviewers can see
+#     what's accumulating toward the next release without waiting for
+#     a tag.
+#   - On tag: cut a versioned section with the timestamp.
+#
+# Implementation: git-cliff parses commit messages (Conventional
+# Commits) and renders CHANGELOG.md per cliff.toml at the repo root.
+# Output is committed back to main by a bot (the github-actions
+# user). The commit message has [skip ci] so we don't recursively
+# re-trigger this workflow.
+
+name: changelog
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore:
+      - "CHANGELOG.md"  # avoid infinite loop on the bot's own commit
+  workflow_dispatch:
+
+permissions:
+  contents: write   # for the bot to push CHANGELOG.md back
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0    # git-cliff needs full history
+
+      - name: Run git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --output CHANGELOG.md
+
+      - name: Commit changelog if changed
+        run: |
+          if [ -z "$(git status --porcelain CHANGELOG.md)" ]; then
+            echo "CHANGELOG.md unchanged — skipping commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): update [skip ci]"
+          git push

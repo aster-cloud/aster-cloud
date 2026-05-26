@@ -1,0 +1,59 @@
+# git-cliff config for aster-cloud changelog generation.
+#
+# Output: CHANGELOG.md at the repo root.
+# Trigger: post-merge to main (see .github/workflows/changelog.yml).
+#
+# Grouping: parses Conventional Commits (feat:, fix:, etc.) into
+# user-facing categories. Hides internal-only changes (build, ci,
+# chore) from the changelog by default so customers see only what
+# matters to them.
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to aster-cloud are documented here.
+Format inspired by [Keep a Changelog](https://keepachangelog.com/).
+"""
+body = """
+{% if version %}\
+## [{{ version }}] — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | upper_first | trim }}{% if commit.scope %} *({{ commit.scope }})*{% endif %}{% if commit.breaking %} **BREAKING**{% endif %}\
+{% endfor %}
+{% endfor %}
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Performance" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^docs\\(perf\\)", group = "Performance" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^revert", group = "Reverted" },
+  # Hidden from changelog (internal tooling churn)
+  { message = "^chore", skip = true },
+  { message = "^ci", skip = true },
+  { message = "^build", skip = true },
+  { message = "^test", skip = true },
+  { message = "^style", skip = true },
+]
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9]*"
+skip_tags = ""
+ignore_tags = ""
+topo_order = false
+sort_commits = "newest"
