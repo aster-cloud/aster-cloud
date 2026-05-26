@@ -85,6 +85,82 @@ jobs:
             coverage/
           if-no-files-found: ignore
 
+  # E2E smoke — boots `next start` in background and runs the
+  # vitest.e2e suite against it. Catches:
+  #   - middleware redirect regressions (the next-intl loop we hit
+  #     in the May 2026 standalone deploy)
+  #   - server-rendered i18n drift on landing / pricing / hero
+  #   - authenticated-route gate (login redirect)
+  # Runs in parallel with `build` so failures here don't block the
+  # SaaS bundle artifact going through.
+  #
+  # Uses `pnpm build:next && pnpm start` (not `pnpm dev`) so we test
+  # the production-shaped server, not the dev hot-reload bundle.
+  # Production shape catches issues like the standalone server.js
+  # NODE_ENV hardcode that dev mode never hits.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build production bundle for e2e
+        # SaaS build path. We're not testing the on-prem variant here;
+        # the on-prem-build job already verifies that bundle doesn't
+        # bundle SaaS SDKs.
+        run: pnpm build:next
+
+      - name: Start production server
+        run: |
+          # Standalone output goes to .next/standalone — copy static/
+          # + public/ next to it so the server can serve them.
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          [ -d public ] && cp -r public .next/standalone/public || true
+          # Start in background. Hostname 127.0.0.1 so it doesn't
+          # try to bind to ::1 on dual-stack runners.
+          (cd .next/standalone && PORT=3001 HOSTNAME=127.0.0.1 \
+            DEPLOYMENT_MODE=saas \
+            DATABASE_URL='postgresql://noop:noop@localhost:5432/noop' \
+            AUTH_SECRET='ci-e2e-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' \
+            NEXTAUTH_SECRET='ci-e2e-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' \
+            CRON_SECRET='ci-e2e-cron' \
+            NEXT_PUBLIC_APP_URL='http://localhost:3001' \
+            NEXTAUTH_URL='http://localhost:3001' \
+            ASTER_PLAN_GATE_HMAC_KEY='ci-e2e-hmac' \
+            node server.js > /tmp/e2e-server.log 2>&1 &)
+          # Wait up to 30s for the server to accept requests. Probe / —
+          # next-intl rewrites it to /en internally and serves SSR
+          # within ~3s on a cold-start GitHub runner.
+          for i in $(seq 1 30); do
+            sleep 1
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/ || echo 000)
+            if [ "$code" = "200" ] || [ "$code" = "307" ]; then
+              echo "server ready (HTTP $code) after ${i}s"
+              break
+            fi
+          done
+
+      - name: Run e2e suite
+        env:
+          E2E_BASE_URL: http://localhost:3001
+        run: pnpm test:e2e
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-server-log
+          path: /tmp/e2e-server.log
+          if-no-files-found: ignore
+
   # Cloudflare's git integration auto-deploys from main on every push,
   # so there is no GitHub Actions deploy job here. (Previous attempts to
   # add one created two parallel deploys racing for the same Worker.)
