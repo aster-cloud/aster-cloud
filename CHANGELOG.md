@@ -1,0 +1,421 @@
+# Changelog
+
+All notable changes to aster-cloud are documented here.
+Format inspired by [Keep a Changelog](https://keepachangelog.com/).
+## [unreleased]
+
+### Added
+
+- ASTER_TEST_TRUST_BUNDLE_EXTRA env-driven bundle extension *(license)*
+- ExtractErrorMessage/extractRequestId client helpers *(api)*
+- V2 - permission tiers, audit log, list sections *(policy-sharing)*
+- Share policy with multiple teams + admin toggle (OFF by default) *(policies)*
+- Topbar bell + invite events + 30s polling *(notifications)*
+- In-app invitation inbox (accept/decline without email) *(teams)*
+- Unify policy create + design-system invite form *(teams)*
+- P1-1 left sidebar + P1-2 billing overview split *(shell)*
+- P1 punch list — landing nav, admin pulse, error envelope *(admin)*
+- Close P0 punch list from SaaS-admin UX audit *(admin)*
+- Public BFF for marketing-site evaluate-source trial *(playground)*
+- G2 Stage 2 — block-ID annotation + markdown scanner *(glossary)*
+- G2 Stage 1 — inventory PR (report-only) *(glossary)*
+- Dual-trigger model — worker.js scheduled() + Postgres dedup lease *(cron)*
+- J5 — privacy page rewrite + customer DSAR API + dry-run *(telemetry)*
+- J4 — schema-version negotiation + data minimization doc *(telemetry)*
+- J3 — envelope-encrypt HMAC secrets at rest (AES-256-GCM) *(telemetry)*
+- J2 — customer-mask + data-region tag + DPA template *(telemetry)*
+- J1 — retention GC + DSAR delete API + access audit *(telemetry)*
+- H — admin issued-licenses lifecycle view *(license)*
+- G — opt-in usage telemetry (on-prem → SaaS) *(license)*
+- I — wire real email path into renewal-invite cron *(license)*
+- A — self-serve renewal portal (v3 milestone close) *(license)*
+- V3 — deployment binding (required, fail-closed) *(license)*
+- ESLint rule guards SaaS-only static imports *(deployment-mode)*
+- PR-11 — on-prem license system v2 production hardening *(license)*
+- Localize CnlDemo typewriter to en/zh/de *(marketing)*
+- PR-10 — vitest projects dual-mode test coverage *(deployment-mode)*
+- PR-9 — ESLint custom rule no-direct-macro *(deployment-mode)*
+- PR-8 — on-prem /admin/license + /admin/sso pages *(deployment-mode)*
+- PR-7 — on-prem bundle/UI verify scripts + CI gate *(deployment-mode)*
+- PR-5 — gate client-side UI affordances by mode *(deployment-mode)*
+- PR-4 batch D — resend/mixpanel hot-gate + auth trial gate *(deployment-mode)*
+- PR-4 batch C — gate SaaS-only pages + dunning-status API *(deployment-mode)*
+- PR-4 batch B — gate 7 SaaS-only cron routes *(deployment-mode)*
+- PR-4 batch A — Stripe routes/lib hot-gate *(deployment-mode)*
+- PR-3 — admin shell + mode-aware sidebar + overview index *(admin)*
+- PR-2 — env-validation per-mode + helper fail-closed refactor *(deployment-mode)*
+- PR-1b — formal helper module + build wiring *(deployment-mode)*
+- Self-applying schema patch + admin seed on cold start *(db)*
+- Admin seed script + force password change on first login *(auth)*
+- Add GET /api/user/me *(api)*
+- PR-K — read-only policy viewer below md breakpoint *(mobile)*
+- PR-I — skip-to-content link + main landmark *(a11y)*
+- PR-H — team ownership transfer UI *(teams)*
+- PR-G — GDPR data page + AI circuit breaker admin console
+- PR-F — version management + approval workflow UI *(policies)*
+- PR-B — SWR + useApi/useMutation foundation *(api)*
+- PR-A — consume @aster-cloud/ui@0.2.0 *(ui)* **BREAKING**
+- PR-3 — in-editor ⌘K palette + insert at cursor + convert *(policy-form)*
+- PR-2 — real-time compile + Monaco markers + decision tab *(policy-form)*
+- PR-1 — IDE layout + shared form + autosave + shortcuts *(policy-form)*
+- Finish P1-8 + P2-10 — settings split + dark mode toggle *(ux)*
+- P0 + P1 UX audit fixes *(ux)*
+- Drive hero subtitle locales from i18n config *(landing)*
+- Breadcrumbs rollout + ⌘K palette analytics (followups) *(ui+telemetry)*
+- ⌘K command palette + Breadcrumbs primitive (W6) *(dashboard)*
+- Live CNL demo + trust band (W5) *(landing)*
+- Brand-aware Aster CNL syntax theme (W4) *(monaco)*
+- Dashboard surface uses @/components/ui primitives (W2.3) *(ui)*
+- Marketing surface uses @/components/ui primitives (W2.2) *(ui)*
+- Seed src/components/ui/ primitives (W2.1) *(ui)*
+- Wire @aster/tokens brand layer (W1.5) *(design)*
+- Hot-plug language pack UI + SSE backend availability sync *(lexicon)*
+- Auto-decay cron + signal write-back + email heuristic *(risk-tier)*
+- Risk-tier triage UI + override API *(admin)*
+- Registration-time risk-tier scoring + downstream gates *(account)*
+- Soft-delete + 30d grace + same-identity reactivation *(account)*
+- Public dashboard at /equivalence *(equivalence)*
+- Automated drizzle migration via K8s Job *(migrations)*
+- Phase 3 deliverables — security, billing, metrics, dashboards *(cloud)*
+- Auto-apply validated AI output to Monaco editor *(ai)*
+- Add AI assistant to policy edit page *(ai)*
+- Add inline completion, diff preview, suggest, and keyboard shortcuts *(ai)*
+- Add AI assistant panel for policy generation *(ai)*
+- Add rate limiting to evaluate-source route *(api)*
+- Restore onboarding columns after production migration *(db)*
+- 接入 lspUiTexts 本地化 UI 标签 *(i18n)*
+- 启用本地化输入生成 — 传入 lexicon 到 generateInputValues/generateFieldValue *(i18n)*
+- 集成领域词汇表高亮和术语识别 *(monaco)*
+- Add KV caching for policy metadata *(cache)*
+- Add accurate error position markers with red squiggly underlines *(editor)*
+- Register all Monaco language providers for LSP features *(lsp)*
+- Use local browser compilation for schema extraction *(compiler)*
+- Add .env.production with NEXT_PUBLIC_LSP_HOST *(env)*
+- Migrate from NextAuth v4 to Auth.js v5 for Cloudflare Workers *(auth)* **BREAKING**
+- Add Hyperdrive database switch for k3s PostgreSQL *(db)*
+- Extract struct fields for schema generation *(local-compiler)*
+- Add Truffle security architecture and fix TypeScript errors *(security)*
+- Auto-generate sample input values based on policy schema *(execute)*
+- Add multi-language CNL syntax support and conversion tools *(cnl)*
+- Improve multi-select drag UX and group tree *(policies)*
+- Add drag-to-subgroups and multi-select batch drag *(policies)*
+- Show "deleted" badge for soft-deleted policies on dashboard
+- Add drag-drop grouping, group selector, and UI improvements *(policies)*
+- Enable LSP in policy editor pages
+- Add LSP WebSocket server and local CNL compilation
+- Add hierarchical policy grouping with i18n support *(policy-groups)*
+- Enhance execute page with schema-driven forms and i18n *(demo)*
+- Implement anonymous demo mode with cookie-based sessions *(demo)*
+- Add more CNL policy examples *(examples)*
+- Add Save to My Policies button for example policies *(policies)*
+- Add named parameters support for policy execution *(policies)*
+- Add German language support for CNL policies *(i18n)*
+- Implement anti-abuse protection system *(security)*
+- Support Chinese bracket syntax for CNL detection *(cnl)*
+- Integrate Monaco Editor with Aster Lang CNL support *(policy-editor)*
+- Implement complete team management system
+- Add FAQ categories and v1 policies list API
+- Add policy freeze and enhance FAQ/API documentation
+- Add report detail page with i18n support *(reports)*
+- Add i18n for execute page *(policies)*
+- Add i18n for new/edit pages *(policies)*
+- Add edit page for policy modification *(policies)*
+- Implement account deletion with confirmation dialog *(settings)*
+- Add 6 more FAQ items for better user experience *(billing)*
+- Add progress bars to policies and API calls, move PII to last *(dashboard)*
+- Add independent API call quota with dual limit check *(api)*
+- Show infinity emoji on progress bar for unlimited plans *(billing)*
+- Unify plan features between homepage and billing page *(plans)*
+- Internationalize plan names and features *(i18n)*
+- Add currency selector for multi-currency checkout *(billing)*
+- Add German translations and improve billing copy *(i18n)*
+- Add German locale support for EUR currency *(i18n)*
+- Add locale-aware navigation and localeDetection setting
+- Add multi-currency support for CNY and EUR
+- Add i18n to dashboard and settings pages
+- Add i18n to auth pages (signup, login, forgot-password, reset-password)
+- Add internationalization with multi-currency pricing
+- Add API keys management
+- Add settings and logout pages
+- Add password reset functionality
+- Add Vercel Speed Insights
+- Add landing page with hero, features, and pricing
+- Implement complete SaaS platform with auth, policies, billing, and tests
+- Initial aster-cloud SaaS platform setup
+
+### Changed
+
+- Derive primitive types from lang-ts lexicon (D12) *(monaco)*
+- Single-root resolution + canonical locale-utils *(glossary)*
+- Derive locale tokens from glossary + hard-fail schema *(glossary)*
+- PR-D — remove prerender anti-pattern (representative) *(i18n)*
+- Remove dead code — unused exports, types, and no-op function
+- 删除 1265 行重复/死代码，统一使用 aster-lang-ts 输入生成
+- 消除本地词汇表副本，改用 aster-lang-ts 导出 *(lexicon)*
+- 迁移到统一 CNL 语法
+- Use local aster-lang-ts compiler instead of backend *(schema-api)*
+- Remove CNL language selector, use page locale *(policy)*
+- Remove redundant CNL language label *(policy)*
+- Remove demo mode in favor of SSO trial
+- Migrate example selector to new policy page *(policies)*
+- Extract API auth helper and data-driven FAQ component
+- Move localeDetection to i18n config
+- Migrate middleware.ts to proxy.ts
+
+### Documentation
+
+- Keygen --out-file with mode 0600 + legacy warning *(on-prem testing)*
+- License-flow E2E harness + 8-stage runbook *(on-prem)*
+- G5 — ADRs 0004/0005/0006 + 13 operations runbooks *(glossary)*
+- G0 scaffold — stakeholder matrix + infra prerequisites *(glossary)*
+- Introduce ADR convention + 3 deployment-mode decisions *(adr)*
+- Track upstream PRs blocking webpack removal *(turbopack)*
+- Deployment-mode v2 plan + PR-0 inventory + PR-1a spike report *(plan)*
+- Pin the Validate-vs-Execute invariant in code *(security)*
+- Document ASTER_PLAN_GATE_HMAC_KEY secret requirement *(wrangler)*
+- Document drizzle schema permission setup *(migrations)*
+- P0-8 security self-audit + weekly nuclei/ZAP scans
+
+### Fixed
+
+- Wire policy-version-list confirm dialogs to translation bundle *(i18n)*
+- Clock-rollback detection in license-runtime-gate *(license)*
+- NODE_ENV=production veto + fingerprint cross-check on trust bundle *(license)*
+- Use extractErrorMessage for all `data.error || ...` sites *(client)*
+- Break next-intl default-locale redirect loop on standalone *(middleware)*
+- Use translation bundle for version panel + status badge *(i18n)*
+- Drive aster-api allowlist from NEXT_PUBLIC_ASTER_POLICY_API_URL *(csp)*
+- Runtime NODE_ENV lookup + ASTER_ALLOW_DEV_TRUST_BUNDLE escape *(license)*
+- Respect NODE_ENV env in standalone server *(build)*
+- Deterministic ordering for share list endpoints *(policy-sharing)*
+- Proper fetch abort on unmount in shared lists *(policy-sharing)*
+- Atomic upsert for share creation *(policy-sharing)*
+- Structured AI-keys 500 + design-system Create Team Policy *(forms+byok)*
+- Use leaf i18n path for the Settings button label *(teams)*
+- Design-system Input on AI keys + teams, slug pattern + teams 500 *(forms)*
+- AI diff overflow + Create Group 500 *(policy)*
+- Monaco scroll dead + policy-groups 500 *(policy)*
+- Nav Pricing → in-page anchor, drop Blog *(landing)*
+- /admin 500 caused by trust-bundle prod assertion *(admin)*
+- Pass nuclei v3 inputs via args (API change) *(security-scan)*
+- Bump zap-baseline action v0.12.0 → v0.15.0 *(security-scan)*
+- Patch uuid+qs advisories, unblock zap-baseline workflow *(security)*
+- Replace any types in check-glossary with concrete shapes *(lint)*
+- Correct token order + add type constructors + regression test (R-fix 7/9/10) *(monaco)*
+- Consumer delegates to canonical scan() + locale full/short *(glossary)*
+- Drop dead @ts-expect-error directives in eslint-rule tests *(types)*
+- Turbopack-readiness exits 0 in human mode, 1 only with --ci *(scripts)*
+- Tailwind v4 @source for @aster-cloud/ui + tighten auth forms *(ui)*
+- PR-5 follow-up — codex audit found 4 missed UI surfaces *(deployment-mode)*
+- PR-4 follow-up — codex audit fixes *(deployment-mode)*
+- Use raw SQL — Drizzle drops user-supplied timestamps *(db-bootstrap)*
+- Pass timestamps explicitly to satisfy NOT NULL *(db-bootstrap)*
+- Case-insensitive admin lookup to avoid email collision *(db-bootstrap)*
+- Drop advisory lock — unsafe under Hyperdrive pool *(db-bootstrap)*
+- Split schema patch + admin seed into separate caches *(db-bootstrap)*
+- Bootstrap on credentials path + diagnostic endpoint *(auth)*
+- Three regressions from PR-F / PR-G
+- PR-L — api-keys table no longer clips on narrow viewports *(mobile)*
+- PR-E — ai-keys fully translated + locale.startsWith removed *(i18n)*
+- PR-C — unify h1 typography across dashboard *(ui)*
+- Endless page height, /compile 502, hydration #418 *(policy-form)*
+- Make secondary button override actually apply (!important) *(theme)*
+- Give secondary buttons a visible silhouette in light mode *(theme)*
+- Bind Tailwind's dark: variant to data-theme *(theme)*
+- Sweep light-only colors across deep dashboard surfaces *(theme)*
+- Sweep light-only colors to tokens on high-visibility pages *(theme)*
+- Polyfill __name before any inline script runs *(workers)*
+- Thread CSP nonce into next-themes inline script *(theme)*
+- Tokenize dashboard nav so dark mode reads as intended *(nav)*
+- Make footer Aster cloud wordmark visible on dark bg *(landing)*
+- Keep hero headline on a single line on desktop *(landing)*
+- Serialize command icons as ids, not forwardRef components *(dashboard)*
+- Split buildCommands into server-safe module *(dashboard)*
+- Receive locale from params instead of getLocale() *(dashboard)*
+- Add password to Hyperdrive placeholder connection string *(deploy)*
+- Unblock Cloudflare git-build with Hyperdrive localConnectionString *(deploy)*
+- Promote uuid to a direct dep *(deps)*
+- Refresh lockfile for npm-registry @aster-cloud/tokens + bump stripe apiVersion *(deps)*
+- SSE cloud-side proxy + Monaco 0.55 disposeInlineCompletions *(ai+monaco)*
+- SignupAttempt table + fail-open + skip env-validate on Worker *(auth+db)*
+- Cookies() read-only in RSC; missing ApiCallRecord migration *(auth+db)*
+- Surface signIn rejection reason on login page *(auth)*
+- Fail-closed cron-auth + cloud-side /api/llm/complete proxy *(security)*
+- Decouple admin from plan + role-aware dashboard nav *(auth+nav)*
+- Allow OAuth account linking by verified email *(auth)*
+- Surface user-facing message from PromptScopeFilter rejections *(sse)*
+- API-keys examples + equivalence page i18n *(ui)*
+- Allow Monaco editor (jsdelivr CDN) + split style-src-elem/-attr *(csp)*
+- Use npm + pinned deps instead of pnpm workspace install *(migrate-image)*
+- Allow aster-api domain in connect-src *(csp)*
+- Catch up User table to schema.ts (fixes /login?error=Configuration) *(db)*
+- Explicit secret from NEXTAUTH_SECRET legacy var *(auth)*
+- Aster-lang.cloud 500 — instrumentation throws on Cloudflare Workers *(edge)*
+- Aster-lang.cloud 500 — middleware mutated immutable request headers *(edge)*
+- Remove non-standard re-export from stripe webhook route *(api)*
+- Clear 14 lint errors blocking CI *(lint)*
+- Remove unused showDiff state in ai-assistant-panel *(lint)*
+- Defer DndContext render to avoid React error #418 *(hydration)*
+- Add cdn.jsdelivr.net to connect-src for Monaco source maps *(csp)*
+- Prefix unused ip variable with underscore *(lint)*
+- Allow cdn.jsdelivr.net for Monaco editor loading *(csp)*
+- Revert unmigrated onboarding columns causing AdapterError *(auth)*
+- Update CSP to allow OAuth providers and Cloudflare Insights *(auth)*
+- Restore trustHost: true to fix SSO login *(auth)*
+- Remove getLspUiTexts import not yet in published package *(build)*
+- Resolve eslint unused-vars and no-explicit-any errors *(lint)*
+- 修复全部测试类型错误 + 安全加固 + i18n 增强 *(test)*
+- 为策略示例的 Data 字段添加类型标注，消除 FIELD_TYPE_MISMATCH *(examples)*
+- Auto-upgrade 改用 workflow_dispatch 触发 *(ci)*
+- 更新 CNL 样例至新语法（set to / 将设为 / setze auf）
+- 增强批准状态解析，兼容字符串 "true"
+- 修复策略示例语法，添加 produce 子句和正确的函数调用
+- Resolve all security vulnerabilities *(deps)*
+- 添加 ESLint 插件为直接依赖 *(ci)*
+- 移除 pnpm/action-setup 的 version 参数，使用 packageManager 字段 *(ci)*
+- 修复 ESLint 配置和清理未使用代码
+- 编辑器占位符添加 aria-hidden，加载状态适配主题 *(a11y)*
+- 修复 Monaco 编辑器领域词汇表集成和主题颜色
+- Use OpenNext ctx.waitUntil for background DB writes
+- Use waitUntil for KV cache writes *(cache)*
+- Correctly access KV binding via OpenNext context *(cache)*
+- Move main/assets before TOML sections to fix parsing
+- Reorder wrangler.toml to fix TOML parsing
+- Increase Cloudflare Workers CPU time limit to 5 seconds
+- Use Node.js runtime for policy execution API
+- 支持中文结构体返回值的批准状态解析 *(executor)*
+- 修复中文 CNL 示例语法问题 *(examples)*
+- 更新中文测试代码以使用正确的 CNL 语法
+- Use parse error position info for Monaco markers
+- 修复中文模板记录实例化语法 *(cnl)*
+- 修正中文函数语法，使用【函数】包含替代入参 *(cnl)*
+- Correct locale mapping for CNL compiler in Monaco editor
+- Use parseWithLexicon API for multi-language CNL parsing
+- Correct Chinese function definition syntax to match aster-lang-ts
+- Update Chinese CNL syntax to match aster-lang-ts v0.0.21
+- Remove pnpm-workspace.yaml for Cloudflare Pages build
+- Add keyword translation to local compilation pipeline *(compiler)*
+- Enable German and Chinese CNL compilation in Monaco editor *(i18n)*
+- Remove pnpm workspace override, use npm package
+- Use remote Policy API for schema to avoid Worker resource limits *(api)*
+- Provide explicit timestamps for UsageRecord insert *(usage)*
+- Update API URL from .cloud to .dev *(policy-api)*
+- Handle piiFields as optional, add debug logging *(api)*
+- Exclude groupId from insert when not provided *(api)*
+- Use node: prefix for async_hooks in Workers *(cloudflare)*
+- Use Web Crypto API instead of Node.js crypto module *(api)*
+- Handle various URL formats in NEXT_PUBLIC_LSP_HOST *(lsp)*
+- Ensure build command produces Cloudflare-ready output *(build)*
+- Resolve OpenNext recursive build loop and memory issues *(build)*
+- Support HYPERDRIVE_DATABASE_URL in config *(prisma)*
+- Flatten schema response to match frontend PolicySchema interface *(api)*
+- Resolve TypeKind mapping for schema extraction *(local-compiler)*
+- Add error handling for schema extraction failures *(execute)*
+- Pnpm-lock update *(pnpm)*
+- Update cleanup schedule for nonce cleanup API to 6:00 am *(cron)*
+- Update cleanup schedule for nonce cleanup API *(cron)*
+- Fix React hydration error #418 by using explicit locale for date formatting *(hydration)*
+- Resolve React hydration error #418 on policies list page
+- Pass locale explicitly to NextIntlClientProvider
+- Resolve React hydration error #418 by passing locale as prop
+- Remove prisma db push from build command *(build)*
+- Fix callback signature for CNLSyntaxConverterDialog *(policy)*
+- Use consistent ConfirmDialog for policy detail page delete
+- Exclude deleted policies from counts, execution, and API responses
+- Exclude deleted policies from group and team counts *(api)*
+- Remove @headlessui/react dependency from converter dialog *(cnl)*
+- Enable drag-drop to deeply nested child groups *(policies)*
+- Add policy counts to "All Policies" and "Ungrouped" groups
+- Align ExecutionSource type with Prisma enum values
+- Fix toLocaleString error by aligning Stats interface with API response *(logs)*
+- Correct ConfirmDialog prop names *(policies)*
+- Fix drag-drop bug and beautify form fields *(policies)*
+- Add missing form accessibility attributes *(a11y)*
+- Update aster-lang-ts to 0.0.5, improve LSP message handling
+- Accessibility issues and simplify LSP status indicator
+- Reset isDisposedRef on mount for React Strict Mode
+- Prevent retry button from triggering navigation
+- Update Dockerfile.lsp to skip prisma postinstall
+- Change piiFields null to undefined for type compatibility *(demo)*
+- Remove dotenv from fix-policy-comments script
+- Remove dotenv dependency from prisma config
+- Handle nested objects in DynamicFormField fallback *(demo)*
+- Update View Demo link to /demo page
+- Remove invalid prisma flag
+- Fix UI issue
+- Fix UI issue
+- Align response types with Policy API *(policy)*
+- Correct response handling in evaluate-source route *(api)*
+- Correct Chinese multiplication operator 乘以 → 乘 *(examples)*
+- Rewrite policy examples to use working CNL patterns *(examples)*
+- Correct CNL syntax in policy examples *(examples)*
+- Prioritize result parsing over success flag *(cnl-executor)*
+- Fix CNL detection and result parsing *(cnl-executor)*
+- Update test examples to match Aster runtime context format *(cnl)*
+- Remove invalid JS-style comments from policy templates *(cnl)*
+- Handle undefined allowed value in execution records *(execute)*
+- Match test data with policy language *(execute)*
+- Improve policy execution security and performance *(policy)*
+- Add missing teams translation keys *(i18n)*
+- Use next-intl router for language switching *(i18n)*
+- Add nested structure for teams.upgradeRequired translations *(i18n)*
+- Use template strings instead of functions for SSR translations
+- Address code review issues for team management
+- Resolve API response structure and improve validation
+- Show top policies by execution count on dashboard
+- Correct API endpoint format and add downgrade FAQ *(docs)*
+- Add translations to policy detail and fix execute button *(i18n)*
+- Unify execution count display with quota checking *(usage)*
+- Correct modal positioning for delete confirmation *(settings)*
+- Obfuscate email to prevent crawler/phishing *(i18n)*
+- Add progress bar for saved policies *(billing)*
+- Align pricing card buttons at bottom with flex layout *(homepage)*
+- Ensure buttons align at bottom with flex-1 on feature list *(billing)*
+- Use translated plan names in billing page *(i18n)*
+- Update NEXT_LOCALE cookie when switching languages *(i18n)*
+- Redirect to saved locale preference in proxy *(i18n)*
+- Preserve locale in auth callback URLs *(i18n)*
+- Add language switcher to dashboard and fix Team pricing
+- Disable auto locale detection from browser
+- Language switcher and Team plan checkout
+- Use NEXT_PUBLIC_ prefix for Stripe price IDs *(plans)*
+- Correct type assertion for capabilities indexing *(usage)*
+- Correct type assertion for capabilities indexing *(plans)*
+- Correct TypeScript type assertion for features.includes *(plans)*
+- Critical security and architecture improvements
+- Prevent OAuth account auto-linking
+- Add refresh_token_expires_in to Account model
+- Remove duplicate trial setup from signIn callback
+- Make OAuth providers optional based on env vars
+- Add @vercel/speed-insights to dependencies
+- Remove unsupported earlyAccess from Prisma config
+- Address critical authentication and XSS vulnerabilities *(security)*
+- Add prisma generate to build script for Vercel
+- Resolve build errors for Vercel deployment
+
+### Performance
+
+- Configure Smart Placement for Melbourne region
+- Add location hint for Oceania region
+- Enable Smart Placement for Cloudflare Workers
+- Optimistically update group counts on drag
+- Optimize FCP by moving data fetch to server component *(logs)*
+- Migrate remaining dashboard pages to SSR for LCP optimization
+- Migrate login and onboarding pages to SSR
+- Migrate key pages to SSR for LCP optimization
+
+### Reverted
+
+- Drop deploy-worker job — Cloudflare git build owns deploys *(ci)*
+- Drop .npmrc and GITHUB_TOKEN — @aster-cloud/tokens now on public npm
+
+### Debug
+
+- Surface pg error code + detail on seed failure *(db-bootstrap)*
+- Surface 500 cause in runtime logs *(dashboard)*
+- Add detailed step-by-step logging for insert
+- Capture all postgres error fields
+- Add postgres error details to POST /api/policies
+- Add detailed error logging to POST /api/policies
+- Add comprehensive LSP connection logging
+
