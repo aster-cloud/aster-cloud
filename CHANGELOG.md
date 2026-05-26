@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- OCI K3S deployment + Helm charts + ArgoCD apps *(staging)*
 - DSAR e2e + 4 new license Grafana panels *(observability)*
 - ASTER_TEST_TRUST_BUNDLE_EXTRA env-driven bundle extension *(license)*
 - ExtractErrorMessage/extractRequestId client helpers *(api)*
@@ -165,6 +166,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - SLO definitions + uptime monitoring spec *(operations)*
 - Update [skip ci] *(changelog)*
 - Incident response set (5 docs) *(runbooks)*
