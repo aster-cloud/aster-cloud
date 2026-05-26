@@ -165,6 +165,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- SLO definitions + uptime monitoring spec *(operations)*
+- Update [skip ci] *(changelog)*
 - Incident response set (5 docs) *(runbooks)*
 - Update [skip ci] *(changelog)*
 - Secrets rotation + license-key ceremony rehearsal *(runbooks)*
