@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- DSAR e2e + 4 new license Grafana panels *(observability)*
 - ASTER_TEST_TRUST_BUNDLE_EXTRA env-driven bundle extension *(license)*
 - ExtractErrorMessage/extractRequestId client helpers *(api)*
 - V2 - permission tiers, audit log, list sections *(policy-sharing)*
@@ -164,6 +165,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Secrets rotation + license-key ceremony rehearsal *(runbooks)*
+- Update [skip ci] *(changelog)*
 - Keygen --out-file with mode 0600 + legacy warning *(on-prem testing)*
 - License-flow E2E harness + 8-stage runbook *(on-prem)*
 - G5 — ADRs 0004/0005/0006 + 13 operations runbooks *(glossary)*
