@@ -7,6 +7,15 @@
 import { validateEnvOrThrow, validateEnvOrWarn } from './lib/env-validation';
 
 export async function register() {
+  // P0-R5 (codex round 5 review): 在 Workers / Node runtime 设置全局
+  // production 标志。aster-lang-ts isProductionRuntime() 通过此标志在
+  // 无 process.env 编译期内联的环境（如 CF Workers）下也能正确判定。
+  // 配合 typecheck/browser.ts __setPiiCheckerForTest 的 production guard
+  // 确保浏览器/Workers 端无法关闭 PII analyzer。
+  if (process.env.NODE_ENV === 'production') {
+    (globalThis as { __ASTER_PRODUCTION__?: boolean }).__ASTER_PRODUCTION__ = true;
+  }
+
   // Skip on Edge runtime entirely (NextRequest API differs).
   if (process.env.NEXT_RUNTIME && process.env.NEXT_RUNTIME !== 'nodejs') return;
 
