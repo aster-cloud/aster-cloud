@@ -167,6 +167,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - P0-R3 Verification 补 real-trace + Known Limitations 节 *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -199,6 +200,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Aster-cloud 真消费 aster-lang-ts 0.2.1 (P0-R4 Critical) *(deps)*
 - P0-R2 集成测试补层 + i18n + locale confidence + ADR 修订 *(execute)*
 - P0-R review fixes for ExecutePolicyContent + ADR-0009 *(execute)*
 - Wire source + locale to DecisionTracePanel (P0-2) *(execute)*
