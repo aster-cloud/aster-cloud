@@ -122,7 +122,11 @@ jobs:
               exit 1
             fi
 
-            # (e) P0-R14：typecheck-pii.js 不得 import server-side typecheck.js
+            # (e) P0-R14/R15：typecheck-pii.js 不得 import server-side typecheck.js
+            # 或 typecheck/utils.js (R15 codex round 14 review: utils.ts 含
+            # require('node:module'), 不是干净 leaf). 必须 import 自纯 leaf
+            # typecheck/alias.js (R14 起 resolveAlias 从这里 export).
+            #
             # 否则 transitively 拉入 typecheck/module.js → node:fs/path/perf_hooks，
             # webpack edge target / Next.js browser bundle build 会炸 UnhandledSchemeError.
             # 这是 R13 通过后才发现的 critical build regression（CI 实际跑出来；
@@ -132,17 +136,23 @@ jobs:
               echo "ERROR: tarball missing package/dist/src/typecheck-pii.js"
               exit 1
             fi
-            # 必须 import './typecheck/utils.js'（leaf），不得 import './typecheck.js'（server entry）
+            # 必须 import 自 './typecheck/alias.js' (纯 leaf, 无 Node 依赖)
+            # 不得 import './typecheck.js' (server entry) 或 './typecheck/utils.js'
+            # (含 require('node:module'))
             if echo "$PII_JS" | grep -E "from[[:space:]]+['\"]\\./typecheck\\.js['\"]" >/dev/null; then
               echo "ERROR: typecheck-pii.js imports server-side typecheck.js — will pull node:fs/perf_hooks into edge bundle"
               exit 1
             fi
-            if ! echo "$PII_JS" | grep -E "from[[:space:]]+['\"]\\./typecheck/utils\\.js['\"]" >/dev/null; then
-              echo "ERROR: typecheck-pii.js must import resolveAlias from './typecheck/utils.js' (leaf module)"
+            if echo "$PII_JS" | grep -E "from[[:space:]]+['\"]\\./typecheck/utils\\.js['\"]" >/dev/null; then
+              echo "ERROR: typecheck-pii.js imports typecheck/utils.js — utils.js contains require('node:module'); use typecheck/alias.js (pure leaf)"
+              exit 1
+            fi
+            if ! echo "$PII_JS" | grep -E "from[[:space:]]+['\"]\\./typecheck/alias\\.js['\"]" >/dev/null; then
+              echo "ERROR: typecheck-pii.js must import resolveAlias from './typecheck/alias.js' (pure leaf module, R15)"
               exit 1
             fi
 
-            echo "OK: tarball content contract satisfied — R6 PII fixes present + call sites verified + edge bundle safety"
+            echo "OK: tarball content contract satisfied — R6 PII fixes present + call sites verified + edge bundle safety (R15 pure leaf)"
           fi
 
       - run: pnpm lint
