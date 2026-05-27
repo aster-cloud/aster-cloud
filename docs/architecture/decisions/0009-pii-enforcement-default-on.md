@@ -383,3 +383,44 @@ pnpm lint               # 0 errors（1 pre-existing 无关 warning）
 - **静态契约测试胜过动态模拟**：`csp.ts` 静态检查（grep 源码 + AST 粗扫）能精准抓住"是否有 module-load 阶段裸读"，而 `delete globalThis.process` 动态模拟在 vitest 主进程里会因为 `process.nextTick` 依赖而炸 worker IPC。两层互补：env-validation.test 走真实 delete（同步路径安全），csp-no-process.test 走静态契约（覆盖 await import 场景）。
 - **regression test 真实性**：R8 测试用 `value: undefined` → `process` binding 仍在，`process.env.X` 抛 TypeError（读 `undefined.env`），不是 edge runtime 真实的 ReferenceError。R9 用 `delete g.process` 真删 binding，并新增第三个测试用 `eval` 验证"裸引用确实 ReferenceError"——锁定 simulation 的正确性。
 - **defense in depth**：turnstile / resend / plan-gate-client 等当前只在 Node route handler 路径，不会进 middleware bundle。但统一规范后，未来若任何 helper 被 transitively 拉入 edge bundle 不会再炸——standards beat heroics。
+
+## Round 10 修复（P0-R10，2026-05-26）
+
+**Round 10 codex 评分**：88/100 退回。剩余 Critical + High：
+
+> [Critical] `middleware.ts → @/lib/lexicon-availability` 链 module-load
+> 阶段仍裸读 `process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL`（line 53）。
+> Round 9 修了 csp.ts 同样问题，但同条 import graph 上还有一个洞。
+>
+> [High] `csp-no-process.test.ts` 注释说用 vm.Module 隔离，实际只是
+> 普通 `await import()`，没有真正测"无 process 下 import"，所以才没抓住
+> lexicon-availability 这个 Critical。
+>
+> [Medium] 静态契约测试只覆盖 csp.ts，没扫整个 middleware transitive closure。
+>
+> [Low] `lexicon-availability.__TEST_ONLY__resetCache()` 函数体内也裸读
+> `process.env.NODE_ENV`（非 module-load，但应当统一）。
+
+### 修复路径
+
+| 文件 | 修复 |
+|------|------|
+| `src/lib/lexicon-availability.ts` | **Critical**：`ASTER_API_BASE = process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL` → `safeEnv('NEXT_PUBLIC_ASTER_POLICY_API_URL')`。`__TEST_ONLY__resetCache()` 内 `process.env.NODE_ENV` → `safeEnv('NODE_ENV')`（Low 一并清理） |
+| `src/__tests__/lib/middleware-no-process.test.ts` **(rename + 扩展)** | 从 `csp-no-process.test.ts` 重命名扩展。新增 BFS 依赖图扫描：从 `middleware.ts` 入口出发，遍历所有本地 transitive imports（@/ + 相对路径），对每个文件用 brace-depth tracker + 字符串字面量净化 + 注释剥离做静态扫描，禁止 module-load 阶段裸 `process.env`。能在 PR 时静态抓住未来新加的模块加载裸读 |
+
+测试输出（失败时）会列出违规文件 + 行号 + 完整源码行，定位精准。
+
+### 验证
+
+```bash
+cd aster-cloud
+pnpm exec tsc --noEmit  # 0 errors
+pnpm test:run           # 2558 passed | 8 skipped（+2 from R9：transitive closure scan）
+pnpm lint               # 0 errors（1 pre-existing 无关 warning）
+```
+
+### 设计理由
+
+- **入口驱动的依赖图扫描** > 文件级 grep：lexicon-availability 案例证明 helper-by-helper 修复永远会漏。把"middleware bundle 不得有 module-load 裸 process.env"做成 transitive closure 契约，未来任何新模块或新 import 都会被 PR-time CI 抓住——standards beat heroics 的真正落地。
+- **brace-depth tracker 的精度边界**：当前实现做了字符串/注释净化 + 多行注释跟踪，能处理常见模式（`const FOO = process.env.X`、`if (process.env.X)` 顶层、template literal 里的伪造 `process.env`）。它**不是**完美 AST 分析；如果有人写出超怪异的代码（class field initializer、IIFE 顶层等），可能误判。Trade-off：保守地报告偏多（不会漏报真实 module-load 裸读），值得手工 review。完美 AST 升级是 P2。
+- **测试命名与实现一致性**：R9 的 `csp-no-process.test.ts` 注释承诺 vm.Module 隔离，实现却没做——这种"测试名 vs 实现脱节"是 R10 codex 抓到的 High。R10 重命名为 `middleware-no-process.test.ts` 并移除虚假声明，描述与实现现在 1:1 对齐。

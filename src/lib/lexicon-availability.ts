@@ -8,6 +8,7 @@
  */
 
 import { locales, defaultLocale, type Locale } from '@/i18n/config';
+import { safeEnv } from '@/lib/runtime/safe-env';
 
 export interface AvailabilityResult {
   /**
@@ -38,7 +39,7 @@ let cachedAt = 0;
  *     prod 也无法静默破坏 cache
  */
 export function __TEST_ONLY__resetCache(): void {
-  if (process.env.NODE_ENV === 'production') {
+  if (safeEnv('NODE_ENV') === 'production') {
     throw new Error(
       '__TEST_ONLY__resetCache called in production build — this is a test-only API. ' +
       'If you see this, a test helper leaked into a non-test bundle.'
@@ -50,8 +51,11 @@ export function __TEST_ONLY__resetCache(): void {
 
 const LEXICON_TTL_MS = 15_000;
 const LEXICON_FETCH_TIMEOUT_MS = 2_000;
+// P0-R10: module-load 阶段裸读 process.env 在无 process 全局的 edge
+// runtime（CF middleware / browser）抛 ReferenceError，整个 middleware
+// 拒绝加载。通过 safeEnv 安全读取。
 const ASTER_API_BASE =
-  process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
+  safeEnv('NEXT_PUBLIC_ASTER_POLICY_API_URL') || 'https://policy.aster-lang.dev';
 
 function lexiconIdToUiLocale(lexId: string): string {
   return lexId.split('-')[0].toLowerCase();
