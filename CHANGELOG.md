@@ -170,6 +170,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - P0-R3 Verification 补 real-trace + Known Limitations 节 *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -202,6 +203,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- P0-R7 instrumentation 全部 process.env 加 guard + worker.js 注释修正 *(workers)*
 - P0-R6 instrumentation no-process guard + worker.js 兜底 + CI SLA *(workers)*
 - P0-R5 设置 __ASTER_PRODUCTION__ + tarball SLA *(workers)*
 - Aster-cloud 真消费 aster-lang-ts 0.2.1 (P0-R4 Critical) *(deps)*
