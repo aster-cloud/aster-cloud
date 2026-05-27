@@ -177,6 +177,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - P0-R3 Verification 补 real-trace + Known Limitations 节 *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -209,6 +210,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Vendor tarball update + CI guard for edge bundle safety (P0-R14) *(build)*
 - Scanner covers class heritage/decorator/computed key + CJS + element access (P0-R12) *(tests)*
 - TS compiler API scanner + tarball content contract (P0-R11) *(tests)*
 - Close last process.env hole + transitive closure scan (P0-R10) *(middleware)*
