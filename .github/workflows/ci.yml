@@ -121,7 +121,28 @@ jobs:
               echo "ERROR: tarball browser.js missing PII checker entry (PII flow analysis disabled)"
               exit 1
             fi
-            echo "OK: tarball content contract satisfied — R6 PII fixes present + call sites verified"
+
+            # (e) P0-R14：typecheck-pii.js 不得 import server-side typecheck.js
+            # 否则 transitively 拉入 typecheck/module.js → node:fs/path/perf_hooks，
+            # webpack edge target / Next.js browser bundle build 会炸 UnhandledSchemeError.
+            # 这是 R13 通过后才发现的 critical build regression（CI 实际跑出来；
+            # 本地 pnpm test:run 不走 webpack edge build 故而盲点）。
+            PII_JS=$(tar -xzOf "$ASTER_TARBALL" package/dist/src/typecheck-pii.js 2>/dev/null || echo "")
+            if [ -z "$PII_JS" ]; then
+              echo "ERROR: tarball missing package/dist/src/typecheck-pii.js"
+              exit 1
+            fi
+            # 必须 import './typecheck/utils.js'（leaf），不得 import './typecheck.js'（server entry）
+            if echo "$PII_JS" | grep -E "from[[:space:]]+['\"]\\./typecheck\\.js['\"]" >/dev/null; then
+              echo "ERROR: typecheck-pii.js imports server-side typecheck.js — will pull node:fs/perf_hooks into edge bundle"
+              exit 1
+            fi
+            if ! echo "$PII_JS" | grep -E "from[[:space:]]+['\"]\\./typecheck/utils\\.js['\"]" >/dev/null; then
+              echo "ERROR: typecheck-pii.js must import resolveAlias from './typecheck/utils.js' (leaf module)"
+              exit 1
+            fi
+
+            echo "OK: tarball content contract satisfied — R6 PII fixes present + call sites verified + edge bundle safety"
           fi
 
       - run: pnpm lint
