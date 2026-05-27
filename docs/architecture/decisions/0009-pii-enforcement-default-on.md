@@ -279,9 +279,25 @@ node --test 'aster-lang-ts/dist/test/unit/typecheck/pii-cross-runtime-conformanc
 cd aster-lang-core && ./gradlew test --tests "aster.core.typecheck.PiiAlwaysOnConformanceTest"
 # 期望：5+ tests pass，含 isPiiCode 集合元测试 + E404 镜像验证
 
-# 4. 验证 aster-cloud 集成回归
+# 4. 验证 aster-cloud 集成回归（含 P0-R2 新增 real-trace 测试，P0-R3 补遗）
 cd aster-cloud && pnpm vitest run \
   src/__tests__/app/execute-policy-content.integration.test.tsx \
+  src/__tests__/app/execute-policy-content.real-trace.integration.test.tsx \
   src/__tests__/components/decision-trace-panel.test.tsx
-# 期望：14+ pass
+# 期望：18+ pass（含不 mock DecisionTracePanel 的真实集成回归）
 ```
+
+## Known Limitations & Action Items（P0-R3 修订）
+
+**aster-cloud 暂未消费 aster-lang-ts P0-R 修复**：
+- `aster-cloud/package.json` 仍引用 `@aster-cloud/aster-lang-ts: ^0.2.0`
+- aster-lang-ts P0-R + P0-R2 修复在 0.2.1 但未 npm publish（npm token 当前无 @aster-cloud org 权限）
+- **后果**：浏览器端 PII flow analysis 仍是 0.2.0 行为（无 PII_ANALYZER_FAILED catch、无业务友好消息、无 fault injection seam）
+- **不影响**：Java 后端（aster-lang-core + aster-api）已完整应用 P0-R + P0-R2 + P0-R3
+
+**TODO（在 npm publish 凭证可用后）**：
+1. `cd aster-lang-ts && npm publish` 发布 0.2.1
+2. `aster-cloud/package.json` 改 `^0.2.0` → `^0.2.1`
+3. `pnpm install && pnpm test` 验证
+4. 删除本节
+
