@@ -1105,6 +1105,8 @@
       "policyLimitReached": "Richtlinienlimit erreicht. Bitte upgraden Sie.",
       "schemaExtractionFailed": "Richtlinienparameter konnten nicht analysiert werden",
       "schemaExtractionFailedHint": "Die Richtliniensyntax hat möglicherweise Probleme. Die Funktion \"Beispiel generieren\" ist nicht verfügbar. Sie können JSON-Daten manuell eingeben.",
+      "policyFetchFailed": "Richtlinie konnte nicht geladen werden",
+      "policyEmptyContent": "Richtlinie hat keinen Inhalt",
       "viewDetails": "Details anzeigen"
     },
     "logs": {

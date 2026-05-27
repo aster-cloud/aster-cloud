@@ -25,6 +25,8 @@ const FUNCTION_LABEL: Record<string, string> = {
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
+// P0-R2 (codex review Low #9): import 必须在顶部
+import { detectCNLLanguage, isHighConfidence } from '@/lib/cnl-language-detector';
 
 // Policy locale 直接采用 BCP-47 标准（与 quickDetectLanguage 返回值对齐）。
 // P0-R Medium #8 修复：之前定义本地三元 type 'zh'|'de'|'en' + 三元映射，
@@ -58,12 +60,14 @@ type PolicySchema = SchemaResult;
 
 type InputMode = 'form' | 'json';
 
-// 检测策略语言：复用 lib/cnl-language-detector.ts 的统一实现，避免重复
-// regex 维护。quickDetectLanguage 返回 BCP-47 标准 locale。
-import { quickDetectLanguage } from '@/lib/cnl-language-detector';
-
-function detectPolicyLocale(content: string): PolicyLocale {
-  return quickDetectLanguage(content);
+// detectPolicyLocale 现在使用完整 detectCNLLanguage（带 confidence）。
+// P0-R2 (codex review Medium #5): 之前丢弃 confidence 直接返回 detected
+// locale，低置信度/混合语言会被强制归类（默认 tie-break 偏 en-US），可能
+// 给 AI Explain 错误的 prompt locale。修复后：低于阈值时不再 trust
+// detection，由调用方提供 page locale fallback。
+function detectPolicyLocale(content: string, fallback: PolicyLocale): PolicyLocale {
+  const result = detectCNLLanguage(content);
+  return isHighConfidence(result) ? result.detected : fallback;
 }
 
 interface ExecutePolicyContentProps {
@@ -132,11 +136,21 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [policyName, setPolicyName] = useState('');
   const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en-US');
 
+  // P0-R2 (codex review High Medium #6): schemaError 结构化为
+  // { messageKey, detail }。主文案走 i18n，detail 仅在折叠区显示，
+  // 避免泄漏 HTTP 内部细节给客户。
+  interface SchemaError {
+    /** i18n key under namespace 'policies.execute' */
+    messageKey: 'policy.fetch_failed' | 'policy.empty_content' | 'policy.schema_failed';
+    /** 技术细节（HTTP 状态、异常消息等），仅在 details 折叠区显示 */
+    detail?: string;
+  }
+
   // 新增状态：动态表单
   const [inputMode, setInputMode] = useState<InputMode>('json');
   const [schema, setSchema] = useState<PolicySchema | null>(null);
   const [schemaLoading, setSchemaLoading] = useState(false);
-  const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [schemaError, setSchemaError] = useState<SchemaError | null>(null);
   const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
   // 策略源码用于 DecisionTracePanel 的 AI Explain 功能 —— 之前未读导致
   // AI Explain 按钮在生产链路永远不显示，详见 ADR-0009 P0-2 修复。
@@ -164,7 +178,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       } else if (!data.success && data.error) {
         // Schema extraction failed - display error and use default empty JSON
         console.warn('Schema extraction failed:', data.error);
-        setSchemaError(data.error);
+        setSchemaError({ messageKey: 'policy.schema_failed', detail: data.error });
         setInput('{}');
       } else {
         // No parameters found - use default empty JSON
@@ -172,7 +186,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       }
     } catch (err) {
       console.error('Failed to extract schema:', err);
-      setSchemaError(err instanceof Error ? err.message : 'Failed to extract schema');
+      setSchemaError({
+        messageKey: 'policy.schema_failed',
+        detail: err instanceof Error ? err.message : 'Failed to extract schema',
+      });
       setInput('{}');
     } finally {
       setSchemaLoading(false);
@@ -194,20 +211,24 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       .then((data) => {
         setPolicyName(data.name);
         setPolicyContent(data.content || '');
-        const detectedLocale = detectPolicyLocale(data.content || '');
+        // P0-R2: 低置信度检测时 fallback 到 page locale，避免给 AI Explain
+        // 错误的 prompt locale
+        const pageLocaleFallback: PolicyLocale =
+          locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
+        const detectedLocale = detectPolicyLocale(data.content || '', pageLocaleFallback);
         setPolicyLocale(detectedLocale);
         if (data.content) {
           fetchSchema(data.content, detectedLocale);
         } else {
           // 策略内容为空（合法的边界情况）—— 显式提示而非静默
           setInput('{}');
-          setSchemaError('policy.empty_content');
+          setSchemaError({ messageKey: 'policy.empty_content' });
         }
       })
       .catch((err) => {
-        // 显式失败：UI 可见错误 + 默认空对象避免后续渲染崩溃
+        // 显式失败：主文案走 i18n，detail 仅在折叠区显示（避免泄漏内部细节）
         const reason = err instanceof Error ? err.message : String(err);
-        setSchemaError(`policy.fetch_failed: ${reason}`);
+        setSchemaError({ messageKey: 'policy.fetch_failed', detail: reason });
         setInput('{}');
       });
   }, [policyId, fetchSchema]);
@@ -516,7 +537,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
               </div>
             )}
 
-            {/* Schema Error Display */}
+            {/* Schema Error Display
+                 P0-R2 (codex review Medium #8): 主文案走 i18n（schemaError.messageKey 映射到
+                 翻译键），detail 仅在折叠区作为开发者参考显示。避免裸 string
+                 渲染暴露 HTTP 内部细节给客户。 */}
             {schemaError && !schemaLoading && (
               <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-4">
                 <div className="flex">
@@ -525,19 +549,25 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                   </svg>
                   <div className="ml-3">
                     <h4 className="text-sm font-medium text-amber-800">
-                      {t('schemaExtractionFailed')}
+                      {schemaError.messageKey === 'policy.fetch_failed'
+                        ? t('policyFetchFailed')
+                        : schemaError.messageKey === 'policy.empty_content'
+                          ? t('policyEmptyContent')
+                          : t('schemaExtractionFailed')}
                     </h4>
                     <p className="mt-1 text-xs text-amber-700">
                       {t('schemaExtractionFailedHint')}
                     </p>
-                    <details className="mt-2">
-                      <summary className="text-xs text-amber-600 cursor-pointer hover:text-amber-800">
-                        {t('viewDetails')}
-                      </summary>
-                      <pre className="mt-2 text-xs text-amber-700 bg-amber-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                        {schemaError}
-                      </pre>
-                    </details>
+                    {schemaError.detail && (
+                      <details className="mt-2">
+                        <summary className="text-xs text-amber-600 cursor-pointer hover:text-amber-800">
+                          {t('viewDetails')}
+                        </summary>
+                        <pre className="mt-2 text-xs text-amber-700 bg-amber-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                          {schemaError.detail}
+                        </pre>
+                      </details>
+                    )}
                   </div>
                 </div>
               </div>

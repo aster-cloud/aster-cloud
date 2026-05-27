@@ -1105,6 +1105,8 @@
       "policyLimitReached": "Policy limit reached. Upgrade your plan for more.",
       "schemaExtractionFailed": "Unable to parse policy parameters",
       "schemaExtractionFailedHint": "The policy syntax may have issues. The \"Generate sample\" feature is unavailable. You can manually enter JSON data to execute the policy.",
+      "policyFetchFailed": "Failed to load policy",
+      "policyEmptyContent": "Policy has no content",
       "viewDetails": "View details"
     },
     "logs": {

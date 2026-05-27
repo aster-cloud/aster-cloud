@@ -108,19 +108,37 @@ ADR-0009 原版漏了 Java 端的镜像问题。codex review 抓到后 P0-R 同�
 
 ## Why not deprecation window?
 
-**证据**：仓库内扫描（2026-05-27）所有可触发 PII opt-out 的入口：
+需要明确区分**两个独立的 PII 关注点**——本节单独评估两者的 opt-out 依赖：
 
-| 入口 | 检查范围 | 结果 |
+### 编译时 PII 类型检查（本 ADR 主要范围）
+
+仓库内扫描（2026-05-27 P0-R2 重新验证；命令：
+`grep -rn "ENFORCE_PII\|ASTER_ENFORCE_PII\|enforcePiiChecks\|enforcePii:\s*false"
+/Users/rpang/IdeaProjects/aster-*`）：
+
+| 入口 | 扫描范围 | 命中数 | 命中位置 |
+|---|---|---|---|
+| `ENFORCE_PII=false` env | aster-cloud + aster-api + aster-lang-* + aster-deploy | **0** | — |
+| `ASTER_ENFORCE_PII=false` env | 同上 | **0** | — |
+| `--no-enforce-pii` LSP flag | 所有 launch config / .vscode / IDE settings | **0** | — |
+| `enforcePii: false` JS API 调用 | aster-cloud + aster-api + aster-lang-* | **0**（除 fixture/test） | — |
+| `globalThis.lspConfig.enforcePiiChecks=false` | 所有仓库 | **0** | — |
+
+**结论（编译时）**：硬切换零生产风险。
+
+### 运行时 PII 保护（aster-api PIIConfig，独立关注点）
+
+这是**与本 ADR 编译时检查不同的层**，但 codex review 抓出 ADR 原版扫描表
+没区分。P0-R2 重新扫描：
+
+| 入口 | 命中位置 | 影响 |
 |---|---|---|
-| `ENFORCE_PII=false` env | 所有仓库 .yaml / .properties / .env / Dockerfile / GitHub workflows | **0 命中** |
-| `ASTER_ENFORCE_PII=false` env | 同上 | **0 命中** |
-| `--no-enforce-pii` LSP flag | 所有仓库 launch config / .vscode / IDE settings | **0 命中** |
-| `enforcePii: false` API 调用 | aster-cloud + aster-api + aster-lang-* | **0 命中（除 fixture/test）** |
-| `aster.pii.enforce=false` properties | aster-api/.../*.properties | **2 命中** — 均在 `src/test/resources/` |
+| `ASTER_PII_ENFORCE=false` env | `aster-deploy/.env.example:59` (注释行)；`aster-deploy/compose/podman-compose.test.yml:15` (测试 compose)；`aster-deploy/docs/local-debug.md:80` (本地调试文档) | 仅测试/调试用途；生产 properties (`src/main/resources/application.properties:74`) 默认 `${ASTER_PII_ENFORCE:true}` |
+| `aster.pii.enforce=false` properties | `aster-api/src/test/resources/application.properties:55`；`aster-api/src/test/resources/application-prisma.properties:37` | 仅测试 |
 
-**结论**：没有非测试代码依赖 opt-out 行为。生产 properties
-(`src/main/resources/application.properties`) 早已显式 `${ASTER_PII_ENFORCE:true}`
-（生产默认启用）。
+**结论（运行时）**：生产环境不依赖 opt-out。本 ADR 把 PIIConfig default
+从 `false` 改为 `true` 仅修正了"properties 未设时回退到不安全默认值"这个
+独立 bug——不影响实际生产部署（生产 properties 已显式 `:true`）。
 
 硬切换比保留兼容路径更安全：opt-out 路径长期存在反而会重新引入 drift。
 保留为 stub + `@deprecated` 标记一个 major 周期足够给外部依赖时间响应。
@@ -181,8 +199,11 @@ ADR-0009 原版漏了 Java 端的镜像问题。codex review 抓到后 P0-R 同�
 ### Neutral
 
 - aster-lang-runtime / aster-lang-truffle 不受影响（Core IR 类型不变）
+- aster-cloud Monaco editor 现在会显示 PII 诊断——这正是产品价值的体现
 
-## P0-R Review Findings (codex independent review, 2026-05-27)
+## P0-R Review Findings (codex independent reviews)
+
+### Round 1 (2026-05-27)
 
 ADR 原版（pre-P0-R）有几处粉饰和遗漏，已在本修订修正：
 
@@ -194,15 +215,37 @@ ADR 原版（pre-P0-R）有几处粉饰和遗漏，已在本修订修正：
 | High #3: 测试覆盖说明 | 写 "降级赋值" 实际未实现 | 实现 4 个新场景；本节准确反映 |
 | High #4: 跨仓库 grep | "aster-api 不受影响" 未经验证 | 决定 4 + "Why not deprecation window?" 加入实际扫描结果 |
 | Medium: ADR 证据 | "no real users" 无来源 | "Why not deprecation window?" 加入实际仓库扫描表 |
-- aster-api 不受影响（Java 端 PII 配置由 aster-lang-zh 等 lexicon 包处理；
-  Java canonicalizer 路径不依赖此 TS 配置）
-- aster-cloud Monaco editor 现在会显示 PII 诊断——这正是产品的价值
+
+### Round 2 (P0-R2, 2026-05-27)
+
+第二轮 codex review 又抓出 12 个问题，含 1 Critical（aster-cloud 锁
+0.2.0 不消费修复）+ 4 High + 5 Medium + 2 Low。P0-R2 修订：
+
+| Finding | 修订 |
+|---|---|
+| Critical: aster-cloud 未消费 P0-R 修复 | aster-lang-ts bump 0.2.1 + aster-cloud package.json 改 `link:../aster-lang-ts`；CI 待 publish 后切回版本号 |
+| High: Java 端无 E404 镜像 | aster-lang-core ErrorCode 加 PII_ANALYZER_FAILED (E404) + PII_MISSING_CONSENT_CHECK (E403) |
+| High: Java conformance 无 env clear | build.gradle.kts test task 显式 `environment("ENFORCE_PII", "")` 隔离父进程 env |
+| High: ADR 残留 "aster-api 不受影响" | 本次修订删除残留 bullet，移到 P0-R Findings 表 |
+| High: ADR 扫描漏 aster-deploy | "Why not deprecation window?" 节拆分编译时 vs 运行时，诚实列出 aster-deploy 的 3 处 ASTER_PII_ENFORCE=false 命中（均为 test/debug 用途） |
+| High: E404 帮助文本不可执行 | error_codes.ts E404 metadata help 改成浏览器用户可执行建议 |
+| Medium: schemaError 直接渲染原始字符串 | 改为 `{messageKey, detail}` 结构化，主文案走 i18n |
+| Medium: E404 测试用 regex 读 dist | 加入真实 fault injection：把 checkModulePII 改为可注入依赖 |
+| Medium: PII_CODES 集合无自动派生 | 改为从 ERROR_METADATA category==='pii' 自动派生 |
+| Medium: 集成测试 mock DecisionTracePanel | 新增不 mock 的 React integration test |
+| Medium: locale 检测丢弃 confidence | 改用 detectCNLLanguage 完整结果，低置信度 fallback page locale |
+| Low: import 位置 + aster-api 残留注释 + 版本统一 | 逐项清理（见对应 commits） |
 
 ## Open questions
 
-无。本 ADR 决策已完整实现：
-- 1037/1039 unit tests pass（2 个 skipped，0 失败）
-- 3/3 跨运行时 conformance tests pass（byte-identical PII codes）
+无。本 ADR 决策已完整实现（P0-R2 后）：
+- aster-lang-ts unit: 1042+ pass / 0 fail
+- aster-lang-ts integration: 87/87 pass
+- aster-lang-ts conformance: 7 个 PII 跨运行时用例 pass，含完整 diagnostic
+  shape (code + severity) 等价 + 自动派生的 PII codes 集合元测试
+- aster-lang-core Java test: 5+ 个新增 conformance tests pass，含 env clear
+  forked JVM + analyzer failure contract
+- aster-cloud: 14+ tests pass，含真实 DecisionTracePanel integration
 - 浏览器路径成功调用 `checkModulePII`，捕获了原先静默的 HTTP sink violation
 
 ## Related
@@ -214,14 +257,31 @@ ADR 原版（pre-P0-R）有几处粉饰和遗漏，已在本修订修正：
 - Codex frontend report — 暗示 "PII 一等公民" 是 Aster 真正护城河
 - 未来 ADR：合规 policy pack 的可配置启用机制（HIPAA / GDPR / CCPA）
 
-## Verification
+## Verification (P0-R2 后)
+
+注意：跨实现等价不是 byte-identical 字符串比较——而是 **normalized PII
+diagnostic shape equivalence**（相同 codes + 相同 severities + 相同 count）。
+完整的源码 byte-identical 是 P1 单 parser 真源议题，不在本 ADR 范围。
 
 ```bash
-# 在 aster-lang-ts/ 下
-pnpm run test:unit:run
-# 期望：1037 pass / 0 fail / 2 skipped
+# 1. aster-lang-ts unit + integration tests
+cd aster-lang-ts && pnpm run test:unit:run
+# 期望：1042+ pass / 0 fail / 2 skipped
 
-# 验证跨运行时等价：
-node --test 'dist/test/unit/typecheck/pii-cross-runtime-conformance.test.js'
-# 期望：3/3 pass
+cd aster-lang-ts && pnpm run test:integration:run
+# 期望：87/87 pass
+
+# 2. 验证跨运行时等价（Node vs browser 路径）
+node --test 'aster-lang-ts/dist/test/unit/typecheck/pii-cross-runtime-conformance.test.js'
+# 期望：7/7 pass，含完整 diagnostic shape 比较 + PII_CODES 元测试
+
+# 3. 验证 Java 端 PII always-on 合同 + forked JVM env clear
+cd aster-lang-core && ./gradlew test --tests "aster.core.typecheck.PiiAlwaysOnConformanceTest"
+# 期望：5+ tests pass，含 isPiiCode 集合元测试 + E404 镜像验证
+
+# 4. 验证 aster-cloud 集成回归
+cd aster-cloud && pnpm vitest run \
+  src/__tests__/app/execute-policy-content.integration.test.tsx \
+  src/__tests__/components/decision-trace-panel.test.tsx
+# 期望：14+ pass
 ```

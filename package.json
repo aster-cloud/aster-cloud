@@ -39,7 +39,7 @@
     "check:turbopack-readiness": "bash scripts/check-turbopack-readiness.sh"
   },
   "dependencies": {
-    "@aster-cloud/aster-lang-ts": "^0.2.0",
+    "@aster-cloud/aster-lang-ts": "link:../aster-lang-ts",
     "@aster-cloud/tokens": "^0.2.0",
     "@aster-cloud/ui": "^0.3.0",
     "@auth/drizzle-adapter": "^1.11.1",

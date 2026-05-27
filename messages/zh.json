@@ -1105,6 +1105,8 @@
       "policyLimitReached": "策略数量已达上限，请升级套餐。",
       "schemaExtractionFailed": "无法解析策略参数",
       "schemaExtractionFailedHint": "策略语法可能存在问题，「生成示例」功能暂不可用。您可以手动输入 JSON 数据执行策略。",
+      "policyFetchFailed": "无法加载策略",
+      "policyEmptyContent": "策略没有内容",
       "viewDetails": "查看详情"
     },
     "logs": {
