@@ -176,6 +176,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - P0-R3 Verification 补 real-trace + Known Limitations 节 *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -460,4 +461,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Add postgres error details to POST /api/policies
 - Add detailed error logging to POST /api/policies
 - Add comprehensive LSP connection logging
+
+### Polish
+
+- Tarball SLA call-site precision + class expression coverage (P0-R13)
 
