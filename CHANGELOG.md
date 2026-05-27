@@ -171,6 +171,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - P0-R3 Verification 补 real-trace + Known Limitations 节 *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -203,6 +204,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- No-process safe defaults for env-validation + deployment-mode (P0-R8) *(env)*
 - P0-R7 instrumentation 全部 process.env 加 guard + worker.js 注释修正 *(workers)*
 - P0-R6 instrumentation no-process guard + worker.js 兜底 + CI SLA *(workers)*
 - P0-R5 设置 __ASTER_PRODUCTION__ + tarball SLA *(workers)*
