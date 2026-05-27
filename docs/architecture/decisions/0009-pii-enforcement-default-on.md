@@ -287,17 +287,18 @@ cd aster-cloud && pnpm vitest run \
 # 期望：18+ pass（含不 mock DecisionTracePanel 的真实集成回归）
 ```
 
-## Known Limitations & Action Items（P0-R3 修订）
+## aster-cloud 消费 aster-lang-ts 0.2.1（P0-R4 修复）
 
-**aster-cloud 暂未消费 aster-lang-ts P0-R 修复**：
-- `aster-cloud/package.json` 仍引用 `@aster-cloud/aster-lang-ts: ^0.2.0`
-- aster-lang-ts P0-R + P0-R2 修复在 0.2.1 但未 npm publish（npm token 当前无 @aster-cloud org 权限）
-- **后果**：浏览器端 PII flow analysis 仍是 0.2.0 行为（无 PII_ANALYZER_FAILED catch、无业务友好消息、无 fault injection seam）
-- **不影响**：Java 后端（aster-lang-core + aster-api）已完整应用 P0-R + P0-R2 + P0-R3
+**当前状态**：aster-cloud 通过 commit 进 repo 的 tarball 消费 0.2.1。
 
-**TODO（在 npm publish 凭证可用后）**：
-1. `cd aster-lang-ts && npm publish` 发布 0.2.1
-2. `aster-cloud/package.json` 改 `^0.2.0` → `^0.2.1`
-3. `pnpm install && pnpm test` 验证
-4. 删除本节
+- `aster-cloud/package.json` 引用 `file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz`
+- tarball 由 `cd aster-lang-ts && pnpm pack --pack-destination ../aster-cloud/vendor` 生成
+- CI 安装直接读 vendor 目录，无需 sibling repo / npm registry
+- 浏览器端**完整应用** P0-R + P0-R2 + P0-R3 修复（含 PII_ANALYZER_FAILED catch、业务友好消息、production guard 等）
+
+**长期 TODO（npm publish 凭证可用后）**：
+1. `cd aster-lang-ts && npm publish` 发布 0.2.1 到 npm registry
+2. `aster-cloud/package.json` 改 `file:vendor/...` → `^0.2.1`
+3. 删除 `vendor/aster-cloud-aster-lang-ts-0.2.1.tgz`
+4. `pnpm install && pnpm test` 验证
 
