@@ -167,6 +167,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - ADR-0009 — PII enforcement default-on across all runtimes *(adr)*
 - Update [skip ci] *(changelog)*
 - ADR-0008 — zh-CN v2 keywords + CJK punctuation soft boundary *(adr)*
@@ -195,6 +196,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- P0-R review fixes for ExecutePolicyContent + ADR-0009 *(execute)*
 - Wire source + locale to DecisionTracePanel (P0-2) *(execute)*
 - Wire policy-version-list confirm dialogs to translation bundle *(i18n)*
 - Clock-rollback detection in license-runtime-gate *(license)*
