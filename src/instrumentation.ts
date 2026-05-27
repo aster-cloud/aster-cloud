@@ -6,26 +6,39 @@
 
 import { validateEnvOrThrow, validateEnvOrWarn } from './lib/env-validation';
 
+/**
+ * No-process safe env reader.
+ *
+ * P0-R7 (codex round 7 review): instrumentation.ts 之前只 guard 了第一处
+ * process.env 访问，第 28 和 41 行仍裸读，会在无 process 全局的 edge
+ * runtime 抛 ReferenceError。集中所有 env 读取经过本 helper，typeof check
+ * 后才读。
+ */
+function safeEnv(key: string): string | undefined {
+  try {
+    if (typeof process !== 'undefined') {
+      return process.env?.[key];
+    }
+  } catch {
+    // process 不可访问
+  }
+  return undefined;
+}
+
 export async function register() {
   // P0-R5/R6 (codex review): 在 Workers / Node runtime 设置全局 production
   // 标志。aster-lang-ts isProductionRuntime() 通过此标志在无 process.env
   // 编译期内联的环境（如 CF Workers）下也能正确判定。配合
   // typecheck/browser.ts __setPiiCheckerForTest 的 production guard 确保
   // 浏览器/Workers 端无法关闭 PII analyzer。
-  //
-  // P0-R6 (codex round 6): no-process safe 读取——某些 edge runtime 可能
-  // 没有 process 全局。typeof guard + try/catch 隔离 ReferenceError，
-  // 避免 register hook 在 edge surface 上整体崩溃。
-  try {
-    if (typeof process !== 'undefined' && process?.env?.NODE_ENV === 'production') {
-      (globalThis as { __ASTER_PRODUCTION__?: boolean }).__ASTER_PRODUCTION__ = true;
-    }
-  } catch {
-    // process 不可访问的极端 runtime；不阻塞 register
+  if (safeEnv('NODE_ENV') === 'production') {
+    (globalThis as { __ASTER_PRODUCTION__?: boolean }).__ASTER_PRODUCTION__ = true;
   }
 
   // Skip on Edge runtime entirely (NextRequest API differs).
-  if (process.env.NEXT_RUNTIME && process.env.NEXT_RUNTIME !== 'nodejs') return;
+  // P0-R7: 改用 safeEnv 避免无 process 时崩溃
+  const nextRuntime = safeEnv('NEXT_RUNTIME');
+  if (nextRuntime && nextRuntime !== 'nodejs') return;
 
   // OpenNext on Cloudflare Workers reports NEXT_RUNTIME=nodejs even though
   // Worker secrets are bound differently. If we detect we're on CF (via

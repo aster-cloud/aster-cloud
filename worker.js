@@ -22,7 +22,7 @@ import openNextWorker from "./.open-next/worker.js";
 // 重新导出 OpenNext 的 Durable Objects
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "./.open-next/worker.js";
 
-// P0-R6 (codex review): 兜底设置 __ASTER_PRODUCTION__ 全局标志。
+// P0-R6/R7 (codex review): 兜底设置 __ASTER_PRODUCTION__ 全局标志。
 // src/instrumentation.ts 的 register hook 在某些 OpenNext / Workers cold
 // start 下可能未触发或未在我们 import aster-lang-ts 之前完成；在 worker
 // 入口模块加载时显式 set，确保 isProductionRuntime() 在所有 CF Workers
@@ -30,11 +30,13 @@ export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "./.open-nex
 //
 // 这是 module-level 副作用：worker.js 被 CF Workers runtime 加载时立即
 // 执行，先于任何 fetch/scheduled handler。
+//
+// **注意 (P0-R7)**: package.json `preview` 脚本是 `wrangler dev`，它也
+// 加载此 worker.js。因此 wrangler dev preview 会被标记为 production，
+// PII guard 会拒绝 __setPiiCheckerForTest non-null 注入。这是有意的
+// **fail-closed**：preview 行为与 production 一致更安全。本地 dev 用
+// `next dev` (package.json `dev` script) 不加载 worker.js，不受影响。
 if (typeof globalThis !== "undefined") {
-  // 注意：CF Workers 没有 process.env 但 wrangler 通过 secret/env binding
-  // 在 fetch handler 内才暴露。我们只能依赖 OpenNext 生产构建 = production
-  // 这个事实。本 worker.js 只在 wrangler deploy 产物中出现，dev 用
-  // wrangler dev/Next dev 不会执行此 module，因此这里无条件 set 安全。
   globalThis.__ASTER_PRODUCTION__ = true;
 }
 
