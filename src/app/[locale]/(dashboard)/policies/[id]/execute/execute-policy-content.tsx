@@ -26,14 +26,18 @@ import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
-// Map policy locale to CNL Lexicon objects
-type PolicyLocale = 'zh' | 'de' | 'en';
+// Policy locale 直接采用 BCP-47 标准（与 quickDetectLanguage 返回值对齐）。
+// P0-R Medium #8 修复：之前定义本地三元 type 'zh'|'de'|'en' + 三元映射，
+// 与 src/lib/cnl-language-detector.ts 的 SupportedLocale = 'en-US'|'zh-CN'|'de-DE'
+// 重复且不一致；任何 detector 改动需要同步维护两份。统一后所有 caller 使用
+// BCP-47。
+type PolicyLocale = 'en-US' | 'zh-CN' | 'de-DE';
 type TypeKind = 'primitive' | 'struct' | 'enum' | 'list' | 'map' | 'option' | 'result' | 'function' | 'unknown';
 
 const LEXICON_MAP: Record<PolicyLocale, Lexicon> = {
-  zh: ZH_CN,
-  de: DE_DE,
-  en: EN_US,
+  'zh-CN': ZH_CN,
+  'de-DE': DE_DE,
+  'en-US': EN_US,
 };
 
 interface ExecutionResult {
@@ -54,17 +58,12 @@ type PolicySchema = SchemaResult;
 
 type InputMode = 'form' | 'json';
 
-// 检测策略语言类型
+// 检测策略语言：复用 lib/cnl-language-detector.ts 的统一实现，避免重复
+// regex 维护。quickDetectLanguage 返回 BCP-47 标准 locale。
+import { quickDetectLanguage } from '@/lib/cnl-language-detector';
+
 function detectPolicyLocale(content: string): PolicyLocale {
-  const chinesePatterns = [/模块\s+\S+。/, /定义\s+\S+\s+包含/, /规则\s+\S+\s+给定/];
-  if (chinesePatterns.some((p) => p.test(content))) {
-    return 'zh';
-  }
-  const germanPatterns = [/Modul\s+\w+/i, /Definiere\s+\w+\s+hat/i, /Regel\s+\w+\s+gegeben/i, /Gib zurück/i];
-  if (germanPatterns.some((p) => p.test(content))) {
-    return 'de';
-  }
-  return 'en';
+  return quickDetectLanguage(content);
 }
 
 interface ExecutePolicyContentProps {
@@ -131,7 +130,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [policyName, setPolicyName] = useState('');
-  const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en');
+  const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en-US');
 
   // 新增状态：动态表单
   const [inputMode, setInputMode] = useState<InputMode>('json');
@@ -181,25 +180,34 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   }, []);
 
   useEffect(() => {
-    // Fetch policy details including content
+    // Fetch policy details including content. P0-R Medium #9 修复：
+    // 之前 catch 块只 setInput('{}')，不通知用户——404 / 鉴权失败 / API
+    // shape 变更都会让页面静默无内容，且 AI Explain 按钮静默消失。修复后
+    // 显式设置 schemaError，让 UI 可见地报告失败原因。
     fetch(`/api/policies/${policyId}`)
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} fetching policy ${policyId}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         setPolicyName(data.name);
         setPolicyContent(data.content || '');
-        // 检测策略语言
         const detectedLocale = detectPolicyLocale(data.content || '');
         setPolicyLocale(detectedLocale);
-        // 获取策略参数模式（会自动生成示例数据）
         if (data.content) {
           fetchSchema(data.content, detectedLocale);
         } else {
-          // 无策略内容时设置空对象
+          // 策略内容为空（合法的边界情况）—— 显式提示而非静默
           setInput('{}');
+          setSchemaError('policy.empty_content');
         }
       })
-      .catch(() => {
-        // 出错时设置空对象
+      .catch((err) => {
+        // 显式失败：UI 可见错误 + 默认空对象避免后续渲染崩溃
+        const reason = err instanceof Error ? err.message : String(err);
+        setSchemaError(`policy.fetch_failed: ${reason}`);
         setInput('{}');
       });
   }, [policyId, fetchSchema]);
@@ -710,7 +718,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
           <DecisionTracePanel
             trace={result.decisionTrace}
             source={policyContent}
-            locale={policyLocale === 'zh' ? 'zh-CN' : policyLocale === 'de' ? 'de-DE' : 'en-US'}
+            locale={policyLocale}
           />
         )}
       </div>
