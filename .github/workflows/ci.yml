@@ -78,9 +78,32 @@ jobs:
               fi
             done
             # (b) production guard 真正在 __setPiiCheckerForTest 内被调用——
-            # 不只定义，必须 call。bundle 后函数体在同一文件，grep 调用形态。
-            if ! echo "$BROWSER_JS" | grep -q "isProductionRuntime()"; then
-              echo "ERROR: tarball browser.js missing isProductionRuntime() call site (guard inert)"
+            # 不只定义，必须 call site 位于 setter 函数体内。
+            # 用 awk 提取 function __setPiiCheckerForTest(...) { ... } 范围内的
+            # 文本，再 grep isProductionRuntime() —— 这样能挡住"setter 定义了但
+            # 函数体被注释/简化为 no-op"的退步。
+            SETTER_BODY=$(echo "$BROWSER_JS" | awk '
+              /function __setPiiCheckerForTest/ { in_fn=1; depth=0 }
+              in_fn {
+                print;
+                for (i=1; i<=length($0); i++) {
+                  c=substr($0, i, 1);
+                  if (c=="{") depth++;
+                  else if (c=="}") {
+                    depth--;
+                    if (depth==0) { in_fn=0; exit }
+                  }
+                }
+              }
+            ')
+            if [ -z "$SETTER_BODY" ]; then
+              echo "ERROR: tarball browser.js: cannot extract __setPiiCheckerForTest function body"
+              exit 1
+            fi
+            if ! echo "$SETTER_BODY" | grep -q "isProductionRuntime()"; then
+              echo "ERROR: __setPiiCheckerForTest body missing isProductionRuntime() call (guard inert)"
+              echo "Body extracted:"
+              echo "$SETTER_BODY" | head -20
               exit 1
             fi
             # (c) PII_ANALYZER_FAILED 错误码 + E404 字面量在场（catch 路径编译进 bundle）

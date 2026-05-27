@@ -213,6 +213,13 @@ export function findModuleLoadProcessEnv(
   }
 
   function scanForViolations(node: ts.Node) {
+    // R12: class expression `const C = class { ... }` 出现在表达式位置时
+    // 也要走 scanClassForViolations()，否则 heritage/decorator/computed key
+    // 会被下面的 method body skip 漏掉
+    if (ts.isClassExpression(node)) {
+      scanClassForViolations(node);
+      return;
+    }
     // 跳过函数体——函数体内的 process.env 不在 module-load 时执行
     if (
       ts.isFunctionDeclaration(node) ||
@@ -517,6 +524,37 @@ const somethingElse = { env: {} };
 const { env } = somethingElse;
 `).length,
     ).toBe(0);
+  });
+
+  // R13 微调：class expression 平行覆盖（codex Round 13 Medium 反馈）
+
+  it('R13: 抓住 class expression heritage `const C = class extends f(process.env.X) {}`', () => {
+    expect(
+      scanString(`
+declare function f(s: string | undefined): { new (): {} };
+const C = class extends f(process.env.BAR) {};
+`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R13: 抓住 class expression computed key `const C = class { [process.env.Y]() {} }`', () => {
+    expect(
+      scanString(`
+const C = class {
+  [process.env.BAR ?? 'fallback']() {}
+};
+`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R13: 抓住 class expression static field `const C = class { static v = process.env.X }`', () => {
+    expect(
+      scanString(`
+const C = class {
+  static v = process.env.BAR;
+};
+`).length,
+    ).toBeGreaterThan(0);
   });
 });
 

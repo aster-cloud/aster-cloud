@@ -515,7 +515,7 @@ R12 codex 提的 High 第一条（artifact-level）是文档准确性问题，�
 
 | 层级 | 契约 | 验证手段 |
 |------|------|---------|
-| **TS 源码闭包**（本 ADR 主战场） | middleware.ts transitive imports 不得有 module-load 阶段任何形式的 process / process.env 访问 | `middleware-no-process.test.ts` AST scanner，PR-time 拦截 |
+| **TS 源码闭包**（本 ADR 主战场） | middleware.ts transitive imports 不得有 module-load 阶段任何形式的 `process.env` 访问（PropertyAccessExpression / ElementAccessExpression / optional chain / 解构）。bare `process` access（`process.cwd()` / `process.version`）不在 scanner 范围 — 业务代码当前不需要这类调用，但若未来加 P2 升级以禁止 module-load bare process | `middleware-no-process.test.ts` AST scanner，PR-time 拦截 |
 | **运行时入口**（next-intl / OpenNext / Cloudflare workerd） | 由 Cloudflare 的 `nodejs_compat` flag + OpenNext wrapper 提供 process polyfill | 不在本 ADR 范围；属 Cloudflare/OpenNext platform layer |
 | **编译产物 .open-next/middleware/handler.mjs** | 含 Next.js DefinePlugin 注入的 process.env.X 字面量替换 — 这是 Next.js 编译机制本身，靠平台 polyfill 兜底 | 不在本 ADR 范围 |
 
@@ -543,3 +543,61 @@ tar -xzOf "$ASTER_TARBALL" package/dist/src/typecheck/browser.js | \
 - **process.env 不止 `process.env`**：optional chain / element access / destructuring 都能触碰 process binding 并触发 ReferenceError。修 scanner 时一并覆盖。
 - **tarball SLA 不止"在场"**：单纯 grep 函数名能被"代码注释掉但 export 仍在"绕过。R12 加 call site grep（`isProductionRuntime()` 形态）+ 错误码字面量 + 入口函数，让"看起来像 R6"和"真的执行 R6"对齐。
 - **ADR 范围收窄是必须**：R12 codex 提醒 artifact-level process.env 实际存在但有 platform polyfill 兜底。继续外推会误导支持矩阵。明确"本 ADR 只覆盖 TS 源码层"避免无谓争议。
+
+## Round 13 微调（P0-R13，2026-05-26）
+
+**Round 13 codex 评分**：95/100 通过 ✓。剩余仅 Medium / Low 边角问题，不阻塞 GA：
+
+> [Medium] tarball SLA grep `isProductionRuntime()` 是全文件级，不证明 call site 在 `__setPiiCheckerForTest` 函数体内（可能"setter 定义但 body 被注释为 no-op"）
+>
+> [Medium] scanner 对 class expression `const C = class { ... }` 没有平行处理：method body skip 会漏掉 class expression 的 computed key / member decorator / static field
+>
+> [Medium] ADR 表述"任何形式的 process / process.env 访问"过宽，scanner 实际只覆盖 process.env 家族
+
+由于已通过，趁势把 codex 提的 Medium 一并清理（成本低、durability 提升大），作为同 PR 内的 polish：
+
+### 修复路径
+
+| 文件 | 修复 |
+|------|------|
+| `.github/workflows/ci.yml` (tarball SLA) | tarball SLA (b) 升级：用 awk 提取 `function __setPiiCheckerForTest(...) { ... }` 函数体的实际范围，再 grep `isProductionRuntime()` —— 挡住"setter 定义了但 body 被注释/简化"的退步 |
+| `src/__tests__/lib/middleware-no-process.test.ts` (scanner) | `scanForViolations()` 顶部加 ClassExpression 平行处理：遇到 class expression 走 `scanClassForViolations()` 而不是默认 skip method body。覆盖 `const C = class { ... }` 模式 |
+| `src/__tests__/lib/middleware-no-process.test.ts` (self-test) | 新增 3 个 R13 fixture：class expression heritage / class expression computed key / class expression static field |
+| `docs/architecture/decisions/0009-pii-enforcement-default-on.md` (表格) | 修正"任何形式的 process / process.env 访问"为精确范围：`process.env` 访问（PropertyAccessExpression / ElementAccessExpression / optional chain / 解构）；bare `process` access 不在 scanner 范围 |
+
+### 验证
+
+```bash
+cd aster-cloud
+pnpm exec tsc --noEmit  # 0 errors
+pnpm test:run           # 2612 passed | 8 skipped（+6 from R12：3 class expression × 2 projects）
+pnpm lint               # 0 errors
+
+# tarball SLA call-site 提取手工验证
+awk '
+  /function __setPiiCheckerForTest/ { in_fn=1; depth=0 }
+  in_fn { print; for (i=1; i<=length($0); i++) {
+    c=substr($0, i, 1);
+    if (c=="{") depth++;
+    else if (c=="}") { depth--; if (depth==0) { in_fn=0; exit } }
+  }}
+' <(tar -xzOf vendor/aster-cloud-aster-lang-ts-0.2.1.tgz package/dist/src/typecheck/browser.js) \
+  | grep "isProductionRuntime()"
+# 期望输出：if (isProductionRuntime() && fn !== null) {
+```
+
+### GA 决策
+
+ADR-0009 跨运行时 PII flow analysis 经过 13 轮 codex review 迭代（72 → 88 → 82 → 90 → 94 → 92 → 92 → 92 → 91 → 88 → 93 → 94 → 95），从纯 Java 后端契约扩展到 TS 源码 + tarball + CI 三层契约：
+
+| Layer | Round 引入 | 状态 |
+|-------|----------|------|
+| Java backend (E403/E404 + Category.PII + forked JVM ENFORCE_PII clear) | R2/R3 | ✓ |
+| TS browser entry (isProductionRuntime + __setPiiCheckerForTest + __ASTER_PRODUCTION__) | R5/R6 | ✓ |
+| aster-cloud instrumentation (safeEnv helper + worker.js fail-closed) | R6/R7 | ✓ |
+| env-validation / deployment-mode no-process safe | R8 | ✓ |
+| Shared safe-env helper + middleware chain (csp + lexicon) | R9/R10 | ✓ |
+| AST-based middleware transitive scanner + self-test fixtures | R11/R12/R13 | ✓ |
+| Tarball content contract (call site + error code + entry point) | R11/R12/R13 | ✓ |
+
+**结论**：达到 GA-ready 标准。剩余 Low（IIFE false-negative / top-level await 缺 fixture）作为 P2 hardening backlog，不阻塞上线。
