@@ -23,6 +23,24 @@ import {
   getDeploymentMode,
 } from './deployment-mode';
 
+/**
+ * P0-R8 (codex round 8 review): no-process safe env reader.
+ * 之前 validateEnvOrWarn/Throw/checkEnv 默认参数 `env = process.env` 在
+ * 调用点求值，无 process 全局的 edge runtime 会先抛 ReferenceError。
+ * 改为内部惰性求值，typeof check + try/catch 隔离。
+ */
+function getProcessEnv(): NodeJS.ProcessEnv {
+  try {
+    if (typeof process !== 'undefined' && process?.env) {
+      return process.env;
+    }
+  } catch {
+    /* process not accessible */
+  }
+  // 缺失时返回空对象——所有 env 校验视为"全部缺失"，触发警告路径而非崩溃
+  return {} as NodeJS.ProcessEnv;
+}
+
 type EnvCheck = {
   /**
    * 环境变量名。可单一字符串，或多名别名（任一被设置即视为通过）。
@@ -214,7 +232,7 @@ export interface ValidationResult {
  * 生产代码调 `checkEnv()` 不带参就好。
  */
 export function checkEnv(
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = getProcessEnv(),
   mode?: DeploymentMode,
 ): ValidationResult {
   // 惰性求值 mode：避免在调用 getDeploymentMode() 时触发其 fail-closed 检查
@@ -266,7 +284,7 @@ export function checkEnv(
  * 错误信息包含当前部署模式，便于排查 "我设了 STRIPE_*，怎么还报缺 LICENSE_KEY" 类问题。
  */
 export function validateEnvOrThrow(
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = getProcessEnv(),
   mode?: DeploymentMode,
 ): void {
   // 先做跳过判断，再解析 mode —— 避免在 test/CI 环境里多调一次
@@ -298,7 +316,7 @@ export function validateEnvOrThrow(
  * throw 会让每个冷启喷一长串 error 看上去像 outage。详见 instrumentation.ts。
  */
 export function validateEnvOrWarn(
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = getProcessEnv(),
   mode?: DeploymentMode,
 ): void {
   // 先做跳过判断，再解析 mode（同 validateEnvOrThrow 的原因）。

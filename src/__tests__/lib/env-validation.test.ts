@@ -343,3 +343,59 @@ describe('env-validation — mode 默认参数惰性求值', () => {
     ).not.toThrow();
   });
 });
+
+/**
+ * P0-R8 regression: 无 process 全局的 runtime（Cloudflare Workers / browser）下
+ * 默认参数不能在调用前 ReferenceError。模拟无 process 的方法：
+ * 临时把 globalThis.process 隐藏掉，调用 checkEnv() 不传 env，看是否抛。
+ *
+ * 走的是真模块路径——和 vm 沙箱内联字符串不同，能验证编译后的实际代码。
+ */
+describe('env-validation — no-process runtime safety (P0-R8)', () => {
+  it('checkEnv() 不传 env、process 缺失 → 视为空 env，不抛 ReferenceError', () => {
+    const origProcess = (globalThis as Record<string, unknown>).process;
+    try {
+      // 用 Object.defineProperty 而非 delete，避免影响 vitest runner 自身
+      Object.defineProperty(globalThis, 'process', {
+        value: undefined,
+        configurable: true,
+        writable: true,
+      });
+      const result = checkEnv(); // ← 默认参数现在走 getProcessEnv()
+      // 空 env 应当所有 'always' 必填项都缺失，但函数本身不能抛
+      expect(result.ok).toBe(false);
+      expect(result.missing.length).toBeGreaterThan(0);
+    } finally {
+      Object.defineProperty(globalThis, 'process', {
+        value: origProcess,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
+
+  it('validateEnvOrWarn() 不传 env、process 缺失 → 不抛（仅 console.error）', () => {
+    const origProcess = (globalThis as Record<string, unknown>).process;
+    const origConsoleError = console.error;
+    const origConsoleWarn = console.warn;
+    try {
+      Object.defineProperty(globalThis, 'process', {
+        value: undefined,
+        configurable: true,
+        writable: true,
+      });
+      // 抑制噪音输出，避免污染 CI 日志
+      console.error = () => {};
+      console.warn = () => {};
+      expect(() => validateEnvOrWarn()).not.toThrow();
+    } finally {
+      Object.defineProperty(globalThis, 'process', {
+        value: origProcess,
+        configurable: true,
+        writable: true,
+      });
+      console.error = origConsoleError;
+      console.warn = origConsoleWarn;
+    }
+  });
+});

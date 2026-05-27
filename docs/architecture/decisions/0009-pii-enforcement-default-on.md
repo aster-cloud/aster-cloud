@@ -302,3 +302,37 @@ cd aster-cloud && pnpm vitest run \
 3. 删除 `vendor/aster-cloud-aster-lang-ts-0.2.1.tgz`
 4. `pnpm install && pnpm test` 验证
 
+## Round 8 修复（P0-R8，2026-05-26）
+
+**Round 8 codex 评分**：92/100 Block。剩余 Critical：
+
+> 在无 `process` 全局的 runtime 中，`validateEnvOrWarn(env = process.env, mode?)`
+> 默认参数会在函数体执行前求值 `process.env`，直接抛 `ReferenceError`。
+> 同时 `src/lib/deployment-mode.ts` 模块顶部裸读 `process.env.NODE_ENV /
+> NEXT_PHASE / VITEST / DEPLOYMENT_MODE`，被 env-validation transitively
+> import 时同样在模块加载阶段抛 ReferenceError。
+
+### 修复路径
+
+| 文件 | 修复 |
+|------|------|
+| `src/lib/env-validation.ts` | 新增 `getProcessEnv()` 安全读取器（`typeof process !== 'undefined'` + try/catch）。`checkEnv / validateEnvOrThrow / validateEnvOrWarn` 三个函数的默认参数从 `= process.env` 改为 `= getProcessEnv()` —— 求值不再在调用点直接 ReferenceError |
+| `src/lib/deployment-mode.ts` | 新增 `safeEnv(key)` 安全读取器。模块顶部 `_IS_RUNTIME_PRODUCTION` 与 `_RUNTIME` 中所有 `process.env.X` 改用 `safeEnv('X')` |
+| `src/__tests__/lib/env-validation.test.ts` | 新增 "no-process runtime safety (P0-R8)" describe block，2 个测试：临时 `Object.defineProperty(globalThis, 'process', { value: undefined })` 模拟无 process 全局，验证 `checkEnv()` 与 `validateEnvOrWarn()` 默认参数不抛 ReferenceError（走真模块路径，不是 vm 内联字符串） |
+
+### 验证
+
+```bash
+cd aster-cloud
+pnpm exec tsc --noEmit           # 0 errors
+pnpm test:run                    # 2548 passed | 8 skipped（4 个新 no-process assertion）
+pnpm lint                        # 0 errors（1 个无关 warning）
+```
+
+### 设计理由
+
+- **edge runtime 无 `process` 全局**（Cloudflare Workers、严格的 browser bundle、Edge functions）：模块加载阶段裸读 `process.env` 即 ReferenceError，**整个应用拒绝启动**——而非降级到无 env 的 warning 路径。
+- **默认参数求值时机**：JS 默认参数在每次调用时（参数未传时）求值，不是函数定义时。`= process.env` 等价于 `if (env === undefined) env = process.env;` 在函数体之前执行，命中前述异常。
+- **`getProcessEnv()` / `safeEnv()` 双重保险**：`typeof process !== 'undefined'` 是 V8 的静态判定，不会触发 ReferenceError；外层 try/catch 防御 sandbox 把 `process` 设成 throwing getter 的极端场景。
+- **空 env fallback 行为**：无 process 时返回 `{}`，所有 env 校验视为"全部缺失"——进入 warning 路径而非崩溃。Cloudflare Workers 的 secret 通过 binding 注入到全局，不走 `process.env`，因此 `validateEnvOrWarn()` 在 Workers 看到的就是空 env，行为符合预期（只 console.error，不阻断启动）。
+

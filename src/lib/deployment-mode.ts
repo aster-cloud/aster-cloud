@@ -23,6 +23,24 @@
 
 export type DeploymentMode = 'saas' | 'on-prem';
 
+/**
+ * P0-R8 (codex round 8 review): no-process safe env reader.
+ * 之前模块顶部直接读 `process.env.NODE_ENV / NEXT_PHASE / VITEST / DEPLOYMENT_MODE`，
+ * 在无 process 全局的 edge runtime（Cloudflare Workers / browser）下，
+ * 模块加载阶段就抛 ReferenceError，导致整个应用启动失败。
+ * 改为统一通过 safeEnv() 读取，typeof 检查 + try/catch 双重隔离。
+ */
+function safeEnv(key: string): string | undefined {
+  try {
+    if (typeof process !== 'undefined' && process?.env) {
+      return process.env[key];
+    }
+  } catch {
+    /* process not accessible */
+  }
+  return undefined;
+}
+
 // Fail-closed 检查：production runtime 中 macro 必须由 DefinePlugin 注入。
 // 走到 throw 说明编译期注入失败 —— 绝不能 fallback 到 SaaS 偷偷开启计费路径。
 //
@@ -43,16 +61,16 @@ export type DeploymentMode = 'saas' | 'on-prem';
 // 都会立即暴露问题。
 const _IS_RUNTIME_PRODUCTION =
   typeof __DEPLOYMENT_MODE__ === 'undefined' &&
-  process.env.NODE_ENV === 'production' &&
+  safeEnv('NODE_ENV') === 'production' &&
   // next build 期间 next.config.ts 加载本模块时 DefinePlugin 还未对配置文件生效；
   // vitest 默认会设 VITEST=true。两者都不是真正的 runtime production。
-  process.env.NEXT_PHASE !== 'phase-production-build' &&
-  process.env.VITEST !== 'true';
+  safeEnv('NEXT_PHASE') !== 'phase-production-build' &&
+  safeEnv('VITEST') !== 'true';
 
 const _RUNTIME: DeploymentMode =
   typeof __DEPLOYMENT_MODE__ !== 'undefined'
     ? __DEPLOYMENT_MODE__
-    : process.env.DEPLOYMENT_MODE === 'on-prem'
+    : safeEnv('DEPLOYMENT_MODE') === 'on-prem'
       ? 'on-prem'
       : 'saas';
 
