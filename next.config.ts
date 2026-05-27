@@ -2,13 +2,16 @@ import type { NextConfig } from "next";
 import path from 'node:path';
 import createNextIntlPlugin from 'next-intl/plugin';
 import { validateEnvOrWarn } from './src/lib/env-validation';
+import { safeEnv } from './src/lib/runtime/safe-env';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 // 部署模式开关 — 见 src/lib/deployment-mode.ts + .claude/plan/deployment-mode-flag-v2.md
-// 用 process.env 读 build-time 注入；DefinePlugin 把字面量植入 bundle。
+// next.config.ts 在 Node build-time 执行；但历史报错显示 OpenNext cold
+// start 在 Worker bundle 加载阶段也会 touch 配置常量。统一走 safeEnv
+// 避免任意 runtime 模块加载阶段 ReferenceError（P0-R9）。
 const DEPLOYMENT_MODE: 'saas' | 'on-prem' =
-  process.env.DEPLOYMENT_MODE === 'on-prem' ? 'on-prem' : 'saas';
+  safeEnv('DEPLOYMENT_MODE') === 'on-prem' ? 'on-prem' : 'saas';
 
 // 只在 next build 阶段做一次 warn-only 校验。
 //
@@ -20,7 +23,7 @@ const DEPLOYMENT_MODE: 'saas' | 'on-prem' =
 //
 // 真正的 runtime fail-fast 在 src/instrumentation.ts，那里能正确识别
 // Cloudflare 运行环境并降级为 warn。
-if (process.env.NEXT_PHASE === 'phase-production-build') {
+if (safeEnv('NEXT_PHASE') === 'phase-production-build') {
   validateEnvOrWarn();
 }
 

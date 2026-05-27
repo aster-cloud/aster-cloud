@@ -5,8 +5,13 @@
  * 服务端验证 Turnstile token 的有效性。
  */
 
+import { safeEnv } from '@/lib/runtime/safe-env';
+
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || '';
+// 通过 safeEnv 读 —— 即便本模块当前只在 Node 服务端用，import 链可能被
+// 改动牵入 edge runtime；module-load 时裸读 process.env.X 在无 process 全局
+// 时会 ReferenceError。
+const TURNSTILE_SECRET_KEY = safeEnv('TURNSTILE_SECRET_KEY') || '';
 
 export interface TurnstileVerifyResult {
   success: boolean;
@@ -34,7 +39,7 @@ export async function verifyTurnstileToken(
   remoteIp?: string
 ): Promise<TurnstileVerifyResult> {
   // 开发环境跳过验证
-  if (process.env.NODE_ENV === 'development' && !TURNSTILE_SECRET_KEY) {
+  if (safeEnv('NODE_ENV') === 'development' && !TURNSTILE_SECRET_KEY) {
     console.warn('[Turnstile] 开发环境跳过验证（未配置 TURNSTILE_SECRET_KEY）');
     return { success: true, errorCodes: [] };
   }
@@ -89,12 +94,12 @@ export async function verifyTurnstileToken(
  * 获取 Turnstile Site Key（用于客户端）
  */
 export function getTurnstileSiteKey(): string {
-  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '';
+  return safeEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY') || '';
 }
 
 /**
  * 检查 Turnstile 是否已配置
  */
 export function isTurnstileConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
+  return Boolean(safeEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY') && safeEnv('TURNSTILE_SECRET_KEY'));
 }

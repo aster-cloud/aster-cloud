@@ -18,6 +18,7 @@
 // are preserved.
 
 import type { Resend } from 'resend';
+import { safeEnv } from '@/lib/runtime/safe-env';
 
 type ResendCtor = typeof Resend;
 
@@ -60,17 +61,18 @@ async function ensureResend(): Promise<Resend | null> {
     // on-prem 安静返回 null —— 邮件路径是 SaaS-only。
     return null;
   }
-  if (!process.env.RESEND_API_KEY) {
+  const apiKey = safeEnv('RESEND_API_KEY');
+  if (!apiKey) {
     console.warn('RESEND_API_KEY is not set - emails will not be sent');
     return null;
   }
   const ResendCtor = await loadResendCtor();
-  _instance = new ResendCtor(process.env.RESEND_API_KEY);
+  _instance = new ResendCtor(apiKey);
   return _instance;
 }
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@aster-lang.cloud';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://aster-lang.cloud';
+const FROM_EMAIL = safeEnv('RESEND_FROM_EMAIL') || 'noreply@aster-lang.cloud';
+const APP_URL = safeEnv('NEXT_PUBLIC_APP_URL') || 'https://aster-lang.cloud';
 
 // Escape HTML to prevent XSS attacks
 function escapeHtml(text: string): string {

@@ -5,9 +5,10 @@
 // 让 aster-api 端 5 min Caffeine 缓存立即失效，缩短生效延迟。
 
 import { createHmac } from 'node:crypto';
+import { safeEnv } from '@/lib/runtime/safe-env';
 
-const ASTER_API_INTERNAL_URL = process.env.ASTER_API_INTERNAL_URL ?? 'http://aster-api:8080';
-const PLAN_GATE_HMAC_KEY = process.env.ASTER_PLAN_GATE_HMAC_KEY;
+const ASTER_API_INTERNAL_URL = safeEnv('ASTER_API_INTERNAL_URL') ?? 'http://aster-api:8080';
+const PLAN_GATE_HMAC_KEY = safeEnv('ASTER_PLAN_GATE_HMAC_KEY');
 
 /**
  * 通知 aster-api 让指定 tenant 的 plan 缓存立即失效

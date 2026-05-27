@@ -22,24 +22,17 @@ import {
   type DeploymentMode,
   getDeploymentMode,
 } from './deployment-mode';
+import { safeProcessEnv } from './runtime/safe-env';
 
 /**
- * P0-R8 (codex round 8 review): no-process safe env reader.
+ * P0-R8/R9 (codex review): no-process safe env reader.
  * 之前 validateEnvOrWarn/Throw/checkEnv 默认参数 `env = process.env` 在
  * 调用点求值，无 process 全局的 edge runtime 会先抛 ReferenceError。
  * 改为内部惰性求值，typeof check + try/catch 隔离。
+ *
+ * R9：抽到 @/lib/runtime/safe-env 共享，避免每个文件复制一份 helper。
  */
-function getProcessEnv(): NodeJS.ProcessEnv {
-  try {
-    if (typeof process !== 'undefined' && process?.env) {
-      return process.env;
-    }
-  } catch {
-    /* process not accessible */
-  }
-  // 缺失时返回空对象——所有 env 校验视为"全部缺失"，触发警告路径而非崩溃
-  return {} as NodeJS.ProcessEnv;
-}
+const getProcessEnv = safeProcessEnv;
 
 type EnvCheck = {
   /**

@@ -345,57 +345,75 @@ describe('env-validation — mode 默认参数惰性求值', () => {
 });
 
 /**
- * P0-R8 regression: 无 process 全局的 runtime（Cloudflare Workers / browser）下
- * 默认参数不能在调用前 ReferenceError。模拟无 process 的方法：
- * 临时把 globalThis.process 隐藏掉，调用 checkEnv() 不传 env，看是否抛。
+ * P0-R8/R9 regression: 无 process 全局的 runtime（Cloudflare Workers / browser）下
+ * 默认参数不能在调用前 ReferenceError。
  *
- * 走的是真模块路径——和 vm 沙箱内联字符串不同，能验证编译后的实际代码。
+ * R9 codex review 指出：早先版本用 `Object.defineProperty(globalThis, 'process',
+ * { value: undefined })` 模拟，会让 `typeof process === 'undefined'` 为 true
+ * 但 `process` 标识符 binding 仍存在，旧代码裸读 `process.env.X` 抛的是
+ * **TypeError**（读 undefined.env），不是 edge runtime 真实抛的
+ * **ReferenceError**（标识符未声明）。
+ *
+ * 修复：用 `delete (globalThis as any).process` 真正移除 binding，使
+ * `process.env.X` 抛 `ReferenceError: process is not defined`，精确模拟
+ * Cloudflare Workers / strict browser sandbox 行为。
  */
-describe('env-validation — no-process runtime safety (P0-R8)', () => {
-  it('checkEnv() 不传 env、process 缺失 → 视为空 env，不抛 ReferenceError', () => {
-    const origProcess = (globalThis as Record<string, unknown>).process;
+describe('env-validation — no-process runtime safety (P0-R8/R9)', () => {
+  it('checkEnv() 不传 env、process binding 不存在 → 视为空 env，不抛 ReferenceError', () => {
+    const g = globalThis as Record<string, unknown>;
+    const hadProcess = 'process' in g;
+    const origProcess = g.process;
     try {
-      // 用 Object.defineProperty 而非 delete，避免影响 vitest runner 自身
-      Object.defineProperty(globalThis, 'process', {
-        value: undefined,
-        configurable: true,
-        writable: true,
-      });
-      const result = checkEnv(); // ← 默认参数现在走 getProcessEnv()
-      // 空 env 应当所有 'always' 必填项都缺失，但函数本身不能抛
+      // delete 真正移除 binding，使裸 `process` 标识符抛 ReferenceError
+      delete g.process;
+      // sanity check: 确认 binding 真的被删了（typeof 安全检测）
+      expect(typeof (g as Record<string, unknown>).process).toBe('undefined');
+
+      const result = checkEnv(); // 默认参数走 safeProcessEnv()
       expect(result.ok).toBe(false);
       expect(result.missing.length).toBeGreaterThan(0);
     } finally {
-      Object.defineProperty(globalThis, 'process', {
-        value: origProcess,
-        configurable: true,
-        writable: true,
-      });
+      if (hadProcess) {
+        g.process = origProcess;
+      }
     }
   });
 
-  it('validateEnvOrWarn() 不传 env、process 缺失 → 不抛（仅 console.error）', () => {
-    const origProcess = (globalThis as Record<string, unknown>).process;
+  it('validateEnvOrWarn() 不传 env、process binding 不存在 → 不抛（仅 console.error）', () => {
+    const g = globalThis as Record<string, unknown>;
+    const hadProcess = 'process' in g;
+    const origProcess = g.process;
     const origConsoleError = console.error;
     const origConsoleWarn = console.warn;
     try {
-      Object.defineProperty(globalThis, 'process', {
-        value: undefined,
-        configurable: true,
-        writable: true,
-      });
-      // 抑制噪音输出，避免污染 CI 日志
+      delete g.process;
       console.error = () => {};
       console.warn = () => {};
       expect(() => validateEnvOrWarn()).not.toThrow();
     } finally {
-      Object.defineProperty(globalThis, 'process', {
-        value: origProcess,
-        configurable: true,
-        writable: true,
-      });
+      if (hadProcess) {
+        g.process = origProcess;
+      }
       console.error = origConsoleError;
       console.warn = origConsoleWarn;
+    }
+  });
+
+  it('真实 ReferenceError 行为：delete globalThis.process 后裸读 process.env 抛 ReferenceError（验证模拟手法）', () => {
+    const g = globalThis as Record<string, unknown>;
+    const hadProcess = 'process' in g;
+    const origProcess = g.process;
+    try {
+      delete g.process;
+      // 旧 bug 等价：裸标识符引用应抛 ReferenceError
+      // 使用 eval 防止 TS 编译时改写 process 引用语义
+      expect(() => {
+        return (0, eval)('process.env.X');
+      }).toThrow(ReferenceError);
+    } finally {
+      if (hadProcess) {
+        g.process = origProcess;
+      }
     }
   });
 });

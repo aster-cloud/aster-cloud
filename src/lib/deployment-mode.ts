@@ -21,25 +21,13 @@
 //
 // `__DEPLOYMENT_MODE__` 的 ambient 类型在 src/types/deployment-mode.d.ts。
 
+import { safeEnv } from './runtime/safe-env';
+
 export type DeploymentMode = 'saas' | 'on-prem';
 
-/**
- * P0-R8 (codex round 8 review): no-process safe env reader.
- * 之前模块顶部直接读 `process.env.NODE_ENV / NEXT_PHASE / VITEST / DEPLOYMENT_MODE`，
- * 在无 process 全局的 edge runtime（Cloudflare Workers / browser）下，
- * 模块加载阶段就抛 ReferenceError，导致整个应用启动失败。
- * 改为统一通过 safeEnv() 读取，typeof 检查 + try/catch 双重隔离。
- */
-function safeEnv(key: string): string | undefined {
-  try {
-    if (typeof process !== 'undefined' && process?.env) {
-      return process.env[key];
-    }
-  } catch {
-    /* process not accessible */
-  }
-  return undefined;
-}
+// P0-R8/R9 (codex review)：模块顶部 _IS_RUNTIME_PRODUCTION / _RUNTIME
+// 通过 safeEnv 读取，避免在无 process 全局的 edge runtime 模块加载阶段
+// ReferenceError。R9 抽到 @/lib/runtime/safe-env 共享。
 
 // Fail-closed 检查：production runtime 中 macro 必须由 DefinePlugin 注入。
 // 走到 throw 说明编译期注入失败 —— 绝不能 fallback 到 SaaS 偷偷开启计费路径。

@@ -336,3 +336,50 @@ pnpm lint                        # 0 errors（1 个无关 warning）
 - **`getProcessEnv()` / `safeEnv()` 双重保险**：`typeof process !== 'undefined'` 是 V8 的静态判定，不会触发 ReferenceError；外层 try/catch 防御 sandbox 把 `process` 设成 throwing getter 的极端场景。
 - **空 env fallback 行为**：无 process 时返回 `{}`，所有 env 校验视为"全部缺失"——进入 warning 路径而非崩溃。Cloudflare Workers 的 secret 通过 binding 注入到全局，不走 `process.env`，因此 `validateEnvOrWarn()` 在 Workers 看到的就是空 env，行为符合预期（只 console.error，不阻断启动）。
 
+## Round 9 修复（P0-R9，2026-05-26）
+
+**Round 9 codex 评分**：91/100 退回。剩余 Critical + High：
+
+> [Critical] `src/lib/security/csp.ts:40` middleware import 链
+> module-load 时仍裸读 `process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL`，
+> 等于 Round 8 修复留下的等价盲点。
+>
+> [High] `next.config.ts` / `turnstile.ts` / `resend.ts` / `plan-gate-client.ts` /
+> `snapshot-pusher.ts` / `secure-executor.ts` 模块顶部仍有裸 `process.env` 初始化。
+>
+> [Medium] no-process regression test 用 `Object.defineProperty(globalThis,
+> 'process', { value: undefined })` 模拟，会让 `process.env.X` 抛
+> **TypeError** 而非真实 edge runtime 的 **ReferenceError**。
+
+### 修复路径
+
+| 文件 | 修复 |
+|------|------|
+| `src/lib/runtime/safe-env.ts` **(新)** | 抽出共享 `safeEnv(key)` / `safeProcessEnv()` / `hasProcessGlobal()` helper，供所有需要 cross-runtime safe env 读取的模块统一引用 |
+| `src/lib/security/csp.ts` | **Critical**：`computeAsterApiDomains` + `buildCspHeader` 从 `process.env.X` 改为 `safeEnv('X')`，middleware import 链不再 module-load 抛 ReferenceError |
+| `next.config.ts` | DEPLOYMENT_MODE / NEXT_PHASE 改 safeEnv（Node-only 路径但统一规范，避免 OpenNext cold start 偶发触碰配置加载） |
+| `src/lib/turnstile.ts` | 4 处裸 process.env 全改 safeEnv |
+| `src/lib/resend.ts` | RESEND_API_KEY / RESEND_FROM_EMAIL / NEXT_PUBLIC_APP_URL 改 safeEnv |
+| `src/lib/plan-gate-client.ts` | ASTER_API_INTERNAL_URL / ASTER_PLAN_GATE_HMAC_KEY 改 safeEnv |
+| `src/lib/snapshot-pusher.ts` | 同 plan-gate-client |
+| `src/services/security/secure-executor.ts` | POLICY_SIGNING_SECRET 改 safeEnv |
+| `src/lib/env-validation.ts` | `getProcessEnv` 改为 alias `safeProcessEnv`（去重） |
+| `src/lib/deployment-mode.ts` | 局部 `safeEnv` 改为 import 自共享 helper |
+| `src/__tests__/lib/env-validation.test.ts` | 改用 `delete globalThis.process` 真正移除 binding，**精确模拟 edge runtime 的 ReferenceError**；新增"验证模拟手法"测试用 `eval('process.env.X')` 确认裸引用真的抛 ReferenceError |
+| `src/__tests__/lib/csp-no-process.test.ts` **(新)** | 静态契约检查：csp.ts 源码不得含 module-load 阶段裸 process.env；必须 import + 使用 safeEnv。规避 `delete globalThis.process` + `await import()` 导致 vitest worker IPC 崩溃的问题 |
+
+### 验证
+
+```bash
+cd aster-cloud
+pnpm exec tsc --noEmit  # 0 errors
+pnpm test:run           # 2556 passed | 8 skipped（+8 from R8：no-process 真实 ReferenceError 验证 + csp 静态契约）
+pnpm lint               # 0 errors（1 pre-existing 无关 warning）
+```
+
+### 设计理由
+
+- **共享 safe-env helper 优于复制**：R8 把 helper 内联到每个文件难免漂移；R9 抽到 `@/lib/runtime/safe-env`，未来新模块直接 import 即可，避免再次出现"漏一个文件就炸"的盲点。
+- **静态契约测试胜过动态模拟**：`csp.ts` 静态检查（grep 源码 + AST 粗扫）能精准抓住"是否有 module-load 阶段裸读"，而 `delete globalThis.process` 动态模拟在 vitest 主进程里会因为 `process.nextTick` 依赖而炸 worker IPC。两层互补：env-validation.test 走真实 delete（同步路径安全），csp-no-process.test 走静态契约（覆盖 await import 场景）。
+- **regression test 真实性**：R8 测试用 `value: undefined` → `process` binding 仍在，`process.env.X` 抛 TypeError（读 `undefined.env`），不是 edge runtime 真实的 ReferenceError。R9 用 `delete g.process` 真删 binding，并新增第三个测试用 `eval` 验证"裸引用确实 ReferenceError"——锁定 simulation 的正确性。
+- **defense in depth**：turnstile / resend / plan-gate-client 等当前只在 Node route handler 路径，不会进 middleware bundle。但统一规范后，未来若任何 helper 被 transitively 拉入 edge bundle 不会再炸——standards beat heroics。

@@ -11,10 +11,11 @@ import { createHmac } from 'node:crypto';
 import { db, users, apiKeys } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
+import { safeEnv } from '@/lib/runtime/safe-env';
 
 const ASTER_API_INTERNAL_URL =
-  process.env.ASTER_API_INTERNAL_URL ?? 'http://aster-api:8080';
-const PLAN_GATE_HMAC_KEY = process.env.ASTER_PLAN_GATE_HMAC_KEY;
+  safeEnv('ASTER_API_INTERNAL_URL') ?? 'http://aster-api:8080';
+const PLAN_GATE_HMAC_KEY = safeEnv('ASTER_PLAN_GATE_HMAC_KEY');
 
 /**
  * 推送指定 user 的最新 snapshot 到 aster-api

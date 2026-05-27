@@ -1,3 +1,5 @@
+import { safeEnv } from '@/lib/runtime/safe-env';
+
 /**
  * Content Security Policy + adjacent security headers.
  *
@@ -34,10 +36,11 @@ const MIXPANEL_DOMAINS = [
 // 走，否则浏览器拦掉 fetch — 这是 May 2026 E2E 暴露的 bug 之一。
 //
 // 数据流：next.config.ts 没有镜像这个 env 到 NEXT_PUBLIC_*（已经是公开
-// 前缀的不需要镜像）；server-side CSP 直接读 process.env 即可。SaaS
-// 部署不设这个 env → 回落到生产 SaaS 域名，行为不变。
+// 前缀的不需要镜像）；server-side CSP 通过 safeEnv 读取 —— middleware import
+// 链跨 Node / CF Workers / Edge，裸 process.env 在无 process 全局的 runtime
+// 模块加载时即 ReferenceError（codex round 9 发现的盲点）。
 function computeAsterApiDomains(): string[] {
-  const configured = process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL;
+  const configured = safeEnv('NEXT_PUBLIC_ASTER_POLICY_API_URL');
   if (!configured) return ['https://policy.aster-lang.dev'];
   try {
     const u = new URL(configured);
@@ -77,7 +80,7 @@ const ALL_TRUSTED_CONNECT_SRC = [
  * @param nonce Per-request nonce (base64) attached to all <script>/<style> tags by Next.js when read via headers().get('x-nonce')
  */
 export function buildCspHeader(nonce: string): string {
-  const isDev = process.env.NODE_ENV !== 'production';
+  const isDev = safeEnv('NODE_ENV') !== 'production';
 
   const directives: Record<string, string[]> = {
     'default-src': ["'self'"],

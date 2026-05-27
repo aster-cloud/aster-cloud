@@ -23,6 +23,7 @@ import {
 import { checkAndRecordNonce } from './nonce-service';
 import { logSecurityEvent } from './security-event-service';
 import { createPolicyApiClient } from '../policy/policy-api';
+import { safeEnv } from '@/lib/runtime/safe-env';
 
 type Policy = InferSelectModel<typeof policies>;
 type PolicyVersion = InferSelectModel<typeof policyVersions>;
@@ -61,7 +62,7 @@ export type SecurityErrorCode =
   | 'VERSION_NOT_EXECUTABLE'
   | 'EXECUTION_FAILED';
 
-const SIGNING_SECRET = process.env.POLICY_SIGNING_SECRET || '';
+const SIGNING_SECRET = safeEnv('POLICY_SIGNING_SECRET') || '';
 
 type PolicyVersionWithPolicy = PolicyVersion & {
   policy: Policy;
