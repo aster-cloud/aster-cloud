@@ -479,3 +479,67 @@ scanner self-test 输出（saas project）：
 - **fixture 驱动 self-test 是"未来 PR 时拦截力"的唯一证明**：单纯说"scanner 升级了 AST"没意义；只有通过 9 个 scanner fixture + 4 个 parser fixture 直接证明各种 module-load 模式都能被抓住（且不误报合法模式），才是有约束力的合同。失败时 vitest 输出违规列表 + 行号，可直接定位。
 - **已知 false-negative 必须文档化**：IIFE `(() => { process.env.X })()` 模式 scanner 跳过函数体所以漏报。当前 trade-off：跳过函数体减少误报（业务代码大量箭头函数）值得，IIFE 模式在 repo 全文 grep 不存在，未来若有人写 IIFE 顶层求值需要靠 control-flow analysis（ts-morph 或 control flow graph）才能精准。这是 P2 升级，不阻塞当前 GA。
 - **tarball 内容合同关闭 supply chain 风险**：单纯的 vendor README SLA 防止"忘记记录"，但不防止"tarball 被替换为旧版本"。R11 加 CI 解压 + grep 4 个关键符号，确保每次 build 都验证 PII 修复在场。这是 ADR-0009 "always-on across all runtimes" 契约的最后一公里。
+
+## Round 12 修复（P0-R12，2026-05-26）
+
+**Round 12 codex 评分**：94/100 退回。剩余 High + Medium：
+
+> [High] AST scanner 只覆盖 TS 源码闭包，不证明编译后 OpenNext middleware
+> bundle artifact 无 module-load process.env（artifact 里仍有 Next/OpenNext
+> 自身注入的 process.env，靠 nodejs_compat + wrapper 注入 process 兜底）。
+>
+> [High] scanner 漏 class heritage 表达式 `class X extends f(process.env.X) {}`、
+> decorator `@dec(process.env.X)`、computed property key `class X { [process.env.Y]() {} }`。
+> 这些都是 class 定义时求值，不是 P2 怪招。
+>
+> [Medium] import parser 漏 CommonJS `require('./x')`。
+>
+> [Medium] scanner 只匹配 `process.env.X` PropertyAccessExpression，漏
+> `process['env'].X` (ElementAccessExpression)、`process?.env?.X` (optional chain)、
+> `const { env } = process` destructuring。
+>
+> [Medium] tarball SLA grep 4 符号能证明"看起来像 R6"，不证明"执行 R6"。
+
+### 修复路径
+
+| 文件 | 修复 |
+|------|------|
+| `src/__tests__/lib/middleware-no-process.test.ts` (scanner) | **R12 升级 scanner 语义边界**：抽出 `isProcessEnvAccess()` 共享判定，覆盖 PropertyAccessExpression（`process.env.X` + `process?.env?.X` optional chain）+ ElementAccessExpression（`process['env'].X` / `process['env']['X']`）。新增 `isProcessEnvDestructuring()` 处理 `const { env } = process` / `const { env: alias } = process` ObjectBindingPattern。Class 扫描升级为 `scanClassForViolations()`：heritage clauses（`extends`/`implements` 表达式）、decorator expressions（class + member）、computed property keys（`[expr]`）、static field initializer + static block。 |
+| `src/__tests__/lib/middleware-no-process.test.ts` (parser) | extractImports 增加 CommonJS `require('./x')` 抽取（CallExpression with identifier `require`） |
+| `src/__tests__/lib/middleware-no-process.test.ts` (self-test) | 共享 `scanString()` helper 写入 tmp 文件复用 `findModuleLoadProcessEnv()` 真实实现——避免主代码/测试代码漂移。新增 10 个 R12 fixture：class heritage / class decorator / member decorator / computed key / element access / element access nested / optional chain / destructuring / destructuring alias / 不误报 destructuring with different init。新增 1 个 parser fixture：`require()`。 |
+| `.github/workflows/ci.yml` (tarball SLA) | **从"符号在场"升级为"call site + 错误码 + 入口都在场"**：(a) 函数定义在场，(b) `isProductionRuntime()` 真正在 `__setPiiCheckerForTest` 被调用，(c) `PII_ANALYZER_FAILED` + `"E404"` 字面量在场（说明 catch 路径编译进 bundle），(d) `checkModulePII` / `defaultCheckModulePII` / `PiiTypeChecker` 入口在场（说明 PII 流程没被注释为 no-op） |
+
+### 收窄表述：ADR 契约范围
+
+R12 codex 提的 High 第一条（artifact-level）是文档准确性问题，不是 runtime bug。本 ADR 的"no-process runtime safety"契约**严格限定在源码层**：
+
+| 层级 | 契约 | 验证手段 |
+|------|------|---------|
+| **TS 源码闭包**（本 ADR 主战场） | middleware.ts transitive imports 不得有 module-load 阶段任何形式的 process / process.env 访问 | `middleware-no-process.test.ts` AST scanner，PR-time 拦截 |
+| **运行时入口**（next-intl / OpenNext / Cloudflare workerd） | 由 Cloudflare 的 `nodejs_compat` flag + OpenNext wrapper 提供 process polyfill | 不在本 ADR 范围；属 Cloudflare/OpenNext platform layer |
+| **编译产物 .open-next/middleware/handler.mjs** | 含 Next.js DefinePlugin 注入的 process.env.X 字面量替换 — 这是 Next.js 编译机制本身，靠平台 polyfill 兜底 | 不在本 ADR 范围 |
+
+本轮的 scanner / parser / tarball SLA 升级**只针对源码层**，不外推到 artifact level。ADR-0009 §"Round 9 修复" 中"未来任何新模块或新 import 都会被 PR-time CI 抓住"应理解为"源码层任何新模块"。
+
+### 验证
+
+```bash
+cd aster-cloud
+pnpm exec tsc --noEmit  # 0 errors
+pnpm test:run           # 2606 passed | 8 skipped（+22 from R11：10 scanner + 1 parser self-tests × 2 projects）
+pnpm lint               # 0 errors（1 pre-existing 无关 warning）
+
+# 手工验证 tarball 内容合同
+ASTER_TARBALL=vendor/aster-cloud-aster-lang-ts-0.2.1.tgz
+tar -xzOf "$ASTER_TARBALL" package/dist/src/typecheck/browser.js | \
+  grep -E "isProductionRuntime\(\)|PII_ANALYZER_FAILED|\"E404\"|checkModulePII"
+# 期望：所有模式都有命中
+```
+
+### 设计理由
+
+- **共享 helper 消除测试漂移**：R11 self-test 用了自己的 inline `scanString()`，与生产 scanner `findModuleLoadProcessEnv()` 有两份实现。R12 codex 没明说，但这是典型"测试逻辑漂移"风险。R12 修：self-test 写入 tmp 文件 + 调用真实 `findModuleLoadProcessEnv()`，单一来源。
+- **class 求值表面比想象的多**：scanner 一直围绕"function body skip vs everything else scan"二元化思考，遇到 class 就 `continue`。R12 codex 提醒：class declaration 的 heritage、decorator、computed key 都是 **class 定义时（即 module-load）** 求值的，不是方法体。修：把 class 拆成 `scanClassForViolations()` 显式枚举求值点。
+- **process.env 不止 `process.env`**：optional chain / element access / destructuring 都能触碰 process binding 并触发 ReferenceError。修 scanner 时一并覆盖。
+- **tarball SLA 不止"在场"**：单纯 grep 函数名能被"代码注释掉但 export 仍在"绕过。R12 加 call site grep（`isProductionRuntime()` 形态）+ 错误码字面量 + 入口函数，让"看起来像 R6"和"真的执行 R6"对齐。
+- **ADR 范围收窄是必须**：R12 codex 提醒 artifact-level process.env 实际存在但有 platform polyfill 兜底。继续外推会误导支持矩阵。明确"本 ADR 只覆盖 TS 源码层"避免无谓争议。

@@ -49,7 +49,7 @@ function resolveExtension(base: string): string | null {
   return null;
 }
 
-/** 用 TS compiler API 提取一个文件的所有 import specifier（static + dynamic + re-export） */
+/** 用 TS compiler API 提取一个文件的所有 import specifier（static + dynamic + re-export + CommonJS require） */
 export function extractImports(filePath: string): string[] {
   const src = fs.readFileSync(filePath, 'utf8');
   const sf = ts.createSourceFile(
@@ -62,9 +62,11 @@ export function extractImports(filePath: string): string[] {
   const specs: string[] = [];
 
   function visit(node: ts.Node) {
+    // ES static import: import ... from '...'  /  import '...'
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       specs.push(node.moduleSpecifier.text);
     }
+    // ES re-export: export ... from '...'  /  export * from '...'
     if (
       ts.isExportDeclaration(node) &&
       node.moduleSpecifier &&
@@ -72,9 +74,20 @@ export function extractImports(filePath: string): string[] {
     ) {
       specs.push(node.moduleSpecifier.text);
     }
+    // ES dynamic: import('...')
     if (
       ts.isCallExpression(node) &&
       node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments.length > 0 &&
+      ts.isStringLiteral(node.arguments[0])
+    ) {
+      specs.push((node.arguments[0] as ts.StringLiteral).text);
+    }
+    // CommonJS: require('...')  (R12 升级：覆盖 CJS interop)
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === 'require' &&
       node.arguments.length > 0 &&
       ts.isStringLiteral(node.arguments[0])
     ) {
@@ -119,6 +132,67 @@ function transitiveImports(entry: string): Set<string> {
  *   - GetAccessor / SetAccessor body
  *   - 注：IIFE 即时调用是已知 false-negative（见 R11 ADR）
  */
+/**
+ * 共享的"是否触及 process.env"判定 —— scanner 与 self-test fixture 同一逻辑.
+ *
+ * R12 升级覆盖：
+ *   - `process.env.X` (PropertyAccessExpression chain) — 原有
+ *   - `process.env`  (未读 key 也算 module-load 触碰 process 全局) — 原有
+ *   - `process['env']` / `process['env']['X']` (ElementAccessExpression) — R12 新增
+ *   - `process?.env?.X` (optional chain — TS AST 中是 PropertyAccessExpression
+ *     带 QuestionDotToken；ts.isPropertyAccessExpression() 仍 true) — 原有 + 验证
+ *   - `const { env } = process` (ObjectBindingPattern destructuring) — R12 新增
+ *   - `const { env: { X } } = process` (nested destructuring) — R12 新增
+ */
+function isProcessEnvAccess(node: ts.Node): boolean {
+  // process.env.X (链式)
+  if (
+    ts.isPropertyAccessExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    ts.isIdentifier(node.expression.expression) &&
+    node.expression.expression.text === 'process' &&
+    ts.isIdentifier(node.expression.name) &&
+    node.expression.name.text === 'env'
+  ) return true;
+  // process.env （单层，无 .X）
+  if (
+    ts.isPropertyAccessExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'process' &&
+    ts.isIdentifier(node.name) &&
+    node.name.text === 'env'
+  ) return true;
+  // process['env']  / process['env']['X']  (ElementAccessExpression)
+  if (
+    ts.isElementAccessExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'process' &&
+    ts.isStringLiteral(node.argumentExpression) &&
+    node.argumentExpression.text === 'env'
+  ) return true;
+  return false;
+}
+
+/**
+ * 检查 `const { env } = process` / `const { env: alias } = process` 形态
+ * 的解构赋值 module-load 时是否访问了 process.env binding.
+ *
+ * 注意：destructuring 只在初始化器是 `process` identifier 时触发；
+ * `const { env } = somethingElse` 不算。
+ */
+function isProcessEnvDestructuring(node: ts.Node): boolean {
+  if (!ts.isVariableDeclaration(node)) return false;
+  if (!node.initializer || !ts.isIdentifier(node.initializer)) return false;
+  if (node.initializer.text !== 'process') return false;
+  if (!node.name || !ts.isObjectBindingPattern(node.name)) return false;
+  // 至少一个 binding element 名为 env
+  for (const el of node.name.elements) {
+    const propName = el.propertyName ?? el.name;
+    if (ts.isIdentifier(propName) && propName.text === 'env') return true;
+  }
+  return false;
+}
+
 export function findModuleLoadProcessEnv(
   filePath: string,
 ): { line: number; text: string }[] {
@@ -133,6 +207,11 @@ export function findModuleLoadProcessEnv(
   const offenders: { line: number; text: string }[] = [];
   const lines = src.split('\n');
 
+  function record(node: ts.Node) {
+    const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
+    offenders.push({ line: line + 1, text: lines[line]?.trim() ?? '' });
+  }
+
   function scanForViolations(node: ts.Node) {
     // 跳过函数体——函数体内的 process.env 不在 module-load 时执行
     if (
@@ -146,48 +225,75 @@ export function findModuleLoadProcessEnv(
     ) {
       return;
     }
-    // process.env.X：PropertyAccessExpression('process'.'env'.X)
-    if (
-      ts.isPropertyAccessExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      ts.isIdentifier(node.expression.expression) &&
-      node.expression.expression.text === 'process' &&
-      ts.isIdentifier(node.expression.name) &&
-      node.expression.name.text === 'env'
-    ) {
-      const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-      offenders.push({ line: line + 1, text: lines[line]?.trim() ?? '' });
-      return; // 不需要继续递归子节点
+    if (isProcessEnvAccess(node)) {
+      record(node);
+      return;
     }
-    // process.env （未读 key 也算 module-load 触碰 process 全局）
-    if (
-      ts.isPropertyAccessExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === 'process' &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === 'env'
-    ) {
-      const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-      offenders.push({ line: line + 1, text: lines[line]?.trim() ?? '' });
+    if (isProcessEnvDestructuring(node)) {
+      record(node);
       return;
     }
     ts.forEachChild(node, scanForViolations);
   }
 
-  for (const stmt of sf.statements) {
-    if (ts.isClassDeclaration(stmt) || ts.isClassExpression(stmt)) {
-      for (const m of stmt.members) {
-        if (
-          ts.isPropertyDeclaration(m) &&
-          m.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.StaticKeyword) &&
-          m.initializer
-        ) {
-          scanForViolations(m.initializer);
-        }
-        if (ts.isClassStaticBlockDeclaration(m)) {
-          scanForViolations(m.body);
+  /**
+   * Class 顶层 module-load 触发点（R12 codex 抓的盲点）：
+   *   - heritage clause: `class X extends f(process.env.X) {}` — extends 表达式在 class 定义时求值
+   *   - decorator: `@dec(process.env.X)` 装饰器表达式在 class/member 定义时求值
+   *   - computed property key: `class X { [process.env.Y]() {} }` 在 class 定义时求值
+   *   - static field initializer (已覆盖)
+   *   - static block (已覆盖)
+   *
+   * 不算 module-load 的：method body / accessor body / constructor body
+   * （由 scanForViolations 自动跳过）
+   */
+  function scanClassForViolations(cls: ts.ClassDeclaration | ts.ClassExpression) {
+    // heritage clauses (extends + implements 表达式)
+    if (cls.heritageClauses) {
+      for (const hc of cls.heritageClauses) {
+        for (const t of hc.types) {
+          scanForViolations(t);
         }
       }
+    }
+    // class-level decorators (TS 把 decorator 放在 modifiers 里，需筛 Decorator kind)
+    if (ts.canHaveDecorators(cls)) {
+      const decs = ts.getDecorators(cls);
+      if (decs) for (const d of decs) scanForViolations(d.expression);
+    }
+    for (const m of cls.members) {
+      // member decorators
+      if (ts.canHaveDecorators(m)) {
+        const decs = ts.getDecorators(m);
+        if (decs) for (const d of decs) scanForViolations(d.expression);
+      }
+      // computed property key (`[expr]` 形式)
+      if ('name' in m && m.name && ts.isComputedPropertyName(m.name)) {
+        scanForViolations(m.name.expression);
+      }
+      // static field initializer
+      if (
+        ts.isPropertyDeclaration(m) &&
+        m.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.StaticKeyword) &&
+        m.initializer
+      ) {
+        scanForViolations(m.initializer);
+      }
+      // static block
+      if (ts.isClassStaticBlockDeclaration(m)) {
+        scanForViolations(m.body);
+      }
+    }
+  }
+
+  for (const stmt of sf.statements) {
+    if (ts.isClassDeclaration(stmt)) {
+      // class 顶层 statement decorators 也算 module-load
+      if (ts.canHaveDecorators(stmt)) {
+        const decs = ts.getDecorators(stmt);
+        if (decs) for (const d of decs) scanForViolations(d.expression);
+      }
+      scanClassForViolations(stmt);
       continue;
     }
     scanForViolations(stmt);
@@ -229,58 +335,18 @@ describe('middleware transitive import chain — no-process runtime safety (P0-R
 
 /**
  * Scanner self-test：fixture 驱动的合同测试，保证 scanner 真能在未来 PR 时拦住
- * 各种 module-load 模式。不通过 fs fixture 路径，而是直接用 ts.createSourceFile
- * 喂源码字符串——避免污染 repo 文件树。
+ * 各种 module-load 模式。写到 tmp 文件路径以复用 findModuleLoadProcessEnv()
+ * 的真实实现（避免主代码 / 测试代码再次漂移）。
  */
-describe('scanner self-test (R11 升级：覆盖 dynamic import + re-export + class static + 多行对象)', () => {
-  /** 从源码字符串建临时 source file 并跑 scanner */
-  function scanString(src: string, name = 'tmp.ts'): { line: number; text: string }[] {
-    const sf = ts.createSourceFile(name, src, ts.ScriptTarget.Latest, true);
-    const offenders: { line: number; text: string }[] = [];
-    const lines = src.split('\n');
-    function scan(node: ts.Node) {
-      if (
-        ts.isFunctionDeclaration(node) ||
-        ts.isFunctionExpression(node) ||
-        ts.isArrowFunction(node) ||
-        ts.isMethodDeclaration(node) ||
-        ts.isGetAccessorDeclaration(node) ||
-        ts.isSetAccessorDeclaration(node) ||
-        ts.isConstructorDeclaration(node)
-      ) return;
-      if (
-        ts.isPropertyAccessExpression(node) &&
-        ts.isPropertyAccessExpression(node.expression) &&
-        ts.isIdentifier(node.expression.expression) &&
-        node.expression.expression.text === 'process' &&
-        ts.isIdentifier(node.expression.name) &&
-        node.expression.name.text === 'env'
-      ) {
-        const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-        offenders.push({ line: line + 1, text: lines[line]?.trim() ?? '' });
-        return;
-      }
-      ts.forEachChild(node, scan);
-    }
-    for (const stmt of sf.statements) {
-      if (ts.isClassDeclaration(stmt)) {
-        for (const m of stmt.members) {
-          if (
-            ts.isPropertyDeclaration(m) &&
-            m.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.StaticKeyword) &&
-            m.initializer
-          ) {
-            scan(m.initializer);
-          }
-          if (ts.isClassStaticBlockDeclaration(m)) {
-            scan(m.body);
-          }
-        }
-        continue;
-      }
-      scan(stmt);
-    }
-    return offenders;
+describe('scanner self-test (R12 升级：class heritage / decorator / computed key / element access / destructuring)', () => {
+  const tmpDir = path.join(REPO_ROOT, 'node_modules', '.vitest-tmp-scanner');
+  beforeAll(() => fs.mkdirSync(tmpDir, { recursive: true }));
+
+  let fixtureCounter = 0;
+  function scanString(src: string): { line: number; text: string }[] {
+    const p = path.join(tmpDir, `fx-${++fixtureCounter}.ts`);
+    fs.writeFileSync(p, src);
+    return findModuleLoadProcessEnv(p);
   }
 
   it('抓住简单 const = process.env.X', () => {
@@ -368,6 +434,90 @@ const result = (() => {
 `).length,
     ).toBe(0);
   });
+
+  // R12 升级：class heritage / decorator / computed key
+
+  it('R12: 抓住 class heritage clause `class X extends f(process.env.X) {}`', () => {
+    expect(
+      scanString(`
+declare function f(s: string | undefined): { new (): {} };
+class X extends f(process.env.BAR) {}
+`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R12: 抓住 class decorator `@dec(process.env.X) class X {}`', () => {
+    expect(
+      scanString(`
+declare function dec(s: string | undefined): ClassDecorator;
+@dec(process.env.BAR)
+class X {}
+`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R12: 抓住 member decorator `@dec(process.env.X) method() {}`', () => {
+    expect(
+      scanString(`
+declare function dec(s: string | undefined): MethodDecorator;
+class X {
+  @dec(process.env.BAR)
+  m() {}
+}
+`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R12: 抓住 computed property key `class X { [process.env.Y]() {} }`', () => {
+    expect(
+      scanString(`
+class X {
+  [process.env.BAR ?? 'fallback']() {}
+}
+`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  // R12 升级：非点号形态的 process.env 触碰
+
+  it("R12: 抓住 element access `process['env'].X`", () => {
+    expect(
+      scanString(`const FOO = process['env'].BAR;`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("R12: 抓住 element access nested `process['env']['X']`", () => {
+    expect(
+      scanString(`const FOO = process['env']['BAR'];`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R12: 抓住 optional chain `process?.env?.X`', () => {
+    expect(
+      scanString(`const FOO = process?.env?.BAR;`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R12: 抓住 destructuring `const { env } = process`', () => {
+    expect(
+      scanString(`const { env } = process;`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R12: 抓住 destructuring alias `const { env: e } = process`', () => {
+    expect(
+      scanString(`const { env: e } = process;`).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('R12: 不误报：destructuring with different init `const { env } = somethingElse`', () => {
+    expect(
+      scanString(`
+const somethingElse = { env: {} };
+const { env } = somethingElse;
+`).length,
+    ).toBe(0);
+  });
 });
 
 describe('import parser self-test (R11 升级：覆盖 dynamic + re-export)', () => {
@@ -402,6 +552,11 @@ describe('import parser self-test (R11 升级：覆盖 dynamic + re-export)', ()
   it('提取 type-only import', () => {
     const f = writeFixture('type-only.ts', `import type { X } from './foo';`);
     expect(extractImports(f)).toEqual(['./foo']);
+  });
+
+  it('R12: 提取 CommonJS require()', () => {
+    const f = writeFixture('cjs.ts', `const x = require('./foo');\nconst y = require('./bar');`);
+    expect(extractImports(f).sort()).toEqual(['./bar', './foo'].sort());
   });
 });
 

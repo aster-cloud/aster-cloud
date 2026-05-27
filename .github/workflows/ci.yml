@@ -51,6 +51,17 @@ jobs:
           fi
 
           # aster-lang-ts tarball 内容合同（ADR-0009 R6 跨运行时 PII flow analysis）
+          #
+          # P0-R12 升级（codex round 12 反馈）：单纯 grep 符号能证明"看起来像 R6"，
+          # 不能证明"真的执行 R6"。补强为同时检查：
+          #   (a) 函数定义在场       — isProductionRuntime / __setPiiCheckerForTest /
+          #                            __isProductionRuntimeForTest
+          #   (b) 执行入口被调用      — isProductionRuntime() 必须在 __setPiiCheckerForTest
+          #                            的实现里被调用（call site，不只是定义）
+          #   (c) E404/PII_ANALYZER_FAILED 错误码在场（说明 catch 路径已编译进 bundle）
+          #   (d) checkModule 调用入口 — typecheck PII 流程的真实入口存在
+          #
+          # 防止"tarball 被替换为 stub/旧版本"或"代码注释掉但符号还在"的退步。
           ASTER_TARBALL=$(ls vendor/aster-cloud-aster-lang-ts-*.tgz 2>/dev/null || true)
           if [ -n "$ASTER_TARBALL" ]; then
             echo "Verifying $ASTER_TARBALL contains ADR-0009 R6 fixes..."
@@ -59,14 +70,35 @@ jobs:
               echo "ERROR: tarball missing package/dist/src/typecheck/browser.js"
               exit 1
             fi
-            # 必须含 R6 修复的 4 个关键符号
-            for SYMBOL in "isProductionRuntime" "__setPiiCheckerForTest" "__isProductionRuntimeForTest" "PII_ANALYZER_FAILED"; do
+            # (a) 关键函数定义在场
+            for SYMBOL in "isProductionRuntime" "__setPiiCheckerForTest" "__isProductionRuntimeForTest"; do
               if ! echo "$BROWSER_JS" | grep -q "$SYMBOL"; then
-                echo "ERROR: tarball browser.js missing '$SYMBOL' (R6 cross-runtime PII fix regression)"
+                echo "ERROR: tarball browser.js missing function '$SYMBOL' (R6 cross-runtime PII fix regression)"
                 exit 1
               fi
             done
-            echo "OK: tarball content contract satisfied (R6 PII fixes present)"
+            # (b) production guard 真正在 __setPiiCheckerForTest 内被调用——
+            # 不只定义，必须 call。bundle 后函数体在同一文件，grep 调用形态。
+            if ! echo "$BROWSER_JS" | grep -q "isProductionRuntime()"; then
+              echo "ERROR: tarball browser.js missing isProductionRuntime() call site (guard inert)"
+              exit 1
+            fi
+            # (c) PII_ANALYZER_FAILED 错误码 + E404 字面量在场（catch 路径编译进 bundle）
+            if ! echo "$BROWSER_JS" | grep -q "PII_ANALYZER_FAILED"; then
+              echo "ERROR: tarball browser.js missing PII_ANALYZER_FAILED (E404 catch path regression)"
+              exit 1
+            fi
+            if ! echo "$BROWSER_JS" | grep -q '"E404"'; then
+              echo "ERROR: tarball browser.js missing E404 literal (catch path emit code regression)"
+              exit 1
+            fi
+            # (d) checkModulePII / defaultCheckModulePII 真实入口在场——
+            # 说明 PII 流程没被注释成 no-op
+            if ! echo "$BROWSER_JS" | grep -qE "checkModulePII|defaultCheckModulePII|PiiTypeChecker"; then
+              echo "ERROR: tarball browser.js missing PII checker entry (PII flow analysis disabled)"
+              exit 1
+            fi
+            echo "OK: tarball content contract satisfied — R6 PII fixes present + call sites verified"
           fi
 
       - run: pnpm lint
