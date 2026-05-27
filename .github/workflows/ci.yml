@@ -20,6 +20,30 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
+
+      # P0-R6 (codex round 6): vendor tarball SLA enforcement
+      # 如果 package.json 仍含 file:vendor/... 依赖，必须有 vendor/README.md
+      # 且包含 Owner + 删除条件。防止 tarball 成为永久技术债。
+      - name: Vendor tarball SLA enforcement
+        run: |
+          set -e
+          if grep -q "file:vendor/" package.json; then
+            echo "Detected file:vendor/ dependency. Checking SLA documentation..."
+            if [ ! -f vendor/README.md ]; then
+              echo "ERROR: file:vendor/ dependency requires vendor/README.md"
+              exit 1
+            fi
+            if ! grep -q "Owner:" vendor/README.md; then
+              echo "ERROR: vendor/README.md must declare an Owner"
+              exit 1
+            fi
+            if ! grep -q "删除条件\|Removal Conditions\|临时 SLA" vendor/README.md; then
+              echo "ERROR: vendor/README.md must declare removal conditions / SLA"
+              exit 1
+            fi
+            echo "OK: vendor/ SLA documentation present"
+          fi
+
       - run: pnpm lint
       - run: pnpm exec tsc --noEmit
       - name: Verify message catalog parity (en backbone)
