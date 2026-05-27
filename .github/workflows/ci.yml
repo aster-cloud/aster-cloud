@@ -24,6 +24,12 @@ jobs:
       # P0-R6 (codex round 6): vendor tarball SLA enforcement
       # 如果 package.json 仍含 file:vendor/... 依赖，必须有 vendor/README.md
       # 且包含 Owner + 删除条件。防止 tarball 成为永久技术债。
+      #
+      # P0-R11 升级：对 @aster-cloud/aster-lang-ts 的 vendor tarball 增加
+      # **内容契约**——必须包含 R6 跨运行时 PII flow analysis 修复的关键
+      # 函数（isProductionRuntime / __setPiiCheckerForTest /
+      # __isProductionRuntimeForTest / PII_ANALYZER_FAILED）。
+      # 防止 tarball 被替换/降级回退到无 PII guard 的旧版本。
       - name: Vendor tarball SLA enforcement
         run: |
           set -e
@@ -42,6 +48,25 @@ jobs:
               exit 1
             fi
             echo "OK: vendor/ SLA documentation present"
+          fi
+
+          # aster-lang-ts tarball 内容合同（ADR-0009 R6 跨运行时 PII flow analysis）
+          ASTER_TARBALL=$(ls vendor/aster-cloud-aster-lang-ts-*.tgz 2>/dev/null || true)
+          if [ -n "$ASTER_TARBALL" ]; then
+            echo "Verifying $ASTER_TARBALL contains ADR-0009 R6 fixes..."
+            BROWSER_JS=$(tar -xzOf "$ASTER_TARBALL" package/dist/src/typecheck/browser.js 2>/dev/null || echo "")
+            if [ -z "$BROWSER_JS" ]; then
+              echo "ERROR: tarball missing package/dist/src/typecheck/browser.js"
+              exit 1
+            fi
+            # 必须含 R6 修复的 4 个关键符号
+            for SYMBOL in "isProductionRuntime" "__setPiiCheckerForTest" "__isProductionRuntimeForTest" "PII_ANALYZER_FAILED"; do
+              if ! echo "$BROWSER_JS" | grep -q "$SYMBOL"; then
+                echo "ERROR: tarball browser.js missing '$SYMBOL' (R6 cross-runtime PII fix regression)"
+                exit 1
+              fi
+            done
+            echo "OK: tarball content contract satisfied (R6 PII fixes present)"
           fi
 
       - run: pnpm lint
