@@ -601,3 +601,108 @@ ADR-0009 跨运行时 PII flow analysis 经过 13 轮 codex review 迭代（72 �
 | Tarball content contract (call site + error code + entry point) | R11/R12/R13 | ✓ |
 
 **结论**：达到 GA-ready 标准。剩余 Low（IIFE false-negative / top-level await 缺 fixture）作为 P2 hardening backlog，不阻塞上线。
+
+## Round 14 + 15 Postmortem (P0-R14/R15, 2026-05-27)
+
+**R13 给出 95/100 通过, 但提交后 CI 立刻暴露 critical build regression**:
+
+```
+Module build failed: UnhandledSchemeError:
+  Reading from "node:fs" is not handled by plugins
+Import trace:
+  node:fs ← dist/src/lsp/module_cache.js ← typecheck/module.js
+        ← typecheck/index.js ← typecheck.js
+        ← typecheck-pii.js ← typecheck/browser.js
+        ← browser.js ← execute-policy-content.tsx
+```
+
+R13 评分实际是**虚假高分**: 所有审计都基于"本地 pnpm test:run 通过"，但
+vitest 不走 webpack edge build, **artifact 层依赖闭包**完全没被检验。
+
+### 审计方法学反思
+
+| 层级 | R1-R13 覆盖 | R13 评分时盲点 |
+|------|------------|---------------|
+| 源码 AST (TS PropertyAccess/ElementAccess) | ✓ (middleware-no-process scanner) | — |
+| 单元测试 (vitest, node:test) | ✓ | — |
+| 集成测试 (Java forked JVM, vitest jsdom) | ✓ | — |
+| **真实 bundler build (Next.js webpack edge target)** | ✗ | **关键盲点** |
+| **vendor tarball 的 transitive import 闭包** | △ (只 grep 符号在场) | **关键盲点** |
+| 编译产物层 module graph 分析 | ✗ | **关键盲点** |
+
+R13 之前每轮都把 "本地 pnpm test:run 全绿" 当作 GA 决策依据, 但忽略了
+**消费者 build pipeline** 才是真实的 cross-runtime 验证现场。
+
+### R14 修复 (已爆 regression)
+
+| 文件 | 修复 |
+|------|------|
+| `aster-lang-ts/src/typecheck-pii.ts` | `import resolveAlias from './typecheck.js'` → `'./typecheck/utils.js'` (leaf, 不再 transitively 拉 module.ts → node:perf_hooks) |
+| `aster-cloud/vendor/aster-cloud-aster-lang-ts-0.2.1.tgz` | 重新 pack 含 R14 fix |
+| `aster-cloud/.github/workflows/ci.yml` | tarball SLA (e): grep typecheck-pii.js 必须 import `./typecheck/utils.js` 而非 `./typecheck.js` |
+| `aster-lang-ts` vendor pattern (mirrors aster-cloud) | `file:vendor/aster-cloud-aster-lang-test-0.0.3.tgz` + `.gitignore !vendor/*.tgz` + Vendor SLA enforcement |
+
+### R15 修复 (codex round 14 提的深层 transitive risk)
+
+R14 fix 改 import 到 `typecheck/utils.ts` —— 但 codex round 14 指出
+utils.ts 自身**仍然不是干净 leaf**:
+- 模块加载时调用 `loadPrefixes()` → `require('node:module')`
+- 其他函数 `require('node:path')` / `process.cwd()`
+- 当前 Next.js webpack `nodejs_compat` 兜底没炸, 但任何更严格 bundler 会卡
+
+**Critical split**: 拆纯 leaf 模块, browser-reachable 路径不再触碰 utils.ts:
+
+| 模块 | 角色 |
+|------|------|
+| `typecheck/pure.ts` (NEW) | browser-safe leaf, 纯类型助手 + IO/CPU DEFAULT 前缀。所有 browser-reachable typecheck/* 文件 import from here |
+| `typecheck/alias.ts` (NEW) | 纯 resolveAlias leaf, 无任何运行时依赖 |
+| `typecheck/utils.ts` | re-export pure.ts + 保留 Node-only paths (getIOPrefixesCompat 含 createRequire('node:module'), defaultModuleSearchPaths 含 process.cwd()). 仅 server-side 模块 import |
+
+**重写**: 11 个 browser-reachable 文件的 import 路径从 `./utils.js` → `./pure.js`:
+typecheck/{context,statement,effects,generics,expression,pattern,workflow}.ts +
+typecheck-pii.ts + typecheck/browser.ts + effects/effect_inference_browser.ts
+
+**Artifact-level CI verification** (codex round 14 提的方法学修复):
+
+`aster-lang-ts/scripts/verify-browser-entry.mjs` (NEW): 从 `dist/src/browser.js`
+做 BFS transitive closure 扫描, 禁止任何 `node:*` import 出现在闭包. 在
+aster-lang-ts CI workflow 集成为阻断步骤 (PR-time 拦截).
+
+### 修复后的契约边界 (R15 更新)
+
+| 层级 | 契约 | 验证手段 |
+|------|------|---------|
+| **TS 源码闭包** (middleware) | middleware.ts transitive 不得 module-load 触及 process.env | `middleware-no-process.test.ts` AST scanner |
+| **TS 源码闭包** (browser entry) | browser.ts transitive 不得有任何 `node:*` import | `scripts/verify-browser-entry.mjs` BFS artifact scan (R15 新增) |
+| **运行时入口** (next-intl / OpenNext / CF workerd) | 由 platform 的 `nodejs_compat` flag 提供 process polyfill | 不在本 ADR 范围 |
+| **vendor tarball 内容** | 含 R6 PII 修复的关键符号 + call site + 错误码 | `aster-cloud/.github/workflows/ci.yml` tarball SLA (a-e) |
+| **消费者 build** | `pnpm run build:next` (SaaS + on-prem) 必须 success | `aster-cloud` CI build job |
+
+### 验证
+
+```bash
+# aster-lang-ts:
+pnpm build && node scripts/verify-browser-entry.mjs  # OK 70 files, 0 node:* imports
+pnpm run test:unit:run                              # 1055 passed | 2 skipped
+pnpm run test:integration                           # all passed
+
+# aster-cloud (consumer):
+pnpm install                          # tarball 解析
+pnpm exec tsc --noEmit                # 0 errors
+pnpm run build:next                   # success (saas)
+DEPLOYMENT_MODE=on-prem pnpm run build:next  # success (on-prem)
+pnpm test:run                         # 2612 passed | 8 skipped
+```
+
+### 设计理由 (R15)
+
+- **leaf 模块分层**: 不混合 "browser-safe helpers" 与 "Node-only helpers" 在同一文件. 物理分离 (pure.ts vs utils.ts) 比靠 try/catch wrap 更可靠 —— 任何 `require('node:X')` 在 utils.ts 都不会被 browser 路径 transitively 看到.
+- **artifact-level smoke 不可替代源码 AST scanner**: 源码 scanner 抓 module-load 时的 `process.env`, artifact smoke 抓编译后闭包的 `node:*` import. 两层互补, 缺一不可. R13 仅有前者所以漏了后者.
+- **修订 ADR GA-ready 评分**: R13 评分回调到 88-90 区间 (artifact 验证空缺). R15 通过 artifact-level CI 闭环后真正达到 ≥95.
+
+### GA Re-decision
+
+R15 之后才是真正的 GA-ready: 三层契约 (源码 AST + tarball 内容 + artifact 闭包)
++ 三个独立 CI 阻断 (middleware-no-process / tarball SLA / verify-browser-entry)
+共同保证未来 PR 任何 transitive Node 依赖都会被 PR-time 抓住。
+

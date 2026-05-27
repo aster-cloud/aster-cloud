@@ -292,7 +292,7 @@ packages:
     engines: {node: '>= 10'}
 
   '@aster-cloud/aster-lang-ts@file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz':
-    resolution: {integrity: sha512-1Z/9RlAOajtlLxsDlc8zwhiK6JshiyyAh2RGW8/Nn94/GbPTGosXTMr1kk/oJjjn2opSzxghyId5NhNrWY0Ggw==, tarball: file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz}
+    resolution: {integrity: sha512-y/pV4WkVB175OOlAH9MHJmSSNLEFKSYRJbuMGvwGK21TOEF67qk/3OXeBzlRkyCjWuMNw95f6pr90QIBRUyjCA==, tarball: file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz}
     version: 0.2.1
     engines: {node: '>=24.0.0'}
     hasBin: true
