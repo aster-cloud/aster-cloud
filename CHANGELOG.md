@@ -174,6 +174,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - P0-R3 Verification 补 real-trace + Known Limitations 节 *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -206,6 +207,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- TS compiler API scanner + tarball content contract (P0-R11) *(tests)*
 - Close last process.env hole + transitive closure scan (P0-R10) *(middleware)*
 - Shared safeEnv helper + middleware chain no-process safety (P0-R9) *(runtime)*
 - No-process safe defaults for env-validation + deployment-mode (P0-R8) *(env)*
