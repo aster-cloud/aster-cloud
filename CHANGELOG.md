@@ -167,6 +167,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- P0-R3 Verification 补 real-trace + Known Limitations 节 *(adr)*
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - ADR-0009 — PII enforcement default-on across all runtimes *(adr)*
