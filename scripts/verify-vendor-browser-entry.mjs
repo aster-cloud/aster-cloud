@@ -27,6 +27,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isBuiltin, builtinModules } from 'node:module';
 import ts from 'typescript';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -39,22 +40,17 @@ const VENDOR_PKG = path.join(
 );
 const ENTRY = path.join(VENDOR_PKG, 'dist', 'src', 'browser.js');
 
-const NODE_BUILTINS = new Set([
-  'assert', 'async_hooks', 'buffer', 'child_process', 'cluster', 'console',
-  'constants', 'crypto', 'dgram', 'diagnostics_channel', 'dns', 'domain',
-  'events', 'fs', 'fs/promises', 'http', 'http2', 'https', 'inspector',
-  'module', 'net', 'os', 'path', 'path/posix', 'path/win32', 'perf_hooks',
-  'process', 'punycode', 'querystring', 'readline', 'readline/promises',
-  'repl', 'stream', 'stream/consumers', 'stream/promises', 'stream/web',
-  'string_decoder', 'sys', 'test', 'timers', 'timers/promises', 'tls',
-  'trace_events', 'tty', 'url', 'util', 'util/types', 'v8', 'vm', 'wasi',
-  'worker_threads', 'zlib',
-]);
-
+/**
+ * R17: 权威源用 `node:module.isBuiltin()`, 不再手维护 deny list.
+ * isBuiltin('fs') / isBuiltin('node:fs') / isBuiltin('assert/strict') 都返回 true;
+ * isBuiltin('zod') / isBuiltin('./foo') 返回 false.
+ */
 function isNodeBuiltinSpec(spec) {
-  if (spec.startsWith('node:')) return { violation: true, reason: 'node: scheme' };
-  if (NODE_BUILTINS.has(spec)) return { violation: true, reason: 'bare Node builtin' };
-  return { violation: false };
+  if (!isBuiltin(spec)) return { violation: false };
+  return {
+    violation: true,
+    reason: spec.startsWith('node:') ? 'node: scheme' : 'bare Node builtin',
+  };
 }
 
 if (!fs.existsSync(ENTRY)) {
@@ -157,7 +153,7 @@ console.log(`Scanning vendor browser entry transitive closure:`);
 console.log(`  package: ${VENDOR_PKG.replace(REPO_ROOT + '/', '')}`);
 console.log(`  entry: dist/src/browser.js`);
 console.log(`  parser: TypeScript compiler API (AST)`);
-console.log(`  deny: node:* scheme + bare Node builtin (${NODE_BUILTINS.size} modules)`);
+console.log(`  deny: node:* scheme + bare Node builtin (Node ${process.versions.node} builtin set, ${builtinModules.length} modules)`);
 const { visited, violations } = transitiveClosure(ENTRY);
 console.log(`  files in closure: ${visited.size}`);
 
