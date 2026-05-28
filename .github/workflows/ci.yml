@@ -155,6 +155,15 @@ jobs:
             echo "OK: tarball content contract satisfied — R6 PII fixes present + call sites verified + edge bundle safety (R15 pure leaf)"
           fi
 
+      # P0-R16: consumer-side artifact-level scan (closes R15 codex round 15 Low).
+      # lang-ts CI 在 pack 前扫描 own dist; 但如果 vendor tarball 被替换 (e.g.
+      # 旧版本回退), lang-ts CI 看不到. 这一步扫 node_modules/@aster-cloud/
+      # aster-lang-ts/dist/src/browser.js 的 transitive closure, 确认消费侧
+      # 实际收到的 browser entry 闭包不含 node:* / bare Node builtin.
+      # 三层契约闭环: lang-ts dist 扫描 + tarball symbol contract + consumer 闭包扫描.
+      - name: Verify vendor browser entry has no Node builtin deps
+        run: node scripts/verify-vendor-browser-entry.mjs
+
       - run: pnpm lint
       - run: pnpm exec tsc --noEmit
       - name: Verify message catalog parity (en backbone)
