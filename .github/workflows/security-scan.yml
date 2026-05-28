@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
 
+
 jobs:
   # projectdiscovery/nuclei-action@v3 (current v3.1.1) reworked its API:
   # the old `target` / `flags` / `output` inputs are gone — everything
@@ -146,10 +147,26 @@ jobs:
   # block deploy cadence too aggressively.
   zap-authenticated-cloud:
     runs-on: ubuntu-latest
-    if: ${{ secrets.ZAP_SCAN_USER_PASSWORD != '' }}
+    # P0-R16: GitHub Actions 禁止 ${{ secrets.X }} 出现在 job-level if 表达式,
+    # 之前的 `if: ${{ secrets.ZAP_SCAN_USER_PASSWORD != '' }}` 让 GitHub 在
+    # workflow listing 阶段 (push event 触发刷新时) 报 parse warning, 表现为
+    # 每次 push 都在 Actions UI 上看到一个 0s 失败的 "security-scan.yml" 条目
+    # (event=push, jobs=[]), 即使本 workflow 没声明 push 触发器. 改成 step-level
+    # gate: job 总是 dispatch, 但首个步骤检测 secret 缺失则提前 exit 0 跳过.
     steps:
+      - name: Check ZAP_SCAN_USER_PASSWORD presence
+        id: gate
+        run: |
+          if [ -z "${{ secrets.ZAP_SCAN_USER_PASSWORD }}" ]; then
+            echo "ZAP_SCAN_USER_PASSWORD not set; skipping authenticated scan"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v6
+        if: steps.gate.outputs.skip != 'true'
       - name: ZAP authenticated scan (aster-lang.cloud)
+        if: steps.gate.outputs.skip != 'true'
         uses: zaproxy/action-full-scan@v0.12.0
         with:
           target: https://aster-lang.cloud
