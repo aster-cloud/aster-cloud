@@ -169,6 +169,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Mirror third-party limitation doc on consumer side (P0-R18) *(scripts)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -220,6 +221,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Esc handler on 2 more modals + clean lint warning (R20 polish) *(a11y)*
 - Viewport meta + modal a11y + Monaco tokens + responsive heights (P1-R19) *(ui)*
 - Security-scan workflow push-event noise (P0-R16) *(ci)*
 - Tarball SLA (e) update for R15 leaf module split *(ci)*
