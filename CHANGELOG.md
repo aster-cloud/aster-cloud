@@ -168,6 +168,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 ### Documentation
 
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Mirror third-party limitation doc on consumer side (P0-R18) *(scripts)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -219,6 +220,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Viewport meta + modal a11y + Monaco tokens + responsive heights (P1-R19) *(ui)*
 - Security-scan workflow push-event noise (P0-R16) *(ci)*
 - Tarball SLA (e) update for R15 leaf module split *(ci)*
 - Vendor tarball update + CI guard for edge bundle safety (P0-R14) *(build)*
