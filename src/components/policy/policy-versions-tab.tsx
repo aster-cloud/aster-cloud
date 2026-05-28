@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { PolicyVersionList, type PolicyVersionInfo } from './policy-version-list';
@@ -214,6 +214,15 @@ function InviteReviewerModal({
   cta: { label: string; href: string };
   onClose: () => void;
 }) {
+  // P2-R20: Esc dismisses modal (WCAG 2.1.1 keyboard parity).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"

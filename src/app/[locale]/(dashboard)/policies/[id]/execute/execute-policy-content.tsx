@@ -231,7 +231,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
         setSchemaError({ messageKey: 'policy.fetch_failed', detail: reason });
         setInput('{}');
       });
-  }, [policyId, fetchSchema]);
+  }, [policyId, fetchSchema, locale]);
 
   // 重新生成示例数据（使用检测到的策略语言生成本地化示例值）
   const regenerateSampleData = useCallback(() => {

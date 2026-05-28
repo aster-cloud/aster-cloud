@@ -48,6 +48,16 @@ export function UpgradeBlocker({
     }
   }, [open, reason, recommendedPlan, usage, limit]);
 
+  // P2-R20: Esc dismisses modal (WCAG 2.1.1 keyboard parity with backdrop click)
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   // On-prem 行为：仍可达到配额上限（license 决定上限），但 "升级到 Pro" 无意义。
