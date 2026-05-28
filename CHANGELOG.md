@@ -167,6 +167,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Mirror third-party limitation doc on consumer side (P0-R18) *(scripts)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
