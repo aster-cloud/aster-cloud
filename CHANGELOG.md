@@ -168,6 +168,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 ### Documentation
 
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - R14/R15 postmortem + pure leaf split + artifact verification *(adr-0009)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -213,6 +214,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Security-scan workflow push-event noise (P0-R16) *(ci)*
 - Tarball SLA (e) update for R15 leaf module split *(ci)*
 - Vendor tarball update + CI guard for edge bundle safety (P0-R14) *(build)*
 - Scanner covers class heritage/decorator/computed key + CJS + element access (P0-R12) *(tests)*
