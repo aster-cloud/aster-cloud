@@ -86,7 +86,7 @@ const MonacoPolicyEditor = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="flex h-full min-h-[500px] items-center justify-center rounded-lg bg-bg-muted text-sm text-fg-subtle"
+        className="flex h-full min-h-[clamp(300px,50vh,500px)] items-center justify-center rounded-lg bg-bg-muted text-sm text-fg-subtle"
         role="status"
         aria-label="Loading editor"
       >

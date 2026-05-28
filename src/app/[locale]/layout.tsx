@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
@@ -40,6 +40,13 @@ export const metadata: Metadata = {
   title: "Aster Cloud - Policy Management Platform",
   description: "Commercial SaaS platform for Aster policy management with PII protection and compliance monitoring.",
   keywords: ["policy management", "PII protection", "compliance", "GDPR", "business rules"],
+};
+
+// P1-R19: viewport meta — without this mobile browsers render at 980px
+// default width until user pinches. Required for responsive design to apply.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export function generateStaticParams() {

@@ -575,7 +575,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
 
             {/* Form Mode */}
             {inputMode === 'form' && schema?.parameters && schema.parameters.length > 0 && !schemaLoading && (
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              <div className="space-y-4 max-h-[clamp(300px,60vh,600px)] overflow-y-auto pr-2">
                 {schema.functionName && (
                   <div className="text-sm text-fg-muted mb-2">
                     {FUNCTION_LABEL[policyLocale] ?? 'Function'}: <span className="font-mono text-fg">{schema.functionName}</span>

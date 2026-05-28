@@ -23,7 +23,7 @@ importers:
     dependencies:
       '@aster-cloud/aster-lang-ts':
         specifier: file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz
-        version: file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz(ws@8.20.1)(zod@4.4.3)
+        version: file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz(cac@6.7.14)(ora@9.4.0)(p-limit@7.3.0)(tar@7.5.15)(vscode-languageserver-textdocument@1.0.12)(vscode-languageserver-types@3.17.5)(vscode-languageserver@9.0.1)(ws@8.20.1)(zod@4.4.3)
       '@aster-cloud/tokens':
         specifier: ^0.2.0
         version: 0.2.0
@@ -292,10 +292,33 @@ packages:
     engines: {node: '>= 10'}
 
   '@aster-cloud/aster-lang-ts@file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz':
-    resolution: {integrity: sha512-HkIedxYUxzoFQis+gMAlkDekU/ZGdAndWlsO3MKaw58TKrJh3NzhVJA7ZYUudL5wgzKVHnuZiwuvFBHnA6nr3A==, tarball: file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz}
+    resolution: {integrity: sha512-0qM22upp6bjVNjU6JRcXcXR0JjrO+4JS1a80w1tuJkRzXf8kn+R4NznQCCDj/WMdQRYUJQK42dQ3nRl9DoIUHA==, tarball: file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz}
     version: 0.2.1
     engines: {node: '>=24.0.0'}
     hasBin: true
+    peerDependencies:
+      cac: ^6.7.14
+      ora: ^9.0.0
+      p-limit: ^7.2.0
+      tar: '>=7.5.8'
+      vscode-languageserver: ^9.0.1
+      vscode-languageserver-textdocument: ^1.0.12
+      vscode-languageserver-types: ^3.17.5
+    peerDependenciesMeta:
+      cac:
+        optional: true
+      ora:
+        optional: true
+      p-limit:
+        optional: true
+      tar:
+        optional: true
+      vscode-languageserver:
+        optional: true
+      vscode-languageserver-textdocument:
+        optional: true
+      vscode-languageserver-types:
+        optional: true
 
   '@aster-cloud/glossary@0.1.1':
     resolution: {integrity: sha512-6ZbktjiQrfNmmqofauD5FdXi/wwaRdVZBLtLmYz62W8ye1PBknqj0C9u88UnVyc0pSRbBcNVRPYocrXQlOye2w==}
@@ -5287,20 +5310,20 @@ snapshots:
       '@ast-grep/napi-win32-ia32-msvc': 0.40.5
       '@ast-grep/napi-win32-x64-msvc': 0.40.5
 
-  '@aster-cloud/aster-lang-ts@file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz(ws@8.20.1)(zod@4.4.3)':
+  '@aster-cloud/aster-lang-ts@file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz(cac@6.7.14)(ora@9.4.0)(p-limit@7.3.0)(tar@7.5.15)(vscode-languageserver-textdocument@1.0.12)(vscode-languageserver-types@3.17.5)(vscode-languageserver@9.0.1)(ws@8.20.1)(zod@4.4.3)':
     dependencies:
       '@types/semver': 7.7.1
+      semver: 7.8.0
+    optionalDependencies:
+      '@anthropic-ai/sdk': 0.71.2(zod@4.4.3)
       cac: 6.7.14
+      openai: 6.39.0(ws@8.20.1)(zod@4.4.3)
       ora: 9.4.0
       p-limit: 7.3.0
-      semver: 7.8.0
       tar: 7.5.15
       vscode-languageserver: 9.0.1
       vscode-languageserver-textdocument: 1.0.12
       vscode-languageserver-types: 3.17.5
-    optionalDependencies:
-      '@anthropic-ai/sdk': 0.71.2(zod@4.4.3)
-      openai: 6.39.0(ws@8.20.1)(zod@4.4.3)
     transitivePeerDependencies:
       - ws
       - zod
@@ -6475,6 +6498,7 @@ snapshots:
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.3
+    optional: true
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -7816,7 +7840,8 @@ snapshots:
 
   bytes@3.1.2: {}
 
-  cac@6.7.14: {}
+  cac@6.7.14:
+    optional: true
 
   call-bind-apply-helpers@1.0.2:
     dependencies:
@@ -7845,7 +7870,8 @@ snapshots:
 
   chownr@1.1.4: {}
 
-  chownr@3.0.0: {}
+  chownr@3.0.0:
+    optional: true
 
   ci-info@4.4.0: {}
 
@@ -7856,8 +7882,10 @@ snapshots:
   cli-cursor@5.0.0:
     dependencies:
       restore-cursor: 5.1.0
+    optional: true
 
-  cli-spinners@3.4.0: {}
+  cli-spinners@3.4.0:
+    optional: true
 
   client-only@0.0.1: {}
 
@@ -8921,7 +8949,8 @@ snapshots:
     dependencies:
       is-extglob: 2.1.1
 
-  is-interactive@2.0.0: {}
+  is-interactive@2.0.0:
+    optional: true
 
   is-map@2.0.3: {}
 
@@ -8970,7 +8999,8 @@ snapshots:
     dependencies:
       which-typed-array: 1.1.20
 
-  is-unicode-supported@2.1.0: {}
+  is-unicode-supported@2.1.0:
+    optional: true
 
   is-weakmap@2.0.2: {}
 
@@ -9159,6 +9189,7 @@ snapshots:
     dependencies:
       is-unicode-supported: 2.1.0
       yoctocolors: 2.1.2
+    optional: true
 
   long@5.3.2: {}
 
@@ -9394,7 +9425,8 @@ snapshots:
 
   mimic-fn@2.1.0: {}
 
-  mimic-function@5.0.1: {}
+  mimic-function@5.0.1:
+    optional: true
 
   min-indent@1.0.1: {}
 
@@ -9423,6 +9455,7 @@ snapshots:
   minizlib@3.1.0:
     dependencies:
       minipass: 7.1.3
+    optional: true
 
   mitt@3.0.1: {}
 
@@ -9605,6 +9638,7 @@ snapshots:
   onetime@7.0.0:
     dependencies:
       mimic-function: 5.0.1
+    optional: true
 
   openai@6.39.0(ws@8.20.1)(zod@4.4.3):
     optionalDependencies:
@@ -9631,6 +9665,7 @@ snapshots:
       log-symbols: 7.0.1
       stdin-discarder: 0.3.2
       string-width: 8.2.1
+    optional: true
 
   own-keys@1.0.1:
     dependencies:
@@ -9645,6 +9680,7 @@ snapshots:
   p-limit@7.3.0:
     dependencies:
       yocto-queue: 1.2.2
+    optional: true
 
   p-locate@5.0.0:
     dependencies:
@@ -9906,6 +9942,7 @@ snapshots:
     dependencies:
       onetime: 7.0.0
       signal-exit: 4.1.0
+    optional: true
 
   retry@0.12.0: {}
 
@@ -10147,7 +10184,8 @@ snapshots:
 
   std-env@4.1.0: {}
 
-  stdin-discarder@0.3.2: {}
+  stdin-discarder@0.3.2:
+    optional: true
 
   stop-iteration-iterator@1.1.0:
     dependencies:
@@ -10185,6 +10223,7 @@ snapshots:
     dependencies:
       get-east-asian-width: 1.6.0
       strip-ansi: 7.2.0
+    optional: true
 
   string.prototype.includes@2.0.1:
     dependencies:
@@ -10342,6 +10381,7 @@ snapshots:
       minipass: 7.1.3
       minizlib: 3.1.0
       yallist: 5.0.0
+    optional: true
 
   tdigest@0.1.2:
     dependencies:
@@ -10668,7 +10708,8 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vscode-jsonrpc@8.2.0: {}
+  vscode-jsonrpc@8.2.0:
+    optional: true
 
   vscode-jsonrpc@8.2.1: {}
 
@@ -10676,14 +10717,18 @@ snapshots:
     dependencies:
       vscode-jsonrpc: 8.2.0
       vscode-languageserver-types: 3.17.5
+    optional: true
 
-  vscode-languageserver-textdocument@1.0.12: {}
+  vscode-languageserver-textdocument@1.0.12:
+    optional: true
 
-  vscode-languageserver-types@3.17.5: {}
+  vscode-languageserver-types@3.17.5:
+    optional: true
 
   vscode-languageserver@9.0.1:
     dependencies:
       vscode-languageserver-protocol: 3.17.5
+    optional: true
 
   vscode-ws-jsonrpc@3.5.0:
     dependencies:
@@ -10825,7 +10870,8 @@ snapshots:
 
   yallist@3.1.1: {}
 
-  yallist@5.0.0: {}
+  yallist@5.0.0:
+    optional: true
 
   yaml@2.9.0: {}
 
@@ -10854,9 +10900,11 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  yocto-queue@1.2.2: {}
+  yocto-queue@1.2.2:
+    optional: true
 
-  yoctocolors@2.1.2: {}
+  yoctocolors@2.1.2:
+    optional: true
 
   youch-core@0.3.3:
     dependencies:

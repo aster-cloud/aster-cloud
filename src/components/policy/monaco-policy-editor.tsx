@@ -324,29 +324,29 @@ function defineAsterTheme(monaco: typeof import('monaco-editor'), isDark: boolea
       { token: 'delimiter.bracket', foreground: hex(isDark ? violet[300] : violet[600]) },
     ],
     colors: {
-      // Editor chrome — pulled from semantic surface tokens.
-      // Dark uses zinc-950 (matches dashboard dark surface) instead of
-      // Monaco's stock #1e1e1e so the editor blends seamlessly with the
-      // rest of the app rather than feeling like a foreign panel.
-      'editor.background':                     isDark ? '#09090b' : '#ffffff',  // zinc-950 / white
-      'editor.foreground':                     isDark ? '#fafafa' : '#18181b',  // zinc-50 / zinc-900
-      'editorLineNumber.foreground':           isDark ? '#52525b' : '#a1a1aa',  // zinc-600 / zinc-400
-      'editorLineNumber.activeForeground':     isDark ? '#a78bfa' : '#7c3aed',  // violet-400 / violet-600
-      'editorCursor.foreground':               isDark ? '#a78bfa' : '#7c3aed',  // violet — brand-tinted caret
+      // P1-R19: editor chrome now reads from imported token scales (violet, zinc)
+      // instead of raw hex literals. Token updates propagate automatically.
+      // Hex8 (RGBA) alpha suffixes kept inline — Monaco accepts standard CSS
+      // hex8 syntax and design tokens are emitted as base hex6, so we append
+      // the alpha here (no token escape).
+      'editor.background':                     isDark ? zinc[950] : '#ffffff',
+      'editor.foreground':                     isDark ? zinc[50]  : zinc[900],
+      'editorLineNumber.foreground':           isDark ? zinc[600] : zinc[400],
+      'editorLineNumber.activeForeground':     isDark ? violet[400] : violet[600],
+      'editorCursor.foreground':               isDark ? violet[400] : violet[600],
       // Selection — primary subtle so the text remains legible underneath.
-      // Hex8 (RGBA) so we can dial the alpha and keep selection see-through.
-      'editor.selectionBackground':            isDark ? '#7c3aed40' : '#7c3aed30',
-      'editor.inactiveSelectionBackground':    isDark ? '#7c3aed20' : '#7c3aed18',
-      'editor.lineHighlightBackground':        isDark ? '#27272a80' : '#fafafa', // zinc-800/50 alpha / zinc-50
+      'editor.selectionBackground':            (isDark ? violet[600] : violet[600]) + (isDark ? '40' : '30'),
+      'editor.inactiveSelectionBackground':    (isDark ? violet[600] : violet[600]) + (isDark ? '20' : '18'),
+      'editor.lineHighlightBackground':        isDark ? zinc[800] + '80' : zinc[50],
       // Bracket-pair highlight follows the brand
-      'editorBracketMatch.background':         isDark ? '#7c3aed30' : '#7c3aed15',
-      'editorBracketMatch.border':             isDark ? '#a78bfa'   : '#7c3aed',
+      'editorBracketMatch.background':         (isDark ? violet[600] : violet[600]) + (isDark ? '30' : '15'),
+      'editorBracketMatch.border':             isDark ? violet[400] : violet[600],
       // Indent guides — quiet
-      'editorIndentGuide.background':          isDark ? '#27272a' : '#e4e4e7',
-      'editorIndentGuide.activeBackground':    isDark ? '#3f3f46' : '#d4d4d8',
+      'editorIndentGuide.background':          isDark ? zinc[800] : zinc[200],
+      'editorIndentGuide.activeBackground':    isDark ? zinc[700] : zinc[300],
       // Find / replace UI
-      'editor.findMatchBackground':            isDark ? '#7c3aed50' : '#7c3aed30',
-      'editor.findMatchHighlightBackground':   isDark ? '#7c3aed30' : '#7c3aed18',
+      'editor.findMatchBackground':            (isDark ? violet[600] : violet[600]) + (isDark ? '50' : '30'),
+      'editor.findMatchHighlightBackground':   (isDark ? violet[600] : violet[600]) + (isDark ? '30' : '18'),
     },
   });
 

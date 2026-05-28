@@ -60,6 +60,16 @@ export function PolicyGroupDialog({
     }
   }, [isOpen, mode, group]);
 
+  // P1-R19: keyboard accessibility — Esc dismisses dialog (WCAG 2.1.1).
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   const handleSave = async () => {
     if (!name.trim()) {
       setError(t.namePlaceholder);
@@ -100,9 +110,18 @@ export function PolicyGroupDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="policy-group-dialog-title"
+    >
+      {/* Backdrop — aria-hidden because Esc handler + close button provide keyboard close */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50"
+        aria-hidden="true"
+        onClick={onClose}
+      />
 
       {/* Dialog */}
       <div className="flex min-h-full items-center justify-center p-4">
@@ -111,7 +130,7 @@ export function PolicyGroupDialog({
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center">
               <Folder className="w-5 h-5 text-primary mr-2" />
-              <h3 className="text-lg font-semibold text-fg">
+              <h3 id="policy-group-dialog-title" className="text-lg font-semibold text-fg">
                 {mode === 'create' ? t.createTitle : t.editTitle}
               </h3>
             </div>
