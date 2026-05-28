@@ -19,6 +19,15 @@
  * verify-browser-entry 思路扫 package/dist/src/browser.js". This script
  * is that closure.
  *
+ * ⚠ 已知 limitation (codex round 17/18 Medium):
+ *   Scanner 跟随本地相对路径 import 闭包, 但**不递归进入第三方 npm 包**.
+ *   当前 vendor tarball 的 browser entry 零 runtime 第三方依赖, 此限制无影响.
+ *   如果 aster-lang-ts 未来在 browser entry 引入 runtime npm package:
+ *     ▸ aster-lang-ts CI verify-browser-entry.mjs 也要同步评估
+ *     ▸ 该 package 必须 browser-safe (内部无 Node builtin transitive)
+ *     ▸ webpack edge build (pnpm run build:next) 是终极兜底, 但消费侧暴露已
+ *       属事后补救; 本注释作 PR-time 提醒.
+ *
  * 用法:
  *   pnpm install        # 先解压 vendor tarball 到 node_modules
  *   node scripts/verify-vendor-browser-entry.mjs
