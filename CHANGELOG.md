@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Forward Turnstile token + ADR-0013 east-west TCP (R31) *(playground-bff)*
 - Healthchecks heartbeats + SaaS/AI Grafana dashboards *(observability)*
 - OCI K3S deployment + Helm charts + ArgoCD apps *(staging)*
 - DSAR e2e + 4 new license Grafana panels *(observability)*
@@ -167,6 +168,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Mark Turnstile backend implemented (R31-4) *(adr-0012)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
