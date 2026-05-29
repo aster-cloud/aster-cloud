@@ -181,7 +181,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4) Sign + forward. signInternalCallerHeaders throws when the HMAC
+  // 4) R31-4 Turnstile token pass-through. aster-api's TurnstileVerifier
+  // does the actual cf siteverify call; here we just forward the header.
+  // When ASTER_SECURITY_TRIAL_TURNSTILE_ENABLED=false on the api side
+  // (default), the header is ignored and the request proceeds — keeps
+  // the playground working before keys are provisioned end-to-end.
+  const turnstileToken = req.headers.get('x-trial-turnstile-token') ?? '';
+
+  // 5) Sign + forward. signInternalCallerHeaders throws when the HMAC
   // key isn't configured — surface that as 503 so the caller knows it's
   // a deploy-side issue, not their input.
   let signedHeaders: Awaited<ReturnType<typeof signInternalCallerHeaders>>;
@@ -220,6 +227,8 @@ export async function POST(req: NextRequest) {
         'Accept': 'application/json',
         'X-Tenant-Id': 'trial-playground',
         'X-User-Role': 'MEMBER',
+        // R31-4: forward Turnstile token (may be empty in dev / pre-rollout)
+        ...(turnstileToken ? { 'X-Trial-Turnstile-Token': turnstileToken } : {}),
         ...signedHeaders,
       },
       body,
