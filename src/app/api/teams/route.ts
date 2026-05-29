@@ -15,7 +15,11 @@ export async function GET() {
       return NextResponse.json({ error: '未授权' }, { status: 401 });
     }
 
-    // 查询用户所属的团队（通过 teamMembers 关联）
+    // R32 hotfix：原 `orderBy: desc(teams.updatedAt)` 在 db.query.teamMembers
+    // 这个 root 上引用外表列，Drizzle 生成的 SQL 不把 Team 表加入到顶层 FROM
+    // 子句，PG 抛 column-not-found / ambiguous-column，最终 catch 把 500
+    // 还给浏览器（GET /api/teams 500 错误）。改成 root 表自己的列；前端
+    // 期望"最近活跃的团队靠前"由 team.updatedAt 排序，在 JS 层做就行。
     const userTeams = await db.query.teamMembers.findMany({
       where: eq(teamMembers.userId, session.user.id),
       with: {
@@ -27,7 +31,14 @@ export async function GET() {
           },
         },
       },
-      orderBy: desc(teams.updatedAt),
+      orderBy: desc(teamMembers.createdAt),
+    });
+
+    // 用 team.updatedAt 在 JS 层最终排序，符合"最近活跃团队靠前"的原意。
+    userTeams.sort((a, b) => {
+      const ta = a.team?.updatedAt ? a.team.updatedAt.getTime() : 0;
+      const tb = b.team?.updatedAt ? b.team.updatedAt.getTime() : 0;
+      return tb - ta;
     });
 
     // 并行获取每个团队的统计信息
@@ -63,8 +74,20 @@ export async function GET() {
       teams: teamsWithStats,
     });
   } catch (error) {
-    console.error('Error listing teams:', error);
-    return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
+    // R32 hotfix：原版只 console.error("Error listing teams:") 然后吐
+    // 静态 JSON，traceId 和 stack 都看不见。用 errorEnvelope 跟 POST 对齐，
+    // 响应带 x-request-id，错误 stack 在日志里。
+    const env = errorEnvelope({
+      status: 500,
+      code: 'teams_list_failed',
+      message: 'Could not list your teams. Please retry; the failure has been logged.',
+    });
+    console.error(
+      '[teams GET] handler failed',
+      env.headers.get('x-request-id'),
+      error,
+    );
+    return env;
   }
 }
 
