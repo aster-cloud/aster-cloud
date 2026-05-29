@@ -408,6 +408,10 @@ export const policyVersions = pgTable(
     deprecatedBy: text('deprecatedBy'),
     archivedAt: timestamp('archivedAt', { mode: 'date' }),
     archivedBy: text('archivedBy'),
+    vocabularySnapshotIds: jsonb('vocabularySnapshotIds')
+      .$type<Array<{ snapshotId: string; domain: string; locale: string }>>()
+      .default([])
+      .notNull(),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => [
@@ -1308,6 +1312,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   usageRecords: many(usageRecords),
   teamMembers: many(teamMembers),
   ownedTeams: many(teams),
+  userDomainTerms: many(userDomainTerms),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -1416,6 +1421,7 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
   policies: many(policies),
   policyGroups: many(policyGroups),
   invitations: many(teamInvitations),
+  userDomainTerms: many(userDomainTerms),
 }));
 
 export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
@@ -1608,3 +1614,197 @@ export const cronJobLease = pgTable(
 
 export type CronJobLease = InferSelectModel<typeof cronJobLease>;
 export type NewCronJobLease = InferInsertModel<typeof cronJobLease>;
+
+// User-managed Domain Vocabularies (B1 of user-domain-vocabulary plan).
+//
+// Three-table model:
+//   - DomainTerm: global deduplicated catalogue. Never mutated by user edits;
+//     a modify operation creates a new row (if needed) and repoints the link.
+//   - UserDomainTerm: per-user active link with soft-delete + 90-day archive.
+//     v1 enforces ownerType='user'; teamId reserved for v2 team-shared vocab.
+//   - UserVocabularySnapshot: publish-time frozen content, ref-counted,
+//     content-hash deduped. policyVersions.vocabularySnapshotIds points here
+//     so rollback can reproduce the exact term set used to compile a version.
+
+export const domainTerms = pgTable(
+  'DomainTerm',
+  {
+    id: text('id').primaryKey().notNull(),
+    domain: text('domain').notNull(),
+    locale: text('locale').notNull(),
+    kind: text('kind').notNull(),
+    canonical: text('canonical').notNull(),
+    canonicalNorm: text('canonicalNorm').notNull(),
+    localized: text('localized').notNull(),
+    localizedNorm: text('localizedNorm').notNull(),
+    parentCanonical: text('parentCanonical'),
+    parentCanonicalNorm: text('parentCanonicalNorm'),
+    description: text('description'),
+    aliases: jsonb('aliases').$type<string[]>().default([]).notNull(),
+    source: text('source').notNull(),
+    status: text('status').default('active').notNull(),
+    version: integer('version').default(1).notNull(),
+    dedupKey: text('dedupKey').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updatedAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    deprecatedAt: timestamp('deprecatedAt', { mode: 'date', withTimezone: true }),
+    deprecatedReason: text('deprecatedReason'),
+  },
+  (table) => [
+    check(
+      'DomainTerm_kind_check',
+      sql`${table.kind} IN ('struct', 'field', 'function', 'enum_value')`,
+    ),
+    check(
+      'DomainTerm_source_check',
+      sql`${table.source} IN ('builtin', 'user', 'admin_seed')`,
+    ),
+    check(
+      'DomainTerm_status_check',
+      sql`${table.status} IN ('active', 'deprecated')`,
+    ),
+    uniqueIndex('DomainTerm_dedupKey_unique').on(table.dedupKey),
+    index('DomainTerm_domain_locale_kind_idx').on(table.domain, table.locale, table.kind),
+    index('DomainTerm_status_idx').on(table.status),
+    index('DomainTerm_canonicalNorm_idx').on(table.canonicalNorm),
+    index('DomainTerm_localizedNorm_idx').on(table.localizedNorm),
+  ]
+);
+
+export type DomainTerm = InferSelectModel<typeof domainTerms>;
+export type NewDomainTerm = InferInsertModel<typeof domainTerms>;
+
+// UserVocabularySnapshot declared before UserDomainTerm because the link
+// table FKs into the snapshot for its archiveSnapshotId column.
+export const userVocabularySnapshots = pgTable(
+  'UserVocabularySnapshot',
+  {
+    id: text('id').primaryKey().notNull(),
+    ownerType: text('ownerType').notNull(),
+    ownerId: text('ownerId').notNull(),
+    domain: text('domain').notNull(),
+    locale: text('locale').notNull(),
+    version: integer('version').notNull(),
+    vocabularyJson: jsonb('vocabularyJson').notNull(),
+    termIds: jsonb('termIds').$type<string[]>().notNull(),
+    contentHash: text('contentHash').notNull(),
+    refCount: integer('refCount').default(0).notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp('archivedAt', { mode: 'date', withTimezone: true }),
+  },
+  (table) => [
+    check(
+      'UserVocabularySnapshot_ownerType_check',
+      sql`${table.ownerType} IN ('user', 'team')`,
+    ),
+    check(
+      'UserVocabularySnapshot_refCount_check',
+      sql`${table.refCount} >= 0`,
+    ),
+    uniqueIndex('UserVocabularySnapshot_owner_version_unique').on(
+      table.ownerType,
+      table.ownerId,
+      table.domain,
+      table.locale,
+      table.version,
+    ),
+    uniqueIndex('UserVocabularySnapshot_owner_hash_unique').on(
+      table.ownerType,
+      table.ownerId,
+      table.domain,
+      table.locale,
+      table.contentHash,
+    ),
+    index('UserVocabularySnapshot_refCount_idx').on(table.refCount),
+  ]
+);
+
+export type UserVocabularySnapshot = InferSelectModel<typeof userVocabularySnapshots>;
+export type NewUserVocabularySnapshot = InferInsertModel<typeof userVocabularySnapshots>;
+
+export const userDomainTerms = pgTable(
+  'UserDomainTerm',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    termId: text('termId')
+      .notNull()
+      .references(() => domainTerms.id, { onDelete: 'restrict' }),
+    ownerType: text('ownerType').default('user').notNull(),
+    teamId: text('teamId').references(() => teams.id, { onDelete: 'cascade' }),
+    domain: text('domain').notNull(),
+    locale: text('locale').notNull(),
+    kind: text('kind').notNull(),
+    note: text('note'),
+    createdAt: timestamp('createdAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updatedAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    deletedAt: timestamp('deletedAt', { mode: 'date', withTimezone: true }),
+    deletedBy: text('deletedBy'),
+    deletedReason: text('deletedReason'),
+    archivedAt: timestamp('archivedAt', { mode: 'date', withTimezone: true }),
+    archiveSnapshotId: text('archiveSnapshotId').references(
+      () => userVocabularySnapshots.id,
+    ),
+  },
+  (table) => [
+    check(
+      'UserDomainTerm_owner_v1_check',
+      sql`${table.ownerType} = 'user' AND ${table.userId} IS NOT NULL AND ${table.teamId} IS NULL`,
+    ),
+    uniqueIndex('UserDomainTerm_active_unique')
+      .on(table.userId, table.termId)
+      .where(sql`${table.deletedAt} IS NULL AND ${table.archivedAt} IS NULL`),
+    index('UserDomainTerm_user_domain_idx')
+      .on(table.userId, table.domain, table.locale)
+      .where(sql`${table.deletedAt} IS NULL AND ${table.archivedAt} IS NULL`),
+    index('UserDomainTerm_termId_idx')
+      .on(table.termId)
+      .where(sql`${table.deletedAt} IS NULL AND ${table.archivedAt} IS NULL`),
+    index('UserDomainTerm_archive_idx').on(table.archivedAt, table.deletedAt),
+  ]
+);
+
+export type UserDomainTerm = InferSelectModel<typeof userDomainTerms>;
+export type NewUserDomainTerm = InferInsertModel<typeof userDomainTerms>;
+
+export const domainTermRelations = relations(domainTerms, ({ many }) => ({
+  userDomainTerms: many(userDomainTerms),
+}));
+
+export const userDomainTermRelations = relations(userDomainTerms, ({ one }) => ({
+  user: one(users, {
+    fields: [userDomainTerms.userId],
+    references: [users.id],
+  }),
+  term: one(domainTerms, {
+    fields: [userDomainTerms.termId],
+    references: [domainTerms.id],
+  }),
+  team: one(teams, {
+    fields: [userDomainTerms.teamId],
+    references: [teams.id],
+  }),
+  archiveSnapshot: one(userVocabularySnapshots, {
+    fields: [userDomainTerms.archiveSnapshotId],
+    references: [userVocabularySnapshots.id],
+  }),
+}));
+
+export const userVocabularySnapshotRelations = relations(
+  userVocabularySnapshots,
+  ({ many }) => ({
+    archivedUserDomainTerms: many(userDomainTerms),
+  }),
+);

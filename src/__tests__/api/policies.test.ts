@@ -184,6 +184,7 @@ function mockPolicyVersion(overrides: Record<string, unknown> = {}) {
     deprecatedBy: null,
     archivedAt: null,
     archivedBy: null,
+    vocabularySnapshotIds: [],
     createdAt: new Date(),
     ...overrides,
   };
