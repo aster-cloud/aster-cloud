@@ -169,6 +169,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 ### Documentation
 
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Mark Turnstile backend implemented (R31-4) *(adr-0012)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -233,6 +234,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- R32 P0 — WCAG contrast + dropdown aria (P0×3) *(a11y)*
 - AI panel label + code-block tokens (P1+P2-R30+) *(a11y+theme)*
 - Clean up window.__asterAiDraft on unmount (P2-R30+) *(ai-panel)*
 - Esc handler on 2 more modals + clean lint warning (R20 polish) *(a11y)*
