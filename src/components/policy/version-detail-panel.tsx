@@ -157,7 +157,8 @@ export function VersionDetailPanel({
                 {detail.releaseNote}
               </div>
             )}
-            <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono max-h-[500px] overflow-y-auto">
+            {/* R30+ audit P2：从 raw gray ramp 改成 design tokens 同步 dark mode */}
+            <pre className="bg-bg-inverse text-fg-inverse p-4 rounded-lg overflow-x-auto text-sm font-mono max-h-[500px] overflow-y-auto dark:bg-zinc-900 dark:text-zinc-100">
               {sourceCode}
             </pre>
           </div>

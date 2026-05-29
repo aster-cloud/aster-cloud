@@ -247,7 +247,14 @@ export function AIAssistantPanel({
 
       {/* 输入区域 */}
       <div className="px-4 pt-3 pb-2">
+        {/* R30+ audit P1：visually-hidden label 让屏幕阅读器拿到 control 名字，
+            键盘 / 触摸用户依然看到 placeholder。比单纯 aria-label 更稳：
+            屏幕阅读器的 label 元素 navigation 会包括它。 */}
+        <label htmlFor="ai-assistant-prompt" className="sr-only">
+          {t('promptPlaceholder')}
+        </label>
         <textarea
+          id="ai-assistant-prompt"
           ref={textareaRef}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -255,10 +262,11 @@ export function AIAssistantPanel({
           placeholder={t('promptPlaceholder')}
           rows={3}
           disabled={streaming}
+          aria-describedby="ai-assistant-shortcut-hint"
           className="w-full rounded-lg border border-border-strong dark:border-gray-600 bg-bg dark:bg-gray-900 px-3 py-2 text-sm text-fg dark:text-gray-100 placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none resize-none disabled:opacity-50"
         />
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-fg-subtle">
+          <span id="ai-assistant-shortcut-hint" className="text-xs text-fg-subtle">
             {t('shortcutHint')}
           </span>
           <div className="flex gap-2">

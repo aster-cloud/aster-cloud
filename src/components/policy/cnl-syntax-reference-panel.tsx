@@ -140,7 +140,8 @@ function SyntaxCard({ item, locale, compact = false }: SyntaxCardProps) {
             <div className="text-xs text-fg-muted mb-1">
               {locale === 'zh-CN' ? '示例：' : locale === 'de-DE' ? 'Beispiel:' : 'Example:'}
             </div>
-            <pre className="text-xs bg-gray-900 text-gray-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+            {/* R30+ audit P2：从 raw gray ramp 改成 zinc 与 design system 对齐 */}
+            <pre className="text-xs bg-zinc-900 text-zinc-100 dark:bg-zinc-950 dark:text-zinc-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">
               {item.example[locale]}
             </pre>
           </div>
