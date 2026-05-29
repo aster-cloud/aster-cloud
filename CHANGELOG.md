@@ -168,6 +168,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 ### Documentation
 
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Trial anti-abuse token plan (Cloudflare Turnstile) *(adr-0012)*
 - Update [skip ci] *(changelog)*
 - Lexicon hotplug strategy in multi-replica K8s *(adr-0011)*
@@ -228,6 +229,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- AI panel label + code-block tokens (P1+P2-R30+) *(a11y+theme)*
 - Clean up window.__asterAiDraft on unmount (P2-R30+) *(ai-panel)*
 - Esc handler on 2 more modals + clean lint warning (R20 polish) *(a11y)*
 - Viewport meta + modal a11y + Monaco tokens + responsive heights (P1-R19) *(ui)*
