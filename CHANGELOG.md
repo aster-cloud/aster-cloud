@@ -167,6 +167,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Trial anti-abuse token plan (Cloudflare Turnstile) *(adr-0012)*
+- Update [skip ci] *(changelog)*
 - Lexicon hotplug strategy in multi-replica K8s *(adr-0011)*
 - Update [skip ci] *(changelog)*
 - GraalVM polyglot sandbox for policy execution *(adr-0010)*
