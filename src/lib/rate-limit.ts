@@ -39,6 +39,10 @@ export const RateLimitPresets = {
   API_RELAXED: { windowMs: 60_000, maxRequests: 120 },
   POLICY_EXECUTE: { windowMs: 60_000, maxRequests: 30 },
   EVALUATE_SOURCE: { windowMs: 60_000, maxRequests: 20 },
+  // Lexicon bulk imports: 5 sync-or-async uploads per hour per user. The cap
+  // is meant to deter mass spam (10k rows × 5 = 50k links/h ≈ plan ceiling)
+  // without throttling a power user iterating on one file.
+  LEXICON_BULK: { windowMs: 3_600_000, maxRequests: 5 },
 } as const;
 
 export interface RateLimitResult {

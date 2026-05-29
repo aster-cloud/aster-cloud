@@ -1,0 +1,445 @@
+/**
+ * Vocabulary snapshot service (B12)
+ *
+ * Publish-time freezing: when a PolicyVersion is approved, we snapshot the
+ * author's currently-active vocab so future rollbacks can reproduce exactly
+ * the term set that was compiled into the executable.
+ *
+ * Content-hash dedup: identical (ownerType, ownerId, domain, locale, content)
+ * tuples collapse to a single snapshot row with bumped refCount. The plan
+ * relies on this because most policy updates do not touch vocab — repeated
+ * publishes of the same vocab should reuse one row.
+ */
+
+import { createHash } from 'node:crypto';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import {
+  db,
+  domainTerms,
+  policyVersions,
+  userDomainTerms,
+  userVocabularySnapshots,
+} from '@/lib/prisma';
+import { logAuditEvent } from '@/lib/audit-log';
+import {
+  assembleDomainVocabularyFromLinks,
+  type TermKind,
+} from '@/lib/domain-vocabulary-validation';
+import { VocabularyError } from '@/lib/domain-vocabulary';
+
+export interface SnapshotRef {
+  snapshotId: string;
+  domain: string;
+  locale: string;
+}
+
+interface OwnerScope {
+  ownerType: 'user';
+  ownerId: string;
+}
+
+interface JoinedTermRow {
+  termId: string;
+  domain: string;
+  locale: string;
+  kind: TermKind;
+  canonical: string;
+  localized: string;
+  parentCanonical: string | null;
+  aliases: unknown;
+  description: string | null;
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
+}
+
+function hashContent(termIds: readonly string[]): string {
+  return createHash('sha256').update(canonicalJson([...termIds].sort())).digest('hex');
+}
+
+function parseAliases(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+async function loadActiveLinksGroupedByDomainLocale(
+  scope: OwnerScope,
+): Promise<Map<string, JoinedTermRow[]>> {
+  const rows = await db
+    .select({
+      termId: userDomainTerms.termId,
+      domain: userDomainTerms.domain,
+      locale: userDomainTerms.locale,
+      kind: userDomainTerms.kind,
+      canonical: domainTerms.canonical,
+      localized: domainTerms.localized,
+      parentCanonical: domainTerms.parentCanonical,
+      aliases: domainTerms.aliases,
+      description: domainTerms.description,
+    })
+    .from(userDomainTerms)
+    .innerJoin(domainTerms, eq(userDomainTerms.termId, domainTerms.id))
+    .where(
+      and(
+        eq(userDomainTerms.userId, scope.ownerId),
+        isNull(userDomainTerms.deletedAt),
+        isNull(userDomainTerms.archivedAt),
+      ),
+    )
+    .orderBy(asc(userDomainTerms.termId));
+
+  const groups = new Map<string, JoinedTermRow[]>();
+  for (const r of rows) {
+    const key = `${r.domain}|${r.locale}`;
+    const existing = groups.get(key);
+    if (existing) existing.push(r as unknown as JoinedTermRow);
+    else groups.set(key, [r as unknown as JoinedTermRow]);
+  }
+  return groups;
+}
+
+async function nextSnapshotVersion(
+  scope: OwnerScope,
+  domain: string,
+  locale: string,
+): Promise<number> {
+  const rows = await db
+    .select({ max: sql<number | null>`max(${userVocabularySnapshots.version})` })
+    .from(userVocabularySnapshots)
+    .where(
+      and(
+        eq(userVocabularySnapshots.ownerType, scope.ownerType),
+        eq(userVocabularySnapshots.ownerId, scope.ownerId),
+        eq(userVocabularySnapshots.domain, domain),
+        eq(userVocabularySnapshots.locale, locale),
+      ),
+    );
+  return (rows[0]?.max ?? 0) + 1;
+}
+
+/**
+ * Freeze the caller's current active vocabulary into one snapshot per
+ * (domain, locale). Returns the snapshot refs that should be persisted on
+ * the PolicyVersion row.
+ *
+ * Returns an empty array when the user has no active vocab — caller decides
+ * whether to record an empty snapshot list on the policy version.
+ */
+export async function createSnapshotsForOwner(
+  scope: OwnerScope,
+): Promise<SnapshotRef[]> {
+  const groups = await loadActiveLinksGroupedByDomainLocale(scope);
+  const refs: SnapshotRef[] = [];
+
+  for (const [key, rows] of groups) {
+    const [domain, locale] = key.split('|');
+    const termIds = rows.map((r) => r.termId);
+    const contentHash = hashContent(termIds);
+
+    const vocabJson = assembleDomainVocabularyFromLinks(
+      rows.map((r) => ({
+        domainTermId: r.termId,
+        domain: r.domain,
+        locale: r.locale,
+        kind: r.kind,
+        canonical: r.canonical,
+        localized: r.localized,
+        parentCanonical: r.parentCanonical,
+        aliases: parseAliases(r.aliases),
+        description: r.description,
+      })),
+      { domain, locale },
+    );
+
+    // Use a SERIALIZABLE-style serialization via the per-user advisory
+    // lock so two concurrent approvals can't both observe `version = N`
+    // and unique-violate. The unique index on
+    // (ownerType, ownerId, domain, locale, contentHash) still gives us
+    // dedup; the lock just prevents the `version` race.
+    const ref = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${`vocab-snap:${scope.ownerId}:${domain}:${locale}`}))`,
+      );
+      const existing = await tx.query.userVocabularySnapshots.findFirst({
+        where: and(
+          eq(userVocabularySnapshots.ownerType, scope.ownerType),
+          eq(userVocabularySnapshots.ownerId, scope.ownerId),
+          eq(userVocabularySnapshots.domain, domain),
+          eq(userVocabularySnapshots.locale, locale),
+          eq(userVocabularySnapshots.contentHash, contentHash),
+        ),
+        columns: { id: true },
+      });
+      if (existing) {
+        await tx
+          .update(userVocabularySnapshots)
+          .set({ refCount: sql`${userVocabularySnapshots.refCount} + 1` })
+          .where(eq(userVocabularySnapshots.id, existing.id));
+        return { snapshotId: existing.id, domain, locale, dedupHit: true };
+      }
+      // Lock is held; nextSnapshotVersion is safe here.
+      const version = await nextSnapshotVersion(scope, domain, locale);
+      const id = crypto.randomUUID();
+      await tx.insert(userVocabularySnapshots).values({
+        id,
+        ownerType: scope.ownerType,
+        ownerId: scope.ownerId,
+        domain,
+        locale,
+        version,
+        vocabularyJson: vocabJson,
+        termIds,
+        contentHash,
+        refCount: 1,
+      });
+      return { snapshotId: id, domain, locale, dedupHit: false };
+    });
+
+    refs.push({ snapshotId: ref.snapshotId, domain: ref.domain, locale: ref.locale });
+  }
+
+  return refs;
+}
+
+/**
+ * Hook invoked by version-manager.approveVersion(APPROVED). Best-effort:
+ * snapshot failure must not break the approval flow because policies remain
+ * executable via the embedded Core IR. We log loudly so the issue surfaces.
+ */
+export async function snapshotOnPolicyApprove(params: {
+  policyVersionId: string;
+  policyAuthorId: string | null;
+}): Promise<SnapshotRef[]> {
+  if (!params.policyAuthorId) return [];
+  try {
+    const refs = await createSnapshotsForOwner({
+      ownerType: 'user',
+      ownerId: params.policyAuthorId,
+    });
+    await db
+      .update(policyVersions)
+      .set({ vocabularySnapshotIds: refs })
+      .where(eq(policyVersions.id, params.policyVersionId));
+
+    await logAuditEvent({
+      userId: params.policyAuthorId,
+      action: 'lexicon.term.add',
+      resource: 'vocabulary-snapshot',
+      resourceId: params.policyVersionId,
+      metadata: {
+        action: 'created_on_publish',
+        snapshotCount: refs.length,
+      },
+    });
+
+    return refs;
+  } catch (err) {
+    console.error('[snapshotOnPolicyApprove] non-blocking failure', err);
+    return [];
+  }
+}
+
+export interface RollbackResult {
+  added: number;
+  removed: number;
+  unchanged: number;
+}
+
+/**
+ * Apply a snapshot's term set as the user's active vocabulary. Active links
+ * whose termId is not in the snapshot are soft-deleted; missing termIds are
+ * reactivated (if a soft-deleted row exists) or freshly inserted.
+ *
+ * Returns the diff counts so the route can include them in the response.
+ */
+export async function rollbackToSnapshot(
+  userId: string,
+  snapshotId: string,
+): Promise<RollbackResult> {
+  const snap = await db.query.userVocabularySnapshots.findFirst({
+    where: and(
+      eq(userVocabularySnapshots.id, snapshotId),
+      eq(userVocabularySnapshots.ownerType, 'user'),
+      eq(userVocabularySnapshots.ownerId, userId),
+    ),
+  });
+  if (!snap) {
+    throw new VocabularyError('not_found', 'Snapshot not found');
+  }
+  if (snap.archivedAt) {
+    throw new VocabularyError('snapshot_archived', 'Snapshot has been archived');
+  }
+  const desiredIds = new Set<string>(snap.termIds ?? []);
+
+  // Critical: rollback is scoped to the snapshot's (domain, locale). Other
+  // domains/locales the user owns must be left untouched, otherwise a
+  // single-vocab rollback would wipe out unrelated work.
+  const snapDomain = snap.domain;
+  const snapLocale = snap.locale;
+
+  const result = await db.transaction(async (tx) => {
+    const currentActive = await tx
+      .select({ id: userDomainTerms.id, termId: userDomainTerms.termId })
+      .from(userDomainTerms)
+      .where(
+        and(
+          eq(userDomainTerms.userId, userId),
+          eq(userDomainTerms.domain, snapDomain),
+          eq(userDomainTerms.locale, snapLocale),
+          isNull(userDomainTerms.deletedAt),
+          isNull(userDomainTerms.archivedAt),
+        ),
+      );
+    const currentIds = new Set<string>(currentActive.map((r) => r.termId));
+
+    let removed = 0;
+    const now = new Date();
+    for (const row of currentActive) {
+      if (!desiredIds.has(row.termId)) {
+        await tx
+          .update(userDomainTerms)
+          .set({
+            deletedAt: now,
+            deletedBy: userId,
+            deletedReason: 'rollback',
+            updatedAt: now,
+          })
+          .where(eq(userDomainTerms.id, row.id));
+        removed += 1;
+      }
+    }
+
+    let added = 0;
+    const unchanged = currentActive.filter((r) => desiredIds.has(r.termId)).length;
+    for (const termId of desiredIds) {
+      if (currentIds.has(termId)) continue;
+      // Prefer reactivating an existing soft-deleted row for this scope to
+      // preserve the historical linkId. Insert a fresh row if no row exists.
+      const dormant = await tx.query.userDomainTerms.findFirst({
+        where: and(
+          eq(userDomainTerms.userId, userId),
+          eq(userDomainTerms.termId, termId),
+          eq(userDomainTerms.domain, snapDomain),
+          eq(userDomainTerms.locale, snapLocale),
+        ),
+        columns: { id: true },
+      });
+      if (dormant) {
+        await tx
+          .update(userDomainTerms)
+          .set({
+            deletedAt: null,
+            deletedBy: null,
+            deletedReason: null,
+            updatedAt: now,
+          })
+          .where(eq(userDomainTerms.id, dormant.id));
+        added += 1;
+        continue;
+      }
+      const term = await tx.query.domainTerms.findFirst({
+        where: eq(domainTerms.id, termId),
+        columns: { domain: true, locale: true, kind: true },
+      });
+      if (!term) {
+        // Snapshot references a deleted/archived global row; skip to avoid
+        // a 500. This is recoverable because snapshots never hard-delete
+        // referenced rows in normal operation.
+        continue;
+      }
+      // Defensive: only reactivate rows that match the snapshot's scope.
+      // Cross-scope termIds should not happen for a single-domain snapshot,
+      // but skipping keeps rollback strictly scoped if it ever does.
+      if (term.domain !== snapDomain || term.locale !== snapLocale) {
+        continue;
+      }
+      await tx.insert(userDomainTerms).values({
+        id: crypto.randomUUID(),
+        userId,
+        termId,
+        ownerType: 'user',
+        domain: term.domain,
+        locale: term.locale,
+        kind: term.kind,
+      });
+      added += 1;
+    }
+
+    return { added, removed, unchanged };
+  });
+
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.restore',
+    resource: 'vocabulary-snapshot',
+    resourceId: snapshotId,
+    metadata: {
+      action: 'rollback',
+      ...result,
+    },
+  });
+
+  return result;
+}
+
+export interface SnapshotListEntry {
+  id: string;
+  domain: string;
+  locale: string;
+  version: number;
+  contentHash: string;
+  refCount: number;
+  termCount: number;
+  archived: boolean;
+  createdAt: Date;
+}
+
+/**
+ * Read snapshots owned by the user. Filtered by domain/locale when given.
+ * Returns UI-friendly fields: termCount derived from termIds.length so the
+ * snapshot list page can render without a second roundtrip.
+ */
+export async function listOwnerSnapshots(
+  userId: string,
+  opts: { domain?: string; locale?: string } = {},
+): Promise<SnapshotListEntry[]> {
+  const conditions = [
+    eq(userVocabularySnapshots.ownerType, 'user'),
+    eq(userVocabularySnapshots.ownerId, userId),
+  ];
+  if (opts.domain) conditions.push(eq(userVocabularySnapshots.domain, opts.domain));
+  if (opts.locale) conditions.push(eq(userVocabularySnapshots.locale, opts.locale));
+
+  const rows = await db
+    .select({
+      id: userVocabularySnapshots.id,
+      domain: userVocabularySnapshots.domain,
+      locale: userVocabularySnapshots.locale,
+      version: userVocabularySnapshots.version,
+      contentHash: userVocabularySnapshots.contentHash,
+      refCount: userVocabularySnapshots.refCount,
+      termIds: userVocabularySnapshots.termIds,
+      archivedAt: userVocabularySnapshots.archivedAt,
+      createdAt: userVocabularySnapshots.createdAt,
+    })
+    .from(userVocabularySnapshots)
+    .where(and(...conditions))
+    .orderBy(asc(userVocabularySnapshots.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    domain: row.domain,
+    locale: row.locale,
+    version: row.version,
+    contentHash: row.contentHash,
+    refCount: row.refCount,
+    termCount: Array.isArray(row.termIds) ? row.termIds.length : 0,
+    archived: row.archivedAt != null,
+    createdAt: row.createdAt,
+  }));
+}

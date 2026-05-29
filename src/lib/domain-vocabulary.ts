@@ -22,6 +22,7 @@ import {
 import {
   db,
   domainTerms,
+  lexiconBulkJobs,
   userDomainTerms,
   type DomainTerm,
 } from '@/lib/prisma';
@@ -693,5 +694,287 @@ export async function previewAddTerm(
     existsInGlobal: Boolean(existing),
     existingTermId: existing?.id ?? null,
     collisions: [...validation.errors, ...validation.warnings],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Bulk import (sync) — process rows in chunked transactions, rollup per-row
+// outcomes into a single completed LexiconBulkJob row for auditability.
+// ---------------------------------------------------------------------------
+
+export const BULK_SYNC_MAX_ROWS = 500;
+export const BULK_ASYNC_MAX_ROWS = 10_000;
+const BULK_CHUNK_SIZE = 250;
+
+export interface BulkRowError {
+  row: number;
+  code: string;
+  message: string;
+}
+
+export interface BulkRollup {
+  added: number;
+  reused: number;
+  modified: number;
+  skipped: number;
+  errorCount: number;
+}
+
+export interface BulkResult {
+  jobId: string;
+  status: 'completed';
+  mode: 'sync';
+  rowCount: number;
+  processed: number;
+  rollup: BulkRollup;
+  errors: BulkRowError[];
+}
+
+function emptyRollup(): BulkRollup {
+  return { added: 0, reused: 0, modified: 0, skipped: 0, errorCount: 0 };
+}
+
+function mergeRollup(target: BulkRollup, src: BulkRollup): void {
+  target.added += src.added;
+  target.reused += src.reused;
+  target.modified += src.modified;
+  target.skipped += src.skipped;
+  target.errorCount += src.errorCount;
+}
+
+function chunkRows<T>(rows: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) {
+    out.push(rows.slice(i, i + size) as T[]);
+  }
+  return out;
+}
+
+/**
+ * Bulk-add a batch of vocabulary terms in one synchronous request.
+ *
+ * Strategy:
+ *   - Enforce per-user quota by computing the maximum number of new active
+ *     links the caller can land. Rows beyond that cap are reported as
+ *     `quota_exceeded` skipped errors rather than rejected outright so
+ *     partial success is preserved.
+ *   - Process rows in chunks of {@link BULK_CHUNK_SIZE} inside its own
+ *     transaction. A chunk-level failure rolls back only that chunk; the
+ *     caller still gets the rollup for chunks that succeeded.
+ *   - Each accepted row goes through the same upsertDomainTerm path as the
+ *     single-term add, so dedup behavior is identical.
+ *
+ * Always writes a `completed` LexiconBulkJob row with the final rollup so
+ * admin/support can audit imports later.
+ */
+export async function bulkAddUserVocabularyTerms(
+  userId: string,
+  rawRows: readonly TermInput[],
+): Promise<BulkResult> {
+  if (rawRows.length === 0) {
+    throw new VocabularyError(
+      'validation_failed',
+      'bulk import requires at least one term',
+    );
+  }
+  if (rawRows.length > BULK_SYNC_MAX_ROWS) {
+    throw new VocabularyError(
+      'validation_failed',
+      `sync bulk import accepts at most ${BULK_SYNC_MAX_ROWS} rows`,
+    );
+  }
+
+  const quota = await getLexiconQuota(userId);
+  if (!quota.allowed) {
+    throw new VocabularyError(
+      'plan_gate_required',
+      'Custom domain vocabulary requires an eligible plan',
+    );
+  }
+
+  // Pre-validate each row outside the transaction so we surface row-level
+  // schema errors with stable indices, regardless of chunk order.
+  const validated: Array<{ row: number; normalized: NormalizedTermInput } | { row: number; error: BulkRowError }> = rawRows.map(
+    (raw, index) => {
+      try {
+        return { row: index, normalized: validateInput(raw) };
+      } catch (err) {
+        if (err instanceof VocabularyError) {
+          return { row: index, error: { row: index, code: err.code, message: err.message } };
+        }
+        return {
+          row: index,
+          error: {
+            row: index,
+            code: 'validation_failed',
+            message: err instanceof Error ? err.message : String(err),
+          },
+        };
+      }
+    },
+  );
+
+  const rollup = emptyRollup();
+  const errors: BulkRowError[] = [];
+  for (const v of validated) {
+    if ('error' in v) {
+      errors.push(v.error);
+      rollup.skipped += 1;
+      rollup.errorCount += 1;
+    }
+  }
+  const acceptedRows = validated.filter((v): v is { row: number; normalized: NormalizedTermInput } => 'normalized' in v);
+
+  // Quota is enforced per-chunk INSIDE the advisory lock. Counting outside
+  // the lock would let a concurrent single-add or other bulk slip in
+  // between the count and the insert, exceeding the plan cap.
+
+  let processed = 0;
+  for (const chunk of chunkRows(acceptedRows, BULK_CHUNK_SIZE)) {
+    let chunkResult: BulkRollup | null = null;
+    let chunkErrors: BulkRowError[] = [];
+    try {
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(${userQuotaLockKey(userId)})`);
+        const localRollup = emptyRollup();
+        const localErrors: BulkRowError[] = [];
+
+        // In-lock quota count. We compute remaining capacity once at the
+        // top of each chunk and decrement as we land rows; concurrent
+        // mutations cannot land for this user while we hold the lock.
+        let remainingQuota = Number.POSITIVE_INFINITY;
+        if (quota.maxTerms !== -1) {
+          const [{ count: currentActive }] = await tx
+            .select({ count: sql<number>`count(*)::int` })
+            .from(userDomainTerms)
+            .where(and(eq(userDomainTerms.userId, userId), activeLinkPredicate()));
+          remainingQuota = Math.max(0, quota.maxTerms - (currentActive ?? 0));
+        }
+
+        for (const { row, normalized } of chunk) {
+          if (remainingQuota <= 0) {
+            localErrors.push({
+              row,
+              code: 'quota_exceeded',
+              message: `Custom vocabulary term quota of ${quota.maxTerms} reached`,
+            });
+            localRollup.skipped += 1;
+            localRollup.errorCount += 1;
+            continue;
+          }
+          try {
+            const upserted = await upsertDomainTerm(tx, normalized);
+            try {
+              const inserted = await tx
+                .insert(userDomainTerms)
+                .values({
+                  id: crypto.randomUUID(),
+                  userId,
+                  termId: upserted.term.id,
+                  ownerType: 'user',
+                  domain: normalized.domain,
+                  locale: normalized.locale,
+                  kind: normalized.kind,
+                })
+                .returning({ id: userDomainTerms.id });
+              if (inserted.length === 0) {
+                localErrors.push({
+                  row,
+                  code: 'link_create_failed',
+                  message: 'Could not create vocabulary link',
+                });
+                localRollup.skipped += 1;
+                localRollup.errorCount += 1;
+                continue;
+              }
+              if (upserted.created) localRollup.added += 1;
+              else localRollup.reused += 1;
+              remainingQuota -= 1;
+            } catch (linkErr) {
+              if (isUniqueViolation(linkErr)) {
+                localErrors.push({
+                  row,
+                  code: 'duplicate_link',
+                  message: 'You already have this term in your vocabulary',
+                });
+                localRollup.skipped += 1;
+                localRollup.errorCount += 1;
+                continue;
+              }
+              throw linkErr;
+            }
+          } catch (rowErr) {
+            const code = rowErr instanceof VocabularyError ? rowErr.code : 'row_failed';
+            const message = rowErr instanceof Error ? rowErr.message : String(rowErr);
+            localErrors.push({ row, code, message });
+            localRollup.skipped += 1;
+            localRollup.errorCount += 1;
+          }
+        }
+        return { rollup: localRollup, errors: localErrors };
+      });
+      chunkResult = result.rollup;
+      chunkErrors = result.errors;
+    } catch (chunkErr) {
+      // Whole-chunk rollback (txn-level): mark every row in this chunk as
+      // a chunk failure so the caller sees deterministic counts.
+      const message = chunkErr instanceof Error ? chunkErr.message : String(chunkErr);
+      for (const { row } of chunk) {
+        errors.push({ row, code: 'chunk_failed', message });
+      }
+      rollup.skipped += chunk.length;
+      rollup.errorCount += chunk.length;
+      processed += chunk.length;
+      continue;
+    }
+    mergeRollup(rollup, chunkResult);
+    errors.push(...chunkErrors);
+    processed += chunk.length;
+  }
+
+  // Persist a completed job row for auditability. We swallow storage errors
+  // so a flaky audit write doesn't lose the import response; structured
+  // logging keeps the failure visible.
+  const jobId = crypto.randomUUID();
+  try {
+    await db.insert(lexiconBulkJobs).values({
+      id: jobId,
+      userId,
+      status: 'completed',
+      mode: 'sync',
+      rowCount: rawRows.length,
+      processed,
+      rollup,
+      errors,
+      completedAt: new Date(),
+    });
+  } catch (auditErr) {
+    console.error('[bulkAddUserVocabularyTerms] failed to persist job row', auditErr);
+  }
+
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.add',
+    resource: 'domain-term-bulk',
+    resourceId: jobId,
+    metadata: {
+      mode: 'sync',
+      rowCount: rawRows.length,
+      added: rollup.added,
+      reused: rollup.reused,
+      modified: rollup.modified,
+      skipped: rollup.skipped,
+      errorCount: rollup.errorCount,
+    },
+  });
+
+  return {
+    jobId,
+    status: 'completed',
+    mode: 'sync',
+    rowCount: rawRows.length,
+    processed,
+    rollup,
+    errors,
   };
 }

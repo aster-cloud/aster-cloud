@@ -16,6 +16,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { computeChainedHash, computeSourceHash } from '../security/policy-security';
 import { logSecurityEvent } from '../security/security-event-service';
 import { recordAhaMomentIfFirst } from '@/lib/metrics/aha-detection';
+import { snapshotOnPolicyApprove } from '@/lib/domain-vocabulary-snapshot';
 
 type PolicyVersion = InferSelectModel<typeof policyVersions>;
 type PolicyVersionStatus = PolicyVersion['status'];
@@ -235,6 +236,16 @@ export async function approveVersion(params: {
       approvedAt: new Date(),
     }).catch((err) => {
       console.error('[AHA detection] failed (non-blocking):', err);
+    });
+
+    // B12 — Snapshot the author's active vocabulary so future rollbacks can
+    // restore the exact term set this version was compiled against. The
+    // helper is itself best-effort; never block approval on snapshot IO.
+    snapshotOnPolicyApprove({
+      policyVersionId: targetVersion.id,
+      policyAuthorId: targetVersion.createdBy,
+    }).catch((err) => {
+      console.error('[vocabulary-snapshot] failed (non-blocking):', err);
     });
   }
 }

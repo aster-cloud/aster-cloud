@@ -1879,6 +1879,9 @@ export const lexiconBulkJobs = pgTable(
       .$type<Array<{ row: number; code: string; message: string }>>()
       .default([])
       .notNull(),
+    // Stored term payload for async jobs. Sync jobs leave this NULL because
+    // the import was processed inline.
+    inputJson: jsonb('inputJson').$type<Array<unknown>>(),
     claimedBy: text('claimedBy'),
     claimedAt: timestamp('claimedAt', { mode: 'date', withTimezone: true }),
     completedAt: timestamp('completedAt', { mode: 'date', withTimezone: true }),
