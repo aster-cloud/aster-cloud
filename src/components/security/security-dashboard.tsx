@@ -30,11 +30,14 @@ interface SecurityDashboardProps {
   policyId?: string;
 }
 
+// R32 P0 fix：每个 severity 都补 dark: variant。原本只有 light-mode 配色，
+// dark mode 下 yellow-700 on zinc-950 ≈ 2.5:1，WCAG fail；类似 blue/red 都不达标。
+// dark token 用 *-300 → *-400 范围保证 ≥ 4.5:1 contrast。
 const SEVERITY_CONFIG: Record<EventSeverity, { label: string; color: string; bgColor: string }> = {
-  INFO: { label: '信息', color: 'text-blue-700', bgColor: 'bg-blue-100' },
-  WARNING: { label: '警告', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
-  ERROR: { label: '错误', color: 'text-red-700', bgColor: 'bg-red-100' },
-  CRITICAL: { label: '严重', color: 'text-red-900', bgColor: 'bg-red-200' },
+  INFO:     { label: '信息', color: 'text-blue-700   dark:text-blue-300',   bgColor: 'bg-blue-100   dark:bg-blue-950/40' },
+  WARNING:  { label: '警告', color: 'text-yellow-800 dark:text-yellow-300', bgColor: 'bg-yellow-100 dark:bg-yellow-950/40' },
+  ERROR:    { label: '错误', color: 'text-red-700    dark:text-red-300',    bgColor: 'bg-red-100    dark:bg-red-950/40' },
+  CRITICAL: { label: '严重', color: 'text-red-900    dark:text-red-200',    bgColor: 'bg-red-200    dark:bg-red-900/40' },
 };
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -225,8 +228,14 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
           {/* Error Rate */}
           <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
             <dt className="text-sm font-medium text-fg-muted dark:text-fg-subtle">错误率</dt>
+            {/* R32 P0 fix：原 *-600 在 dark mode 下 contrast 不达标。
+                统一 *-700/*-300 模式（light/dark）以满足 WCAG AA。 */}
             <dd className={`mt-1 text-3xl font-semibold ${
-              stats.errorRate > 0.1 ? 'text-red-600' : stats.errorRate > 0.05 ? 'text-yellow-600' : 'text-green-600'
+              stats.errorRate > 0.1
+                ? 'text-red-700 dark:text-red-300'
+                : stats.errorRate > 0.05
+                  ? 'text-yellow-700 dark:text-yellow-300'
+                  : 'text-green-700 dark:text-green-300'
             }`}>
               {(stats.errorRate * 100).toFixed(1)}%
             </dd>
@@ -235,7 +244,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
           {/* Warnings */}
           <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
             <dt className="text-sm font-medium text-fg-muted dark:text-fg-subtle">警告</dt>
-            <dd className="mt-1 text-3xl font-semibold text-yellow-600">
+            <dd className="mt-1 text-3xl font-semibold text-yellow-700 dark:text-yellow-300">
               {stats.bySeverity.WARNING.toLocaleString()}
             </dd>
           </div>
@@ -243,7 +252,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
           {/* Errors + Critical */}
           <div className="bg-bg dark:bg-gray-800 rounded-lg shadow p-4">
             <dt className="text-sm font-medium text-fg-muted dark:text-fg-subtle">错误/严重</dt>
-            <dd className="mt-1 text-3xl font-semibold text-red-600">
+            <dd className="mt-1 text-3xl font-semibold text-red-700 dark:text-red-300">
               {(stats.bySeverity.ERROR + stats.bySeverity.CRITICAL).toLocaleString()}
             </dd>
           </div>

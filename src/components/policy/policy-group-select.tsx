@@ -142,10 +142,17 @@ export function PolicyGroupSelect({
       )}
 
       {/* Select Button */}
+      {/* R32 audit P0 fix：icon-only / placeholder button needs an
+          accessible name. aria-haspopup + aria-expanded so screen readers
+          report dropdown state; aria-label fallback for the "no group"
+          case where the visible text is only a placeholder. */}
       <button
         type="button"
         disabled={disabled || isLoading}
         onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-label={label || (selectedGroup ? `Selected group: ${selectedGroup.name}` : 'Select policy group')}
         className={`
           w-full flex items-center justify-between rounded-lg border bg-bg px-4 py-3 text-left shadow-sm transition-all duration-200
           ${disabled

@@ -143,7 +143,9 @@ export function Turnstile({
 
   if (loadError) {
     return (
-      <div className={`text-sm text-red-600 ${className}`}>
+      {/* R32 P0 fix：text-red-600 on white = ~3.9:1 fails WCAG AA. red-700
+          clears 5.2:1 on white; dark:red-400 clears 6.1:1 on zinc-950. */}
+      <div className={`text-sm text-red-700 dark:text-red-400 ${className}`} role="alert">
         {loadError}
       </div>
     );
