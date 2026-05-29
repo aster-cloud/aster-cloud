@@ -66,6 +66,17 @@ export function AIAssistantPanel({
     textareaRef.current?.focus();
   }, []);
 
+  // R30+ audit P2：原版把 window.__asterAiDraft 写完就再也没清，反复
+  // 开关 AI 面板会让旧 draftId 在 NSM 埋点流里继续被识别成"上次的草稿"。
+  // 卸载时主动 clean up，让下一次 mount 重新建上下文。
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.__asterAiDraft) {
+        delete window.__asterAiDraft;
+      }
+    };
+  }, []);
+
   // 编译通过时自动填充到编辑器
   useEffect(() => {
     if (completed && validated && content && !autoApplied) {
