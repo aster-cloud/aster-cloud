@@ -69,6 +69,9 @@ export type PlanCapabilities = {
   teamFeatures: boolean;
   sso?: boolean;
   auditLogs?: boolean;
+  customLexicon: boolean;
+  customLexiconMaxTerms: number;
+  customLexiconBulkUploadAsync: boolean;
   customIntegrations?: boolean;
 };
 
@@ -91,6 +94,7 @@ export const PLAN_FEATURE_KEYS = {
   reviewerNotAuthor: 'reviewerNotAuthor',
   soxCompliant: 'soxCompliant',
   stripeBilling: 'stripeBilling',
+  customDomainVocabulary: 'customDomainVocabulary',
   // Enterprise 计划
   multiTeamCustomApprovals: 'multiTeamCustomApprovals',
   unlimitedRulesEvaluations: 'unlimitedRulesEvaluations',
@@ -123,6 +127,9 @@ export const PLANS = {
       complianceReports: false,
       apiAccess: false,
       teamFeatures: false,
+      customLexicon: false,
+      customLexiconMaxTerms: 0,
+      customLexiconBulkUploadAsync: false,
     },
     price: { monthly: 0, yearly: 0 },
     stripePriceId: null,
@@ -143,6 +150,9 @@ export const PLANS = {
       complianceReports: true,
       apiAccess: true,
       teamFeatures: true,
+      customLexicon: true,
+      customLexiconMaxTerms: 500,
+      customLexiconBulkUploadAsync: false,
     },
     price: { monthly: 0, yearly: 0 },
     stripePriceId: null,
@@ -168,6 +178,7 @@ export const PLANS = {
       'reviewerNotAuthor',
       'soxCompliant',
       'stripeBilling',
+      'customDomainVocabulary',
     ],
     capabilities: {
       piiDetection: 'advanced',
@@ -176,6 +187,9 @@ export const PLANS = {
       apiAccess: true,
       teamFeatures: true,
       auditLogs: true,
+      customLexicon: true,
+      customLexiconMaxTerms: 5000,
+      customLexiconBulkUploadAsync: true,
     },
     price: PLAN_PRICES.pro.USD,
     stripePriceId: {
@@ -203,6 +217,7 @@ export const PLANS = {
       'audit90days',
       'reviewerNotAuthor',
       'soxCompliant',
+      'customDomainVocabulary',
     ],
     capabilities: {
       piiDetection: 'advanced',
@@ -212,6 +227,9 @@ export const PLANS = {
       teamFeatures: true,
       sso: true,
       auditLogs: true,
+      customLexicon: true,
+      customLexiconMaxTerms: 25000,
+      customLexiconBulkUploadAsync: true,
     },
     price: PLAN_PRICES.pro.USD,
     stripePriceId: null,
@@ -235,6 +253,7 @@ export const PLANS = {
       'customDeployment',
       'slaGuarantee',
       'dedicatedSupport',
+      'customDomainVocabulary',
     ],
     capabilities: {
       piiDetection: 'advanced',
@@ -244,6 +263,9 @@ export const PLANS = {
       teamFeatures: true,
       sso: true,
       auditLogs: true,
+      customLexicon: true,
+      customLexiconMaxTerms: -1,
+      customLexiconBulkUploadAsync: true,
       customIntegrations: true,
     },
     price: { monthly: null, yearly: null },

@@ -1808,3 +1808,122 @@ export const userVocabularySnapshotRelations = relations(
     archivedUserDomainTerms: many(userDomainTerms),
   }),
 );
+
+// Lexicon mutation idempotency cache.
+//
+// Route handlers use this table to make Idempotency-Key retries safe for
+// user-domain-vocabulary mutations. A duplicate (userId, routeKey,
+// idempotencyKey) with a matching requestHash replays the stored response;
+// the same key with a different requestHash is a client error. expiresAt is
+// swept by a follow-up retention/GC worker (B13).
+export const lexiconIdempotencyKeys = pgTable(
+  'LexiconIdempotencyKey',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    idempotencyKey: text('idempotencyKey').notNull(),
+    routeKey: text('routeKey').notNull(),
+    requestHash: text('requestHash').notNull(),
+    responseStatus: integer('responseStatus').notNull(),
+    responseBody: jsonb('responseBody').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp('expiresAt', { mode: 'date', withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('LexiconIdempotencyKey_user_route_key_unique').on(
+      table.userId,
+      table.routeKey,
+      table.idempotencyKey,
+    ),
+    index('LexiconIdempotencyKey_expiresAt_idx').on(table.expiresAt),
+  ]
+);
+
+export type LexiconIdempotencyKey = InferSelectModel<typeof lexiconIdempotencyKeys>;
+export type NewLexiconIdempotencyKey = InferInsertModel<typeof lexiconIdempotencyKeys>;
+
+// Bulk vocabulary import jobs.
+//
+// Sync imports write a completed row at request time for auditability. Async
+// imports enqueue a queued row that the bulk worker claims via the
+// (status, createdAt) index, transitioning queued → running → terminal.
+// Partial unique on (userId, idempotencyKey) WHERE idempotencyKey IS NOT NULL
+// makes Idempotency-Key replay safe without forcing a key on every submission.
+export const lexiconBulkJobs = pgTable(
+  'LexiconBulkJob',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    idempotencyKey: text('idempotencyKey'),
+    status: text('status').default('queued').notNull(),
+    mode: text('mode').notNull(),
+    rowCount: integer('rowCount').notNull(),
+    processed: integer('processed').default(0).notNull(),
+    rollup: jsonb('rollup')
+      .$type<{
+        added?: number;
+        reused?: number;
+        modified?: number;
+        skipped?: number;
+        errorCount?: number;
+      }>()
+      .default({})
+      .notNull(),
+    errors: jsonb('errors')
+      .$type<Array<{ row: number; code: string; message: string }>>()
+      .default([])
+      .notNull(),
+    claimedBy: text('claimedBy'),
+    claimedAt: timestamp('claimedAt', { mode: 'date', withTimezone: true }),
+    completedAt: timestamp('completedAt', { mode: 'date', withTimezone: true }),
+    createdAt: timestamp('createdAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updatedAt', { mode: 'date', withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      'LexiconBulkJob_status_check',
+      sql`${table.status} IN ('queued', 'running', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      'LexiconBulkJob_mode_check',
+      sql`${table.mode} IN ('sync', 'async')`,
+    ),
+    // rowCount > 0: empty uploads are caller-side errors and should not
+    // create job rows. processed bounded by [0, rowCount] keeps progress
+    // monotonic. rollup must be a jsonb object and errors a jsonb array
+    // so the progress UI can blindly destructure either field.
+    check(
+      'LexiconBulkJob_processed_check',
+      sql`${table.rowCount} > 0 AND ${table.processed} >= 0 AND ${table.processed} <= ${table.rowCount}`,
+    ),
+    check(
+      'LexiconBulkJob_rollup_shape_check',
+      sql`jsonb_typeof(${table.rollup}) = 'object'`,
+    ),
+    check(
+      'LexiconBulkJob_errors_shape_check',
+      sql`jsonb_typeof(${table.errors}) = 'array'`,
+    ),
+    index('LexiconBulkJob_userId_createdAt_idx').on(
+      table.userId,
+      desc(table.createdAt),
+    ),
+    index('LexiconBulkJob_status_createdAt_idx').on(table.status, table.createdAt),
+    uniqueIndex('LexiconBulkJob_user_idem_unique')
+      .on(table.userId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} IS NOT NULL`),
+  ]
+);
+
+export type LexiconBulkJob = InferSelectModel<typeof lexiconBulkJobs>;
+export type NewLexiconBulkJob = InferInsertModel<typeof lexiconBulkJobs>;

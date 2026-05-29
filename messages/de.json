@@ -790,6 +790,7 @@
         "reviewerNotAuthor": "Reviewer ≠ Autor (ab 2 Sitzen erzwungen)",
         "soxCompliant": "SOX-konforme Funktionstrennung",
         "stripeBilling": "Stripe-Abrechnung, monatlich oder jährlich",
+        "customDomainVocabulary": "Benutzerdefinierte Domänenvokabulare",
         "multiTeamCustomApprovals": "Mehrere Teams, individuelle Freigabegruppen",
         "unlimitedRulesEvaluations": "Unbegrenzte Regeln und Auswertungen",
         "unlimitedAiDraftsByok": "Unbegrenzte KI-Entwürfe via BYOK (eigener OpenAI / Anthropic / Vertex Key)",

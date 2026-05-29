@@ -238,8 +238,46 @@ export async function hasFeatureAccess(
   }
 
   if (typeof value === 'number') {
-    return value > 0;
+    // -1 sentinel = unlimited; any positive quota = available.
+    return value === -1 || value > 0;
   }
 
   return Boolean(value);
+}
+
+/**
+ * 解析用户当前的自定义词汇配额。所有 customLexicon-相关 service 层调用都走
+ * 这个统一入口：返回 maxTerms（-1 = 无限）、bulkAsync 能力、allowed 兜底。
+ *
+ * 复用 hasFeatureAccess 的 trial 过期自动降级写回逻辑，确保 plan 状态与
+ * cron-window 行为一致。
+ */
+export async function getLexiconQuota(
+  userId: string,
+): Promise<{ maxTerms: number; bulkAsync: boolean; allowed: boolean }> {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { plan: true, trialEndsAt: true },
+  });
+
+  if (!user) {
+    return { maxTerms: 0, bulkAsync: false, allowed: false };
+  }
+
+  const normalizedPlan = normalizePlan(user.plan);
+  const { plan: effectivePlan, downgraded } = resolvePlan(normalizedPlan, user.trialEndsAt);
+
+  if (downgraded) {
+    await db
+      .update(users)
+      .set({ plan: effectivePlan })
+      .where(eq(users.id, userId));
+  }
+
+  const capabilities = getPlanConfig(effectivePlan).capabilities as PlanCapabilities;
+  const maxTerms = capabilities.customLexiconMaxTerms;
+  const bulkAsync = capabilities.customLexiconBulkUploadAsync;
+  const allowed = capabilities.customLexicon && (maxTerms === -1 || maxTerms > 0);
+
+  return { maxTerms, bulkAsync, allowed };
 }

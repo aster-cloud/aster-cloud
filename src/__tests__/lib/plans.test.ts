@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   PLANS,
   PLAN_PRICES,
+  PLAN_FEATURE_KEYS,
   STRIPE_PRICE_IDS,
   canAccessApiKeys,
   formatPrice,
@@ -36,6 +37,32 @@ describe('Plans Configuration', () => {
   it('should expose plan capabilities via getPlanConfig', () => {
     const proConfig = getPlanConfig('pro');
     expect(proConfig.capabilities.apiAccess).toBe(true);
+  });
+
+  it('should disable custom domain vocabulary on the free plan', () => {
+    expect(PLANS.free.capabilities.customLexicon).toBe(false);
+    expect(PLANS.free.capabilities.customLexiconMaxTerms).toBe(0);
+    expect(PLANS.free.capabilities.customLexiconBulkUploadAsync).toBe(false);
+  });
+
+  it('should enable trial custom domain vocabulary with the compact 500-term quota and no async bulk', () => {
+    expect(PLANS.trial.capabilities.customLexicon).toBe(true);
+    expect(PLANS.trial.capabilities.customLexiconMaxTerms).toBe(500);
+    expect(PLANS.trial.capabilities.customLexiconBulkUploadAsync).toBe(false);
+    expect(PLANS.trial.featureKeys).not.toContain(PLAN_FEATURE_KEYS.customDomainVocabulary);
+  });
+
+  it('should expose paid-tier custom domain vocabulary quotas and the i18n feature key', () => {
+    expect(PLANS.pro.capabilities.customLexicon).toBe(true);
+    expect(PLANS.pro.capabilities.customLexiconMaxTerms).toBe(5000);
+    expect(PLANS.pro.capabilities.customLexiconBulkUploadAsync).toBe(true);
+    expect(PLANS.team.capabilities.customLexiconMaxTerms).toBe(25000);
+    expect(PLANS.team.capabilities.customLexiconBulkUploadAsync).toBe(true);
+    expect(PLANS.enterprise.capabilities.customLexiconMaxTerms).toBe(-1);
+    expect(PLANS.enterprise.capabilities.customLexiconBulkUploadAsync).toBe(true);
+    expect(PLANS.pro.featureKeys).toContain(PLAN_FEATURE_KEYS.customDomainVocabulary);
+    expect(PLANS.team.featureKeys).toContain(PLAN_FEATURE_KEYS.customDomainVocabulary);
+    expect(PLANS.enterprise.featureKeys).toContain(PLAN_FEATURE_KEYS.customDomainVocabulary);
   });
 });
 

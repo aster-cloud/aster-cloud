@@ -53,7 +53,13 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { db } from '@/lib/prisma';
-import { checkUsageLimit, recordUsage, getUsageStats, hasFeatureAccess } from '@/lib/usage';
+import {
+  checkUsageLimit,
+  recordUsage,
+  getUsageStats,
+  hasFeatureAccess,
+  getLexiconQuota,
+} from '@/lib/usage';
 
 // Helper to setup db.select chain for policy count queries
 function setupSelectCount(count: number) {
@@ -338,6 +344,64 @@ describe('Usage Tracking', () => {
       const result = await hasFeatureAccess('user-1', 'apiAccess');
 
       expect(result).toBe(false);
+    });
+
+    it('should treat enterprise unlimited (-1) as available', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'enterprise' }));
+
+      // enterprise.customLexiconMaxTerms = -1 (unlimited).
+      // The old hasFeatureAccess numeric branch (`value > 0`) would have
+      // rejected -1; we expect the new logic to treat it as available.
+      const result = await hasFeatureAccess('user-1', 'customLexiconMaxTerms');
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('getLexiconQuota', () => {
+    it('should return disabled quota for free users', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser());
+
+      const result = await getLexiconQuota('user-1');
+
+      expect(result).toEqual({ maxTerms: 0, bulkAsync: false, allowed: false });
+    });
+
+    it('should return the pro tier quota with async bulk enabled', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'pro' }));
+
+      const result = await getLexiconQuota('user-1');
+
+      expect(result).toEqual({ maxTerms: 5000, bulkAsync: true, allowed: true });
+    });
+
+    it('should return unlimited (-1) for enterprise', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'enterprise' }));
+
+      const result = await getLexiconQuota('user-1');
+
+      expect(result).toEqual({ maxTerms: -1, bulkAsync: true, allowed: true });
+    });
+
+    it('should downgrade an expired trial before resolving the quota', async () => {
+      const pastDate = new Date('2020-01-01');
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(
+        mockUser({ plan: 'trial', trialEndsAt: pastDate }),
+      );
+
+      const result = await getLexiconQuota('user-1');
+
+      // Expired trial → free → no quota.
+      expect(result).toEqual({ maxTerms: 0, bulkAsync: false, allowed: false });
+      expect(db.update).toHaveBeenCalled();
+    });
+
+    it('should return disabled quota when the user record is missing', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(undefined);
+
+      const result = await getLexiconQuota('nonexistent');
+
+      expect(result).toEqual({ maxTerms: 0, bulkAsync: false, allowed: false });
     });
   });
 });

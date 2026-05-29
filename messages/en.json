@@ -790,6 +790,7 @@
         "reviewerNotAuthor": "Reviewer ≠ author (enforced for ≥ 2 seats)",
         "soxCompliant": "Meets SOX Segregation of Duties",
         "stripeBilling": "Stripe billing, monthly or yearly",
+        "customDomainVocabulary": "User-managed domain vocabularies",
         "multiTeamCustomApprovals": "Multi-team, custom approval groups",
         "unlimitedRulesEvaluations": "Unlimited rules and evaluations",
         "unlimitedAiDraftsByok": "Unlimited AI drafts via BYOK",

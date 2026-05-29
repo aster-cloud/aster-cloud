@@ -790,6 +790,7 @@
         "reviewerNotAuthor": "Reviewer ≠ 提交人（≥ 2 席强制）",
         "soxCompliant": "满足 SOX 职责分离合规",
         "stripeBilling": "Stripe 计费，月付或年付",
+        "customDomainVocabulary": "用户自定义领域词汇表",
         "multiTeamCustomApprovals": "多团队、自定义审批组",
         "unlimitedRulesEvaluations": "规则与评估无限",
         "unlimitedAiDraftsByok": "BYOK 无限 AI 草稿（自带 OpenAI / Anthropic / Vertex 密钥）",
