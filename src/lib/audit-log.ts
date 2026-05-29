@@ -26,7 +26,11 @@ export type AuditAction =
   | 'user.delete'
   | 'settings.update'
   | 'payment.succeeded'
-  | 'payment.failed';
+  | 'payment.failed'
+  | 'lexicon.term.add'
+  | 'lexicon.term.modify'
+  | 'lexicon.term.delete'
+  | 'lexicon.term.restore';
 
 interface AuditEntry {
   userId: string;

@@ -1,0 +1,697 @@
+/**
+ * Domain vocabulary service core
+ *
+ * 提供 user_domain_term 链接表的 CRUD + 软删/恢复 + 预览/重指语义。
+ * 全局 DomainTerm 行永不被用户编辑改写——修改 link 永远走"加新行或复用全局"的路径，
+ * 与 plan 中的 dedup-by-key 设计保持一致。
+ *
+ * 调用方一般是 route handler；本层抛 VocabularyError，由 route 转换为 errorEnvelope。
+ */
+
+import { createHash as nodeCreateHash } from 'node:crypto';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  isNotNull,
+  isNull,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
+import {
+  db,
+  domainTerms,
+  userDomainTerms,
+  type DomainTerm,
+} from '@/lib/prisma';
+import { logAuditEvent } from '@/lib/audit-log';
+import { getLexiconQuota } from '@/lib/usage';
+import {
+  assembleDomainVocabularyFromLinks,
+  computeDedupKey,
+  normalizeTermInput,
+  validateDomainVocabulary,
+  type NormalizedTermInput,
+  type TermKind,
+} from '@/lib/domain-vocabulary-validation';
+
+function createHashSync(value: string): string {
+  return nodeCreateHash('sha256').update(value).digest('hex');
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: string }).code === '23505'
+  );
+}
+
+function truncateForAudit(value: string | null | undefined, max = 256): string | null {
+  if (!value) return null;
+  return value.length > max ? `${value.slice(0, max)}…` : value;
+}
+
+export interface TermInput {
+  domain: string;
+  locale: string;
+  kind: TermKind;
+  canonical: string;
+  localized: string;
+  parentCanonical?: string;
+  description?: string;
+  aliases?: string[];
+}
+
+export interface TermLink {
+  id: string;
+  termId: string;
+  userId: string;
+  domain: string;
+  locale: string;
+  kind: string;
+  canonical: string;
+  localized: string;
+  parentCanonical: string | null;
+  aliases: string[];
+  description: string | null;
+  source: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ListResult {
+  items: TermLink[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListOptions {
+  domain?: string;
+  locale?: string;
+  kind?: string;
+  includeDeleted?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export class VocabularyError extends Error {
+  constructor(public code: string, message: string) {
+    super(message);
+    this.name = 'VocabularyError';
+  }
+}
+
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 200;
+
+function activeLinkPredicate(): SQL {
+  const predicate = and(
+    isNull(userDomainTerms.deletedAt),
+    isNull(userDomainTerms.archivedAt),
+  );
+  if (!predicate) {
+    // Should be unreachable: both isNull(...) calls always yield a SQL expression.
+    throw new VocabularyError('internal_error', 'Failed to build active link predicate');
+  }
+  return predicate;
+}
+
+function normalizePage(page?: number): number {
+  return Number.isInteger(page) && page && page > 0 ? page : 1;
+}
+
+function normalizePageSize(pageSize?: number): number {
+  if (!Number.isInteger(pageSize) || !pageSize || pageSize <= 0) return DEFAULT_PAGE_SIZE;
+  return Math.min(pageSize, MAX_PAGE_SIZE);
+}
+
+function parseAliases(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+interface JoinedTermRow {
+  id: string;
+  termId: string;
+  userId: string;
+  domain: string;
+  locale: string;
+  kind: string;
+  canonical: string;
+  localized: string;
+  parentCanonical: string | null;
+  aliases: unknown;
+  description: string | null;
+  source: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+function mapJoinedRow(row: JoinedTermRow): TermLink {
+  return {
+    id: row.id,
+    termId: row.termId,
+    userId: row.userId,
+    domain: row.domain,
+    locale: row.locale,
+    kind: row.kind,
+    canonical: row.canonical,
+    localized: row.localized,
+    parentCanonical: row.parentCanonical,
+    aliases: parseAliases(row.aliases),
+    description: row.description,
+    source: row.source,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function selectTermLinkFields() {
+  return {
+    id: userDomainTerms.id,
+    termId: userDomainTerms.termId,
+    userId: userDomainTerms.userId,
+    domain: userDomainTerms.domain,
+    locale: userDomainTerms.locale,
+    kind: userDomainTerms.kind,
+    canonical: domainTerms.canonical,
+    localized: domainTerms.localized,
+    parentCanonical: domainTerms.parentCanonical,
+    aliases: domainTerms.aliases,
+    description: domainTerms.description,
+    source: domainTerms.source,
+    createdAt: userDomainTerms.createdAt,
+    updatedAt: userDomainTerms.updatedAt,
+  };
+}
+
+async function getTermLink(
+  userId: string,
+  linkId: string,
+  options: { includeDeleted?: boolean } = {},
+): Promise<TermLink | null> {
+  const conditions: SQL[] = [
+    eq(userDomainTerms.userId, userId),
+    eq(userDomainTerms.id, linkId),
+  ];
+  if (!options.includeDeleted) {
+    conditions.push(activeLinkPredicate());
+  }
+
+  const rows = await db
+    .select(selectTermLinkFields())
+    .from(userDomainTerms)
+    .innerJoin(domainTerms, eq(userDomainTerms.termId, domainTerms.id))
+    .where(and(...conditions))
+    .limit(1);
+
+  return rows[0] ? mapJoinedRow(rows[0] as JoinedTermRow) : null;
+}
+
+function validateInput(input: TermInput): NormalizedTermInput {
+  const normalized = normalizeTermInput(input);
+  if (!normalized.canonical) {
+    throw new VocabularyError('validation_failed', 'canonical is required');
+  }
+  if (!normalized.localized) {
+    throw new VocabularyError('validation_failed', 'localized is required');
+  }
+  if (!normalized.domain || !normalized.locale) {
+    throw new VocabularyError('validation_failed', 'domain and locale are required');
+  }
+
+  const previewVocab = assembleDomainVocabularyFromLinks(
+    [
+      {
+        domainTermId: 'preview',
+        domain: normalized.domain,
+        locale: normalized.locale,
+        kind: normalized.kind,
+        canonical: normalized.canonical,
+        localized: normalized.localized,
+        parentCanonical: normalized.parentCanonical,
+        aliases: normalized.aliases,
+        description: normalized.description,
+      },
+    ],
+    { domain: normalized.domain, locale: normalized.locale },
+  );
+  const result = validateDomainVocabulary(previewVocab);
+  if (!result.valid) {
+    throw new VocabularyError('validation_failed', result.errors.join('; '));
+  }
+  return normalized;
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function upsertDomainTerm(
+  tx: Tx | typeof db,
+  input: NormalizedTermInput,
+): Promise<{ term: Pick<DomainTerm, 'id'>; created: boolean }> {
+  const dedupKey = computeDedupKey(input);
+  const inserted = await tx
+    .insert(domainTerms)
+    .values({
+      id: crypto.randomUUID(),
+      domain: input.domain,
+      locale: input.locale,
+      kind: input.kind,
+      canonical: input.canonical,
+      canonicalNorm: input.canonicalNorm,
+      localized: input.localized,
+      localizedNorm: input.localizedNorm,
+      parentCanonical: input.parentCanonical ?? null,
+      parentCanonicalNorm: input.parentCanonicalNorm || null,
+      description: input.description ?? null,
+      aliases: input.aliases,
+      source: 'user',
+      status: 'active',
+      dedupKey,
+    })
+    .onConflictDoNothing({ target: domainTerms.dedupKey })
+    .returning({ id: domainTerms.id });
+
+  if (inserted[0]) {
+    return { term: inserted[0], created: true };
+  }
+
+  const existing = await tx.query.domainTerms.findFirst({
+    where: eq(domainTerms.dedupKey, dedupKey),
+    columns: { id: true },
+  });
+  if (!existing) {
+    throw new VocabularyError(
+      'dedup_race_lost',
+      'Domain term upsert raced and could not be re-read',
+    );
+  }
+  return { term: existing, created: false };
+}
+
+/**
+ * Read a single user vocabulary link by id. Returns null when the link
+ * does not exist, or when it is soft-deleted/archived and includeDeleted
+ * was not requested.
+ */
+export async function getUserVocabularyTerm(
+  userId: string,
+  linkId: string,
+  opts: { includeDeleted?: boolean } = {},
+): Promise<TermLink | null> {
+  return getTermLink(userId, linkId, opts);
+}
+
+/**
+ * List a user's domain vocabulary links. Defaults to active rows only.
+ */
+export async function listUserVocabularyTerms(
+  userId: string,
+  opts: ListOptions = {},
+): Promise<ListResult> {
+  const page = normalizePage(opts.page);
+  const pageSize = normalizePageSize(opts.pageSize);
+  const conditions: SQL[] = [eq(userDomainTerms.userId, userId)];
+  if (!opts.includeDeleted) conditions.push(activeLinkPredicate());
+  if (opts.domain) conditions.push(eq(userDomainTerms.domain, opts.domain));
+  if (opts.locale) conditions.push(eq(userDomainTerms.locale, opts.locale));
+  if (opts.kind) conditions.push(eq(userDomainTerms.kind, opts.kind));
+
+  const predicate = and(...conditions);
+
+  const [rows, totals] = await Promise.all([
+    db
+      .select(selectTermLinkFields())
+      .from(userDomainTerms)
+      .innerJoin(domainTerms, eq(userDomainTerms.termId, domainTerms.id))
+      .where(predicate)
+      .orderBy(desc(userDomainTerms.createdAt), asc(userDomainTerms.id))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userDomainTerms)
+      .where(predicate),
+  ]);
+
+  return {
+    items: (rows as JoinedTermRow[]).map(mapJoinedRow),
+    total: totals[0]?.count ?? 0,
+    page,
+    pageSize,
+  };
+}
+
+/**
+ * Compute a stable advisory-lock key for a user. We take a 64-bit slice of a
+ * SHA-256 over the userId so the lock space is well-distributed and so the
+ * same user always maps to the same bucket. Postgres advisory locks are
+ * per-database (not per-table), so prefix with an app-specific salt to avoid
+ * accidental collisions with other features.
+ */
+function userQuotaLockKey(userId: string): bigint {
+  const hash = createHashSync(`lexicon-quota:${userId}`);
+  // Take the first 16 hex chars (64 bits) and parse as a signed bigint for
+  // pg_advisory_xact_lock(bigint).
+  return BigInt.asIntN(64, BigInt(`0x${hash.slice(0, 16)}`));
+}
+
+/**
+ * Add a user-owned vocabulary link, reusing the global DomainTerm when the
+ * normalized dedup key already exists.
+ *
+ * Quota enforcement and link insertion run inside a single transaction
+ * gated by a per-user advisory lock so concurrent retries cannot both pass
+ * the quota check and exceed the plan limit.
+ */
+export async function addUserVocabularyTerm(
+  userId: string,
+  input: TermInput,
+): Promise<{ link: TermLink; createdGlobalTerm: boolean }> {
+  const normalized = validateInput(input);
+  const quota = await getLexiconQuota(userId);
+  if (!quota.allowed) {
+    throw new VocabularyError(
+      'plan_gate_required',
+      'Custom domain vocabulary requires an eligible plan',
+    );
+  }
+
+  const transactionResult = await db.transaction(async (tx) => {
+    // Per-user advisory lock prevents concurrent adds from both passing the
+    // quota check. The lock auto-releases at transaction end.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${userQuotaLockKey(userId)})`);
+
+    if (quota.maxTerms !== -1) {
+      const [{ count }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(userDomainTerms)
+        .where(and(eq(userDomainTerms.userId, userId), activeLinkPredicate()));
+      if ((count ?? 0) >= quota.maxTerms) {
+        throw new VocabularyError(
+          'quota_exceeded',
+          `Custom vocabulary term quota of ${quota.maxTerms} reached`,
+        );
+      }
+    }
+
+    const upserted = await upsertDomainTerm(tx, normalized);
+
+    let created: { id: string } | undefined;
+    try {
+      const inserted = await tx
+        .insert(userDomainTerms)
+        .values({
+          id: crypto.randomUUID(),
+          userId,
+          termId: upserted.term.id,
+          ownerType: 'user',
+          domain: normalized.domain,
+          locale: normalized.locale,
+          kind: normalized.kind,
+        })
+        .returning({ id: userDomainTerms.id });
+      created = inserted[0];
+    } catch (insertErr) {
+      // Partial unique on (userId, termId) WHERE deletedAt IS NULL surfaces
+      // here when the user already has an active link to the same global
+      // term. Treat it as a duplicate so the UI can show a friendly toast.
+      if (isUniqueViolation(insertErr)) {
+        throw new VocabularyError(
+          'duplicate_link',
+          'You already have this term in your vocabulary',
+        );
+      }
+      throw insertErr;
+    }
+    if (!created) {
+      throw new VocabularyError('link_create_failed', 'Could not create vocabulary link');
+    }
+    return { linkId: created.id, createdGlobalTerm: upserted.created };
+  });
+
+  const link = await getTermLink(userId, transactionResult.linkId);
+  if (!link) {
+    throw new VocabularyError(
+      'link_create_failed',
+      'Created vocabulary link could not be loaded back',
+    );
+  }
+
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.add',
+    resource: 'domain-term',
+    resourceId: link.termId,
+    metadata: {
+      linkId: link.id,
+      domain: link.domain,
+      locale: link.locale,
+      kind: link.kind,
+      createdGlobalTerm: transactionResult.createdGlobalTerm,
+    },
+  });
+
+  return { link, createdGlobalTerm: transactionResult.createdGlobalTerm };
+}
+
+/**
+ * Modify a user vocabulary link by repointing it to a new or existing global
+ * DomainTerm. The previous DomainTerm row is never mutated.
+ */
+export async function modifyUserVocabularyTerm(
+  userId: string,
+  linkId: string,
+  input: TermInput,
+): Promise<{ link: TermLink; repointed: boolean; createdGlobalTerm: boolean }> {
+  const normalized = validateInput(input);
+  const existing = await getTermLink(userId, linkId);
+  if (!existing) {
+    throw new VocabularyError('not_found', 'Vocabulary term link not found');
+  }
+
+  const transactionResult = await db.transaction(async (tx) => {
+    const upserted = await upsertDomainTerm(tx, normalized);
+    await tx
+      .update(userDomainTerms)
+      .set({
+        termId: upserted.term.id,
+        domain: normalized.domain,
+        locale: normalized.locale,
+        kind: normalized.kind,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(userDomainTerms.userId, userId),
+          eq(userDomainTerms.id, linkId),
+          activeLinkPredicate(),
+        ),
+      );
+    return {
+      newTermId: upserted.term.id,
+      repointed: existing.termId !== upserted.term.id,
+      createdGlobalTerm: upserted.created,
+    };
+  });
+
+  const link = await getTermLink(userId, linkId);
+  if (!link) {
+    throw new VocabularyError(
+      'not_found',
+      'Updated vocabulary term link could not be loaded back',
+    );
+  }
+
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.modify',
+    resource: 'domain-term',
+    resourceId: link.termId,
+    metadata: {
+      linkId,
+      previousTermId: existing.termId,
+      newTermId: transactionResult.newTermId,
+      repointed: transactionResult.repointed,
+      createdGlobalTerm: transactionResult.createdGlobalTerm,
+    },
+  });
+
+  return {
+    link,
+    repointed: transactionResult.repointed,
+    createdGlobalTerm: transactionResult.createdGlobalTerm,
+  };
+}
+
+/**
+ * Soft-delete a user vocabulary link. The global DomainTerm row is preserved
+ * for dedup reuse and historical snapshots.
+ */
+export async function softDeleteUserVocabularyTerm(
+  userId: string,
+  linkId: string,
+  reason?: string,
+): Promise<{ deletedAt: Date }> {
+  const existing = await getTermLink(userId, linkId);
+  if (!existing) {
+    throw new VocabularyError('not_found', 'Vocabulary term link not found');
+  }
+
+  const deletedAt = new Date();
+  // Truncate the user-supplied reason before persisting so DSAR-sensitive
+  // text and accidental secrets do not balloon the audit row size.
+  const safeReason = truncateForAudit(reason);
+  const updated = await db
+    .update(userDomainTerms)
+    .set({
+      deletedAt,
+      deletedBy: userId,
+      deletedReason: safeReason,
+      updatedAt: deletedAt,
+    })
+    .where(
+      and(
+        eq(userDomainTerms.userId, userId),
+        eq(userDomainTerms.id, linkId),
+        activeLinkPredicate(),
+      ),
+    )
+    .returning({ id: userDomainTerms.id });
+
+  if (updated.length === 0) {
+    // Concurrent delete/archive landed between our read and write. Surface
+    // not_found so the caller can refresh; do not write a spurious audit row.
+    throw new VocabularyError('not_found', 'Vocabulary term link not found');
+  }
+
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.delete',
+    resource: 'domain-term',
+    resourceId: existing.termId,
+    metadata: {
+      linkId,
+      domain: existing.domain,
+      locale: existing.locale,
+      kind: existing.kind,
+      reasonProvided: Boolean(safeReason),
+    },
+  });
+
+  return { deletedAt };
+}
+
+/**
+ * Restore a soft-deleted, non-archived vocabulary link. Archived rows are
+ * outside the restore window and must use a separate recovery path.
+ */
+export async function restoreUserVocabularyTerm(
+  userId: string,
+  linkId: string,
+): Promise<{ link: TermLink }> {
+  const deleted = await getTermLink(userId, linkId, { includeDeleted: true });
+  if (!deleted) {
+    throw new VocabularyError('not_found', 'Vocabulary term link not found');
+  }
+
+  await db
+    .update(userDomainTerms)
+    .set({
+      deletedAt: null,
+      deletedBy: null,
+      deletedReason: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(userDomainTerms.userId, userId),
+        eq(userDomainTerms.id, linkId),
+        isNotNull(userDomainTerms.deletedAt),
+        isNull(userDomainTerms.archivedAt),
+      ),
+    );
+
+  const link = await getTermLink(userId, linkId);
+  if (!link) {
+    throw new VocabularyError(
+      'restore_failed',
+      'Restored vocabulary link could not be loaded back; it may be archived or already active',
+    );
+  }
+
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.restore',
+    resource: 'domain-term',
+    resourceId: link.termId,
+    metadata: { linkId },
+  });
+
+  return { link };
+}
+
+/**
+ * Dry-run helper: report whether adding a term would reuse an existing global
+ * DomainTerm and surface any vocabulary-level validation warnings.
+ */
+export async function previewAddTerm(
+  userId: string,
+  input: TermInput,
+): Promise<{
+  existsInGlobal: boolean;
+  existingTermId: string | null;
+  collisions: string[];
+}> {
+  const normalized = validateInput(input);
+  const dedupKey = computeDedupKey(normalized);
+  const existing = await db.query.domainTerms.findFirst({
+    where: eq(domainTerms.dedupKey, dedupKey),
+    columns: { id: true },
+  });
+
+  const current = await listUserVocabularyTerms(userId, {
+    domain: normalized.domain,
+    locale: normalized.locale,
+    pageSize: MAX_PAGE_SIZE,
+  });
+  const rows = [
+    ...current.items.map((item) => ({
+      domainTermId: item.termId,
+      domain: item.domain,
+      locale: item.locale,
+      kind: item.kind,
+      canonical: item.canonical,
+      localized: item.localized,
+      parentCanonical: item.parentCanonical,
+      aliases: item.aliases,
+      description: item.description,
+    })),
+    {
+      domainTermId: 'preview',
+      domain: normalized.domain,
+      locale: normalized.locale,
+      kind: normalized.kind,
+      canonical: normalized.canonical,
+      localized: normalized.localized,
+      parentCanonical: normalized.parentCanonical,
+      aliases: normalized.aliases,
+      description: normalized.description,
+    },
+  ];
+  const validation = validateDomainVocabulary(
+    assembleDomainVocabularyFromLinks(rows, {
+      domain: normalized.domain,
+      locale: normalized.locale,
+    }),
+  );
+
+  return {
+    existsInGlobal: Boolean(existing),
+    existingTermId: existing?.id ?? null,
+    collisions: [...validation.errors, ...validation.warnings],
+  };
+}
