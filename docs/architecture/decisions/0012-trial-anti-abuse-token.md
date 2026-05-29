@@ -1,6 +1,6 @@
 # ADR-0012: Anti-abuse Token for the Public Trial Endpoint
 
-**Status**: Proposed (2026-05-29, R30 audit closeout)
+**Status**: Accepted — backend implemented (R31, 2026-05-29). Frontend wiring deferred to Cloudflare key provisioning.
 **Context**: aster-api `/api/v1/policies/evaluate-source` is publicly reachable as the marketing-tier playground.
 **Supersedes**: implicit "Origin allowlist + per-IP rate limit is enough" stance.
 
@@ -59,6 +59,30 @@ Rationale:
   anonymous traffic).
 - Option C is rejected on UX grounds — the playground is a marketing
   surface, friction kills conversions.
+
+## Implementation Status (R31)
+
+**Backend landed (commits 443e2f1, TurnstileVerifier + TrialEndpointGuard wire-in):**
+
+- `io.aster.policy.security.TurnstileVerifier` (SHA-256 cache, 60s TTL,
+  10k cache cap with LRU-ish shrink, fail-closed on missing secret /
+  cf network error)
+- Injected into `TrialEndpointGuard` between body-size + per-IP gates
+- Env vars wired:
+  - `ASTER_SECURITY_TRIAL_TURNSTILE_ENABLED` (default `false`)
+  - `ASTER_SECURITY_TRIAL_TURNSTILE_SECRET` (Optional, no startup
+    failure when missing)
+  - `ASTER_SECURITY_TRIAL_TURNSTILE_TIMEOUT_MS` (default `3000`)
+- `TurnstileVerifierTest` covers the fail-closed paths (5 cases)
+
+**Still required to flip on:**
+
+1. Cloudflare Turnstile widget provisioning for `aster-lang.dev`
+2. Vault secret `secret/apps/aster-api-trial-turnstile` + ExternalSecret
+3. aster-cloud playground: render widget + attach
+   `X-Trial-Turnstile-Token` header
+4. Set `ASTER_SECURITY_TRIAL_TURNSTILE_ENABLED=true` in prod
+   environment (dev / podman stays unset → 100% backward-compatible)
 
 ## Implementation Plan
 
