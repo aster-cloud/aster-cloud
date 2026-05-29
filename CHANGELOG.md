@@ -167,6 +167,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Mark Turnstile backend implemented (R31-4) *(adr-0012)*
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Trial anti-abuse token plan (Cloudflare Turnstile) *(adr-0012)*
