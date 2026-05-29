@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Rule prevents cross-table orderBy in Drizzle relational queries *(eslint)*
 - Forward Turnstile token + ADR-0013 east-west TCP (R31) *(playground-bff)*
 - Healthchecks heartbeats + SaaS/AI Grafana dashboards *(observability)*
 - OCI K3S deployment + Helm charts + ArgoCD apps *(staging)*
@@ -168,6 +169,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
