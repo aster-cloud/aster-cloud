@@ -1,8 +1,6 @@
 /**
- * Local ESLint plugin: deployment-mode
- *
- * Custom rules that enforce the deployment-mode contract documented in
- * .claude/plan/deployment-mode-flag-v2.md.
+ * Local ESLint plugin: deployment-mode (legacy name — also hosts a few
+ * project-wide custom rules outside the deployment-mode contract).
  *
  * Rules:
  *   - no-direct-macro: forbid direct __DEPLOYMENT_MODE__ /
@@ -13,6 +11,10 @@
  *     stripe/resend/mixpanel-browser; must go through lib/* wrappers that
  *     dynamic-import behind __DEPLOYMENT_MODE__ guards. This is the
  *     Turbopack-compat replacement for webpack's resolve.alias = false.
+ *   - no-cross-table-orderby: forbid `orderBy: <otherTable>.col` in
+ *     `db.query.<rootTable>.findMany/findFirst` calls. Drizzle generates
+ *     SQL that doesn't include the with-table in the root FROM, so the
+ *     query throws at runtime. Source: commit c6f8f5a (api/teams 500).
  *
  * Wired into eslint.config.mjs as a plugin object (flat config).
  */
@@ -24,5 +26,6 @@ module.exports = {
     'no-direct-macro': require('./no-direct-macro'),
     'require-license-write-gate': require('./require-license-write-gate'),
     'no-static-saas-only-import': require('./no-static-saas-only-import'),
+    'no-cross-table-orderby': require('./no-cross-table-orderby'),
   },
 };

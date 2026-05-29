@@ -68,6 +68,10 @@ const eslintConfig = [
       // 这条规则替代 webpack 的 resolve.alias = false（Turbopack 没有等价能力）。
       // 详见 eslint-rules/no-static-saas-only-import.js。
       "deployment-mode/no-static-saas-only-import": "error",
+      // R32 hotfix follow-up：守门 Drizzle 关系查询 orderBy 不能引用
+      // 非 root 表的列。源由 c6f8f5a：api/teams GET 500 事件。规则
+      // 详见 eslint-rules/no-cross-table-orderby.js。
+      "deployment-mode/no-cross-table-orderby": "error",
     },
   },
   {
