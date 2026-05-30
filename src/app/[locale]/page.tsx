@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { SkipToContent } from '@/components/skip-to-content';
 import { locales, localeNames, type Locale } from '@/i18n/config';
 import {
   buttonVariants,
@@ -74,7 +75,8 @@ function HomeContent({ locale }: { locale: string }) {
   const proMonthlyPrice = formatPrice(getProPrice(currency, 'monthly'), currency);
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg text-fg">
+    <main id="main" className="flex min-h-screen flex-col bg-bg text-fg">
+      <SkipToContent targetId="main" />
       <Nav t={t} />
       <Hero t={t} locale={locale} />
       <TrustBand t={t} />
@@ -91,7 +93,7 @@ function HomeContent({ locale }: { locale: string }) {
       )}
       <BottomCta t={t} />
       <Footer t={t} />
-    </div>
+    </main>
   );
 }
 

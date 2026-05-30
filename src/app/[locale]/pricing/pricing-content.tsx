@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
+import { SkipToContent } from '@/components/skip-to-content';
 import { track, Events } from '@/lib/mixpanel';
 import type { CurrencyCode } from '@/lib/plans';
 import {
@@ -104,7 +105,8 @@ export function PricingContent({
   };
 
   return (
-    <main className="min-h-screen bg-bg text-fg">
+    <main id="main" className="min-h-screen bg-bg text-fg">
+      <SkipToContent targetId="main" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

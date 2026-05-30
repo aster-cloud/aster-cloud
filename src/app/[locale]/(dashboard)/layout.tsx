@@ -10,6 +10,7 @@ import { buildCommands } from '@/components/dashboard/command-palette-commands';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
 import { NotificationsBell } from '@/components/notifications/notifications-bell';
+import { SkipToContent } from '@/components/skip-to-content';
 import { getSession } from '@/lib/auth';
 import { isAdminFromSession } from '@/lib/admin-auth';
 import {
@@ -106,15 +107,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-bg-subtle text-fg">
-      {/* Keyboard-only "skip to main content" link — visually hidden
-          until focused. Lets screen-reader / keyboard users bypass the
-          sidebar on every page load. */}
-      <a
-        href="#dashboard-main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-fg focus:shadow-lg"
-      >
-        {tCommon('skipToContent')}
-      </a>
+      <SkipToContent targetId="dashboard-main" />
 
       <DashboardSidebar
         localePrefix={routePrefix}
