@@ -121,7 +121,11 @@ export function VocabulariesContent({
     domains: new Set(initialTerms.map((t) => t.domain)),
     locales: new Set(initialTerms.map((t) => t.locale)),
   });
-  const [, forceFacetTick] = useState(0);
+  // facetsTick is the only React-visible signal that the facet sets grew.
+  // The memoized sorted snapshots below key off it so we don't have to lie
+  // about the dependency list (Set.size would technically work today, but
+  // it's load-bearing on render ordering — keying on the tick is honest).
+  const [facetsTick, setFacetsTick] = useState(0);
   const noteFacets = useCallback((rows: SerializableTermLink[]) => {
     let changed = false;
     for (const row of rows) {
@@ -134,7 +138,7 @@ export function VocabulariesContent({
         changed = true;
       }
     }
-    if (changed) forceFacetTick((n) => n + 1);
+    if (changed) setFacetsTick((n) => n + 1);
   }, []);
 
   // Aborts any inflight refetch so rapid filter changes don't race.
@@ -188,17 +192,21 @@ export function VocabulariesContent({
     }
   }, [domainFilter, localeFilter, kindFilter, noteFacets, t]);
 
-  // Sorted snapshot of the facet sets for the dropdowns.
+  // Sorted snapshot of the facet sets for the dropdowns. The Sets are
+  // stored in a ref so noteFacets can mutate them without triggering a
+  // render; facetsTick is the React-visible "the sets grew" signal that
+  // forces this memo to re-evaluate. The dep on facetsTick looks
+  // unnecessary to eslint because facetsRef.current isn't reactive — it
+  // is in fact load-bearing, so the disable is intentional.
   const domainOptions = useMemo(
     () => [...facetsRef.current.domains].sort(),
-    // facetsRef is mutated by noteFacets; forceFacetTick triggers re-render
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [facetsRef.current.domains.size],
+    [facetsTick],
   );
   const localeOptions = useMemo(
     () => [...facetsRef.current.locales].sort(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [facetsRef.current.locales.size],
+    [facetsTick],
   );
 
   const dateFormatter = useMemo(
