@@ -248,6 +248,14 @@ export function VocabulariesContent({
 
   const errorMessage = useCallback(
     (code: string | undefined, fallback: string | undefined) => {
+      // For validation_failed the server message ("parentCanonical is
+      // required for kind=field", "domain is required", etc.) is the
+      // actionable piece — the i18n fallback "please correct the
+      // highlighted fields" is useless when nothing is highlighted.
+      // Prefer the server text, fall back to the localized copy.
+      if (code === 'validation_failed' && fallback) {
+        return fallback;
+      }
       if (code && KNOWN_ERROR_CODES.has(code)) {
         return t(`errors.${code}` as ErrorKey);
       }
