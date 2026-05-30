@@ -2,9 +2,9 @@
   "common": {
     "signIn": "Sign in",
     "signUp": "Sign Up",
-    "startFreeTrial": "Start Free Trial",
-    "getStarted": "Get Started",
-    "contactSales": "Contact Sales",
+    "startFreeTrial": "Start free",
+    "getStarted": "Start free",
+    "contactSales": "Talk to sales",
     "learnMore": "Learn More",
     "languageUnavailable": "{name} is no longer available",
     "switchedTo": "switched to {name}",
@@ -51,6 +51,7 @@
     "title": "Policy as Code in native language",
     "titleHighlight": "{locales}",
     "description": "Write business rules in your native language. AI drafts, humans approve, GraalVM executes. Hash-chained audit included.",
+    "builtOnAsterLang": "Built on the open-source Aster Lang engine. Read the language docs →",
     "noCreditCard": "No credit card required."
   },
   "cnlDemo": {

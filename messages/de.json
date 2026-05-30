@@ -2,9 +2,9 @@
   "common": {
     "signIn": "Anmelden",
     "signUp": "Registrieren",
-    "startFreeTrial": "Kostenlose Testversion starten",
-    "getStarted": "Jetzt starten",
-    "contactSales": "Vertrieb kontaktieren",
+    "startFreeTrial": "Kostenlos starten",
+    "getStarted": "Kostenlos starten",
+    "contactSales": "Vertrieb sprechen",
     "learnMore": "Mehr erfahren",
     "languageUnavailable": "{name} ist nicht mehr verfügbar",
     "switchedTo": "auf {name} gewechselt",
@@ -51,6 +51,7 @@
     "title": "Policy as Code in der Muttersprache",
     "titleHighlight": "{locales}",
     "description": "Schreiben Sie Geschäftsregeln in Ihrer Muttersprache. KI entwirft, Menschen genehmigen, GraalVM führt aus. Manipulationssicheres Audit inklusive.",
+    "builtOnAsterLang": "Aufgebaut auf der Open-Source-Engine Aster Lang. Sprach-Dokumentation lesen →",
     "noCreditCard": "Keine Kreditkarte erforderlich."
   },
   "cnlDemo": {

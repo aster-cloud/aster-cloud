@@ -229,6 +229,14 @@ function Hero({
           <p className="max-w-2xl text-lg leading-relaxed text-fg-muted sm:text-xl">
             {t('hero.description')}
           </p>
+          <p className="max-w-2xl text-sm text-fg-subtle">
+            <a
+              href="https://aster-lang.dev"
+              className="underline-offset-2 hover:text-fg hover:underline"
+            >
+              {t('hero.builtOnAsterLang')}
+            </a>
+          </p>
           <Stack direction="row" gap={3} className="mt-2">
             <MarketingPrimaryCta
               saasLabel={t('common.getStarted')}
