@@ -194,8 +194,258 @@ async function runSchemaPatch(): Promise<void> {
     ADD COLUMN IF NOT EXISTS "permission" text NOT NULL DEFAULT 'execute'
   `);
 
+  // ----------------------------------------------------------------
+  // user-domain-vocabulary tables (B1+B2 / migration 0021)
+  //
+  // Self-healed here for the same reason as the blocks above: Hyperdrive
+  // is the only thing on the network with credentials, so a Worker cold
+  // start has to materialize the tables idempotently on first request.
+  // All DDL uses IF NOT EXISTS, so re-applying after the migration has
+  // landed is a no-op. The order respects the FK chain:
+  //   1. DomainTerm (independent)
+  //   2. UserVocabularySnapshot (independent; UserDomainTerm references it)
+  //   3. UserDomainTerm (FKs to DomainTerm + UserVocabularySnapshot + User)
+  //   4. PolicyVersion.vocabularySnapshotIds column add
+  // ----------------------------------------------------------------
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "DomainTerm" (
+      "id" text PRIMARY KEY NOT NULL,
+      "domain" text NOT NULL,
+      "locale" text NOT NULL,
+      "kind" text NOT NULL,
+      "canonical" text NOT NULL,
+      "canonicalNorm" text NOT NULL,
+      "localized" text NOT NULL,
+      "localizedNorm" text NOT NULL,
+      "parentCanonical" text,
+      "parentCanonicalNorm" text,
+      "description" text,
+      "aliases" jsonb NOT NULL DEFAULT '[]'::jsonb,
+      "source" text NOT NULL,
+      "status" text NOT NULL DEFAULT 'active',
+      "version" integer NOT NULL DEFAULT 1,
+      "dedupKey" text NOT NULL,
+      "createdAt" timestamptz NOT NULL DEFAULT now(),
+      "updatedAt" timestamptz NOT NULL DEFAULT now(),
+      "deprecatedAt" timestamptz,
+      "deprecatedReason" text,
+      CONSTRAINT "DomainTerm_kind_check" CHECK (
+        "kind" IN ('struct', 'field', 'function', 'enum_value')
+      ),
+      CONSTRAINT "DomainTerm_source_check" CHECK (
+        "source" IN ('builtin', 'user', 'admin_seed')
+      ),
+      CONSTRAINT "DomainTerm_status_check" CHECK (
+        "status" IN ('active', 'deprecated')
+      )
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "DomainTerm_dedupKey_unique"
+      ON "DomainTerm" ("dedupKey")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "DomainTerm_domain_locale_kind_idx"
+      ON "DomainTerm" ("domain", "locale", "kind")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "DomainTerm_status_idx"
+      ON "DomainTerm" ("status")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "DomainTerm_canonicalNorm_idx"
+      ON "DomainTerm" ("canonicalNorm")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "DomainTerm_localizedNorm_idx"
+      ON "DomainTerm" ("localizedNorm")
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "UserVocabularySnapshot" (
+      "id" text PRIMARY KEY NOT NULL,
+      "ownerType" text NOT NULL,
+      "ownerId" text NOT NULL,
+      "domain" text NOT NULL,
+      "locale" text NOT NULL,
+      "version" integer NOT NULL,
+      "vocabularyJson" jsonb NOT NULL,
+      "termIds" jsonb NOT NULL,
+      "contentHash" text NOT NULL,
+      "refCount" integer NOT NULL DEFAULT 0,
+      "createdAt" timestamptz NOT NULL DEFAULT now(),
+      "archivedAt" timestamptz,
+      CONSTRAINT "UserVocabularySnapshot_ownerType_check" CHECK (
+        "ownerType" IN ('user', 'team')
+      ),
+      CONSTRAINT "UserVocabularySnapshot_refCount_check" CHECK ("refCount" >= 0)
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "UserVocabularySnapshot_owner_version_unique"
+      ON "UserVocabularySnapshot" (
+        "ownerType",
+        "ownerId",
+        "domain",
+        "locale",
+        "version"
+      )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "UserVocabularySnapshot_owner_hash_unique"
+      ON "UserVocabularySnapshot" (
+        "ownerType",
+        "ownerId",
+        "domain",
+        "locale",
+        "contentHash"
+      )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "UserVocabularySnapshot_refCount_idx"
+      ON "UserVocabularySnapshot" ("refCount")
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "UserDomainTerm" (
+      "id" text PRIMARY KEY NOT NULL,
+      "userId" text NOT NULL,
+      "termId" text NOT NULL,
+      "ownerType" text NOT NULL DEFAULT 'user',
+      "teamId" text,
+      "domain" text NOT NULL,
+      "locale" text NOT NULL,
+      "kind" text NOT NULL,
+      "note" text,
+      "createdAt" timestamptz NOT NULL DEFAULT now(),
+      "updatedAt" timestamptz NOT NULL DEFAULT now(),
+      "deletedAt" timestamptz,
+      "deletedBy" text,
+      "deletedReason" text,
+      "archivedAt" timestamptz,
+      "archiveSnapshotId" text,
+      CONSTRAINT "UserDomainTerm_userId_User_id_fk"
+        FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE,
+      CONSTRAINT "UserDomainTerm_termId_DomainTerm_id_fk"
+        FOREIGN KEY ("termId") REFERENCES "DomainTerm" ("id") ON DELETE RESTRICT,
+      CONSTRAINT "UserDomainTerm_teamId_Team_id_fk"
+        FOREIGN KEY ("teamId") REFERENCES "Team" ("id") ON DELETE CASCADE,
+      CONSTRAINT "UserDomainTerm_archiveSnapshotId_UserVocabularySnapshot_id_fk"
+        FOREIGN KEY ("archiveSnapshotId") REFERENCES "UserVocabularySnapshot" ("id"),
+      CONSTRAINT "UserDomainTerm_owner_v1_check" CHECK (
+        "ownerType" = 'user'
+        AND "userId" IS NOT NULL
+        AND "teamId" IS NULL
+      )
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "UserDomainTerm_active_unique"
+      ON "UserDomainTerm" ("userId", "termId")
+      WHERE "deletedAt" IS NULL AND "archivedAt" IS NULL
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "UserDomainTerm_user_domain_idx"
+      ON "UserDomainTerm" ("userId", "domain", "locale")
+      WHERE "deletedAt" IS NULL AND "archivedAt" IS NULL
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "UserDomainTerm_termId_idx"
+      ON "UserDomainTerm" ("termId")
+      WHERE "deletedAt" IS NULL AND "archivedAt" IS NULL
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "UserDomainTerm_archive_idx"
+      ON "UserDomainTerm" ("archivedAt", "deletedAt")
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE "PolicyVersion"
+      ADD COLUMN IF NOT EXISTS "vocabularySnapshotIds" jsonb NOT NULL DEFAULT '[]'::jsonb
+  `);
+
+  // ----------------------------------------------------------------
+  // Lexicon idempotency + bulk jobs (B5 / migration 0022 + 0023)
+  // ----------------------------------------------------------------
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "LexiconIdempotencyKey" (
+      "id" text PRIMARY KEY NOT NULL,
+      "userId" text NOT NULL,
+      "idempotencyKey" text NOT NULL,
+      "routeKey" text NOT NULL,
+      "requestHash" text NOT NULL,
+      "responseStatus" integer NOT NULL,
+      "responseBody" jsonb NOT NULL,
+      "createdAt" timestamptz NOT NULL DEFAULT now(),
+      "expiresAt" timestamptz NOT NULL,
+      CONSTRAINT "LexiconIdempotencyKey_userId_User_id_fk"
+        FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "LexiconIdempotencyKey_user_route_key_unique"
+      ON "LexiconIdempotencyKey" ("userId", "routeKey", "idempotencyKey")
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "LexiconIdempotencyKey_expiresAt_idx"
+      ON "LexiconIdempotencyKey" ("expiresAt")
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "LexiconBulkJob" (
+      "id" text PRIMARY KEY NOT NULL,
+      "userId" text NOT NULL,
+      "idempotencyKey" text,
+      "status" text NOT NULL DEFAULT 'queued',
+      "mode" text NOT NULL,
+      "rowCount" integer NOT NULL,
+      "processed" integer NOT NULL DEFAULT 0,
+      "rollup" jsonb NOT NULL DEFAULT '{}'::jsonb,
+      "errors" jsonb NOT NULL DEFAULT '[]'::jsonb,
+      "claimedBy" text,
+      "claimedAt" timestamptz,
+      "completedAt" timestamptz,
+      "createdAt" timestamptz NOT NULL DEFAULT now(),
+      "updatedAt" timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT "LexiconBulkJob_userId_User_id_fk"
+        FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE,
+      CONSTRAINT "LexiconBulkJob_status_check" CHECK (
+        "status" IN ('queued', 'running', 'completed', 'failed', 'cancelled')
+      ),
+      CONSTRAINT "LexiconBulkJob_mode_check" CHECK (
+        "mode" IN ('sync', 'async')
+      ),
+      CONSTRAINT "LexiconBulkJob_processed_check" CHECK (
+        "rowCount" > 0 AND "processed" >= 0 AND "processed" <= "rowCount"
+      ),
+      CONSTRAINT "LexiconBulkJob_rollup_shape_check" CHECK (
+        jsonb_typeof("rollup") = 'object'
+      ),
+      CONSTRAINT "LexiconBulkJob_errors_shape_check" CHECK (
+        jsonb_typeof("errors") = 'array'
+      )
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "LexiconBulkJob_userId_createdAt_idx"
+      ON "LexiconBulkJob" ("userId", "createdAt" DESC)
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "LexiconBulkJob_status_createdAt_idx"
+      ON "LexiconBulkJob" ("status", "createdAt")
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS "LexiconBulkJob_user_idem_unique"
+      ON "LexiconBulkJob" ("userId", "idempotencyKey")
+      WHERE "idempotencyKey" IS NOT NULL
+  `);
+  await db.execute(sql`
+    ALTER TABLE "LexiconBulkJob"
+      ADD COLUMN IF NOT EXISTS "inputJson" jsonb
+  `);
+
   console.warn(
-    '[db-bootstrap] schema patch 0009 + notifications + policy-sharing applied',
+    '[db-bootstrap] schema patch 0009 + notifications + policy-sharing + vocab applied',
   );
 }
 

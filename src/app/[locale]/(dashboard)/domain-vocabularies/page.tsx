@@ -20,20 +20,47 @@ export default async function DomainVocabulariesPage() {
   }
 
   const userId = session.user.id;
-  const ctx = await getLexiconQuotaWithContext(userId);
+
+  // ensureSchemaApplied() in the dashboard layout self-heals the vocab
+  // tables on cold start, but if that single bootstrap call lost a race
+  // or the Worker isolate skipped it (e.g. the layout's promise was
+  // already resolved but pointing at a partial schema), the service
+  // queries below would 42P01. Treat any service failure as "no vocab
+  // yet" so the page renders the empty/Pro-gate state instead of a
+  // production 500.
+  let ctx: Awaited<ReturnType<typeof getLexiconQuotaWithContext>>;
+  try {
+    ctx = await getLexiconQuotaWithContext(userId);
+  } catch (err) {
+    console.error('[domain-vocabularies page] quota lookup failed', err);
+    ctx = {
+      maxTerms: 0,
+      bulkAsync: false,
+      allowed: false,
+      plan: 'free',
+      downgraded: false,
+      trialEndsAt: null,
+    };
+  }
 
   let initialTerms: SerializableTermLink[] = [];
   let total = 0;
   let archivedCount = 0;
 
   if (ctx.allowed) {
-    const result = await listUserVocabularyTerms(userId, {
-      page: 1,
-      pageSize: 50,
-    });
-    initialTerms = result.items.map(serialize);
-    total = result.total;
-    archivedCount = result.archivedCount;
+    try {
+      const result = await listUserVocabularyTerms(userId, {
+        page: 1,
+        pageSize: 50,
+      });
+      initialTerms = result.items.map(serialize);
+      total = result.total;
+      archivedCount = result.archivedCount;
+    } catch (err) {
+      console.error('[domain-vocabularies page] list failed', err);
+      // Fall through with empty list; the client will show the empty
+      // state with the breadcrumb + Add-term affordance intact.
+    }
   }
 
   return (

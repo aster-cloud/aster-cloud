@@ -15,16 +15,30 @@ import { SnapshotsContent, type SerializableSnapshot } from './snapshots-content
 export default async function SnapshotsPage() {
   const session = await getSession();
   if (!session?.user?.id) redirect('/login');
-  const quota = await getLexiconQuota(session.user.id);
-  if (!quota.allowed) {
+  let allowed = false;
+  try {
+    const quota = await getLexiconQuota(session.user.id);
+    allowed = quota.allowed;
+  } catch (err) {
+    console.error('[snapshots page] quota lookup failed', err);
+  }
+  if (!allowed) {
     redirect('/domain-vocabularies');
   }
 
-  const snapshots = await listOwnerSnapshots(session.user.id);
-  const serialized: SerializableSnapshot[] = snapshots.map((s) => ({
-    ...s,
-    createdAt: s.createdAt.toISOString(),
-  }));
+  // Same fail-soft posture as the main vocab page: if the snapshot
+  // table is missing or transiently unreachable, render an empty list
+  // rather than 500 the whole route.
+  let serialized: SerializableSnapshot[] = [];
+  try {
+    const snapshots = await listOwnerSnapshots(session.user.id);
+    serialized = snapshots.map((s) => ({
+      ...s,
+      createdAt: s.createdAt.toISOString(),
+    }));
+  } catch (err) {
+    console.error('[snapshots page] list failed', err);
+  }
 
   return <SnapshotsContent initialSnapshots={serialized} />;
 }
