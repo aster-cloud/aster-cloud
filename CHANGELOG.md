@@ -181,6 +181,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Record cross-site cleanup handoffs to ops and design *(brand)*
+- Update [skip ci] *(changelog)*
 - Add CTA + naming guide; drop "Team" from FAQ *(brand)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
