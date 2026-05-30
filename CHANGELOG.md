@@ -6,6 +6,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Cross-site CTA convention + Aster Lang relationship line *(landing)*
+- Extract SkipToContent component, wire into landing + pricing *(a11y)*
 - Server-side pagination for policies + vocab + snapshots *(list)*
 - Snapshots/rollback/admin/SSE/i18n (F7-F12) *(vocab)*
 - Pro-gate + bulk upload + job progress (F4+F5+F6) *(vocab)*
@@ -159,6 +161,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Drop dead STARTER_PLAN code path *(vocab)*
 - Derive primitive types from lang-ts lexicon (D12) *(monaco)*
 - Single-root resolution + canonical locale-utils *(glossary)*
 - Derive locale tokens from glossary + hard-fail schema *(glossary)*
@@ -178,6 +181,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Add CTA + naming guide; drop "Team" from FAQ *(brand)*
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -252,6 +257,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Post-audit follow-ups for cross-site cleanup
+- Route Enterprise inquiry to sales@aster-lang.cloud *(pricing)*
+- Point documentationUrl at live aster-lang.dev page *(telemetry)*
 - Surface server validation message on 400 *(vocab)*
 - 500 on /domain-vocabularies due to missing prod schema *(vocab)*
 - 404 on /settings/profile prefetch from AI usage card *(dashboard)*
