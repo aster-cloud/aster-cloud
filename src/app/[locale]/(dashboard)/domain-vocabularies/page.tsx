@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { listUserVocabularyTerms, type TermLink } from '@/lib/domain-vocabulary';
-import { getLexiconQuota } from '@/lib/usage';
+import { getLexiconQuotaWithContext } from '@/lib/usage';
 import { VocabulariesContent, type SerializableTermLink } from './vocabularies-content';
 
 /**
@@ -20,13 +20,13 @@ export default async function DomainVocabulariesPage() {
   }
 
   const userId = session.user.id;
-  const quota = await getLexiconQuota(userId);
+  const ctx = await getLexiconQuotaWithContext(userId);
 
   let initialTerms: SerializableTermLink[] = [];
   let total = 0;
   let archivedCount = 0;
 
-  if (quota.allowed) {
+  if (ctx.allowed) {
     const result = await listUserVocabularyTerms(userId, {
       page: 1,
       pageSize: 50,
@@ -41,7 +41,14 @@ export default async function DomainVocabulariesPage() {
       initialTerms={initialTerms}
       initialTotal={total}
       initialArchivedCount={archivedCount}
-      quota={quota}
+      quota={{
+        maxTerms: ctx.maxTerms,
+        bulkAsync: ctx.bulkAsync,
+        allowed: ctx.allowed,
+        plan: ctx.plan,
+        downgraded: ctx.downgraded,
+        trialEndsAt: ctx.trialEndsAt?.toISOString() ?? null,
+      }}
     />
   );
 }

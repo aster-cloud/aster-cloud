@@ -255,13 +255,37 @@ export async function hasFeatureAccess(
 export async function getLexiconQuota(
   userId: string,
 ): Promise<{ maxTerms: number; bulkAsync: boolean; allowed: boolean }> {
+  const ctx = await getLexiconQuotaWithContext(userId);
+  return { maxTerms: ctx.maxTerms, bulkAsync: ctx.bulkAsync, allowed: ctx.allowed };
+}
+
+/**
+ * 返回 quota + 触发上下文(当前 plan、是否刚从 trial 降级)。前端 Pro-gate /
+ * 降级横幅需要这些信息以解释"为什么"——只关心额度数值的调用方继续用
+ * getLexiconQuota。
+ */
+export async function getLexiconQuotaWithContext(userId: string): Promise<{
+  maxTerms: number;
+  bulkAsync: boolean;
+  allowed: boolean;
+  plan: PlanType;
+  downgraded: boolean;
+  trialEndsAt: Date | null;
+}> {
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: { plan: true, trialEndsAt: true },
   });
 
   if (!user) {
-    return { maxTerms: 0, bulkAsync: false, allowed: false };
+    return {
+      maxTerms: 0,
+      bulkAsync: false,
+      allowed: false,
+      plan: 'free',
+      downgraded: false,
+      trialEndsAt: null,
+    };
   }
 
   const normalizedPlan = normalizePlan(user.plan);
@@ -279,5 +303,12 @@ export async function getLexiconQuota(
   const bulkAsync = capabilities.customLexiconBulkUploadAsync;
   const allowed = capabilities.customLexicon && (maxTerms === -1 || maxTerms > 0);
 
-  return { maxTerms, bulkAsync, allowed };
+  return {
+    maxTerms,
+    bulkAsync,
+    allowed,
+    plan: effectivePlan,
+    downgraded,
+    trialEndsAt: user.trialEndsAt,
+  };
 }

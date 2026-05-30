@@ -2210,8 +2210,78 @@
     "needsUpgrade": {
       "title": "Domänenvokabulare sind ein Pro-Feature",
       "description": "Wechsle zu Pro, um eigene Structs / Felder / Funktionen / Enum-Werte zu verwalten.",
+      "trialEndedTitle": "Deine Pro-Testphase ist abgelaufen",
+      "trialEndedDescription": "Die Testphase endete am {date}. Upgrade auf Pro, um diese Oberfläche weiter zu nutzen.",
+      "featureCatalog": "Verwalte Structs / Felder / Funktionen / Enum-Werte pro Sprache",
+      "featureBulk": "Massen-Import bis 10.000 Zeilen pro Job",
+      "featureSnapshots": "Snapshot pro Policy-Version, Rollback mit einem Klick",
       "upgrade": "Plan upgraden",
       "contactAdmin": "Bitte deinen Administrator um ein Plan-Upgrade"
+    },
+    "downgrade": {
+      "starterTitle": "Asynchroner Massen-Upload ist ein Pro-Feature",
+      "starterDescription": "Dein Starter-Plan erlaubt synchrone Massen-Uploads bis 500 Zeilen. Upgrade auf Pro für asynchrone Jobs bis 10.000 Zeilen.",
+      "trialEndedTitle": "Pro-Testphase abgelaufen",
+      "trialEndedDescription": "Die Testphase endete am {date}; einige Pro-Funktionen sind jetzt schreibgeschützt.",
+      "cta": "Upgraden"
+    },
+    "bulk": {
+      "title": "Massen-Import von Vokabular",
+      "description": "Füge CSV (mit Header-Zeile) oder ein JSON-Array ein. Aliase werden in CSV mit | getrennt (z. B. amount|amt) oder als JSON-Array.",
+      "chooseFile": "Datei wählen",
+      "orPaste": "oder unten einfügen",
+      "rawLabel": "CSV oder JSON einfügen",
+      "placeholder": "domain,locale,kind,canonical,localized,parentCanonical\\nfinance,de,struct,Loan,Darlehen,,",
+      "previewTitle": "Vorschau ({shown} von {total})",
+      "rowsValid": "Sync bis {syncLimit}; Async bis {asyncLimit}",
+      "tooManySync": "Wechsle zu Async — überschreitet {syncLimit} Zeilen",
+      "tooManyAsync": "Überschreitet das Async-Limit von {asyncLimit} Zeilen",
+      "parseErrorsTitle": "Einige Zeilen konnten nicht geparst werden",
+      "moreErrors": "+{n} weitere",
+      "col": {
+        "kind": "Typ",
+        "canonical": "Kanonisch",
+        "localized": "Lokalisiert",
+        "domain": "Domäne",
+        "locale": "Sprache"
+      },
+      "modeLabel": "Modus",
+      "syncTitle": "Synchron",
+      "syncDescription": "Sofort anwenden. Bis {limit} Zeilen pro Anfrage.",
+      "asyncTitle": "Asynchron (Hintergrund-Job)",
+      "asyncDescription": "Worker in die Warteschlange. Bis {limit} Zeilen; Fortschritt im Statusfeld.",
+      "asyncProRequired": "Async-Jobs erfordern einen Pro-Plan oder höher.",
+      "submit": "Importieren",
+      "submitting": "Importiere…",
+      "cancel": "Abbrechen",
+      "syncCompleted": "{count} Zeilen importiert",
+      "asyncEnqueued": "Massen-Job in die Warteschlange gestellt",
+      "errorGeneric": "Import konnte nicht gestartet werden. Bitte erneut versuchen.",
+      "errorReadFile": "Datei konnte nicht gelesen werden."
+    },
+    "jobProgress": {
+      "status": {
+        "queued": "In Warteschlange — wartet auf Worker",
+        "running": "Läuft",
+        "completed": "Abgeschlossen",
+        "failed": "Fehlgeschlagen",
+        "cancelled": "Abgebrochen"
+      },
+      "progressSummary": "{processed} von {total} Zeilen verarbeitet",
+      "rollup": {
+        "added": "Hinzugefügt",
+        "reused": "Wiederverwendet",
+        "modified": "Geändert",
+        "skipped": "Übersprungen",
+        "errors": "Fehler"
+      },
+      "cancel": "Job abbrechen",
+      "cancelling": "Abbrechen…",
+      "cancelled": "Job abgebrochen",
+      "dismiss": "Schließen",
+      "loading": "Lade Job…",
+      "fetchFailed": "Job-Status konnte nicht geladen werden, erneuter Versuch folgt.",
+      "notFound": "Massen-Job nicht gefunden."
     },
     "dialog": {
       "createTitle": "Begriff hinzufügen",

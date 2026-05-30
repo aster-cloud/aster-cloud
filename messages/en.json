@@ -2210,8 +2210,78 @@
     "needsUpgrade": {
       "title": "Domain vocabularies are a Pro feature",
       "description": "Upgrade to Pro to manage your own struct / field / function / enum_value catalog.",
+      "trialEndedTitle": "Your Pro trial ended",
+      "trialEndedDescription": "Your trial ended on {date}. Upgrade to keep the vocabulary surface available.",
+      "featureCatalog": "Curate structs, fields, functions, enum values per locale",
+      "featureBulk": "Bulk import up to 10,000 rows per job",
+      "featureSnapshots": "Pin a snapshot to every policy version with one-click rollback",
       "upgrade": "Upgrade plan",
       "contactAdmin": "Ask your administrator for a plan upgrade"
+    },
+    "downgrade": {
+      "starterTitle": "Bulk async upload is a Pro feature",
+      "starterDescription": "Your Starter plan supports synchronous bulk uploads up to 500 rows. Upgrade to Pro for asynchronous jobs up to 10,000 rows.",
+      "trialEndedTitle": "Your Pro trial ended",
+      "trialEndedDescription": "Trial ended on {date}. Some Pro features are now read-only.",
+      "cta": "Upgrade"
+    },
+    "bulk": {
+      "title": "Bulk import vocabulary",
+      "description": "Paste CSV (with a header row) or a JSON array. Aliases are pipe-separated in CSV (e.g. amount|amt) or a JSON array.",
+      "chooseFile": "Choose file",
+      "orPaste": "or paste below",
+      "rawLabel": "Paste CSV or JSON",
+      "placeholder": "domain,locale,kind,canonical,localized,parentCanonical\\nfinance,en,struct,Loan,Loan,,",
+      "previewTitle": "Preview ({shown} of {total})",
+      "rowsValid": "Sync up to {syncLimit}; async up to {asyncLimit}",
+      "tooManySync": "Switch to async — exceeds {syncLimit} rows",
+      "tooManyAsync": "Exceeds the {asyncLimit}-row async limit",
+      "parseErrorsTitle": "Some rows could not be parsed",
+      "moreErrors": "+{n} more",
+      "col": {
+        "kind": "Kind",
+        "canonical": "Canonical",
+        "localized": "Localized",
+        "domain": "Domain",
+        "locale": "Locale"
+      },
+      "modeLabel": "Mode",
+      "syncTitle": "Sync",
+      "syncDescription": "Apply immediately. Up to {limit} rows per request.",
+      "asyncTitle": "Async (background job)",
+      "asyncDescription": "Queue a worker. Up to {limit} rows; poll the progress card.",
+      "asyncProRequired": "Async jobs require a Pro plan or higher.",
+      "submit": "Import",
+      "submitting": "Importing…",
+      "cancel": "Cancel",
+      "syncCompleted": "Imported {count} rows",
+      "asyncEnqueued": "Bulk job enqueued",
+      "errorGeneric": "Could not start the import. Please retry.",
+      "errorReadFile": "Could not read the selected file."
+    },
+    "jobProgress": {
+      "status": {
+        "queued": "Queued — waiting for worker",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "progressSummary": "{processed} of {total} rows processed",
+      "rollup": {
+        "added": "Added",
+        "reused": "Reused",
+        "modified": "Modified",
+        "skipped": "Skipped",
+        "errors": "Errors"
+      },
+      "cancel": "Cancel job",
+      "cancelling": "Cancelling…",
+      "cancelled": "Job cancelled",
+      "dismiss": "Dismiss",
+      "loading": "Loading job…",
+      "fetchFailed": "Could not load job state. Will retry.",
+      "notFound": "Bulk job not found."
     },
     "dialog": {
       "createTitle": "Add vocabulary term",

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
 import {
   Badge,
   Breadcrumbs,
@@ -17,9 +16,13 @@ import {
   toast,
   type DataTableColumn,
 } from '@/components/ui';
-import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
+import { BulkJobProgress } from './bulk-job-progress';
+import { BulkUploadDialog } from './bulk-upload-dialog';
 import { KIND_OPTIONS, KNOWN_ERROR_CODES, type Kind } from './constants';
+import { DowngradeBanner, ProGate } from './pro-gate';
 import { VocabularyDialog, type VocabularyDialogValues } from './vocabulary-dialog';
+
+const STARTER_PLAN = 'starter';
 
 type KindKey = `kinds.${Kind}`;
 type ErrorKey = `errors.${
@@ -55,6 +58,12 @@ export interface VocabularyQuota {
   maxTerms: number;
   bulkAsync: boolean;
   allowed: boolean;
+  /** Current plan after trial-expiry resolution. */
+  plan: string;
+  /** True when this request crossed the trial→free boundary. */
+  downgraded: boolean;
+  /** ISO timestamp when the trial ends/ended; null when never on trial. */
+  trialEndsAt: string | null;
 }
 
 interface VocabulariesContentProps {
@@ -148,6 +157,9 @@ export function VocabulariesContent({
   const [editing, setEditing] = useState<SerializableTermLink | null>(null);
   const [deleting, setDeleting] = useState<SerializableTermLink | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
   // Refetch the list whenever a server-side filter changes. Client-side
   // search (`query`) stays local so the UX feels instant.
@@ -308,8 +320,9 @@ export function VocabulariesContent({
     }
   }, [deleting, errorMessage, refetch, t]);
 
-  // Pro-gate. We render an inline upgrade card rather than the full
-  // page so users can still see the breadcrumb + sidebar context.
+  // Pro-gate. Full lock-screen carries the upgrade CTA + a downgrade
+  // narrative when applicable so the user can tell why the page is
+  // suddenly gated. Trial→free is the common case worth narrating.
   if (!quota.allowed) {
     return (
       <div>
@@ -320,27 +333,15 @@ export function VocabulariesContent({
             { label: tNav('domainVocabularies') },
           ]}
         />
-        <EmptyState
-          title={t('needsUpgrade.title')}
-          description={t('needsUpgrade.description')}
-          action={
-            CLIENT_CAPABILITIES.billing ? (
-              <Link
-                href="/billing"
-                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-fg shadow-sm hover:bg-primary-hover"
-              >
-                {t('needsUpgrade.upgrade')}
-              </Link>
-            ) : (
-              <span className="inline-flex items-center rounded-md bg-bg-subtle px-4 py-2 text-sm font-medium text-fg-muted">
-                {t('needsUpgrade.contactAdmin')}
-              </span>
-            )
-          }
+        <ProGate
+          trialExpired={quota.downgraded}
+          trialEndsAt={quota.trialEndsAt}
         />
       </div>
     );
   }
+
+  const isStarterPlan = quota.plan === STARTER_PLAN;
 
   const columns: DataTableColumn<SerializableTermLink>[] = [
     {
@@ -442,23 +443,51 @@ export function VocabulariesContent({
         ]}
       />
 
+      <DowngradeBanner
+        starterPlan={isStarterPlan}
+        trialExpired={quota.downgraded}
+        trialEndsAt={quota.trialEndsAt}
+      />
+
       <PageHeader
         title={t('title')}
         subtitle={t('subtitle')}
         action={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setDialogOpen(true);
-            }}
-            disabled={atLimit}
-            aria-disabled={atLimit}
-            title={atLimit ? t('quota.atLimit') : undefined}
-          >
-            {t('newTerm')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setBulkOpen(true)}
+              disabled={atLimit}
+              title={atLimit ? t('quota.atLimit') : undefined}
+            >
+              {t('bulkUpload')}
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setDialogOpen(true);
+              }}
+              disabled={atLimit}
+              aria-disabled={atLimit}
+              title={atLimit ? t('quota.atLimit') : undefined}
+            >
+              {t('newTerm')}
+            </Button>
+          </div>
         }
       />
+
+      {activeJobId ? (
+        <div className="mt-4">
+          <BulkJobProgress
+            jobId={activeJobId}
+            onClear={() => setActiveJobId(null)}
+            onTerminal={() => {
+              void refetch();
+            }}
+          />
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <StatCard
@@ -562,6 +591,13 @@ export function VocabulariesContent({
         }}
         onSave={handleSave}
         isSaving={busy}
+      />
+
+      <BulkUploadDialog
+        isOpen={bulkOpen}
+        bulkAsyncAllowed={quota.bulkAsync}
+        onClose={() => setBulkOpen(false)}
+        onEnqueued={(jobId) => setActiveJobId(jobId)}
       />
 
       <ConfirmDialog

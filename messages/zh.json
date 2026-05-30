@@ -2210,8 +2210,78 @@
     "needsUpgrade": {
       "title": "领域词汇是 Pro 计划功能",
       "description": "升级到 Pro 即可管理自己的结构体 / 字段 / 函数 / 枚举值词表。",
+      "trialEndedTitle": "Pro 试用已结束",
+      "trialEndedDescription": "试用于 {date} 结束。请升级以继续使用领域词汇功能。",
+      "featureCatalog": "按语言管理结构体、字段、函数、枚举值",
+      "featureBulk": "批量导入,单次任务最多 10,000 行",
+      "featureSnapshots": "为每个策略版本固定快照,支持一键回滚",
       "upgrade": "升级计划",
       "contactAdmin": "请联系管理员升级计划"
+    },
+    "downgrade": {
+      "starterTitle": "异步批量上传是 Pro 计划功能",
+      "starterDescription": "Starter 计划支持同步批量上传,每次最多 500 行。升级到 Pro 可使用最多 10,000 行的异步任务。",
+      "trialEndedTitle": "Pro 试用已结束",
+      "trialEndedDescription": "试用于 {date} 结束,部分 Pro 功能已变为只读。",
+      "cta": "升级"
+    },
+    "bulk": {
+      "title": "批量导入词汇",
+      "description": "粘贴 CSV(带表头)或 JSON 数组。CSV 中的别名用竖线分隔(如 amount|amt),JSON 中用数组。",
+      "chooseFile": "选择文件",
+      "orPaste": "或在下方粘贴",
+      "rawLabel": "粘贴 CSV 或 JSON",
+      "placeholder": "domain,locale,kind,canonical,localized,parentCanonical\\nfinance,zh,struct,Loan,贷款,,",
+      "previewTitle": "预览(共 {total} 行,显示 {shown} 行)",
+      "rowsValid": "同步最多 {syncLimit} 行;异步最多 {asyncLimit} 行",
+      "tooManySync": "已超出同步 {syncLimit} 行,请切换到异步",
+      "tooManyAsync": "已超出异步 {asyncLimit} 行上限",
+      "parseErrorsTitle": "部分行解析失败",
+      "moreErrors": "还有 {n} 条",
+      "col": {
+        "kind": "类型",
+        "canonical": "标准名",
+        "localized": "本地化",
+        "domain": "领域",
+        "locale": "语言"
+      },
+      "modeLabel": "模式",
+      "syncTitle": "同步",
+      "syncDescription": "立即应用,每次最多 {limit} 行。",
+      "asyncTitle": "异步(后台任务)",
+      "asyncDescription": "排队执行,最多 {limit} 行,通过进度卡片查看状态。",
+      "asyncProRequired": "异步任务需要 Pro 及以上计划。",
+      "submit": "开始导入",
+      "submitting": "导入中…",
+      "cancel": "取消",
+      "syncCompleted": "已导入 {count} 行",
+      "asyncEnqueued": "批量任务已入队",
+      "errorGeneric": "无法开始导入,请重试。",
+      "errorReadFile": "无法读取所选文件。"
+    },
+    "jobProgress": {
+      "status": {
+        "queued": "排队中 — 等待 worker",
+        "running": "执行中",
+        "completed": "已完成",
+        "failed": "失败",
+        "cancelled": "已取消"
+      },
+      "progressSummary": "已处理 {processed} / {total} 行",
+      "rollup": {
+        "added": "新增",
+        "reused": "复用",
+        "modified": "修改",
+        "skipped": "跳过",
+        "errors": "错误"
+      },
+      "cancel": "取消任务",
+      "cancelling": "取消中…",
+      "cancelled": "任务已取消",
+      "dismiss": "关闭",
+      "loading": "加载任务中…",
+      "fetchFailed": "无法获取任务状态,稍后重试。",
+      "notFound": "未找到该批量任务。"
     },
     "dialog": {
       "createTitle": "新增词条",
