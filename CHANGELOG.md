@@ -184,6 +184,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Mark Turnstile backend implemented (R31-4) *(adr-0012)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -248,6 +249,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- 500 on /domain-vocabularies due to missing prod schema *(vocab)*
 - 404 on /settings/profile prefetch from AI usage card *(dashboard)*
 - Final audit polish — rich removed-bucket + hook ergonomics *(vocab)*
 - F4-F6 audit blockers *(vocab)*
