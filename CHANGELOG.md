@@ -6,6 +6,11 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Retention cron, observability, SSE, golden+chaos tests (B13+B14+B15) *(lexicon)*
+- Bulk sync/async + snapshot/rollback (B10+B11+B12) *(lexicon)*
+- Vocab service core, idempotency middleware, CRUD APIs (B7+B8+B9) *(lexicon)*
+- Idempotency + bulk_jobs tables and Pro-gate (B5+B6) *(lexicon)*
+- Add user-managed domain vocabulary tables (B1+B2) *(schema)*
 - Rule prevents cross-table orderBy in Drizzle relational queries *(eslint)*
 - Forward Turnstile token + ADR-0013 east-west TCP (R31) *(playground-bff)*
 - Healthchecks heartbeats + SaaS/AI Grafana dashboards *(observability)*
@@ -173,6 +178,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Mark Turnstile backend implemented (R31-4) *(adr-0012)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -237,6 +243,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Production bugs caught by local Postgres validation *(lexicon)*
 - GET ordering by outer-table column → 500 (HOTFIX) *(api/teams)*
 - R32 P0 — WCAG contrast + dropdown aria (P0×3) *(a11y)*
 - AI panel label + code-block tokens (P1+P2-R30+) *(a11y+theme)*
