@@ -61,7 +61,7 @@ export function PricingContent({
     track(Events.PRICING_TIER_SELECTED, { tier, interval, currency });
     if (tier === 'enterprise') {
       track(Events.PRICING_CONTACT_CLICKED, { source: 'pricing' });
-      window.location.href = 'mailto:enterprise@aster-lang.dev?subject=Enterprise%20inquiry';
+      window.location.href = 'mailto:sales@aster-lang.cloud?subject=Enterprise%20inquiry';
       return;
     }
     if (tier === 'pro') {
