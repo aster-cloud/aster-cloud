@@ -1,7 +1,7 @@
 'use client';
 
 import { BookOpen, Lock, Sparkles, Zap } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Card, CardBody } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
@@ -23,6 +23,7 @@ interface ProGateProps {
  */
 export function ProGate({ trialExpired, trialEndsAt }: ProGateProps) {
   const t = useTranslations('domainVocabularies.needsUpgrade');
+  const locale = useLocale();
 
   const features = [
     { icon: BookOpen, key: 'featureCatalog' as const },
@@ -32,7 +33,7 @@ export function ProGate({ trialExpired, trialEndsAt }: ProGateProps) {
 
   const formattedTrialEnd =
     trialEndsAt !== null
-      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(
+      ? new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(
           new Date(trialEndsAt),
         )
       : '';
@@ -103,12 +104,13 @@ export function DowngradeBanner({
   trialEndsAt,
 }: DowngradeBannerProps) {
   const t = useTranslations('domainVocabularies.downgrade');
+  const locale = useLocale();
 
   if (!starterPlan && !trialExpired) return null;
 
   const formattedTrialEnd =
     trialEndsAt !== null
-      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(
+      ? new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(
           new Date(trialEndsAt),
         )
       : '';

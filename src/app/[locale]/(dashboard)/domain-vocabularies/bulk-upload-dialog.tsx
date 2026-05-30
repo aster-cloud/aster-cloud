@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AlertCircle, FileText, Upload, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -12,6 +12,7 @@ import {
   toast,
 } from '@/components/ui';
 import { KIND_OPTIONS, type Kind } from './constants';
+import { useFocusTrap } from './use-focus-trap';
 
 interface BulkUploadDialogProps {
   isOpen: boolean;
@@ -45,9 +46,7 @@ interface ParseOutcome {
 
 const SYNC_LIMIT = 500;
 const ASYNC_LIMIT = 10_000;
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const PREVIEW_ROWS = 20;
 
 /**
  * Multi-row upload dialog.
@@ -73,6 +72,9 @@ export function BulkUploadDialog({
   const [mode, setMode] = useState<'sync' | 'async'>('sync');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  // The idempotency key is fixed per dialog session so a double-click /
+  // network retry collapses to one job rather than creating duplicates.
+  const idempotencyKeyRef = useRef<string>('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -80,41 +82,22 @@ export function BulkUploadDialog({
     setMode('sync');
     setSubmitError('');
     setSubmitting(false);
+    idempotencyKeyRef.current = crypto.randomUUID();
+    // Drop focus into the file picker button after first paint so a
+    // keyboard user can immediately Tab into the textarea.
+    const id = window.requestAnimationFrame(() => {
+      fileInputRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
   }, [isOpen]);
 
-  // ESC + Tab trap. Mirrors VocabularyDialog so a11y stays consistent.
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) {
-        onClose();
-        return;
-      }
-      if (e.key !== 'Tab' || !formRef.current) return;
-      const focusable = formRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isOpen, submitting, onClose]);
+  const onEscape = useCallback(() => {
+    if (!submitting) onClose();
+  }, [submitting, onClose]);
+  useFocusTrap(formRef, isOpen, onEscape);
 
   const outcome = useMemo<ParseOutcome>(() => parseInput(raw), [raw]);
-  const preview = outcome.rows.slice(0, 20);
+  const preview = outcome.rows.slice(0, PREVIEW_ROWS);
   const totalRows = outcome.rows.length;
   const overSync = totalRows > SYNC_LIMIT;
   const overAsync = totalRows > ASYNC_LIMIT;
@@ -147,7 +130,7 @@ export function BulkUploadDialog({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': crypto.randomUUID(),
+          'Idempotency-Key': idempotencyKeyRef.current,
         },
         credentials: 'same-origin',
         body: JSON.stringify({ terms: outcome.rows }),
@@ -475,17 +458,25 @@ function parseJson(text: string): ParseOutcome {
 
 function parseCsv(text: string): ParseOutcome {
   const errors: ParseFinding[] = [];
-  const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
-  if (lines.length < 2) {
+  // Single-pass tokenizer. Emits rows on unquoted '\n' only, so quoted
+  // multi-line cells (`"foo\nbar"`) survive intact — the naive
+  // text.split('\n') approach loses them, which the previous reviewer
+  // flagged as a data-loss bug.
+  const allRows = tokenizeCsv(text);
+  // Drop trailing fully-empty rows (common after a final newline).
+  while (allRows.length > 0 && allRows[allRows.length - 1].every((c) => c === '')) {
+    allRows.pop();
+  }
+  if (allRows.length < 2) {
     return {
       rows: [],
       errors: [{ row: 0, message: 'CSV needs a header row and at least one row' }],
     };
   }
-  const header = splitCsvLine(lines[0]).map((h) => h.trim());
+  const header = allRows[0].map((h) => h.trim());
   const rows: ParsedRow[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cells = splitCsvLine(lines[i]);
+  for (let i = 1; i < allRows.length; i++) {
+    const cells = allRows[i];
     if (cells.length !== header.length) {
       errors.push({
         row: i + 1,
@@ -514,16 +505,23 @@ function parseCsv(text: string): ParseOutcome {
   return { rows, errors };
 }
 
-/** Minimal CSV splitter — supports quoted strings + escaped quotes. */
-function splitCsvLine(line: string): string[] {
-  const out: string[] = [];
+/**
+ * Tokenize a CSV blob into rows of cells.
+ *
+ * Quoted cells survive embedded newlines (RFC-4180-ish); `""` inside a
+ * quoted cell is the escape for a literal quote. Carriage returns are
+ * silently dropped so CRLF and LF inputs parse identically.
+ */
+function tokenizeCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let cells: string[] = [];
   let current = '';
   let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
     if (inQuotes) {
       if (c === '"') {
-        if (line[i + 1] === '"') {
+        if (text[i + 1] === '"') {
           current += '"';
           i++;
         } else {
@@ -532,19 +530,28 @@ function splitCsvLine(line: string): string[] {
       } else {
         current += c;
       }
-    } else {
-      if (c === ',') {
-        out.push(current);
-        current = '';
-      } else if (c === '"') {
-        inQuotes = true;
-      } else {
-        current += c;
-      }
+      continue;
+    }
+    if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      cells.push(current);
+      current = '';
+    } else if (c === '\n') {
+      cells.push(current);
+      rows.push(cells);
+      cells = [];
+      current = '';
+    } else if (c !== '\r') {
+      current += c;
     }
   }
-  out.push(current);
-  return out;
+  // Flush trailing cell + row (no trailing newline).
+  if (current.length > 0 || cells.length > 0) {
+    cells.push(current);
+    rows.push(cells);
+  }
+  return rows;
 }
 
 type CoerceResult = { row: ParsedRow } | { error: string };
