@@ -119,6 +119,7 @@ export async function GET(req: Request) {
       domain: url.searchParams.get('domain') ?? undefined,
       locale: url.searchParams.get('locale') ?? undefined,
       kind: url.searchParams.get('kind') ?? undefined,
+      q: url.searchParams.get('q') ?? undefined,
       includeDeleted,
       page: parsePositiveInt(url.searchParams.get('page'), 1),
       pageSize: parsePositiveInt(url.searchParams.get('pageSize'), 50),

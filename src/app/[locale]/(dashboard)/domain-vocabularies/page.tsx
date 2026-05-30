@@ -2,32 +2,47 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { listUserVocabularyTerms, type TermLink } from '@/lib/domain-vocabulary';
 import { getLexiconQuotaWithContext } from '@/lib/usage';
+import {
+  buildListUrl,
+  clampPage,
+  parseListUrlState,
+  type ListUrlOptions,
+} from '@/lib/list-search-params';
 import { VocabulariesContent, type SerializableTermLink } from './vocabularies-content';
+
+const VOCAB_URL_OPTS: ListUrlOptions = {
+  defaultPageSize: 50,
+  allowedPageSizes: [25, 50, 100],
+  filterKeys: ['domain', 'locale', 'kind'],
+};
 
 /**
  * /domain-vocabularies — server shell.
  *
- * Resolves session + plan quota + first page of the user's active links
- * and forwards them to the client. The Pro-gate banner lives in the
- * client component so it can react to plan upgrades without a full
- * round-trip; this page only chooses whether to fetch a real list or
- * fall back to an empty payload + needsUpgrade=true.
+ * Resolves session + plan quota + the requested page of the user's
+ * active links and forwards them to the client. Pagination is
+ * URL-canonical: the page reads `searchParams` and never holds page
+ * state in the client component. Filter/search changes route through
+ * the same URL helper so a stale `?page=2` doesn't survive a filter
+ * narrowing.
  */
-export default async function DomainVocabulariesPage() {
+export default async function DomainVocabulariesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getSession();
   if (!session?.user?.id) {
     redirect('/login');
   }
 
   const userId = session.user.id;
+  const params = await searchParams;
+  const urlState = parseListUrlState(params, VOCAB_URL_OPTS);
 
   // ensureSchemaApplied() in the dashboard layout self-heals the vocab
-  // tables on cold start, but if that single bootstrap call lost a race
-  // or the Worker isolate skipped it (e.g. the layout's promise was
-  // already resolved but pointing at a partial schema), the service
-  // queries below would 42P01. Treat any service failure as "no vocab
-  // yet" so the page renders the empty/Pro-gate state instead of a
-  // production 500.
+  // tables on cold start, but treat any service failure as "no vocab"
+  // so the page renders the empty/Pro-gate state instead of a 500.
   let ctx: Awaited<ReturnType<typeof getLexiconQuotaWithContext>>;
   try {
     ctx = await getLexiconQuotaWithContext(userId);
@@ -46,20 +61,47 @@ export default async function DomainVocabulariesPage() {
   let initialTerms: SerializableTermLink[] = [];
   let total = 0;
   let archivedCount = 0;
+  let resolvedPage = urlState.page;
 
   if (ctx.allowed) {
     try {
       const result = await listUserVocabularyTerms(userId, {
-        page: 1,
-        pageSize: 50,
+        page: urlState.page,
+        pageSize: urlState.pageSize,
+        domain: urlState.filters.domain,
+        locale: urlState.filters.locale,
+        kind: urlState.filters.kind,
+        q: urlState.q,
       });
       initialTerms = result.items.map(serialize);
       total = result.total;
       archivedCount = result.archivedCount;
+      resolvedPage = result.page;
     } catch (err) {
       console.error('[domain-vocabularies page] list failed', err);
-      // Fall through with empty list; the client will show the empty
-      // state with the breadcrumb + Add-term affordance intact.
+    }
+  }
+
+  // Out-of-range guard: when the URL points past the end of the data
+  // (e.g. a stale shared link), redirect to the canonical last page so
+  // the user sees rows instead of an empty pager. The redirect call
+  // throws, so it MUST live outside any catch block — placing it here,
+  // after the try/catch, satisfies that contract.
+  if (ctx.allowed && total > 0) {
+    const { clamped, totalPages } = clampPage(
+      urlState.page,
+      total,
+      urlState.pageSize,
+    );
+    if (clamped !== urlState.page && totalPages >= 1) {
+      redirect(
+        buildListUrl(
+          '/domain-vocabularies',
+          urlState,
+          { page: clamped, resetPage: false },
+          VOCAB_URL_OPTS,
+        ),
+      );
     }
   }
 
@@ -68,6 +110,14 @@ export default async function DomainVocabulariesPage() {
       initialTerms={initialTerms}
       initialTotal={total}
       initialArchivedCount={archivedCount}
+      initialPage={resolvedPage}
+      initialPageSize={urlState.pageSize}
+      initialFilters={{
+        domain: urlState.filters.domain ?? '',
+        locale: urlState.filters.locale ?? '',
+        kind: urlState.filters.kind ?? '',
+      }}
+      initialQuery={urlState.q ?? ''}
       quota={{
         maxTerms: ctx.maxTerms,
         bulkAsync: ctx.bulkAsync,

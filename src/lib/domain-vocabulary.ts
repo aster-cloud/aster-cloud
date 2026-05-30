@@ -16,6 +16,7 @@ import {
   eq,
   isNotNull,
   isNull,
+  or,
   sql,
   type SQL,
 } from 'drizzle-orm';
@@ -26,6 +27,7 @@ import {
   userDomainTerms,
   type DomainTerm,
 } from '@/lib/prisma';
+import { escapeLikePattern } from '@/lib/sql-escape';
 import { logAuditEvent } from '@/lib/audit-log';
 import { publishVocabularyInvalidate } from '@/lib/domain-vocabulary-events';
 import {
@@ -153,6 +155,12 @@ export interface ListOptions {
   includeDeleted?: boolean;
   page?: number;
   pageSize?: number;
+  /**
+   * Free-text search across canonical, localized, and parentCanonical.
+   * Matched case-insensitively as an ILIKE %q% pattern. Empty/whitespace
+   * strings are ignored.
+   */
+  q?: string;
 }
 
 export class VocabularyError extends Error {
@@ -385,8 +393,33 @@ export async function listUserVocabularyTerms(
   if (opts.domain) conditions.push(eq(userDomainTerms.domain, opts.domain));
   if (opts.locale) conditions.push(eq(userDomainTerms.locale, opts.locale));
   if (opts.kind) conditions.push(eq(userDomainTerms.kind, opts.kind));
+  const trimmedQ = opts.q?.trim();
+  if (trimmedQ) {
+    // ILIKE is plenty for typical user vocab sizes (≤ 25k rows). If we
+    // ever ship to plans with hundreds of thousands of terms, swap to a
+    // trigram or full-text index in a follow-up — the join + small
+    // pageSize keeps this fast today.
+    const pattern = `%${escapeLikePattern(trimmedQ)}%`;
+    const search = or(
+      sql`${domainTerms.canonical} ILIKE ${pattern}`,
+      sql`${domainTerms.localized} ILIKE ${pattern}`,
+      sql`${domainTerms.parentCanonical} ILIKE ${pattern}`,
+    );
+    if (search) conditions.push(search);
+  }
 
   const predicate = and(...conditions);
+
+  // The count query has to share the same join as the list when the
+  // predicate references DomainTerm columns (e.g. via q). Without the
+  // join, Postgres raises 42P01 "missing FROM-clause entry for table
+  // DomainTerm". We always join here so the predicate stays free to
+  // reference either table without per-call branching.
+  const totalsQuery = db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(userDomainTerms)
+    .innerJoin(domainTerms, eq(userDomainTerms.termId, domainTerms.id))
+    .where(predicate);
 
   const [rows, totals, archivedRow] = await Promise.all([
     db
@@ -397,10 +430,7 @@ export async function listUserVocabularyTerms(
       .orderBy(desc(userDomainTerms.createdAt), asc(userDomainTerms.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(userDomainTerms)
-      .where(predicate),
+    totalsQuery,
     // Surface the archived count so the UI can render "your vocab was
     // archived under the 90-day retention; upgrade to restore" without a
     // second roundtrip. Archived rows are owner-scoped, not predicate-scoped,

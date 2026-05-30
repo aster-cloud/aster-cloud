@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 import { Archive } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
+import { usePathname, useRouter } from '@/i18n/navigation';
 import {
   Badge,
   Breadcrumbs,
@@ -12,9 +13,11 @@ import {
   EmptyState,
   ListSearchInput,
   PageHeader,
+  Pagination,
   toast,
   type DataTableColumn,
 } from '@/components/ui';
+import { buildListUrl, type ListUrlOptions } from '@/lib/list-search-params';
 import { SnapshotDiffPanel } from './snapshot-diff-panel';
 
 export interface SerializableSnapshot {
@@ -31,11 +34,23 @@ export interface SerializableSnapshot {
 
 interface SnapshotsContentProps {
   initialSnapshots: SerializableSnapshot[];
+  initialTotal: number;
+  initialPage: number;
+  initialPageSize: number;
+  initialQuery: string;
 }
 
 interface ErrorEnvelope {
   error?: { code?: string; message?: string };
 }
+
+const SNAPSHOTS_URL_OPTS: ListUrlOptions = {
+  defaultPageSize: 25,
+  allowedPageSizes: [25, 50, 100],
+  filterKeys: [],
+};
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Snapshots browser: list (F7) + rollback confirm (F8).
@@ -44,49 +59,92 @@ interface ErrorEnvelope {
  * /api/v1/domain-vocabularies/snapshots/[id] for the resolved terms +
  * set-comparison. The rollback button moves through a single
  * confirmation step before calling POST /rollback.
+ *
+ * URL state (page, pageSize, q) is owned by the server component;
+ * any mutation here routes through router.refresh() so the page-side
+ * service queries re-run and the new state appears in the SSR payload
+ * before React commits.
  */
-export function SnapshotsContent({ initialSnapshots }: SnapshotsContentProps) {
+export function SnapshotsContent({
+  initialSnapshots,
+  initialTotal,
+  initialPage,
+  initialPageSize,
+  initialQuery,
+}: SnapshotsContentProps) {
   const t = useTranslations('domainVocabularies.snapshotsView');
   const tNav = useTranslations('dashboardNav');
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
 
-  const [snapshots, setSnapshots] = useState<SerializableSnapshot[]>(initialSnapshots);
-  const [query, setQuery] = useState('');
+  const [searchInput, setSearchInput] = useState<string>(initialQuery);
   const [selected, setSelected] = useState<SerializableSnapshot | null>(null);
   const [rollbackTarget, setRollbackTarget] = useState<SerializableSnapshot | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
+
+  const currentUrlState = useMemo(
+    () => ({
+      page: initialPage,
+      pageSize: initialPageSize,
+      q: initialQuery || undefined,
+      filters: {},
+    }),
+    [initialPage, initialPageSize, initialQuery],
+  );
+
+  const navigate = useCallback(
+    (patch: Parameters<typeof buildListUrl>[2]) => {
+      const next = buildListUrl(pathname, currentUrlState, patch, SNAPSHOTS_URL_OPTS);
+      startTransition(() => {
+        router.replace(next);
+      });
+    },
+    [pathname, currentUrlState, router],
+  );
+
+  const debouncedSearchTimer = useMemo(
+    () => ({ current: null as ReturnType<typeof setTimeout> | null }),
+    [],
+  );
+  const handleSearchChange = useCallback(
+    (next: string) => {
+      setSearchInput(next);
+      if (debouncedSearchTimer.current) clearTimeout(debouncedSearchTimer.current);
+      debouncedSearchTimer.current = setTimeout(() => {
+        navigate({ q: next });
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [debouncedSearchTimer, navigate],
+  );
+
+  const refreshRsc = useCallback(() => {
+    startTransition(() => {
+      router.refresh();
+    });
+  }, [router]);
 
   const dateFormatter = useMemo(
     () => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }),
     [locale],
   );
 
+  // The server returns the page's slice; we still let the user filter
+  // locally on the current page by content-hash / domain / locale —
+  // useful when they're scanning the page they're on. Cross-page hash
+  // search would need to move into the server query; not in scope for
+  // v1 since snapshots are typically few.
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return snapshots;
-    return snapshots.filter(
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return initialSnapshots;
+    return initialSnapshots.filter(
       (s) =>
         s.domain.toLowerCase().includes(q) ||
         s.locale.toLowerCase().includes(q) ||
         s.contentHash.toLowerCase().includes(q),
     );
-  }, [snapshots, query]);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch('/api/v1/domain-vocabularies/snapshots', {
-        credentials: 'same-origin',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as {
-        snapshots: Array<Omit<SerializableSnapshot, 'createdAt'> & { createdAt: string }>;
-      };
-      setSnapshots(data.snapshots);
-    } catch (err) {
-      console.error('[snapshots] refresh failed', err);
-      toast.error(t('refreshFailed'));
-    }
-  }, [t]);
+  }, [initialSnapshots, searchInput]);
 
   const handleRollback = useCallback(async () => {
     if (!rollbackTarget) return;
@@ -118,13 +176,13 @@ export function SnapshotsContent({ initialSnapshots }: SnapshotsContentProps) {
       );
       setRollbackTarget(null);
       setSelected(null);
-      await refresh();
+      refreshRsc();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('rollbackFailed'));
     } finally {
       setRollingBack(false);
     }
-  }, [rollbackTarget, refresh, t]);
+  }, [rollbackTarget, refreshRsc, t]);
 
   const columns: DataTableColumn<SerializableSnapshot>[] = [
     {
@@ -229,11 +287,11 @@ export function SnapshotsContent({ initialSnapshots }: SnapshotsContentProps) {
 
       <PageHeader title={t('title')} subtitle={t('subtitle')} />
 
-      {snapshots.length > 0 ? (
+      {initialTotal > 0 ? (
         <div className="mt-6">
           <ListSearchInput
-            value={query}
-            onChange={setQuery}
+            value={searchInput}
+            onChange={handleSearchChange}
             placeholder={t('searchPlaceholder')}
           />
         </div>
@@ -253,6 +311,22 @@ export function SnapshotsContent({ initialSnapshots }: SnapshotsContentProps) {
           }
         />
       </div>
+
+      <Pagination
+        page={initialPage}
+        pageSize={initialPageSize}
+        total={initialTotal}
+        pageSizeOptions={[...SNAPSHOTS_URL_OPTS.allowedPageSizes]}
+        buildHref={({ page, pageSize }) =>
+          buildListUrl(
+            pathname,
+            currentUrlState,
+            { page, pageSize, resetPage: false },
+            SNAPSHOTS_URL_OPTS,
+          )
+        }
+        onPageSizeChange={(next) => navigate({ pageSize: next })}
+      />
 
       {selected ? (
         <SnapshotDiffPanel

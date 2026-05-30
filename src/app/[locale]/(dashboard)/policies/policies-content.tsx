@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, useTransition } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { formatDate } from '@/lib/format';
 import { PolicyGroupTree, PolicyGroup } from '@/components/policy/policy-group-tree';
 import { PolicyGroupDialog } from '@/components/policy/policy-group-dialog';
 import { SharedWithMeSection } from '@/components/policy/shared-with-me-section';
-import { ConfirmDialog } from '@/components/ui';
+import { ConfirmDialog, Pagination, toast } from '@/components/ui';
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { ErrorState } from '@/components/feedback/error-state';
+import { buildListUrl, type ListUrlOptions } from '@/lib/list-search-params';
 import {
   Folder,
   GripVertical,
@@ -30,6 +32,14 @@ import {
   buttonVariants,
   cn,
 } from '@/components/ui';
+
+const POLICIES_URL_OPTS: ListUrlOptions = {
+  defaultPageSize: 25,
+  allowedPageSizes: [25, 50, 100],
+  filterKeys: ['group'],
+};
+
+const SEARCH_DEBOUNCE_MS = 300;
 import {
   DndContext,
   DragOverlay,
@@ -361,6 +371,13 @@ interface PoliciesContentProps {
   freezeInfo: FreezeInfo;
   translations: Translations;
   locale: string;
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    selectedGroupId: string | null;
+    query: string;
+  };
 }
 
 export function PoliciesContent({
@@ -369,6 +386,7 @@ export function PoliciesContent({
   freezeInfo: initialFreezeInfo,
   translations: t,
   locale,
+  pagination,
 }: PoliciesContentProps) {
   // 延迟挂载 DndContext，避免 @dnd-kit aria 属性导致的 hydration mismatch (#418)
   const [mounted, setMounted] = useState(false);
@@ -378,8 +396,61 @@ export function PoliciesContent({
   const [groups, setGroups] = useState<PolicyGroup[]>(initialGroups);
   const [freezeInfo, setFreezeInfo] = useState<FreezeInfo>(initialFreezeInfo);
   const [error, setError] = useState('');
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
+  // Selected group + query are driven by URL state. We mirror the
+  // current URL into local state for keystroke-responsive search; the
+  // mirror is reconciled on every props update so the back/forward
+  // button stays in sync.
+  const selectedGroupId = pagination.selectedGroupId;
+  const [searchInput, setSearchInput] = useState(pagination.query);
+  useEffect(() => {
+    setSearchInput(pagination.query);
+  }, [pagination.query]);
+
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
+  const currentUrlState = useMemo(() => {
+    const filters: Record<string, string> = {};
+    if (pagination.selectedGroupId) filters.group = pagination.selectedGroupId;
+    return {
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      q: pagination.query || undefined,
+      filters,
+    };
+  }, [pagination]);
+  const navigate = useCallback(
+    (patch: Parameters<typeof buildListUrl>[2]) => {
+      const next = buildListUrl(pathname, currentUrlState, patch, POLICIES_URL_OPTS);
+      startTransition(() => {
+        router.replace(next, { scroll: false });
+      });
+    },
+    [pathname, currentUrlState, router],
+  );
+
+  // Sync the keystroke buffer back to the URL on a debounce so the
+  // server-side q filter catches up without re-running on every press.
+  const debouncedSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = useCallback(
+    (next: string) => {
+      setSearchInput(next);
+      if (debouncedSearchTimer.current) clearTimeout(debouncedSearchTimer.current);
+      debouncedSearchTimer.current = setTimeout(() => {
+        navigate({ q: next });
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [navigate],
+  );
+  // Convenience helper used where the previous code wrote selectedGroupId
+  // directly. Routing through navigate() keeps the URL canonical and the
+  // auto-reset rules from list-search-params in play.
+  const setSelectedGroupIdNav = useCallback(
+    (next: string | null) => {
+      navigate({ filters: { group: next ?? undefined } });
+    },
+    [navigate],
+  );
   const tCommon = useTranslations('common');
   // Hook-based i18n for keys added in PR-E (replaces inline
   // `locale.startsWith('zh') ? '中文' : 'English'` ternaries).
@@ -397,6 +468,28 @@ export function PoliciesContent({
   // 多选状态
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+
+  // When the user pages or changes the group/q filter, the rows on
+  // screen change and the previous selection set has no anchor anymore.
+  // Cross-page persistence is deferred (see plan.md PR-4 risk note).
+  // Clear the selection on every pagination-key change and tell the
+  // user so they don't wonder why their selection vanished.
+  const tPolicies = useTranslations('policies');
+  const paginationKey = `${pagination.page}-${pagination.pageSize}-${pagination.selectedGroupId ?? ''}-${pagination.query}`;
+  const previousPaginationKeyRef = useRef(paginationKey);
+  useEffect(() => {
+    if (previousPaginationKeyRef.current === paginationKey) return;
+    previousPaginationKeyRef.current = paginationKey;
+    if (selectedPolicyIds.size > 0) {
+      setSelectedPolicyIds(new Set());
+      toast.info(tPolicies('multiSelectClearedOnPaging'));
+    }
+    // selectedPolicyIds intentionally omitted: we only want to fire the
+    // clear *because* paginationKey changed, not because the user
+    // toggled a single selection. The fresh read above is fine since
+    // we only branch on its truthiness.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginationKey, tPolicies]);
 
   // 删除确认对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -435,53 +528,10 @@ export function PoliciesContent({
     setSelectedPolicyIds(new Set());
   }, []);
 
-  // 筛选后的策略列表
-  const filteredPolicies = useMemo(() => {
-    if (selectedGroupId === null) {
-      return policies;
-    }
-    if (selectedGroupId === 'ungrouped') {
-      return policies.filter((p) => !p.groupId);
-    }
-    // 递归获取子分组的所有ID
-    const getDescendantIds = (group: PolicyGroup): string[] => {
-      const ids = [group.id];
-      if (group.children) {
-        for (const child of group.children) {
-          ids.push(...getDescendantIds(child));
-        }
-      }
-      return ids;
-    };
-
-    const findGroup = (groups: PolicyGroup[], id: string): PolicyGroup | null => {
-      for (const group of groups) {
-        if (group.id === id) return group;
-        if (group.children) {
-          const found = findGroup(group.children, id);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const targetGroup = findGroup(groups, selectedGroupId);
-    if (!targetGroup) return policies.filter((p) => p.groupId === selectedGroupId);
-
-    const groupIds = new Set(getDescendantIds(targetGroup));
-    return policies.filter((p) => p.groupId && groupIds.has(p.groupId));
-  }, [policies, groups, selectedGroupId]);
-
-  // Layer name/description text search on top of the group-tree filter.
-  // Both filters compose: pick a group AND match a query.
-  const visiblePolicies = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return filteredPolicies;
-    return filteredPolicies.filter((p) => {
-      const hay = [p.name, p.description ?? ''].join(' ').toLowerCase();
-      return hay.includes(q);
-    });
-  }, [filteredPolicies, query]);
+  // The server-side query already applies the group + descendant +
+  // text filter, so the client doesn't need to filter again. Renderers
+  // read `policies` directly — the previous filteredPolicies/visiblePolicies
+  // aliases are gone after the server-pagination cutover.
 
   // 重新获取策略列表和冻结状态
   const refreshPolicies = useCallback(async () => {
@@ -738,10 +788,10 @@ export function PoliciesContent({
     }
     // 如果删除的是当前选中的分组，重置选中状态
     if (selectedGroupId === editingGroup.id) {
-      setSelectedGroupId(null);
+      setSelectedGroupIdNav(null);
     }
     await Promise.all([refreshGroups(), refreshPolicies()]);
-  }, [editingGroup, selectedGroupId, refreshGroups, refreshPolicies]);
+  }, [editingGroup, selectedGroupId, refreshGroups, refreshPolicies, setSelectedGroupIdNav]);
 
   if (!mounted) {
     // SSR / 首次渲染：不渲染 DndContext，避免 aria live region hydration mismatch
@@ -760,7 +810,7 @@ export function PoliciesContent({
         <PolicyGroupTree
           groups={groups}
           selectedGroupId={selectedGroupId}
-          onSelectGroup={setSelectedGroupId}
+          onSelectGroup={setSelectedGroupIdNav}
           onCreateGroup={handleCreateGroup}
           onEditGroup={handleEditGroup}
           onDeleteGroup={handleDeleteGroup}
@@ -859,14 +909,14 @@ export function PoliciesContent({
         {policies.length > 0 && (
           <div className="mt-4">
             <ListSearchInput
-              value={query}
-              onChange={setQuery}
+              value={searchInput}
+              onChange={handleSearchChange}
               placeholder={tCommon('searchPlaceholder')}
             />
           </div>
         )}
 
-        {filteredPolicies.length === 0 ? (
+        {policies.length === 0 ? (
           <div className="mt-8 text-center">
             <FileText className="mx-auto size-12 text-fg-subtle" aria-hidden />
             <h3 className="mt-2 text-sm font-semibold text-fg">{t.noPolicies}</h3>
@@ -884,7 +934,7 @@ export function PoliciesContent({
         ) : (
           <div className="mt-8 overflow-hidden rounded-md border border-border bg-bg shadow-sm">
             <ul className="divide-y divide-border">
-              {visiblePolicies.map((policy) => (
+              {policies.map((policy) => (
                 <DraggablePolicyItem
                   key={policy.id}
                   policy={policy}
@@ -901,6 +951,22 @@ export function PoliciesContent({
             </ul>
           </div>
         )}
+
+        <Pagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          pageSizeOptions={[...POLICIES_URL_OPTS.allowedPageSizes]}
+          buildHref={({ page, pageSize }) =>
+            buildListUrl(
+              pathname,
+              currentUrlState,
+              { page, pageSize, resetPage: false },
+              POLICIES_URL_OPTS,
+            )
+          }
+          onPageSizeChange={(next) => navigate({ pageSize: next })}
+        />
 
         {/* Policies shared with caller's teams. Self-gates: returns
             nothing when sharing is off or the caller has no inbound

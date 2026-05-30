@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   db,
   domainTerms,
@@ -459,15 +459,47 @@ export interface SnapshotListEntry {
   createdAt: Date;
 }
 
+export interface SnapshotListResult {
+  items: SnapshotListEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+const SNAPSHOT_DEFAULT_PAGE_SIZE = 25;
+const SNAPSHOT_MAX_PAGE_SIZE = 200;
+
+function normalizeSnapshotPage(page?: number): number {
+  return Number.isInteger(page) && page && page > 0 ? page : 1;
+}
+
+function normalizeSnapshotPageSize(pageSize?: number): number {
+  if (!Number.isInteger(pageSize) || !pageSize || pageSize <= 0) {
+    return SNAPSHOT_DEFAULT_PAGE_SIZE;
+  }
+  return Math.min(pageSize, SNAPSHOT_MAX_PAGE_SIZE);
+}
+
 /**
  * Read snapshots owned by the user. Filtered by domain/locale when given.
  * Returns UI-friendly fields: termCount derived from termIds.length so the
  * snapshot list page can render without a second roundtrip.
+ *
+ * Sort order is descending createdAt: newest first matches what users want
+ * to see when scanning a paginated list (latest publish + rollback
+ * candidate sit at the top of page 1).
  */
 export async function listOwnerSnapshots(
   userId: string,
-  opts: { domain?: string; locale?: string } = {},
-): Promise<SnapshotListEntry[]> {
+  opts: {
+    domain?: string;
+    locale?: string;
+    page?: number;
+    pageSize?: number;
+  } = {},
+): Promise<SnapshotListResult> {
+  const page = normalizeSnapshotPage(opts.page);
+  const pageSize = normalizeSnapshotPageSize(opts.pageSize);
   const conditions = [
     eq(userVocabularySnapshots.ownerType, 'user'),
     eq(userVocabularySnapshots.ownerId, userId),
@@ -475,33 +507,48 @@ export async function listOwnerSnapshots(
   if (opts.domain) conditions.push(eq(userVocabularySnapshots.domain, opts.domain));
   if (opts.locale) conditions.push(eq(userVocabularySnapshots.locale, opts.locale));
 
-  const rows = await db
-    .select({
-      id: userVocabularySnapshots.id,
-      domain: userVocabularySnapshots.domain,
-      locale: userVocabularySnapshots.locale,
-      version: userVocabularySnapshots.version,
-      contentHash: userVocabularySnapshots.contentHash,
-      refCount: userVocabularySnapshots.refCount,
-      termIds: userVocabularySnapshots.termIds,
-      archivedAt: userVocabularySnapshots.archivedAt,
-      createdAt: userVocabularySnapshots.createdAt,
-    })
-    .from(userVocabularySnapshots)
-    .where(and(...conditions))
-    .orderBy(asc(userVocabularySnapshots.createdAt));
+  const predicate = and(...conditions);
 
-  return rows.map((row) => ({
-    id: row.id,
-    domain: row.domain,
-    locale: row.locale,
-    version: row.version,
-    contentHash: row.contentHash,
-    refCount: row.refCount,
-    termCount: Array.isArray(row.termIds) ? row.termIds.length : 0,
-    archived: row.archivedAt != null,
-    createdAt: row.createdAt,
-  }));
+  const [rows, totals] = await Promise.all([
+    db
+      .select({
+        id: userVocabularySnapshots.id,
+        domain: userVocabularySnapshots.domain,
+        locale: userVocabularySnapshots.locale,
+        version: userVocabularySnapshots.version,
+        contentHash: userVocabularySnapshots.contentHash,
+        refCount: userVocabularySnapshots.refCount,
+        termIds: userVocabularySnapshots.termIds,
+        archivedAt: userVocabularySnapshots.archivedAt,
+        createdAt: userVocabularySnapshots.createdAt,
+      })
+      .from(userVocabularySnapshots)
+      .where(predicate)
+      .orderBy(desc(userVocabularySnapshots.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userVocabularySnapshots)
+      .where(predicate),
+  ]);
+
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      domain: row.domain,
+      locale: row.locale,
+      version: row.version,
+      contentHash: row.contentHash,
+      refCount: row.refCount,
+      termCount: Array.isArray(row.termIds) ? row.termIds.length : 0,
+      archived: row.archivedAt != null,
+      createdAt: row.createdAt,
+    })),
+    total: totals[0]?.count ?? 0,
+    page,
+    pageSize,
+  };
 }
 
 export interface SnapshotTermEntry {

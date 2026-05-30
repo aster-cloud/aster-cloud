@@ -38,8 +38,10 @@ global.fetch = vi.fn();
 
 // Mock lucide-react icons
 vi.mock('lucide-react', () => ({
+  ChevronLeft: () => null,
   ChevronRight: () => null,
   ChevronDown: () => null,
+  MoreHorizontal: () => null,
   Folder: () => null,
   FolderOpen: () => null,
   Plus: () => null,

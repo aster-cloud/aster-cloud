@@ -2,19 +2,36 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { listOwnerSnapshots } from '@/lib/domain-vocabulary-snapshot';
 import { getLexiconQuota } from '@/lib/usage';
+import {
+  buildListUrl,
+  clampPage,
+  parseListUrlState,
+  type ListUrlOptions,
+} from '@/lib/list-search-params';
 import { SnapshotsContent, type SerializableSnapshot } from './snapshots-content';
+
+const SNAPSHOTS_URL_OPTS: ListUrlOptions = {
+  defaultPageSize: 25,
+  allowedPageSizes: [25, 50, 100],
+  filterKeys: [],
+};
 
 /**
  * /domain-vocabularies/snapshots — server shell.
  *
- * Reads the caller's snapshots and forwards them to the client. The client
- * lazily fetches a snapshot's diff when the user opens it; we only ship
- * the lightweight list here so a user with hundreds of snapshots doesn't
- * pay for them at SSR time.
+ * Pagination + search are URL-canonical (?page, ?pageSize, ?q). The
+ * client lazily fetches a snapshot's diff when the user opens it; we
+ * only ship the requested page's metadata here so a user with hundreds
+ * of snapshots doesn't pay for them at SSR time.
  */
-export default async function SnapshotsPage() {
+export default async function SnapshotsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getSession();
   if (!session?.user?.id) redirect('/login');
+
   let allowed = false;
   try {
     const quota = await getLexiconQuota(session.user.id);
@@ -26,19 +43,54 @@ export default async function SnapshotsPage() {
     redirect('/domain-vocabularies');
   }
 
-  // Same fail-soft posture as the main vocab page: if the snapshot
-  // table is missing or transiently unreachable, render an empty list
-  // rather than 500 the whole route.
+  const params = await searchParams;
+  const urlState = parseListUrlState(params, SNAPSHOTS_URL_OPTS);
+
+  // Fail-soft list: if the snapshot table is transient missing, render
+  // an empty page rather than 500. Errors are still logged.
   let serialized: SerializableSnapshot[] = [];
+  let total = 0;
+  let page = urlState.page;
+  let pageSize = urlState.pageSize;
   try {
-    const snapshots = await listOwnerSnapshots(session.user.id);
-    serialized = snapshots.map((s) => ({
+    const result = await listOwnerSnapshots(session.user.id, {
+      page: urlState.page,
+      pageSize: urlState.pageSize,
+    });
+    serialized = result.items.map((s) => ({
       ...s,
       createdAt: s.createdAt.toISOString(),
     }));
+    total = result.total;
+    page = result.page;
+    pageSize = result.pageSize;
   } catch (err) {
     console.error('[snapshots page] list failed', err);
   }
 
-  return <SnapshotsContent initialSnapshots={serialized} />;
+  // Out-of-range clamp: redirect to the canonical last page. Outside
+  // the try so the redirect throw isn't swallowed.
+  if (total > 0) {
+    const { clamped, totalPages } = clampPage(urlState.page, total, urlState.pageSize);
+    if (clamped !== urlState.page && totalPages >= 1) {
+      redirect(
+        buildListUrl(
+          '/domain-vocabularies/snapshots',
+          urlState,
+          { page: clamped, resetPage: false },
+          SNAPSHOTS_URL_OPTS,
+        ),
+      );
+    }
+  }
+
+  return (
+    <SnapshotsContent
+      initialSnapshots={serialized}
+      initialTotal={total}
+      initialPage={page}
+      initialPageSize={pageSize}
+      initialQuery={urlState.q ?? ''}
+    />
+  );
 }

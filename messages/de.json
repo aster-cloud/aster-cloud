@@ -28,6 +28,20 @@
     "loadFailed": "Diese Ansicht konnte nicht geladen werden.",
     "confirm": "Bestätigen"
   },
+  "pagination": {
+    "label": "Seitennavigation",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "page": "Seite",
+    "pageOf": "Seite {page} von {totalPages}",
+    "goToPage": "Zu Seite {page}",
+    "showing": "{start}-{end} von {total, plural, one {# {noun}} other {# {noun}}}",
+    "showingEmpty": "Keine Einträge",
+    "itemNoun": "Einträge",
+    "itemsPerPage": "Einträge pro Seite",
+    "perPage": "{count} pro Seite",
+    "ellipsis": "Weitere Seiten"
+  },
   "nav": {
     "brand": "Aster Cloud",
     "pricing": "Preise",
@@ -832,6 +846,7 @@
     "title": "Richtlinien",
     "subtitle": "Verwalten Sie Ihre Geschäftsrichtlinien und Regeln",
     "newPolicy": "Neue Richtlinie",
+    "multiSelectClearedOnPaging": "Auswahl gelöscht, da die Seite oder der Filter gewechselt wurde.",
     "noPolicies": "Keine Richtlinien",
     "getStarted": "Beginnen Sie mit dem Erstellen einer neuen Richtlinie.",
     "piiFields": "{count} PII-Felder",

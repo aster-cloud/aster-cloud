@@ -100,3 +100,8 @@ export {
   type BreadcrumbsProps,
   type BreadcrumbItem,
 } from './breadcrumbs';
+
+// TODO(design-system): Pagination lives in aster-cloud temporarily;
+// migrate to @aster-cloud/ui once the design system release lands.
+// See src/components/ui/pagination.tsx for the rationale.
+export { Pagination, type PaginationProps } from './pagination';

@@ -1,13 +1,23 @@
 /**
  * GET /api/v1/domain-vocabularies/snapshots (B12)
  *
- * Returns the caller's own snapshots, optionally filtered by domain + locale.
+ * Returns the caller's own snapshots, paginated and optionally filtered
+ * by domain + locale. Response shape matches the rest of the lexicon
+ * list contracts: `{ snapshots: SnapshotListEntry[], total, page,
+ * pageSize }` so the client can render <Pagination> without a second
+ * round-trip.
  */
 
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { errorEnvelope } from '@/lib/api/error-envelope';
 import { listOwnerSnapshots } from '@/lib/domain-vocabulary-snapshot';
+
+function parsePositiveInt(value: string | null, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 export async function GET(req: Request) {
   try {
@@ -20,11 +30,18 @@ export async function GET(req: Request) {
       });
     }
     const url = new URL(req.url);
-    const snapshots = await listOwnerSnapshots(session.user.id, {
+    const result = await listOwnerSnapshots(session.user.id, {
       domain: url.searchParams.get('domain') ?? undefined,
       locale: url.searchParams.get('locale') ?? undefined,
+      page: parsePositiveInt(url.searchParams.get('page'), 1),
+      pageSize: parsePositiveInt(url.searchParams.get('pageSize'), 25),
     });
-    return NextResponse.json({ snapshots });
+    return NextResponse.json({
+      snapshots: result.items,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+    });
   } catch (error) {
     console.error('[domain-vocabularies snapshots GET]', error);
     return errorEnvelope({

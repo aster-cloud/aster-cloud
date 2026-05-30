@@ -28,6 +28,20 @@
     "loadFailed": "Could not load this view.",
     "confirm": "Confirm"
   },
+  "pagination": {
+    "label": "Pagination",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page",
+    "pageOf": "Page {page} of {totalPages}",
+    "goToPage": "Go to page {page}",
+    "showing": "Showing {start}-{end} of {total, plural, one {# {noun}} other {# {noun}}}",
+    "showingEmpty": "No items",
+    "itemNoun": "items",
+    "itemsPerPage": "Items per page",
+    "perPage": "{count} per page",
+    "ellipsis": "More pages"
+  },
   "nav": {
     "brand": "Aster Cloud",
     "pricing": "Pricing",
@@ -832,6 +846,7 @@
     "title": "Policies",
     "subtitle": "Manage your business policies and rules",
     "newPolicy": "New Policy",
+    "multiSelectClearedOnPaging": "Selection cleared because you moved to another page or filter.",
     "noPolicies": "No policies",
     "getStarted": "Get started by creating a new policy.",
     "piiFields": "{count} PII fields",

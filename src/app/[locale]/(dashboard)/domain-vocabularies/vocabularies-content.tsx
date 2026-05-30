@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import {
   Badge,
   Breadcrumbs,
@@ -12,11 +12,13 @@ import {
   EmptyState,
   ListSearchInput,
   PageHeader,
+  Pagination,
   Select,
   StatCard,
   toast,
   type DataTableColumn,
 } from '@/components/ui';
+import { buildListUrl, type ListUrlOptions } from '@/lib/list-search-params';
 import { BulkJobProgress } from './bulk-job-progress';
 import { BulkUploadDialog } from './bulk-upload-dialog';
 import { KIND_OPTIONS, KNOWN_ERROR_CODES, type Kind } from './constants';
@@ -24,6 +26,11 @@ import { DowngradeBanner, ProGate } from './pro-gate';
 import { VocabularyDialog, type VocabularyDialogValues } from './vocabulary-dialog';
 
 const STARTER_PLAN = 'starter';
+const VOCAB_URL_OPTS: ListUrlOptions = {
+  defaultPageSize: 50,
+  allowedPageSizes: [25, 50, 100],
+  filterKeys: ['domain', 'locale', 'kind'],
+};
 
 type KindKey = `kinds.${Kind}`;
 type ErrorKey = `errors.${
@@ -67,27 +74,29 @@ export interface VocabularyQuota {
   trialEndsAt: string | null;
 }
 
+export interface VocabFilters {
+  domain: string;
+  locale: string;
+  kind: string;
+}
+
 interface VocabulariesContentProps {
   initialTerms: SerializableTermLink[];
   initialTotal: number;
   initialArchivedCount: number;
+  initialPage: number;
+  initialPageSize: number;
+  initialFilters: VocabFilters;
+  initialQuery: string;
   quota: VocabularyQuota;
-}
-
-interface ListResponse {
-  items: SerializableTermLink[];
-  total: number;
-  page: number;
-  pageSize: number;
-  archivedCount: number;
 }
 
 interface ErrorEnvelope {
   error?: { code?: string; message?: string };
 }
 
-const PAGE_SIZE = 50;
 const QUOTA_WARNING_THRESHOLD = 0.9;
+const SEARCH_DEBOUNCE_MS = 300;
 
 function pickQuotaTone(
   isUnlimited: boolean,
@@ -108,51 +117,25 @@ export function VocabulariesContent({
   initialTerms,
   initialTotal,
   initialArchivedCount,
+  initialPage,
+  initialPageSize,
+  initialFilters,
+  initialQuery,
   quota,
 }: VocabulariesContentProps) {
   const t = useTranslations('domainVocabularies');
   const tNav = useTranslations('dashboardNav');
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
 
-  const [terms, setTerms] = useState<SerializableTermLink[]>(initialTerms);
-  const [total, setTotal] = useState<number>(initialTotal);
-  const [archivedCount, setArchivedCount] = useState<number>(initialArchivedCount);
-  const [domainFilter, setDomainFilter] = useState<string>('');
-  const [localeFilter, setLocaleFilter] = useState<string>('');
-  const [kindFilter, setKindFilter] = useState<string>('');
-  const [query, setQuery] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Filter options grow as the user sees more data but never shrink: a
-  // narrowing refetch would otherwise hide the dropdown values that
-  // allow the user to widen the filter back out. Seeded from the SSR
-  // payload so the dropdowns are useful before the first interaction.
-  const facetsRef = useRef<{ domains: Set<string>; locales: Set<string> }>({
-    domains: new Set(initialTerms.map((t) => t.domain)),
-    locales: new Set(initialTerms.map((t) => t.locale)),
-  });
-  // facetsTick is the only React-visible signal that the facet sets grew.
-  // The memoized sorted snapshots below key off it so we don't have to lie
-  // about the dependency list (Set.size would technically work today, but
-  // it's load-bearing on render ordering — keying on the tick is honest).
-  const [facetsTick, setFacetsTick] = useState(0);
-  const noteFacets = useCallback((rows: SerializableTermLink[]) => {
-    let changed = false;
-    for (const row of rows) {
-      if (!facetsRef.current.domains.has(row.domain)) {
-        facetsRef.current.domains.add(row.domain);
-        changed = true;
-      }
-      if (!facetsRef.current.locales.has(row.locale)) {
-        facetsRef.current.locales.add(row.locale);
-        changed = true;
-      }
-    }
-    if (changed) setFacetsTick((n) => n + 1);
-  }, []);
-
-  // Aborts any inflight refetch so rapid filter changes don't race.
-  const inflightRef = useRef<AbortController | null>(null);
+  // The list, total, and archivedCount are all server-owned now: every
+  // mutation routes through router.refresh() and the page.tsx re-runs.
+  // Local state is only kept for the search input so the user sees the
+  // typed characters immediately while the debounced URL update fires
+  // in the background.
+  const [searchInput, setSearchInput] = useState<string>(initialQuery);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<SerializableTermLink | null>(null);
@@ -162,64 +145,47 @@ export function VocabulariesContent({
   const [bulkOpen, setBulkOpen] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
-  // Refetch the list whenever a server-side filter changes. Client-side
-  // search (`query`) stays local so the UX feels instant.
-  useEffect(() => {
-    if (!quota.allowed) return;
-    void refetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domainFilter, localeFilter, kindFilter]);
-
-  const refetch = useCallback(async () => {
-    inflightRef.current?.abort();
-    const controller = new AbortController();
-    inflightRef.current = controller;
-    setIsLoading(true);
-    try {
-      const url = new URL('/api/v1/domain-vocabularies/terms', window.location.origin);
-      if (domainFilter) url.searchParams.set('domain', domainFilter);
-      if (localeFilter) url.searchParams.set('locale', localeFilter);
-      if (kindFilter) url.searchParams.set('kind', kindFilter);
-      url.searchParams.set('page', '1');
-      url.searchParams.set('pageSize', String(PAGE_SIZE));
-
-      const res = await fetch(url.toString(), {
-        credentials: 'same-origin',
-        signal: controller.signal,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as ListResponse;
-      setTerms(data.items);
-      setTotal(data.total);
-      setArchivedCount(data.archivedCount);
-      noteFacets(data.items);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      toast.error(t('dialog.errorGeneric'));
-      console.error('[vocabularies] refetch failed', err);
-    } finally {
-      if (inflightRef.current === controller) {
-        setIsLoading(false);
-        inflightRef.current = null;
-      }
-    }
-  }, [domainFilter, localeFilter, kindFilter, noteFacets, t]);
-
-  // Sorted snapshot of the facet sets for the dropdowns. The Sets are
-  // stored in a ref so noteFacets can mutate them without triggering a
-  // render; facetsTick is the React-visible "the sets grew" signal that
-  // forces this memo to re-evaluate. The dep on facetsTick looks
-  // unnecessary to eslint because facetsRef.current isn't reactive — it
-  // is in fact load-bearing, so the disable is intentional.
-  const domainOptions = useMemo(
-    () => [...facetsRef.current.domains].sort(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [facetsTick],
+  const currentUrlState = useMemo(
+    () => ({
+      page: initialPage,
+      pageSize: initialPageSize,
+      q: initialQuery || undefined,
+      filters: stripEmpty(initialFilters),
+    }),
+    [initialPage, initialPageSize, initialQuery, initialFilters],
   );
-  const localeOptions = useMemo(
-    () => [...facetsRef.current.locales].sort(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [facetsTick],
+
+  // Build a URL relative to the current pathname using the shared URL
+  // helper. All filter/search/page mutations go through this single
+  // entry point so the canonical-form + auto-reset rules in
+  // list-search-params.ts can't be bypassed.
+  const navigate = useCallback(
+    (patch: Parameters<typeof buildListUrl>[2]) => {
+      const next = buildListUrl(pathname, currentUrlState, patch, VOCAB_URL_OPTS);
+      startTransition(() => {
+        router.replace(next);
+      });
+    },
+    [pathname, currentUrlState, router],
+  );
+
+  // Debounced URL writeback for the search field. The keystroke lands
+  // in local state immediately (no perceived lag), and the URL catches
+  // up at most every SEARCH_DEBOUNCE_MS so we don't issue a server
+  // re-render per character.
+  const debouncedSearchTimer = useMemo(
+    () => ({ current: null as ReturnType<typeof setTimeout> | null }),
+    [],
+  );
+  const handleSearchChange = useCallback(
+    (next: string) => {
+      setSearchInput(next);
+      if (debouncedSearchTimer.current) clearTimeout(debouncedSearchTimer.current);
+      debouncedSearchTimer.current = setTimeout(() => {
+        navigate({ q: next });
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [debouncedSearchTimer, navigate],
   );
 
   const dateFormatter = useMemo(
@@ -234,17 +200,6 @@ export function VocabulariesContent({
     },
     [t],
   );
-
-  const visibleTerms = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return terms;
-    return terms.filter(
-      (term) =>
-        term.canonical.toLowerCase().includes(q) ||
-        term.localized.toLowerCase().includes(q) ||
-        term.aliases.some((a) => a.toLowerCase().includes(q)),
-    );
-  }, [terms, query]);
 
   const errorMessage = useCallback(
     (code: string | undefined, fallback: string | undefined) => {
@@ -263,6 +218,12 @@ export function VocabulariesContent({
     },
     [t],
   );
+
+  const refreshRsc = useCallback(() => {
+    startTransition(() => {
+      router.refresh();
+    });
+  }, [router]);
 
   const handleSave = useCallback(
     async (values: VocabularyDialogValues) => {
@@ -289,7 +250,7 @@ export function VocabulariesContent({
         }
         setDialogOpen(false);
         setEditing(null);
-        await refetch();
+        refreshRsc();
         toast.success(editing ? t('dialog.editTitle') : t('dialog.createTitle'));
       } catch (err) {
         const message = err instanceof Error ? err.message : t('dialog.errorGeneric');
@@ -300,7 +261,7 @@ export function VocabulariesContent({
         setBusy(false);
       }
     },
-    [editing, errorMessage, refetch, t],
+    [editing, errorMessage, refreshRsc, t],
   );
 
   const handleDelete = useCallback(async () => {
@@ -320,14 +281,14 @@ export function VocabulariesContent({
         throw new Error(errorMessage(env.error?.code, env.error?.message));
       }
       setDeleting(null);
-      await refetch();
+      refreshRsc();
       toast.success(t('actions.delete'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('dialog.errorGeneric'));
     } finally {
       setBusy(false);
     }
-  }, [deleting, errorMessage, refetch, t]);
+  }, [deleting, errorMessage, refreshRsc, t]);
 
   // Pro-gate. Full lock-screen carries the upgrade CTA + a downgrade
   // narrative when applicable so the user can tell why the page is
@@ -437,10 +398,27 @@ export function VocabulariesContent({
   const isUnlimited = quota.maxTerms === -1;
   const quotaLabel = isUnlimited
     ? t('quota.unlimited')
-    : t('quota.used', { used: total, total: quota.maxTerms });
-  const remaining = isUnlimited ? null : Math.max(0, quota.maxTerms - total);
-  const atLimit = !isUnlimited && total >= quota.maxTerms;
-  const quotaTone = pickQuotaTone(isUnlimited, total, quota.maxTerms, atLimit);
+    : t('quota.used', { used: initialTotal, total: quota.maxTerms });
+  const remaining = isUnlimited
+    ? null
+    : Math.max(0, quota.maxTerms - initialTotal);
+  const atLimit = !isUnlimited && initialTotal >= quota.maxTerms;
+  const quotaTone = pickQuotaTone(
+    isUnlimited,
+    initialTotal,
+    quota.maxTerms,
+    atLimit,
+  );
+
+  // Note: domain/locale filter dropdowns now only carry the values that
+  // appear in the current server response. Server-side pagination is
+  // the authority here — there's no client-side facet set to keep alive
+  // across narrowing because the URL already round-trips state. If the
+  // user wants to re-widen, "All" clears the filter.
+  const domainOptionsFromRows = uniqueSorted(initialTerms.map((r) => r.domain));
+  const localeOptionsFromRows = uniqueSorted(initialTerms.map((r) => r.locale));
+  const domainOptions = upsert(domainOptionsFromRows, initialFilters.domain);
+  const localeOptions = upsert(localeOptionsFromRows, initialFilters.locale);
 
   return (
     <div>
@@ -497,9 +475,7 @@ export function VocabulariesContent({
           <BulkJobProgress
             jobId={activeJobId}
             onClear={() => setActiveJobId(null)}
-            onTerminal={() => {
-              void refetch();
-            }}
+            onTerminal={refreshRsc}
           />
         </div>
       ) : null}
@@ -517,22 +493,24 @@ export function VocabulariesContent({
                 : t('quota.remaining', { n: remaining })
           }
         />
-        <StatCard label={t('stats.visible')} value={String(terms.length)} />
-        <StatCard label={t('stats.archived')} value={String(archivedCount)} />
+        <StatCard label={t('stats.visible')} value={String(initialTerms.length)} />
+        <StatCard label={t('stats.archived')} value={String(initialArchivedCount)} />
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
         <div className="min-w-[12rem] flex-1">
           <ListSearchInput
-            value={query}
-            onChange={setQuery}
+            value={searchInput}
+            onChange={handleSearchChange}
             placeholder={t('filters.search')}
           />
         </div>
         <Select
           aria-label={t('filters.domain')}
-          value={domainFilter}
-          onChange={(e) => setDomainFilter(e.target.value)}
+          value={initialFilters.domain}
+          onChange={(e) =>
+            navigate({ filters: { domain: e.target.value || undefined } })
+          }
         >
           <option value="">{t('filters.all')}</option>
           {domainOptions.map((d) => (
@@ -543,8 +521,10 @@ export function VocabulariesContent({
         </Select>
         <Select
           aria-label={t('filters.locale')}
-          value={localeFilter}
-          onChange={(e) => setLocaleFilter(e.target.value)}
+          value={initialFilters.locale}
+          onChange={(e) =>
+            navigate({ filters: { locale: e.target.value || undefined } })
+          }
         >
           <option value="">{t('filters.all')}</option>
           {localeOptions.map((l) => (
@@ -555,8 +535,10 @@ export function VocabulariesContent({
         </Select>
         <Select
           aria-label={t('filters.kind')}
-          value={kindFilter}
-          onChange={(e) => setKindFilter(e.target.value)}
+          value={initialFilters.kind}
+          onChange={(e) =>
+            navigate({ filters: { kind: e.target.value || undefined } })
+          }
         >
           <option value="">{t('filters.all')}</option>
           {KIND_OPTIONS.map((k) => (
@@ -570,9 +552,8 @@ export function VocabulariesContent({
       <div className="mt-6">
         <DataTable
           columns={columns}
-          rows={visibleTerms}
+          rows={initialTerms}
           getRowKey={(row) => row.id}
-          loading={isLoading}
           aria-label={t('title')}
           emptyState={
             <EmptyState
@@ -593,6 +574,22 @@ export function VocabulariesContent({
           }
         />
       </div>
+
+      <Pagination
+        page={initialPage}
+        pageSize={initialPageSize}
+        total={initialTotal}
+        pageSizeOptions={[...VOCAB_URL_OPTS.allowedPageSizes]}
+        buildHref={({ page, pageSize }) =>
+          buildListUrl(
+            pathname,
+            currentUrlState,
+            { page, pageSize, resetPage: false },
+            VOCAB_URL_OPTS,
+          )
+        }
+        onPageSizeChange={(next) => navigate({ pageSize: next })}
+      />
 
       <VocabularyDialog
         isOpen={dialogOpen}
@@ -634,4 +631,27 @@ export function VocabulariesContent({
       />
     </div>
   );
+}
+
+function stripEmpty(filters: VocabFilters): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (filters.domain) out.domain = filters.domain;
+  if (filters.locale) out.locale = filters.locale;
+  if (filters.kind) out.kind = filters.kind;
+  return out;
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+/**
+ * Ensure the currently-active filter value is always present in the
+ * dropdown options, even if it doesn't appear in the current page's
+ * rows (which can happen when the user narrows the filter past the
+ * first page).
+ */
+function upsert(values: string[], current: string): string[] {
+  if (!current || values.includes(current)) return values;
+  return [...values, current].sort();
 }

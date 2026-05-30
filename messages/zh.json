@@ -28,6 +28,20 @@
     "loadFailed": "无法加载此视图。",
     "confirm": "确认"
   },
+  "pagination": {
+    "label": "分页",
+    "previous": "上一页",
+    "next": "下一页",
+    "page": "页",
+    "pageOf": "第 {page} 页,共 {totalPages} 页",
+    "goToPage": "前往第 {page} 页",
+    "showing": "显示第 {start}-{end} 条,共 {total, plural, one {# {noun}} other {# {noun}}}",
+    "showingEmpty": "暂无数据",
+    "itemNoun": "记录",
+    "itemsPerPage": "每页条数",
+    "perPage": "每页 {count} 条",
+    "ellipsis": "更多页"
+  },
   "nav": {
     "brand": "Aster Cloud",
     "pricing": "定价",
@@ -832,6 +846,7 @@
     "title": "策略",
     "subtitle": "管理您的业务策略和规则",
     "newPolicy": "新建策略",
+    "multiSelectClearedOnPaging": "已切换页面或筛选,所选策略已清空。",
     "noPolicies": "暂无策略",
     "getStarted": "创建一个新策略开始使用。",
     "piiFields": "{count} 个 PII 字段",

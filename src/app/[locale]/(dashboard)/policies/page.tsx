@@ -1,30 +1,44 @@
-import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { db, policies, policyGroups, executions } from '@/lib/prisma';
-import { eq, and, desc, isNull, or, sql, asc, inArray } from 'drizzle-orm';
-import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
+import { getSession } from '@/lib/auth';
 import { getTranslations } from 'next-intl/server';
+import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
+import {
+  collectDescendantIds,
+  listPolicyGroupsWithCounts,
+  listUserPolicies,
+  type PolicyGroupWithCount,
+} from '@/lib/policies';
+import {
+  buildListUrl,
+  clampPage,
+  parseListUrlState,
+  type ListUrlOptions,
+} from '@/lib/list-search-params';
 import { PoliciesContent } from './policies-content';
 import type { PolicyGroup } from '@/components/policy/policy-group-tree';
 
-// 递归构建分组树
-type RawGroup = {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  parentId: string | null;
-  isSystem: boolean;
-  sortOrder: number;
-  _count: { policies: number };
+const POLICIES_URL_OPTS: ListUrlOptions = {
+  defaultPageSize: 25,
+  allowedPageSizes: [25, 50, 100],
+  filterKeys: ['group'],
 };
 
-function buildGroupTree(groups: RawGroup[]): PolicyGroup[] {
+type SidebarGroup = PolicyGroupWithCount & { _count: { policies: number } };
+
+/** Recursively assemble the sidebar tree expected by PolicyGroupTree. */
+function buildGroupTree(groups: SidebarGroup[]): PolicyGroup[] {
   const groupMap = new Map<string, PolicyGroup>(
     groups.map((g) => [
       g.id,
       {
-        ...g,
+        id: g.id,
+        name: g.name,
+        description: g.description,
+        icon: g.icon,
+        parentId: g.parentId,
+        isSystem: g.isSystem,
+        sortOrder: g.sortOrder,
+        _count: { policies: g._count.policies },
         children: [],
       },
     ]),
@@ -44,107 +58,12 @@ function buildGroupTree(groups: RawGroup[]): PolicyGroup[] {
   return rootGroups;
 }
 
-// 服务端数据获取
-async function getPoliciesData(userId: string) {
-  const [policiesData, freezeStatus, groups] = await Promise.all([
-    db.query.policies.findMany({
-      where: and(eq(policies.userId, userId), isNull(policies.deletedAt)),
-      orderBy: desc(policies.updatedAt),
-      with: {
-        group: {
-          columns: {
-            id: true,
-            name: true,
-            icon: true,
-            parentId: true,
-          },
-        },
-      },
-    }),
-    getPolicyFreezeStatus(userId),
-    db.query.policyGroups.findMany({
-      where: or(eq(policyGroups.userId, userId), eq(policyGroups.isSystem, true)),
-      orderBy: [asc(policyGroups.sortOrder), asc(policyGroups.name)],
-    }),
-  ]);
-
-  // Single GROUP BY query for execution counts — replaces a per-policy
-  // count(*) loop that scaled linearly with the number of policies.
-  const policyIds = policiesData.map((p) => p.id);
-  const execCountRows = policyIds.length
-    ? await db
-        .select({
-          policyId: executions.policyId,
-          c: sql<number>`count(*)::int`,
-        })
-        .from(executions)
-        .where(inArray(executions.policyId, policyIds))
-        .groupBy(executions.policyId)
-    : [];
-  const execCountByPolicy = new Map<string, number>(
-    execCountRows.map((r) => [r.policyId, r.c]),
-  );
-
-  const policiesWithCount = policiesData.map((policy) => ({
-    id: policy.id,
-    name: policy.name,
-    description: policy.description,
-    content: policy.content,
-    isPublic: policy.isPublic,
-    piiFields: policy.piiFields as string[] | null,
-    groupId: policy.groupId,
-    group: policy.group,
-    createdAt: policy.createdAt.toISOString(),
-    updatedAt: policy.updatedAt.toISOString(),
-    isFrozen: freezeStatus.frozenPolicyIds.has(policy.id),
-    _count: { executions: execCountByPolicy.get(policy.id) ?? 0 },
-  }));
-
-  // Single GROUP BY for per-group policy counts — same N+1 collapsed.
-  const groupIds = groups.map((g) => g.id);
-  const groupCountRows = groupIds.length
-    ? await db
-        .select({
-          groupId: policies.groupId,
-          c: sql<number>`count(*)::int`,
-        })
-        .from(policies)
-        .where(and(inArray(policies.groupId, groupIds), isNull(policies.deletedAt)))
-        .groupBy(policies.groupId)
-    : [];
-  const policyCountByGroup = new Map<string, number>(
-    groupCountRows
-      .filter((r): r is { groupId: string; c: number } => r.groupId !== null)
-      .map((r) => [r.groupId, r.c]),
-  );
-
-  const groupsWithCount = groups.map((group) => ({
-    id: group.id,
-    name: group.name,
-    description: group.description,
-    icon: group.icon,
-    parentId: group.parentId,
-    isSystem: group.isSystem,
-    sortOrder: group.sortOrder,
-    _count: { policies: policyCountByGroup.get(group.id) ?? 0 },
-  }));
-
-  const freezeInfo = {
-    limit: freezeStatus.limit,
-    total: freezeStatus.totalPolicies,
-    frozenCount: freezeStatus.frozenCount,
-  };
-
-  // 构建分组树
-  const groupTree = buildGroupTree(groupsWithCount);
-
-  return { policies: policiesWithCount, freezeInfo, groups: groupTree };
-}
-
 export default async function PoliciesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
   const session = await getSession();
@@ -152,10 +71,90 @@ export default async function PoliciesPage({
     redirect(`/${locale}/login`);
   }
 
-  const { policies, freezeInfo, groups } = await getPoliciesData(session.user.id);
+  const userId = session.user.id;
+  const sp = await searchParams;
+  const urlState = parseListUrlState(sp, POLICIES_URL_OPTS);
+
+  // Sidebar + freeze status are independent of the policies pagination
+  // state — load them in parallel with the page slice so a heavy
+  // execution-count query doesn't gate the sidebar render.
+  const [groupsRaw, freezeStatus] = await Promise.all([
+    listPolicyGroupsWithCounts(userId),
+    getPolicyFreezeStatus(userId),
+  ]);
+
+  // Resolve descendant ids when a parent group is selected so policies
+  // assigned to subgroups still show up in the parent's view. Skipped
+  // for the "ungrouped" sentinel because ungrouped has no children.
+  const groupFilter = urlState.filters.group;
+  const descendantIds =
+    groupFilter && groupFilter !== 'ungrouped'
+      ? collectDescendantIds(groupsRaw, groupFilter)
+      : [];
+
+  const { items: pagePolicies, total, page, pageSize } = await listUserPolicies(
+    userId,
+    {
+      page: urlState.page,
+      pageSize: urlState.pageSize,
+      groupId: groupFilter ?? null,
+      descendantIds,
+      q: urlState.q,
+    },
+  );
+
+  // Out-of-range clamp: redirect to the last valid page. Outside the
+  // listUserPolicies await so redirect's thrown signal isn't caught.
+  if (total > 0) {
+    const { clamped, totalPages } = clampPage(
+      urlState.page,
+      total,
+      urlState.pageSize,
+    );
+    if (clamped !== urlState.page && totalPages >= 1) {
+      redirect(
+        buildListUrl(
+          `/${locale}/policies`,
+          urlState,
+          { page: clamped, resetPage: false },
+          POLICIES_URL_OPTS,
+        ),
+      );
+    }
+  }
+
+  // Reshape the policies into the shape PoliciesContent currently
+  // expects — keeping the wire format stable means we don't have to
+  // touch every renderer that reads `_count.executions` and `isFrozen`.
+  const policiesForClient = pagePolicies.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    content: p.content,
+    isPublic: p.isPublic,
+    piiFields: p.piiFields,
+    groupId: p.groupId,
+    group: p.group,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+    isFrozen: freezeStatus.frozenPolicyIds.has(p.id),
+    _count: { executions: p.executionCount },
+  }));
+
+  const groupsForClient: SidebarGroup[] = groupsRaw.map((g) => ({
+    ...g,
+    _count: { policies: g.policyCount },
+  }));
+  const groupTree = buildGroupTree(groupsForClient);
+
+  const freezeInfo = {
+    limit: freezeStatus.limit,
+    total: freezeStatus.totalPolicies,
+    frozenCount: freezeStatus.frozenCount,
+  };
+
   const t = await getTranslations('policies');
 
-  // 预渲染翻译字符串
   const translations = {
     title: t('title'),
     subtitle: t('subtitle'),
@@ -206,11 +205,18 @@ export default async function PoliciesPage({
 
   return (
     <PoliciesContent
-      initialPolicies={policies}
-      initialGroups={groups}
+      initialPolicies={policiesForClient}
+      initialGroups={groupTree}
       freezeInfo={freezeInfo}
       translations={translations}
       locale={locale}
+      pagination={{
+        page,
+        pageSize,
+        total,
+        selectedGroupId: groupFilter ?? null,
+        query: urlState.q ?? '',
+      }}
     />
   );
 }
