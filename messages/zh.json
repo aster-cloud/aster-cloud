@@ -72,7 +72,7 @@
       },
       "multilang": {
         "title": "三套语言包",
-        "description": "所有套餐均含英文、中文、Deutsch 三套词典。企业版支持行业定制词典。"
+        "description": "所有套餐均含英文、中文、Deutsch 三套词典（EN 为基准，ZH/DE 由社区共同维护）。企业版支持行业定制词典。"
       }
     }
   },
@@ -2112,7 +2112,7 @@
         "tagline": "审批权限分离",
         "priceSuffix": "/席位 / 月",
         "priceSuffixYearly": "/席位 / 年",
-        "cta": "升级 Pro",
+        "cta": "免费开始",
         "highlight": "最受欢迎",
         "features": [
           "无限团队成员",

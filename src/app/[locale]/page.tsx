@@ -75,25 +75,27 @@ function HomeContent({ locale }: { locale: string }) {
   const proMonthlyPrice = formatPrice(getProPrice(currency, 'monthly'), currency);
 
   return (
-    <main id="main" className="flex min-h-screen flex-col bg-bg text-fg">
+    <div className="flex min-h-screen flex-col bg-bg text-fg">
       <SkipToContent targetId="main" />
       <Nav t={t} />
-      <Hero t={t} locale={locale} />
-      <TrustBand t={t} />
-      <Features t={t} />
-      {/* Pricing preview 是 SaaS 三档定价表（Free/Pro/Enterprise）。
-          On-prem 客户的"定价"是 license 协商，公开三档表会误导。
-          IS_SAAS = false 时 terser DCE 这个分支 + PricingPreview 子树。 */}
-      {IS_SAAS && (
-        <PricingPreview
-          t={t}
-          currency={currency}
-          proMonthlyPrice={proMonthlyPrice}
-        />
-      )}
-      <BottomCta t={t} />
+      <main id="main" className="flex flex-col">
+        <Hero t={t} locale={locale} />
+        <TrustBand t={t} />
+        <Features t={t} />
+        {/* Pricing preview 是 SaaS 三档定价表（Free/Pro/Enterprise）。
+            On-prem 客户的"定价"是 license 协商，公开三档表会误导。
+            IS_SAAS = false 时 terser DCE 这个分支 + PricingPreview 子树。 */}
+        {IS_SAAS && (
+          <PricingPreview
+            t={t}
+            currency={currency}
+            proMonthlyPrice={proMonthlyPrice}
+          />
+        )}
+        <BottomCta t={t} />
+      </main>
       <Footer t={t} />
-    </main>
+    </div>
   );
 }
 

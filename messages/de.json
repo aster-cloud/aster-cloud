@@ -72,7 +72,7 @@
       },
       "multilang": {
         "title": "Drei Lexika ab Werk",
-        "description": "English, 中文, Deutsch in jedem Plan enthalten. Branchen-spezifische Lexika auf Enterprise-Tarifen."
+        "description": "English, 中文, Deutsch in jedem Plan enthalten (EN kanonisch; ZH/DE community-gepflegt). Branchen-spezifische Lexika auf Enterprise-Tarifen."
       }
     }
   },
@@ -2112,7 +2112,7 @@
         "tagline": "Freigabe und Funktionstrennung",
         "priceSuffix": "/Platz / Monat",
         "priceSuffixYearly": "/Platz / Jahr",
-        "cta": "Auf Pro upgraden",
+        "cta": "Kostenlos starten",
         "highlight": "Beliebt",
         "features": [
           "Unbegrenzte Team-Mitglieder",

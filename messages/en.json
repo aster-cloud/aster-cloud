@@ -72,7 +72,7 @@
       },
       "multilang": {
         "title": "Three lexicons today",
-        "description": "English, 中文, Deutsch ship in every plan. Custom industry lexicons on Enterprise."
+        "description": "English, 中文, Deutsch ship in every plan (EN canonical; ZH/DE community-maintained). Custom industry lexicons on Enterprise."
       }
     }
   },
@@ -2112,7 +2112,7 @@
         "tagline": "Approval and separation of duties",
         "priceSuffix": "/seat / month",
         "priceSuffixYearly": "/seat / year",
-        "cta": "Upgrade to Pro",
+        "cta": "Start free",
         "highlight": "Most popular",
         "features": [
           "Unlimited team members",
