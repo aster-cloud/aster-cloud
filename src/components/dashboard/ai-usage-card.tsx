@@ -71,7 +71,7 @@ export function AiUsageCard({ locale }: { locale: string }) {
         <h3 className="text-sm font-medium text-amber-800">{t('emailUnverifiedTitle')}</h3>
         <p className="mt-1 text-xs text-amber-700">{t('emailUnverifiedHint')}</p>
         <Link
-          href={`/${locale}/settings/profile`}
+          href={`/${locale}/settings`}
           className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
         >
           {t('verifyNow')} →
