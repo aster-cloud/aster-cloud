@@ -51,7 +51,7 @@ export async function GET(): Promise<NextResponse> {
     fields: Object.fromEntries(
       Object.entries(TELEMETRY_CONTRACT_BY_VERSION).map(([v, fields]) => [v, fields]),
     ),
-    documentationUrl: 'https://docs.aster-lang.cloud/on-prem/telemetry-fields',
+    documentationUrl: 'https://aster-lang.dev/enterprise/telemetry-fields',
   };
   return NextResponse.json(body, {
     headers: {
