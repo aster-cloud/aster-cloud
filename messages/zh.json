@@ -357,6 +357,7 @@
     "policies": "策略",
     "reports": "报告",
     "teams": "团队",
+    "domainVocabularies": "领域词汇",
     "security": "安全监控",
     "billing": "账单",
     "settings": "设置",
@@ -2154,5 +2155,94 @@
     "policyShared": "策略 {policyName} 已共享给 {teamName}（{permission}）。",
     "permissionView": "只读",
     "permissionExecute": "只读 + 执行"
+  },
+  "domainVocabularies": {
+    "title": "领域词汇",
+    "subtitle": "管理策略使用的结构体、字段、函数和枚举值。",
+    "newTerm": "新增词条",
+    "bulkUpload": "批量上传",
+    "snapshots": "快照",
+    "quota": {
+      "label": "配额",
+      "used": "{used} / {total}",
+      "unlimited": "无限",
+      "remaining": "剩余 {n}",
+      "atLimit": "配额已用完"
+    },
+    "filters": {
+      "domain": "领域",
+      "locale": "语言",
+      "kind": "类型",
+      "all": "全部",
+      "includeArchived": "显示已归档",
+      "search": "按标准名或本地名筛选"
+    },
+    "kinds": {
+      "struct": "结构体",
+      "field": "字段",
+      "function": "函数",
+      "enum_value": "枚举值"
+    },
+    "table": {
+      "canonical": "标准名",
+      "localized": "本地化",
+      "domain": "领域",
+      "locale": "语言",
+      "kind": "类型",
+      "parent": "父结构",
+      "source": "来源",
+      "updatedAt": "更新于",
+      "actions": "操作"
+    },
+    "actions": {
+      "edit": "编辑",
+      "delete": "删除",
+      "restore": "恢复"
+    },
+    "empty": {
+      "title": "暂无词条",
+      "description": "新增第一个词条以扩展内置词汇。"
+    },
+    "needsUpgrade": {
+      "title": "领域词汇是 Pro 计划功能",
+      "description": "升级到 Pro 即可管理自己的结构体 / 字段 / 函数 / 枚举值词表。",
+      "upgrade": "升级计划",
+      "contactAdmin": "请联系管理员升级计划"
+    },
+    "dialog": {
+      "createTitle": "新增词条",
+      "editTitle": "编辑词条",
+      "domain": "领域",
+      "domainHelp": "小写标识，例如 finance、healthcare。",
+      "locale": "语言",
+      "localeHelp": "BCP-47 标签，例如 en、zh-CN、de。",
+      "kind": "类型",
+      "canonical": "标准名",
+      "canonicalHelp": "引擎使用的英文式标识。",
+      "localized": "本地化显示",
+      "parentCanonical": "父结构（可选）",
+      "parentCanonicalHelp": "字段必填，其他类型忽略。",
+      "description": "描述",
+      "aliases": "别名",
+      "aliasesHelp": "用逗号分隔多个别名。",
+      "save": "保存",
+      "cancel": "取消",
+      "saving": "保存中…",
+      "errorGeneric": "保存失败，请重试。"
+    },
+    "delete": {
+      "title": "确认删除词条？",
+      "description": "词条「{name}」将软删除并保留 90 天，期间可在归档中恢复。",
+      "confirm": "删除",
+      "cancel": "取消"
+    },
+    "errors": {
+      "quota_exceeded": "已达到该计划的词汇配额。",
+      "duplicate_link": "该词条已存在。",
+      "validation_failed": "请检查高亮字段。",
+      "not_found": "词条不存在。",
+      "plan_gate_required": "领域词汇功能需要 Pro 计划。",
+      "internal_error": "出错了，请重试。"
+    }
   }
 }

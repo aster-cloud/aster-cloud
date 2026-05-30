@@ -10,6 +10,7 @@ import {
   Shield,
   KeyRound,
   Sparkles,
+  BookOpen,
   Settings,
   CreditCard,
   ShieldCheck,
@@ -251,6 +252,7 @@ interface DashboardSidebarProps {
     policies: string;
     reports: string;
     teams: string;
+    domainVocabularies: string;
     security: string;
     apiKeys: string;
     aiKeys: string;
@@ -348,6 +350,7 @@ export function DashboardSidebar({
     { href: '/policies',  label: labels.policies,  icon: FileText },
     { href: '/reports',   label: labels.reports,   icon: BarChart3 },
     { href: '/teams',     label: labels.teams,     icon: Users },
+    { href: '/domain-vocabularies', label: labels.domainVocabularies, icon: BookOpen },
     { href: '/security',  label: labels.security,  icon: Shield },
     { href: '/settings/api-keys', label: labels.apiKeys, icon: KeyRound },
     { href: '/settings/ai-keys',  label: labels.aiKeys,  icon: Sparkles },

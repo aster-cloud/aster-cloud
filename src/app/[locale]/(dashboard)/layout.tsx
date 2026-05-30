@@ -128,6 +128,7 @@ export default async function DashboardLayout({
           policies: t('policies'),
           reports: t('reports'),
           teams: t('teams'),
+          domainVocabularies: t('domainVocabularies'),
           security: t('security'),
           apiKeys: t('apiKeys'),
           aiKeys: t('aiKeys'),

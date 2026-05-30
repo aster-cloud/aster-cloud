@@ -357,6 +357,7 @@
     "policies": "Policies",
     "reports": "Reports",
     "teams": "Teams",
+    "domainVocabularies": "Domain Vocabularies",
     "security": "Security",
     "billing": "Billing",
     "settings": "Settings",
@@ -2154,5 +2155,94 @@
     "policyShared": "Policy {policyName} was shared with {teamName} ({permission}).",
     "permissionView": "view only",
     "permissionExecute": "view + execute"
+  },
+  "domainVocabularies": {
+    "title": "Domain Vocabularies",
+    "subtitle": "Curate the structs, fields, functions, and enum values your policies use.",
+    "newTerm": "Add term",
+    "bulkUpload": "Bulk upload",
+    "snapshots": "Snapshots",
+    "quota": {
+      "label": "Quota",
+      "used": "{used} / {total}",
+      "unlimited": "Unlimited",
+      "remaining": "{n} remaining",
+      "atLimit": "Quota reached"
+    },
+    "filters": {
+      "domain": "Domain",
+      "locale": "Locale",
+      "kind": "Kind",
+      "all": "All",
+      "includeArchived": "Show archived",
+      "search": "Filter by canonical or localized name"
+    },
+    "kinds": {
+      "struct": "Struct",
+      "field": "Field",
+      "function": "Function",
+      "enum_value": "Enum value"
+    },
+    "table": {
+      "canonical": "Canonical",
+      "localized": "Localized",
+      "domain": "Domain",
+      "locale": "Locale",
+      "kind": "Kind",
+      "parent": "Parent",
+      "source": "Source",
+      "updatedAt": "Updated",
+      "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "restore": "Restore"
+    },
+    "empty": {
+      "title": "No terms yet",
+      "description": "Add your first term to extend the built-in vocabulary."
+    },
+    "needsUpgrade": {
+      "title": "Domain vocabularies are a Pro feature",
+      "description": "Upgrade to Pro to manage your own struct / field / function / enum_value catalog.",
+      "upgrade": "Upgrade plan",
+      "contactAdmin": "Ask your administrator for a plan upgrade"
+    },
+    "dialog": {
+      "createTitle": "Add vocabulary term",
+      "editTitle": "Edit vocabulary term",
+      "domain": "Domain",
+      "domainHelp": "Lowercase identifier, e.g. finance, healthcare.",
+      "locale": "Locale",
+      "localeHelp": "BCP-47 tag, e.g. en, zh-CN, de.",
+      "kind": "Kind",
+      "canonical": "Canonical name",
+      "canonicalHelp": "The English-style identifier used by the engine.",
+      "localized": "Localized display",
+      "parentCanonical": "Parent struct (optional)",
+      "parentCanonicalHelp": "Required for fields; ignored for other kinds.",
+      "description": "Description",
+      "aliases": "Aliases",
+      "aliasesHelp": "Comma-separated alternative names.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "errorGeneric": "Could not save. Please retry."
+    },
+    "delete": {
+      "title": "Delete vocabulary term?",
+      "description": "The term \"{name}\" will be soft-deleted and retained for 90 days. You can restore it from the archive within that window.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "errors": {
+      "quota_exceeded": "You have reached your plan's vocabulary quota.",
+      "duplicate_link": "You already have this term linked.",
+      "validation_failed": "Please correct the highlighted fields.",
+      "not_found": "Term not found.",
+      "plan_gate_required": "Domain vocabularies require a Pro plan.",
+      "internal_error": "Something went wrong. Please retry."
+    }
   }
 }

@@ -357,6 +357,7 @@
     "policies": "Richtlinien",
     "reports": "Berichte",
     "teams": "Teams",
+    "domainVocabularies": "Domänen­vokabulare",
     "security": "Sicherheit",
     "billing": "Abrechnung",
     "settings": "Einstellungen",
@@ -2154,5 +2155,94 @@
     "policyShared": "Policy {policyName} wurde mit {teamName} geteilt ({permission}).",
     "permissionView": "nur lesen",
     "permissionExecute": "lesen + ausführen"
+  },
+  "domainVocabularies": {
+    "title": "Domänenvokabulare",
+    "subtitle": "Verwalte die Structs, Felder, Funktionen und Enum-Werte deiner Policies.",
+    "newTerm": "Begriff hinzufügen",
+    "bulkUpload": "Massen-Upload",
+    "snapshots": "Snapshots",
+    "quota": {
+      "label": "Kontingent",
+      "used": "{used} / {total}",
+      "unlimited": "Unbegrenzt",
+      "remaining": "{n} verbleibend",
+      "atLimit": "Kontingent erreicht"
+    },
+    "filters": {
+      "domain": "Domäne",
+      "locale": "Sprache",
+      "kind": "Typ",
+      "all": "Alle",
+      "includeArchived": "Archivierte anzeigen",
+      "search": "Nach kanonischem oder lokalisiertem Namen filtern"
+    },
+    "kinds": {
+      "struct": "Struct",
+      "field": "Feld",
+      "function": "Funktion",
+      "enum_value": "Enum-Wert"
+    },
+    "table": {
+      "canonical": "Kanonisch",
+      "localized": "Lokalisiert",
+      "domain": "Domäne",
+      "locale": "Sprache",
+      "kind": "Typ",
+      "parent": "Übergeordnet",
+      "source": "Quelle",
+      "updatedAt": "Aktualisiert",
+      "actions": "Aktionen"
+    },
+    "actions": {
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "restore": "Wiederherstellen"
+    },
+    "empty": {
+      "title": "Noch keine Begriffe",
+      "description": "Füge den ersten Begriff hinzu, um das eingebaute Vokabular zu erweitern."
+    },
+    "needsUpgrade": {
+      "title": "Domänenvokabulare sind ein Pro-Feature",
+      "description": "Wechsle zu Pro, um eigene Structs / Felder / Funktionen / Enum-Werte zu verwalten.",
+      "upgrade": "Plan upgraden",
+      "contactAdmin": "Bitte deinen Administrator um ein Plan-Upgrade"
+    },
+    "dialog": {
+      "createTitle": "Begriff hinzufügen",
+      "editTitle": "Begriff bearbeiten",
+      "domain": "Domäne",
+      "domainHelp": "Kleingeschriebener Identifier, z. B. finance, healthcare.",
+      "locale": "Sprache",
+      "localeHelp": "BCP-47-Tag, z. B. en, zh-CN, de.",
+      "kind": "Typ",
+      "canonical": "Kanonischer Name",
+      "canonicalHelp": "Englischsprachiger Identifier, den die Engine nutzt.",
+      "localized": "Lokalisierte Anzeige",
+      "parentCanonical": "Übergeordnetes Struct (optional)",
+      "parentCanonicalHelp": "Pflicht für Felder; sonst ignoriert.",
+      "description": "Beschreibung",
+      "aliases": "Aliase",
+      "aliasesHelp": "Kommagetrennte Alternativnamen.",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "saving": "Speichern…",
+      "errorGeneric": "Speichern fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "delete": {
+      "title": "Begriff löschen?",
+      "description": "Der Begriff „{name}\" wird soft-gelöscht und 90 Tage aufbewahrt. Innerhalb dieser Frist kann er aus dem Archiv wiederhergestellt werden.",
+      "confirm": "Löschen",
+      "cancel": "Abbrechen"
+    },
+    "errors": {
+      "quota_exceeded": "Du hast das Vokabular-Kontingent deines Plans erreicht.",
+      "duplicate_link": "Dieser Begriff ist bereits verknüpft.",
+      "validation_failed": "Bitte prüfe die markierten Felder.",
+      "not_found": "Begriff nicht gefunden.",
+      "plan_gate_required": "Domänenvokabulare erfordern einen Pro-Plan.",
+      "internal_error": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
+    }
   }
 }
