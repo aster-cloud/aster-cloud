@@ -6,6 +6,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Snapshots/rollback/admin/SSE/i18n (F7-F12) *(vocab)*
+- Pro-gate + bulk upload + job progress (F4+F5+F6) *(vocab)*
+- Sidebar entry + list page + CRUD dialog (F1+F2+F3) *(vocab)*
 - Retention cron, observability, SSE, golden+chaos tests (B13+B14+B15) *(lexicon)*
 - Bulk sync/async + snapshot/rollback (B10+B11+B12) *(lexicon)*
 - Vocab service core, idempotency middleware, CRUD APIs (B7+B8+B9) *(lexicon)*
@@ -179,6 +182,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Mark Turnstile backend implemented (R31-4) *(adr-0012)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -243,6 +247,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Final audit polish — rich removed-bucket + hook ergonomics *(vocab)*
+- F4-F6 audit blockers *(vocab)*
+- Expose facet-grew tick to make useMemo dep honest *(vocab)*
+- F1-F3 audit blockers + secondary polish *(vocab)*
 - Production bugs caught by local Postgres validation *(lexicon)*
 - GET ordering by outer-table column → 500 (HOTFIX) *(api/teams)*
 - R32 P0 — WCAG contrast + dropdown aria (P0×3) *(a11y)*
