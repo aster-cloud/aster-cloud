@@ -12,9 +12,14 @@ import {
   Select,
   Textarea,
 } from '@/components/ui';
+import { KIND_OPTIONS, type Kind } from './constants';
 
-const KIND_OPTIONS = ['struct', 'field', 'function', 'enum_value'] as const;
-type Kind = (typeof KIND_OPTIONS)[number];
+function isKnownKind(value: string | undefined): value is Kind {
+  return value !== undefined && (KIND_OPTIONS as readonly string[]).includes(value);
+}
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Shape sent to the API. The dialog normalizes aliases (CSV → array)
@@ -71,6 +76,7 @@ export function VocabularyDialog({
   const tKinds = useTranslations('domainVocabularies.kinds');
   const titleId = useId();
   const firstFieldRef = useRef<HTMLInputElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const [domain, setDomain] = useState('');
   const [locale, setLocale] = useState('');
@@ -89,7 +95,7 @@ export function VocabularyDialog({
     if (!isOpen) return;
     setDomain(initialValues?.domain ?? '');
     setLocale(initialValues?.locale ?? '');
-    setKind(((initialValues?.kind as Kind | undefined) ?? 'struct'));
+    setKind(isKnownKind(initialValues?.kind) ? initialValues.kind : 'struct');
     setCanonical(initialValues?.canonical ?? '');
     setLocalized(initialValues?.localized ?? '');
     setParentCanonical(initialValues?.parentCanonical ?? '');
@@ -105,10 +111,30 @@ export function VocabularyDialog({
     return () => window.cancelAnimationFrame(id);
   }, [isOpen, initialValues]);
 
+  // ESC + Tab focus trap. Trap keeps Tab cycling inside the form so a
+  // user can't accidentally focus the page underneath the modal — a
+  // WCAG 2.4.3 ("focus order") and 2.1.2 ("no keyboard trap inverse")
+  // expectation for any aria-modal=true container.
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSaving) onClose();
+      if (e.key === 'Escape' && !isSaving) {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !formRef.current) return;
+      const focusable = formRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
@@ -180,10 +206,13 @@ export function VocabularyDialog({
       aria-modal="true"
       aria-labelledby={titleId}
     >
-      {/* Backdrop. Click closes (unless saving). */}
+      {/* Backdrop. Click closes (unless saving). tabIndex=-1 keeps it
+          out of the Tab cycle so the focus trap inside the form is the
+          only path; keyboard users still close via Esc. */}
       <button
         type="button"
-        aria-label={t('cancel')}
+        tabIndex={-1}
+        aria-hidden="true"
         className="absolute inset-0 bg-black/40"
         onClick={() => {
           if (!isSaving) onClose();
@@ -191,6 +220,7 @@ export function VocabularyDialog({
       />
 
       <form
+        ref={formRef}
         onSubmit={handleSubmit}
         className="relative z-10 w-full max-w-2xl rounded-lg bg-bg shadow-xl"
       >
@@ -255,7 +285,7 @@ export function VocabularyDialog({
             >
               {KIND_OPTIONS.map((k) => (
                 <option key={k} value={k}>
-                  {tKinds(k as 'struct')}
+                  {tKinds(k)}
                 </option>
               ))}
             </Select>

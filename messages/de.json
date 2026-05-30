@@ -2169,6 +2169,10 @@
       "remaining": "{n} verbleibend",
       "atLimit": "Kontingent erreicht"
     },
+    "stats": {
+      "visible": "Sichtbar",
+      "archived": "Archiviert"
+    },
     "filters": {
       "domain": "Domäne",
       "locale": "Sprache",

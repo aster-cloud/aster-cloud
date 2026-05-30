@@ -263,6 +263,25 @@ describe('lexicon integration — observability wiring', () => {
     unsubscribe();
   });
 
+  // R-blocker-1: kind=field without parentCanonical must be rejected at the
+  // service layer, not just the dialog. Upstream validateVocabulary only
+  // emits a warning for missing parents, so the contract has to be enforced
+  // here or curl/SDK/bulk callers can plant orphan fields.
+  it('add rejects kind=field without parentCanonical', async () => {
+    await expect(
+      addUserVocabularyTerm('user-1', {
+        domain: 'finance.loan',
+        locale: 'en-US',
+        kind: 'field',
+        canonical: 'amount',
+        localized: 'Amount',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation_failed',
+      message: /parentCanonical/i,
+    });
+  });
+
   it('add failure (plan_gate) records error counter and does not publish SSE', async () => {
     vi.mocked(getLexiconQuota).mockResolvedValue({
       maxTerms: 0,

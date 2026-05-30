@@ -279,6 +279,15 @@ function validateInput(input: TermInput): NormalizedTermInput {
   if (!normalized.domain || !normalized.locale) {
     throw new VocabularyError('validation_failed', 'domain and locale are required');
   }
+  // 字段必须挂在父结构体下,否则后续的 lexicon 索引会出现孤立 field。
+  // 上游 validateVocabulary 只把缺 parent 当成 warning,所以在 service
+  // 层强制拒绝,保证 REST API、bulk 路径、未来 SDK 调用都遵守同一契约。
+  if (normalized.kind === 'field' && !normalized.parentCanonical) {
+    throw new VocabularyError(
+      'validation_failed',
+      'parentCanonical is required for kind=field',
+    );
+  }
 
   const previewVocab = assembleDomainVocabularyFromLinks(
     [

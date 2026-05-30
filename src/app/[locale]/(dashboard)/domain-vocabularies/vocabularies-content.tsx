@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import {
   Badge,
@@ -18,7 +18,17 @@ import {
   type DataTableColumn,
 } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
+import { KIND_OPTIONS, KNOWN_ERROR_CODES, type Kind } from './constants';
 import { VocabularyDialog, type VocabularyDialogValues } from './vocabulary-dialog';
+
+type KindKey = `kinds.${Kind}`;
+type ErrorKey = `errors.${
+  | 'quota_exceeded'
+  | 'duplicate_link'
+  | 'validation_failed'
+  | 'not_found'
+  | 'plan_gate_required'
+  | 'internal_error'}`;
 
 /**
  * Serializable wire-format of a TermLink: timestamps as ISO strings so the
@@ -54,17 +64,6 @@ interface VocabulariesContentProps {
   quota: VocabularyQuota;
 }
 
-const KIND_OPTIONS = ['struct', 'field', 'function', 'enum_value'] as const;
-
-const KNOWN_ERROR_CODES = new Set([
-  'quota_exceeded',
-  'duplicate_link',
-  'validation_failed',
-  'not_found',
-  'plan_gate_required',
-  'internal_error',
-]);
-
 interface ListResponse {
   items: SerializableTermLink[];
   total: number;
@@ -78,6 +77,22 @@ interface ErrorEnvelope {
 }
 
 const PAGE_SIZE = 50;
+const QUOTA_WARNING_THRESHOLD = 0.9;
+
+function pickQuotaTone(
+  isUnlimited: boolean,
+  used: number,
+  max: number,
+  atLimit: boolean,
+): 'neutral' | 'warning' | 'danger' {
+  if (atLimit) return 'danger';
+  if (!isUnlimited && used >= max * QUOTA_WARNING_THRESHOLD) return 'warning';
+  return 'neutral';
+}
+
+function isKnownKind(value: string): value is Kind {
+  return (KIND_OPTIONS as readonly string[]).includes(value);
+}
 
 export function VocabulariesContent({
   initialTerms,
@@ -87,6 +102,7 @@ export function VocabulariesContent({
 }: VocabulariesContentProps) {
   const t = useTranslations('domainVocabularies');
   const tNav = useTranslations('dashboardNav');
+  const locale = useLocale();
 
   const [terms, setTerms] = useState<SerializableTermLink[]>(initialTerms);
   const [total, setTotal] = useState<number>(initialTotal);
@@ -96,6 +112,33 @@ export function VocabulariesContent({
   const [kindFilter, setKindFilter] = useState<string>('');
   const [query, setQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Filter options grow as the user sees more data but never shrink: a
+  // narrowing refetch would otherwise hide the dropdown values that
+  // allow the user to widen the filter back out. Seeded from the SSR
+  // payload so the dropdowns are useful before the first interaction.
+  const facetsRef = useRef<{ domains: Set<string>; locales: Set<string> }>({
+    domains: new Set(initialTerms.map((t) => t.domain)),
+    locales: new Set(initialTerms.map((t) => t.locale)),
+  });
+  const [, forceFacetTick] = useState(0);
+  const noteFacets = useCallback((rows: SerializableTermLink[]) => {
+    let changed = false;
+    for (const row of rows) {
+      if (!facetsRef.current.domains.has(row.domain)) {
+        facetsRef.current.domains.add(row.domain);
+        changed = true;
+      }
+      if (!facetsRef.current.locales.has(row.locale)) {
+        facetsRef.current.locales.add(row.locale);
+        changed = true;
+      }
+    }
+    if (changed) forceFacetTick((n) => n + 1);
+  }, []);
+
+  // Aborts any inflight refetch so rapid filter changes don't race.
+  const inflightRef = useRef<AbortController | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<SerializableTermLink | null>(null);
@@ -111,6 +154,9 @@ export function VocabulariesContent({
   }, [domainFilter, localeFilter, kindFilter]);
 
   const refetch = useCallback(async () => {
+    inflightRef.current?.abort();
+    const controller = new AbortController();
+    inflightRef.current = controller;
     setIsLoading(true);
     try {
       const url = new URL('/api/v1/domain-vocabularies/terms', window.location.origin);
@@ -120,30 +166,52 @@ export function VocabulariesContent({
       url.searchParams.set('page', '1');
       url.searchParams.set('pageSize', String(PAGE_SIZE));
 
-      const res = await fetch(url.toString(), { credentials: 'same-origin' });
+      const res = await fetch(url.toString(), {
+        credentials: 'same-origin',
+        signal: controller.signal,
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as ListResponse;
       setTerms(data.items);
       setTotal(data.total);
       setArchivedCount(data.archivedCount);
+      noteFacets(data.items);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       toast.error(t('dialog.errorGeneric'));
       console.error('[vocabularies] refetch failed', err);
     } finally {
-      setIsLoading(false);
+      if (inflightRef.current === controller) {
+        setIsLoading(false);
+        inflightRef.current = null;
+      }
     }
-  }, [domainFilter, localeFilter, kindFilter, t]);
+  }, [domainFilter, localeFilter, kindFilter, noteFacets, t]);
 
-  // Distinct (domain, locale) values from the current page — used to
-  // populate the filter dropdowns without an extra API call. As the user
-  // narrows the dataset, the option set shrinks accordingly.
+  // Sorted snapshot of the facet sets for the dropdowns.
   const domainOptions = useMemo(
-    () => Array.from(new Set(initialTerms.concat(terms).map((t) => t.domain))).sort(),
-    [initialTerms, terms],
+    () => [...facetsRef.current.domains].sort(),
+    // facetsRef is mutated by noteFacets; forceFacetTick triggers re-render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [facetsRef.current.domains.size],
   );
   const localeOptions = useMemo(
-    () => Array.from(new Set(initialTerms.concat(terms).map((t) => t.locale))).sort(),
-    [initialTerms, terms],
+    () => [...facetsRef.current.locales].sort(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [facetsRef.current.locales.size],
+  );
+
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }),
+    [locale],
+  );
+
+  const translateKind = useCallback(
+    (kind: string) => {
+      if (isKnownKind(kind)) return t(`kinds.${kind}` as KindKey);
+      return kind;
+    },
+    [t],
   );
 
   const visibleTerms = useMemo(() => {
@@ -160,7 +228,7 @@ export function VocabulariesContent({
   const errorMessage = useCallback(
     (code: string | undefined, fallback: string | undefined) => {
       if (code && KNOWN_ERROR_CODES.has(code)) {
-        return t(`errors.${code}` as 'errors.quota_exceeded');
+        return t(`errors.${code}` as ErrorKey);
       }
       return fallback ?? t('dialog.errorGeneric');
     },
@@ -307,7 +375,7 @@ export function VocabulariesContent({
       key: 'kind',
       header: t('table.kind'),
       cell: (row) => (
-        <Badge variant="neutral">{t(`kinds.${row.kind}` as 'kinds.struct')}</Badge>
+        <Badge variant="neutral">{translateKind(row.kind)}</Badge>
       ),
     },
     {
@@ -315,7 +383,7 @@ export function VocabulariesContent({
       header: t('table.updatedAt'),
       cell: (row) => (
         <span className="text-sm text-fg-muted">
-          {new Date(row.updatedAt).toLocaleDateString()}
+          {dateFormatter.format(new Date(row.updatedAt))}
         </span>
       ),
     },
@@ -348,19 +416,13 @@ export function VocabulariesContent({
     },
   ];
 
-  const quotaLabel =
-    quota.maxTerms === -1
-      ? t('quota.unlimited')
-      : t('quota.used', { used: total, total: quota.maxTerms });
-  const remaining =
-    quota.maxTerms === -1 ? null : Math.max(0, quota.maxTerms - total);
-  const atLimit = quota.maxTerms !== -1 && total >= quota.maxTerms;
-  const quotaTone: 'neutral' | 'warning' | 'danger' =
-    atLimit
-      ? 'danger'
-      : quota.maxTerms !== -1 && total >= quota.maxTerms * 0.9
-        ? 'warning'
-        : 'neutral';
+  const isUnlimited = quota.maxTerms === -1;
+  const quotaLabel = isUnlimited
+    ? t('quota.unlimited')
+    : t('quota.used', { used: total, total: quota.maxTerms });
+  const remaining = isUnlimited ? null : Math.max(0, quota.maxTerms - total);
+  const atLimit = !isUnlimited && total >= quota.maxTerms;
+  const quotaTone = pickQuotaTone(isUnlimited, total, quota.maxTerms, atLimit);
 
   return (
     <div>
@@ -403,11 +465,8 @@ export function VocabulariesContent({
                 : t('quota.remaining', { n: remaining })
           }
         />
-        <StatCard label={t('table.kind')} value={String(terms.length)} />
-        <StatCard
-          label={t('filters.includeArchived')}
-          value={String(archivedCount)}
-        />
+        <StatCard label={t('stats.visible')} value={String(terms.length)} />
+        <StatCard label={t('stats.archived')} value={String(archivedCount)} />
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
@@ -450,7 +509,7 @@ export function VocabulariesContent({
           <option value="">{t('filters.all')}</option>
           {KIND_OPTIONS.map((k) => (
             <option key={k} value={k}>
-              {t(`kinds.${k}` as 'kinds.struct')}
+              {translateKind(k)}
             </option>
           ))}
         </Select>

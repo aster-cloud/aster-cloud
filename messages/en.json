@@ -2169,6 +2169,10 @@
       "remaining": "{n} remaining",
       "atLimit": "Quota reached"
     },
+    "stats": {
+      "visible": "Visible",
+      "archived": "Archived"
+    },
     "filters": {
       "domain": "Domain",
       "locale": "Locale",

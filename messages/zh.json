@@ -2169,6 +2169,10 @@
       "remaining": "剩余 {n}",
       "atLimit": "配额已用完"
     },
+    "stats": {
+      "visible": "当前显示",
+      "archived": "已归档"
+    },
     "filters": {
       "domain": "领域",
       "locale": "语言",
