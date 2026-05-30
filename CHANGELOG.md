@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Server-side pagination for policies + vocab + snapshots *(list)*
 - Snapshots/rollback/admin/SSE/i18n (F7-F12) *(vocab)*
 - Pro-gate + bulk upload + job progress (F4+F5+F6) *(vocab)*
 - Sidebar entry + list page + CRUD dialog (F1+F2+F3) *(vocab)*
@@ -177,6 +178,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
