@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import {
   Badge,
   Breadcrumbs,
@@ -454,6 +455,12 @@ export function VocabulariesContent({
         subtitle={t('subtitle')}
         action={
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/domain-vocabularies/snapshots"
+              className="inline-flex items-center rounded-md border border-border bg-bg px-3 py-2 text-sm font-medium text-fg hover:bg-bg-subtle"
+            >
+              {t('snapshots')}
+            </Link>
             <Button
               variant="outline"
               onClick={() => setBulkOpen(true)}

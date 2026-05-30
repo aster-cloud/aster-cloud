@@ -1447,6 +1447,37 @@
     "aiCircuitBreaker": {
       "title": "AI circuit breaker"
     },
+    "vocab": {
+      "title": "Domain vocabularies (admin)",
+      "subtitle": "Aggregate counters across all users; top consumers + recent bulk job stats.",
+      "openUserSurface": "Open user-facing view →",
+      "overviewError": "Some panels failed to load. Refresh to retry.",
+      "overview": {
+        "heading": "At-a-glance",
+        "activeLinks": "Active links",
+        "globalTerms": "Global terms",
+        "snapshots": "Snapshots",
+        "uniqueUsersHint": "{n} unique users",
+        "archivedHint": "{n} archived",
+        "archivedSnapshotsHint": "{n} archived"
+      },
+      "topUsers": {
+        "title": "Top users by active links",
+        "email": "User",
+        "plan": "Plan",
+        "activeLinks": "Active",
+        "emptyTitle": "No users yet",
+        "emptyDescription": "No active vocabulary links across the platform."
+      },
+      "jobs": {
+        "title": "Bulk job stats (last 24h)",
+        "status": "Status",
+        "count": "Jobs",
+        "totalRows": "Total rows",
+        "emptyTitle": "No bulk jobs in the last 24h",
+        "emptyDescription": "Job activity will appear here once users start importing."
+      }
+    },
     "riskTier": {
       "title": "Risk-tier Triage",
       "subtitle": "Users with non-zero registration risk. Verify the reason before reducing tier; every override is logged.",
@@ -1512,6 +1543,11 @@
         "title": "AI circuit breaker",
         "description": "Halt LLM spend platform-wide when costs spike.",
         "cta": "Open breaker"
+      },
+      "vocabCard": {
+        "title": "Domain vocabularies",
+        "description": "Aggregate counters, top consumers, recent bulk job stats.",
+        "cta": "Open dashboard"
       },
       "riskTierCard": {
         "title": "Risk-tier triage",
@@ -2258,6 +2294,61 @@
       "asyncEnqueued": "Bulk job enqueued",
       "errorGeneric": "Could not start the import. Please retry.",
       "errorReadFile": "Could not read the selected file."
+    },
+    "snapshotsView": {
+      "title": "Vocabulary snapshots",
+      "subtitle": "Every published policy version pins a snapshot. Roll back to any unarchived snapshot to restore that point-in-time vocabulary.",
+      "searchPlaceholder": "Filter by domain, locale or hash",
+      "refreshFailed": "Could not refresh snapshots.",
+      "rollbackFailed": "Rollback failed.",
+      "rollbackSuccess": "Rolled back: +{added} added · −{removed} removed · {unchanged} unchanged",
+      "archivedTooltip": "Archived snapshots cannot be applied",
+      "table": {
+        "scope": "Scope",
+        "version": "v{n}",
+        "termCount": "Terms",
+        "refCount": "Pinned by",
+        "hash": "Content hash",
+        "createdAt": "Created",
+        "status": "Status",
+        "archivedBadge": "Archived",
+        "activeBadge": "Active",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "View diff",
+        "rollback": "Rollback"
+      },
+      "empty": {
+        "title": "No snapshots yet",
+        "description": "Snapshots are created automatically when a policy version is approved."
+      },
+      "rollback": {
+        "title": "Apply this snapshot?",
+        "description": "Roll back your active vocabulary for {domain} · {locale} to snapshot v{version}. Links not present in the snapshot will be soft-deleted; missing ones will be re-added.",
+        "confirm": "Rollback",
+        "cancel": "Cancel"
+      },
+      "diff": {
+        "title": "{domain} · {locale} · v{version}",
+        "subtitle": "{termCount} terms",
+        "summary": "Change summary",
+        "bucket": {
+          "added": "Added on rollback",
+          "removed": "Removed on rollback",
+          "unchanged": "Unchanged",
+          "all": "Show all snapshot terms ({n})"
+        },
+        "removedNotice": "{n} of your current terms would be soft-deleted on rollback. They can still be restored within 90 days.",
+        "emptyBucket": "No terms in this bucket.",
+        "iconAdded": "Added",
+        "iconRemoved": "Removed",
+        "iconUnchanged": "Unchanged",
+        "rollback": "Rollback to this snapshot",
+        "close": "Close",
+        "loading": "Loading snapshot…",
+        "loadFailed": "Could not load snapshot."
+      }
     },
     "jobProgress": {
       "status": {

@@ -159,7 +159,7 @@ export function BulkJobProgress({ jobId, onClear, onTerminal }: BulkJobProgressP
   const isFinished = isTerminal(job.status);
 
   return (
-    <Card>
+    <Card aria-live="polite" aria-busy={!isFinished}>
       <CardBody className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2">

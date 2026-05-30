@@ -1447,6 +1447,37 @@
     "aiCircuitBreaker": {
       "title": "KI-Schutzschalter"
     },
+    "vocab": {
+      "title": "Domänenvokabulare (Admin)",
+      "subtitle": "Aggregierte Kennzahlen aller Nutzer; Top-Verbraucher + aktuelle Massen-Job-Statistik.",
+      "openUserSurface": "Nutzeransicht öffnen →",
+      "overviewError": "Einige Panels konnten nicht geladen werden. Bitte aktualisieren.",
+      "overview": {
+        "heading": "Auf einen Blick",
+        "activeLinks": "Aktive Verknüpfungen",
+        "globalTerms": "Globale Begriffe",
+        "snapshots": "Snapshots",
+        "uniqueUsersHint": "{n} unterschiedliche Nutzer",
+        "archivedHint": "{n} archiviert",
+        "archivedSnapshotsHint": "{n} archiviert"
+      },
+      "topUsers": {
+        "title": "Top-Nutzer nach aktiven Verknüpfungen",
+        "email": "Nutzer",
+        "plan": "Plan",
+        "activeLinks": "Aktiv",
+        "emptyTitle": "Noch keine Nutzer",
+        "emptyDescription": "Keine aktiven Vokabular-Verknüpfungen auf der Plattform."
+      },
+      "jobs": {
+        "title": "Massen-Job-Statistik (letzte 24 h)",
+        "status": "Status",
+        "count": "Jobs",
+        "totalRows": "Zeilen gesamt",
+        "emptyTitle": "Keine Massen-Jobs in den letzten 24 h",
+        "emptyDescription": "Sobald Nutzer importieren, erscheint die Statistik hier."
+      }
+    },
     "riskTier": {
       "title": "Risiko-Tier-Triage",
       "subtitle": "Benutzer mit Registrierungs-Risiko ≥ 1. Vor dem Herabstufen den Grund prüfen; jede Übersteuerung wird im Audit-Log protokolliert.",
@@ -1512,6 +1543,11 @@
         "title": "KI-Schutzschalter",
         "description": "LLM-Kosten plattformweit anhalten, wenn die Ausgaben unerwartet steigen.",
         "cta": "Schutzschalter öffnen"
+      },
+      "vocabCard": {
+        "title": "Domänenvokabulare",
+        "description": "Aggregierte Kennzahlen, Top-Verbraucher, aktuelle Massen-Job-Statistik.",
+        "cta": "Dashboard öffnen"
       },
       "riskTierCard": {
         "title": "Risiko-Tier-Triage",
@@ -2258,6 +2294,61 @@
       "asyncEnqueued": "Massen-Job in die Warteschlange gestellt",
       "errorGeneric": "Import konnte nicht gestartet werden. Bitte erneut versuchen.",
       "errorReadFile": "Datei konnte nicht gelesen werden."
+    },
+    "snapshotsView": {
+      "title": "Vokabular-Snapshots",
+      "subtitle": "Jede freigegebene Policy-Version pinnt einen Snapshot. Rollbacks auf nicht-archivierte Snapshots stellen das damalige Vokabular wieder her.",
+      "searchPlaceholder": "Nach Domäne, Sprache oder Hash filtern",
+      "refreshFailed": "Snapshots konnten nicht aktualisiert werden.",
+      "rollbackFailed": "Rollback fehlgeschlagen.",
+      "rollbackSuccess": "Rollback: +{added} hinzugefügt · −{removed} entfernt · {unchanged} unverändert",
+      "archivedTooltip": "Archivierte Snapshots können nicht angewendet werden",
+      "table": {
+        "scope": "Bereich",
+        "version": "v{n}",
+        "termCount": "Begriffe",
+        "refCount": "Gepinnt von",
+        "hash": "Content-Hash",
+        "createdAt": "Erstellt",
+        "status": "Status",
+        "archivedBadge": "Archiviert",
+        "activeBadge": "Aktiv",
+        "actions": "Aktionen"
+      },
+      "actions": {
+        "view": "Diff anzeigen",
+        "rollback": "Rollback"
+      },
+      "empty": {
+        "title": "Noch keine Snapshots",
+        "description": "Snapshots werden automatisch beim Freigeben einer Policy-Version erzeugt."
+      },
+      "rollback": {
+        "title": "Diesen Snapshot anwenden?",
+        "description": "Rollback des aktiven Vokabulars für {domain} · {locale} auf Snapshot v{version}. Nicht im Snapshot enthaltene Begriffe werden soft-gelöscht; fehlende neu hinzugefügt.",
+        "confirm": "Rollback",
+        "cancel": "Abbrechen"
+      },
+      "diff": {
+        "title": "{domain} · {locale} · v{version}",
+        "subtitle": "{termCount} Begriffe",
+        "summary": "Änderungsübersicht",
+        "bucket": {
+          "added": "Beim Rollback hinzugefügt",
+          "removed": "Beim Rollback entfernt",
+          "unchanged": "Unverändert",
+          "all": "Alle Snapshot-Begriffe ({n})"
+        },
+        "removedNotice": "{n} deiner aktuellen Begriffe würden beim Rollback soft-gelöscht. Innerhalb von 90 Tagen wiederherstellbar.",
+        "emptyBucket": "Keine Begriffe in diesem Bereich.",
+        "iconAdded": "Hinzugefügt",
+        "iconRemoved": "Entfernt",
+        "iconUnchanged": "Unverändert",
+        "rollback": "Auf diesen Snapshot rollen zurück",
+        "close": "Schließen",
+        "loading": "Lade Snapshot…",
+        "loadFailed": "Snapshot konnte nicht geladen werden."
+      }
     },
     "jobProgress": {
       "status": {

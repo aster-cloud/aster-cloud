@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   db,
   domainTerms,
@@ -502,4 +502,121 @@ export async function listOwnerSnapshots(
     archived: row.archivedAt != null,
     createdAt: row.createdAt,
   }));
+}
+
+export interface SnapshotTermEntry {
+  termId: string;
+  kind: string;
+  canonical: string;
+  localized: string;
+  parentCanonical: string | null;
+  aliases: string[];
+  description: string | null;
+}
+
+export interface SnapshotDiff {
+  snapshot: SnapshotListEntry;
+  /** Terms in the snapshot, resolved with their current global content. */
+  terms: SnapshotTermEntry[];
+  /** Term ids active for the caller in the snapshot's (domain, locale). */
+  currentTermIds: string[];
+  /** Term ids present in the snapshot but not in the caller's active set. */
+  addedIds: string[];
+  /** Term ids present in the caller's active set but not in the snapshot. */
+  removedIds: string[];
+  /** Term ids present in both. */
+  unchangedIds: string[];
+}
+
+/**
+ * Resolve a snapshot's content for the diff viewer (F7).
+ *
+ * Returns the snapshot's terms with their current global presentation +
+ * three set-comparison buckets against the caller's active set so the UI
+ * can render a "rollback would add X, remove Y" preview.
+ */
+export async function getSnapshotDiff(
+  userId: string,
+  snapshotId: string,
+): Promise<SnapshotDiff> {
+  const snap = await db.query.userVocabularySnapshots.findFirst({
+    where: and(
+      eq(userVocabularySnapshots.id, snapshotId),
+      eq(userVocabularySnapshots.ownerType, 'user'),
+      eq(userVocabularySnapshots.ownerId, userId),
+    ),
+  });
+  if (!snap) {
+    throw new VocabularyError('not_found', 'Snapshot not found');
+  }
+
+  const snapshotTermIds = Array.isArray(snap.termIds) ? (snap.termIds as string[]) : [];
+  const termRows = snapshotTermIds.length === 0
+    ? []
+    : await db
+        .select({
+          id: domainTerms.id,
+          kind: domainTerms.kind,
+          canonical: domainTerms.canonical,
+          localized: domainTerms.localized,
+          parentCanonical: domainTerms.parentCanonical,
+          aliases: domainTerms.aliases,
+          description: domainTerms.description,
+        })
+        .from(domainTerms)
+        .where(inArray(domainTerms.id, snapshotTermIds));
+  const termById = new Map(termRows.map((r) => [r.id, r]));
+
+  const terms: SnapshotTermEntry[] = snapshotTermIds.flatMap((id) => {
+    const row = termById.get(id);
+    if (!row) return [];
+    return [
+      {
+        termId: id,
+        kind: row.kind,
+        canonical: row.canonical,
+        localized: row.localized,
+        parentCanonical: row.parentCanonical,
+        aliases: parseAliases(row.aliases),
+        description: row.description,
+      },
+    ];
+  });
+
+  const activeRows = await db
+    .select({ termId: userDomainTerms.termId })
+    .from(userDomainTerms)
+    .where(
+      and(
+        eq(userDomainTerms.userId, userId),
+        eq(userDomainTerms.domain, snap.domain),
+        eq(userDomainTerms.locale, snap.locale),
+        isNull(userDomainTerms.deletedAt),
+        isNull(userDomainTerms.archivedAt),
+      ),
+    );
+  const currentSet = new Set<string>(activeRows.map((r) => r.termId));
+  const snapshotSet = new Set<string>(snapshotTermIds);
+  const addedIds = snapshotTermIds.filter((id) => !currentSet.has(id));
+  const removedIds = activeRows.map((r) => r.termId).filter((id) => !snapshotSet.has(id));
+  const unchangedIds = snapshotTermIds.filter((id) => currentSet.has(id));
+
+  return {
+    snapshot: {
+      id: snap.id,
+      domain: snap.domain,
+      locale: snap.locale,
+      version: snap.version,
+      contentHash: snap.contentHash,
+      refCount: snap.refCount,
+      termCount: snapshotTermIds.length,
+      archived: snap.archivedAt != null,
+      createdAt: snap.createdAt,
+    },
+    terms,
+    currentTermIds: activeRows.map((r) => r.termId),
+    addedIds,
+    removedIds,
+    unchangedIds,
+  };
 }

@@ -15,6 +15,7 @@ import {
   type DomainVocabulary,
 } from '@/lib/aster-lexicon';
 import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
+import { useDomainVocabularyInvalidate } from '@/hooks/useDomainVocabularyInvalidate';
 import type { TypecheckDiagnostic } from '@aster-cloud/aster-lang-ts/browser';
 import { violet, sky, emerald, amber, rose, zinc } from '@aster-cloud/tokens';
 
@@ -383,8 +384,19 @@ export function MonacoPolicyEditor({
   // Handle both short ('zh', 'de') and full ('zh-CN', 'de-DE') locale formats
   const compilerLocale: CNLLocale = locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
 
-  // 获取领域词汇表
-  const vocabulary = domain ? getVocabulary(domain, compilerLocale) : undefined;
+  // F10: subscribe to user-vocabulary SSE invalidates so a user adding /
+  // removing a term in another tab triggers a re-fetch + Monaco
+  // re-registration. The tick is folded into the vocabulary memo's deps so
+  // every invalidate re-runs `getVocabulary` and downstream effects.
+  const vocabTick = useDomainVocabularyInvalidate({
+    enabled: Boolean(domain),
+    match: domain ? { domain, locale: compilerLocale } : undefined,
+  });
+  const vocabulary = useMemo(
+    () => (domain ? getVocabulary(domain, compilerLocale) : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [domain, compilerLocale, vocabTick],
+  );
 
   // Local compiler for real-time validation with accurate error positions
   const { diagnostics } = useAsterCompiler({

@@ -111,7 +111,8 @@ type OverviewCard = {
     | 'aiBreakerCard'
     | 'riskTierCard'
     | 'licenseCard'
-    | 'ssoCard';
+    | 'ssoCard'
+    | 'vocabCard';
   show: boolean;
   /** true → 卡片显示 "Coming soon" 徽章 + 禁用链接 */
   comingSoon: boolean;
@@ -121,6 +122,12 @@ const CARDS: ReadonlyArray<OverviewCard> = [
   {
     href: '/admin/ai-circuit-breaker',
     cardKey: 'aiBreakerCard',
+    show: true,
+    comingSoon: false,
+  },
+  {
+    href: '/admin/domain-vocabularies',
+    cardKey: 'vocabCard',
     show: true,
     comingSoon: false,
   },

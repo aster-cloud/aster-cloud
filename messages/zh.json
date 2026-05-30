@@ -1447,6 +1447,37 @@
     "aiCircuitBreaker": {
       "title": "AI 熔断器"
     },
+    "vocab": {
+      "title": "领域词汇(管理)",
+      "subtitle": "全平台聚合数据;高用量用户和近期批量任务统计。",
+      "openUserSurface": "前往用户视图 →",
+      "overviewError": "部分面板加载失败,请刷新重试。",
+      "overview": {
+        "heading": "概览",
+        "activeLinks": "活动词条",
+        "globalTerms": "全局词条",
+        "snapshots": "快照",
+        "uniqueUsersHint": "涉及 {n} 位用户",
+        "archivedHint": "已归档 {n}",
+        "archivedSnapshotsHint": "已归档 {n}"
+      },
+      "topUsers": {
+        "title": "活动词条数 Top 用户",
+        "email": "用户",
+        "plan": "计划",
+        "activeLinks": "活动数",
+        "emptyTitle": "暂无用户",
+        "emptyDescription": "全平台暂无活动的词条链接。"
+      },
+      "jobs": {
+        "title": "批量任务统计(近 24 小时)",
+        "status": "状态",
+        "count": "任务数",
+        "totalRows": "总行数",
+        "emptyTitle": "近 24 小时暂无批量任务",
+        "emptyDescription": "当用户开始批量导入时,统计会出现在这里。"
+      }
+    },
     "riskTier": {
       "title": "风险等级处理台",
       "subtitle": "注册风险等级 ≥ 1 的用户。降级前请核实原因；每次覆盖都会写入审计日志。",
@@ -1512,6 +1543,11 @@
         "title": "AI 熔断器",
         "description": "在成本异常飙升时全平台暂停 LLM 调用。",
         "cta": "打开熔断器"
+      },
+      "vocabCard": {
+        "title": "领域词汇",
+        "description": "全平台聚合数据、高用量用户、近期批量任务统计。",
+        "cta": "打开仪表板"
       },
       "riskTierCard": {
         "title": "风险等级处理台",
@@ -2258,6 +2294,61 @@
       "asyncEnqueued": "批量任务已入队",
       "errorGeneric": "无法开始导入,请重试。",
       "errorReadFile": "无法读取所选文件。"
+    },
+    "snapshotsView": {
+      "title": "词汇快照",
+      "subtitle": "每个已发布的策略版本都会固定一个快照。可回滚到任意未归档快照以恢复当时的词汇。",
+      "searchPlaceholder": "按领域、语言或哈希筛选",
+      "refreshFailed": "刷新快照失败。",
+      "rollbackFailed": "回滚失败。",
+      "rollbackSuccess": "回滚完成: 新增 {added} · 移除 {removed} · 不变 {unchanged}",
+      "archivedTooltip": "已归档的快照无法应用",
+      "table": {
+        "scope": "作用域",
+        "version": "v{n}",
+        "termCount": "词条数",
+        "refCount": "被引用",
+        "hash": "内容哈希",
+        "createdAt": "创建时间",
+        "status": "状态",
+        "archivedBadge": "已归档",
+        "activeBadge": "可用",
+        "actions": "操作"
+      },
+      "actions": {
+        "view": "查看差异",
+        "rollback": "回滚"
+      },
+      "empty": {
+        "title": "暂无快照",
+        "description": "策略版本审批通过后会自动生成快照。"
+      },
+      "rollback": {
+        "title": "应用此快照?",
+        "description": "把 {domain} · {locale} 的活动词汇回滚到快照 v{version}。快照中不存在的词条将被软删除,缺失的词条将被重新加入。",
+        "confirm": "回滚",
+        "cancel": "取消"
+      },
+      "diff": {
+        "title": "{domain} · {locale} · v{version}",
+        "subtitle": "共 {termCount} 条词条",
+        "summary": "变更摘要",
+        "bucket": {
+          "added": "回滚后新增",
+          "removed": "回滚后移除",
+          "unchanged": "保持不变",
+          "all": "全部快照词条 ({n})"
+        },
+        "removedNotice": "回滚后将软删除当前 {n} 条词条,90 天内仍可恢复。",
+        "emptyBucket": "该分类下没有词条。",
+        "iconAdded": "新增",
+        "iconRemoved": "移除",
+        "iconUnchanged": "不变",
+        "rollback": "回滚到此快照",
+        "close": "关闭",
+        "loading": "加载快照中…",
+        "loadFailed": "加载快照失败。"
+      }
     },
     "jobProgress": {
       "status": {
