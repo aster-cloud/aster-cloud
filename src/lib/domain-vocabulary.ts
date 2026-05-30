@@ -49,12 +49,18 @@ function createHashSync(value: string): string {
 }
 
 function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === '23505'
-  );
+  // Drizzle wraps the underlying postgres-js PostgresError. The SQLSTATE
+  // 23505 can live either on the top-level error (if a different driver
+  // surfaces it) or on `cause.code` (postgres-js shape). Check both so the
+  // duplicate-link path is robust regardless of how Drizzle is wired.
+  if (typeof err !== 'object' || err === null) return false;
+  const candidates: unknown[] = [err];
+  if ('cause' in err) candidates.push((err as { cause: unknown }).cause);
+  return candidates.some((candidate) => {
+    if (typeof candidate !== 'object' || candidate === null) return false;
+    if (!('code' in candidate)) return false;
+    return (candidate as { code: unknown }).code === '23505';
+  });
 }
 
 function truncateForAudit(value: string | null | undefined, max = 256): string | null {

@@ -62,12 +62,16 @@ function emptyRollup(): RollupShape {
 }
 
 function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === '23505'
-  );
+  // Same dual-check as domain-vocabulary.ts: postgres-js wraps the SQLSTATE
+  // on `cause`, while other drivers surface it on the top-level error.
+  if (typeof err !== 'object' || err === null) return false;
+  const candidates: unknown[] = [err];
+  if ('cause' in err) candidates.push((err as { cause: unknown }).cause);
+  return candidates.some((candidate) => {
+    if (typeof candidate !== 'object' || candidate === null) return false;
+    if (!('code' in candidate)) return false;
+    return (candidate as { code: unknown }).code === '23505';
+  });
 }
 
 function parseInput(rawJson: unknown): unknown[] {

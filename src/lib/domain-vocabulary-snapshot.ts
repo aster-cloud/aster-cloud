@@ -109,12 +109,33 @@ async function loadActiveLinksGroupedByDomainLocale(
   return groups;
 }
 
+/**
+ * Compute the next snapshot version for (ownerType, ownerId, domain, locale).
+ *
+ * Important: the query MUST run on the same connection as the surrounding
+ * transaction so the advisory lock (pg_advisory_xact_lock) actually
+ * serializes concurrent callers. Reading via the outer `db` proxy reaches
+ * a different pooled connection and lets two concurrent transactions both
+ * compute `version=N`, which then collide on the unique index.
+ */
+/**
+ * The "tx" handle here has a different concrete type than `db` (it's a
+ * `PgTransaction` from Drizzle, not a `PostgresJsDatabase`), but both
+ * expose the same builder surface we need: `.select(...).from(...).where(...)`.
+ * Using a structural subset keeps the helper transaction-aware without
+ * importing the full Drizzle internal types.
+ */
+type SnapshotVersionReader = {
+  select: typeof db.select;
+};
+
 async function nextSnapshotVersion(
+  exec: SnapshotVersionReader,
   scope: OwnerScope,
   domain: string,
   locale: string,
 ): Promise<number> {
-  const rows = await db
+  const rows = await exec
     .select({ max: sql<number | null>`max(${userVocabularySnapshots.version})` })
     .from(userVocabularySnapshots)
     .where(
@@ -188,8 +209,8 @@ export async function createSnapshotsForOwner(
           .where(eq(userVocabularySnapshots.id, existing.id));
         return { snapshotId: existing.id, domain, locale, dedupHit: true };
       }
-      // Lock is held; nextSnapshotVersion is safe here.
-      const version = await nextSnapshotVersion(scope, domain, locale);
+      // Lock is held + tx is passed so the version read shares the txn.
+      const version = await nextSnapshotVersion(tx, scope, domain, locale);
       const id = crypto.randomUUID();
       await tx.insert(userVocabularySnapshots).values({
         id,

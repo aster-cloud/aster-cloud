@@ -253,18 +253,30 @@ async function archiveLinksForUser(
       linksArchived += updated.length;
     }
 
-    await logAuditEvent({
-      userId,
-      action: 'lexicon.term.delete',
-      resource: 'domain-term',
-      metadata: {
-        reason: 'retention_90d',
-        linksArchived,
-        snapshotsCreated,
-      },
-    });
-
     return { linksArchived, snapshotsCreated };
+  });
+}
+
+/**
+ * Append the retention audit entry AFTER archiveLinksForUser commits. Audit
+ * uses the outer `db` connection; running it inside the txn would deadlock
+ * on the Workers max=1 pool.
+ */
+async function appendArchiveAudit(
+  userId: string,
+  linksArchived: number,
+  snapshotsCreated: number,
+): Promise<void> {
+  if (linksArchived === 0) return;
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.delete',
+    resource: 'domain-term',
+    metadata: {
+      reason: 'retention_90d',
+      linksArchived,
+      snapshotsCreated,
+    },
   });
 }
 
@@ -289,6 +301,7 @@ export async function archiveDowngradedUserVocabulary(now: Date = new Date()): P
       outcome.linksArchived += linksArchived;
       outcome.snapshotsCreated += snapshotsCreated;
     }
+    await appendArchiveAudit(candidate.id, linksArchived, snapshotsCreated);
   }
 
   return outcome;
@@ -310,7 +323,13 @@ export async function purgeUserVocabulary(userId: string): Promise<PurgeOutcome>
   // We also want all the lexicon-scoped tables removed atomically so a
   // partial failure does not leave residual rows that would have to be
   // hand-cleaned. Wrap in a single transaction.
-  return db.transaction(async (tx) => {
+  //
+  // NOTE: logAuditEvent (which uses the OUTER db connection) MUST run
+  // AFTER the transaction commits. The production postgres-js pool is
+  // sized for Cloudflare Workers with max=1 connection; if audit ran
+  // inside the txn, the outer-db insert would wait for the only pool slot
+  // that the txn itself is holding → deadlock.
+  const result = await db.transaction(async (tx) => {
     // 1. UserDomainTerm: clears FK references that snapshots depend on.
     //    Use a plain delete (no returning) because the count is uninteresting;
     //    user-purge path may invoke this twice (the FK cascade from
@@ -347,20 +366,24 @@ export async function purgeUserVocabulary(userId: string): Promise<PurgeOutcome>
         .returning({ id: userVocabularySnapshots.id })
     ).length;
 
-    await logAuditEvent({
-      userId,
-      action: 'lexicon.term.delete',
-      resource: 'domain-term',
-      metadata: {
-        reason: 'dsar_purge',
-        snapshotsDeleted,
-        bulkJobsDeleted,
-        idempotencyDeleted,
-      },
-    });
-
     return { snapshotsDeleted, bulkJobsDeleted, idempotencyDeleted };
   });
+
+  // Audit log runs AFTER the txn commits to avoid pool-exhaustion deadlock
+  // on Workers (max=1). See the note in purgeUserVocabulary above.
+  await logAuditEvent({
+    userId,
+    action: 'lexicon.term.delete',
+    resource: 'domain-term',
+    metadata: {
+      reason: 'dsar_purge',
+      snapshotsDeleted: result.snapshotsDeleted,
+      bulkJobsDeleted: result.bulkJobsDeleted,
+      idempotencyDeleted: result.idempotencyDeleted,
+    },
+  });
+
+  return result;
 }
 
 /** Test-only constant export so the test suite can reference the window. */
