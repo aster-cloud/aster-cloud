@@ -25,7 +25,6 @@ import { KIND_OPTIONS, KNOWN_ERROR_CODES, type Kind } from './constants';
 import { DowngradeBanner, ProGate } from './pro-gate';
 import { VocabularyDialog, type VocabularyDialogValues } from './vocabulary-dialog';
 
-const STARTER_PLAN = 'starter';
 const VOCAB_URL_OPTS: ListUrlOptions = {
   defaultPageSize: 50,
   allowedPageSizes: [25, 50, 100],
@@ -311,8 +310,6 @@ export function VocabulariesContent({
     );
   }
 
-  const isStarterPlan = quota.plan === STARTER_PLAN;
-
   const columns: DataTableColumn<SerializableTermLink>[] = [
     {
       key: 'canonical',
@@ -431,7 +428,6 @@ export function VocabulariesContent({
       />
 
       <DowngradeBanner
-        starterPlan={isStarterPlan}
         trialExpired={quota.downgraded}
         trialEndsAt={quota.trialEndsAt}
       />

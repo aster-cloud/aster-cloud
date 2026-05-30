@@ -86,27 +86,26 @@ export function ProGate({ trialExpired, trialEndsAt }: ProGateProps) {
 }
 
 interface DowngradeBannerProps {
-  /** True when the current plan is starter; bulk async is unavailable. */
-  starterPlan: boolean;
   /** True when the user just crossed trial→free. */
   trialExpired: boolean;
   trialEndsAt: string | null;
 }
 
 /**
- * Inline informational banner shown above the list when the user retains
- * read/write but lost a sub-feature (e.g. starter → no async bulk, or trial
- * just ended into a partial feature set).
+ * Inline informational banner shown above the list when the user lost a
+ * sub-feature — currently only triggered when a trial just expired into
+ * a partial feature set. If a future "starter"-style tier ships, add the
+ * prop back here (and add `quota.plan === 'starter'` in the caller) —
+ * the live PLANS today are free | trial | pro | team | enterprise.
  */
 export function DowngradeBanner({
-  starterPlan,
   trialExpired,
   trialEndsAt,
 }: DowngradeBannerProps) {
   const t = useTranslations('domainVocabularies.downgrade');
   const locale = useLocale();
 
-  if (!starterPlan && !trialExpired) return null;
+  if (!trialExpired) return null;
 
   const formattedTrialEnd =
     trialEndsAt !== null
@@ -115,10 +114,8 @@ export function DowngradeBanner({
         )
       : '';
 
-  const title = trialExpired ? t('trialEndedTitle') : t('starterTitle');
-  const description = trialExpired
-    ? t('trialEndedDescription', { date: formattedTrialEnd })
-    : t('starterDescription');
+  const title = t('trialEndedTitle');
+  const description = t('trialEndedDescription', { date: formattedTrialEnd });
 
   return (
     <div

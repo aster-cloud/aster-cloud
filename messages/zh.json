@@ -2270,8 +2270,6 @@
       "contactAdmin": "请联系管理员升级计划"
     },
     "downgrade": {
-      "starterTitle": "异步批量上传是 Pro 计划功能",
-      "starterDescription": "Starter 计划支持同步批量上传,每次最多 500 行。升级到 Pro 可使用最多 10,000 行的异步任务。",
       "trialEndedTitle": "Pro 试用已结束",
       "trialEndedDescription": "试用于 {date} 结束,部分 Pro 功能已变为只读。",
       "cta": "升级"

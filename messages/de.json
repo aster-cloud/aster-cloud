@@ -2270,8 +2270,6 @@
       "contactAdmin": "Bitte deinen Administrator um ein Plan-Upgrade"
     },
     "downgrade": {
-      "starterTitle": "Asynchroner Massen-Upload ist ein Pro-Feature",
-      "starterDescription": "Dein Starter-Plan erlaubt synchrone Massen-Uploads bis 500 Zeilen. Upgrade auf Pro für asynchrone Jobs bis 10.000 Zeilen.",
       "trialEndedTitle": "Pro-Testphase abgelaufen",
       "trialEndedDescription": "Die Testphase endete am {date}; einige Pro-Funktionen sind jetzt schreibgeschützt.",
       "cta": "Upgraden"

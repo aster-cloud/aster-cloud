@@ -2270,8 +2270,6 @@
       "contactAdmin": "Ask your administrator for a plan upgrade"
     },
     "downgrade": {
-      "starterTitle": "Bulk async upload is a Pro feature",
-      "starterDescription": "Your Starter plan supports synchronous bulk uploads up to 500 rows. Upgrade to Pro for asynchronous jobs up to 10,000 rows.",
       "trialEndedTitle": "Your Pro trial ended",
       "trialEndedDescription": "Trial ended on {date}. Some Pro features are now read-only.",
       "cta": "Upgrade"
