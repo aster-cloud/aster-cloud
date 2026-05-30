@@ -518,6 +518,8 @@ export interface SnapshotDiff {
   snapshot: SnapshotListEntry;
   /** Terms in the snapshot, resolved with their current global content. */
   terms: SnapshotTermEntry[];
+  /** Resolved content for the terms that would be removed on rollback. */
+  removedTerms: SnapshotTermEntry[];
   /** Term ids active for the caller in the snapshot's (domain, locale). */
   currentTermIds: string[];
   /** Term ids present in the snapshot but not in the caller's active set. */
@@ -601,6 +603,33 @@ export async function getSnapshotDiff(
   const removedIds = activeRows.map((r) => r.termId).filter((id) => !snapshotSet.has(id));
   const unchangedIds = snapshotTermIds.filter((id) => currentSet.has(id));
 
+  // 解析 removedIds 对应的词条内容,这样前端 diff 视图的 "Removed" 桶可以
+  // 展示用户在回滚后将丢失的具体词条,而不是只显示一个数量。回滚是破坏性
+  // 操作,缺少这一步会让用户在按下 Rollback 之前看不见后果。
+  const removedRows = removedIds.length === 0
+    ? []
+    : await db
+        .select({
+          id: domainTerms.id,
+          kind: domainTerms.kind,
+          canonical: domainTerms.canonical,
+          localized: domainTerms.localized,
+          parentCanonical: domainTerms.parentCanonical,
+          aliases: domainTerms.aliases,
+          description: domainTerms.description,
+        })
+        .from(domainTerms)
+        .where(inArray(domainTerms.id, removedIds));
+  const removedTerms: SnapshotTermEntry[] = removedRows.map((r) => ({
+    termId: r.id,
+    kind: r.kind,
+    canonical: r.canonical,
+    localized: r.localized,
+    parentCanonical: r.parentCanonical,
+    aliases: parseAliases(r.aliases),
+    description: r.description,
+  }));
+
   return {
     snapshot: {
       id: snap.id,
@@ -614,6 +643,7 @@ export async function getSnapshotDiff(
       createdAt: snap.createdAt,
     },
     terms,
+    removedTerms,
     currentTermIds: activeRows.map((r) => r.termId),
     addedIds,
     removedIds,

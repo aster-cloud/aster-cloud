@@ -5,12 +5,20 @@ import { CheckCircle2, AlertCircle, Loader2, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button, Card, CardBody, toast } from '@/components/ui';
 
+interface BulkRollup {
+  added?: number;
+  reused?: number;
+  modified?: number;
+  skipped?: number;
+  errorCount?: number;
+}
+
 interface BulkJobView {
   id: string;
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   rowCount: number;
   processed: number;
-  rollup: Record<string, unknown>;
+  rollup: BulkRollup;
   errors: Array<Record<string, unknown>>;
   updatedAt: string;
   completedAt: string | null;
@@ -31,6 +39,11 @@ interface BulkJobProgressProps {
 const POLL_INTERVAL_MS = 1500;
 const POLL_INTERVAL_MAX_MS = 6000;
 const POLL_BACKOFF_FACTOR = 1.3;
+// Backoff is wall-clock-since-start, not failure-driven: each successive
+// non-terminal tick widens the gap up to POLL_INTERVAL_MAX_MS. This bounds
+// load while keeping the first few updates snappy. A network error does
+// NOT extend the interval beyond this curve — EventSource handles that
+// separately on the SSE side.
 
 /**
  * Polls /api/v1/domain-vocabularies/bulk/jobs/[id] until the job reaches a
@@ -147,13 +160,7 @@ export function BulkJobProgress({ jobId, onClear, onTerminal }: BulkJobProgressP
 
   const percent =
     job.rowCount > 0 ? Math.min(100, Math.round((job.processed / job.rowCount) * 100)) : 0;
-  const rollup = job.rollup as {
-    added?: number;
-    reused?: number;
-    modified?: number;
-    skipped?: number;
-    errorCount?: number;
-  };
+  const rollup = job.rollup;
   const Icon = statusIcon(job.status);
   const tone = statusTone(job.status);
   const isFinished = isTerminal(job.status);

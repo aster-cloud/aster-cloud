@@ -17,8 +17,13 @@ export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,
   onEscape: () => void,
-  options: { lockBodyScroll?: boolean } = { lockBodyScroll: true },
+  options: { lockBodyScroll?: boolean } = {},
 ): void {
+  // Destructure the option into a primitive so the effect dep list is
+  // stable across renders. Reading `options.lockBodyScroll` inside the
+  // dep array would re-fire the effect every render because the default
+  // `{}` literal has a fresh identity each call.
+  const lockBodyScroll = options.lockBodyScroll ?? true;
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
@@ -33,26 +38,26 @@ export function useFocusTrap(
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-      if (e.shiftKey && active === first) {
+      const current = document.activeElement;
+      if (e.shiftKey && current === first) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && active === last) {
+      } else if (!e.shiftKey && current === last) {
         e.preventDefault();
         first.focus();
       }
     };
     window.addEventListener('keydown', onKey);
     let prevOverflow = '';
-    if (options.lockBodyScroll) {
+    if (lockBodyScroll) {
       prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
     }
     return () => {
       window.removeEventListener('keydown', onKey);
-      if (options.lockBodyScroll) {
+      if (lockBodyScroll) {
         document.body.style.overflow = prevOverflow;
       }
     };
-  }, [active, containerRef, onEscape, options.lockBodyScroll]);
+  }, [active, containerRef, onEscape, lockBodyScroll]);
 }

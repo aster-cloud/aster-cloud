@@ -33,6 +33,7 @@ interface DiffTermEntry {
 interface DiffResponse {
   snapshot: DiffSnapshotMeta;
   terms: DiffTermEntry[];
+  removedTerms: DiffTermEntry[];
   currentTermIds: string[];
   addedIds: string[];
   removedIds: string[];
@@ -108,10 +109,10 @@ export function SnapshotDiffPanel({
       case 'added':
         return diff.terms.filter((tt) => addedSet.has(tt.termId));
       case 'removed':
-        // Removed terms are NOT in the snapshot's terms array; we can't
-        // render rich content for them without an extra fetch. Surface
-        // their ids only so the user understands the cost of rollback.
-        return [];
+        // Removed entries are resolved server-side (getSnapshotDiff joins
+        // removedIds against DomainTerm) so the user can see exactly which
+        // terms a rollback would soft-delete before confirming.
+        return diff.removedTerms;
       case 'unchanged':
         return diff.terms.filter((tt) => !addedSet.has(tt.termId));
       case 'all':
@@ -210,7 +211,7 @@ export function SnapshotDiffPanel({
                 </button>
               </div>
 
-              {bucket === 'removed' ? (
+              {bucket === 'removed' && diff.removedIds.length > 0 ? (
                 <Alert variant="info" className="mt-4">
                   <AlertDescription>
                     {t('removedNotice', { n: diff.removedIds.length })}
@@ -219,7 +220,7 @@ export function SnapshotDiffPanel({
               ) : null}
 
               <ul className="mt-4 divide-y divide-border rounded-md border border-border">
-                {visibleTerms.length === 0 && bucket !== 'removed' ? (
+                {visibleTerms.length === 0 ? (
                   <li className="px-4 py-3 text-sm text-fg-muted">{t('emptyBucket')}</li>
                 ) : null}
                 {visibleTerms.map((term) => (
