@@ -113,6 +113,7 @@ describe('GET /api/v1/domain-vocabularies/terms', () => {
       total: 0,
       page: 1,
       pageSize: 50,
+      archivedCount: 0,
     });
 
     const res = await listTerms(

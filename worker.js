@@ -48,6 +48,7 @@ const CRON_DISPATCH = {
   "0 */6 * * *": "/api/cron/license-revocation-refresh",
   "0 8 * * 1": "/api/cron/license-renewal-warning",
   "15 3 * * *": "/api/cron/telemetry-retention-gc",
+  "45 3 * * *": "/api/cron/domain-vocabulary-retention",
 };
 
 async function dispatchCron(event, env, ctx) {

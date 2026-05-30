@@ -21,6 +21,12 @@ import {
   userVocabularySnapshots,
 } from '@/lib/prisma';
 import { logAuditEvent } from '@/lib/audit-log';
+import { publishVocabularyInvalidate } from '@/lib/domain-vocabulary-events';
+import {
+  observeLexiconOpDuration,
+  recordLexiconOp,
+  recordSnapshotCreate,
+} from '@/lib/lexicon-metrics';
 import {
   assembleDomainVocabularyFromLinks,
   type TermKind,
@@ -201,6 +207,8 @@ export async function createSnapshotsForOwner(
     });
 
     refs.push({ snapshotId: ref.snapshotId, domain: ref.domain, locale: ref.locale });
+    recordSnapshotCreate({ dedupHit: ref.dedupHit });
+    recordLexiconOp('snapshot.create', 'success');
   }
 
   return refs;
@@ -248,6 +256,9 @@ export interface RollbackResult {
   added: number;
   removed: number;
   unchanged: number;
+  /** Scope the rollback applied to. Surfaced for SSE invalidate fanout. */
+  domain: string;
+  locale: string;
 }
 
 /**
@@ -258,6 +269,30 @@ export interface RollbackResult {
  * Returns the diff counts so the route can include them in the response.
  */
 export async function rollbackToSnapshot(
+  userId: string,
+  snapshotId: string,
+): Promise<RollbackResult> {
+  const startedAt = Date.now();
+  try {
+    const result = await rollbackToSnapshotInner(userId, snapshotId);
+    recordLexiconOp('snapshot.rollback', 'success');
+    observeLexiconOpDuration('snapshot.rollback', (Date.now() - startedAt) / 1000);
+    publishVocabularyInvalidate({
+      ownerType: 'user',
+      ownerId: userId,
+      domain: result.domain,
+      locale: result.locale,
+      cause: 'rollback',
+    });
+    return result;
+  } catch (err) {
+    recordLexiconOp('snapshot.rollback', 'error');
+    observeLexiconOpDuration('snapshot.rollback', (Date.now() - startedAt) / 1000);
+    throw err;
+  }
+}
+
+async function rollbackToSnapshotInner(
   userId: string,
   snapshotId: string,
 ): Promise<RollbackResult> {
@@ -370,7 +405,7 @@ export async function rollbackToSnapshot(
       added += 1;
     }
 
-    return { added, removed, unchanged };
+    return { added, removed, unchanged, domain: snapDomain, locale: snapLocale };
   });
 
   await logAuditEvent({
@@ -380,7 +415,11 @@ export async function rollbackToSnapshot(
     resourceId: snapshotId,
     metadata: {
       action: 'rollback',
-      ...result,
+      added: result.added,
+      removed: result.removed,
+      unchanged: result.unchanged,
+      domain: result.domain,
+      locale: result.locale,
     },
   });
 

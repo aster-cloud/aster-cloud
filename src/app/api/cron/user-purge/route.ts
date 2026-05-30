@@ -14,6 +14,7 @@ import { db, users, auditLogs } from '@/lib/prisma';
 import { and, eq, isNotNull, lt } from 'drizzle-orm';
 import { runCronOnce } from '@/lib/cron-lease';
 import { parseCronWindow } from '@/lib/cron-window';
+import { purgeUserVocabulary } from '@/lib/domain-vocabulary-retention';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -74,7 +75,18 @@ export async function POST(req: NextRequest) {
           // 继续删，不让 audit 失败阻塞 GDPR 删除义务
         }
 
-        // 2) 物理删除（schema 上的级联 FK 会自动清掉 accounts/sessions/policies/...）
+        // 2a) UserVocabularySnapshot.ownerId 没有 FK 级联（schema 决定，
+        // 因为 v2 会加 team-shared snapshot，ownerId 类型多态）。purge 前
+        // 显式删一遍，否则会留下孤儿快照行违反 GDPR 删除义务。
+        try {
+          await purgeUserVocabulary(u.id);
+        } catch (e) {
+          console.error(`[user-purge] vocabulary purge failed for ${u.id}:`, e);
+          // 不阻塞主流程：FK 级联会清掉 UserDomainTerm；snapshot 残留是
+          // 已知降级状态，ops 可以离线清理。
+        }
+
+        // 2b) 物理删除（schema 上的级联 FK 会自动清掉 accounts/sessions/policies/...）
         try {
           await db.delete(users).where(eq(users.id, u.id));
           results.push({

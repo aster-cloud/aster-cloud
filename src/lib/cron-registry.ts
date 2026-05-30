@@ -144,6 +144,15 @@ export const CRON_REGISTRY: ReadonlyArray<CronJob> = [
     windowStartFor: (now) => floorToUtcDayAtHour(now, 3, 15),
     healthcheckEnv: 'HEALTHCHECKS_TELEMETRY_GC_URL',
   },
+  {
+    jobName: 'domain-vocabulary-retention',
+    cron: '45 3 * * *',
+    routePath: '/api/cron/domain-vocabulary-retention',
+    // 03:45 UTC daily, offset from other retention crons. Archives free-plan
+    // users' active vocab once they cross the 90-day downgrade retention.
+    windowStartFor: (now) => floorToUtcDayAtHour(now, 3, 45),
+    healthcheckEnv: 'HEALTHCHECKS_DOMAIN_VOCAB_RETENTION_URL',
+  },
 ] as const;
 
 const byJobName = new Map(CRON_REGISTRY.map((c) => [c.jobName, c]));

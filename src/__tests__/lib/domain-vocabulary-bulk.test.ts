@@ -70,7 +70,6 @@ vi.mock('@/lib/audit-log', () => ({
 
 import {
   BULK_SYNC_MAX_ROWS,
-  VocabularyError,
   bulkAddUserVocabularyTerms,
   type TermInput,
 } from '@/lib/domain-vocabulary';

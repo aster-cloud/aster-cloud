@@ -15,6 +15,17 @@ vi.mock('@/lib/admin-auth', () => ({ requireAdmin: mocks.requireAdmin }));
 
 vi.mock('@/lib/prisma', async () => {
   const schema = await vi.importActual<typeof import('@/db/schema')>('@/db/schema');
+  // The admin/metrics route also runs lexicon gauge queries via db.select.
+  // Mock them with chainable thenables that resolve to empty arrays so the
+  // metric exposition still renders.
+  const emptyChain = () => {
+    const obj: Record<string, unknown> = {};
+    obj.from = () => obj;
+    obj.where = () => obj;
+    obj.groupBy = () => obj;
+    obj.then = (resolve: (v: unknown) => void) => resolve([]);
+    return obj;
+  };
   return {
     ...schema,
     db: {
@@ -23,6 +34,7 @@ vi.mock('@/lib/prisma', async () => {
         revokedLicenses: { findMany: mocks.revokedFindMany },
         revocationPublications: { findFirst: mocks.pubFindFirst },
       },
+      select: () => emptyChain(),
     },
   };
 });

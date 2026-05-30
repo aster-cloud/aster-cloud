@@ -27,6 +27,13 @@ import {
   type DomainTerm,
 } from '@/lib/prisma';
 import { logAuditEvent } from '@/lib/audit-log';
+import { publishVocabularyInvalidate } from '@/lib/domain-vocabulary-events';
+import {
+  observeBulkJobDuration,
+  observeLexiconOpDuration,
+  recordBulkJobRowsProcessed,
+  recordLexiconOp,
+} from '@/lib/lexicon-metrics';
 import { getLexiconQuota } from '@/lib/usage';
 import {
   assembleDomainVocabularyFromLinks,
@@ -53,6 +60,47 @@ function isUniqueViolation(err: unknown): boolean {
 function truncateForAudit(value: string | null | undefined, max = 256): string | null {
   if (!value) return null;
   return value.length > max ? `${value.slice(0, max)}…` : value;
+}
+
+/**
+ * Wrap a service call with Prometheus op counter + duration histogram.
+ * Errors are surfaced unchanged so the caller's existing error handling is
+ * preserved; we only tag the op outcome.
+ *
+ * `invalidate` is called on success with the userId + optional scope so the
+ * SSE publisher can broadcast a refetch hint to connected clients.
+ */
+async function withOpMetrics<T>(
+  op: import('@/lib/lexicon-metrics').LexiconOp,
+  run: () => Promise<T>,
+  invalidate?: (result: T) => {
+    userId: string;
+    domain?: string;
+    locale?: string;
+    cause: import('@/lib/domain-vocabulary-events').InvalidateEvent['cause'];
+  },
+): Promise<T> {
+  const startedAt = Date.now();
+  try {
+    const result = await run();
+    recordLexiconOp(op, 'success');
+    observeLexiconOpDuration(op, (Date.now() - startedAt) / 1000);
+    if (invalidate) {
+      const scope = invalidate(result);
+      publishVocabularyInvalidate({
+        ownerType: 'user',
+        ownerId: scope.userId,
+        domain: scope.domain,
+        locale: scope.locale,
+        cause: scope.cause,
+      });
+    }
+    return result;
+  } catch (err) {
+    recordLexiconOp(op, 'error');
+    observeLexiconOpDuration(op, (Date.now() - startedAt) / 1000);
+    throw err;
+  }
 }
 
 export interface TermInput {
@@ -88,6 +136,8 @@ export interface ListResult {
   total: number;
   page: number;
   pageSize: number;
+  /** Count of links that have been archived under the 90-day retention policy. */
+  archivedCount: number;
 }
 
 export interface ListOptions {
@@ -323,7 +373,7 @@ export async function listUserVocabularyTerms(
 
   const predicate = and(...conditions);
 
-  const [rows, totals] = await Promise.all([
+  const [rows, totals, archivedRow] = await Promise.all([
     db
       .select(selectTermLinkFields())
       .from(userDomainTerms)
@@ -336,11 +386,25 @@ export async function listUserVocabularyTerms(
       .select({ count: sql<number>`count(*)::int` })
       .from(userDomainTerms)
       .where(predicate),
+    // Surface the archived count so the UI can render "your vocab was
+    // archived under the 90-day retention; upgrade to restore" without a
+    // second roundtrip. Archived rows are owner-scoped, not predicate-scoped,
+    // because the user wants to know about archived state across all domains.
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userDomainTerms)
+      .where(
+        and(
+          eq(userDomainTerms.userId, userId),
+          isNotNull(userDomainTerms.archivedAt),
+        ),
+      ),
   ]);
 
   return {
     items: (rows as JoinedTermRow[]).map(mapJoinedRow),
     total: totals[0]?.count ?? 0,
+    archivedCount: archivedRow[0]?.count ?? 0,
     page,
     pageSize,
   };
@@ -369,6 +433,22 @@ function userQuotaLockKey(userId: string): bigint {
  * the quota check and exceed the plan limit.
  */
 export async function addUserVocabularyTerm(
+  userId: string,
+  input: TermInput,
+): Promise<{ link: TermLink; createdGlobalTerm: boolean }> {
+  return withOpMetrics(
+    'term.add',
+    () => addUserVocabularyTermInner(userId, input),
+    (result) => ({
+      userId,
+      domain: result.link.domain,
+      locale: result.link.locale,
+      cause: 'term.add',
+    }),
+  );
+}
+
+async function addUserVocabularyTermInner(
   userId: string,
   input: TermInput,
 ): Promise<{ link: TermLink; createdGlobalTerm: boolean }> {
@@ -468,6 +548,23 @@ export async function modifyUserVocabularyTerm(
   linkId: string,
   input: TermInput,
 ): Promise<{ link: TermLink; repointed: boolean; createdGlobalTerm: boolean }> {
+  return withOpMetrics(
+    'term.modify',
+    () => modifyUserVocabularyTermInner(userId, linkId, input),
+    (result) => ({
+      userId,
+      domain: result.link.domain,
+      locale: result.link.locale,
+      cause: 'term.modify',
+    }),
+  );
+}
+
+async function modifyUserVocabularyTermInner(
+  userId: string,
+  linkId: string,
+  input: TermInput,
+): Promise<{ link: TermLink; repointed: boolean; createdGlobalTerm: boolean }> {
   const normalized = validateInput(input);
   const existing = await getTermLink(userId, linkId);
   if (!existing) {
@@ -537,6 +634,18 @@ export async function softDeleteUserVocabularyTerm(
   linkId: string,
   reason?: string,
 ): Promise<{ deletedAt: Date }> {
+  return withOpMetrics(
+    'term.delete',
+    () => softDeleteUserVocabularyTermInner(userId, linkId, reason),
+    () => ({ userId, cause: 'term.delete' }),
+  );
+}
+
+async function softDeleteUserVocabularyTermInner(
+  userId: string,
+  linkId: string,
+  reason?: string,
+): Promise<{ deletedAt: Date }> {
   const existing = await getTermLink(userId, linkId);
   if (!existing) {
     throw new VocabularyError('not_found', 'Vocabulary term link not found');
@@ -591,6 +700,22 @@ export async function softDeleteUserVocabularyTerm(
  * outside the restore window and must use a separate recovery path.
  */
 export async function restoreUserVocabularyTerm(
+  userId: string,
+  linkId: string,
+): Promise<{ link: TermLink }> {
+  return withOpMetrics(
+    'term.restore',
+    () => restoreUserVocabularyTermInner(userId, linkId),
+    (result) => ({
+      userId,
+      domain: result.link.domain,
+      locale: result.link.locale,
+      cause: 'term.restore',
+    }),
+  );
+}
+
+async function restoreUserVocabularyTermInner(
   userId: string,
   linkId: string,
 ): Promise<{ link: TermLink }> {
@@ -768,6 +893,38 @@ function chunkRows<T>(rows: readonly T[], size: number): T[][] {
  * admin/support can audit imports later.
  */
 export async function bulkAddUserVocabularyTerms(
+  userId: string,
+  rawRows: readonly TermInput[],
+): Promise<BulkResult> {
+  const startedAt = Date.now();
+  try {
+    const result = await bulkAddUserVocabularyTermsInner(userId, rawRows);
+    const durationSec = (Date.now() - startedAt) / 1000;
+    observeBulkJobDuration('sync', durationSec);
+    recordBulkJobRowsProcessed('sync', result.rollup.added + result.rollup.reused);
+    const status =
+      result.rollup.errorCount === 0
+        ? 'success'
+        : result.rollup.added + result.rollup.reused === 0
+        ? 'error'
+        : 'partial';
+    recordLexiconOp('bulk.sync', status);
+    if (result.rollup.added + result.rollup.reused > 0) {
+      publishVocabularyInvalidate({
+        ownerType: 'user',
+        ownerId: userId,
+        cause: 'bulk.sync',
+      });
+    }
+    return result;
+  } catch (err) {
+    recordLexiconOp('bulk.sync', 'error');
+    observeBulkJobDuration('sync', (Date.now() - startedAt) / 1000);
+    throw err;
+  }
+}
+
+async function bulkAddUserVocabularyTermsInner(
   userId: string,
   rawRows: readonly TermInput[],
 ): Promise<BulkResult> {
