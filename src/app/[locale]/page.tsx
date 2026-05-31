@@ -123,8 +123,29 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
     >
       <Container size="xl">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" aria-label={t('nav.brand')}>
-            <Wordmark variant="product" size="md" />
+          {/* Brand: hex-framed Aster mark + "Aster Cloud" wordmark.
+              On sub-640px viewports the wordmark hides, leaving the
+              icon alone — keeps the nav from wrapping when the
+              middle nav links + right CTA cluster competes for room. */}
+          <Link
+            href="/"
+            aria-label={t('nav.brand')}
+            className="flex items-center gap-2"
+          >
+            {/* SVG vector — next/image's raster pipeline would either
+                rasterize it (losing crispness) or require unoptimized
+                config; a plain <img> renders the file as-is at the
+                browser's vector resolution. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.svg"
+              alt=""
+              aria-hidden
+              className="h-8 w-8 shrink-0"
+            />
+            <span className="hidden sm:inline">
+              <Wordmark variant="product" size="md" />
+            </span>
           </Link>
           <Stack direction="row" gap={6} align="center">
             {/* Primary evaluator links — middle of the bar, separated
