@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Show brand logo in nav, hide wordmark on small screens *(landing)*
 - Add transparent Aster Cloud logo + use as favicon *(brand)*
 - Cross-site CTA convention + Aster Lang relationship line *(landing)*
 - Extract SkipToContent component, wire into landing + pricing *(a11y)*
@@ -182,6 +183,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
