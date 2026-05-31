@@ -167,7 +167,7 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
       - name: ZAP authenticated scan (aster-lang.cloud)
         if: steps.gate.outputs.skip != 'true'
-        uses: zaproxy/action-full-scan@v0.12.0
+        uses: zaproxy/action-full-scan@v0.13.0
         with:
           target: https://aster-lang.cloud
           fail_action: false
