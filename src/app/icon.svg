@@ -1,16 +1,16 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Aster Cloud">
-  <!-- Aster Cloud brand mark.
-       Transparent canvas — the host surface (page, browser tab, share
-       card chrome) shows around the hex. The hex itself is filled
-       with solid gradients so it reads as a defined badge regardless
-       of the backdrop.
+  <!-- Aster Cloud brand mark — fully transparent canvas.
+       Two visible elements only: a two-tone hex ring, and the Aster A
+       centered inside it. Everything else is transparent so the host
+       surface shows through (browser tab chrome, page background,
+       share-card chrome).
 
-       Visual hierarchy: hex frame (left orange / right blue) → white
-       inner hex backdrop (lifts the A off the dense gradient) →
-       Aster A (blue left blade / orange right blade, palette inverted
-       from the frame for the two-axis cross). -->
+       The hex ring is built from two trapezoids per half (outer
+       boundary minus inner boundary) instead of using `stroke`, which
+       gives clean miters at the top/bottom apex and lets each half
+       carry its own gradient. -->
   <defs>
-    <!-- Outer hexagon gradients: left half orange, right half blue. -->
+    <!-- Hex ring gradients: left half orange, right half blue. -->
     <linearGradient id="hexOrange" x1="50" y1="262" x2="512" y2="962" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFB000"/>
       <stop offset="0.55" stop-color="#FF8200"/>
@@ -22,9 +22,8 @@
       <stop offset="1" stop-color="#3727F5"/>
     </linearGradient>
 
-    <!-- Inner Aster A gradients. The A inverts the hex's left/right
-         palette: A's left blade is blue, right is orange. Two-axis
-         color cross gives the mark its woven look. -->
+    <!-- Aster A gradients. The A inverts the ring's left/right palette
+         (blue left blade vs orange right blade) for the two-axis cross. -->
     <linearGradient id="blue" x1="250" y1="160" x2="470" y2="890" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#11A8FF"/>
       <stop offset="0.55" stop-color="#2868F0"/>
@@ -37,28 +36,42 @@
     </linearGradient>
   </defs>
 
-  <!-- Hexagon outer frame — pointy-top, circumradius 462, split
-       vertically at x=512 into left orange / right blue halves. -->
-  <path d="M512 50 L112 281 L112 743 L512 974 Z" fill="url(#hexOrange)"/>
-  <path d="M512 50 L912 281 L912 743 L512 974 Z" fill="url(#hexBlue)"/>
+  <!-- Hex ring — outer hex circumradius 462, inner hex circumradius 384.
+       Each half-ring path traces the outer boundary from top to bottom,
+       then back along the inner boundary, using even-odd fill so the
+       inner area stays transparent.
 
-  <!-- White inner hex — scaled 0.83× (circumradius 384). Acts as the
-       A's backdrop so the colored A doesn't fight the colored frame.
-       Stays explicit white (not transparent) because if the host
-       surface shows through here, the A drops onto the host color
-       and the woven cross visual collapses. -->
-  <path d="M512 128 L843 320 L843 704 L512 896 L181 704 L181 320 Z" fill="white"/>
+       Outer vertices: (512, 50) top, (912, 281) UR, (912, 743) LR,
+                       (512, 974) bottom, (112, 743) LL, (112, 281) UL
+       Inner vertices: (512, 128) top, (843, 320) UR, (843, 704) LR,
+                       (512, 896) bottom, (181, 704) LL, (181, 320) UL -->
+
+  <!-- Left half (orange): outer top → outer UL → outer LL → outer bottom →
+       inner bottom → inner LL → inner UL → inner top → close -->
+  <path
+    fill-rule="evenodd"
+    d="M512 50 L112 281 L112 743 L512 974 L512 896 L181 704 L181 320 L512 128 Z"
+    fill="url(#hexOrange)"
+  />
+
+  <!-- Right half (blue): mirror of the left half -->
+  <path
+    fill-rule="evenodd"
+    d="M512 50 L912 281 L912 743 L512 974 L512 896 L843 704 L843 320 L512 128 Z"
+    fill="url(#hexBlue)"
+  />
 
   <!-- Aster A — scaled 0.62× and nudged up 34px so the wide baseline
-       blades sit visually centered in the hex (A's narrow apex vs
-       wide skirt: geometric center is below the visual center of
+       blades sit visually centered in the hex ring (A's narrow apex
+       vs wide skirt: geometric center is below the visual center of
        mass without the offset). -->
   <g transform="translate(512 478) scale(0.62) translate(-512 -512)">
     <!-- Left blade (blue) -->
     <path d="M505 143 L93 896 L441 681 L371 640 L505 397 Z" fill="url(#blue)"/>
     <!-- Right blade (orange) -->
     <path d="M519 143 L931 896 L583 681 L653 640 L519 397 Z" fill="url(#orange)"/>
-    <!-- Central white aperture — keeps the A's open silhouette -->
-    <path d="M512 405 L371 640 L512 706 L653 640 Z" fill="white"/>
+    <!-- No central aperture — kept transparent so the A's open
+         silhouette comes from the gap between the two blade paths,
+         not a white fill. -->
   </g>
 </svg>
