@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Add transparent Aster Cloud logo + use as favicon *(brand)*
 - Cross-site CTA convention + Aster Lang relationship line *(landing)*
 - Extract SkipToContent component, wire into landing + pricing *(a11y)*
 - Server-side pagination for policies + vocab + snapshots *(list)*
@@ -181,6 +182,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Record cross-site cleanup handoffs to ops and design *(brand)*
 - Update [skip ci] *(changelog)*
 - Add CTA + naming guide; drop "Team" from FAQ *(brand)*
