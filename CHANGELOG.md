@@ -183,6 +183,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 ### Documentation
 
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Record cross-site cleanup handoffs to ops and design *(brand)*
 - Update [skip ci] *(changelog)*
 - Add CTA + naming guide; drop "Team" from FAQ *(brand)*
@@ -261,6 +262,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Bump tmp to >=0.2.6 via pnpm overrides *(deps)*
 - Post-audit follow-ups for cross-site cleanup
 - Route Enterprise inquiry to sales@aster-lang.cloud *(pricing)*
 - Point documentationUrl at live aster-lang.dev page *(telemetry)*
