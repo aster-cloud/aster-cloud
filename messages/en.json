@@ -2485,6 +2485,10 @@
     },
     "langSwitcher": {
       "ariaLabel": "Change language"
+    },
+    "fallbackBanner": {
+      "title": "Translation in progress",
+      "body": "This page has not been translated yet. The English original is shown below."
     }
   }
 }

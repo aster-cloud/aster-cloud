@@ -29,7 +29,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
 const DOCS_ROOT = resolve(REPO_ROOT, 'src/app/[locale]/docs');
 
-const WRAPPER_TEMPLATE = (relPath) => `import type { Metadata } from 'next';
+const WRAPPER_TEMPLATE = (relPath, routeSlug) => `import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import EnContent, { frontmatter as enFrontmatter } from './en.mdx';
@@ -46,6 +46,9 @@ import DeContent, { frontmatter as deFrontmatter } from './de.mdx';
  *
  * Path: ${relPath}
  */
+const SITE_URL = 'https://aster-lang.cloud';
+const ROUTE_SLUG = '${routeSlug}';
+
 type Props = {
   params: Promise<{ locale: string }>;
 };
@@ -56,12 +59,27 @@ const FRONTMATTER: Record<string, { title?: string; description?: string }> = {
   de: deFrontmatter ?? {},
 };
 
+function localizedDocsUrl(locale: string): string {
+  const prefix = locale === 'en' ? '' : \`/\${locale}\`;
+  return \`\${SITE_URL}\${prefix}\${ROUTE_SLUG}\`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const fm = FRONTMATTER[locale] ?? FRONTMATTER.en;
+  const canonical = localizedDocsUrl(locale);
   return {
     title: fm.title ? \`\${fm.title} · Aster Cloud Docs\` : 'Aster Cloud Docs',
     description: fm.description,
+    alternates: {
+      canonical,
+      languages: {
+        en: localizedDocsUrl('en'),
+        zh: localizedDocsUrl('zh'),
+        de: localizedDocsUrl('de'),
+        'x-default': localizedDocsUrl('en'),
+      },
+    },
   };
 }
 
@@ -90,7 +108,11 @@ let count = 0;
 for (const routeDir of routeDirs) {
   const wrapperPath = join(routeDir, 'page.tsx');
   const rel = routeDir.replace(REPO_ROOT + '/', '');
-  writeFileSync(wrapperPath, WRAPPER_TEMPLATE(rel));
+  // Convert "src/app/[locale]/docs/api/policies/evaluate" → "/docs/api/policies/evaluate"
+  const routeSlug = '/' + rel
+    .replace(/^src\/app\/\[locale\]\//, '')
+    .replace(/\/$/, '');
+  writeFileSync(wrapperPath, WRAPPER_TEMPLATE(rel, routeSlug));
   count += 1;
 }
 console.log(`[wrappers] generated ${count} page.tsx files`);

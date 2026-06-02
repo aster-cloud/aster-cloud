@@ -1,5 +1,6 @@
 import type { MDXComponents } from 'mdx/types';
 import { Callout, CodeGroup } from '@/components/docs/mdx-callouts';
+import { TranslationFallbackBanner } from '@/components/docs/TranslationFallbackBanner';
 
 /**
  * Global MDX component overrides.
@@ -20,5 +21,6 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ...components,
     Callout,
     CodeGroup,
+    TranslationFallbackBanner,
   };
 }

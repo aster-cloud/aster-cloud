@@ -37,10 +37,11 @@ const sharedTestOptions = {
   globals: true,
   setupFiles: ['./src/__tests__/setup.ts'],
   include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-  // 排除集成测试与 E2E（各自独立 config 跑）
+  // 排除集成测试、E2E、Playwright 浏览器 E2E（各自独立 config 跑）
   exclude: [
     'src/__tests__/integration/**',
     'src/__tests__/e2e/**',
+    'src/__tests__/e2e-browser/**',
     'node_modules/**',
   ],
   testTimeout: 30000,

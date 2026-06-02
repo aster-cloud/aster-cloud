@@ -2485,6 +2485,10 @@
     },
     "langSwitcher": {
       "ariaLabel": "切换语言"
+    },
+    "fallbackBanner": {
+      "title": "翻译进行中",
+      "body": "此页面尚未翻译，以下显示英文原文。"
     }
   }
 }

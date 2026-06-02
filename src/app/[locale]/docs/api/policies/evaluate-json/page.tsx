@@ -15,6 +15,9 @@ import DeContent, { frontmatter as deFrontmatter } from './de.mdx';
  *
  * Path: src/app/[locale]/docs/api/policies/evaluate-json
  */
+const SITE_URL = 'https://aster-lang.cloud';
+const ROUTE_SLUG = '/docs/api/policies/evaluate-json';
+
 type Props = {
   params: Promise<{ locale: string }>;
 };
@@ -25,12 +28,27 @@ const FRONTMATTER: Record<string, { title?: string; description?: string }> = {
   de: deFrontmatter ?? {},
 };
 
+function localizedDocsUrl(locale: string): string {
+  const prefix = locale === 'en' ? '' : `/${locale}`;
+  return `${SITE_URL}${prefix}${ROUTE_SLUG}`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const fm = FRONTMATTER[locale] ?? FRONTMATTER.en;
+  const canonical = localizedDocsUrl(locale);
   return {
     title: fm.title ? `${fm.title} · Aster Cloud Docs` : 'Aster Cloud Docs',
     description: fm.description,
+    alternates: {
+      canonical,
+      languages: {
+        en: localizedDocsUrl('en'),
+        zh: localizedDocsUrl('zh'),
+        de: localizedDocsUrl('de'),
+        'x-default': localizedDocsUrl('en'),
+      },
+    },
   };
 }
 

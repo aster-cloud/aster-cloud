@@ -4,6 +4,8 @@ title: "Clear Policy Cache"
 
 # Clear Policy Cache
 
+<TranslationFallbackBanner />
+
 Invalidate cached policy state held by the engine. The engine caches compiled policy representations for performance. Use this endpoint after a deployment, rollback, or data change that requires the engine to reload the latest policy state immediately rather than waiting for the cache to expire naturally.
 
 Clearing the cache does not delete the policy itself. Subsequent evaluation requests will recompile and re-cache the policy from the current active version.

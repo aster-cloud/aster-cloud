@@ -36,7 +36,9 @@
     "verify:on-prem-ui": "tsx scripts/verify-on-prem-ui.ts",
     "verify:on-prem": "DEPLOYMENT_MODE=on-prem pnpm build && pnpm verify:on-prem-bundle && pnpm verify:on-prem-ui",
     "verify:packages": "pnpm why stripe || true && pnpm why resend || true && pnpm why mixpanel-browser || true",
-    "check:turbopack-readiness": "bash scripts/check-turbopack-readiness.sh"
+    "check:turbopack-readiness": "bash scripts/check-turbopack-readiness.sh",
+    "test:e2e:browser": "playwright test",
+    "test:e2e:browser:ui": "playwright test --ui"
   },
   "dependencies": {
     "@aster-cloud/aster-lang-ts": "file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz",
@@ -79,6 +81,7 @@
     "@next/eslint-plugin-next": "16.2.6",
     "@next/mdx": "16.2.6",
     "@opennextjs/cloudflare": "^1.16.5",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "^0.5.19",
     "@testing-library/jest-dom": "^6.9.1",

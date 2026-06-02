@@ -62,3 +62,5 @@ package-lock.json
 # Glossary Contract (v7) — CI-populated cache + per-run finding artifacts
 .glossary/cache/
 glossary-findings.json
+test-results/
+playwright-report/

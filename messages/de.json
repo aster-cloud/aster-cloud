@@ -2485,6 +2485,10 @@
     },
     "langSwitcher": {
       "ariaLabel": "Sprache wechseln"
+    },
+    "fallbackBanner": {
+      "title": "Übersetzung in Arbeit",
+      "body": "Diese Seite ist noch nicht übersetzt. Unten ist die englische Originalfassung zu sehen."
     }
   }
 }
