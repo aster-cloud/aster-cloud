@@ -291,18 +291,16 @@ function Hero({
               {t('hero.builtOnAsterLang')}
             </a>
           </p>
-          <Stack direction="row" gap={3} className="mt-2">
-            <MarketingPrimaryCta
-              saasLabel={t('common.getStarted')}
-              onPremLabel={t('common.contactSales')}
-              variant="primary"
-              size="lg"
-            />
-          </Stack>
-          {/* "无需信用卡" 仅 SaaS 试用语境有意义；on-prem 销售通常需对接合同。 */}
-          {IS_SAAS && (
-            <p className="text-xs text-fg-subtle">{t('hero.noCreditCard')}</p>
-          )}
+          {/* No hero CTA — the same "Start free" / "Contact sales" CTA
+              already lives in the top nav (Nav → MarketingPrimaryCta).
+              Duplicating it here put two identical primary buttons within
+              ~200px of each other on first paint, which read as visual
+              noise rather than reinforcement. The nav CTA stays sticky
+              as the user scrolls, so removing the hero copy doesn't
+              hurt conversion paths; the source-link + tagline still
+              carry the editorial weight of the hero. The "no credit
+              card required" footnote went with it since it only made
+              sense as a CTA modifier. */}
 
           {/* Live CNL demo — typewriter cycles three real, compilable
               snippets. The whole pitch of Aster is "policies written by
