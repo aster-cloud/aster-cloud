@@ -236,15 +236,46 @@ function Hero({
       />
       <Container size="xl">
         <Stack gap={6} align="center" className="text-center">
-          <h1 className={cn(
-            'font-display font-semibold tracking-tighter text-fg',
-            'text-4xl leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl',
-            'max-w-5xl',
-          )}>
+          {/* Fluid font-size keeps `hero.title` on a single line at every
+              viewport width.
+              Why clamp() instead of step breakpoints (text-4xl/5xl/6xl
+              /7xl): the longest localized title is German's "Policy as
+              Code in der Muttersprache" at 35 chars (incl. spaces).
+              At Fraunces semibold tracking-tighter the average glyph
+              width is ~0.422em (measured live, including the spaces),
+              so the line is ~14.77em wide. To fit inside the viewport
+              with the section's 24px side padding, font-size must
+              satisfy `14.77em ≤ viewport_px - 48`, i.e. font-size
+              ≤ (viewport_px - 48) / 14.77.
+              Coefficient 5.5vw (= 100/14.77 × 0.81 safety factor)
+              gives ~19% headroom against font-loading FOUT, OS-level
+              text inflation, and rounding.
+              Floor 1.125rem (18px) keeps the headline readable on
+              320px phones — at that viewport 5.5vw drops to 17.6px,
+              so the floor lifts it to 18px and the text still fits
+              (18 × 14.77 = 266px < 272px container).
+              Ceiling 4.75rem (76px) caps growth on >1380px viewports
+              so the headline doesn't dominate desktop layouts.
+              whitespace-nowrap is a belt-and-suspenders guarantee: if
+              a future translation is longer than DE, the title may
+              overflow the container instead of wrapping (loud, easy
+              to spot in a screenshot), rather than silently breaking
+              the visual cadence by going multi-line. */}
+          <h1
+            className={cn(
+              'font-display font-semibold tracking-tighter text-fg',
+              'leading-[1.1] text-[clamp(1.125rem,5.5vw,4.75rem)] whitespace-nowrap',
+            )}
+          >
             {t('hero.title')}
             {/* Native-locale list rendered as its own line — keeps the
                 main title weight clean and lets the gradient highlight
-                read as a separate "available languages" stamp under it. */}
+                read as a separate "available languages" stamp under it.
+                Inherits the fluid font-size from the parent so the two
+                lines stay in proportion. `whitespace-nowrap` is OK on
+                this span too: the locale list is short (e.g.
+                "English / 中文 / Deutsch") and fits inside the same
+                width budget as the title. */}
             <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {t('hero.titleHighlight', { locales: localesLabel })}
             </span>
