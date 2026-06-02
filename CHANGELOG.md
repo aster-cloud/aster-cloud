@@ -186,6 +186,12 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Translate websocket/preview zh + de *(i18n)*
+- Translate policies/schema zh + de *(i18n)*
+- Translate policies/rollback zh + de *(i18n)*
+- Translate graphql/queries zh + de *(i18n)*
+- Translate audit/compare zh + de *(i18n)*
+- Update [skip ci] *(changelog)*
 - Translate first 8 API doc pages to zh + de *(i18n)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -279,6 +285,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Normalize locale-prefixed links for fallback detection *(mark-fallbacks)*
 - EN-bare redirect at /docs/ + plan §3.1/§3.5 cleanup *(docs)*
 - Revert SSG + correct mobile flex layout (audit round 2) *(docs)*
 - Address audit findings — SSG + container conversion + i18n links *(docs)*
