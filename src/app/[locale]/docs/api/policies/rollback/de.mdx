@@ -1,36 +1,34 @@
 ---
-title: "Rollback Policy to Version"
+title: "Policy auf Version zurücksetzen"
 ---
 
-# Rollback Policy to Version
+# Policy auf Version zurücksetzen
 
-<TranslationFallbackBanner />
+Setzen Sie eine Policy auf eine zuvor gespeicherte Version zurück. Die Engine tauscht die aktive Version atomar aus, sodass nachfolgende Evaluierungsanfragen sofort die Zielversion verwenden. Das Zurücksetzen wird als neuer Versionseintrag in der Historie aufgezeichnet.
 
-Revert a policy to a previously saved version. The engine atomically swaps the active version so that subsequent evaluation requests immediately use the target version. The rollback is recorded as a new version entry in the history.
-
-## Endpoint
+## Endpunkt
 
 `POST /api/v1/policies/{policyId}/rollback`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Path Parameters
+## Pfad-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `policyId` | `string` | Yes | The internal UUID of the policy to roll back. |
+| `policyId` | `string` | Ja | Die interne UUID der zurückzusetzenden Policy. |
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -39,12 +37,12 @@ Revert a policy to a previously saved version. The engine atomically swaps the a
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `targetVersion` | `number` | Yes | The version number to restore. Must be a positive integer that exists in the policy's version history. Use the [versions endpoint](/de/docs/api/policies/versions) to enumerate available versions. |
-| `reason` | `string` | No | Human-readable explanation for the rollback. Stored in the version history entry created for this operation. Useful for audit trails. |
+| `targetVersion` | `number` | Ja | Die wiederherzustellende Versionsnummer. Muss eine positive ganze Zahl sein, die in der Versionshistorie der Policy existiert. Verwenden Sie den [versions-Endpunkt](/de/docs/api/policies/versions), um verfügbare Versionen aufzulisten. |
+| `reason` | `string` | Nein | Menschenlesbare Erklärung für das Zurücksetzen. Wird im für diese Operation erstellten Versionshistorie-Eintrag gespeichert. Nützlich für Audit-Trails. |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -54,25 +52,25 @@ Revert a policy to a previously saved version. The engine atomically swaps the a
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `success` | `boolean` | `true` if the rollback completed and the policy is now serving the target version. |
-| `previousVersion` | `number` | The version number that was active immediately before this rollback. |
-| `currentVersion` | `number` | The version number now active after the rollback. Matches `targetVersion` from the request. |
+| `success` | `boolean` | `true`, wenn das Zurücksetzen abgeschlossen ist und die Policy nun die Zielversion bedient. |
+| `previousVersion` | `number` | Die Versionsnummer, die unmittelbar vor diesem Zurücksetzen aktiv war. |
+| `currentVersion` | `number` | Die Versionsnummer, die nach dem Zurücksetzen jetzt aktiv ist. Stimmt mit `targetVersion` aus der Anfrage überein. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Rollback completed. The policy now serves `targetVersion`. |
-| `400 Bad Request` | Malformed request body, missing `targetVersion`, or `targetVersion` does not exist in version history. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `404 Not Found` | No policy found for the given `policyId` within the tenant. |
-| `409 Conflict` | The requested `targetVersion` is already the active version. |
-| `500 Internal Server Error` | Unexpected engine failure. The active version is unchanged when this status is returned. |
+| `200 OK` | Zurücksetzen abgeschlossen. Die Policy bedient nun `targetVersion`. |
+| `400 Bad Request` | Fehlerhafter Request-Body, fehlendes `targetVersion` oder `targetVersion` existiert nicht in der Versionshistorie. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `404 Not Found` | Keine Policy für die angegebene `policyId` innerhalb des Mandanten gefunden. |
+| `409 Conflict` | Die angeforderte `targetVersion` ist bereits die aktive Version. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. Die aktive Version bleibt unverändert, wenn dieser Status zurückgegeben wird. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -121,7 +119,7 @@ if (data.success) {
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 {
@@ -131,7 +129,7 @@ if (data.success) {
 }
 ```
 
-### Example Response (Target Already Active)
+### Beispiel-Antwort (Ziel bereits aktiv)
 
 HTTP `409 Conflict`:
 

@@ -1,36 +1,34 @@
 ---
-title: "Rollback Policy to Version"
+title: "将策略回滚到指定版本"
 ---
 
-# Rollback Policy to Version
+# 将策略回滚到指定版本
 
-<TranslationFallbackBanner />
+将策略恢复为之前保存的版本。引擎以原子方式切换激活版本，使后续评估请求立即使用目标版本。回滚操作会作为新的版本条目记录在历史中。
 
-Revert a policy to a previously saved version. The engine atomically swaps the active version so that subsequent evaluation requests immediately use the target version. The rollback is recorded as a new version entry in the history.
-
-## Endpoint
+## 端点
 
 `POST /api/v1/policies/{policyId}/rollback`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Path Parameters
+## 路径参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `policyId` | `string` | Yes | The internal UUID of the policy to roll back. |
+| `policyId` | `string` | 是 | 要回滚的策略的内部 UUID。 |
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -39,12 +37,12 @@ Revert a policy to a previously saved version. The engine atomically swaps the a
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `targetVersion` | `number` | Yes | The version number to restore. Must be a positive integer that exists in the policy's version history. Use the [versions endpoint](/zh/docs/api/policies/versions) to enumerate available versions. |
-| `reason` | `string` | No | Human-readable explanation for the rollback. Stored in the version history entry created for this operation. Useful for audit trails. |
+| `targetVersion` | `number` | 是 | 要恢复的版本号。必须是策略版本历史中存在的正整数。使用 [versions 端点](/zh/docs/api/policies/versions) 枚举可用版本。 |
+| `reason` | `string` | 否 | 回滚的人类可读说明。存储在此操作创建的版本历史条目中。对审计追踪很有用。 |
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -54,25 +52,25 @@ Revert a policy to a previously saved version. The engine atomically swaps the a
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `success` | `boolean` | `true` if the rollback completed and the policy is now serving the target version. |
-| `previousVersion` | `number` | The version number that was active immediately before this rollback. |
-| `currentVersion` | `number` | The version number now active after the rollback. Matches `targetVersion` from the request. |
+| `success` | `boolean` | 若回滚完成且策略现在提供目标版本则为 `true`。 |
+| `previousVersion` | `number` | 此回滚之前立即激活的版本号。 |
+| `currentVersion` | `number` | 回滚后当前激活的版本号。匹配请求中的 `targetVersion`。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Rollback completed. The policy now serves `targetVersion`. |
-| `400 Bad Request` | Malformed request body, missing `targetVersion`, or `targetVersion` does not exist in version history. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `404 Not Found` | No policy found for the given `policyId` within the tenant. |
-| `409 Conflict` | The requested `targetVersion` is already the active version. |
-| `500 Internal Server Error` | Unexpected engine failure. The active version is unchanged when this status is returned. |
+| `200 OK` | 回滚完成。策略现在提供 `targetVersion`。 |
+| `400 Bad Request` | 请求体格式错误、缺少 `targetVersion`，或 `targetVersion` 不在版本历史中。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `404 Not Found` | 租户内未找到给定 `policyId` 的策略。 |
+| `409 Conflict` | 所请求的 `targetVersion` 已是当前激活版本。 |
+| `500 Internal Server Error` | 非预期的引擎故障。返回此状态时激活版本不变。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -121,7 +119,7 @@ if (data.success) {
 
 </CodeGroup>
 
-### Example Response
+### 示例响应
 
 ```json
 {
@@ -131,9 +129,9 @@ if (data.success) {
 }
 ```
 
-### Example Response (Target Already Active)
+### 示例响应（目标版本已激活）
 
-HTTP `409 Conflict`:
+HTTP `409 Conflict`：
 
 ```json
 {
