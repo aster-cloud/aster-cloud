@@ -107,7 +107,7 @@
     "eslint-plugin-react": "^7.37.0",
     "eslint-plugin-react-hooks": "5.2.0",
     "jsdom": "^27.4.0",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "^1.17.0",
     "rehype-autolink-headings": "7.1.0",
     "rehype-pretty-code": "0.14.3",
     "rehype-slug": "6.0.0",
