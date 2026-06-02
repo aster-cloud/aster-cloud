@@ -1,0 +1,114 @@
+---
+title: "Fehlerbehandlung"
+---
+
+# Fehlerbehandlung
+
+Die Aster Policy Engine verwendet Standard-HTTP-Statuscodes und einen konsistenten JSON-Antwortumschlag für alle Fehlerbedingungen.
+## Standard-Fehlerantwortformat
+
+Alle Fehlerantworten — ob von der Anwendungsschicht oder von Richtlinien-Evaluierungsfehlern — verwenden die folgende Struktur:
+```json
+{
+  "result": null,
+  "error": "Menschenlesbare Beschreibung des Fehlers",
+  "executionTimeMs": 0
+}
+```
+
+| Feld             | Typ           | Beschreibung                                                     |
+|-------------------|----------------|-----------------------------------------------------------------|
+| `result`          | null           | Bei einem Fehler immer `null`                              |
+| `error`           | string         | Menschenlesbare Nachricht, die beschreibt, was schiefgelaufen ist             |
+| `executionTimeMs` | number         | Vergangene Zeit in Millisekunden; `0` bei vor der Ausführung erkannten Fehlern |
+::: tip Unterscheidung zwischen Evaluierungsfehlern und HTTP-Fehlern
+HTTP 4xx/5xx-Statuscodes zeigen Infrastruktur-Fehler an (fehlende Header, Autorisierung, Serverfehler). Eine HTTP `200`-Antwort mit einem nicht-null `error`-Feld bedeutet, dass die Richtlinie erfolgreich geparst und dispatcht wurde, aber die Evaluierung selbst einen Fehler erzeugt hat (z.B. eine Laufzeitausnahme in der Regellogik).
+:::
+## HTTP-Statuscodes
+
+### 400 Bad Request
+
+Wird zurückgegeben, wenn die Anfrage strukturell ungültig ist oder erforderliche Informationen fehlen.
+**Häufige Ursachen:**
+
+| Szenario                           | Beispiel-`error`-Nachricht                                      |
+|------------------------------------|--------------------------------------------------------------|
+| Fehlender `X-Tenant-Id`-Header       | `"X-Tenant-Id header is required"`                           |
+| Ungültiges `X-Tenant-Id`-Format       | `"X-Tenant-Id must match ^[a-zA-Z0-9_-]{1,64}$"`            |
+| Fehlender `Content-Type`-Header      | `"Content-Type must be application/json"`                    |
+| Fehlerhafter JSON-Körper                | `"Request body could not be parsed as JSON"`                 |
+| Fehlendes erforderliches Body-Feld        | `"Field 'functionName' is required"`                         |
+### 403 Forbidden
+
+Wird zurückgegeben, wenn der Aufrufer nicht über die erforderlichen Berechtigungen für die angeforderte Operation verfügt.
+**Häufige Ursachen:**
+
+| Szenario                                  | Beispiel-`error`-Nachricht                                    |
+|-------------------------------------------|------------------------------------------------------------|
+| `X-User-Role` zu niedrig für den Endpunkt    | `"Role VIEWER is insufficient; MEMBER required"`           |
+| Ungültige oder abgelaufene HMAC-Signatur         | `"HMAC signature verification failed"`                     |
+| Zeitstempel außerhalb des 5-Minuten-Fensters     | `"Request timestamp is outside the acceptable window"`     |
+| Nonce bereits im Replay-Fenster verwendet   | `"Nonce has already been used; possible replay attack"`    |
+### 404 Not Found
+
+Wird zurückgegeben, wenn eine referenzierte Ressource (z.B. eine gespeicherte Richtlinien-ID) innerhalb des aktuellen Mandantenbereichs nicht existiert.
+```json
+HTTP/1.1 404 Not Found
+
+{
+  "result": null,
+  "error": "Policy 'pricing-v3' not found for tenant 'my-tenant'",
+  "executionTimeMs": 0
+}
+```
+
+### 429 Too Many Requests
+
+Wird zurückgegeben, wenn der Mandant sein Ratenlimit überschritten hat. Die Antwort enthält einen `Retry-After`-Header.
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+```
+
+```json
+{
+  "result": null,
+  "error": "Rate limit exceeded; retry after 30 seconds",
+  "executionTimeMs": 0
+}
+```
+
+### 500 Internal Server Error
+
+Wird bei unerwarteten serverseitigen Fehlern zurückgegeben. Diese Fehler werden automatisch protokolliert und sollten dem Support gemeldet werden, falls sie bestehen bleiben.
+```json
+HTTP/1.1 500 Internal Server Error
+
+{
+  "result": null,
+  "error": "An unexpected error occurred. Reference ID: a3f9c2d1",
+  "executionTimeMs": 0
+}
+```
+
+::: warning Bei einem 500-Fehler
+Notieren Sie die `Reference ID` in der Fehlermeldung und geben Sie sie an, wenn Sie den Support kontaktieren. Sie identifiziert den Protokolleintrag für Ihre Anfrage eindeutig.
+:::
+## Evaluierungsfehler (HTTP 200 mit nicht-null `error`)
+
+Selbst wenn eine Anfrage strukturell gültig und autorisiert ist, kann die Richtlinienevaluierung selbst fehlschlagen. In diesen Fällen ist der HTTP-Statuscode `200`, aber das `error`-Feld im Antwortkörper ist nicht null.
+**Häufige Ursachen:**
+
+| Szenario                                    | Beispiel-`error`-Nachricht                                         |
+|---------------------------------------------|-----------------------------------------------------------------|
+| Syntaxfehler im CNL-Quellcode                  | `"Parse error at line 3: unexpected token 'produce'"`           |
+| Funktionsname nicht in Richtlinie gefunden           | `"Rule 'calculate' not found in module 'pricing'"`              |
+| Typfehler bei Kontexteingabe              | `"Expected Number for parameter 'amount', got String"`          |
+| Laufzeitausnahme in Regellogik         | `"Division by zero in rule 'split-cost' at line 7"`             |
+| Locale nicht unterstützt                        | `"Unsupported locale 'fr-FR'"`                                  |
+## Best Practices für die Fehlerbehandlung
+
+1. **Prüfen Sie immer sowohl den HTTP-Statuscode als auch das `error`-Feld.** Eine `200`-Antwort garantiert keine erfolgreiche Evaluierung.
+2. **Implementieren Sie Wiederholungslogik für `429`- und `500`-Antworten.** Verwenden Sie den `Retry-After`-Header für Ratenlimit-Fehler und exponentielles Backoff für Serverfehler.
+3. **Wiederholen Sie `400`- oder `403`-Antworten nicht, ohne die zugrundeliegende Ursache zu beheben.** Diese Fehler zeigen ein clientseitiges Problem an, das sich nicht von selbst löst.
+4. **Bei Batch-Evaluierungen** überprüfen Sie jedes Element im `results`-Array einzeln — ein Fehler bei einem Element betrifft die anderen nicht.

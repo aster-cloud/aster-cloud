@@ -1,0 +1,93 @@
+---
+title: "Schnellstart"
+---
+
+# Schnellstart
+
+Diese Anleitung führt Sie in unter fünf Minuten durch Ihre erste Richtlinienevaluierung.
+## Voraussetzungen
+
+- Eine Mandanten-ID und ein API-Schlüssel, ausgestellt von Ihrem Aster-Kontoadministrator
+- `curl` auf Ihrem System verfügbar (oder ein beliebiger HTTP-Client)
+Falls Sie noch keine Mandanten-ID haben, kontaktieren Sie Ihren Administrator oder lesen Sie die Mandanten-Onboarding-Dokumentation.
+## Schritt 1 — Anmeldedaten festlegen
+
+Exportieren Sie Ihre Anmeldedaten als Umgebungsvariablen, damit die folgenden Beispiele ohne Änderung funktionieren:
+```bash
+export ASTER_TENANT_ID="my-tenant"
+export ASTER_API_SECRET="your-api-secret-here"
+```
+
+## Schritt 2 — Eine einfache Richtlinie evaluieren
+
+Der `evaluate-source`-Endpunkt akzeptiert eine direkt im Anfragekörper geschriebene Richtlinie. Dies ist der schnellste Weg zu experimentieren, ohne zuerst eine gespeicherte Richtlinie zu erstellen.
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "context": {"name": "World"},
+    "functionName": "greet",
+    "locale": "en-US"
+  }'
+```
+
+Das `source`-Feld enthält die vollständige Aster-CNL-Richtlinie. Die obige Richtlinie definiert eine Regel `greet`, die einen `name`-Parameter akzeptiert und einen Begrüßungsstring zurückgibt. Das `context`-Objekt liefert die Eingabewerte.
+## Schritt 3 — Das Ergebnis verstehen
+
+Eine erfolgreiche Evaluierung gibt HTTP `200` mit einem JSON-Körper zurück:
+```json
+{
+  "result": "Hello, World!",
+  "error": null,
+  "executionTimeMs": 12
+}
+```
+
+| Feld              | Typ           | Beschreibung                                                      |
+|--------------------|----------------|------------------------------------------------------------------|
+| `result`           | any            | Der von der evaluierten Regel zurückgegebene Wert                         |
+| `error`            | string \| null | Fehlermeldung bei fehlgeschlagener Evaluierung; `null` bei Erfolg            |
+| `executionTimeMs`  | number         | Wanduhrzeit für die Evaluierung der Richtlinie in Millisekunden    |
+Wenn `error` nicht null ist, ist das `result`-Feld `null`. Eine vollständige Liste der Fehlerszenarien finden Sie unter [Fehlerbehandlung](/docs/getting-started/errors).
+## Schritt 4 — Batch-Evaluierung ausprobieren
+
+Wenn Sie dieselbe Richtlinie gegen mehrere Eingabesätze in einem einzigen Netzwerk-Roundtrip evaluieren müssen, verwenden Sie den `evaluate-source-batch`-Endpunkt.
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source-batch \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "functionName": "greet",
+    "locale": "en-US",
+    "inputs": [
+      {"name": "Alice"},
+      {"name": "Bob"},
+      {"name": "Carol"}
+    ]
+  }'
+```
+
+Die Antwort enthält ein `results`-Array mit einem Eintrag pro Eingabe in derselben Reihenfolge:
+```json
+{
+  "results": [
+    {"result": "Hello, Alice!", "error": null, "executionTimeMs": 8},
+    {"result": "Hello, Bob!",   "error": null, "executionTimeMs": 3},
+    {"result": "Hello, Carol!", "error": null, "executionTimeMs": 3}
+  ]
+}
+```
+
+Einzelne Elemente im Batch können unabhängig fehlschlagen. Ein nicht-null `error` bei einem Element bricht die verbleibenden Evaluierungen nicht ab.
+## Nächste Schritte
+
+Nachdem Sie eine funktionierende Evaluierung haben, erkunden Sie diese Themen, um das Beste aus der API herauszuholen:
+- [Authentifizierung](/docs/getting-started/authentication) — HMAC-Signierung zum Schutz Ihrer Anfragen hinzufügen
+- [Überblick](/docs/getting-started/overview) — Die vollständigen Fähigkeiten der Policy Engine verstehen
+- [Fehlerbehandlung](/docs/getting-started/errors) — Fehler in Ihrer Anwendung elegant behandeln
+- [API-Referenz](/docs/api/policies/evaluate) — Vollständige Referenz für alle Endpunkte und Felder

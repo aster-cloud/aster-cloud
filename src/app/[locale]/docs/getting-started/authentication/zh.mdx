@@ -1,0 +1,161 @@
+---
+title: "认证"
+---
+
+# 认证
+
+Aster 策略引擎对每个请求执行三层安全模型。每层独立运作；三层均须满足请求才能成功。
+
+## 第一层 — 租户隔离（`X-Tenant-Id`）
+
+每个请求必须携带 `X-Tenant-Id` 请求头。此请求头建立请求的租户上下文：策略、审计记录和所有数据均限定在指定租户范围内，对其他租户不可见。
+
+**格式：** `^[a-zA-Z0-9_-]{1,64}$`
+
+缺失或格式错误的 `X-Tenant-Id` 会在执行其他验证之前立即返回 `400 Bad Request`。
+
+```bash
+curl https://policy.aster-lang.dev/api/v1/policies \
+  -H "X-Tenant-Id: acme-corp"
+```
+
+::: tip 租户 ID 约定
+使用稳定的、人类可读的标识符，如组织简称或环境名称（例如 `acme-corp`、`acme-corp-staging`）。租户 ID 区分大小写。
+:::
+
+## 第二层 — HMAC 请求签名
+
+每个请求必须包含 HMAC 签名请求头。服务器在处理请求前验证签名，防止传输中的篡改并防御重放攻击。
+
+### 必需请求头
+
+| 请求头               | 描述                                                          |
+|----------------------|----------------------------------------------------------------------|
+| `X-Aster-Signature`  | 规范消息的十六进制编码 HMAC-SHA256（见下文）        |
+| `X-Aster-Nonce`      | 随机生成的字符串（建议 16+ 字节，十六进制或 UUID）      |
+| `X-Aster-Timestamp`  | 签名时刻的 Unix 时间戳（**毫秒**）          |
+
+缺少任何一个请求头将返回 `401 Unauthorized`。
+
+### 规范消息格式
+
+HMAC 基于以下管道分隔字符串计算：
+
+```
+{HTTP-method}|{path}|{query}|{X-Aster-Timestamp}|{X-Aster-Nonce}|{body-sha256}
+```
+
+| 组件 | 描述 | 示例 |
+|-----------|-------------|---------|
+| `HTTP-method` | 大写 HTTP 方法 | `POST` |
+| `path` | 请求 URI 路径 | `/api/v1/policies/evaluate-source` |
+| `query` | 原始查询字符串（无则为空字符串） | `trace=true` |
+| `X-Aster-Timestamp` | 请求头中的时间戳值 | `1708776000000` |
+| `X-Aster-Nonce` | 请求头中的 nonce 值 | `c3ab8ff13720e8ad9047dd39466b3c89` |
+| `body-sha256` | 原始请求体的小写十六进制 SHA-256 哈希 | `a1b2c3d4...` |
+
+HMAC 密钥是颁发给你租户的 **API 密钥**。密钥按优先顺序解析：
+
+1. 环境变量 `ASTER_HMAC_SECRET_{TENANT_ID}`（租户 ID 大写，连字符替换为下划线）
+2. 配置属性 `aster.security.hmac.secret-key`
+
+### 示例：计算签名（Bash）
+
+```bash
+TENANT_ID="acme-corp"
+TIMESTAMP=$(($(date +%s) * 1000))
+NONCE=$(openssl rand -hex 16)
+BODY='{"source":"Module demo.\n\nRule ping produce Text:\n  Return \"pong\".","functionName":"ping","context":{},"locale":"en-US"}'
+API_SECRET="your-api-secret-here"
+METHOD="POST"
+PATH_URI="/api/v1/policies/evaluate-source"
+QUERY=""
+
+BODY_HASH=$(printf '%s' "${BODY}" | openssl dgst -sha256 | awk '{print $2}')
+CANONICAL="${METHOD}|${PATH_URI}|${QUERY}|${TIMESTAMP}|${NONCE}|${BODY_HASH}"
+SIGNATURE=$(printf '%s' "${CANONICAL}" | openssl dgst -sha256 -hmac "${API_SECRET}" | awk '{print $2}')
+
+curl -X POST "https://policy.aster-lang.dev${PATH_URI}" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: ${TENANT_ID}" \
+  -H "X-User-Role: MEMBER" \
+  -H "X-Aster-Signature: ${SIGNATURE}" \
+  -H "X-Aster-Nonce: ${NONCE}" \
+  -H "X-Aster-Timestamp: ${TIMESTAMP}" \
+  -d "${BODY}"
+```
+
+### 重放防护
+
+服务器会拒绝 `X-Aster-Timestamp` 超过 **5 分钟**（300,000 毫秒）的请求，返回 `401 Unauthorized`。此外，每个 nonce 在重放窗口期间存储；在窗口内使用相同 nonce 的第二个请求将被拒绝，返回 `409 Conflict`。
+
+## 第三层 — 基于角色的访问控制（`X-User-Role`）
+
+`X-User-Role` 请求头携带调用者的角色声明。服务器执行严格的角色层级：
+
+```
+OWNER > ADMIN > MEMBER > VIEWER
+```
+
+每个角色是累加的：更高的角色继承其下所有角色的权限。
+
+### 角色权限
+
+| 角色     | 允许的操作                                                         |
+|----------|---------------------------------------------------------------------------|
+| `VIEWER` | 读取已存储的策略（GET）                                                |
+| `MEMBER` | 所有 VIEWER 权限 + 评估策略（POST 到评估端点） |
+| `ADMIN`  | 所有 MEMBER 权限 + 读取和验证审计日志                       |
+| `OWNER`  | 所有 ADMIN 权限 + 管理租户设置和 RBAC 分配       |
+
+### 端点要求
+
+| 端点类别        | 最低所需角色 |
+|--------------------------|-----------------------|
+| 策略评估        | `MEMBER`              |
+| 策略管理（CRUD） | `MEMBER`              |
+| 审计日志读取           | `ADMIN`               |
+| 审计日志验证   | `ADMIN`               |
+| 租户管理    | `OWNER`               |
+
+角色不足的请求返回 `403 Forbidden`。
+
+### 可选请求头
+
+| 请求头 | 描述 | 默认值 |
+|--------|-------------|---------|
+| `X-User-Id` | 在审计日志中标识调用者 | `anonymous` |
+
+### 示例：包含所有层的完整请求
+
+```bash
+TENANT_ID="acme-corp"
+TIMESTAMP=$(($(date +%s) * 1000))
+NONCE=$(openssl rand -hex 16)
+BODY='{"source":"Module demo.\n\nRule ping produce Text:\n  Return \"pong\".","functionName":"ping","context":{},"locale":"en-US"}'
+API_SECRET="your-api-secret-here"
+METHOD="POST"
+PATH_URI="/api/v1/policies/evaluate-source"
+
+BODY_HASH=$(printf '%s' "${BODY}" | openssl dgst -sha256 | awk '{print $2}')
+SIGNATURE=$(printf '%s' "${METHOD}|${PATH_URI}||${TIMESTAMP}|${NONCE}|${BODY_HASH}" | openssl dgst -sha256 -hmac "${API_SECRET}" | awk '{print $2}')
+
+curl -X POST "https://policy.aster-lang.dev${PATH_URI}" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: ${TENANT_ID}" \
+  -H "X-User-Id: user@acme.com" \
+  -H "X-User-Role: MEMBER" \
+  -H "X-Aster-Signature: ${SIGNATURE}" \
+  -H "X-Aster-Nonce: ${NONCE}" \
+  -H "X-Aster-Timestamp: ${TIMESTAMP}" \
+  -d "${BODY}"
+```
+
+## 总结
+
+| 层级 | 请求头                                              | 是否必需  | 失败响应      |
+|-------|--------------------------------------------------------|-----------|-----------------------|
+| 1     | `X-Tenant-Id`                                          | 始终    | `400 Bad Request`     |
+| 2     | `X-Aster-Signature`、`X-Aster-Nonce`、`X-Aster-Timestamp` | 始终 | `401 Unauthorized`  |
+| 3     | `X-User-Role`                                          | 始终    | `403 Forbidden`       |
+| —     | `X-User-Id`                                            | 可选  | 默认为 `anonymous` |

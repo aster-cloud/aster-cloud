@@ -1,0 +1,335 @@
+---
+title: "Anomaly Detection"
+---
+
+# Anomaly Detection
+
+The anomaly detection system continuously monitors policy evaluation patterns and flags deviations that may indicate reliability, performance, or version lifecycle problems. These endpoints allow administrators to list, inspect, verify, and triage detected anomalies.
+
+## Required Role
+
+`ADMIN`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+---
+
+## List Anomalies
+
+Retrieve a paginated list of anomalies detected for the tenant.
+
+### Endpoint
+
+`GET /api/v1/audit/anomalies`
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
+| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
+| `type` | `string` | No | Filter by anomaly type. One of: `HIGH_FAILURE_RATE`, `ZOMBIE_VERSION`, `PERFORMANCE_DEGRADATION`. |
+| `days` | `integer` | No | Restrict results to anomalies detected within the last N days. Defaults to `7`. |
+
+### Anomaly Types
+
+| Type | Description |
+|------|-------------|
+| `HIGH_FAILURE_RATE` | A policy version's error rate has exceeded the configured threshold. |
+| `ZOMBIE_VERSION` | An old, superseded policy version continues to receive evaluation traffic. |
+| `PERFORMANCE_DEGRADATION` | Average execution time for a policy version has increased significantly relative to its baseline. |
+
+### Response Body
+
+```json
+{
+  "content": [
+    {
+      "id": "string",
+      "type": "HIGH_FAILURE_RATE",
+      "policyModule": "string",
+      "policyFunction": "string",
+      "versionId": "string",
+      "detectedAt": "2024-01-15T10:30:00Z",
+      "status": "OPEN",
+      "severity": "HIGH",
+      "summary": "string"
+    }
+  ],
+  "totalElements": 8,
+  "totalPages": 1,
+  "page": 0,
+  "size": 20
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique anomaly identifier. |
+| `type` | `string` | Anomaly classification. |
+| `policyModule` | `string` | Affected policy module. |
+| `policyFunction` | `string` | Affected policy function. |
+| `versionId` | `string` | Policy version involved in the anomaly. |
+| `detectedAt` | `string` | ISO 8601 timestamp when the anomaly was first detected. |
+| `status` | `string` | Current triage status: `OPEN`, `VERIFYING`, `RESOLVED`, `DISMISSED`. |
+| `severity` | `string` | Assessed severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`. |
+| `summary` | `string` | Short human-readable description of the anomaly. |
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/anomalies?type=HIGH_FAILURE_RATE&days=14&page=0&size=20" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const params = new URLSearchParams({
+  type: 'HIGH_FAILURE_RATE',
+  days: '14',
+  page: '0',
+  size: '20',
+});
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/anomalies?${params}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const data = await response.json();
+// data.content → array of anomaly records
+```
+
+:::
+
+---
+
+## Get Anomaly Detail
+
+Retrieve the full detail record for a single anomaly, including diagnostic metrics and recommended actions.
+
+### Endpoint
+
+`GET /api/v1/audit/anomalies/{id}`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | The anomaly identifier. |
+
+### Response Body
+
+```json
+{
+  "id": "string",
+  "type": "HIGH_FAILURE_RATE",
+  "policyModule": "string",
+  "policyFunction": "string",
+  "versionId": "string",
+  "detectedAt": "2024-01-15T10:30:00Z",
+  "status": "OPEN",
+  "severity": "HIGH",
+  "summary": "string",
+  "metrics": {
+    "failureRate": 0.34,
+    "baselineFailureRate": 0.02,
+    "sampleSize": 1200,
+    "windowStart": "2024-01-15T09:00:00Z",
+    "windowEnd": "2024-01-15T10:30:00Z"
+  },
+  "recommendedActions": [
+    "Roll back to the previous stable version",
+    "Inspect evaluation errors for pattern"
+  ]
+}
+```
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/anomalies/anom-xyz789" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const anomalyId = 'anom-xyz789';
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/anomalies/${anomalyId}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const anomaly = await response.json();
+```
+
+:::
+
+---
+
+## Trigger Verification
+
+Initiate an asynchronous verification job for an anomaly. The engine will re-evaluate the evidence and update the anomaly's status once the job completes.
+
+### Endpoint
+
+`POST /api/v1/audit/anomalies/{id}/actions/verify`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | The anomaly identifier. |
+
+### Response
+
+Returns `202 Accepted` with an empty body. Poll `GET /api/v1/audit/anomalies/{id}` to observe status transitions (`OPEN` → `VERIFYING` → `RESOLVED` or `OPEN`).
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X POST "https://policy.aster-lang.dev/api/v1/audit/anomalies/anom-xyz789/actions/verify" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const anomalyId = 'anom-xyz789';
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/anomalies/${anomalyId}/actions/verify`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+// 202 Accepted — verification job enqueued
+```
+
+:::
+
+---
+
+## Update Anomaly Status
+
+Update the triage status of an anomaly. Supports idempotent updates via the `Idempotency-Key` header.
+
+### Endpoint
+
+`PATCH /api/v1/audit/anomalies/{id}/status`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | The anomaly identifier. |
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `Idempotency-Key` | Client-generated unique string (UUID recommended) | No |
+
+::: tip Idempotency
+Providing an `Idempotency-Key` guarantees that retrying the same request will not apply the status update a second time. The server caches the response for the key for 24 hours.
+:::
+
+### Request Body
+
+```json
+{
+  "status": "RESOLVED",
+  "note": "Rolled back to v2; failure rate returned to baseline."
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | `string` | Yes | Target status. One of: `OPEN`, `RESOLVED`, `DISMISSED`. |
+| `note` | `string` | No | Optional free-text note to record alongside the status change. |
+
+### Response Body
+
+Returns the updated anomaly object (same schema as [Get Anomaly Detail](#get-anomaly-detail)).
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X PATCH "https://policy.aster-lang.dev/api/v1/audit/anomalies/anom-xyz789/status" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000" \
+  -d '{
+    "status": "RESOLVED",
+    "note": "Rolled back to v2; failure rate returned to baseline."
+  }'
+```
+
+```js [JavaScript]
+const anomalyId = 'anom-xyz789';
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/anomalies/${anomalyId}/status`,
+  {
+    method: 'PATCH',
+    headers: {
+      Authorization:     'Bearer <token>',
+      'X-Tenant-ID':     'acme-corp',
+      'Content-Type':    'application/json',
+      'Idempotency-Key': crypto.randomUUID(),
+    },
+    body: JSON.stringify({
+      status: 'RESOLVED',
+      note:   'Rolled back to v2; failure rate returned to baseline.',
+    }),
+  }
+);
+
+const updated = await response.json();
+```
+
+:::
+
+---
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Request succeeded (GET and PATCH). |
+| `202 Accepted` | Verification job enqueued (POST verify). |
+| `400 Bad Request` | Malformed request body or invalid status value. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
+| `404 Not Found` | No anomaly found with the given `id`. |
+| `409 Conflict` | Status transition is not permitted from the current state. |
+| `500 Internal Server Error` | Unexpected engine failure. |

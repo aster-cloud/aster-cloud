@@ -1,0 +1,63 @@
+'use client';
+
+import { useLocale, useTranslations } from 'next-intl';
+import { usePathname } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
+import { docsSidebar } from '@/lib/docs/sidebar';
+
+/**
+ * Left rail navigation for /docs/*.
+ *
+ * Server component would also work, but the active-link detection needs
+ * the current pathname — and reading it server-side via headers() means
+ * the entire sidebar rerenders on every navigation. Marking client-side
+ * lets next-intl's <Link> swap the active state without a full server
+ * round-trip on every page change.
+ */
+export function DocsSidebar() {
+  const t = useTranslations();
+  const locale = useLocale();
+  const pathname = usePathname();
+
+  // pathname from next-intl/navigation is locale-stripped (e.g. /docs/example).
+  // Strip /docs/ prefix to compare with sidebar item hrefs.
+  const currentSlug = pathname.replace(/^\/docs\/?/, '');
+
+  return (
+    <nav
+      className="hidden lg:block w-64 shrink-0 border-r border-border bg-bg"
+      aria-label={t('docs.sidebar.ariaLabel')}
+    >
+      <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto px-6 py-8">
+        {docsSidebar.map((section) => (
+          <div key={section.titleKey} className="mb-8">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-fg-muted">
+              {t(section.titleKey)}
+            </h2>
+            <ul className="space-y-1">
+              {section.items.map((item) => {
+                const isActive = currentSlug === item.href;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={`/docs/${item.href}`}
+                      locale={locale}
+                      className={
+                        isActive
+                          ? 'block rounded-md bg-bg-soft px-3 py-1.5 text-sm font-medium text-fg'
+                          : 'block rounded-md px-3 py-1.5 text-sm text-fg-muted transition-colors hover:bg-bg-soft hover:text-fg'
+                      }
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {t(item.labelKey)}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </nav>
+  );
+}

@@ -1,0 +1,177 @@
+---
+title: "Error Handling"
+---
+
+# Error Handling
+
+The Aster Policy Engine uses standard HTTP status codes and a consistent JSON response envelope for all error conditions.
+## Standard Error Response Format
+
+All error responses — whether from the application layer or from policy evaluation failures — use the following structure:
+```json
+{
+  "result": null,
+  "error": "Human-readable description of the error",
+  "executionTimeMs": 0
+}
+```
+
+| Field             | Type           | Description                                                     |
+|-------------------|----------------|-----------------------------------------------------------------|
+| `result`          | null           | Always `null` when an error occurs                              |
+| `error`           | string         | A human-readable message describing what went wrong             |
+| `executionTimeMs` | number         | Elapsed time in milliseconds; `0` for errors detected pre-execution |
+::: tip Distinguishing evaluation errors from HTTP errors
+HTTP 4xx/5xx status codes indicate infrastructure-level failures (missing headers, authorization, server fault). An HTTP `200` response with a non-null `error` field indicates that the policy was parsed and dispatched successfully but the evaluation itself produced an error (e.g., a runtime exception inside the rule logic).
+:::
+## HTTP Status Codes
+
+### 400 Bad Request
+
+Returned when the request is structurally invalid or is missing required information.
+**Common causes:**
+
+| Scenario                           | Example `error` message                                      |
+|------------------------------------|--------------------------------------------------------------|
+| Missing `X-Tenant-Id` header       | `"X-Tenant-Id header is required"`                           |
+| Invalid `X-Tenant-Id` format       | `"X-Tenant-Id must match ^[a-zA-Z0-9_-]{1,64}$"`            |
+| Missing `Content-Type` header      | `"Content-Type must be application/json"`                    |
+| Malformed JSON body                | `"Request body could not be parsed as JSON"`                 |
+| Missing required body field        | `"Field 'functionName' is required"`                         |
+**Example — missing tenant header:**
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -d '{"source": "...", "functionName": "greet", "context": {}, "locale": "en-US"}'
+```
+
+```json
+HTTP/1.1 400 Bad Request
+
+{
+  "result": null,
+  "error": "X-Tenant-Id header is required",
+  "executionTimeMs": 0
+}
+```
+
+### 403 Forbidden
+
+Returned when the caller lacks the required permissions for the requested operation.
+**Common causes:**
+
+| Scenario                                  | Example `error` message                                    |
+|-------------------------------------------|------------------------------------------------------------|
+| `X-User-Role` too low for the endpoint    | `"Role VIEWER is insufficient; MEMBER required"`           |
+| Invalid or expired HMAC signature         | `"HMAC signature verification failed"`                     |
+| Timestamp outside the 5-minute window     | `"Request timestamp is outside the acceptable window"`     |
+| Nonce already used within replay window   | `"Nonce has already been used; possible replay attack"`    |
+**Example — insufficient role:**
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: VIEWER" \
+  -d '{"source": "...", "functionName": "greet", "context": {}, "locale": "en-US"}'
+```
+
+```json
+HTTP/1.1 403 Forbidden
+
+{
+  "result": null,
+  "error": "Role VIEWER is insufficient; MEMBER required",
+  "executionTimeMs": 0
+}
+```
+
+### 404 Not Found
+
+Returned when a referenced resource (e.g., a stored policy ID) does not exist within the current tenant's scope.
+```json
+HTTP/1.1 404 Not Found
+
+{
+  "result": null,
+  "error": "Policy 'pricing-v3' not found for tenant 'my-tenant'",
+  "executionTimeMs": 0
+}
+```
+
+### 429 Too Many Requests
+
+Returned when the tenant has exceeded its rate limit. The response includes a `Retry-After` header.
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+```
+
+```json
+{
+  "result": null,
+  "error": "Rate limit exceeded; retry after 30 seconds",
+  "executionTimeMs": 0
+}
+```
+
+### 500 Internal Server Error
+
+Returned for unexpected server-side failures. These errors are automatically logged and should be reported to support if they persist.
+```json
+HTTP/1.1 500 Internal Server Error
+
+{
+  "result": null,
+  "error": "An unexpected error occurred. Reference ID: a3f9c2d1",
+  "executionTimeMs": 0
+}
+```
+
+::: warning If you receive a 500
+Note the `Reference ID` in the error message and include it when contacting support. It uniquely identifies the log entry for your request.
+:::
+## Evaluation-Level Errors (HTTP 200 with `error` non-null)
+
+Even when a request is structurally valid and authorised, the policy evaluation itself may fail. In these cases the HTTP status code is `200` but the response body has a non-null `error` field.
+**Common causes:**
+
+| Scenario                                    | Example `error` message                                         |
+|---------------------------------------------|-----------------------------------------------------------------|
+| Syntax error in CNL source                  | `"Parse error at line 3: unexpected token 'produce'"`           |
+| Function name not found in policy           | `"Rule 'calculate' not found in module 'pricing'"`              |
+| Type mismatch in context input              | `"Expected Number for parameter 'amount', got String"`          |
+| Runtime exception inside rule logic         | `"Division by zero in rule 'split-cost' at line 7"`             |
+| Locale not supported                        | `"Unsupported locale 'fr-FR'"`                                  |
+**Example — rule not found:**
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "context": {"name": "World"},
+    "functionName": "farewell",
+    "locale": "en-US"
+  }'
+```
+
+```json
+HTTP/1.1 200 OK
+
+{
+  "result": null,
+  "error": "Rule 'farewell' not found in module 'demo'",
+  "executionTimeMs": 5
+}
+```
+
+## Error Handling Best Practices
+
+1. **Always check both the HTTP status code and the `error` field.** A `200` response does not guarantee a successful evaluation.
+2. **Implement retry logic for `429` and `500` responses.** Use the `Retry-After` header for rate-limit errors and exponential backoff for server errors.
+3. **Do not retry `400` or `403` responses without fixing the underlying cause.** These errors indicate a client-side issue that will not resolve on its own.
+4. **For batch evaluations**, inspect each item in the `results` array individually — a failure in one item does not affect the others.

@@ -1,0 +1,212 @@
+---
+title: "Clear Policy Cache"
+---
+
+# Clear Policy Cache
+
+Invalidate cached policy state held by the engine. The engine caches compiled policy representations for performance. Use this endpoint after a deployment, rollback, or data change that requires the engine to reload the latest policy state immediately rather than waiting for the cache to expire naturally.
+
+Clearing the cache does not delete the policy itself. Subsequent evaluation requests will recompile and re-cache the policy from the current active version.
+
+## Endpoint
+
+`DELETE /api/v1/policies/cache`
+
+## Required Role
+
+`MEMBER`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+```json
+{
+  "policyModule": "string",
+  "policyFunction": "string"
+}
+```
+
+Both fields are optional. The combination of provided fields determines the scope of invalidation:
+
+| `policyModule` | `policyFunction` | Scope |
+|----------------|------------------|-------|
+| Omitted | Omitted | Clears the entire policy cache for the tenant. |
+| Provided | Omitted | Clears all cached functions within the specified module. |
+| Provided | Provided | Clears only the cached entry for the specific module + function pair. |
+| Omitted | Provided | `400 Bad Request` — `policyFunction` cannot be specified without `policyModule`. |
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `policyModule` | `string` | No | Module name to target for cache invalidation. |
+| `policyFunction` | `string` | No | Function name within the module to target. Requires `policyModule` to also be specified. |
+
+## Response Body
+
+```json
+{
+  "cleared": 0,
+  "scope": "string"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cleared` | `number` | Number of individual cache entries that were invalidated. |
+| `scope` | `string` | Human-readable description of what was cleared (e.g. `"all"`, `"module:Loan.Approval"`, `"function:Loan.Approval.isEligible"`). |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Cache cleared. `cleared` may be `0` if no matching entries were cached at the time of the request. |
+| `400 Bad Request` | `policyFunction` was specified without `policyModule`, or the request body is malformed. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `500 Internal Server Error` | Unexpected engine failure. Cache state is undefined when this status is returned. |
+
+## Examples
+
+### Clear Entire Tenant Cache
+
+::: code-group
+
+```bash [curl]
+curl -X DELETE https://policy.aster-lang.dev/api/v1/policies/cache \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{}'
+```
+
+```js [JavaScript]
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/cache',
+  {
+    method: 'DELETE',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({}),
+  }
+);
+
+const data = await response.json();
+console.log(`Cleared ${data.cleared} cache entries (scope: ${data.scope})`);
+```
+
+:::
+
+### Clear Cache for a Specific Module
+
+::: code-group
+
+```bash [curl]
+curl -X DELETE https://policy.aster-lang.dev/api/v1/policies/cache \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "policyModule": "Loan.Approval"
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/cache',
+  {
+    method: 'DELETE',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({
+      policyModule: 'Loan.Approval',
+    }),
+  }
+);
+
+const data = await response.json();
+```
+
+:::
+
+### Clear Cache for a Specific Function
+
+::: code-group
+
+```bash [curl]
+curl -X DELETE https://policy.aster-lang.dev/api/v1/policies/cache \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "policyModule": "Loan.Approval",
+    "policyFunction": "isEligible"
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/cache',
+  {
+    method: 'DELETE',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({
+      policyModule: 'Loan.Approval',
+      policyFunction: 'isEligible',
+    }),
+  }
+);
+
+const data = await response.json();
+```
+
+:::
+
+### Example Responses
+
+**Entire tenant cache cleared:**
+```json
+{
+  "cleared": 47,
+  "scope": "all"
+}
+```
+
+**Module-scoped clear:**
+```json
+{
+  "cleared": 3,
+  "scope": "module:Loan.Approval"
+}
+```
+
+**Function-scoped clear:**
+```json
+{
+  "cleared": 1,
+  "scope": "function:Loan.Approval.isEligible"
+}
+```
+
+**No entries were cached (still succeeds):**
+```json
+{
+  "cleared": 0,
+  "scope": "function:Loan.Approval.isEligible"
+}
+```

@@ -1,0 +1,106 @@
+---
+title: "快速开始"
+---
+
+# 快速开始
+
+本指南将带你在五分钟内完成第一次策略评估。
+
+## 前置条件
+
+- 由 Aster 账户管理员颁发的租户 ID 和 API 密钥
+- 系统上可用的 `curl`（或任何 HTTP 客户端）
+
+如果你还没有租户 ID，请联系管理员或参阅租户入驻文档。
+
+## 第一步 — 设置凭据
+
+将凭据导出为环境变量，使以下示例无需修改即可运行：
+
+```bash
+export ASTER_TENANT_ID="my-tenant"
+export ASTER_API_SECRET="your-api-secret-here"
+```
+
+## 第二步 — 评估一个简单策略
+
+`evaluate-source` 端点接受直接在请求体中编写的策略。这是无需先创建存储策略即可实验的最快方式。
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "context": {"name": "World"},
+    "functionName": "greet",
+    "locale": "en-US"
+  }'
+```
+
+`source` 字段包含完整的 Aster CNL 策略。上述策略定义了一个 `greet` 规则，接受 `name` 参数并返回问候字符串。`context` 对象提供输入值。
+
+## 第三步 — 理解结果
+
+成功的评估返回 HTTP `200` 和 JSON 响应体：
+
+```json
+{
+  "result": "Hello, World!",
+  "error": null,
+  "executionTimeMs": 12
+}
+```
+
+| 字段              | 类型           | 描述                                                      |
+|--------------------|----------------|------------------------------------------------------------------|
+| `result`           | any            | 评估规则返回的值                         |
+| `error`            | string \| null | 评估失败时的错误信息；成功时为 `null`            |
+| `executionTimeMs`  | number         | 评估策略所用的时钟时间（毫秒）    |
+
+如果 `error` 非空，`result` 字段将为 `null`。完整故障场景列表请参阅[错误处理](/docs/getting-started/errors)。
+
+## 第四步 — 尝试批量评估
+
+当你需要在单次网络往返中对多组输入评估同一策略时，使用 `evaluate-source-batch` 端点。
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source-batch \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "functionName": "greet",
+    "locale": "en-US",
+    "inputs": [
+      {"name": "Alice"},
+      {"name": "Bob"},
+      {"name": "Carol"}
+    ]
+  }'
+```
+
+响应包含 `results` 数组，每个输入对应一个条目，顺序相同：
+
+```json
+{
+  "results": [
+    {"result": "Hello, Alice!", "error": null, "executionTimeMs": 8},
+    {"result": "Hello, Bob!",   "error": null, "executionTimeMs": 3},
+    {"result": "Hello, Carol!", "error": null, "executionTimeMs": 3}
+  ]
+}
+```
+
+批次中的各项可以独立失败。某一项的 `error` 非空不会中止其余评估。
+
+## 下一步
+
+现在你已经有了一个可运行的评估，探索以下主题以充分利用 API：
+
+- [认证](/docs/getting-started/authentication) — 添加 HMAC 签名以保护你的请求
+- [概述](/docs/getting-started/overview) — 了解策略引擎的完整能力
+- [错误处理](/docs/getting-started/errors) — 在应用程序中优雅地处理故障
+- [API 参考](/docs/api/policies/evaluate) — 所有端点和字段的完整参考

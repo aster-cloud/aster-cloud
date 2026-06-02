@@ -1,0 +1,210 @@
+---
+title: "Batch Evaluate Policies"
+---
+
+# Batch Evaluate Policies
+
+Evaluate up to 100 policy calls in a single HTTP request. Each item in the batch is an independent evaluation request. Results are returned in the same order as the input requests. Failures in individual items do not affect the rest of the batch.
+
+## Endpoint
+
+`POST /api/v1/policies/evaluate/batch`
+
+## Required Role
+
+`MEMBER`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+```json
+{
+  "requests": [
+    {
+      "policyModule": "string",
+      "policyFunction": "string",
+      "context": [{}]
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `requests` | `array<EvaluationRequest>` | Yes | Ordered list of evaluation requests. Maximum 100 items per call. Requests beyond index 99 are rejected with a `400` error. |
+
+### EvaluationRequest
+
+Each element of `requests` follows the same schema as the single `/evaluate` request body:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `policyModule` | `string` | Yes | Fully-qualified module name of the deployed policy. |
+| `policyFunction` | `string` | Yes | Function name within the module to invoke. |
+| `context` | `array<object>` | Yes | Ordered list of argument objects passed positionally to the function. |
+
+## Response Body
+
+```json
+{
+  "responses": [
+    {
+      "result": "<any>",
+      "executionTimeMs": 0,
+      "error": null,
+      "decisionTrace": null
+    }
+  ],
+  "totalExecutionTimeMs": 0,
+  "successCount": 0,
+  "failureCount": 0
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `responses` | `array<EvaluationResponse>` | Results in the same order as the input `requests` array. Every request produces exactly one response entry, even if evaluation failed. |
+| `totalExecutionTimeMs` | `number` | Combined wall-clock time in milliseconds for all evaluations plus batch coordination overhead. |
+| `successCount` | `number` | Number of items where `error` is `null`. |
+| `failureCount` | `number` | Number of items where `error` is non-null. |
+
+### EvaluationResponse
+
+Each element of `responses` has the same shape as the single `/evaluate` response:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `result` | `any` | Return value of the policy function, or `null` if evaluation failed. |
+| `executionTimeMs` | `number` | Execution time for this individual item. |
+| `error` | `string \| null` | Error message for this item; `null` on success. |
+| `decisionTrace` | `object \| null` | Always `null` — decision tracing is not available in batch mode. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Batch processed. Inspect `failureCount` and per-item `error` fields to detect individual failures. |
+| `400 Bad Request` | Malformed request body, `requests` array exceeds 100 items, or missing required fields. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `500 Internal Server Error` | Unexpected engine failure affecting the entire batch. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate/batch \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "requests": [
+      {
+        "policyModule": "Loan.Approval",
+        "policyFunction": "isEligible",
+        "context": [
+          { "applicantAge": 30, "creditScore": 720, "requestedAmount": 25000 }
+        ]
+      },
+      {
+        "policyModule": "Discount",
+        "policyFunction": "calculate",
+        "context": [
+          { "order": { "total": 150 } }
+        ]
+      },
+      {
+        "policyModule": "Fraud.Detection",
+        "policyFunction": "riskScore",
+        "context": [
+          { "transaction": { "amount": 9999, "country": "US" } }
+        ]
+      }
+    ]
+  }'
+```
+
+```js [JavaScript]
+const requests = [
+  {
+    policyModule: 'Loan.Approval',
+    policyFunction: 'isEligible',
+    context: [{ applicantAge: 30, creditScore: 720, requestedAmount: 25000 }],
+  },
+  {
+    policyModule: 'Discount',
+    policyFunction: 'calculate',
+    context: [{ order: { total: 150 } }],
+  },
+  {
+    policyModule: 'Fraud.Detection',
+    policyFunction: 'riskScore',
+    context: [{ transaction: { amount: 9999, country: 'US' } }],
+  },
+];
+
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/evaluate/batch',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({ requests }),
+  }
+);
+
+const data = await response.json();
+
+console.log(`Success: ${data.successCount}, Failure: ${data.failureCount}`);
+
+data.responses.forEach((res, i) => {
+  if (res.error) {
+    console.error(`Request ${i} failed: ${res.error}`);
+  } else {
+    console.log(`Request ${i} result:`, res.result);
+  }
+});
+```
+
+:::
+
+### Example Response
+
+```json
+{
+  "responses": [
+    {
+      "result": true,
+      "executionTimeMs": 4,
+      "error": null,
+      "decisionTrace": null
+    },
+    {
+      "result": 10,
+      "executionTimeMs": 2,
+      "error": null,
+      "decisionTrace": null
+    },
+    {
+      "result": null,
+      "executionTimeMs": 1,
+      "error": "Policy 'Fraud.Detection.riskScore' not found",
+      "decisionTrace": null
+    }
+  ],
+  "totalExecutionTimeMs": 9,
+  "successCount": 2,
+  "failureCount": 1
+}
+```

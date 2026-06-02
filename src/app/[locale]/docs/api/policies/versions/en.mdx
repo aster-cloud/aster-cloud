@@ -1,0 +1,142 @@
+---
+title: "Get Policy Version History"
+---
+
+# Get Policy Version History
+
+Retrieve the full version history for a policy identified by its internal policy ID. Each entry in the response represents a distinct version that has been saved, including which version is currently active.
+
+## Endpoint
+
+`GET /api/v1/policies/{policyId}/versions`
+
+## Required Role
+
+`MEMBER`
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `policyId` | `string` | Yes | The internal UUID of the policy resource. Obtain this value from the policy management API or the Aster dashboard. |
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+None.
+
+## Response Body
+
+An array of version objects ordered by version number in ascending order.
+
+```json
+[
+  {
+    "version": 1,
+    "active": false,
+    "moduleName": "string",
+    "functionName": "string",
+    "createdAt": "ISO8601",
+    "createdBy": "string",
+    "notes": "string"
+  }
+]
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | `number` | Monotonically increasing integer version number. Version `1` is the initial deployment. |
+| `active` | `boolean` | `true` for exactly one entry in the array — the version currently serving evaluation requests. |
+| `moduleName` | `string` | The CNL module name declared in this version of the policy source. |
+| `functionName` | `string` | The primary function name for this version of the policy. |
+| `createdAt` | `string` | ISO 8601 timestamp recording when this version was saved (e.g. `"2024-03-15T09:30:00Z"`). |
+| `createdBy` | `string` | Identifier (email or user ID) of the principal who created this version. |
+| `notes` | `string` | Optional human-readable deployment notes attached at the time of version creation. Empty string if no notes were provided. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Version history returned. Empty array means the policy exists but has no recorded versions. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `404 Not Found` | No policy found for the given `policyId` within the tenant. |
+| `500 Internal Server Error` | Unexpected engine failure. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET \
+  "https://policy.aster-lang.dev/api/v1/policies/d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a/versions" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const policyId = 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a';
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/policies/${policyId}/versions`,
+  {
+    method: 'GET',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const versions = await response.json();
+
+const active = versions.find((v) => v.active);
+console.log(`Active version: ${active?.version}`);
+
+versions.forEach((v) => {
+  const marker = v.active ? ' [ACTIVE]' : '';
+  console.log(`v${v.version}${marker} — ${v.createdAt} by ${v.createdBy}`);
+});
+```
+
+:::
+
+### Example Response
+
+```json
+[
+  {
+    "version": 1,
+    "active": false,
+    "moduleName": "Loan.Approval",
+    "functionName": "isEligible",
+    "createdAt": "2024-01-10T08:00:00Z",
+    "createdBy": "alice@acme-corp.com",
+    "notes": "Initial deployment"
+  },
+  {
+    "version": 2,
+    "active": false,
+    "moduleName": "Loan.Approval",
+    "functionName": "isEligible",
+    "createdAt": "2024-02-20T14:15:00Z",
+    "createdBy": "bob@acme-corp.com",
+    "notes": "Raised credit score threshold from 680 to 700"
+  },
+  {
+    "version": 3,
+    "active": true,
+    "moduleName": "Loan.Approval",
+    "functionName": "isEligible",
+    "createdAt": "2024-03-15T09:30:00Z",
+    "createdBy": "alice@acme-corp.com",
+    "notes": "Added income floor requirement per compliance review CR-204"
+  }
+]
+```

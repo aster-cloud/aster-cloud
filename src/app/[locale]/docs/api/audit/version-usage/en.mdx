@@ -1,0 +1,338 @@
+---
+title: "Version Usage Audit"
+---
+
+# Version Usage Audit
+
+Inspect how a specific policy version has been used in production: which workflows invoked it, when evaluations occurred, the impact of rolling it back, and aggregated usage statistics over time.
+
+## Required Role
+
+`ADMIN`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+---
+
+## Workflow Usage
+
+Retrieve a paginated list of workflow invocations that used a specific policy version.
+
+### Endpoint
+
+`GET /api/v1/audit/policy-versions/{versionId}/usage`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `versionId` | `string` | The policy version identifier. |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `status` | `string` | No | Filter workflows by status. One of: `READY`, `RUNNING`, `COMPLETED`, `FAILED`, `COMPENSATING`, `COMPENSATED`, `COMPENSATION_FAILED`. |
+| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
+| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
+
+### Response Body
+
+```json
+{
+  "content": [
+    {
+      "workflowId": "string",
+      "status": "COMPLETED",
+      "policyModule": "string",
+      "policyFunction": "string",
+      "invokedAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "totalElements": 1024,
+  "totalPages": 52,
+  "page": 0,
+  "size": 20
+}
+```
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy-versions/v-abc123/usage?status=COMPLETED&page=0&size=20" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const versionId = 'v-abc123';
+const params = new URLSearchParams({
+  status: 'COMPLETED',
+  page: '0',
+  size: '20',
+});
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/policy-versions/${versionId}/usage?${params}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const data = await response.json();
+// data.content → array of workflow usage records
+// data.totalElements → total count across all pages
+```
+
+:::
+
+---
+
+## Usage Timeline
+
+Retrieve a paginated, time-ordered history of evaluations made using a specific policy version.
+
+### Endpoint
+
+`GET /api/v1/audit/policy-versions/{versionId}/timeline`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `versionId` | `string` | The policy version identifier. |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from` | `string` | No | ISO 8601 start timestamp. Defaults to 30 days ago. |
+| `to` | `string` | No | ISO 8601 end timestamp. Defaults to now. |
+| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
+| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
+
+### Response Body
+
+```json
+{
+  "content": [
+    {
+      "occurredAt": "2024-01-15T10:30:00Z",
+      "workflowId": "string",
+      "result": {},
+      "executionTimeMs": 12
+    }
+  ],
+  "totalElements": 840,
+  "totalPages": 42,
+  "page": 0,
+  "size": 20
+}
+```
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy-versions/v-abc123/timeline?from=2024-01-01T00:00:00Z&to=2024-01-31T23:59:59Z&page=0&size=20" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const versionId = 'v-abc123';
+const params = new URLSearchParams({
+  from: '2024-01-01T00:00:00Z',
+  to:   '2024-01-31T23:59:59Z',
+  page: '0',
+  size: '20',
+});
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/policy-versions/${versionId}/timeline?${params}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const data = await response.json();
+```
+
+:::
+
+---
+
+## Rollback Impact Assessment
+
+Assess the impact of rolling back a specific policy version. The response enumerates how many active workflows would be affected and which statuses they currently hold.
+
+### Endpoint
+
+`GET /api/v1/audit/policy-versions/{versionId}/impact`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `versionId` | `string` | The policy version identifier to assess. |
+
+### Response Body
+
+```json
+{
+  "versionId": "v-abc123",
+  "affectedWorkflows": 37,
+  "byStatus": {
+    "RUNNING": 12,
+    "COMPENSATING": 3,
+    "COMPLETED": 22
+  },
+  "estimatedRisk": "MEDIUM"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `versionId` | `string` | The version being assessed. |
+| `affectedWorkflows` | `number` | Total number of workflows that invoked this version. |
+| `byStatus` | `object` | Breakdown of affected workflows by current status. |
+| `estimatedRisk` | `string` | Risk level of rolling back: `LOW`, `MEDIUM`, or `HIGH`. Derived from the proportion of non-terminal workflows. |
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy-versions/v-abc123/impact" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const versionId = 'v-abc123';
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/policy-versions/${versionId}/impact`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const impact = await response.json();
+console.log(`Risk level: ${impact.estimatedRisk}`);
+console.log(`Active workflows affected: ${impact.byStatus.RUNNING ?? 0}`);
+```
+
+:::
+
+---
+
+## Aggregated Usage Statistics
+
+Retrieve time-bucketed usage statistics for a policy version, suitable for charting trends over time.
+
+### Endpoint
+
+`GET /api/v1/audit/stats/version-usage`
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `versionId` | `string` | Yes | The policy version identifier. |
+| `granularity` | `string` | Yes | Time bucket size. One of: `hour`, `day`, `week`, `month`. |
+| `from` | `string` | No | ISO 8601 start timestamp. Defaults to 30 days ago. |
+| `to` | `string` | No | ISO 8601 end timestamp. Defaults to now. |
+
+::: warning Time Window Limit
+The requested window (`to` minus `from`) must not exceed **90 days**. Requests spanning a longer period will be rejected with `400 Bad Request`.
+:::
+
+### Response Body
+
+```json
+{
+  "versionId": "v-abc123",
+  "granularity": "day",
+  "from": "2024-01-01T00:00:00Z",
+  "to": "2024-01-31T23:59:59Z",
+  "buckets": [
+    {
+      "timestamp": "2024-01-01T00:00:00Z",
+      "count": 342,
+      "avgExecutionTimeMs": 8.4,
+      "failureRate": 0.012
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `buckets[].timestamp` | `string` | Start of the time bucket (ISO 8601). |
+| `buckets[].count` | `number` | Number of evaluations in the bucket. |
+| `buckets[].avgExecutionTimeMs` | `number` | Average policy execution time in milliseconds. |
+| `buckets[].failureRate` | `number` | Fraction of evaluations that resulted in an error (0.0 to 1.0). |
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/stats/version-usage?versionId=v-abc123&granularity=day&from=2024-01-01T00:00:00Z&to=2024-01-31T23:59:59Z" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const params = new URLSearchParams({
+  versionId:   'v-abc123',
+  granularity: 'day',
+  from:        '2024-01-01T00:00:00Z',
+  to:          '2024-01-31T23:59:59Z',
+});
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/stats/version-usage?${params}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const stats = await response.json();
+// stats.buckets → time-series array for charting
+```
+
+:::
+
+---
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Request succeeded. |
+| `400 Bad Request` | Missing required parameters, malformed timestamps, or window exceeds limit. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
+| `404 Not Found` | No policy version found matching `versionId`. |
+| `500 Internal Server Error` | Unexpected engine failure. |

@@ -1,0 +1,172 @@
+---
+title: "Version Comparison"
+---
+
+# Version Comparison
+
+Compare the performance metrics of two policy versions side-by-side over a shared observation window. This is useful for validating that a newly deployed version performs at least as well as its predecessor before committing to full rollout.
+
+## Endpoint
+
+`GET /api/v1/audit/compare`
+
+## Required Role
+
+`ADMIN`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `versionA` | `string` | Yes | Identifier of the first policy version (typically the baseline or current version). |
+| `versionB` | `string` | Yes | Identifier of the second policy version (typically the candidate or newer version). |
+| `days` | `integer` | No | Number of days of history to compare. Defaults to `30`. Maximum: `90`. |
+
+::: warning Time Window Limit
+`days` must not exceed **90**. Requests with a larger value will be rejected with `400 Bad Request`.
+:::
+
+## Response Body
+
+```json
+{
+  "versionA": "v-abc123",
+  "versionB": "v-def456",
+  "windowDays": 30,
+  "metrics": {
+    "versionA": {
+      "totalEvaluations": 18420,
+      "avgExecutionTimeMs": 7.2,
+      "p95ExecutionTimeMs": 18.1,
+      "p99ExecutionTimeMs": 42.3,
+      "failureRate": 0.008,
+      "errorCount": 147
+    },
+    "versionB": {
+      "totalEvaluations": 4310,
+      "avgExecutionTimeMs": 6.8,
+      "p95ExecutionTimeMs": 16.4,
+      "p99ExecutionTimeMs": 38.9,
+      "failureRate": 0.003,
+      "errorCount": 13
+    }
+  },
+  "comparison": {
+    "avgExecutionTimeDeltaMs": -0.4,
+    "avgExecutionTimeDeltaPct": -5.6,
+    "failureRateDelta": -0.005,
+    "failureRateDeltaPct": -62.5,
+    "verdict": "VERSION_B_BETTER"
+  }
+}
+```
+
+### Metric Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalEvaluations` | `number` | Total number of policy evaluations recorded for this version within the window. |
+| `avgExecutionTimeMs` | `number` | Mean wall-clock execution time in milliseconds. |
+| `p95ExecutionTimeMs` | `number` | 95th-percentile execution time in milliseconds. |
+| `p99ExecutionTimeMs` | `number` | 99th-percentile execution time in milliseconds. |
+| `failureRate` | `number` | Fraction of evaluations that resulted in an error (0.0 to 1.0). |
+| `errorCount` | `number` | Absolute number of failed evaluations. |
+
+### Comparison Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `avgExecutionTimeDeltaMs` | `number` | Difference in average execution time: `versionB.avg − versionA.avg`. Negative means versionB is faster. |
+| `avgExecutionTimeDeltaPct` | `number` | Same delta expressed as a percentage of versionA's average. |
+| `failureRateDelta` | `number` | Difference in failure rate: `versionB.failureRate − versionA.failureRate`. Negative means versionB is more reliable. |
+| `failureRateDeltaPct` | `number` | Same delta expressed as a percentage of versionA's failure rate. |
+| `verdict` | `string` | Summary judgment: `VERSION_A_BETTER`, `VERSION_B_BETTER`, or `COMPARABLE`. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Comparison completed successfully. |
+| `400 Bad Request` | Missing required parameters, identical version identifiers, or `days` exceeds the 90-day limit. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
+| `404 Not Found` | One or both version identifiers do not exist. |
+| `500 Internal Server Error` | Unexpected engine failure. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/compare?versionA=v-abc123&versionB=v-def456&days=30" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const params = new URLSearchParams({
+  versionA: 'v-abc123',
+  versionB: 'v-def456',
+  days:     '30',
+});
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/compare?${params}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const comparison = await response.json();
+
+if (comparison.comparison.verdict === 'VERSION_B_BETTER') {
+  console.log('New version outperforms the baseline — safe to promote.');
+}
+```
+
+:::
+
+### Example Response
+
+```json
+{
+  "versionA": "v-abc123",
+  "versionB": "v-def456",
+  "windowDays": 30,
+  "metrics": {
+    "versionA": {
+      "totalEvaluations": 18420,
+      "avgExecutionTimeMs": 7.2,
+      "p95ExecutionTimeMs": 18.1,
+      "p99ExecutionTimeMs": 42.3,
+      "failureRate": 0.008,
+      "errorCount": 147
+    },
+    "versionB": {
+      "totalEvaluations": 4310,
+      "avgExecutionTimeMs": 6.8,
+      "p95ExecutionTimeMs": 16.4,
+      "p99ExecutionTimeMs": 38.9,
+      "failureRate": 0.003,
+      "errorCount": 13
+    }
+  },
+  "comparison": {
+    "avgExecutionTimeDeltaMs": -0.4,
+    "avgExecutionTimeDeltaPct": -5.6,
+    "failureRateDelta": -0.005,
+    "failureRateDeltaPct": -62.5,
+    "verdict": "VERSION_B_BETTER"
+  }
+}
+```

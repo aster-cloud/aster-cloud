@@ -1,0 +1,236 @@
+---
+title: "Audit Logs"
+---
+
+# Audit Logs
+
+::: tip Scope
+These endpoints are served by **aster-api** (the policy engine) and cover policy execution events that are SHA-256 hash-chained. The **aster-cloud** SaaS dashboard maintains a separate, non-chained activity log for UI events (user logins, plan changes, member invitations); that activity log is not exposed through this API.
+:::
+
+Retrieve audit log records for events recorded by the policy engine. All endpoints in this section require the `ADMIN` role.
+
+## Required Role
+
+`ADMIN`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+---
+
+## Get All Audit Logs
+
+Retrieve a list of all audit log entries for the tenant, ordered by event time descending.
+
+### Endpoint
+
+`GET /api/v1/audit`
+
+### Response Body
+
+```json
+[
+  {
+    "id": "string",
+    "eventType": "string",
+    "policyModule": "string",
+    "policyFunction": "string",
+    "actorId": "string",
+    "occurredAt": "2024-01-15T10:30:00Z",
+    "payload": {},
+    "hash": "string",
+    "previousHash": "string"
+  }
+]
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique audit record identifier. |
+| `eventType` | `string` | The type of event that was recorded (e.g. `POLICY_EVALUATED`, `POLICY_DEPLOYED`). |
+| `policyModule` | `string` | Module name associated with the event, if applicable. |
+| `policyFunction` | `string` | Function name associated with the event, if applicable. |
+| `actorId` | `string` | Identifier of the user or service principal that triggered the event. |
+| `occurredAt` | `string` | ISO 8601 timestamp of when the event occurred. |
+| `payload` | `object` | Event-specific metadata. Structure varies by `eventType`. |
+| `hash` | `string` | SHA-256 hash of this record's content, used for chain integrity verification. |
+| `previousHash` | `string` | Hash of the immediately preceding audit record, forming the hash chain. |
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET https://policy.aster-lang.dev/api/v1/audit \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/audit',
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const logs = await response.json();
+```
+
+:::
+
+---
+
+## Filter by Event Type
+
+Retrieve audit log entries filtered to a specific event type.
+
+### Endpoint
+
+`GET /api/v1/audit/type/{eventType}`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `eventType` | `string` | The event type to filter by (e.g. `POLICY_EVALUATED`, `POLICY_DEPLOYED`, `POLICY_ROLLED_BACK`). |
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET https://policy.aster-lang.dev/api/v1/audit/type/POLICY_DEPLOYED \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const eventType = 'POLICY_DEPLOYED';
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/type/${eventType}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const logs = await response.json();
+```
+
+:::
+
+---
+
+## Filter by Policy
+
+Retrieve audit log entries for a specific policy module and function combination.
+
+### Endpoint
+
+`GET /api/v1/audit/policy/{policyModule}/{policyFunction}`
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `policyModule` | `string` | The fully-qualified module name (e.g. `Loan.Approval`). |
+| `policyFunction` | `string` | The function name within the module (e.g. `isEligible`). |
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy/Loan.Approval/isEligible" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const policyModule = 'Loan.Approval';
+const policyFunction = 'isEligible';
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/policy/${policyModule}/${policyFunction}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const logs = await response.json();
+```
+
+:::
+
+---
+
+## Filter by Time Range
+
+Retrieve audit log entries within a specific time window.
+
+### Endpoint
+
+`GET /api/v1/audit/range`
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `startTime` | `string` | Yes | ISO 8601 start timestamp (inclusive). |
+| `endTime` | `string` | Yes | ISO 8601 end timestamp (inclusive). |
+
+### Examples
+
+::: code-group
+
+```bash [curl]
+curl -X GET "https://policy.aster-lang.dev/api/v1/audit/range?startTime=2024-01-01T00:00:00Z&endTime=2024-01-31T23:59:59Z" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Tenant-ID: acme-corp"
+```
+
+```js [JavaScript]
+const params = new URLSearchParams({
+  startTime: '2024-01-01T00:00:00Z',
+  endTime:   '2024-01-31T23:59:59Z',
+});
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/audit/range?${params}`,
+  {
+    headers: {
+      Authorization: 'Bearer <token>',
+      'X-Tenant-ID': 'acme-corp',
+    },
+  }
+);
+
+const logs = await response.json();
+```
+
+:::
+
+---
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Request succeeded. Returns an array of audit log entries (may be empty). |
+| `400 Bad Request` | Missing or malformed query parameters. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
+| `500 Internal Server Error` | Unexpected engine failure. |

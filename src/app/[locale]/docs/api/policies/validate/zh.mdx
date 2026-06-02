@@ -1,0 +1,133 @@
+---
+title: "Validate Policy Exists"
+---
+
+# Validate Policy Exists
+
+Check whether a policy identified by module and function name is deployed and callable. This endpoint does not execute any policy logic; it only confirms that the policy is registered and in a runnable state.
+
+Use this endpoint to pre-flight an evaluation request, to verify a deployment succeeded, or to implement health checks for critical policies.
+
+## Endpoint
+
+`POST /api/v1/policies/validate`
+
+## Required Role
+
+`MEMBER`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+```json
+{
+  "policyModule": "string",
+  "policyFunction": "string"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `policyModule` | `string` | Yes | Fully-qualified module name to look up (e.g. `"Loan.Approval"`). |
+| `policyFunction` | `string` | Yes | Function name within the module to validate (e.g. `"isEligible"`). |
+
+## Response Body
+
+```json
+{
+  "valid": true,
+  "error": null
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `valid` | `boolean` | `true` if the policy exists, is deployed, and can be called. `false` if it is not found, is in a failed deployment state, or is otherwise uncallable. |
+| `error` | `string \| null` | Descriptive reason why `valid` is `false`; `null` when `valid` is `true`. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Validation check completed. A `200` response with `valid: false` means the policy does not exist or is not callable — this is a successful check, not an HTTP error. |
+| `400 Bad Request` | Malformed request body or missing required fields. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `500 Internal Server Error` | Unexpected engine failure prevented the check from completing. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/validate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "policyModule": "Loan.Approval",
+    "policyFunction": "isEligible"
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/validate',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({
+      policyModule: 'Loan.Approval',
+      policyFunction: 'isEligible',
+    }),
+  }
+);
+
+const data = await response.json();
+
+if (!data.valid) {
+  console.error('Policy is not callable:', data.error);
+} else {
+  console.log('Policy is ready for evaluation.');
+}
+```
+
+:::
+
+### Example Response (Policy Found)
+
+```json
+{
+  "valid": true,
+  "error": null
+}
+```
+
+### Example Response (Policy Not Found)
+
+```json
+{
+  "valid": false,
+  "error": "No deployed policy found for module 'Loan.Approval', function 'isEligible'"
+}
+```
+
+### Example Response (Policy in Failed State)
+
+```json
+{
+  "valid": false,
+  "error": "Policy 'Loan.Approval.isEligible' exists but failed to load: compilation error in version 3"
+}
+```

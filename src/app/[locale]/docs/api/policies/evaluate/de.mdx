@@ -1,0 +1,134 @@
+---
+title: "Evaluate Policy"
+---
+
+# Evaluate Policy
+
+Evaluate a deployed policy by module and function name. The policy must already be deployed to the engine before it can be called through this endpoint.
+
+## Endpoint
+
+`POST /api/v1/policies/evaluate`
+
+## Required Role
+
+`MEMBER`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+```json
+{
+  "policyModule": "string",
+  "policyFunction": "string",
+  "context": [{}]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `policyModule` | `string` | Yes | The fully-qualified module name as declared in the CNL source (e.g. `"Loan.Approval"`). |
+| `policyFunction` | `string` | Yes | The function name within the module to invoke (e.g. `"isEligible"`). |
+| `context` | `array<object>` | Yes | An ordered list of argument objects passed positionally to the policy function. The structure of each object must match the parameter schema declared in the policy. Pass an empty array `[]` for zero-argument functions. |
+
+## Response Body
+
+```json
+{
+  "result": "<any>",
+  "executionTimeMs": 0,
+  "error": null,
+  "decisionTrace": null
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `result` | `any` | The value returned by the policy function. The type matches the declared return type of the function (boolean, number, string, or object). |
+| `executionTimeMs` | `number` | Wall-clock time in milliseconds from request receipt to response dispatch. |
+| `error` | `string \| null` | Human-readable error message if evaluation failed; `null` on success. |
+| `decisionTrace` | `object \| null` | Structured trace of rule evaluation steps. Always `null` for this endpoint. Use `/evaluate-source?trace=true` to obtain a trace. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Evaluation completed. Check `error` field — a non-null value indicates a policy-level failure while the HTTP call itself succeeded. |
+| `400 Bad Request` | Malformed request body or missing required fields. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `404 Not Found` | No deployed policy found matching `policyModule` + `policyFunction`. |
+| `500 Internal Server Error` | Unexpected engine failure. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "policyModule": "Loan.Approval",
+    "policyFunction": "isEligible",
+    "context": [
+      {
+        "applicantAge": 30,
+        "annualIncome": 75000,
+        "creditScore": 720,
+        "requestedAmount": 25000
+      }
+    ]
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/evaluate',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({
+      policyModule: 'Loan.Approval',
+      policyFunction: 'isEligible',
+      context: [
+        {
+          applicantAge: 30,
+          annualIncome: 75000,
+          creditScore: 720,
+          requestedAmount: 25000,
+        },
+      ],
+    }),
+  }
+);
+
+const data = await response.json();
+// data.result  → true | false | number | string | object
+// data.error   → null on success
+```
+
+:::
+
+### Example Response
+
+```json
+{
+  "result": true,
+  "executionTimeMs": 4,
+  "error": null,
+  "decisionTrace": null
+}
+```

@@ -1,0 +1,194 @@
+---
+title: "错误处理"
+---
+
+# 错误处理
+
+Aster 策略引擎使用标准 HTTP 状态码和一致的 JSON 响应信封处理所有错误条件。
+
+## 标准错误响应格式
+
+所有错误响应 — 无论来自应用层还是策略评估失败 — 都使用以下结构：
+
+```json
+{
+  "result": null,
+  "error": "人类可读的错误描述",
+  "executionTimeMs": 0
+}
+```
+
+| 字段             | 类型           | 描述                                                     |
+|-------------------|----------------|-----------------------------------------------------------------|
+| `result`          | null           | 发生错误时始终为 `null`                              |
+| `error`           | string         | 描述出错原因的人类可读消息             |
+| `executionTimeMs` | number         | 已用毫秒数；执行前检测到的错误为 `0` |
+
+::: tip 区分评估错误与 HTTP 错误
+HTTP 4xx/5xx 状态码表示基础设施级别的故障（缺少请求头、授权、服务器错误）。HTTP `200` 响应中 `error` 字段非空表示策略已成功解析和分发，但评估本身产生了错误（例如规则逻辑中的运行时异常）。
+:::
+
+## HTTP 状态码
+
+### 400 Bad Request
+
+当请求在结构上无效或缺少必需信息时返回。
+
+**常见原因：**
+
+| 场景                           | 示例 `error` 消息                                      |
+|------------------------------------|--------------------------------------------------------------|
+| 缺少 `X-Tenant-Id` 请求头       | `"X-Tenant-Id header is required"`                           |
+| `X-Tenant-Id` 格式无效       | `"X-Tenant-Id must match ^[a-zA-Z0-9_-]{1,64}$"`            |
+| 缺少 `Content-Type` 请求头      | `"Content-Type must be application/json"`                    |
+| JSON 请求体格式错误                | `"Request body could not be parsed as JSON"`                 |
+| 缺少必需的请求体字段        | `"Field 'functionName' is required"`                         |
+
+**示例 — 缺少租户请求头：**
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -d '{"source": "...", "functionName": "greet", "context": {}, "locale": "en-US"}'
+```
+
+```json
+HTTP/1.1 400 Bad Request
+
+{
+  "result": null,
+  "error": "X-Tenant-Id header is required",
+  "executionTimeMs": 0
+}
+```
+
+### 403 Forbidden
+
+当调用者缺少所请求操作的必需权限时返回。
+
+**常见原因：**
+
+| 场景                                  | 示例 `error` 消息                                    |
+|-------------------------------------------|------------------------------------------------------------|
+| `X-User-Role` 对端点来说级别不够    | `"Role VIEWER is insufficient; MEMBER required"`           |
+| 无效或过期的 HMAC 签名         | `"HMAC signature verification failed"`                     |
+| 时间戳超出 5 分钟窗口     | `"Request timestamp is outside the acceptable window"`     |
+| Nonce 已在重放窗口内使用   | `"Nonce has already been used; possible replay attack"`    |
+
+**示例 — 角色不足：**
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: VIEWER" \
+  -d '{"source": "...", "functionName": "greet", "context": {}, "locale": "en-US"}'
+```
+
+```json
+HTTP/1.1 403 Forbidden
+
+{
+  "result": null,
+  "error": "Role VIEWER is insufficient; MEMBER required",
+  "executionTimeMs": 0
+}
+```
+
+### 404 Not Found
+
+当引用的资源（例如已存储的策略 ID）在当前租户范围内不存在时返回。
+
+```json
+HTTP/1.1 404 Not Found
+
+{
+  "result": null,
+  "error": "Policy 'pricing-v3' not found for tenant 'my-tenant'",
+  "executionTimeMs": 0
+}
+```
+
+### 429 Too Many Requests
+
+当租户超出其速率限制时返回。响应包含 `Retry-After` 请求头。
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+```
+
+```json
+{
+  "result": null,
+  "error": "Rate limit exceeded; retry after 30 seconds",
+  "executionTimeMs": 0
+}
+```
+
+### 500 Internal Server Error
+
+用于意外的服务器端故障。这些错误会自动记录，如持续出现应报告给支持团队。
+
+```json
+HTTP/1.1 500 Internal Server Error
+
+{
+  "result": null,
+  "error": "An unexpected error occurred. Reference ID: a3f9c2d1",
+  "executionTimeMs": 0
+}
+```
+
+::: warning 如果你收到 500 错误
+请注意错误信息中的 `Reference ID`，在联系支持时附上。它唯一标识了你请求的日志条目。
+:::
+
+## 评估级错误（HTTP 200 且 `error` 非空）
+
+即使请求在结构上有效且已授权，策略评估本身也可能失败。在这些情况下，HTTP 状态码为 `200`，但响应体的 `error` 字段非空。
+
+**常见原因：**
+
+| 场景                                    | 示例 `error` 消息                                         |
+|---------------------------------------------|-----------------------------------------------------------------|
+| CNL 源码语法错误                  | `"Parse error at line 3: unexpected token 'produce'"`           |
+| 策略中未找到函数名           | `"Rule 'calculate' not found in module 'pricing'"`              |
+| 上下文输入类型不匹配              | `"Expected Number for parameter 'amount', got String"`          |
+| 规则逻辑中的运行时异常         | `"Division by zero in rule 'split-cost' at line 7"`             |
+| 不支持的区域设置                        | `"Unsupported locale 'fr-FR'"`                                  |
+
+**示例 — 未找到规则：**
+
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "context": {"name": "World"},
+    "functionName": "farewell",
+    "locale": "en-US"
+  }'
+```
+
+```json
+HTTP/1.1 200 OK
+
+{
+  "result": null,
+  "error": "Rule 'farewell' not found in module 'demo'",
+  "executionTimeMs": 5
+}
+```
+
+## 错误处理最佳实践
+
+1. **始终检查 HTTP 状态码和 `error` 字段。** `200` 响应不保证评估成功。
+
+2. **对 `429` 和 `500` 响应实现重试逻辑。** 对速率限制错误使用 `Retry-After` 请求头，对服务器错误使用指数退避。
+
+3. **不要在未修复根本原因的情况下重试 `400` 或 `403` 响应。** 这些错误表示客户端问题，不会自行解决。
+
+4. **对于批量评估**，逐项检查 `results` 数组中的每个项目 — 一项的失败不会影响其他项目。

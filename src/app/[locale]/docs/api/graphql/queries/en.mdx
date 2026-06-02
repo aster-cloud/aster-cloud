@@ -1,0 +1,459 @@
+---
+title: "GraphQL Queries"
+---
+
+# GraphQL Queries
+
+All queries are read-only operations sent as `POST /graphql`. Queries require HMAC request signing and an `X-Tenant-Id` header. See [Authentication](/docs/getting-started/authentication) for details on computing the signature, and [Overview](/docs/api/graphql/overview) for request format details.
+
+---
+
+## Policy Queries
+
+### getPolicy
+
+Retrieve a single policy by its unique identifier.
+
+```graphql
+query GetPolicy($id: ID!) {
+  getPolicy(id: $id) {
+    id
+    policyModule
+    policyFunction
+    version
+    status
+    createdAt
+    updatedAt
+    source
+  }
+}
+```
+
+**Variables**
+
+```json
+{
+  "id": "pol-abc123"
+}
+```
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -H "X-User-Role: VIEWER" \
+  -H "X-Aster-Signature: <signature>" \
+  -H "X-Aster-Nonce: <nonce>" \
+  -H "X-Aster-Timestamp: <timestamp>" \
+  -d '{
+    "query": "query GetPolicy($id: ID!) { getPolicy(id: $id) { id policyModule policyFunction version status createdAt updatedAt } }",
+    "variables": { "id": "pol-abc123" }
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Tenant-Id':  'acme-corp',
+    'X-User-Role':  'VIEWER',
+    'X-Aster-Signature': signature,
+    'X-Aster-Nonce': nonce,
+    'X-Aster-Timestamp': timestamp,
+  },
+  body: JSON.stringify({
+    query: `
+      query GetPolicy($id: ID!) {
+        getPolicy(id: $id) {
+          id
+          policyModule
+          policyFunction
+          version
+          status
+          createdAt
+          updatedAt
+        }
+      }
+    `,
+    variables: { id: 'pol-abc123' },
+  }),
+});
+
+const { data, errors } = await response.json();
+```
+
+:::
+
+---
+
+### listPolicies
+
+Retrieve all policies visible to the tenant.
+
+```graphql
+query ListPolicies {
+  listPolicies {
+    id
+    policyModule
+    policyFunction
+    version
+    status
+    updatedAt
+  }
+}
+```
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -H "X-User-Role: VIEWER" \
+  -H "X-Aster-Signature: <signature>" \
+  -H "X-Aster-Nonce: <nonce>" \
+  -H "X-Aster-Timestamp: <timestamp>" \
+  -d '{ "query": "query { listPolicies { id policyModule policyFunction version status updatedAt } }" }'
+```
+
+```js [JavaScript]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Tenant-Id':  'acme-corp',
+    'X-User-Role':  'VIEWER',
+    'X-Aster-Signature': signature,
+    'X-Aster-Nonce': nonce,
+    'X-Aster-Timestamp': timestamp,
+  },
+  body: JSON.stringify({
+    query: `
+      query {
+        listPolicies {
+          id
+          policyModule
+          policyFunction
+          version
+          status
+          updatedAt
+        }
+      }
+    `,
+  }),
+});
+
+const { data } = await response.json();
+// data.listPolicies → Policy[]
+```
+
+:::
+
+---
+
+## Industry-Specific Queries
+
+These queries invoke domain-specific policy evaluation logic and return structured decision results. Each query passes its arguments through the policy engine as **individual parameters** (not a single input object).
+
+### generateLifeQuote
+
+Generate a life insurance quote based on applicant parameters.
+
+```graphql
+query GenerateLifeQuote(
+  $applicant: LifeInsuranceApplicant!
+  $request: LifeInsurancePolicyRequest!
+) {
+  generateLifeQuote(applicant: $applicant, request: $request) {
+    premium
+    coverageAmount
+    term
+    eligibility
+    exclusions
+  }
+}
+```
+
+---
+
+### calculateLifeRiskScore
+
+Calculate a risk score for a life insurance applicant.
+
+```graphql
+query CalculateLifeRiskScore($applicant: LifeInsuranceApplicant!) {
+  calculateLifeRiskScore(applicant: $applicant) {
+    score
+    band
+    factors
+  }
+}
+```
+
+---
+
+### generateAutoQuote
+
+Generate an automobile insurance quote.
+
+```graphql
+query GenerateAutoQuote(
+  $driver: AutoInsuranceDriver!
+  $vehicle: AutoInsuranceVehicle!
+  $coverageType: String!
+) {
+  generateAutoQuote(
+    driver: $driver
+    vehicle: $vehicle
+    coverageType: $coverageType
+  ) {
+    annualPremium
+    monthlyPremium
+    coverageOptions {
+      type
+      included
+      premium
+    }
+  }
+}
+```
+
+---
+
+### checkServiceEligibility
+
+Determine whether a patient is eligible for a specific service.
+
+```graphql
+query CheckServiceEligibility(
+  $patient: HealthcarePatient!
+  $service: HealthcareService!
+) {
+  checkServiceEligibility(patient: $patient, service: $service) {
+    eligible
+    reason
+    eligibleServices
+    ineligibleServices {
+      service
+      reason
+    }
+  }
+}
+```
+
+---
+
+### processClaim
+
+Evaluate and process an insurance or service claim.
+
+```graphql
+query ProcessClaim(
+  $claim: HealthcareClaim!
+  $provider: HealthcareProvider!
+  $patientCoverage: Int!
+) {
+  processClaim(
+    claim: $claim
+    provider: $provider
+    patientCoverage: $patientCoverage
+  ) {
+    approved
+    approvedAmount
+    denialReason
+    requiredDocuments
+    referenceNumber
+  }
+}
+```
+
+---
+
+### evaluateLoanEligibility
+
+Assess a borrower's eligibility for a loan product.
+
+```graphql
+query EvaluateLoanEligibility(
+  $application: LoanApplication!
+  $applicant: LoanApplicant!
+) {
+  evaluateLoanEligibility(
+    application: $application
+    applicant: $applicant
+  ) {
+    eligible
+    maxApprovedAmount
+    interestRate
+    term
+    conditions
+    rejectionReasons
+  }
+}
+```
+
+---
+
+### evaluateCreditCardApplication
+
+Evaluate a credit card application and determine the approved credit limit.
+
+```graphql
+query EvaluateCreditCardApplication(
+  $applicant: CreditCardApplicantInfo!
+  $history: CreditCardFinancialHistory!
+  $offer: CreditCardOffer!
+) {
+  evaluateCreditCardApplication(
+    applicant: $applicant
+    history: $history
+    offer: $offer
+  ) {
+    approved
+    creditLimit
+    interestRate
+    cardType
+    conditions
+    rejectionReasons
+  }
+}
+```
+
+---
+
+### evaluateEnterpriseLoan
+
+Evaluate a commercial or enterprise loan application.
+
+```graphql
+query EvaluateEnterpriseLoan(
+  $enterprise: EnterpriseInfo!
+  $position: FinancialPosition!
+  $history: BusinessHistory!
+  $application: EnterpriseLoanApplication!
+) {
+  evaluateEnterpriseLoan(
+    enterprise: $enterprise
+    position: $position
+    history: $history
+    application: $application
+  ) {
+    eligible
+    approvedAmount
+    interestRate
+    collateralRequired
+    conditions
+    rejectionReasons
+  }
+}
+```
+
+---
+
+### evaluatePersonalLoan
+
+Evaluate a personal loan application.
+
+```graphql
+query EvaluatePersonalLoan(
+  $personal: PersonalInfo!
+  $income: IncomeProfile!
+  $credit: CreditProfile!
+  $debt: DebtProfile!
+  $request: PersonalLoanRequest!
+) {
+  evaluatePersonalLoan(
+    personal: $personal
+    income: $income
+    credit: $credit
+    debt: $debt
+    request: $request
+  ) {
+    eligible
+    approvedAmount
+    interestRate
+    monthlyRepayment
+    term
+    conditions
+    rejectionReasons
+  }
+}
+```
+
+::: code-group
+
+```bash [curl — evaluatePersonalLoan example]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -H "X-User-Role: MEMBER" \
+  -H "X-Aster-Signature: <signature>" \
+  -H "X-Aster-Nonce: <nonce>" \
+  -H "X-Aster-Timestamp: <timestamp>" \
+  -d '{
+    "query": "query EvaluatePersonalLoan($personal: PersonalInfo!, $income: IncomeProfile!, $credit: CreditProfile!, $debt: DebtProfile!, $request: PersonalLoanRequest!) { evaluatePersonalLoan(personal: $personal, income: $income, credit: $credit, debt: $debt, request: $request) { eligible approvedAmount interestRate monthlyRepayment term } }",
+    "variables": {
+      "personal": { "name": "Jane Doe", "age": 32 },
+      "income": { "annualIncome": 68000, "employmentType": "FULL_TIME" },
+      "credit": { "creditScore": 710 },
+      "debt": { "totalMonthlyDebt": 500 },
+      "request": { "requestedAmount": 15000, "requestedTermMonths": 36 }
+    }
+  }'
+```
+
+```js [JavaScript — evaluatePersonalLoan example]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Tenant-Id':  'acme-corp',
+    'X-User-Role':  'MEMBER',
+    'X-Aster-Signature': signature,
+    'X-Aster-Nonce': nonce,
+    'X-Aster-Timestamp': timestamp,
+  },
+  body: JSON.stringify({
+    query: `
+      query EvaluatePersonalLoan(
+        $personal: PersonalInfo!
+        $income: IncomeProfile!
+        $credit: CreditProfile!
+        $debt: DebtProfile!
+        $request: PersonalLoanRequest!
+      ) {
+        evaluatePersonalLoan(
+          personal: $personal
+          income: $income
+          credit: $credit
+          debt: $debt
+          request: $request
+        ) {
+          eligible
+          approvedAmount
+          interestRate
+          monthlyRepayment
+          term
+          conditions
+          rejectionReasons
+        }
+      }
+    `,
+    variables: {
+      personal: { name: 'Jane Doe', age: 32 },
+      income:   { annualIncome: 68000, employmentType: 'FULL_TIME' },
+      credit:   { creditScore: 710 },
+      debt:     { totalMonthlyDebt: 500 },
+      request:  { requestedAmount: 15000, requestedTermMonths: 36 },
+    },
+  }),
+});
+
+const { data, errors } = await response.json();
+const result = data?.evaluatePersonalLoan;
+```
+
+:::

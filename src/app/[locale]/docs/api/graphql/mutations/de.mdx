@@ -1,0 +1,383 @@
+---
+title: "GraphQL Mutations"
+---
+
+# GraphQL Mutations
+
+Mutations are write operations that create, update, or delete resources. All mutations must be sent as `POST /graphql`. Write operations accept an optional `Idempotency-Key` header to prevent duplicate execution on retry. See [Overview](/docs/api/graphql/overview) for full request format details.
+
+## Required Role
+
+`ADMIN` for policy management mutations. Cache mutations require `ADMIN`.
+
+---
+
+## Policy Management
+
+### createPolicy
+
+Create a new policy from a CNL source string. The policy is compiled and stored but not yet deployed.
+
+```graphql
+mutation CreatePolicy($input: PolicyInput!) {
+  createPolicy(input: $input) {
+    id
+    policyModule
+    policyFunction
+    version
+    status
+    createdAt
+  }
+}
+```
+
+**Input type**
+
+```graphql
+input PolicyInput {
+  policyModule:   String!
+  policyFunction: String!
+  source:         String!
+  description:    String
+}
+```
+
+**Variables**
+
+```json
+{
+  "input": {
+    "policyModule": "Loan.Approval",
+    "policyFunction": "isEligible",
+    "source": "Module Loan.Approval.\nRule isEligible given applicant: ...",
+    "description": "Personal loan eligibility check v3"
+  }
+}
+```
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000" \
+  -d '{
+    "query": "mutation CreatePolicy($input: PolicyInput!) { createPolicy(input: $input) { id policyModule policyFunction version status createdAt } }",
+    "variables": {
+      "input": {
+        "policyModule": "Loan.Approval",
+        "policyFunction": "isEligible",
+        "source": "Module Loan.Approval.\nRule isEligible given applicant: ..."
+      }
+    }
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    Authorization:     'Bearer <token>',
+    'Content-Type':    'application/json',
+    'X-Tenant-Id':     'acme-corp',
+    'Idempotency-Key': crypto.randomUUID(),
+  },
+  body: JSON.stringify({
+    query: `
+      mutation CreatePolicy($input: PolicyInput!) {
+        createPolicy(input: $input) {
+          id
+          policyModule
+          policyFunction
+          version
+          status
+          createdAt
+        }
+      }
+    `,
+    variables: {
+      input: {
+        policyModule:   'Loan.Approval',
+        policyFunction: 'isEligible',
+        source:         'Module Loan.Approval.\nRule isEligible given applicant: ...',
+        description:    'Personal loan eligibility check v3',
+      },
+    },
+  }),
+});
+
+const { data, errors } = await response.json();
+const newPolicy = data?.createPolicy;
+```
+
+:::
+
+---
+
+### updatePolicy
+
+Update the source or metadata of an existing policy. Creates a new version; the previous version is retained in history.
+
+```graphql
+mutation UpdatePolicy($id: ID!, $input: PolicyInput!) {
+  updatePolicy(id: $id, input: $input) {
+    id
+    policyModule
+    policyFunction
+    version
+    status
+    updatedAt
+  }
+}
+```
+
+**Variables**
+
+```json
+{
+  "id": "pol-abc123",
+  "input": {
+    "policyModule": "Loan.Approval",
+    "policyFunction": "isEligible",
+    "source": "Module Loan.Approval.\nRule isEligible given applicant: ..."
+  }
+}
+```
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -H "Idempotency-Key: 7c9e6679-7425-40de-944b-e07fc1f90ae7" \
+  -d '{
+    "query": "mutation UpdatePolicy($id: ID!, $input: PolicyInput!) { updatePolicy(id: $id, input: $input) { id version status updatedAt } }",
+    "variables": {
+      "id": "pol-abc123",
+      "input": {
+        "policyModule": "Loan.Approval",
+        "policyFunction": "isEligible",
+        "source": "Module Loan.Approval.\nRule isEligible given applicant: ..."
+      }
+    }
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    Authorization:     'Bearer <token>',
+    'Content-Type':    'application/json',
+    'X-Tenant-Id':     'acme-corp',
+    'Idempotency-Key': crypto.randomUUID(),
+  },
+  body: JSON.stringify({
+    query: `
+      mutation UpdatePolicy($id: ID!, $input: PolicyInput!) {
+        updatePolicy(id: $id, input: $input) {
+          id
+          version
+          status
+          updatedAt
+        }
+      }
+    `,
+    variables: {
+      id:    'pol-abc123',
+      input: {
+        policyModule:   'Loan.Approval',
+        policyFunction: 'isEligible',
+        source:         'Module Loan.Approval.\nRule isEligible given applicant: ...',
+      },
+    },
+  }),
+});
+
+const { data, errors } = await response.json();
+```
+
+:::
+
+---
+
+### deletePolicy
+
+Permanently delete a policy and all associated version history. This action cannot be undone.
+
+```graphql
+mutation DeletePolicy($id: ID!) {
+  deletePolicy(id: $id)
+}
+```
+
+The mutation returns a `Boolean` — `true` on successful deletion.
+
+**Variables**
+
+```json
+{
+  "id": "pol-abc123"
+}
+```
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -H "Idempotency-Key: a87ff679-a2f3-471d-8671-5a8e0c8f4b3e" \
+  -d '{
+    "query": "mutation DeletePolicy($id: ID!) { deletePolicy(id: $id) }",
+    "variables": { "id": "pol-abc123" }
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    Authorization:     'Bearer <token>',
+    'Content-Type':    'application/json',
+    'X-Tenant-Id':     'acme-corp',
+    'Idempotency-Key': crypto.randomUUID(),
+  },
+  body: JSON.stringify({
+    query:     'mutation DeletePolicy($id: ID!) { deletePolicy(id: $id) }',
+    variables: { id: 'pol-abc123' },
+  }),
+});
+
+const { data } = await response.json();
+const deleted = data?.deletePolicy; // true
+```
+
+:::
+
+---
+
+## Cache Management
+
+### clearAllCache
+
+Evict all cached policy evaluation results for the tenant. Use this after a bulk deployment or when you need a guaranteed cold start.
+
+```graphql
+mutation ClearAllCache {
+  clearAllCache
+}
+```
+
+Returns a `Boolean` — `true` on success.
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -d '{ "query": "mutation { clearAllCache }" }'
+```
+
+```js [JavaScript]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    Authorization:  'Bearer <token>',
+    'Content-Type': 'application/json',
+    'X-Tenant-Id':  'acme-corp',
+  },
+  body: JSON.stringify({ query: 'mutation { clearAllCache }' }),
+});
+
+const { data } = await response.json();
+// data.clearAllCache → true
+```
+
+:::
+
+---
+
+### invalidateCache
+
+Evict cached evaluation results for a specific policy module and function, leaving all other entries intact.
+
+```graphql
+mutation InvalidateCache($policyModule: String!, $policyFunction: String!) {
+  invalidateCache(policyModule: $policyModule, policyFunction: $policyFunction)
+}
+```
+
+Returns a `Boolean` — `true` on success.
+
+**Variables**
+
+```json
+{
+  "policyModule": "Loan.Approval",
+  "policyFunction": "isEligible"
+}
+```
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/graphql \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: acme-corp" \
+  -d '{
+    "query": "mutation InvalidateCache($policyModule: String!, $policyFunction: String!) { invalidateCache(policyModule: $policyModule, policyFunction: $policyFunction) }",
+    "variables": {
+      "policyModule": "Loan.Approval",
+      "policyFunction": "isEligible"
+    }
+  }'
+```
+
+```js [JavaScript]
+const response = await fetch('https://policy.aster-lang.dev/graphql', {
+  method: 'POST',
+  headers: {
+    Authorization:  'Bearer <token>',
+    'Content-Type': 'application/json',
+    'X-Tenant-Id':  'acme-corp',
+  },
+  body: JSON.stringify({
+    query: `
+      mutation InvalidateCache($policyModule: String!, $policyFunction: String!) {
+        invalidateCache(policyModule: $policyModule, policyFunction: $policyFunction)
+      }
+    `,
+    variables: {
+      policyModule:   'Loan.Approval',
+      policyFunction: 'isEligible',
+    },
+  }),
+});
+
+const { data } = await response.json();
+// data.invalidateCache → true
+```
+
+:::
+
+---
+
+## Error Handling
+
+Mutation errors follow the same GraphQL error format described in [Overview](/docs/api/graphql/overview#error-handling). Common mutation-specific error codes:
+
+| Code | Condition |
+|------|-----------|
+| `NOT_FOUND` | `id` supplied to `updatePolicy` or `deletePolicy` does not exist. |
+| `VALIDATION_ERROR` | CNL source provided to `createPolicy` or `updatePolicy` failed compilation. |
+| `CONFLICT` | Concurrent modification detected; retry with a fresh `Idempotency-Key`. |
+| `FORBIDDEN` | Caller lacks the `ADMIN` role. |

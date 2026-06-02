@@ -1,14 +1,25 @@
 import { setRequestLocale } from 'next-intl/server';
+import { DocsTopNav } from '@/components/docs/DocsTopNav';
+import { DocsSidebar } from '@/components/docs/DocsSidebar';
+import { DocsTOC } from '@/components/docs/DocsTOC';
+import { DocsBreadcrumb } from '@/components/docs/DocsBreadcrumb';
 
 /**
- * Docs subsite layout — minimal Session-1 scaffold.
+ * Docs subsite layout — Session 2 chrome.
  *
- * Real chrome (left sidebar, right TOC, breadcrumb, top nav) lands in
- * Session 2 — see .claude/plan/cloud-docs-subsite.md §4. This shell
- * only proves the route works end-to-end through MDX → SSR → Worker.
+ * Structure (top→bottom, left→right):
+ *   fixed top:  <DocsTopNav>           — brand · language · open console
+ *   left:       <DocsSidebar>          — section/page tree (lg+ only)
+ *   center:     <main><article>{mdx}</article></main> — prose content
+ *   right:      <DocsTOC>              — auto h2/h3 outline (xl+ only)
  *
- * Inner — wraps each /docs/* page inside the existing locale layout
- * (html / fonts / theme / intl already provided by [locale]/layout.tsx).
+ * Layout choices:
+ *   - Fixed top nav (h-16) — content gets pt-16 to clear it.
+ *   - Sidebar collapses below lg (1024px) — small screens get pure content.
+ *   - TOC collapses below xl (1280px) — laptops drop it to give the
+ *     article more horizontal room.
+ *   - `.docs-article` class is the IntersectionObserver root in
+ *     <DocsTOC>; do not rename without updating both.
  */
 type Props = {
   children: React.ReactNode;
@@ -20,12 +31,20 @@ export default async function DocsLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
-        <article className="prose prose-zinc dark:prose-invert max-w-none">
-          {children}
-        </article>
-      </main>
+    <div className="min-h-screen bg-bg">
+      <DocsTopNav />
+      <div className="mx-auto flex max-w-[1400px] pt-16">
+        <DocsSidebar />
+        <main className="min-w-0 flex-1 px-4 sm:px-6 lg:px-8 py-10">
+          <DocsBreadcrumb />
+          <article
+            className="docs-article prose prose-zinc dark:prose-invert max-w-3xl"
+          >
+            {children}
+          </article>
+        </main>
+        <DocsTOC />
+      </div>
     </div>
   );
 }

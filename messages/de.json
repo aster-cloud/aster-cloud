@@ -2423,5 +2423,68 @@
       "plan_gate_required": "Domänenvokabulare erfordern einen Pro-Plan.",
       "internal_error": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
     }
+  },
+  "docs": {
+    "nav": {
+      "suffix": "Docs",
+      "openConsole": "Konsole öffnen"
+    },
+    "breadcrumb": {
+      "root": "Docs"
+    },
+    "sidebar": {
+      "ariaLabel": "Dokumentationsbereiche",
+      "example": {
+        "title": "Beispiel",
+        "smokeTest": "Funktionstest"
+      },
+      "gettingStarted": {
+        "title": "Erste Schritte",
+        "overview": "Übersicht",
+        "authentication": "Authentifizierung",
+        "quickstart": "Schnellstart",
+        "errors": "Fehlerbehandlung"
+      },
+      "apiPolicies": {
+        "title": "Policy-Evaluierung",
+        "evaluate": "Policy Evaluieren",
+        "evaluateSource": "Quelle Evaluieren",
+        "evaluateJson": "JSON Evaluieren",
+        "batch": "Batch-Evaluierung",
+        "schema": "Schema Extrahieren",
+        "validate": "Policy Validieren",
+        "versions": "Versionsverlauf",
+        "rollback": "Zurücksetzen",
+        "cache": "Cache-Verwaltung"
+      },
+      "apiWorkflows": {
+        "title": "Workflows",
+        "events": "Workflow-Ereignisse",
+        "state": "Workflow-Status",
+        "metrics": "Metriken"
+      },
+      "apiAudit": {
+        "title": "Audit",
+        "logs": "Audit-Logs",
+        "verifyChain": "Hash-Kette Verifizieren",
+        "versionUsage": "Versionsnutzung",
+        "anomalies": "Anomalieerkennung",
+        "compare": "Versionsvergleich"
+      },
+      "apiGraphql": {
+        "title": "GraphQL",
+        "overview": "Übersicht",
+        "queries": "Abfragen",
+        "mutations": "Mutationen"
+      },
+      "apiWebsocket": {
+        "title": "WebSocket",
+        "preview": "Preview-Endpoint"
+      }
+    },
+    "toc": {
+      "ariaLabel": "Auf dieser Seite",
+      "title": "Auf dieser Seite"
+    }
   }
 }

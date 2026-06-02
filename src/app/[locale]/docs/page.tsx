@@ -16,5 +16,5 @@ type Props = {
 export default async function DocsIndex({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  redirect(`/${locale}/docs/example`);
+  redirect(`/${locale}/docs/getting-started/overview`);
 }

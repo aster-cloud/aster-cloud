@@ -2423,5 +2423,68 @@
       "plan_gate_required": "Domain vocabularies require a Pro plan.",
       "internal_error": "Something went wrong. Please retry."
     }
+  },
+  "docs": {
+    "nav": {
+      "suffix": "Docs",
+      "openConsole": "Open Console"
+    },
+    "breadcrumb": {
+      "root": "Docs"
+    },
+    "sidebar": {
+      "ariaLabel": "Documentation sections",
+      "example": {
+        "title": "Example",
+        "smokeTest": "Smoke Test"
+      },
+      "gettingStarted": {
+        "title": "Getting Started",
+        "overview": "Overview",
+        "authentication": "Authentication",
+        "quickstart": "Quick Start",
+        "errors": "Error Handling"
+      },
+      "apiPolicies": {
+        "title": "Policy Evaluation",
+        "evaluate": "Evaluate Policy",
+        "evaluateSource": "Evaluate Source",
+        "evaluateJson": "Evaluate JSON",
+        "batch": "Batch Evaluate",
+        "schema": "Extract Schema",
+        "validate": "Validate Policy",
+        "versions": "Version History",
+        "rollback": "Rollback",
+        "cache": "Cache Management"
+      },
+      "apiWorkflows": {
+        "title": "Workflows",
+        "events": "Workflow Events",
+        "state": "Workflow State",
+        "metrics": "Metrics"
+      },
+      "apiAudit": {
+        "title": "Audit",
+        "logs": "Audit Logs",
+        "verifyChain": "Hash Chain Verification",
+        "versionUsage": "Version Usage",
+        "anomalies": "Anomaly Detection",
+        "compare": "Version Comparison"
+      },
+      "apiGraphql": {
+        "title": "GraphQL",
+        "overview": "Overview",
+        "queries": "Queries",
+        "mutations": "Mutations"
+      },
+      "apiWebsocket": {
+        "title": "WebSocket",
+        "preview": "Preview Endpoint"
+      }
+    },
+    "toc": {
+      "ariaLabel": "On this page",
+      "title": "On this page"
+    }
   }
 }

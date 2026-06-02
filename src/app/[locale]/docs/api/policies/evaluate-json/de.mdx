@@ -1,0 +1,168 @@
+---
+title: "Evaluate Core IR JSON Policy"
+---
+
+# Evaluate Core IR JSON Policy
+
+Evaluate a policy expressed as a Core IR JSON object directly, without CNL parsing or compilation. Use this endpoint when your application manages its own compilation pipeline and sends pre-compiled policy representations to the engine.
+
+## Endpoint
+
+`POST /api/v1/policies/evaluate-json`
+
+## Required Role
+
+`MEMBER`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+```json
+{
+  "policy": "string (Core IR JSON)",
+  "context": {}
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `policy` | `string` | Yes | A JSON-encoded string containing the Core IR representation of the policy. This is the serialized form produced by the Aster compiler's IR emission stage. The engine deserializes and executes this IR directly, bypassing all CNL parsing steps. |
+| `context` | `object` | Yes | A single object whose keys map to the declared parameter names of the entry-point function in the Core IR. |
+
+### Core IR JSON Format
+
+The `policy` field must be a string-serialized JSON object conforming to the Core IR schema. A minimal example with a single function:
+
+```json
+{
+  "moduleName": "Discount",
+  "functions": [
+    {
+      "name": "calculate",
+      "params": [{ "name": "order", "type": "Order" }],
+      "rules": [
+        {
+          "condition": { "op": "gt", "left": { "ref": "order.total" }, "right": { "lit": 100 } },
+          "result": { "lit": 10 }
+        },
+        {
+          "condition": null,
+          "result": { "lit": 0 }
+        }
+      ]
+    }
+  ]
+}
+```
+
+When embedding this as the `policy` field in the request, the object must be JSON-stringified (i.e. the entire object becomes a string value).
+
+## Response Body
+
+```json
+{
+  "result": "<any>",
+  "executionTimeMs": 0,
+  "error": null,
+  "decisionTrace": null
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `result` | `any` | The value returned by the entry-point function in the Core IR. |
+| `executionTimeMs` | `number` | Wall-clock time in milliseconds from IR deserialization to response dispatch. |
+| `error` | `string \| null` | IR deserialization or runtime error message; `null` on success. |
+| `decisionTrace` | `object \| null` | Always `null` for this endpoint. Tracing is not supported for Core IR evaluation. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Evaluation attempted. Check `error` for IR parsing or runtime failures. |
+| `400 Bad Request` | Malformed request body, invalid Core IR JSON, or missing required fields. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `500 Internal Server Error` | Unexpected engine failure. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-json \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "policy": "{\"moduleName\":\"Discount\",\"functions\":[{\"name\":\"calculate\",\"params\":[{\"name\":\"order\",\"type\":\"Order\"}],\"rules\":[{\"condition\":{\"op\":\"gt\",\"left\":{\"ref\":\"order.total\"},\"right\":{\"lit\":100}},\"result\":{\"lit\":10}},{\"condition\":null,\"result\":{\"lit\":0}}]}]}",
+    "context": {
+      "order": { "total": 150 }
+    }
+  }'
+```
+
+```js [JavaScript]
+// Build the Core IR object
+const coreIR = {
+  moduleName: 'Discount',
+  functions: [
+    {
+      name: 'calculate',
+      params: [{ name: 'order', type: 'Order' }],
+      rules: [
+        {
+          condition: { op: 'gt', left: { ref: 'order.total' }, right: { lit: 100 } },
+          result: { lit: 10 },
+        },
+        {
+          condition: null,
+          result: { lit: 0 },
+        },
+      ],
+    },
+  ],
+};
+
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/evaluate-json',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({
+      // Core IR must be serialized as a string
+      policy: JSON.stringify(coreIR),
+      context: {
+        order: { total: 150 },
+      },
+    }),
+  }
+);
+
+const data = await response.json();
+// data.result → 10
+```
+
+:::
+
+### Example Response
+
+```json
+{
+  "result": 10,
+  "executionTimeMs": 3,
+  "error": null,
+  "decisionTrace": null
+}
+```

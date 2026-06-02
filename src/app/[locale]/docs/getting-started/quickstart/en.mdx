@@ -1,0 +1,93 @@
+---
+title: "Quick Start"
+---
+
+# Quick Start
+
+This guide walks you through your first policy evaluation in under five minutes.
+## Prerequisites
+
+- A tenant ID and API key issued by your Aster account administrator
+- `curl` available on your system (or any HTTP client)
+If you do not yet have a tenant ID, contact your administrator or refer to the tenant onboarding documentation.
+## Step 1 — Set Your Credentials
+
+Export your credentials as environment variables so the examples below work without modification:
+```bash
+export ASTER_TENANT_ID="my-tenant"
+export ASTER_API_SECRET="your-api-secret-here"
+```
+
+## Step 2 — Evaluate a Simple Policy
+
+The `evaluate-source` endpoint accepts a policy written directly in the request body. This is the fastest way to experiment without first creating a stored policy.
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "context": {"name": "World"},
+    "functionName": "greet",
+    "locale": "en-US"
+  }'
+```
+
+The `source` field contains the full Aster CNL policy. The policy above defines a single rule `greet` that accepts a `name` parameter and returns a greeting string. The `context` object supplies the input values.
+## Step 3 — Understand the Result
+
+A successful evaluation returns HTTP `200` with a JSON body:
+```json
+{
+  "result": "Hello, World!",
+  "error": null,
+  "executionTimeMs": 12
+}
+```
+
+| Field              | Type           | Description                                                      |
+|--------------------|----------------|------------------------------------------------------------------|
+| `result`           | any            | The value returned by the evaluated rule                         |
+| `error`            | string \| null | Error message if evaluation failed; `null` on success            |
+| `executionTimeMs`  | number         | Wall-clock time taken to evaluate the policy, in milliseconds    |
+If `error` is non-null, the `result` field will be `null`. See [Error Handling](/docs/getting-started/errors) for a full list of failure scenarios.
+## Step 4 — Try Batch Evaluation
+
+When you need to evaluate the same policy against multiple input sets in a single network round-trip, use the `evaluate-source-batch` endpoint.
+```bash
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source-batch \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: my-tenant" \
+  -H "X-User-Role: MEMBER" \
+  -d '{
+    "source": "Module demo.\n\nRule greet given name as Text, produce Text:\n  Return \"Hello, \" + name + \"!\".",
+    "functionName": "greet",
+    "locale": "en-US",
+    "inputs": [
+      {"name": "Alice"},
+      {"name": "Bob"},
+      {"name": "Carol"}
+    ]
+  }'
+```
+
+The response contains a `results` array with one entry per input, in the same order:
+```json
+{
+  "results": [
+    {"result": "Hello, Alice!", "error": null, "executionTimeMs": 8},
+    {"result": "Hello, Bob!",   "error": null, "executionTimeMs": 3},
+    {"result": "Hello, Carol!", "error": null, "executionTimeMs": 3}
+  ]
+}
+```
+
+Individual items in the batch may fail independently. A non-null `error` on one item does not abort the remaining evaluations.
+## Next Steps
+
+Now that you have a working evaluation, explore these topics to make the most of the API:
+- [Authentication](/docs/getting-started/authentication) — add HMAC signing to protect your requests
+- [Overview](/docs/getting-started/overview) — understand the full capabilities of the policy engine
+- [Error Handling](/docs/getting-started/errors) — handle failures gracefully in your application
+- [API Reference](/docs/api/policies/evaluate) — complete reference for all endpoints and fields

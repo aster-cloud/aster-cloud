@@ -1,0 +1,78 @@
+---
+title: "概述"
+---
+
+# 概述
+
+Aster 策略引擎是一个生产级 REST 服务，用于评估以 **Aster CNL**（受控自然语言）编写的业务规则。它基于 [Quarkus](https://quarkus.io/) 构建，专为低延迟、多租户部署而设计。
+
+## 基础 URL
+
+```
+https://policy.aster-lang.dev
+```
+
+所有 API 路径以 `/api/v1/` 为前缀。
+
+## 支持的协议
+
+| 协议  | 端点前缀               | 使用场景                                       |
+|-----------|-------------------------------|------------------------------------------------|
+| REST      | `/api/v1/`                    | 标准请求/响应评估           |
+| GraphQL   | `/graphql`                    | 灵活的查询和变更                 |
+| WebSocket | `/ws/v1/evaluate`             | 流式评估和实时策略更新   |
+
+## 请求要求
+
+每个 API 请求必须满足以下要求。
+
+### 必需请求头
+
+| 请求头           | 描述                                               |
+|------------------|-----------------------------------------------------------|
+| `Content-Type`   | 所有 POST/PUT 请求必须为 `application/json`      |
+| `X-Tenant-Id`    | 标识请求的租户上下文             |
+
+### 可选安全请求头
+
+修改状态或携带敏感输入的请求还应包含 HMAC 签名请求头。完整签名协议请参阅[认证](/docs/getting-started/authentication)。
+
+| 请求头               | 描述                                    |
+|----------------------|------------------------------------------------|
+| `X-Aster-Signature`  | 请求体的 HMAC-SHA256 签名      |
+| `X-Aster-Nonce`      | 签名计算中使用的随机 nonce     |
+| `X-Aster-Timestamp`  | 签名时的 Unix 时间戳（秒）    |
+| `X-User-Role`        | 用于 RBAC 执行的角色声明           |
+
+## API 版本控制
+
+当前 API 版本为 **v1**。版本编码在 URL 路径中（`/api/v1/`），而非请求头或查询参数。重大更改将在新版本前缀（`/api/v2/`）下引入，旧版本退役前会有重叠期。
+
+## 内容类型
+
+所有请求和响应体使用 `application/json`。在 POST 或 PUT 端点上未携带 `Content-Type: application/json` 的请求将收到 `400 Bad Request` 响应。
+
+## 速率限制
+
+速率限制按租户应用。超出限制的请求将收到 `429 Too Many Requests` 响应，附带 `Retry-After` 请求头指示窗口重置时间。
+
+## 什么是 Aster CNL？
+
+Aster CNL 是英语的一个子集（同时支持简体中文等其他语言的本地化），旨在无歧义地表达业务规则。一个最简策略如下：
+
+```
+Module pricing.
+
+Rule discounted-price given amount as Number, tier as Text, produce Number:
+  If tier is "gold":
+    Return amount * 0.8.
+  Return amount.
+```
+
+策略可以作为源文本提交（即时评估），也可以作为预编译和缓存的已存储策略对象。详情请参阅 [API 参考](/docs/api/policies/evaluate)。
+
+## 下一步
+
+- [认证](/docs/getting-started/authentication) — 配置租户 ID、HMAC 签名和 RBAC 角色
+- [快速开始](/docs/getting-started/quickstart) — 五分钟内运行你的第一次策略评估
+- [错误处理](/docs/getting-started/errors) — 了解错误响应格式和常见故障模式

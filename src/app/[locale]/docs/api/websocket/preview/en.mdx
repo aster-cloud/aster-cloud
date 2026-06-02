@@ -1,0 +1,190 @@
+---
+title: "WebSocket Preview Endpoint"
+---
+
+# WebSocket Preview Endpoint
+
+The preview WebSocket endpoint allows developers to evaluate CNL policy source in real time without deploying it to the engine. It is intended for interactive tooling such as editors, playgrounds, and CI preview jobs. The connection runs under a hardcoded `preview` tenant and does not require authentication.
+
+::: warning Preview Tenant
+All evaluation on this endpoint is executed under the built-in `preview` tenant. Results are isolated from production tenant data and deployed policies. Do not use this endpoint in production workflows.
+:::
+
+## Endpoint
+
+`ws://<host>/ws/preview`
+
+For TLS-secured deployments use `wss://`.
+
+## Authentication
+
+This endpoint does **not** require authentication. The WebSocket handshake completes without any token or HMAC headers. All requests are executed under the fixed `preview` tenant context.
+
+::: tip
+Because the preview endpoint bypasses the standard HMAC signing and RBAC enforcement, it should only be exposed in development or behind an internal network boundary. It is not intended for production use.
+:::
+
+## Protocol
+
+The session follows a simple request-response model over a single persistent connection. The server sends a `connected` status message immediately upon handshake completion. The client then sends evaluation requests; the server responds to each one individually.
+
+### Client Message
+
+```json
+{
+  "policyModule": "Loan.Approval",
+  "policyFunction": "isEligible",
+  "context": [
+    {
+      "applicantAge": 30,
+      "annualIncome": 75000,
+      "creditScore": 720,
+      "requestedAmount": 25000
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `policyModule` | `string` | Yes | The fully-qualified module name as declared in the CNL source (e.g. `Loan.Approval`). |
+| `policyFunction` | `string` | Yes | The function within the module to invoke. |
+| `context` | `array<object>` | Yes | Ordered list of argument objects passed positionally to the policy function. Pass an empty array `[]` for zero-argument functions. |
+
+### Server Messages
+
+#### Connection Confirmation
+
+Sent once immediately after the handshake succeeds.
+
+```json
+{
+  "status": "connected",
+  "message": "Connected to Aster preview endpoint"
+}
+```
+
+#### Successful Evaluation
+
+```json
+{
+  "status": "success",
+  "message": null,
+  "result": true,
+  "executionTime": 6
+}
+```
+
+#### Evaluation Error
+
+```json
+{
+  "status": "error",
+  "message": "Policy function 'isEligible' not found in module 'Loan.Approval'",
+  "result": null,
+  "executionTime": null
+}
+```
+
+### Server Message Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | `string` | One of `connected`, `success`, or `error`. |
+| `message` | `string \| null` | Human-readable description. Non-null for `connected` and `error` statuses; `null` on `success`. |
+| `result` | `any \| null` | The value returned by the policy function. Matches the function's declared return type. `null` on error. |
+| `executionTime` | `number \| null` | Wall-clock evaluation time in milliseconds. `null` on error. |
+
+## Connection Lifecycle
+
+1. Client opens a WebSocket connection to `ws://<host>/ws/preview`.
+2. Server sends a `{ "status": "connected" }` message.
+3. Client sends a JSON evaluation request.
+4. Server responds with `{ "status": "success" }` or `{ "status": "error" }`.
+5. Steps 3-4 repeat for the duration of the session.
+6. Either party may close the connection at any time.
+
+## Examples
+
+::: code-group
+
+```js [Browser]
+const ws = new WebSocket('wss://policy.aster-lang.dev/ws/preview');
+
+ws.addEventListener('open', () => {
+  console.log('WebSocket open — awaiting connected message');
+});
+
+ws.addEventListener('message', (event) => {
+  const msg = JSON.parse(event.data);
+
+  if (msg.status === 'connected') {
+    // Send an evaluation request once connected
+    ws.send(JSON.stringify({
+      policyModule:   'Loan.Approval',
+      policyFunction: 'isEligible',
+      context: [
+        {
+          applicantAge:    30,
+          annualIncome:    75000,
+          creditScore:     720,
+          requestedAmount: 25000,
+        },
+      ],
+    }));
+  } else if (msg.status === 'success') {
+    console.log('Result:', msg.result);
+    console.log('Execution time:', msg.executionTime, 'ms');
+    ws.close();
+  } else if (msg.status === 'error') {
+    console.error('Evaluation error:', msg.message);
+    ws.close();
+  }
+});
+
+ws.addEventListener('close', (event) => {
+  console.log('Connection closed', event.code, event.reason);
+});
+```
+
+```js [Node.js (ws)]
+import WebSocket from 'ws';
+
+const ws = new WebSocket('wss://policy.aster-lang.dev/ws/preview');
+
+ws.on('message', (data) => {
+  const msg = JSON.parse(data.toString());
+
+  if (msg.status === 'connected') {
+    ws.send(JSON.stringify({
+      policyModule:   'Loan.Approval',
+      policyFunction: 'isEligible',
+      context: [
+        {
+          applicantAge:    30,
+          annualIncome:    75000,
+          creditScore:     720,
+          requestedAmount: 25000,
+        },
+      ],
+    }));
+  } else if (msg.status === 'success') {
+    console.log('Result:', msg.result);
+    ws.close();
+  } else if (msg.status === 'error') {
+    console.error('Error:', msg.message);
+    ws.close();
+  }
+});
+
+ws.on('error', console.error);
+```
+
+:::
+
+## WebSocket Close Codes
+
+| Code | Meaning |
+|------|---------|
+| `1000` | Normal closure — client or server closed the connection intentionally. |
+| `1011` | Unexpected server error — internal engine failure. |

@@ -2423,5 +2423,68 @@
       "plan_gate_required": "领域词汇功能需要 Pro 计划。",
       "internal_error": "出错了，请重试。"
     }
+  },
+  "docs": {
+    "nav": {
+      "suffix": "文档",
+      "openConsole": "打开控制台"
+    },
+    "breadcrumb": {
+      "root": "文档"
+    },
+    "sidebar": {
+      "ariaLabel": "文档章节",
+      "example": {
+        "title": "示例",
+        "smokeTest": "冒烟测试"
+      },
+      "gettingStarted": {
+        "title": "入门",
+        "overview": "概览",
+        "authentication": "认证",
+        "quickstart": "快速开始",
+        "errors": "错误处理"
+      },
+      "apiPolicies": {
+        "title": "策略评估",
+        "evaluate": "评估策略",
+        "evaluateSource": "评估源代码",
+        "evaluateJson": "评估 JSON",
+        "batch": "批量评估",
+        "schema": "提取 Schema",
+        "validate": "验证策略",
+        "versions": "版本历史",
+        "rollback": "回滚",
+        "cache": "缓存管理"
+      },
+      "apiWorkflows": {
+        "title": "工作流",
+        "events": "工作流事件",
+        "state": "工作流状态",
+        "metrics": "指标"
+      },
+      "apiAudit": {
+        "title": "审计",
+        "logs": "审计日志",
+        "verifyChain": "哈希链验证",
+        "versionUsage": "版本使用",
+        "anomalies": "异常检测",
+        "compare": "版本比较"
+      },
+      "apiGraphql": {
+        "title": "GraphQL",
+        "overview": "概览",
+        "queries": "查询",
+        "mutations": "变更"
+      },
+      "apiWebsocket": {
+        "title": "WebSocket",
+        "preview": "预览端点"
+      }
+    },
+    "toc": {
+      "ariaLabel": "本页内容",
+      "title": "本页内容"
+    }
   }
 }

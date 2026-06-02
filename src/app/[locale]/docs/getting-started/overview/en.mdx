@@ -1,0 +1,66 @@
+---
+title: "Overview"
+---
+
+# Overview
+
+Aster Policy Engine is a production-grade REST service for evaluating business rules written in **Aster CNL** (Controlled Natural Language). It is built on [Quarkus](https://quarkus.io/) and designed for low-latency, multi-tenant deployments.
+## Base URL
+
+```
+https://policy.aster-lang.dev
+```
+
+All API paths are prefixed with `/api/v1/`.
+## Supported Protocols
+
+| Protocol  | Endpoint prefix               | Use case                                       |
+|-----------|-------------------------------|------------------------------------------------|
+| REST      | `/api/v1/`                    | Standard request/response evaluation           |
+| GraphQL   | `/graphql`                    | Flexible queries and mutations                 |
+| WebSocket | `/ws/v1/evaluate`             | Streaming evaluation and live policy updates   |
+## Request Requirements
+
+Every request to the API must satisfy the following requirements.
+### Required Headers
+
+| Header           | Description                                               |
+|------------------|-----------------------------------------------------------|
+| `Content-Type`   | Must be `application/json` for all POST/PUT requests      |
+| `X-Tenant-Id`    | Identifies the tenant context for the request             |
+### Optional Security Headers
+
+Requests that modify state or carry sensitive inputs should also include HMAC signing headers. See [Authentication](/docs/getting-started/authentication) for the full signing protocol.
+| Header               | Description                                    |
+|----------------------|------------------------------------------------|
+| `X-Aster-Signature`  | HMAC-SHA256 signature of the request body      |
+| `X-Aster-Nonce`      | Random nonce used in signature computation     |
+| `X-Aster-Timestamp`  | Unix timestamp (seconds) at time of signing    |
+| `X-User-Role`        | Role claim used for RBAC enforcement           |
+## API Versioning
+
+The current API version is **v1**. The version is encoded in the URL path (`/api/v1/`), not in a header or query parameter. Breaking changes will be introduced under a new version prefix (`/api/v2/`) with an overlap period before the old version is retired.
+## Content Type
+
+All request and response bodies use `application/json`. Requests that omit `Content-Type: application/json` on POST or PUT endpoints will receive a `400 Bad Request` response.
+## Rate Limits
+
+Rate limiting is applied per tenant. Requests that exceed the limit receive a `429 Too Many Requests` response with a `Retry-After` header indicating when the window resets.
+## What is Aster CNL?
+
+Aster CNL is a subset of English (with localisation support for other languages such as Simplified Chinese) designed to express business rules unambiguously. A minimal policy looks like this:
+```
+Module pricing.
+
+Rule discounted-price given amount as Number, tier as Text, produce Number:
+  If tier is "gold":
+    Return amount * 0.8.
+  Return amount.
+```
+
+Policies are submitted either as source text (evaluated on-the-fly) or as stored policy objects that are pre-compiled and cached. See the [API Reference](/docs/api/policies/evaluate) for details on both modes.
+## Next Steps
+
+- [Authentication](/docs/getting-started/authentication) — configure tenant IDs, HMAC signing, and RBAC roles
+- [Quick Start](/docs/getting-started/quickstart) — run your first policy evaluation in under five minutes
+- [Error Handling](/docs/getting-started/errors) — understand error response formats and common failure modes

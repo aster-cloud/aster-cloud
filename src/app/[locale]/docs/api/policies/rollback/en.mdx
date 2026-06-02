@@ -1,0 +1,141 @@
+---
+title: "Rollback Policy to Version"
+---
+
+# Rollback Policy to Version
+
+Revert a policy to a previously saved version. The engine atomically swaps the active version so that subsequent evaluation requests immediately use the target version. The rollback is recorded as a new version entry in the history.
+
+## Endpoint
+
+`POST /api/v1/policies/{policyId}/rollback`
+
+## Required Role
+
+`MEMBER`
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `policyId` | `string` | Yes | The internal UUID of the policy to roll back. |
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+```json
+{
+  "targetVersion": 0,
+  "reason": "string"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `targetVersion` | `number` | Yes | The version number to restore. Must be a positive integer that exists in the policy's version history. Use the [versions endpoint](/docs/api/policies/versions.md) to enumerate available versions. |
+| `reason` | `string` | No | Human-readable explanation for the rollback. Stored in the version history entry created for this operation. Useful for audit trails. |
+
+## Response Body
+
+```json
+{
+  "success": true,
+  "previousVersion": 3,
+  "currentVersion": 1
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `boolean` | `true` if the rollback completed and the policy is now serving the target version. |
+| `previousVersion` | `number` | The version number that was active immediately before this rollback. |
+| `currentVersion` | `number` | The version number now active after the rollback. Matches `targetVersion` from the request. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Rollback completed. The policy now serves `targetVersion`. |
+| `400 Bad Request` | Malformed request body, missing `targetVersion`, or `targetVersion` does not exist in version history. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `404 Not Found` | No policy found for the given `policyId` within the tenant. |
+| `409 Conflict` | The requested `targetVersion` is already the active version. |
+| `500 Internal Server Error` | Unexpected engine failure. The active version is unchanged when this status is returned. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X POST \
+  "https://policy.aster-lang.dev/api/v1/policies/d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a/rollback" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "targetVersion": 1,
+    "reason": "Version 3 caused incorrect rejections for applicants with income between 45000-49999. Rolling back pending investigation."
+  }'
+```
+
+```js [JavaScript]
+const policyId = 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a';
+
+const response = await fetch(
+  `https://policy.aster-lang.dev/api/v1/policies/${policyId}/rollback`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({
+      targetVersion: 1,
+      reason:
+        'Version 3 caused incorrect rejections for applicants with income between 45000-49999. Rolling back pending investigation.',
+    }),
+  }
+);
+
+const data = await response.json();
+
+if (data.success) {
+  console.log(
+    `Rolled back from v${data.previousVersion} to v${data.currentVersion}`
+  );
+} else {
+  console.error('Rollback failed');
+}
+```
+
+:::
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "previousVersion": 3,
+  "currentVersion": 1
+}
+```
+
+### Example Response (Target Already Active)
+
+HTTP `409 Conflict`:
+
+```json
+{
+  "success": false,
+  "error": "Version 3 is already the active version for policy 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a'"
+}
+```

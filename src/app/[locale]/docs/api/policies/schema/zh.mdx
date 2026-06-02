@@ -1,0 +1,187 @@
+---
+title: "Extract Policy Parameter Schema"
+---
+
+# Extract Policy Parameter Schema
+
+Parse a CNL source string and return the parameter schema for the specified function. Use this endpoint to discover the shape of data a policy expects before constructing evaluation requests, or to drive dynamic form generation in tooling.
+
+## Endpoint
+
+`POST /api/v1/policies/schema`
+
+## Required Role
+
+`MEMBER`
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer <token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `X-Tenant-ID` | Tenant identifier string | Yes |
+
+## Request Body
+
+```json
+{
+  "source": "string",
+  "functionName": "string",
+  "locale": "en-US"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `source` | `string` | Yes | Raw CNL policy source text to parse. The engine extracts type declarations from the source without executing any policy logic. |
+| `functionName` | `string` | No | Name of the function whose parameter schema to extract. If omitted, the engine extracts the schema for the first function declared in the source. |
+| `locale` | `string` | No | BCP 47 locale tag identifying the CNL keyword set. Defaults to `"en-US"`. Use `"zh-CN"` for Simplified Chinese CNL syntax. |
+
+## Response Body
+
+```json
+{
+  "success": true,
+  "moduleName": "string",
+  "functionName": "string",
+  "parameters": [
+    {
+      "name": "string",
+      "type": "string",
+      "typeKind": "PRIMITIVE",
+      "optional": false,
+      "position": 0,
+      "fields": []
+    }
+  ],
+  "error": null
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `boolean` | `true` if the source was parsed successfully and schema extraction completed without errors. |
+| `moduleName` | `string` | The module name declared in the source. |
+| `functionName` | `string` | The function name whose schema was extracted. Matches the request `functionName` or the first function if none was specified. |
+| `parameters` | `array<ParameterSchema>` | Ordered list of parameter descriptors. Order matches the positional declaration order in the CNL source. |
+| `error` | `string \| null` | Parse error message if `success` is `false`; `null` on success. |
+
+### ParameterSchema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Parameter name as declared in the CNL source. |
+| `type` | `string` | Type name as declared (e.g. `"number"`, `"boolean"`, `"string"`, `"Order"`, `"Applicant"`). |
+| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | `PRIMITIVE` for built-in scalar types (`number`, `boolean`, `string`). `STRUCT` for user-defined record types with named fields. |
+| `optional` | `boolean` | `true` if the parameter is declared optional in the policy signature. |
+| `position` | `number` | Zero-based index of the parameter in the function signature. |
+| `fields` | `array<FieldSchema>` | Non-empty only when `typeKind` is `"STRUCT"`. Lists the named fields of the struct type. Empty array for `PRIMITIVE` parameters. |
+
+### FieldSchema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Field name within the struct. |
+| `type` | `string` | Field type name (may itself be `PRIMITIVE` or another `STRUCT`). |
+| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | Type classification of this field. |
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200 OK` | Request processed. Check `success` and `error` for parse failures. |
+| `400 Bad Request` | Malformed request body or missing required fields. |
+| `401 Unauthorized` | Missing or invalid bearer token. |
+| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
+| `500 Internal Server Error` | Unexpected engine failure. |
+
+## Examples
+
+::: code-group
+
+```bash [curl]
+curl -X POST https://policy.aster-lang.dev/api/v1/policies/schema \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: acme-corp" \
+  -d '{
+    "source": "Module Loan.Approval.\nRule isEligible given applicant has age number, income number, creditScore number:\n  If applicant.creditScore >= 700 and applicant.income >= 50000 return true\n  return false",
+    "functionName": "isEligible",
+    "locale": "en-US"
+  }'
+```
+
+```js [JavaScript]
+const source = `
+Module Loan.Approval.
+Rule isEligible given applicant has age number, income number, creditScore number:
+  If applicant.creditScore >= 700 and applicant.income >= 50000 return true
+  return false
+`.trim();
+
+const response = await fetch(
+  'https://policy.aster-lang.dev/api/v1/policies/schema',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer <token>',
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': 'acme-corp',
+    },
+    body: JSON.stringify({
+      source,
+      functionName: 'isEligible',
+      locale: 'en-US',
+    }),
+  }
+);
+
+const data = await response.json();
+
+if (data.success) {
+  data.parameters.forEach((param) => {
+    console.log(`${param.name}: ${param.type} (${param.typeKind})`);
+    param.fields.forEach((f) => console.log(`  .${f.name}: ${f.type}`));
+  });
+}
+```
+
+:::
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "moduleName": "Loan.Approval",
+  "functionName": "isEligible",
+  "parameters": [
+    {
+      "name": "applicant",
+      "type": "Applicant",
+      "typeKind": "STRUCT",
+      "optional": false,
+      "position": 0,
+      "fields": [
+        { "name": "age", "type": "number", "typeKind": "PRIMITIVE" },
+        { "name": "income", "type": "number", "typeKind": "PRIMITIVE" },
+        { "name": "creditScore", "type": "number", "typeKind": "PRIMITIVE" }
+      ]
+    }
+  ],
+  "error": null
+}
+```
+
+### Example Response (Parse Failure)
+
+```json
+{
+  "success": false,
+  "moduleName": null,
+  "functionName": null,
+  "parameters": [],
+  "error": "Parse error at line 2: expected 'given' after function name"
+}
+```
