@@ -16,9 +16,9 @@ curl https://policy.aster-lang.dev/api/v1/policies \
   -H "X-Tenant-Id: acme-corp"
 ```
 
-::: tip Tenant ID conventions
+<Callout type="tip" title="Tenant ID conventions">
 Use a stable, human-readable identifier such as your organisation slug or environment name (e.g. `acme-corp`, `acme-corp-staging`). Tenant IDs are case-sensitive.
-:::
+</Callout>
 ## Layer 2 — HMAC Request Signing
 
 Every request must include HMAC signature headers. The server validates the signature before processing the request, preventing tampering in transit and protecting against replay attacks.

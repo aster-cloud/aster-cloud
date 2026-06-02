@@ -6,9 +6,9 @@ title: "WebSocket Preview Endpoint"
 
 The preview WebSocket endpoint allows developers to evaluate CNL policy source in real time without deploying it to the engine. It is intended for interactive tooling such as editors, playgrounds, and CI preview jobs. The connection runs under a hardcoded `preview` tenant and does not require authentication.
 
-::: warning Preview Tenant
+<Callout type="warning" title="Preview Tenant">
 All evaluation on this endpoint is executed under the built-in `preview` tenant. Results are isolated from production tenant data and deployed policies. Do not use this endpoint in production workflows.
-:::
+</Callout>
 
 ## Endpoint
 
@@ -20,9 +20,9 @@ For TLS-secured deployments use `wss://`.
 
 This endpoint does **not** require authentication. The WebSocket handshake completes without any token or HMAC headers. All requests are executed under the fixed `preview` tenant context.
 
-::: tip
+<Callout type="tip">
 Because the preview endpoint bypasses the standard HMAC signing and RBAC enforcement, it should only be exposed in development or behind an internal network boundary. It is not intended for production use.
-:::
+</Callout>
 
 ## Protocol
 
@@ -106,7 +106,7 @@ Sent once immediately after the handshake succeeds.
 
 ## Examples
 
-::: code-group
+<CodeGroup>
 
 ```js [Browser]
 const ws = new WebSocket('wss://policy.aster-lang.dev/ws/preview');
@@ -180,7 +180,7 @@ ws.on('message', (data) => {
 ws.on('error', console.error);
 ```
 
-:::
+</CodeGroup>
 
 ## WebSocket Close Codes
 

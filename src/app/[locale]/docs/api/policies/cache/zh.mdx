@@ -75,7 +75,7 @@ Both fields are optional. The combination of provided fields determines the scop
 
 ### Clear Entire Tenant Cache
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X DELETE https://policy.aster-lang.dev/api/v1/policies/cache \
@@ -103,11 +103,11 @@ const data = await response.json();
 console.log(`Cleared ${data.cleared} cache entries (scope: ${data.scope})`);
 ```
 
-:::
+</CodeGroup>
 
 ### Clear Cache for a Specific Module
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X DELETE https://policy.aster-lang.dev/api/v1/policies/cache \
@@ -138,11 +138,11 @@ const response = await fetch(
 const data = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ### Clear Cache for a Specific Function
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X DELETE https://policy.aster-lang.dev/api/v1/policies/cache \
@@ -175,7 +175,7 @@ const response = await fetch(
 const data = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ### Example Responses
 

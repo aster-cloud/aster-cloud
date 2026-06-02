@@ -82,7 +82,7 @@ Retrieve a paginated list of anomalies detected for the tenant.
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/anomalies?type=HIGH_FAILURE_RATE&days=14&page=0&size=20" \
@@ -112,7 +112,7 @@ const data = await response.json();
 // data.content → array of anomaly records
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -159,7 +159,7 @@ Retrieve the full detail record for a single anomaly, including diagnostic metri
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/anomalies/anom-xyz789" \
@@ -182,7 +182,7 @@ const response = await fetch(
 const anomaly = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -206,7 +206,7 @@ Returns `202 Accepted` with an empty body. Poll `GET /api/v1/audit/anomalies/{id
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST "https://policy.aster-lang.dev/api/v1/audit/anomalies/anom-xyz789/actions/verify" \
@@ -230,7 +230,7 @@ const response = await fetch(
 // 202 Accepted — verification job enqueued
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -257,9 +257,9 @@ Update the triage status of an anomaly. Supports idempotent updates via the `Ide
 | `Content-Type` | `application/json` | Yes |
 | `Idempotency-Key` | Client-generated unique string (UUID recommended) | No |
 
-::: tip Idempotency
+<Callout type="tip" title="Idempotency">
 Providing an `Idempotency-Key` guarantees that retrying the same request will not apply the status update a second time. The server caches the response for the key for 24 hours.
-:::
+</Callout>
 
 ### Request Body
 
@@ -281,7 +281,7 @@ Returns the updated anomaly object (same schema as [Get Anomaly Detail](#get-ano
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X PATCH "https://policy.aster-lang.dev/api/v1/audit/anomalies/anom-xyz789/status" \
@@ -317,7 +317,7 @@ const response = await fetch(
 const updated = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 

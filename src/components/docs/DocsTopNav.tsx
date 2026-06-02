@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Wordmark, cn } from '@aster-cloud/ui';
-import { LanguageSwitcher } from '@/components/language-switcher';
+import { DocsLanguageSwitcher } from '@/components/docs/DocsLanguageSwitcher';
 
 /**
  * Top nav for /docs/* — fixed, brand-left, switchers-right.
@@ -48,10 +48,14 @@ export function DocsTopNav() {
           </span>
         </Link>
         <div className="flex items-center gap-4">
-          <LanguageSwitcher />
+          <DocsLanguageSwitcher />
           <Link
             href="/login"
-            className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+            className={
+              'text-sm font-medium text-fg-muted transition-colors hover:text-fg ' +
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
+              'focus-visible:ring-offset-2 focus-visible:ring-offset-bg rounded-md px-1'
+            }
           >
             {t('docs.nav.openConsole')}
           </Link>

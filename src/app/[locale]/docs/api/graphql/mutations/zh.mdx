@@ -4,7 +4,7 @@ title: "GraphQL Mutations"
 
 # GraphQL Mutations
 
-Mutations are write operations that create, update, or delete resources. All mutations must be sent as `POST /graphql`. Write operations accept an optional `Idempotency-Key` header to prevent duplicate execution on retry. See [Overview](/docs/api/graphql/overview) for full request format details.
+Mutations are write operations that create, update, or delete resources. All mutations must be sent as `POST /graphql`. Write operations accept an optional `Idempotency-Key` header to prevent duplicate execution on retry. See [Overview](/zh/docs/api/graphql/overview) for full request format details.
 
 ## Required Role
 
@@ -55,7 +55,7 @@ input PolicyInput {
 }
 ```
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -112,7 +112,7 @@ const { data, errors } = await response.json();
 const newPolicy = data?.createPolicy;
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -146,7 +146,7 @@ mutation UpdatePolicy($id: ID!, $input: PolicyInput!) {
 }
 ```
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -201,7 +201,7 @@ const response = await fetch('https://policy.aster-lang.dev/graphql', {
 const { data, errors } = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -225,7 +225,7 @@ The mutation returns a `Boolean` — `true` on successful deletion.
 }
 ```
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -258,7 +258,7 @@ const { data } = await response.json();
 const deleted = data?.deletePolicy; // true
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -276,7 +276,7 @@ mutation ClearAllCache {
 
 Returns a `Boolean` — `true` on success.
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -301,7 +301,7 @@ const { data } = await response.json();
 // data.clearAllCache → true
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -326,7 +326,7 @@ Returns a `Boolean` — `true` on success.
 }
 ```
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -367,13 +367,13 @@ const { data } = await response.json();
 // data.invalidateCache → true
 ```
 
-:::
+</CodeGroup>
 
 ---
 
 ## Error Handling
 
-Mutation errors follow the same GraphQL error format described in [Overview](/docs/api/graphql/overview#error-handling). Common mutation-specific error codes:
+Mutation errors follow the same GraphQL error format described in [Overview](/zh/docs/api/graphql/overview#error-handling). Common mutation-specific error codes:
 
 | Code | Condition |
 |------|-----------|

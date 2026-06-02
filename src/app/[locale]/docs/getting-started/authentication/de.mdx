@@ -16,9 +16,9 @@ curl https://policy.aster-lang.dev/api/v1/policies \
   -H "X-Tenant-Id: acme-corp"
 ```
 
-::: tip Mandanten-ID-Konventionen
+<Callout type="tip" title="Mandanten-ID-Konventionen">
 Verwenden Sie einen stabilen, menschenlesbaren Bezeichner wie Ihren Organisationsslug oder Umgebungsnamen (z.B. `acme-corp`, `acme-corp-staging`). Mandanten-IDs sind groß-/kleinschreibungsempfindlich.
-:::
+</Callout>
 ## Schicht 2 — HMAC-Anfragensignierung
 
 Jede Anfrage muss HMAC-Signatur-Header enthalten. Der Server validiert die Signatur, bevor die Anfrage verarbeitet wird, um Manipulation während der Übertragung und Replay-Angriffe zu verhindern.

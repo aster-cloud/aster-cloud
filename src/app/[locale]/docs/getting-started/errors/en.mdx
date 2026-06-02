@@ -21,9 +21,9 @@ All error responses — whether from the application layer or from policy evalua
 | `result`          | null           | Always `null` when an error occurs                              |
 | `error`           | string         | A human-readable message describing what went wrong             |
 | `executionTimeMs` | number         | Elapsed time in milliseconds; `0` for errors detected pre-execution |
-::: tip Distinguishing evaluation errors from HTTP errors
+<Callout type="tip" title="Distinguishing evaluation errors from HTTP errors">
 HTTP 4xx/5xx status codes indicate infrastructure-level failures (missing headers, authorization, server fault). An HTTP `200` response with a non-null `error` field indicates that the policy was parsed and dispatched successfully but the evaluation itself produced an error (e.g., a runtime exception inside the rule logic).
-:::
+</Callout>
 ## HTTP Status Codes
 
 ### 400 Bad Request
@@ -129,9 +129,9 @@ HTTP/1.1 500 Internal Server Error
 }
 ```
 
-::: warning If you receive a 500
+<Callout type="warning" title="If you receive a 500">
 Note the `Reference ID` in the error message and include it when contacting support. It uniquely identifies the log entry for your request.
-:::
+</Callout>
 ## Evaluation-Level Errors (HTTP 200 with `error` non-null)
 
 Even when a request is structurally valid and authorised, the policy evaluation itself may fail. In these cases the HTTP status code is `200` but the response body has a non-null `error` field.

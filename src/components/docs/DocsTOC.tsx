@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname } from '@/i18n/navigation';
 
 type Heading = {
   id: string;
@@ -22,9 +23,13 @@ type Heading = {
  */
 export function DocsTOC() {
   const t = useTranslations();
+  const pathname = usePathname();
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // The docs layout is persistent across route changes, so headings
+  // from a previous page would stick around unless we re-extract on
+  // every navigation. pathname is the trigger.
   useEffect(() => {
     const article = document.querySelector('article.docs-article');
     if (!article) return;
@@ -57,7 +62,7 @@ export function DocsTOC() {
     );
     nodes.forEach((n) => n.id && observer.observe(n));
     return () => observer.disconnect();
-  }, []);
+  }, [pathname]);
 
   if (headings.length === 0) return null;
 
@@ -76,9 +81,10 @@ export function DocsTOC() {
               <a
                 href={`#${h.id}`}
                 className={
-                  activeId === h.id
+                  (activeId === h.id
                     ? 'block text-fg font-medium'
-                    : 'block text-fg-muted transition-colors hover:text-fg'
+                    : 'block text-fg-muted transition-colors hover:text-fg') +
+                  ' rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
                 }
               >
                 {h.text}

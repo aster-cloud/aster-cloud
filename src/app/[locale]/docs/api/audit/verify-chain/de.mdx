@@ -28,9 +28,9 @@ Verify the integrity of the audit log hash chain over a specified time window. T
 | `start` | `string` | Yes | ISO 8601 start timestamp (inclusive). |
 | `end` | `string` | Yes | ISO 8601 end timestamp (inclusive). |
 
-::: warning Time Window Limit
+<Callout type="warning" title="Time Window Limit">
 The requested window (`end` minus `start`) must not exceed **30 days**. Requests spanning a longer period will be rejected with `400 Bad Request`.
-:::
+</Callout>
 
 ## Response Body
 
@@ -62,7 +62,7 @@ The requested window (`end` minus `start`) must not exceed **30 days**. Requests
 
 ## Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/verify-chain?start=2024-01-01T00:00:00Z&end=2024-01-31T23:59:59Z" \
@@ -93,7 +93,7 @@ if (!result.valid) {
 }
 ```
 
-:::
+</CodeGroup>
 
 ### Example Response — Valid Chain
 

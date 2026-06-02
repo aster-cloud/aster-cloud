@@ -24,9 +24,9 @@ Aster 策略引擎使用标准 HTTP 状态码和一致的 JSON 响应信封处�
 | `error`           | string         | 描述出错原因的人类可读消息             |
 | `executionTimeMs` | number         | 已用毫秒数；执行前检测到的错误为 `0` |
 
-::: tip 区分评估错误与 HTTP 错误
+<Callout type="tip" title="区分评估错误与 HTTP 错误">
 HTTP 4xx/5xx 状态码表示基础设施级别的故障（缺少请求头、授权、服务器错误）。HTTP `200` 响应中 `error` 字段非空表示策略已成功解析和分发，但评估本身产生了错误（例如规则逻辑中的运行时异常）。
-:::
+</Callout>
 
 ## HTTP 状态码
 
@@ -140,9 +140,9 @@ HTTP/1.1 500 Internal Server Error
 }
 ```
 
-::: warning 如果你收到 500 错误
+<Callout type="warning" title="如果你收到 500 错误">
 请注意错误信息中的 `Reference ID`，在联系支持时附上。它唯一标识了你请求的日志条目。
-:::
+</Callout>
 
 ## 评估级错误（HTTP 200 且 `error` 非空）
 

@@ -3,20 +3,21 @@
 import { useTranslations } from 'next-intl';
 import { usePathname } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
+import { docsSidebar } from '@/lib/docs/sidebar';
 
 /**
  * Auto-derived breadcrumb for /docs/* pages.
  *
- * Strategy: parse the locale-stripped pathname into segments, title-case
- * each, render as a chain. The leaf segment is non-clickable; ancestors
- * link to their respective parent paths.
+ * Label resolution priority (per segment):
+ *   1. Exact match against docsSidebar item.href → use that item's labelKey
+ *   2. Exact match against docsSidebar section heading slug → titleKey
+ *      (e.g. "/docs/api/policies" matches the apiPolicies section)
+ *   3. Fallback: title-cased slug
  *
- * Why we don't reuse <Breadcrumbs> from @aster-cloud/ui here:
- *   - That wrapper expects a hand-built item list, which means every
- *     /docs/* page would have to pass props (boilerplate × 37 pages).
- *   - The docs IA is regular (slash-separated, no special routing),
- *     so derivation is reliable.
+ * Result: zh/de breadcrumbs render with localized section + leaf names
+ * instead of slug-titlecased ASCII for non-leaf segments.
  */
+
 function titleCase(slug: string): string {
   return slug
     .split('-')
@@ -24,25 +25,53 @@ function titleCase(slug: string): string {
     .join(' ');
 }
 
+/**
+ * Build a slug → labelKey map from the sidebar config so each crumb
+ * has a chance to resolve to a localized name. Section heading slug
+ * is derived from the first item's href (the segment of the leaf
+ * minus its tail), e.g. "api/policies/evaluate" → "api/policies".
+ */
+function buildLabelIndex(): Map<string, string> {
+  const idx = new Map<string, string>();
+  for (const section of docsSidebar) {
+    if (section.items.length > 0) {
+      const firstHref = section.items[0].href;
+      const sectionPath = firstHref.split('/').slice(0, -1).join('/');
+      if (sectionPath) idx.set(sectionPath, section.titleKey);
+    }
+    for (const item of section.items) {
+      idx.set(item.href, item.labelKey);
+    }
+  }
+  return idx;
+}
+
+const LABEL_INDEX = buildLabelIndex();
+
 export function DocsBreadcrumb() {
   const t = useTranslations();
   const pathname = usePathname();
-  const segs = pathname.replace(/^\/+|\/+$/g, '').split('/'); // ["docs","example"]
+  const segs = pathname.replace(/^\/+|\/+$/g, '').split('/'); // ["docs","api","policies","evaluate"]
   if (segs.length <= 1) return null;
 
-  // segs always starts with "docs". Build cumulative hrefs.
   const items = segs.map((seg, i) => {
     const href = '/' + segs.slice(0, i + 1).join('/');
     const isLast = i === segs.length - 1;
-    return {
-      label: i === 0 ? t('docs.breadcrumb.root') : titleCase(seg),
-      href,
-      isLast,
-    };
+
+    let label: string;
+    if (i === 0) {
+      label = t('docs.breadcrumb.root');
+    } else {
+      // sidebar hrefs don't include the "docs/" prefix; strip it.
+      const slug = segs.slice(1, i + 1).join('/');
+      const key = LABEL_INDEX.get(slug);
+      label = key ? t(key) : titleCase(seg);
+    }
+    return { label, href, isLast };
   });
 
   return (
-    <nav aria-label="Breadcrumb" className="mb-6 text-sm text-fg-muted">
+    <nav aria-label={t('docs.breadcrumb.ariaLabel')} className="mb-6 text-sm text-fg-muted">
       <ol className="flex flex-wrap items-center gap-1.5">
         {items.map((it, i) => (
           <li key={it.href} className="flex items-center gap-1.5">
@@ -52,7 +81,13 @@ export function DocsBreadcrumb() {
                 {it.label}
               </span>
             ) : (
-              <Link href={it.href} className="hover:text-fg transition-colors">
+              <Link
+                href={it.href}
+                className={
+                  'hover:text-fg transition-colors rounded-sm ' +
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg'
+                }
+              >
                 {it.label}
               </Link>
             )}

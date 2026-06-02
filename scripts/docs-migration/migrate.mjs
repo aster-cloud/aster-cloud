@@ -67,24 +67,37 @@ function stripVuePlaceholders(md) {
  * `pageDir` is the new destination dir for figuring out sibling paths,
  * e.g. "/docs/getting-started" — sibling `./errors` becomes `/docs/getting-started/errors`.
  */
-function rewriteLinks(md, pageDir) {
+/**
+ * Rewrite all internal links to docs-relative URLs.
+ *
+ * @param locale en|zh|de — used to prepend locale prefix for zh/de.
+ *               next-intl middleware uses `localePrefix: 'as-needed'`
+ *               (see src/i18n/routing.ts), so EN links stay bare and
+ *               zh/de links must carry the prefix or risk dropping
+ *               into the default locale on follow.
+ */
+function rewriteLinks(md, pageDir, locale) {
+  const localePrefix = locale === 'en' ? '' : `/${locale}`;
   return md
     // Same-dir relative: ./foo or ./foo#anchor
     .replace(/\]\(\.\/([^)#]+)(#[^)]*)?\)/g, (_m, slug, anchor = '') => {
-      return `](${pageDir}/${slug}${anchor})`;
+      return `](${localePrefix}${pageDir}/${slug.replace(/\.md$/, '')}${anchor})`;
     })
     // Parent-dir relative: ../foo/bar
     .replace(/\]\(\.\.\/([^)#]+)(#[^)]*)?\)/g, (_m, slug, anchor = '') => {
-      // sibling section under /docs/
-      return `](/docs/${slug}${anchor})`;
+      return `](${localePrefix}/docs/${slug.replace(/\.md$/, '')}${anchor})`;
     })
     // Absolute /api/* (legacy aster-lang-dev URLs)
     .replace(/\]\(\/api\/([^)#]+)(#[^)]*)?\)/g, (_m, rest, anchor = '') => {
-      return `](/docs/api/${rest}${anchor})`;
+      return `](${localePrefix}/docs/api/${rest.replace(/\.md$/, '')}${anchor})`;
     })
     // Absolute /getting-started/* (legacy aster-lang-dev URLs)
     .replace(/\]\(\/getting-started\/([^)#]+)(#[^)]*)?\)/g, (_m, rest, anchor = '') => {
-      return `](/docs/getting-started/${rest}${anchor})`;
+      return `](${localePrefix}/docs/getting-started/${rest.replace(/\.md$/, '')}${anchor})`;
+    })
+    // Strip stray .md from any already-formed /docs/* URLs.
+    .replace(/\]\((\/(?:en|zh|de)?\/?docs\/[^)]+?)\.md(#[^)]*)?\)/g, (_m, path, anchor = '') => {
+      return `](${path}${anchor})`;
     });
 }
 
@@ -99,7 +112,7 @@ function ensureFrontmatter(md, fallback) {
   return `---\ntitle: ${JSON.stringify(title)}\n---\n\n${md}`;
 }
 
-function migrateOne(srcPath, destPath, pageDir) {
+function migrateOne(srcPath, destPath, pageDir, locale) {
   if (!existsSync(srcPath)) {
     console.warn(`[skip] source missing: ${srcPath}`);
     return false;
@@ -108,7 +121,7 @@ function migrateOne(srcPath, destPath, pageDir) {
   let out = raw;
   out = stripGlossaryMarkers(out);
   out = stripVuePlaceholders(out);
-  out = rewriteLinks(out, pageDir);
+  out = rewriteLinks(out, pageDir, locale);
   // Use file basename for fallback title.
   const fallback = srcPath.split('/').pop().replace(/\.md$/, '');
   out = ensureFrontmatter(out, fallback);
@@ -182,17 +195,21 @@ function applyFallback(group, slug) {
   const enDest = destFor(group, 'en', slug);
   if (!existsSync(enDest)) return;
   const enContent = readFileSync(enDest, 'utf8');
+  const pageDir = `/docs/${group}`;
   for (const locale of ['zh', 'de']) {
     const localeDest = destFor(group, locale, slug);
-    // Skip only if a real translation was already migrated from
-    // aster-lang-dev/docs/{zh,de}/api/**. Detect by checking the
-    // corresponding source file; if it exists, the localized migrate
-    // pass already wrote `localeDest` with locale-specific content
-    // and we must NOT clobber it with the EN fallback.
     const localeSrc = srcFor(group, locale, slug);
     if (existsSync(localeSrc)) continue;
+    // For fallback content, rewrite EN links to the active locale so
+    // a zh user clicking a sibling stays in zh. EN already passed
+    // through `rewriteLinks(_, _, 'en')` so any /docs/* in enContent
+    // is bare; we now re-prefix to /<locale>/docs/...
+    let content = enContent;
+    if (locale !== 'en') {
+      content = content.replace(/\]\(\/docs\//g, `](/${locale}/docs/`);
+    }
     mkdirSync(dirname(localeDest), { recursive: true });
-    writeFileSync(localeDest, enContent);
+    writeFileSync(localeDest, content);
   }
 }
 
@@ -205,7 +222,7 @@ for (const [group, slugs] of Object.entries(PLAN)) {
     for (const locale of LOCALES) {
       const src = srcFor(group, locale, slug);
       const dest = destFor(group, locale, slug);
-      const ok = migrateOne(src, dest, pageDir);
+      const ok = migrateOne(src, dest, pageDir, locale);
       if (ok) okCount += 1;
       else skipCount += 1;
     }

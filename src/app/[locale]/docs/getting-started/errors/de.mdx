@@ -21,9 +21,9 @@ Alle Fehlerantworten — ob von der Anwendungsschicht oder von Richtlinien-Evalu
 | `result`          | null           | Bei einem Fehler immer `null`                              |
 | `error`           | string         | Menschenlesbare Nachricht, die beschreibt, was schiefgelaufen ist             |
 | `executionTimeMs` | number         | Vergangene Zeit in Millisekunden; `0` bei vor der Ausführung erkannten Fehlern |
-::: tip Unterscheidung zwischen Evaluierungsfehlern und HTTP-Fehlern
+<Callout type="tip" title="Unterscheidung zwischen Evaluierungsfehlern und HTTP-Fehlern">
 HTTP 4xx/5xx-Statuscodes zeigen Infrastruktur-Fehler an (fehlende Header, Autorisierung, Serverfehler). Eine HTTP `200`-Antwort mit einem nicht-null `error`-Feld bedeutet, dass die Richtlinie erfolgreich geparst und dispatcht wurde, aber die Evaluierung selbst einen Fehler erzeugt hat (z.B. eine Laufzeitausnahme in der Regellogik).
-:::
+</Callout>
 ## HTTP-Statuscodes
 
 ### 400 Bad Request
@@ -91,9 +91,9 @@ HTTP/1.1 500 Internal Server Error
 }
 ```
 
-::: warning Bei einem 500-Fehler
+<Callout type="warning" title="Bei einem 500-Fehler">
 Notieren Sie die `Reference ID` in der Fehlermeldung und geben Sie sie an, wenn Sie den Support kontaktieren. Sie identifiziert den Protokolleintrag für Ihre Anfrage eindeutig.
-:::
+</Callout>
 ## Evaluierungsfehler (HTTP 200 mit nicht-null `error`)
 
 Selbst wenn eine Anfrage strukturell gültig und autorisiert ist, kann die Richtlinienevaluierung selbst fehlschlagen. In diesen Fällen ist der HTTP-Statuscode `200`, aber das `error`-Feld im Antwortkörper ist nicht null.

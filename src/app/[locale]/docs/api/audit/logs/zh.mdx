@@ -4,9 +4,9 @@ title: "Audit Logs"
 
 # Audit Logs
 
-::: tip Scope
+<Callout type="tip" title="Scope">
 These endpoints are served by **aster-api** (the policy engine) and cover policy execution events that are SHA-256 hash-chained. The **aster-cloud** SaaS dashboard maintains a separate, non-chained activity log for UI events (user logins, plan changes, member invitations); that activity log is not exposed through this API.
-:::
+</Callout>
 
 Retrieve audit log records for events recorded by the policy engine. All endpoints in this section require the `ADMIN` role.
 
@@ -63,7 +63,7 @@ Retrieve a list of all audit log entries for the tenant, ordered by event time d
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET https://policy.aster-lang.dev/api/v1/audit \
@@ -85,7 +85,7 @@ const response = await fetch(
 const logs = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -105,7 +105,7 @@ Retrieve audit log entries filtered to a specific event type.
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET https://policy.aster-lang.dev/api/v1/audit/type/POLICY_DEPLOYED \
@@ -128,7 +128,7 @@ const response = await fetch(
 const logs = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -149,7 +149,7 @@ Retrieve audit log entries for a specific policy module and function combination
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy/Loan.Approval/isEligible" \
@@ -173,7 +173,7 @@ const response = await fetch(
 const logs = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -194,7 +194,7 @@ Retrieve audit log entries within a specific time window.
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/range?startTime=2024-01-01T00:00:00Z&endTime=2024-01-31T23:59:59Z" \
@@ -221,7 +221,7 @@ const response = await fetch(
 const logs = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 

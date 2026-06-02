@@ -2430,14 +2430,11 @@
       "openConsole": "打开控制台"
     },
     "breadcrumb": {
-      "root": "文档"
+      "root": "文档",
+      "ariaLabel": "面包屑导航"
     },
     "sidebar": {
       "ariaLabel": "文档章节",
-      "example": {
-        "title": "示例",
-        "smokeTest": "冒烟测试"
-      },
       "gettingStarted": {
         "title": "入门",
         "overview": "概览",
@@ -2485,6 +2482,9 @@
     "toc": {
       "ariaLabel": "本页内容",
       "title": "本页内容"
+    },
+    "langSwitcher": {
+      "ariaLabel": "切换语言"
     }
   }
 }

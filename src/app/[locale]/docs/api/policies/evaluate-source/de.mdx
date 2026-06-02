@@ -32,7 +32,7 @@ Compile and evaluate a CNL (Controlled Natural Language) policy source string on
 | `X-User-Role` | Caller's role (`MEMBER`, `ADMIN`, `OWNER`) | Yes |
 | `X-User-Id` | Caller identifier for audit logs | No |
 
-See [Authentication](/docs/getting-started/authentication) for full details on computing the HMAC signature.
+See [Authentication](/de/docs/getting-started/authentication) for full details on computing the HMAC signature.
 
 ## Request Body
 
@@ -125,7 +125,7 @@ Each `TraceStep` contains:
 
 ### Without Trace
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 TENANT_ID="acme-corp"
@@ -187,11 +187,11 @@ const response = await fetch(
 const data = await response.json()
 ```
 
-:::
+</CodeGroup>
 
 ### With Decision Trace
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 TENANT_ID="acme-corp"
@@ -254,7 +254,7 @@ const data = await response.json()
 // data.decisionTrace.steps → array of rule evaluation steps
 ```
 
-:::
+</CodeGroup>
 
 ### Example Response (trace=true)
 

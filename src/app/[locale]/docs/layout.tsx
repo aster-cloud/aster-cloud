@@ -1,8 +1,28 @@
 import { setRequestLocale } from 'next-intl/server';
+import { locales } from '@/i18n/config';
 import { DocsTopNav } from '@/components/docs/DocsTopNav';
 import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { DocsTOC } from '@/components/docs/DocsTOC';
 import { DocsBreadcrumb } from '@/components/docs/DocsBreadcrumb';
+
+/**
+ * Docs subtree is fully static — content is repo-owned MDX,
+ * frontend chrome reads only from i18n bundles + the URL.
+ *
+ * Force-static here tells Next not to inherit the parent locale
+ * layout's `headers()` call at request time. The CSP nonce that the
+ * parent layout reads still applies to dynamic dashboard/auth pages;
+ * docs pages just don't need the per-request inline-script wiring.
+ *
+ * Combined with the per-page generateStaticParams emitted by the
+ * route wrappers (Sessions 3-4), Cloudflare Workers serve compiled
+ * RSC + HTML directly from the CDN edge without Worker CPU.
+ */
+export const dynamic = 'force-static';
+
+export function generateStaticParams() {
+  return locales.map((locale) => ({ locale }));
+}
 
 /**
  * Docs subsite layout — Session 2 chrome.

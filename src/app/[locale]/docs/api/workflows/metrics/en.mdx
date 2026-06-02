@@ -57,7 +57,7 @@ The response is a flat object mapping each status to its current workflow count.
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/metrics" \
@@ -84,7 +84,7 @@ if (metrics.COMPENSATION_FAILED > 0) {
 }
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -130,7 +130,7 @@ Retrieve a list of workflow IDs currently in a given status. Useful for drilling
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 # List up to 100 running workflows (default limit)
@@ -172,7 +172,7 @@ for (const id of workflowIds) {
 }
 ```
 
-:::
+</CodeGroup>
 
 ---
 

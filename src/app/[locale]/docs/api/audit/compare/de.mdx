@@ -29,9 +29,9 @@ Compare the performance metrics of two policy versions side-by-side over a share
 | `versionB` | `string` | Yes | Identifier of the second policy version (typically the candidate or newer version). |
 | `days` | `integer` | No | Number of days of history to compare. Defaults to `30`. Maximum: `90`. |
 
-::: warning Time Window Limit
+<Callout type="warning" title="Time Window Limit">
 `days` must not exceed **90**. Requests with a larger value will be rejected with `400 Bad Request`.
-:::
+</Callout>
 
 ## Response Body
 
@@ -102,7 +102,7 @@ Compare the performance metrics of two policy versions side-by-side over a share
 
 ## Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/compare?versionA=v-abc123&versionB=v-def456&days=30" \
@@ -134,7 +134,7 @@ if (comparison.comparison.verdict === 'VERSION_B_BETTER') {
 }
 ```
 
-:::
+</CodeGroup>
 
 ### Example Response
 

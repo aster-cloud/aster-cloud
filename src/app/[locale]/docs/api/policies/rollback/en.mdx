@@ -39,7 +39,7 @@ Revert a policy to a previously saved version. The engine atomically swaps the a
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `targetVersion` | `number` | Yes | The version number to restore. Must be a positive integer that exists in the policy's version history. Use the [versions endpoint](/docs/api/policies/versions.md) to enumerate available versions. |
+| `targetVersion` | `number` | Yes | The version number to restore. Must be a positive integer that exists in the policy's version history. Use the [versions endpoint](/docs/api/policies/versions) to enumerate available versions. |
 | `reason` | `string` | No | Human-readable explanation for the rollback. Stored in the version history entry created for this operation. Useful for audit trails. |
 
 ## Response Body
@@ -72,7 +72,7 @@ Revert a policy to a previously saved version. The engine atomically swaps the a
 
 ## Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST \
@@ -117,7 +117,7 @@ if (data.success) {
 }
 ```
 
-:::
+</CodeGroup>
 
 ### Example Response
 

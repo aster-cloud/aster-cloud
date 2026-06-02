@@ -2430,14 +2430,11 @@
       "openConsole": "Konsole öffnen"
     },
     "breadcrumb": {
-      "root": "Docs"
+      "root": "Docs",
+      "ariaLabel": "Brotkrumen"
     },
     "sidebar": {
       "ariaLabel": "Dokumentationsbereiche",
-      "example": {
-        "title": "Beispiel",
-        "smokeTest": "Funktionstest"
-      },
       "gettingStarted": {
         "title": "Erste Schritte",
         "overview": "Übersicht",
@@ -2485,6 +2482,9 @@
     "toc": {
       "ariaLabel": "Auf dieser Seite",
       "title": "Auf dieser Seite"
+    },
+    "langSwitcher": {
+      "ariaLabel": "Sprache wechseln"
     }
   }
 }

@@ -4,7 +4,7 @@ title: "GraphQL Queries"
 
 # GraphQL Queries
 
-All queries are read-only operations sent as `POST /graphql`. Queries require HMAC request signing and an `X-Tenant-Id` header. See [Authentication](/docs/getting-started/authentication) for details on computing the signature, and [Overview](/docs/api/graphql/overview) for request format details.
+All queries are read-only operations sent as `POST /graphql`. Queries require HMAC request signing and an `X-Tenant-Id` header. See [Authentication](/zh/docs/getting-started/authentication) for details on computing the signature, and [Overview](/zh/docs/api/graphql/overview) for request format details.
 
 ---
 
@@ -37,7 +37,7 @@ query GetPolicy($id: ID!) {
 }
 ```
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -85,7 +85,7 @@ const response = await fetch('https://policy.aster-lang.dev/graphql', {
 const { data, errors } = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -106,7 +106,7 @@ query ListPolicies {
 }
 ```
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -150,7 +150,7 @@ const { data } = await response.json();
 // data.listPolicies → Policy[]
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -383,7 +383,7 @@ query EvaluatePersonalLoan(
 }
 ```
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl — evaluatePersonalLoan example]
 curl -X POST https://policy.aster-lang.dev/graphql \
@@ -456,4 +456,4 @@ const { data, errors } = await response.json();
 const result = data?.evaluatePersonalLoan;
 ```
 
-:::
+</CodeGroup>

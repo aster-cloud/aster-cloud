@@ -59,7 +59,7 @@ curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source \
 | `error`            | string \| null | 评估失败时的错误信息；成功时为 `null`            |
 | `executionTimeMs`  | number         | 评估策略所用的时钟时间（毫秒）    |
 
-如果 `error` 非空，`result` 字段将为 `null`。完整故障场景列表请参阅[错误处理](/docs/getting-started/errors)。
+如果 `error` 非空，`result` 字段将为 `null`。完整故障场景列表请参阅[错误处理](/zh/docs/getting-started/errors)。
 
 ## 第四步 — 尝试批量评估
 
@@ -100,7 +100,7 @@ curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-source-batch
 
 现在你已经有了一个可运行的评估，探索以下主题以充分利用 API：
 
-- [认证](/docs/getting-started/authentication) — 添加 HMAC 签名以保护你的请求
-- [概述](/docs/getting-started/overview) — 了解策略引擎的完整能力
-- [错误处理](/docs/getting-started/errors) — 在应用程序中优雅地处理故障
-- [API 参考](/docs/api/policies/evaluate) — 所有端点和字段的完整参考
+- [认证](/zh/docs/getting-started/authentication) — 添加 HMAC 签名以保护你的请求
+- [概述](/zh/docs/getting-started/overview) — 了解策略引擎的完整能力
+- [错误处理](/zh/docs/getting-started/errors) — 在应用程序中优雅地处理故障
+- [API 参考](/zh/docs/api/policies/evaluate) — 所有端点和字段的完整参考

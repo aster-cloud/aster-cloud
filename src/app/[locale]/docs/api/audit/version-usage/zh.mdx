@@ -63,7 +63,7 @@ Retrieve a paginated list of workflow invocations that used a specific policy ve
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy-versions/v-abc123/usage?status=COMPLETED&page=0&size=20" \
@@ -94,7 +94,7 @@ const data = await response.json();
 // data.totalElements → total count across all pages
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -142,7 +142,7 @@ Retrieve a paginated, time-ordered history of evaluations made using a specific 
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy-versions/v-abc123/timeline?from=2024-01-01T00:00:00Z&to=2024-01-31T23:59:59Z&page=0&size=20" \
@@ -172,7 +172,7 @@ const response = await fetch(
 const data = await response.json();
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -214,7 +214,7 @@ Assess the impact of rolling back a specific policy version. The response enumer
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/policy-versions/v-abc123/impact" \
@@ -239,7 +239,7 @@ console.log(`Risk level: ${impact.estimatedRisk}`);
 console.log(`Active workflows affected: ${impact.byStatus.RUNNING ?? 0}`);
 ```
 
-:::
+</CodeGroup>
 
 ---
 
@@ -260,9 +260,9 @@ Retrieve time-bucketed usage statistics for a policy version, suitable for chart
 | `from` | `string` | No | ISO 8601 start timestamp. Defaults to 30 days ago. |
 | `to` | `string` | No | ISO 8601 end timestamp. Defaults to now. |
 
-::: warning Time Window Limit
+<Callout type="warning" title="Time Window Limit">
 The requested window (`to` minus `from`) must not exceed **90 days**. Requests spanning a longer period will be rejected with `400 Bad Request`.
-:::
+</Callout>
 
 ### Response Body
 
@@ -292,7 +292,7 @@ The requested window (`to` minus `from`) must not exceed **90 days**. Requests s
 
 ### Examples
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET "https://policy.aster-lang.dev/api/v1/audit/stats/version-usage?versionId=v-abc123&granularity=day&from=2024-01-01T00:00:00Z&to=2024-01-31T23:59:59Z" \
@@ -322,7 +322,7 @@ const stats = await response.json();
 // stats.buckets → time-series array for charting
 ```
 
-:::
+</CodeGroup>
 
 ---
 

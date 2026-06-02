@@ -22,9 +22,9 @@ The Aster Policy Engine exposes a GraphQL API for querying and managing policies
 | `X-Tenant-Id` | Tenant identifier string | Yes |
 | `Idempotency-Key` | Client-generated unique string (UUID recommended) | Mutations only |
 
-::: tip Idempotency-Key
+<Callout type="tip" title="Idempotency-Key">
 Providing an `Idempotency-Key` on mutation requests ensures that retrying a failed or timed-out request does not apply the operation a second time. The server caches the mutation result keyed on this value for 24 hours. This header is optional but strongly recommended for write operations.
-:::
+</Callout>
 
 ## Request Format
 
@@ -59,14 +59,14 @@ A `200 OK` HTTP status is returned for all well-formed GraphQL responses, includ
 
 Download the full schema in SDL format:
 
-::: code-group
+<CodeGroup>
 
 ```bash [curl]
 curl -X GET https://policy.aster-lang.dev/api/graphql/schema.graphql \
   -H "Authorization: Bearer <token>"
 ```
 
-:::
+</CodeGroup>
 
 ## Error Handling
 
