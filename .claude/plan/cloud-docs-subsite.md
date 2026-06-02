@@ -80,9 +80,9 @@ src/app/[locale]/docs/
 - 注：实际渲染模式为 **dynamic**（`force-dynamic`），不是 SSG —— 父 locale layout 读取 per-request CSP nonce，SSG 会让 nonce 失效。MDX 仍在 build 期编译，只是 RSC 装配 + provider 包裹在 Worker 上跑（无 DB、无 auth，开销小）。
 
 **代价**：
-- 每页 × 3 locale = 文件数 ×3。共 37 × 3 = **111 个 MDX 文件**
-- locale 之间内容同步需要靠 PR review，没有 fallback 机制（next-intl 的 deep-merge 不适用于 MDX 内容）
-- mitigated by: locale-parity CI 检查脚本（仿 `scripts/check-locales.ts`），每页 frontmatter 带 `lastReviewed: zh: <sha>` 跟踪
+- 每页 × 3 locale = 文件数 ×3。当前 25 个 route × 3 = **75 个 MDX 文件**
+- locale 之间内容同步需要靠 PR review，没有 next-intl 那种 deep-merge fallback
+- mitigated by: applyFallback 把 EN 内容静默复制为 zh/de 占位（API 文档 zh/de 当前如此）；正式翻译以 PR 替换为目标
 
 ### 3.2 MDX pipeline
 
@@ -114,7 +114,7 @@ src/app/[locale]/docs/
 
 ### 3.5 OpenNext / Cloudflare 兼容
 
-- 所有 `.mdx` 在 build 阶段编译为 RSC payload；Worker runtime 在每请求 assembleassemble + 包裹 i18n / theme provider。docs 路由不查 DB、不走 auth，CPU 占用低。
+- 所有 `.mdx` 在 build 阶段编译为 RSC payload；Worker runtime 在每请求 assemble + 包裹 i18n / theme provider。docs 路由不查 DB、不走 auth，CPU 占用低。
 - `rehype-pretty-code` 的 Shiki 编译发生在 build-time，不进 Worker bundle
 - `output: standalone` + `outputFileTracingRoot` 已配 —— 不变
 - 不引入需要 fs 的 plugin（如本地图片处理）
@@ -217,7 +217,7 @@ src/app/[locale]/docs/
 | MDX 文件 lock-in：未来想换静态生成器很难 | 低 | 低 | 文件即标准 markdown + frontmatter，可被 VitePress / Astro / Docusaurus 复用 |
 | locale 内容漂移（en 改了 zh/de 没改） | 高 | 中 | locale-parity CI 检查；frontmatter `lastReviewed.<locale>` SHA 跟踪 |
 | aster-lang.dev 用户记的旧 URL 失效 | 中 | 中 | Phase 2 配 308 跨站 redirect，保留 SEO + 浏览器历史 |
-| Smart Placement Melbourne 让欧美用户首屏慢 | 低 | 低 | docs 静态资产由 Cloudflare CDN edge serve，Worker 只 serve dynamic（实际上 docs 全 SSG） |
+| Smart Placement Melbourne 让欧美用户首屏慢 | 低 | 低 | docs 是 dynamic 渲染但开销轻（仅 RSC assemble + provider 包裹），仍走 CDN 的 client bundle + RSC payload 缓存 |
 
 ---
 
