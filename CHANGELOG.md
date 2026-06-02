@@ -186,6 +186,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Translate policies/evaluate-source zh + de *(i18n)*
+- Translate workflows/metrics zh + de *(i18n)*
+- Update [skip ci] *(changelog)*
 - Translate websocket/preview zh + de *(i18n)*
 - Translate policies/schema zh + de *(i18n)*
 - Translate policies/rollback zh + de *(i18n)*
