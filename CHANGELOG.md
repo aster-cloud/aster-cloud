@@ -186,6 +186,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Fallback SEO policy + code-block cleanup (audit round 2) *(i18n,seo)*
+- Update [skip ci] *(changelog)*
 - Translate policies/evaluate-source zh + de *(i18n)*
 - Translate workflows/metrics zh + de *(i18n)*
 - Update [skip ci] *(changelog)*
