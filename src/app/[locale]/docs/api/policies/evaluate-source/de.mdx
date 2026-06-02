@@ -1,42 +1,40 @@
 ---
-title: "Evaluate Policy from Source"
+title: "Policy aus Quellcode evaluieren"
 ---
 
-# Evaluate Policy from Source
+# Policy aus Quellcode evaluieren
 
-<TranslationFallbackBanner />
+Kompilieren und evaluieren Sie eine CNL-Policy-Quellcode-Zeichenkette (Controlled Natural Language) ad hoc, ohne dass die Policy zuvor bereitgestellt werden muss. Liefert optional einen vollständigen Decision-Trace für das Debugging.
 
-Compile and evaluate a CNL (Controlled Natural Language) policy source string on the fly, without requiring the policy to be deployed first. Optionally returns a full decision trace for debugging.
-
-## Endpoint
+## Endpunkt
 
 `POST /api/v1/policies/evaluate-source`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Query Parameters
+## Query-Parameter
 
-| Parameter | Type | Default | Description |
+| Parameter | Typ | Standard | Beschreibung |
 |-----------|------|---------|-------------|
-| `trace` | `boolean` | `false` | When `true`, the response includes a structured `decisionTrace` object showing which rules fired and how the result was derived. |
+| `trace` | `boolean` | `false` | Wenn `true`, enthält die Antwort ein strukturiertes `decisionTrace`-Objekt, das zeigt, welche Regeln gefeuert haben und wie das Ergebnis abgeleitet wurde. |
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-Id` | Tenant identifier string | Yes |
-| `X-Aster-Signature` | HMAC-SHA256 hex signature | Yes |
-| `X-Aster-Nonce` | Random string (16+ bytes hex or UUID) | Yes |
-| `X-Aster-Timestamp` | Unix timestamp in **milliseconds** | Yes |
-| `X-User-Role` | Caller's role (`MEMBER`, `ADMIN`, `OWNER`) | Yes |
-| `X-User-Id` | Caller identifier for audit logs | No |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-Id` | Mandanten-Identifikator-String | Ja |
+| `X-Aster-Signature` | HMAC-SHA256 Hex-Signatur | Ja |
+| `X-Aster-Nonce` | Zufallsstring (16+ Bytes Hex oder UUID) | Ja |
+| `X-Aster-Timestamp` | Unix-Zeitstempel in **Millisekunden** | Ja |
+| `X-User-Role` | Rolle des Aufrufers (`MEMBER`, `ADMIN`, `OWNER`) | Ja |
+| `X-User-Id` | Aufrufer-Bezeichner für Audit-Logs | Nein |
 
-See [Authentication](/de/docs/getting-started/authentication) for full details on computing the HMAC signature.
+Details zur Berechnung der HMAC-Signatur siehe [Authentifizierung](/de/docs/getting-started/authentication).
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -47,14 +45,14 @@ See [Authentication](/de/docs/getting-started/authentication) for full details o
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `source` | `string` | Yes | Raw CNL policy source text. The engine parses, canonicalizes, and compiles this string before evaluation. Parsing errors are returned in the `error` field. |
-| `context` | `object` | Yes | A single context object whose keys map to the declared parameter names of the target function. For multi-parameter functions, wrap each argument under its declared parameter name. |
-| `locale` | `string` | No | BCP 47 locale tag that identifies the CNL keyword set used in `source`. Defaults to `"en-US"`. Use `"zh-CN"` for Simplified Chinese CNL syntax. |
-| `functionName` | `string` | No | Name of the function to invoke within the compiled module. Defaults to `"evaluate"`. If the source defines only one function, that function is called regardless of this value. |
+| `source` | `string` | Ja | Roher CNL-Policy-Quellcode-Text. Die Engine parst, kanonisiert und kompiliert diesen String vor der Evaluierung. Parsing-Fehler werden im `error`-Feld zurückgegeben. |
+| `context` | `object` | Ja | Ein einzelnes Kontext-Objekt, dessen Schlüssel den deklarierten Parameternamen der Zielfunktion entsprechen. Bei Mehr-Parameter-Funktionen jedes Argument unter seinem deklarierten Parameternamen einwickeln. |
+| `locale` | `string` | Nein | BCP-47-Locale-Tag, das den in `source` verwendeten CNL-Schlüsselwortsatz identifiziert. Standard: `"en-US"`. Verwenden Sie `"zh-CN"` für vereinfachten chinesischen CNL-Syntax. |
+| `functionName` | `string` | Nein | Name der innerhalb des kompilierten Moduls aufzurufenden Funktion. Standard: `"evaluate"`. Wenn die Quelle nur eine Funktion definiert, wird diese unabhängig von diesem Wert aufgerufen. |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -65,16 +63,16 @@ See [Authentication](/de/docs/getting-started/authentication) for full details o
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `result` | `any` | The value returned by the evaluated function. |
-| `executionTimeMs` | `number` | Total wall-clock time in milliseconds including compilation and execution. |
-| `error` | `string \| null` | Parse, compile, or runtime error message; `null` on success. |
-| `decisionTrace` | `object \| null` | Present only when `?trace=true` is set. Contains the module name, function name, and an ordered list of trace steps recording rule evaluation. `null` when tracing is disabled. |
+| `result` | `any` | Der von der evaluierten Funktion zurückgegebene Wert. |
+| `executionTimeMs` | `number` | Gesamte Wanduhrzeit in Millisekunden einschließlich Kompilierung und Ausführung. |
+| `error` | `string \| null` | Parse-, Kompilierungs- oder Laufzeit-Fehlermeldung; `null` bei Erfolg. |
+| `decisionTrace` | `object \| null` | Nur vorhanden, wenn `?trace=true` gesetzt ist. Enthält den Modulnamen, Funktionsnamen und eine geordnete Liste von Trace-Schritten, die die Regelevaluierung aufzeichnen. `null`, wenn Tracing deaktiviert ist. |
 
-### Decision Trace Structure
+### Decision-Trace-Struktur
 
-When `?trace=true` is used, `decisionTrace` has the following shape:
+Bei Verwendung von `?trace=true` hat `decisionTrace` die folgende Form:
 
 ```json
 {
@@ -94,38 +92,38 @@ When `?trace=true` is used, `decisionTrace` has the following shape:
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `moduleName` | `string` | The name of the module that was evaluated. |
-| `functionName` | `string` | The name of the function that was invoked. |
-| `steps` | `TraceStep[]` | Ordered list of evaluation steps. |
-| `finalResult` | `any` | The final result of the evaluation. |
-| `executionTimeMs` | `number` | Evaluation time in milliseconds. |
+| `moduleName` | `string` | Der Name des evaluierten Moduls. |
+| `functionName` | `string` | Der Name der aufgerufenen Funktion. |
+| `steps` | `TraceStep[]` | Geordnete Liste der Evaluierungsschritte. |
+| `finalResult` | `any` | Das Endergebnis der Evaluierung. |
+| `executionTimeMs` | `number` | Evaluierungszeit in Millisekunden. |
 
-Each `TraceStep` contains:
+Jeder `TraceStep` enthält:
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `sequence` | `number` | Step number (starting from 1). |
-| `expression` | `string` | The rule or expression description. |
-| `result` | `any` | The evaluated result of this step. |
-| `matched` | `boolean` | Whether this branch was the final match. |
-| `children` | `TraceStep[]` | Nested sub-steps for branching logic (if/else, match). |
+| `sequence` | `number` | Schritt-Nummer (beginnend bei 1). |
+| `expression` | `string` | Die Regel- oder Ausdrucksbeschreibung. |
+| `result` | `any` | Das evaluierte Ergebnis dieses Schritts. |
+| `matched` | `boolean` | Ob dieser Zweig das finale Match war. |
+| `children` | `TraceStep[]` | Verschachtelte Unter-Schritte für Verzweigungslogik (if/else, match). |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Compilation and evaluation attempted. Check `error` for compile-time or runtime failures. |
-| `400 Bad Request` | Malformed request body, missing required fields, or invalid `X-Tenant-Id`. |
-| `401 Unauthorized` | Missing or invalid HMAC signature headers, or timestamp outside the 5-minute replay window. |
-| `403 Forbidden` | HMAC is valid but the caller lacks the `MEMBER` role. |
-| `409 Conflict` | Nonce has already been used within the replay window. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Kompilierung und Evaluierung versucht. Prüfen Sie `error` auf Kompilierungs- oder Laufzeit-Fehler. |
+| `400 Bad Request` | Fehlerhafter Request-Body, fehlende Pflichtfelder oder ungültige `X-Tenant-Id`. |
+| `401 Unauthorized` | Fehlende oder ungültige HMAC-Signatur-Header oder Zeitstempel außerhalb des 5-Minuten-Replay-Fensters. |
+| `403 Forbidden` | HMAC ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `409 Conflict` | Nonce wurde bereits innerhalb des Replay-Fensters verwendet. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
-### Without Trace
+### Ohne Trace
 
 <CodeGroup>
 
@@ -178,7 +176,7 @@ const response = await fetch(
       'Content-Type': 'application/json',
       'X-Tenant-Id': 'acme-corp',
       'X-User-Role': 'MEMBER',
-      'X-Aster-Signature': signature,  // see Authentication docs
+      'X-Aster-Signature': signature,  // siehe Authentifizierungs-Dokumentation
       'X-Aster-Nonce': nonce,
       'X-Aster-Timestamp': timestamp,
     },
@@ -191,7 +189,7 @@ const data = await response.json()
 
 </CodeGroup>
 
-### With Decision Trace
+### Mit Decision-Trace
 
 <CodeGroup>
 
@@ -244,7 +242,7 @@ const response = await fetch(
       'Content-Type': 'application/json',
       'X-Tenant-Id': 'acme-corp',
       'X-User-Role': 'MEMBER',
-      'X-Aster-Signature': signature,  // see Authentication docs
+      'X-Aster-Signature': signature,  // siehe Authentifizierungs-Dokumentation
       'X-Aster-Nonce': nonce,
       'X-Aster-Timestamp': timestamp,
     },
@@ -253,12 +251,12 @@ const response = await fetch(
 )
 
 const data = await response.json()
-// data.decisionTrace.steps → array of rule evaluation steps
+// data.decisionTrace.steps → Array von Regel-Evaluierungs-Schritten
 ```
 
 </CodeGroup>
 
-### Example Response (trace=true)
+### Beispiel-Antwort (trace=true)
 
 ```json
 {

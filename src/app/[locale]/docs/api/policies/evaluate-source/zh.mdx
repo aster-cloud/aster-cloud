@@ -1,42 +1,40 @@
 ---
-title: "Evaluate Policy from Source"
+title: "从源代码评估策略"
 ---
 
-# Evaluate Policy from Source
+# 从源代码评估策略
 
-<TranslationFallbackBanner />
+即时编译并评估 CNL（受控自然语言）策略源代码字符串，无需先部署策略。可选地返回完整决策追踪以便调试。
 
-Compile and evaluate a CNL (Controlled Natural Language) policy source string on the fly, without requiring the policy to be deployed first. Optionally returns a full decision trace for debugging.
-
-## Endpoint
+## 端点
 
 `POST /api/v1/policies/evaluate-source`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Query Parameters
+## 查询参数
 
-| Parameter | Type | Default | Description |
+| 参数 | 类型 | 默认值 | 描述 |
 |-----------|------|---------|-------------|
-| `trace` | `boolean` | `false` | When `true`, the response includes a structured `decisionTrace` object showing which rules fired and how the result was derived. |
+| `trace` | `boolean` | `false` | 当为 `true` 时，响应包含一个结构化的 `decisionTrace` 对象，显示哪些规则触发以及结果如何推导。 |
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-Id` | Tenant identifier string | Yes |
-| `X-Aster-Signature` | HMAC-SHA256 hex signature | Yes |
-| `X-Aster-Nonce` | Random string (16+ bytes hex or UUID) | Yes |
-| `X-Aster-Timestamp` | Unix timestamp in **milliseconds** | Yes |
-| `X-User-Role` | Caller's role (`MEMBER`, `ADMIN`, `OWNER`) | Yes |
-| `X-User-Id` | Caller identifier for audit logs | No |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-Id` | 租户标识符字符串 | 是 |
+| `X-Aster-Signature` | HMAC-SHA256 十六进制签名 | 是 |
+| `X-Aster-Nonce` | 随机字符串（16+ 字节十六进制或 UUID） | 是 |
+| `X-Aster-Timestamp` | Unix 时间戳（**毫秒**） | 是 |
+| `X-User-Role` | 调用者角色（`MEMBER`、`ADMIN`、`OWNER`） | 是 |
+| `X-User-Id` | 用于审计日志的调用者标识符 | 否 |
 
-See [Authentication](/zh/docs/getting-started/authentication) for full details on computing the HMAC signature.
+HMAC 签名计算细节参阅 [认证](/zh/docs/getting-started/authentication)。
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -47,14 +45,14 @@ See [Authentication](/zh/docs/getting-started/authentication) for full details o
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `source` | `string` | Yes | Raw CNL policy source text. The engine parses, canonicalizes, and compiles this string before evaluation. Parsing errors are returned in the `error` field. |
-| `context` | `object` | Yes | A single context object whose keys map to the declared parameter names of the target function. For multi-parameter functions, wrap each argument under its declared parameter name. |
-| `locale` | `string` | No | BCP 47 locale tag that identifies the CNL keyword set used in `source`. Defaults to `"en-US"`. Use `"zh-CN"` for Simplified Chinese CNL syntax. |
-| `functionName` | `string` | No | Name of the function to invoke within the compiled module. Defaults to `"evaluate"`. If the source defines only one function, that function is called regardless of this value. |
+| `source` | `string` | 是 | 原始 CNL 策略源代码文本。引擎在评估前解析、规范化并编译此字符串。解析错误在 `error` 字段返回。 |
+| `context` | `object` | 是 | 单个上下文对象，其键映射到目标函数声明的参数名。对于多参数函数，将每个参数包装在其声明的参数名下。 |
+| `locale` | `string` | 否 | 标识 `source` 中使用的 CNL 关键字集的 BCP 47 locale 标签。默认为 `"en-US"`。简体中文 CNL 语法使用 `"zh-CN"`。 |
+| `functionName` | `string` | 否 | 要在编译模块内调用的函数名。默认为 `"evaluate"`。如果源代码只定义了一个函数，则无论此值如何都会调用该函数。 |
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -65,16 +63,16 @@ See [Authentication](/zh/docs/getting-started/authentication) for full details o
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `result` | `any` | The value returned by the evaluated function. |
-| `executionTimeMs` | `number` | Total wall-clock time in milliseconds including compilation and execution. |
-| `error` | `string \| null` | Parse, compile, or runtime error message; `null` on success. |
-| `decisionTrace` | `object \| null` | Present only when `?trace=true` is set. Contains the module name, function name, and an ordered list of trace steps recording rule evaluation. `null` when tracing is disabled. |
+| `result` | `any` | 被评估函数返回的值。 |
+| `executionTimeMs` | `number` | 总挂钟时间（毫秒），包括编译和执行。 |
+| `error` | `string \| null` | 解析、编译或运行时错误消息；成功时为 `null`。 |
+| `decisionTrace` | `object \| null` | 仅当设置 `?trace=true` 时存在。包含模块名、函数名和记录规则评估的有序追踪步骤列表。未启用追踪时为 `null`。 |
 
-### Decision Trace Structure
+### 决策追踪结构
 
-When `?trace=true` is used, `decisionTrace` has the following shape:
+使用 `?trace=true` 时，`decisionTrace` 具有以下形状：
 
 ```json
 {
@@ -94,38 +92,38 @@ When `?trace=true` is used, `decisionTrace` has the following shape:
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `moduleName` | `string` | The name of the module that was evaluated. |
-| `functionName` | `string` | The name of the function that was invoked. |
-| `steps` | `TraceStep[]` | Ordered list of evaluation steps. |
-| `finalResult` | `any` | The final result of the evaluation. |
-| `executionTimeMs` | `number` | Evaluation time in milliseconds. |
+| `moduleName` | `string` | 被评估模块的名称。 |
+| `functionName` | `string` | 被调用函数的名称。 |
+| `steps` | `TraceStep[]` | 有序的评估步骤列表。 |
+| `finalResult` | `any` | 评估的最终结果。 |
+| `executionTimeMs` | `number` | 评估时间（毫秒）。 |
 
-Each `TraceStep` contains:
+每个 `TraceStep` 包含：
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `sequence` | `number` | Step number (starting from 1). |
-| `expression` | `string` | The rule or expression description. |
-| `result` | `any` | The evaluated result of this step. |
-| `matched` | `boolean` | Whether this branch was the final match. |
-| `children` | `TraceStep[]` | Nested sub-steps for branching logic (if/else, match). |
+| `sequence` | `number` | 步骤编号（从 1 开始）。 |
+| `expression` | `string` | 规则或表达式描述。 |
+| `result` | `any` | 此步骤的评估结果。 |
+| `matched` | `boolean` | 此分支是否为最终匹配。 |
+| `children` | `TraceStep[]` | 分支逻辑（if/else、match）的嵌套子步骤。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Compilation and evaluation attempted. Check `error` for compile-time or runtime failures. |
-| `400 Bad Request` | Malformed request body, missing required fields, or invalid `X-Tenant-Id`. |
-| `401 Unauthorized` | Missing or invalid HMAC signature headers, or timestamp outside the 5-minute replay window. |
-| `403 Forbidden` | HMAC is valid but the caller lacks the `MEMBER` role. |
-| `409 Conflict` | Nonce has already been used within the replay window. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 已尝试编译和评估。检查 `error` 确认是否有编译期或运行时故障。 |
+| `400 Bad Request` | 请求体格式错误、缺少必需字段或 `X-Tenant-Id` 无效。 |
+| `401 Unauthorized` | 缺少或无效的 HMAC 签名请求头，或时间戳超出 5 分钟重放窗口。 |
+| `403 Forbidden` | HMAC 有效但调用者缺少 `MEMBER` 角色。 |
+| `409 Conflict` | nonce 在重放窗口内已被使用。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |
 
-## Examples
+## 示例
 
-### Without Trace
+### 无追踪
 
 <CodeGroup>
 
@@ -178,7 +176,7 @@ const response = await fetch(
       'Content-Type': 'application/json',
       'X-Tenant-Id': 'acme-corp',
       'X-User-Role': 'MEMBER',
-      'X-Aster-Signature': signature,  // see Authentication docs
+      'X-Aster-Signature': signature,  // 参见认证文档
       'X-Aster-Nonce': nonce,
       'X-Aster-Timestamp': timestamp,
     },
@@ -191,7 +189,7 @@ const data = await response.json()
 
 </CodeGroup>
 
-### With Decision Trace
+### 带决策追踪
 
 <CodeGroup>
 
@@ -244,7 +242,7 @@ const response = await fetch(
       'Content-Type': 'application/json',
       'X-Tenant-Id': 'acme-corp',
       'X-User-Role': 'MEMBER',
-      'X-Aster-Signature': signature,  // see Authentication docs
+      'X-Aster-Signature': signature,  // 参见认证文档
       'X-Aster-Nonce': nonce,
       'X-Aster-Timestamp': timestamp,
     },
@@ -253,12 +251,12 @@ const response = await fetch(
 )
 
 const data = await response.json()
-// data.decisionTrace.steps → array of rule evaluation steps
+// data.decisionTrace.steps → 规则评估步骤数组
 ```
 
 </CodeGroup>
 
-### Example Response (trace=true)
+### 示例响应（trace=true）
 
 ```json
 {
