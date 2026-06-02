@@ -1,0 +1,69 @@
+---
+title: MDX Pipeline Smoke Test
+description: Session-1 example page proving MDX → SSR → Worker.
+---
+
+# MDX Pipeline Smoke Test
+
+This page exists only to prove the MDX pipeline compiles and renders end-to-end on Cloudflare Workers via OpenNext. It is the validation target for [`cloud-docs-subsite.md` §8](/) Session 1.
+
+If you can read this with code highlighting, GFM tables, and heading anchors all working, the foundation is good and real docs can be migrated in Session 3.
+
+## Markdown basics
+
+Inline **bold**, _italic_, `code`, and [link](/en) all work.
+
+Lists nest cleanly:
+
+- Compile-time MDX → static RSC payload
+- Worker runtime serves static HTML
+  - No runtime Shiki, no fs access
+  - Shiki grammars baked at build
+- Cloudflare CDN handles edge cache
+
+## Code highlighting (Shiki dual-theme)
+
+A few language samples to verify `rehype-pretty-code` runs at build:
+
+```bash
+curl -s -X POST https://aster-lang.cloud/api/v1/policies/evaluate \
+  -H 'Authorization: Bearer $TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"policyId":"loan.v3","input":{"creditScore":740}}'
+```
+
+```ts
+type DecisionTrace = {
+  moduleName: string;
+  functionName: string;
+  steps: TraceStep[];
+  finalResult: unknown;
+  executionTimeMs: number;
+};
+```
+
+```json
+{
+  "decision": "approved",
+  "trace": {
+    "moduleName": "aster.finance.loan",
+    "finalResult": "approved"
+  }
+}
+```
+
+## GFM table
+
+| Endpoint                     | Method | Authenticated |
+| ---------------------------- | ------ | ------------- |
+| `/api/v1/policies/evaluate`  | POST   | Bearer        |
+| `/api/v1/workflows/{id}/...` | GET    | Bearer        |
+| `/ws/preview`                | WS     | None          |
+
+## Heading anchors
+
+Each `h2` above gets a slug via `rehype-slug` and is wrapped in an anchor via `rehype-autolink-headings`. Hover any heading — the title itself is the permalink.
+
+---
+
+_Build target: this page must render at `/en/docs/example`, `/zh/docs/example`, `/de/docs/example` with identical content (MDX is locale-agnostic until real translations land in Session 3)._

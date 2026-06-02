@@ -1,10 +1,48 @@
 import type { NextConfig } from "next";
 import path from 'node:path';
 import createNextIntlPlugin from 'next-intl/plugin';
+import createMDX from '@next/mdx';
+import remarkFrontmatter from 'remark-frontmatter';
+import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
+import remarkGfm from 'remark-gfm';
+import rehypeSlug from 'rehype-slug';
+import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import rehypePrettyCode from 'rehype-pretty-code';
 import { validateEnvOrWarn } from './src/lib/env-validation';
 import { safeEnv } from './src/lib/runtime/safe-env';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+// MDX pipeline — see .claude/plan/cloud-docs-subsite.md §3.2
+// Pinned to @next/mdx@16.2.6 to match next@16.2.6. All remark/rehype
+// plugins run at build-time only; nothing reaches the Worker runtime.
+const withMDX = createMDX({
+  extension: /\.mdx?$/,
+  options: {
+    remarkPlugins: [
+      remarkFrontmatter,
+      [remarkMdxFrontmatter, { name: 'frontmatter' }],
+      remarkGfm,
+    ],
+    rehypePlugins: [
+      rehypeSlug,
+      [
+        rehypePrettyCode,
+        {
+          // Dual-theme: client-side dark/light toggle via next-themes.
+          // Shiki grammars compile at build-time; only HTML + tokens
+          // reach the Worker bundle (no runtime highlighter).
+          theme: { light: 'github-light', dark: 'github-dark' },
+          keepBackground: false,
+        },
+      ],
+      [
+        rehypeAutolinkHeadings,
+        { behavior: 'wrap', properties: { className: ['heading-anchor'] } },
+      ],
+    ],
+  },
+});
 
 // 部署模式开关 — 见 src/lib/deployment-mode.ts + .claude/plan/deployment-mode-flag-v2.md
 // next.config.ts 在 Node build-time 执行；但历史报错显示 OpenNext cold
@@ -32,6 +70,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Fix workspace root detection for pnpm monorepo
   outputFileTracingRoot: __dirname,
+  // Treat .mdx (and .md) as page files alongside .ts/.tsx.
+  // Required so app/[locale]/docs/.../page.mdx is picked up.
+  pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   // Externalize heavy client-only packages to prevent bundling issues
   serverExternalPackages: [
     'monaco-editor',
@@ -102,4 +143,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+// Plugin composition order:
+//   nextConfig → withMDX (adds .mdx loader + handles MDX compile)
+//              → withNextIntl (i18n routing wrapper, must be outermost
+//                so it sees the final config including MDX page extensions)
+export default withNextIntl(withMDX(nextConfig));
