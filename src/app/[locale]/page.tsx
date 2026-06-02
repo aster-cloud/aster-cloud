@@ -305,10 +305,10 @@ function Hero({
           {/* Live CNL demo — typewriter cycles three real, compilable
               snippets. The whole pitch of Aster is "policies written by
               humans, run as code" — show it, don't just say it.
-              Vertical spacing is owned by the parent <Stack gap={6}> so
-              CnlDemo sits flush with the other hero children (CTAs,
-              tagline) — no extra mt-10. */}
-          <div className="w-full">
+              mt-10 adds breathing room above the demo block so the dark
+              terminal window reads as its own beat below the hero copy,
+              not as the next inline item in the Stack. */}
+          <div className="mt-10 w-full">
             <CnlDemo />
           </div>
         </Stack>
