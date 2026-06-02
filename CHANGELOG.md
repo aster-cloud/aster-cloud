@@ -188,6 +188,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Record cross-site cleanup handoffs to ops and design *(brand)*
 - Update [skip ci] *(changelog)*
 - Add CTA + naming guide; drop "Team" from FAQ *(brand)*
@@ -266,6 +267,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Remove mt-10 from CnlDemo wrapper *(landing)*
 - Make hero title font-size fluid so it never wraps *(landing)*
 - Drop inner white hex backdrop — logo is fully transparent *(brand)*
 - Bump tmp to >=0.2.6 via pnpm overrides *(deps)*
