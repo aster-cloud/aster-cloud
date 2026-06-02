@@ -1,18 +1,18 @@
 ---
-title: "GraphQL Queries"
+title: "GraphQL 查询"
 ---
 
-# GraphQL Queries
+# GraphQL 查询
 
-All queries are read-only operations sent as `POST /graphql`. Queries require HMAC request signing and an `X-Tenant-Id` header. See [Authentication](/zh/docs/getting-started/authentication) for details on computing the signature, and [Overview](/zh/docs/api/graphql/overview) for request format details.
+所有查询都是以 `POST /graphql` 发送的只读操作。查询需要 HMAC 请求签名和 `X-Tenant-Id` 请求头。签名计算细节参阅 [认证](/docs/getting-started/authentication)；请求格式参阅 [概览](/docs/api/graphql/overview)。
 
 ---
 
-## Policy Queries
+## 策略查询
 
 ### getPolicy
 
-Retrieve a single policy by its unique identifier.
+按唯一标识符获取单个策略。
 
 ```graphql
 query GetPolicy($id: ID!) {
@@ -29,7 +29,7 @@ query GetPolicy($id: ID!) {
 }
 ```
 
-**Variables**
+**变量**
 
 ```json
 {
@@ -91,7 +91,7 @@ const { data, errors } = await response.json();
 
 ### listPolicies
 
-Retrieve all policies visible to the tenant.
+获取租户可见的所有策略。
 
 ```graphql
 query ListPolicies {
@@ -154,13 +154,13 @@ const { data } = await response.json();
 
 ---
 
-## Industry-Specific Queries
+## 行业特定查询
 
-These queries invoke domain-specific policy evaluation logic and return structured decision results. Each query passes its arguments through the policy engine as **individual parameters** (not a single input object).
+这些查询调用领域特定的策略评估逻辑，返回结构化决策结果。每个查询将其参数作为 **独立参数**（而非单个输入对象）通过策略引擎传递。
 
 ### generateLifeQuote
 
-Generate a life insurance quote based on applicant parameters.
+基于申请人参数生成寿险报价。
 
 ```graphql
 query GenerateLifeQuote(
@@ -181,7 +181,7 @@ query GenerateLifeQuote(
 
 ### calculateLifeRiskScore
 
-Calculate a risk score for a life insurance applicant.
+计算寿险申请人的风险评分。
 
 ```graphql
 query CalculateLifeRiskScore($applicant: LifeInsuranceApplicant!) {
@@ -197,7 +197,7 @@ query CalculateLifeRiskScore($applicant: LifeInsuranceApplicant!) {
 
 ### generateAutoQuote
 
-Generate an automobile insurance quote.
+生成车险报价。
 
 ```graphql
 query GenerateAutoQuote(
@@ -225,7 +225,7 @@ query GenerateAutoQuote(
 
 ### checkServiceEligibility
 
-Determine whether a patient is eligible for a specific service.
+判断患者是否有资格获得特定服务。
 
 ```graphql
 query CheckServiceEligibility(
@@ -248,7 +248,7 @@ query CheckServiceEligibility(
 
 ### processClaim
 
-Evaluate and process an insurance or service claim.
+评估并处理保险或服务理赔。
 
 ```graphql
 query ProcessClaim(
@@ -274,7 +274,7 @@ query ProcessClaim(
 
 ### evaluateLoanEligibility
 
-Assess a borrower's eligibility for a loan product.
+评估借款人对贷款产品的资格。
 
 ```graphql
 query EvaluateLoanEligibility(
@@ -299,7 +299,7 @@ query EvaluateLoanEligibility(
 
 ### evaluateCreditCardApplication
 
-Evaluate a credit card application and determine the approved credit limit.
+评估信用卡申请并确定批准的信用额度。
 
 ```graphql
 query EvaluateCreditCardApplication(
@@ -326,7 +326,7 @@ query EvaluateCreditCardApplication(
 
 ### evaluateEnterpriseLoan
 
-Evaluate a commercial or enterprise loan application.
+评估商业或企业贷款申请。
 
 ```graphql
 query EvaluateEnterpriseLoan(
@@ -355,7 +355,7 @@ query EvaluateEnterpriseLoan(
 
 ### evaluatePersonalLoan
 
-Evaluate a personal loan application.
+评估个人贷款申请。
 
 ```graphql
 query EvaluatePersonalLoan(
@@ -385,7 +385,7 @@ query EvaluatePersonalLoan(
 
 <CodeGroup>
 
-```bash [curl — evaluatePersonalLoan example]
+```bash [curl — evaluatePersonalLoan 示例]
 curl -X POST https://policy.aster-lang.dev/graphql \
   -H "Content-Type: application/json" \
   -H "X-Tenant-Id: acme-corp" \
@@ -405,7 +405,7 @@ curl -X POST https://policy.aster-lang.dev/graphql \
   }'
 ```
 
-```js [JavaScript — evaluatePersonalLoan example]
+```js [JavaScript — evaluatePersonalLoan 示例]
 const response = await fetch('https://policy.aster-lang.dev/graphql', {
   method: 'POST',
   headers: {
