@@ -6,6 +6,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Chrome + migrate 25 docs pages × 3 locales (S2+S3+S4) *(docs)*
+- MDX pipeline scaffold for /docs/* subsite (Phase 1 Session 1) *(docs)*
 - Show brand logo in nav, hide wordmark on small screens *(landing)*
 - Add transparent Aster Cloud logo + use as favicon *(brand)*
 - Cross-site CTA convention + Aster Lang relationship line *(landing)*
@@ -183,6 +185,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Final cleanup — file count + typo + dynamic note *(plan)*
+- Align URL contract + stale comment cleanup *(plan,comments)*
+- Cloud-docs-subsite — MDX docs site at /docs/* *(plan)*
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -269,6 +275,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- EN-bare redirect at /docs/ + plan §3.1/§3.5 cleanup *(docs)*
+- Revert SSG + correct mobile flex layout (audit round 2) *(docs)*
+- Address audit findings — SSG + container conversion + i18n links *(docs)*
 - Remove duplicate primary CTA from hero *(landing)*
 - Remove mt-10 from CnlDemo wrapper *(landing)*
 - Make hero title font-size fluid so it never wraps *(landing)*
