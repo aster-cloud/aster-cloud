@@ -1,35 +1,33 @@
 ---
-title: "Workflow Metrics"
+title: "工作流指标"
 ---
 
-# Workflow Metrics
+# 工作流指标
 
-<TranslationFallbackBanner />
+用于跨租户监控工作流健康的操作性端点。使用这些端点构建仪表板、设置告警阈值或识别卡住的工作流。
 
-Operational endpoints for monitoring workflow health across the tenant. Use these to build dashboards, set up alerting thresholds, or identify stuck workflows.
-
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
 ---
 
-## Aggregate Metrics
+## 聚合指标
 
-Retrieve a count of workflows grouped by status. This gives a high-level snapshot of the system's current operational state.
+按状态分组获取工作流数量。这提供了系统当前操作状态的高层快照。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/workflows/metrics`
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -43,21 +41,21 @@ Retrieve a count of workflows grouped by status. This gives a high-level snapsho
 }
 ```
 
-The response is a flat object mapping each status to its current workflow count. All status keys are always present, with a value of `0` when no workflows exist in that state.
+响应是一个扁平对象，将每个状态映射到其当前工作流数量。所有状态键始终存在，没有该状态的工作流时值为 `0`。
 
-### Status Values
+### 状态值
 
-| Status | Terminal | Description |
+| 状态 | 终态 | 描述 |
 |--------|----------|-------------|
-| `READY` | No | Created but not yet started. |
-| `RUNNING` | No | Actively executing. |
-| `COMPLETED` | Yes | Finished successfully. |
-| `FAILED` | Yes | Terminated due to an unrecoverable error. |
-| `COMPENSATING` | No | Executing compensation (rollback) steps. |
-| `COMPENSATED` | Yes | Compensation completed successfully. |
-| `COMPENSATION_FAILED` | Yes | Compensation steps also failed. |
+| `READY` | 否 | 已创建但尚未启动。 |
+| `RUNNING` | 否 | 正在执行。 |
+| `COMPLETED` | 是 | 成功完成。 |
+| `FAILED` | 是 | 因不可恢复的错误终止。 |
+| `COMPENSATING` | 否 | 正在执行补偿（回滚）步骤。 |
+| `COMPENSATED` | 是 | 补偿成功完成。 |
+| `COMPENSATION_FAILED` | 是 | 补偿步骤也失败。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -80,7 +78,7 @@ const response = await fetch(
 
 const metrics = await response.json();
 
-// Alert if any workflows are stuck in a compensation failure state
+// 如果有任何工作流卡在补偿失败状态则告警
 if (metrics.COMPENSATION_FAILED > 0) {
   console.warn(`${metrics.COMPENSATION_FAILED} workflow(s) require manual intervention`);
 }
@@ -90,27 +88,27 @@ if (metrics.COMPENSATION_FAILED > 0) {
 
 ---
 
-## List Workflows by Status
+## 按状态列出工作流
 
-Retrieve a list of workflow IDs currently in a given status. Useful for drilling into specific workflows after identifying a concern from the aggregate metrics.
+获取当前处于给定状态的工作流 ID 列表。在从聚合指标中识别出关注点后，用于深入特定工作流。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/workflows/by-status/{status}`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `status` | `string` | The workflow status to filter by. Must be one of the values listed in the Status Values table above. |
+| `status` | `string` | 要筛选的工作流状态。必须是上方状态值表中列出的值之一。 |
 
-### Query Parameters
+### 查询参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `limit` | `integer` | No | Maximum number of workflow IDs to return. Defaults to `100`. The server may enforce its own maximum cap. |
+| `limit` | `integer` | 否 | 返回的最大工作流 ID 数量。默认为 `100`。服务器可能强制其自身的最大上限。 |
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -124,23 +122,23 @@ Retrieve a list of workflow IDs currently in a given status. Useful for drilling
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `status` | `string` | The requested status (mirrors the path parameter). |
-| `workflowIds` | `string[]` | List of matching workflow identifiers, ordered by creation time descending. |
-| `count` | `integer` | Number of IDs returned in this response. May be less than the total if results were capped by `limit`. |
+| `status` | `string` | 请求的状态（与路径参数一致）。 |
+| `workflowIds` | `string[]` | 匹配的工作流标识符列表，按创建时间降序排列。 |
+| `count` | `integer` | 此响应中返回的 ID 数量。若结果被 `limit` 截断则可能小于总数。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
 ```bash [curl]
-# List up to 100 running workflows (default limit)
+# 列出最多 100 个运行中的工作流（默认 limit）
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/by-status/RUNNING" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
 
-# List up to 10 failed workflows
+# 列出最多 10 个失败的工作流
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/by-status/FAILED?limit=10" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
@@ -161,7 +159,7 @@ async function getWorkflowsByStatus(status, limit = 100) {
   return response.json();
 }
 
-// Inspect the first 10 failed workflows
+// 检查前 10 个失败的工作流
 const { workflowIds } = await getWorkflowsByStatus('FAILED', 10);
 
 for (const id of workflowIds) {
@@ -178,12 +176,12 @@ for (const id of workflowIds) {
 
 ---
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Request succeeded. |
-| `400 Bad Request` | Invalid `status` value or malformed `limit` parameter. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 请求成功。 |
+| `400 Bad Request` | `status` 值无效或 `limit` 参数格式错误。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |

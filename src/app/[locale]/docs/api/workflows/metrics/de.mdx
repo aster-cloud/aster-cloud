@@ -1,35 +1,33 @@
 ---
-title: "Workflow Metrics"
+title: "Workflow-Metriken"
 ---
 
-# Workflow Metrics
+# Workflow-Metriken
 
-<TranslationFallbackBanner />
+Operative Endpunkte zur Überwachung der Workflow-Gesundheit über den Mandanten hinweg. Verwenden Sie diese zum Erstellen von Dashboards, Einrichten von Alarmschwellen oder Identifizieren festgefahrener Workflows.
 
-Operational endpoints for monitoring workflow health across the tenant. Use these to build dashboards, set up alerting thresholds, or identify stuck workflows.
-
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
 ---
 
-## Aggregate Metrics
+## Aggregierte Metriken
 
-Retrieve a count of workflows grouped by status. This gives a high-level snapshot of the system's current operational state.
+Anzahl der Workflows gruppiert nach Status abrufen. Dies liefert einen Überblick über den aktuellen Betriebszustand des Systems.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/workflows/metrics`
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -43,21 +41,21 @@ Retrieve a count of workflows grouped by status. This gives a high-level snapsho
 }
 ```
 
-The response is a flat object mapping each status to its current workflow count. All status keys are always present, with a value of `0` when no workflows exist in that state.
+Die Antwort ist ein flaches Objekt, das jeden Status auf seine aktuelle Workflow-Anzahl abbildet. Alle Status-Schlüssel sind immer vorhanden, mit einem Wert von `0`, wenn keine Workflows in diesem Zustand existieren.
 
-### Status Values
+### Statuswerte
 
-| Status | Terminal | Description |
+| Status | Endzustand | Beschreibung |
 |--------|----------|-------------|
-| `READY` | No | Created but not yet started. |
-| `RUNNING` | No | Actively executing. |
-| `COMPLETED` | Yes | Finished successfully. |
-| `FAILED` | Yes | Terminated due to an unrecoverable error. |
-| `COMPENSATING` | No | Executing compensation (rollback) steps. |
-| `COMPENSATED` | Yes | Compensation completed successfully. |
-| `COMPENSATION_FAILED` | Yes | Compensation steps also failed. |
+| `READY` | Nein | Erstellt, aber noch nicht gestartet. |
+| `RUNNING` | Nein | Wird aktiv ausgeführt. |
+| `COMPLETED` | Ja | Erfolgreich abgeschlossen. |
+| `FAILED` | Ja | Aufgrund eines nicht wiederherstellbaren Fehlers beendet. |
+| `COMPENSATING` | Nein | Kompensations-Schritte (Rollback) werden ausgeführt. |
+| `COMPENSATED` | Ja | Kompensation erfolgreich abgeschlossen. |
+| `COMPENSATION_FAILED` | Ja | Auch die Kompensations-Schritte schlugen fehl. |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -80,7 +78,7 @@ const response = await fetch(
 
 const metrics = await response.json();
 
-// Alert if any workflows are stuck in a compensation failure state
+// Alarmieren, wenn Workflows in einem Kompensationsfehler-Zustand feststecken
 if (metrics.COMPENSATION_FAILED > 0) {
   console.warn(`${metrics.COMPENSATION_FAILED} workflow(s) require manual intervention`);
 }
@@ -90,27 +88,27 @@ if (metrics.COMPENSATION_FAILED > 0) {
 
 ---
 
-## List Workflows by Status
+## Workflows nach Status auflisten
 
-Retrieve a list of workflow IDs currently in a given status. Useful for drilling into specific workflows after identifying a concern from the aggregate metrics.
+Eine Liste der Workflow-IDs abrufen, die sich aktuell in einem gegebenen Status befinden. Nützlich, um nach Erkennen einer Auffälligkeit aus den aggregierten Metriken in spezifische Workflows einzusteigen.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/workflows/by-status/{status}`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `status` | `string` | The workflow status to filter by. Must be one of the values listed in the Status Values table above. |
+| `status` | `string` | Der Workflow-Status, nach dem gefiltert werden soll. Muss einer der oben in der Tabelle der Statuswerte aufgeführten Werte sein. |
 
-### Query Parameters
+### Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `limit` | `integer` | No | Maximum number of workflow IDs to return. Defaults to `100`. The server may enforce its own maximum cap. |
+| `limit` | `integer` | Nein | Maximale Anzahl zurückzugebender Workflow-IDs. Standard: `100`. Der Server kann seine eigene maximale Obergrenze erzwingen. |
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -124,23 +122,23 @@ Retrieve a list of workflow IDs currently in a given status. Useful for drilling
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `status` | `string` | The requested status (mirrors the path parameter). |
-| `workflowIds` | `string[]` | List of matching workflow identifiers, ordered by creation time descending. |
-| `count` | `integer` | Number of IDs returned in this response. May be less than the total if results were capped by `limit`. |
+| `status` | `string` | Der angeforderte Status (spiegelt den Pfad-Parameter). |
+| `workflowIds` | `string[]` | Liste der übereinstimmenden Workflow-Bezeichner, absteigend nach Erstellungszeit sortiert. |
+| `count` | `integer` | Anzahl der in dieser Antwort zurückgegebenen IDs. Kann kleiner als die Gesamtsumme sein, wenn die Ergebnisse durch `limit` begrenzt wurden. |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
 ```bash [curl]
-# List up to 100 running workflows (default limit)
+# Bis zu 100 laufende Workflows auflisten (Standard-Limit)
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/by-status/RUNNING" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
 
-# List up to 10 failed workflows
+# Bis zu 10 fehlgeschlagene Workflows auflisten
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/by-status/FAILED?limit=10" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
@@ -161,7 +159,7 @@ async function getWorkflowsByStatus(status, limit = 100) {
   return response.json();
 }
 
-// Inspect the first 10 failed workflows
+// Die ersten 10 fehlgeschlagenen Workflows inspizieren
 const { workflowIds } = await getWorkflowsByStatus('FAILED', 10);
 
 for (const id of workflowIds) {
@@ -178,12 +176,12 @@ for (const id of workflowIds) {
 
 ---
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Request succeeded. |
-| `400 Bad Request` | Invalid `status` value or malformed `limit` parameter. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Anfrage erfolgreich. |
+| `400 Bad Request` | Ungültiger `status`-Wert oder fehlerhafter `limit`-Parameter. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
