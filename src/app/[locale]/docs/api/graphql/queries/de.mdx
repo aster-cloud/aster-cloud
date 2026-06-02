@@ -4,7 +4,7 @@ title: "GraphQL-Abfragen"
 
 # GraphQL-Abfragen
 
-Alle Abfragen sind schreibgeschützte Operationen, die als `POST /graphql` gesendet werden. Abfragen erfordern HMAC-Anfragensignierung und einen `X-Tenant-Id`-Header. Details zur Berechnung der Signatur siehe [Authentifizierung](/docs/getting-started/authentication); Details zum Anfrageformat siehe [Überblick](/docs/api/graphql/overview).
+Alle Abfragen sind schreibgeschützte Operationen, die als `POST /graphql` gesendet werden. Abfragen erfordern HMAC-Anfragensignierung und einen `X-Tenant-Id`-Header. Details zur Berechnung der Signatur siehe [Authentifizierung](/de/docs/getting-started/authentication); Details zum Anfrageformat siehe [Überblick](/de/docs/api/graphql/overview).
 
 ---
 
@@ -385,7 +385,7 @@ query EvaluatePersonalLoan(
 
 <CodeGroup>
 
-```bash [curl — evaluatePersonalLoan-Beispiel]
+```bash [curl — evaluatePersonalLoan example]
 curl -X POST https://policy.aster-lang.dev/graphql \
   -H "Content-Type: application/json" \
   -H "X-Tenant-Id: acme-corp" \
@@ -405,7 +405,7 @@ curl -X POST https://policy.aster-lang.dev/graphql \
   }'
 ```
 
-```js [JavaScript — evaluatePersonalLoan-Beispiel]
+```js [JavaScript — evaluatePersonalLoan example]
 const response = await fetch('https://policy.aster-lang.dev/graphql', {
   method: 'POST',
   headers: {

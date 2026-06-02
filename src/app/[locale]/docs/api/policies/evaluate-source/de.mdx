@@ -176,7 +176,7 @@ const response = await fetch(
       'Content-Type': 'application/json',
       'X-Tenant-Id': 'acme-corp',
       'X-User-Role': 'MEMBER',
-      'X-Aster-Signature': signature,  // siehe Authentifizierungs-Dokumentation
+      'X-Aster-Signature': signature,  // see Authentication docs
       'X-Aster-Nonce': nonce,
       'X-Aster-Timestamp': timestamp,
     },
@@ -242,7 +242,7 @@ const response = await fetch(
       'Content-Type': 'application/json',
       'X-Tenant-Id': 'acme-corp',
       'X-User-Role': 'MEMBER',
-      'X-Aster-Signature': signature,  // siehe Authentifizierungs-Dokumentation
+      'X-Aster-Signature': signature,  // see Authentication docs
       'X-Aster-Nonce': nonce,
       'X-Aster-Timestamp': timestamp,
     },
@@ -251,7 +251,7 @@ const response = await fetch(
 )
 
 const data = await response.json()
-// data.decisionTrace.steps → Array von Regel-Evaluierungs-Schritten
+// data.decisionTrace.steps → array of rule evaluation steps
 ```
 
 </CodeGroup>

@@ -94,12 +94,12 @@ title: "工作流事件"
 <CodeGroup>
 
 ```bash [curl]
-# 获取工作流的所有事件
+# Fetch all events for a workflow
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/wf-abc123/events" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
 
-# 轮询序列 42 之后的新事件
+# Poll for new events after sequence 42
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/wf-abc123/events?fromSeq=43" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
@@ -108,7 +108,7 @@ curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/wf-abc123/events?fro
 ```js [JavaScript]
 const workflowId = 'wf-abc123';
 
-// 获取全部事件
+// Fetch all events
 const response = await fetch(
   `https://policy.aster-lang.dev/api/v1/workflows/${workflowId}/events`,
   {
@@ -121,7 +121,7 @@ const response = await fetch(
 
 const events = await response.json();
 
-// 在已知序列号之后轮询新事件
+// Poll for new events after a known sequence
 async function pollNewEvents(workflowId, lastSeq) {
   const params = new URLSearchParams({ fromSeq: String(lastSeq + 1) });
   const res = await fetch(

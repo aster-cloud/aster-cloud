@@ -78,7 +78,7 @@ const response = await fetch(
 
 const metrics = await response.json();
 
-// Alarmieren, wenn Workflows in einem Kompensationsfehler-Zustand feststecken
+// Alert if any workflows are stuck in a compensation failure state
 if (metrics.COMPENSATION_FAILED > 0) {
   console.warn(`${metrics.COMPENSATION_FAILED} workflow(s) require manual intervention`);
 }
@@ -133,12 +133,12 @@ Eine Liste der Workflow-IDs abrufen, die sich aktuell in einem gegebenen Status 
 <CodeGroup>
 
 ```bash [curl]
-# Bis zu 100 laufende Workflows auflisten (Standard-Limit)
+# List up to 100 running workflows (default limit)
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/by-status/RUNNING" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
 
-# Bis zu 10 fehlgeschlagene Workflows auflisten
+# List up to 10 failed workflows
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/by-status/FAILED?limit=10" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
@@ -159,7 +159,7 @@ async function getWorkflowsByStatus(status, limit = 100) {
   return response.json();
 }
 
-// Die ersten 10 fehlgeschlagenen Workflows inspizieren
+// Inspect the first 10 failed workflows
 const { workflowIds } = await getWorkflowsByStatus('FAILED', 10);
 
 for (const id of workflowIds) {

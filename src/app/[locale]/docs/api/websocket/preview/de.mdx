@@ -119,7 +119,7 @@ ws.addEventListener('message', (event) => {
   const msg = JSON.parse(event.data);
 
   if (msg.status === 'connected') {
-    // Evaluierungsanfrage nach Verbindungsaufbau senden
+    // Send an evaluation request once connected
     ws.send(JSON.stringify({
       policyModule:   'Loan.Approval',
       policyFunction: 'isEligible',

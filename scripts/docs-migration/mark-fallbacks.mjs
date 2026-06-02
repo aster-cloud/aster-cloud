@@ -41,8 +41,23 @@ function walk(dir, acc = []) {
  * the banner right after frontmatter so it still appears at the top
  * of the article body.
  */
+/**
+ * Inject `fallback: true` into the YAML frontmatter so the page
+ * wrapper can emit canonical → EN + noindex on fallback variants
+ * (see generate-page-wrappers.mjs). Idempotent: returns the content
+ * unchanged if `fallback:` is already present.
+ */
+function injectFallbackFlag(content) {
+  const fmMatch = content.match(/^(﻿)?---\r?\n([\s\S]*?\n)---\r?\n/);
+  if (!fmMatch) return content;
+  const [full, bom = '', body] = fmMatch;
+  if (/^fallback:\s*true/m.test(body)) return content;
+  const newFm = `${bom}---\n${body}fallback: true\n---\n`;
+  return newFm + content.slice(full.length);
+}
+
 function injectBanner(content) {
-  if (content.includes(BANNER_MARKER)) return content;
+  if (content.includes(BANNER_MARKER)) return injectFallbackFlag(content);
   // Tolerate BOM + both LF/CRLF in the frontmatter delimiters.
   const fmMatch = content.match(/^(﻿)?---\r?\n[\s\S]*?\n---\r?\n/);
   const afterFm = fmMatch ? fmMatch[0].length : 0;
@@ -50,27 +65,20 @@ function injectBanner(content) {
   // Scan for the first H1 after frontmatter (markdown `# ` line).
   const tail = content.slice(afterFm);
   const h1Match = tail.match(/^(#\s[^\n]+)\n/m);
+  let withBanner;
   if (h1Match) {
     const h1End = afterFm + (h1Match.index ?? 0) + h1Match[0].length;
-    return (
-      content.slice(0, h1End) +
-      '\n' +
-      BANNER_MARKER +
-      '\n' +
-      content.slice(h1End)
-    );
+    withBanner =
+      content.slice(0, h1End) + '\n' + BANNER_MARKER + '\n' + content.slice(h1End);
+  } else if (afterFm > 0) {
+    // No H1 — insert right after frontmatter as a fallback.
+    withBanner =
+      content.slice(0, afterFm) + '\n' + BANNER_MARKER + '\n' + content.slice(afterFm);
+  } else {
+    // No frontmatter at all (shouldn't happen in our docs, but handle anyway).
+    withBanner = BANNER_MARKER + '\n\n' + content;
   }
-  // No H1 — insert right after frontmatter as a fallback.
-  if (afterFm > 0) {
-    return (
-      content.slice(0, afterFm) +
-      '\n' +
-      BANNER_MARKER +
-      '\n' +
-      content.slice(afterFm)
-    );
-  }
-  return BANNER_MARKER + '\n\n' + content;
+  return injectFallbackFlag(withBanner);
 }
 
 /**
@@ -89,6 +97,9 @@ function essentialContent(content) {
   return content
     .replace(/^﻿/, '')
     .replace(new RegExp(`\\n?${BANNER_MARKER}\\n?`), '')
+    // Strip the `fallback: true` flag so re-running on already-marked
+    // files compares the body-content essence only.
+    .replace(/^fallback:\s*true\s*\n/m, '')
     // Normalize locale-prefixed internal links so a file that
     // differs from EN only by `(/zh/docs/...)` vs `(/docs/...)` is
     // still detected as a fallback. `applyFallback` in migrate.mjs
@@ -119,12 +130,19 @@ for (const dir of routeDirs) {
     // both sides so a re-run on already-banner'd files still detects
     // them as fallbacks rather than alternating banner on/off.
     if (locEssential === enContent) {
-      // Locale is a fallback. Either it already has the banner (no-op)
-      // or it doesn't yet (inject).
-      if (locContent.includes(BANNER_MARKER)) {
+      // Locale is a fallback. Run injectBanner unconditionally — it's
+      // idempotent for the marker itself but will add the
+      // `fallback: true` frontmatter flag on files that previously had
+      // the banner but predate the flag.
+      const updated = injectBanner(locContent);
+      if (updated === locContent) {
+        alreadyMarked += 1;
+      } else if (locContent.includes(BANNER_MARKER)) {
+        // Already banner-marked but flag was missing — silent upgrade.
+        writeFileSync(locPath, updated);
         alreadyMarked += 1;
       } else {
-        writeFileSync(locPath, injectBanner(locContent));
+        writeFileSync(locPath, updated);
         marked += 1;
       }
     } else if (locContent.includes(BANNER_MARKER)) {

@@ -53,7 +53,14 @@ type Props = {
   params: Promise<{ locale: string }>;
 };
 
-const FRONTMATTER: Record<string, { title?: string; description?: string }> = {
+type Frontmatter = {
+  title?: string;
+  description?: string;
+  /** True when this locale's MDX is an EN copy pending translation. */
+  fallback?: boolean;
+};
+
+const FRONTMATTER: Record<string, Frontmatter> = {
   en: enFrontmatter ?? {},
   zh: zhFrontmatter ?? {},
   de: deFrontmatter ?? {},
@@ -67,10 +74,21 @@ function localizedDocsUrl(locale: string): string {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const fm = FRONTMATTER[locale] ?? FRONTMATTER.en;
-  const canonical = localizedDocsUrl(locale);
+
+  // SEO policy for fallback variants (zh/de pages whose content is an EN
+  // copy): canonicalize to the EN source and noindex so search engines
+  // don't index duplicate English content under localized URLs. The
+  // \`fallback: true\` flag is maintained by
+  // scripts/docs-migration/mark-fallbacks.mjs.
+  const isFallback = fm.fallback === true;
+  const canonical = isFallback
+    ? localizedDocsUrl('en')
+    : localizedDocsUrl(locale);
+
   return {
     title: fm.title ? \`\${fm.title} · Aster Cloud Docs\` : 'Aster Cloud Docs',
     description: fm.description,
+    ...(isFallback && { robots: { index: false, follow: true } }),
     alternates: {
       canonical,
       languages: {

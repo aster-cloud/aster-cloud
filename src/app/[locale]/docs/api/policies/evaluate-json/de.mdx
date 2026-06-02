@@ -110,7 +110,7 @@ curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-json \
 ```
 
 ```js [JavaScript]
-// Core-IR-Objekt aufbauen
+// Build the Core IR object
 const coreIR = {
   moduleName: 'Discount',
   functions: [
@@ -141,7 +141,7 @@ const response = await fetch(
       'X-Tenant-ID': 'acme-corp',
     },
     body: JSON.stringify({
-      // Core IR muss als String serialisiert werden
+      // Core IR must be serialized as a string
       policy: JSON.stringify(coreIR),
       context: {
         order: { total: 150 },

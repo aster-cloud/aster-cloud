@@ -96,9 +96,17 @@ test.describe('Cloud docs - locale switcher', () => {
 });
 
 test.describe('Cloud docs - translation fallback banner', () => {
+  // audit/logs is one of the 6 pages still pending zh/de translation
+  // (see .claude/docs-translation-status.md). When it eventually gets
+  // a real translation, switch this assertion to another deferred page.
   test('zh API page shows fallback banner when content is EN copy', async ({ page }) => {
-    await page.goto('/zh/docs/api/policies/evaluate');
+    await page.goto('/zh/docs/api/audit/logs');
     await expect(page.getByText('翻译进行中')).toBeVisible();
+  });
+
+  test('zh policies/evaluate does NOT show fallback banner (real translation)', async ({ page }) => {
+    await page.goto('/zh/docs/api/policies/evaluate');
+    await expect(page.getByText('翻译进行中')).not.toBeVisible();
   });
 
   test('zh getting-started/overview does NOT show fallback banner (real translation)', async ({ page }) => {
@@ -107,7 +115,7 @@ test.describe('Cloud docs - translation fallback banner', () => {
   });
 
   test('en pages never show fallback banner', async ({ page }) => {
-    await page.goto('/docs/api/policies/evaluate');
+    await page.goto('/docs/api/audit/logs');
     // The banner text is locale-scoped via i18n; EN text isn't shown
     // because the banner isn't injected into en.mdx.
     await expect(page.getByText('Translation in progress')).not.toBeVisible();
@@ -169,9 +177,33 @@ test.describe('Cloud docs - SEO heads', () => {
   });
 });
 
+test.describe('Cloud docs - fallback SEO', () => {
+  test('fallback page canonicalizes to EN + emits robots noindex', async ({ page }) => {
+    await page.goto('/zh/docs/api/audit/logs');
+    const canonical = page.locator('link[rel="canonical"]');
+    await expect(canonical).toHaveAttribute(
+      'href',
+      'https://aster-lang.cloud/docs/api/audit/logs',
+    );
+    const robots = page.locator('meta[name="robots"]');
+    await expect(robots).toHaveAttribute('content', /noindex/);
+  });
+
+  test('translated page canonicalizes to locale URL + no noindex', async ({ page }) => {
+    await page.goto('/zh/docs/api/policies/evaluate');
+    const canonical = page.locator('link[rel="canonical"]');
+    await expect(canonical).toHaveAttribute(
+      'href',
+      'https://aster-lang.cloud/zh/docs/api/policies/evaluate',
+    );
+    const robots = page.locator('meta[name="robots"]');
+    await expect(robots).toHaveCount(0);
+  });
+});
+
 test.describe('Cloud docs - fallback banner placement', () => {
   test('banner sits between page H1 and the first H2 (DOM order)', async ({ page }) => {
-    await page.goto('/zh/docs/api/policies/evaluate');
+    await page.goto('/zh/docs/api/audit/logs');
     const article = page.locator('article.docs-article');
     await expect(article).toBeVisible();
     await expect(article.getByText('翻译进行中')).toBeVisible();

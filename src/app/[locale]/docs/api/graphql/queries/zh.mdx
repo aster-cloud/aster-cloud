@@ -4,7 +4,7 @@ title: "GraphQL 查询"
 
 # GraphQL 查询
 
-所有查询都是以 `POST /graphql` 发送的只读操作。查询需要 HMAC 请求签名和 `X-Tenant-Id` 请求头。签名计算细节参阅 [认证](/docs/getting-started/authentication)；请求格式参阅 [概览](/docs/api/graphql/overview)。
+所有查询都是以 `POST /graphql` 发送的只读操作。查询需要 HMAC 请求签名和 `X-Tenant-Id` 请求头。签名计算细节参阅 [认证](/zh/docs/getting-started/authentication)；请求格式参阅 [概览](/zh/docs/api/graphql/overview)。
 
 ---
 
@@ -385,7 +385,7 @@ query EvaluatePersonalLoan(
 
 <CodeGroup>
 
-```bash [curl — evaluatePersonalLoan 示例]
+```bash [curl — evaluatePersonalLoan example]
 curl -X POST https://policy.aster-lang.dev/graphql \
   -H "Content-Type: application/json" \
   -H "X-Tenant-Id: acme-corp" \
@@ -405,7 +405,7 @@ curl -X POST https://policy.aster-lang.dev/graphql \
   }'
 ```
 
-```js [JavaScript — evaluatePersonalLoan 示例]
+```js [JavaScript — evaluatePersonalLoan example]
 const response = await fetch('https://policy.aster-lang.dev/graphql', {
   method: 'POST',
   headers: {

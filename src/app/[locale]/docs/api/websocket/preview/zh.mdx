@@ -119,7 +119,7 @@ ws.addEventListener('message', (event) => {
   const msg = JSON.parse(event.data);
 
   if (msg.status === 'connected') {
-    // 连接后发送评估请求
+    // Send an evaluation request once connected
     ws.send(JSON.stringify({
       policyModule:   'Loan.Approval',
       policyFunction: 'isEligible',
