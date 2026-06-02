@@ -1,41 +1,39 @@
 ---
-title: "Version Comparison"
+title: "Versionsvergleich"
 ---
 
-# Version Comparison
+# Versionsvergleich
 
-<TranslationFallbackBanner />
+Vergleichen Sie die Performance-Metriken zweier Policy-Versionen Seite an Seite über ein gemeinsames Beobachtungsfenster. Dies ist nützlich, um zu validieren, dass eine neu bereitgestellte Version mindestens so gut abschneidet wie ihre Vorgängerin, bevor sie vollständig ausgerollt wird.
 
-Compare the performance metrics of two policy versions side-by-side over a shared observation window. This is useful for validating that a newly deployed version performs at least as well as its predecessor before committing to full rollout.
-
-## Endpoint
+## Endpunkt
 
 `GET /api/v1/audit/compare`
 
-## Required Role
+## Erforderliche Rolle
 
 `ADMIN`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Query Parameters
+## Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `versionA` | `string` | Yes | Identifier of the first policy version (typically the baseline or current version). |
-| `versionB` | `string` | Yes | Identifier of the second policy version (typically the candidate or newer version). |
-| `days` | `integer` | No | Number of days of history to compare. Defaults to `30`. Maximum: `90`. |
+| `versionA` | `string` | Ja | Bezeichner der ersten Policy-Version (typischerweise Baseline oder aktuelle Version). |
+| `versionB` | `string` | Ja | Bezeichner der zweiten Policy-Version (typischerweise Kandidaten- oder neuere Version). |
+| `days` | `integer` | Nein | Anzahl der Tage Historie, die verglichen werden sollen. Standard: `30`. Maximum: `90`. |
 
-<Callout type="warning" title="Time Window Limit">
-`days` must not exceed **90**. Requests with a larger value will be rejected with `400 Bad Request`.
+<Callout type="warning" title="Limit für Zeitfenster">
+`days` darf **90** nicht überschreiten. Anfragen mit einem größeren Wert werden mit `400 Bad Request` abgelehnt.
 </Callout>
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -70,39 +68,39 @@ Compare the performance metrics of two policy versions side-by-side over a share
 }
 ```
 
-### Metric Fields
+### Metrik-Felder
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `totalEvaluations` | `number` | Total number of policy evaluations recorded for this version within the window. |
-| `avgExecutionTimeMs` | `number` | Mean wall-clock execution time in milliseconds. |
-| `p95ExecutionTimeMs` | `number` | 95th-percentile execution time in milliseconds. |
-| `p99ExecutionTimeMs` | `number` | 99th-percentile execution time in milliseconds. |
-| `failureRate` | `number` | Fraction of evaluations that resulted in an error (0.0 to 1.0). |
-| `errorCount` | `number` | Absolute number of failed evaluations. |
+| `totalEvaluations` | `number` | Gesamtzahl der für diese Version im Fenster aufgezeichneten Policy-Evaluierungen. |
+| `avgExecutionTimeMs` | `number` | Mittlere Wanduhr-Ausführungszeit in Millisekunden. |
+| `p95ExecutionTimeMs` | `number` | 95.-Perzentil-Ausführungszeit in Millisekunden. |
+| `p99ExecutionTimeMs` | `number` | 99.-Perzentil-Ausführungszeit in Millisekunden. |
+| `failureRate` | `number` | Anteil der Evaluierungen, die einen Fehler ergaben (0.0 bis 1.0). |
+| `errorCount` | `number` | Absolute Anzahl fehlgeschlagener Evaluierungen. |
 
-### Comparison Fields
+### Vergleichsfelder
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `avgExecutionTimeDeltaMs` | `number` | Difference in average execution time: `versionB.avg − versionA.avg`. Negative means versionB is faster. |
-| `avgExecutionTimeDeltaPct` | `number` | Same delta expressed as a percentage of versionA's average. |
-| `failureRateDelta` | `number` | Difference in failure rate: `versionB.failureRate − versionA.failureRate`. Negative means versionB is more reliable. |
-| `failureRateDeltaPct` | `number` | Same delta expressed as a percentage of versionA's failure rate. |
-| `verdict` | `string` | Summary judgment: `VERSION_A_BETTER`, `VERSION_B_BETTER`, or `COMPARABLE`. |
+| `avgExecutionTimeDeltaMs` | `number` | Differenz der durchschnittlichen Ausführungszeit: `versionB.avg − versionA.avg`. Negativ bedeutet, versionB ist schneller. |
+| `avgExecutionTimeDeltaPct` | `number` | Dieselbe Differenz als Prozentsatz des Durchschnitts von versionA. |
+| `failureRateDelta` | `number` | Differenz der Fehlerrate: `versionB.failureRate − versionA.failureRate`. Negativ bedeutet, versionB ist zuverlässiger. |
+| `failureRateDeltaPct` | `number` | Dieselbe Differenz als Prozentsatz der Fehlerrate von versionA. |
+| `verdict` | `string` | Zusammenfassendes Urteil: `VERSION_A_BETTER`, `VERSION_B_BETTER` oder `COMPARABLE`. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Comparison completed successfully. |
-| `400 Bad Request` | Missing required parameters, identical version identifiers, or `days` exceeds the 90-day limit. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `404 Not Found` | One or both version identifiers do not exist. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Vergleich erfolgreich abgeschlossen. |
+| `400 Bad Request` | Fehlende Pflicht-Parameter, identische Versions-Bezeichner oder `days` überschreitet das 90-Tage-Limit. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `ADMIN`-Rolle. |
+| `404 Not Found` | Einer oder beide Versions-Bezeichner existieren nicht. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -138,7 +136,7 @@ if (comparison.comparison.verdict === 'VERSION_B_BETTER') {
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 {

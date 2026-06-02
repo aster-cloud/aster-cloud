@@ -1,41 +1,39 @@
 ---
-title: "Version Comparison"
+title: "版本比较"
 ---
 
-# Version Comparison
+# 版本比较
 
-<TranslationFallbackBanner />
+在共享观察窗口内并排比较两个策略版本的性能指标。这有助于在全面发布之前验证新部署的版本至少与其前任表现相当。
 
-Compare the performance metrics of two policy versions side-by-side over a shared observation window. This is useful for validating that a newly deployed version performs at least as well as its predecessor before committing to full rollout.
-
-## Endpoint
+## 端点
 
 `GET /api/v1/audit/compare`
 
-## Required Role
+## 必需角色
 
 `ADMIN`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Query Parameters
+## 查询参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `versionA` | `string` | Yes | Identifier of the first policy version (typically the baseline or current version). |
-| `versionB` | `string` | Yes | Identifier of the second policy version (typically the candidate or newer version). |
-| `days` | `integer` | No | Number of days of history to compare. Defaults to `30`. Maximum: `90`. |
+| `versionA` | `string` | 是 | 第一个策略版本的标识符（通常是基线或当前版本）。 |
+| `versionB` | `string` | 是 | 第二个策略版本的标识符（通常是候选或较新版本）。 |
+| `days` | `integer` | 否 | 比较的历史天数。默认为 `30`。最大值：`90`。 |
 
-<Callout type="warning" title="Time Window Limit">
-`days` must not exceed **90**. Requests with a larger value will be rejected with `400 Bad Request`.
+<Callout type="warning" title="时间窗口限制">
+`days` 不得超过 **90**。超过此值的请求将返回 `400 Bad Request`。
 </Callout>
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -70,39 +68,39 @@ Compare the performance metrics of two policy versions side-by-side over a share
 }
 ```
 
-### Metric Fields
+### 指标字段
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `totalEvaluations` | `number` | Total number of policy evaluations recorded for this version within the window. |
-| `avgExecutionTimeMs` | `number` | Mean wall-clock execution time in milliseconds. |
-| `p95ExecutionTimeMs` | `number` | 95th-percentile execution time in milliseconds. |
-| `p99ExecutionTimeMs` | `number` | 99th-percentile execution time in milliseconds. |
-| `failureRate` | `number` | Fraction of evaluations that resulted in an error (0.0 to 1.0). |
-| `errorCount` | `number` | Absolute number of failed evaluations. |
+| `totalEvaluations` | `number` | 窗口内该版本记录的策略评估总次数。 |
+| `avgExecutionTimeMs` | `number` | 平均挂钟执行时间（毫秒）。 |
+| `p95ExecutionTimeMs` | `number` | 95 百分位执行时间（毫秒）。 |
+| `p99ExecutionTimeMs` | `number` | 99 百分位执行时间（毫秒）。 |
+| `failureRate` | `number` | 评估失败的比率（0.0 到 1.0）。 |
+| `errorCount` | `number` | 失败评估的绝对数量。 |
 
-### Comparison Fields
+### 比较字段
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `avgExecutionTimeDeltaMs` | `number` | Difference in average execution time: `versionB.avg − versionA.avg`. Negative means versionB is faster. |
-| `avgExecutionTimeDeltaPct` | `number` | Same delta expressed as a percentage of versionA's average. |
-| `failureRateDelta` | `number` | Difference in failure rate: `versionB.failureRate − versionA.failureRate`. Negative means versionB is more reliable. |
-| `failureRateDeltaPct` | `number` | Same delta expressed as a percentage of versionA's failure rate. |
-| `verdict` | `string` | Summary judgment: `VERSION_A_BETTER`, `VERSION_B_BETTER`, or `COMPARABLE`. |
+| `avgExecutionTimeDeltaMs` | `number` | 平均执行时间差：`versionB.avg − versionA.avg`。负值表示 versionB 更快。 |
+| `avgExecutionTimeDeltaPct` | `number` | 同一差值以 versionA 平均值的百分比表示。 |
+| `failureRateDelta` | `number` | 失败率差：`versionB.failureRate − versionA.failureRate`。负值表示 versionB 更可靠。 |
+| `failureRateDeltaPct` | `number` | 同一差值以 versionA 失败率的百分比表示。 |
+| `verdict` | `string` | 总结判断：`VERSION_A_BETTER`、`VERSION_B_BETTER` 或 `COMPARABLE`。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Comparison completed successfully. |
-| `400 Bad Request` | Missing required parameters, identical version identifiers, or `days` exceeds the 90-day limit. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `404 Not Found` | One or both version identifiers do not exist. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 比较成功完成。 |
+| `400 Bad Request` | 缺少必需参数、版本标识符相同，或 `days` 超过 90 天上限。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `ADMIN` 角色。 |
+| `404 Not Found` | 一个或两个版本标识符不存在。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -138,7 +136,7 @@ if (comparison.comparison.verdict === 'VERSION_B_BETTER') {
 
 </CodeGroup>
 
-### Example Response
+### 示例响应
 
 ```json
 {
