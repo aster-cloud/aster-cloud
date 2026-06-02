@@ -1,35 +1,33 @@
 ---
-title: "Workflow State"
+title: "Workflow-Status"
 ---
 
-# Workflow State
+# Workflow-Status
 
-<TranslationFallbackBanner />
+Rufen Sie den aktuellen materialisierten Status eines Workflows ab. Der Status wird aus dem Event-Log des Workflows abgeleitet und kann durch einen periodischen Snapshot ergänzt werden, um Lesevorgänge zu beschleunigen. Nutzen Sie diesen Endpunkt, wenn Sie den neuesten Status und das Ergebnis benötigen, ohne die vollständige Ereignishistorie abzurufen.
 
-Retrieve the current materialized state of a workflow. The state is derived from the workflow's event log and may be supplemented by a periodic snapshot to accelerate reads. Use this endpoint when you need the latest status and result without fetching the full event history.
-
-## Endpoint
+## Endpunkt
 
 `GET /api/v1/workflows/{workflowId}/state`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Path Parameters
+## Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `workflowId` | `string` | The unique identifier of the workflow. |
+| `workflowId` | `string` | Der eindeutige Bezeichner des Workflows. |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -49,40 +47,40 @@ Retrieve the current materialized state of a workflow. The state is derived from
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `workflowId` | `string` | Unique identifier of the workflow. |
-| `status` | `string` | Current lifecycle status. See [Status Values](#status-values) below. |
-| `lastEventSeq` | `integer` | Sequence number of the most recently applied event. |
-| `result` | `any \| null` | Final output produced by the workflow. Populated once `status` reaches a terminal state (`COMPLETED`, `FAILED`, `COMPENSATED`, `COMPENSATION_FAILED`). `null` for non-terminal workflows. |
-| `snapshot` | `object \| null` | Opaque intermediate state snapshot used to accelerate event replay. `null` if no snapshot has been taken yet. |
-| `snapshotSeq` | `integer \| null` | Sequence number at which the snapshot was taken. `null` when `snapshot` is `null`. |
-| `createdAt` | `string` | ISO 8601 timestamp when the workflow was created. |
-| `updatedAt` | `string` | ISO 8601 timestamp of the most recent state change. |
+| `workflowId` | `string` | Eindeutiger Bezeichner des Workflows. |
+| `status` | `string` | Aktueller Lifecycle-Status. Siehe [Statuswerte](#status-values) unten. |
+| `lastEventSeq` | `integer` | Sequenznummer des zuletzt angewendeten Ereignisses. |
+| `result` | `any \| null` | Vom Workflow erzeugte finale Ausgabe. Befüllt, sobald `status` einen Endzustand erreicht (`COMPLETED`, `FAILED`, `COMPENSATED`, `COMPENSATION_FAILED`). `null` für nicht abgeschlossene Workflows. |
+| `snapshot` | `object \| null` | Opaker Snapshot des Zwischenzustands zur Beschleunigung des Event-Replays. `null`, wenn noch kein Snapshot erstellt wurde. |
+| `snapshotSeq` | `integer \| null` | Sequenznummer, bei der der Snapshot erstellt wurde. `null`, wenn `snapshot` `null` ist. |
+| `createdAt` | `string` | ISO 8601 Zeitstempel, wann der Workflow erstellt wurde. |
+| `updatedAt` | `string` | ISO 8601 Zeitstempel der letzten Statusänderung. |
 
-## Status Values
+## Statuswerte
 
-| Status | Terminal | Description |
+| Status | Endzustand | Beschreibung |
 |--------|----------|-------------|
-| `READY` | No | Workflow has been created but not yet started. |
-| `RUNNING` | No | Workflow is actively executing. |
-| `COMPLETED` | Yes | Workflow finished successfully. `result` is populated. |
-| `FAILED` | Yes | Workflow terminated due to an unrecoverable error. |
-| `COMPENSATING` | No | Workflow is executing compensation (rollback) steps. |
-| `COMPENSATED` | Yes | Compensation completed successfully. |
-| `COMPENSATION_FAILED` | Yes | Compensation steps also failed. Manual intervention may be required. |
+| `READY` | Nein | Workflow wurde erstellt, aber noch nicht gestartet. |
+| `RUNNING` | Nein | Workflow läuft gerade. |
+| `COMPLETED` | Ja | Workflow erfolgreich abgeschlossen. `result` ist befüllt. |
+| `FAILED` | Ja | Workflow wurde aufgrund eines nicht wiederherstellbaren Fehlers beendet. |
+| `COMPENSATING` | Nein | Workflow führt Kompensationsschritte (Rollback) aus. |
+| `COMPENSATED` | Ja | Kompensation erfolgreich abgeschlossen. |
+| `COMPENSATION_FAILED` | Ja | Auch die Kompensationsschritte schlugen fehl. Manuelles Eingreifen kann erforderlich sein. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Request succeeded. Returns the current workflow state. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role, or the workflow belongs to a different tenant. |
-| `404 Not Found` | No workflow found with the given `workflowId`. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Anfrage erfolgreich. Gibt den aktuellen Workflow-Status zurück. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle, oder der Workflow gehört einem anderen Mandanten. |
+| `404 Not Found` | Kein Workflow mit der angegebenen `workflowId` gefunden. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -115,7 +113,7 @@ if (state.status === 'COMPLETED') {
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 {

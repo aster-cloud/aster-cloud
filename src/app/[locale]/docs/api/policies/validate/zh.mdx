@@ -1,32 +1,30 @@
 ---
-title: "Validate Policy Exists"
+title: "验证策略存在"
 ---
 
-# Validate Policy Exists
+# 验证策略存在
 
-<TranslationFallbackBanner />
+检查由模块和函数名标识的策略是否已部署且可调用。此端点不执行任何策略逻辑；仅确认策略已注册且处于可运行状态。
 
-Check whether a policy identified by module and function name is deployed and callable. This endpoint does not execute any policy logic; it only confirms that the policy is registered and in a runnable state.
+可用此端点为评估请求做预检、确认部署成功，或为关键策略实现健康检查。
 
-Use this endpoint to pre-flight an evaluation request, to verify a deployment succeeded, or to implement health checks for critical policies.
-
-## Endpoint
+## 端点
 
 `POST /api/v1/policies/validate`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -35,12 +33,12 @@ Use this endpoint to pre-flight an evaluation request, to verify a deployment su
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | Fully-qualified module name to look up (e.g. `"Loan.Approval"`). |
-| `policyFunction` | `string` | Yes | Function name within the module to validate (e.g. `"isEligible"`). |
+| `policyModule` | `string` | 是 | 要查找的完全限定模块名（如 `"Loan.Approval"`）。 |
+| `policyFunction` | `string` | 是 | 模块内要验证的函数名（如 `"isEligible"`）。 |
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -49,22 +47,22 @@ Use this endpoint to pre-flight an evaluation request, to verify a deployment su
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `valid` | `boolean` | `true` if the policy exists, is deployed, and can be called. `false` if it is not found, is in a failed deployment state, or is otherwise uncallable. |
-| `error` | `string \| null` | Descriptive reason why `valid` is `false`; `null` when `valid` is `true`. |
+| `valid` | `boolean` | 若策略存在、已部署且可调用则为 `true`。未找到、处于失败的部署状态或其他不可调用情形为 `false`。 |
+| `error` | `string \| null` | `valid` 为 `false` 时的描述性原因；`valid` 为 `true` 时为 `null`。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Validation check completed. A `200` response with `valid: false` means the policy does not exist or is not callable — this is a successful check, not an HTTP error. |
-| `400 Bad Request` | Malformed request body or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure prevented the check from completing. |
+| `200 OK` | 验证检查完成。`200` 响应配合 `valid: false` 表示策略不存在或不可调用 —— 这是一次成功的检查，不是 HTTP 错误。 |
+| `400 Bad Request` | 请求体格式错误或缺少必需字段。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `500 Internal Server Error` | 非预期的引擎故障导致检查未能完成。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -107,7 +105,7 @@ if (!data.valid) {
 
 </CodeGroup>
 
-### Example Response (Policy Found)
+### 示例响应（策略存在）
 
 ```json
 {
@@ -116,7 +114,7 @@ if (!data.valid) {
 }
 ```
 
-### Example Response (Policy Not Found)
+### 示例响应（策略未找到）
 
 ```json
 {
@@ -125,7 +123,7 @@ if (!data.valid) {
 }
 ```
 
-### Example Response (Policy in Failed State)
+### 示例响应（策略处于失败状态）
 
 ```json
 {

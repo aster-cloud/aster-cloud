@@ -1,41 +1,39 @@
 ---
-title: "Get Policy Version History"
+title: "获取策略版本历史"
 ---
 
-# Get Policy Version History
+# 获取策略版本历史
 
-<TranslationFallbackBanner />
+获取由内部策略 ID 标识的策略的完整版本历史。响应中的每个条目代表一个已保存的独立版本，包括当前激活的版本。
 
-Retrieve the full version history for a policy identified by its internal policy ID. Each entry in the response represents a distinct version that has been saved, including which version is currently active.
-
-## Endpoint
+## 端点
 
 `GET /api/v1/policies/{policyId}/versions`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Path Parameters
+## 路径参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `policyId` | `string` | Yes | The internal UUID of the policy resource. Obtain this value from the policy management API or the Aster dashboard. |
+| `policyId` | `string` | 是 | 策略资源的内部 UUID。从策略管理 API 或 Aster 仪表板获取此值。 |
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
-None.
+无。
 
-## Response Body
+## 响应体
 
-An array of version objects ordered by version number in ascending order.
+按版本号升序排列的版本对象数组。
 
 ```json
 [
@@ -51,27 +49,27 @@ An array of version objects ordered by version number in ascending order.
 ]
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `version` | `number` | Monotonically increasing integer version number. Version `1` is the initial deployment. |
-| `active` | `boolean` | `true` for exactly one entry in the array — the version currently serving evaluation requests. |
-| `moduleName` | `string` | The CNL module name declared in this version of the policy source. |
-| `functionName` | `string` | The primary function name for this version of the policy. |
-| `createdAt` | `string` | ISO 8601 timestamp recording when this version was saved (e.g. `"2024-03-15T09:30:00Z"`). |
-| `createdBy` | `string` | Identifier (email or user ID) of the principal who created this version. |
-| `notes` | `string` | Optional human-readable deployment notes attached at the time of version creation. Empty string if no notes were provided. |
+| `version` | `number` | 单调递增的整数版本号。版本 `1` 为初始部署。 |
+| `active` | `boolean` | 数组中恰好有一个条目为 `true` —— 即当前处理评估请求的版本。 |
+| `moduleName` | `string` | 此版本策略源代码中声明的 CNL 模块名。 |
+| `functionName` | `string` | 此版本策略的主函数名。 |
+| `createdAt` | `string` | 记录此版本保存时间的 ISO 8601 时间戳（如 `"2024-03-15T09:30:00Z"`）。 |
+| `createdBy` | `string` | 创建此版本的主体的标识符（邮箱或用户 ID）。 |
+| `notes` | `string` | 创建版本时附带的可选人类可读部署备注。未提供备注则为空字符串。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Version history returned. Empty array means the policy exists but has no recorded versions. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `404 Not Found` | No policy found for the given `policyId` within the tenant. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 返回版本历史。空数组表示策略存在但无版本记录。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `404 Not Found` | 租户内未找到给定 `policyId` 的策略。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -109,7 +107,7 @@ versions.forEach((v) => {
 
 </CodeGroup>
 
-### Example Response
+### 示例响应
 
 ```json
 [

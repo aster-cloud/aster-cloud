@@ -1,43 +1,41 @@
 ---
-title: "Workflow Events"
+title: "Workflow-Ereignisse"
 ---
 
-# Workflow Events
+# Workflow-Ereignisse
 
-<TranslationFallbackBanner />
+Rufen Sie die geordnete Sequenz von Ereignissen ab, aus denen die Ausführungshistorie eines Workflows besteht. Ereignisse sind die fundamentale Einheit des Event-Sourcing-Modells für Workflows — der aktuelle Zustand eines beliebigen Workflows kann jederzeit durch Wiedergabe seines Event-Logs von Anfang an rekonstruiert werden.
 
-Retrieve the ordered sequence of events that make up a workflow's execution history. Events are the fundamental unit of the workflow event-sourcing model — the current state of any workflow can always be reconstructed by replaying its event log from the beginning.
-
-## Endpoint
+## Endpunkt
 
 `GET /api/v1/workflows/{workflowId}/events`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Path Parameters
+## Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `workflowId` | `string` | The unique identifier of the workflow. |
+| `workflowId` | `string` | Der eindeutige Bezeichner des Workflows. |
 
-## Query Parameters
+## Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `fromSeq` | `integer` | No | Return only events with a sequence number greater than or equal to this value. Defaults to `0` (all events). Use this to poll for new events after a known position without re-fetching the full history. |
+| `fromSeq` | `integer` | Nein | Nur Ereignisse mit einer Sequenznummer größer oder gleich diesem Wert zurückgeben. Standard ist `0` (alle Ereignisse). Nutzen Sie dies, um nach neuen Ereignissen ab einer bekannten Position zu pollen, ohne die vollständige Historie erneut abzurufen. |
 
-## Response Body
+## Response-Body
 
-The response is a JSON array of event objects, ordered by sequence number ascending.
+Die Antwort ist ein JSON-Array von Ereignis-Objekten, aufsteigend nach Sequenznummer sortiert.
 
 ```json
 [
@@ -72,36 +70,36 @@ The response is a JSON array of event objects, ordered by sequence number ascend
 ]
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `sequence` | `integer` | Monotonically increasing sequence number within the workflow. Gaps indicate missing or compacted events. |
-| `workflowId` | `string` | Identifier of the owning workflow (mirrors the path parameter). |
-| `eventType` | `string` | Event classification (e.g. `WORKFLOW_STARTED`, `POLICY_EVALUATED`, `WORKFLOW_COMPLETED`, `COMPENSATION_STARTED`). |
-| `payload` | `object` | Event-specific data. Structure varies by `eventType`. |
-| `occurredAt` | `string` | ISO 8601 timestamp when the event was recorded. |
+| `sequence` | `integer` | Monoton steigende Sequenznummer innerhalb des Workflows. Lücken weisen auf fehlende oder verdichtete Ereignisse hin. |
+| `workflowId` | `string` | Bezeichner des zugehörigen Workflows (spiegelt den Pfad-Parameter). |
+| `eventType` | `string` | Ereignisklassifizierung (z. B. `WORKFLOW_STARTED`, `POLICY_EVALUATED`, `WORKFLOW_COMPLETED`, `COMPENSATION_STARTED`). |
+| `payload` | `object` | Ereignisspezifische Daten. Die Struktur variiert je `eventType`. |
+| `occurredAt` | `string` | ISO 8601 Zeitstempel, wann das Ereignis aufgezeichnet wurde. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Request succeeded. Returns an array (may be empty if `fromSeq` is beyond the last recorded event). |
-| `400 Bad Request` | Malformed `fromSeq` parameter. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role, or the workflow belongs to a different tenant. |
-| `404 Not Found` | No workflow found with the given `workflowId`. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Anfrage erfolgreich. Gibt ein Array zurück (kann leer sein, wenn `fromSeq` über dem letzten aufgezeichneten Ereignis liegt). |
+| `400 Bad Request` | Fehlerhafter `fromSeq`-Parameter. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle, oder der Workflow gehört einem anderen Mandanten. |
+| `404 Not Found` | Kein Workflow mit der angegebenen `workflowId` gefunden. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
 ```bash [curl]
-# Fetch all events for a workflow
+# Alle Ereignisse eines Workflows abrufen
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/wf-abc123/events" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
 
-# Poll for new events after sequence 42
+# Nach neuen Ereignissen nach Sequenz 42 pollen
 curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/wf-abc123/events?fromSeq=43" \
   -H "Authorization: Bearer <token>" \
   -H "X-Tenant-ID: acme-corp"
@@ -110,7 +108,7 @@ curl -X GET "https://policy.aster-lang.dev/api/v1/workflows/wf-abc123/events?fro
 ```js [JavaScript]
 const workflowId = 'wf-abc123';
 
-// Fetch all events
+// Alle Ereignisse abrufen
 const response = await fetch(
   `https://policy.aster-lang.dev/api/v1/workflows/${workflowId}/events`,
   {
@@ -123,7 +121,7 @@ const response = await fetch(
 
 const events = await response.json();
 
-// Poll for new events after a known sequence
+// Nach neuen Ereignissen nach einer bekannten Sequenz pollen
 async function pollNewEvents(workflowId, lastSeq) {
   const params = new URLSearchParams({ fromSeq: String(lastSeq + 1) });
   const res = await fetch(

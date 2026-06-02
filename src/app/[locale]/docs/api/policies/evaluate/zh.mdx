@@ -1,30 +1,28 @@
 ---
-title: "Evaluate Policy"
+title: "评估策略"
 ---
 
-# Evaluate Policy
+# 评估策略
 
-<TranslationFallbackBanner />
+按模块和函数名评估已部署的策略。策略必须先部署到引擎，才能通过此端点调用。
 
-Evaluate a deployed policy by module and function name. The policy must already be deployed to the engine before it can be called through this endpoint.
-
-## Endpoint
+## 端点
 
 `POST /api/v1/policies/evaluate`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -34,13 +32,13 @@ Evaluate a deployed policy by module and function name. The policy must already 
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | The fully-qualified module name as declared in the CNL source (e.g. `"Loan.Approval"`). |
-| `policyFunction` | `string` | Yes | The function name within the module to invoke (e.g. `"isEligible"`). |
-| `context` | `array<object>` | Yes | An ordered list of argument objects passed positionally to the policy function. The structure of each object must match the parameter schema declared in the policy. Pass an empty array `[]` for zero-argument functions. |
+| `policyModule` | `string` | 是 | CNL 源代码中声明的完全限定模块名（如 `"Loan.Approval"`）。 |
+| `policyFunction` | `string` | 是 | 要调用的模块内函数名（如 `"isEligible"`）。 |
+| `context` | `array<object>` | 是 | 按位置传递给策略函数的参数对象有序列表。每个对象的结构必须与策略中声明的参数 schema 匹配。零参数函数请传入空数组 `[]`。 |
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -51,25 +49,25 @@ Evaluate a deployed policy by module and function name. The policy must already 
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `result` | `any` | The value returned by the policy function. The type matches the declared return type of the function (boolean, number, string, or object). |
-| `executionTimeMs` | `number` | Wall-clock time in milliseconds from request receipt to response dispatch. |
-| `error` | `string \| null` | Human-readable error message if evaluation failed; `null` on success. |
-| `decisionTrace` | `object \| null` | Structured trace of rule evaluation steps. Always `null` for this endpoint. Use `/evaluate-source?trace=true` to obtain a trace. |
+| `result` | `any` | 策略函数返回的值。类型匹配函数声明的返回类型（boolean、number、string 或 object）。 |
+| `executionTimeMs` | `number` | 从接收请求到分发响应的挂钟时间（毫秒）。 |
+| `error` | `string \| null` | 评估失败时的人类可读错误消息；成功时为 `null`。 |
+| `decisionTrace` | `object \| null` | 规则评估步骤的结构化追踪。此端点始终为 `null`。需要追踪请使用 `/evaluate-source?trace=true`。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Evaluation completed. Check `error` field — a non-null value indicates a policy-level failure while the HTTP call itself succeeded. |
-| `400 Bad Request` | Malformed request body or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `404 Not Found` | No deployed policy found matching `policyModule` + `policyFunction`. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 评估完成。检查 `error` 字段 —— 非 null 值表示 HTTP 调用本身成功但策略层面失败。 |
+| `400 Bad Request` | 请求体格式错误或缺少必需字段。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `404 Not Found` | 未找到与 `policyModule` + `policyFunction` 匹配的已部署策略。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -124,7 +122,7 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Example Response
+### 示例响应
 
 ```json
 {

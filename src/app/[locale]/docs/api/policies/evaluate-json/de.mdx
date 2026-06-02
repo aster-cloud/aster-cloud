@@ -1,30 +1,28 @@
 ---
-title: "Evaluate Core IR JSON Policy"
+title: "Core-IR-JSON-Policy evaluieren"
 ---
 
-# Evaluate Core IR JSON Policy
+# Core-IR-JSON-Policy evaluieren
 
-<TranslationFallbackBanner />
+Evaluieren Sie eine Policy direkt als Core-IR-JSON-Objekt, ohne CNL-Parsen oder Kompilierung. Nutzen Sie diesen Endpunkt, wenn Ihre Anwendung ihre eigene Kompilierungs-Pipeline verwaltet und vorkompilierte Policy-Repräsentationen an die Engine sendet.
 
-Evaluate a policy expressed as a Core IR JSON object directly, without CNL parsing or compilation. Use this endpoint when your application manages its own compilation pipeline and sends pre-compiled policy representations to the engine.
-
-## Endpoint
+## Endpunkt
 
 `POST /api/v1/policies/evaluate-json`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -33,14 +31,14 @@ Evaluate a policy expressed as a Core IR JSON object directly, without CNL parsi
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `policy` | `string` | Yes | A JSON-encoded string containing the Core IR representation of the policy. This is the serialized form produced by the Aster compiler's IR emission stage. The engine deserializes and executes this IR directly, bypassing all CNL parsing steps. |
-| `context` | `object` | Yes | A single object whose keys map to the declared parameter names of the entry-point function in the Core IR. |
+| `policy` | `string` | Ja | Ein JSON-kodierter String, der die Core-IR-Repräsentation der Policy enthält. Dies ist die serialisierte Form, die von der IR-Emission-Stufe des Aster-Compilers erzeugt wird. Die Engine deserialisiert und führt diese IR direkt aus und überspringt alle CNL-Parsing-Schritte. |
+| `context` | `object` | Ja | Ein einzelnes Objekt, dessen Schlüssel den deklarierten Parameternamen der Einstiegsfunktion in der Core IR entsprechen. |
 
-### Core IR JSON Format
+### Core-IR-JSON-Format
 
-The `policy` field must be a string-serialized JSON object conforming to the Core IR schema. A minimal example with a single function:
+Das `policy`-Feld muss ein als String serialisiertes JSON-Objekt sein, das dem Core-IR-Schema entspricht. Ein minimales Beispiel mit einer einzelnen Funktion:
 
 ```json
 {
@@ -64,9 +62,9 @@ The `policy` field must be a string-serialized JSON object conforming to the Cor
 }
 ```
 
-When embedding this as the `policy` field in the request, the object must be JSON-stringified (i.e. the entire object becomes a string value).
+Wenn dies als `policy`-Feld in die Anfrage eingebettet wird, muss das Objekt JSON-stringifiziert werden (d. h. das gesamte Objekt wird zu einem String-Wert).
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -77,24 +75,24 @@ When embedding this as the `policy` field in the request, the object must be JSO
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `result` | `any` | The value returned by the entry-point function in the Core IR. |
-| `executionTimeMs` | `number` | Wall-clock time in milliseconds from IR deserialization to response dispatch. |
-| `error` | `string \| null` | IR deserialization or runtime error message; `null` on success. |
-| `decisionTrace` | `object \| null` | Always `null` for this endpoint. Tracing is not supported for Core IR evaluation. |
+| `result` | `any` | Der von der Einstiegsfunktion in der Core IR zurückgegebene Wert. |
+| `executionTimeMs` | `number` | Wanduhrzeit in Millisekunden von der IR-Deserialisierung bis zum Versand der Antwort. |
+| `error` | `string \| null` | IR-Deserialisierungs- oder Laufzeit-Fehlermeldung; `null` bei Erfolg. |
+| `decisionTrace` | `object \| null` | Für diesen Endpunkt immer `null`. Tracing wird für Core-IR-Evaluierung nicht unterstützt. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Evaluation attempted. Check `error` for IR parsing or runtime failures. |
-| `400 Bad Request` | Malformed request body, invalid Core IR JSON, or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Evaluierung versucht. Prüfen Sie `error` auf IR-Parsing- oder Laufzeit-Fehler. |
+| `400 Bad Request` | Fehlerhafter Request-Body, ungültiges Core-IR-JSON oder fehlende Pflichtfelder. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -112,7 +110,7 @@ curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-json \
 ```
 
 ```js [JavaScript]
-// Build the Core IR object
+// Core-IR-Objekt aufbauen
 const coreIR = {
   moduleName: 'Discount',
   functions: [
@@ -143,7 +141,7 @@ const response = await fetch(
       'X-Tenant-ID': 'acme-corp',
     },
     body: JSON.stringify({
-      // Core IR must be serialized as a string
+      // Core IR muss als String serialisiert werden
       policy: JSON.stringify(coreIR),
       context: {
         order: { total: 150 },
@@ -158,7 +156,7 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 {

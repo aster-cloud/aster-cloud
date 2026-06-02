@@ -1,41 +1,39 @@
 ---
-title: "Get Policy Version History"
+title: "Policy-Versionshistorie abrufen"
 ---
 
-# Get Policy Version History
+# Policy-Versionshistorie abrufen
 
-<TranslationFallbackBanner />
+Rufen Sie die vollständige Versionshistorie für eine Policy ab, die durch ihre interne Policy-ID identifiziert wird. Jeder Eintrag in der Antwort repräsentiert eine eigenständige gespeicherte Version, einschließlich der aktuell aktiven Version.
 
-Retrieve the full version history for a policy identified by its internal policy ID. Each entry in the response represents a distinct version that has been saved, including which version is currently active.
-
-## Endpoint
+## Endpunkt
 
 `GET /api/v1/policies/{policyId}/versions`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Path Parameters
+## Pfad-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `policyId` | `string` | Yes | The internal UUID of the policy resource. Obtain this value from the policy management API or the Aster dashboard. |
+| `policyId` | `string` | Ja | Die interne UUID der Policy-Ressource. Beziehen Sie diesen Wert aus der Policy-Management-API oder dem Aster-Dashboard. |
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
-None.
+Keiner.
 
-## Response Body
+## Response-Body
 
-An array of version objects ordered by version number in ascending order.
+Ein Array von Versions-Objekten, aufsteigend nach Versionsnummer sortiert.
 
 ```json
 [
@@ -51,27 +49,27 @@ An array of version objects ordered by version number in ascending order.
 ]
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `version` | `number` | Monotonically increasing integer version number. Version `1` is the initial deployment. |
-| `active` | `boolean` | `true` for exactly one entry in the array — the version currently serving evaluation requests. |
-| `moduleName` | `string` | The CNL module name declared in this version of the policy source. |
-| `functionName` | `string` | The primary function name for this version of the policy. |
-| `createdAt` | `string` | ISO 8601 timestamp recording when this version was saved (e.g. `"2024-03-15T09:30:00Z"`). |
-| `createdBy` | `string` | Identifier (email or user ID) of the principal who created this version. |
-| `notes` | `string` | Optional human-readable deployment notes attached at the time of version creation. Empty string if no notes were provided. |
+| `version` | `number` | Monoton steigende ganze Versionsnummer. Version `1` ist die Erstbereitstellung. |
+| `active` | `boolean` | Genau ein Eintrag im Array ist `true` — die Version, die aktuell Evaluierungsanfragen bedient. |
+| `moduleName` | `string` | Der in dieser Version des Policy-Quellcodes deklarierte CNL-Modulname. |
+| `functionName` | `string` | Der primäre Funktionsname für diese Version der Policy. |
+| `createdAt` | `string` | ISO 8601 Zeitstempel, der festhält, wann diese Version gespeichert wurde (z. B. `"2024-03-15T09:30:00Z"`). |
+| `createdBy` | `string` | Bezeichner (E-Mail oder Benutzer-ID) des Prinzipals, der diese Version erstellt hat. |
+| `notes` | `string` | Optionale menschenlesbare Bereitstellungs-Notizen, die bei der Erstellung der Version angehängt wurden. Leerer String, falls keine Notizen angegeben wurden. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Version history returned. Empty array means the policy exists but has no recorded versions. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `404 Not Found` | No policy found for the given `policyId` within the tenant. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Versionshistorie zurückgegeben. Ein leeres Array bedeutet, dass die Policy existiert, aber keine aufgezeichneten Versionen hat. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `404 Not Found` | Keine Policy für die angegebene `policyId` innerhalb des Mandanten gefunden. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -109,7 +107,7 @@ versions.forEach((v) => {
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 [

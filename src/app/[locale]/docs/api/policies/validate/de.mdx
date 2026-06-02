@@ -1,32 +1,30 @@
 ---
-title: "Validate Policy Exists"
+title: "Policy-Existenz validieren"
 ---
 
-# Validate Policy Exists
+# Policy-Existenz validieren
 
-<TranslationFallbackBanner />
+Prüfen Sie, ob eine durch Modul- und Funktionsnamen identifizierte Policy bereitgestellt und aufrufbar ist. Dieser Endpunkt führt keinerlei Policy-Logik aus; er bestätigt lediglich, dass die Policy registriert und in einem ausführbaren Zustand ist.
 
-Check whether a policy identified by module and function name is deployed and callable. This endpoint does not execute any policy logic; it only confirms that the policy is registered and in a runnable state.
+Nutzen Sie diesen Endpunkt, um eine Evaluierungsanfrage vorab zu prüfen, eine erfolgreiche Bereitstellung zu verifizieren oder Health-Checks für kritische Policies zu implementieren.
 
-Use this endpoint to pre-flight an evaluation request, to verify a deployment succeeded, or to implement health checks for critical policies.
-
-## Endpoint
+## Endpunkt
 
 `POST /api/v1/policies/validate`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -35,12 +33,12 @@ Use this endpoint to pre-flight an evaluation request, to verify a deployment su
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | Fully-qualified module name to look up (e.g. `"Loan.Approval"`). |
-| `policyFunction` | `string` | Yes | Function name within the module to validate (e.g. `"isEligible"`). |
+| `policyModule` | `string` | Ja | Vollqualifizierter Modulname für die Suche (z. B. `"Loan.Approval"`). |
+| `policyFunction` | `string` | Ja | Zu validierender Funktionsname innerhalb des Moduls (z. B. `"isEligible"`). |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -49,22 +47,22 @@ Use this endpoint to pre-flight an evaluation request, to verify a deployment su
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `valid` | `boolean` | `true` if the policy exists, is deployed, and can be called. `false` if it is not found, is in a failed deployment state, or is otherwise uncallable. |
-| `error` | `string \| null` | Descriptive reason why `valid` is `false`; `null` when `valid` is `true`. |
+| `valid` | `boolean` | `true`, wenn die Policy existiert, bereitgestellt und aufrufbar ist. `false`, wenn sie nicht gefunden wird, in einem fehlgeschlagenen Bereitstellungszustand ist oder anderweitig nicht aufrufbar ist. |
+| `error` | `string \| null` | Beschreibender Grund, warum `valid` `false` ist; `null`, wenn `valid` `true` ist. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Validation check completed. A `200` response with `valid: false` means the policy does not exist or is not callable — this is a successful check, not an HTTP error. |
-| `400 Bad Request` | Malformed request body or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure prevented the check from completing. |
+| `200 OK` | Validierungsprüfung abgeschlossen. Eine `200`-Antwort mit `valid: false` bedeutet, dass die Policy nicht existiert oder nicht aufrufbar ist — dies ist eine erfolgreiche Prüfung, kein HTTP-Fehler. |
+| `400 Bad Request` | Fehlerhafter Request-Body oder fehlende Pflichtfelder. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler verhinderte den Abschluss der Prüfung. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -107,7 +105,7 @@ if (!data.valid) {
 
 </CodeGroup>
 
-### Example Response (Policy Found)
+### Beispiel-Antwort (Policy gefunden)
 
 ```json
 {
@@ -116,7 +114,7 @@ if (!data.valid) {
 }
 ```
 
-### Example Response (Policy Not Found)
+### Beispiel-Antwort (Policy nicht gefunden)
 
 ```json
 {
@@ -125,7 +123,7 @@ if (!data.valid) {
 }
 ```
 
-### Example Response (Policy in Failed State)
+### Beispiel-Antwort (Policy in fehlgeschlagenem Zustand)
 
 ```json
 {

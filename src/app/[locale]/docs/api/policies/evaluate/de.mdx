@@ -1,30 +1,28 @@
 ---
-title: "Evaluate Policy"
+title: "Policy evaluieren"
 ---
 
-# Evaluate Policy
+# Policy evaluieren
 
-<TranslationFallbackBanner />
+Evaluieren Sie eine bereitgestellte Policy anhand von Modul- und Funktionsname. Die Policy muss bereits in der Engine bereitgestellt sein, bevor sie über diesen Endpunkt aufgerufen werden kann.
 
-Evaluate a deployed policy by module and function name. The policy must already be deployed to the engine before it can be called through this endpoint.
-
-## Endpoint
+## Endpunkt
 
 `POST /api/v1/policies/evaluate`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -34,13 +32,13 @@ Evaluate a deployed policy by module and function name. The policy must already 
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | The fully-qualified module name as declared in the CNL source (e.g. `"Loan.Approval"`). |
-| `policyFunction` | `string` | Yes | The function name within the module to invoke (e.g. `"isEligible"`). |
-| `context` | `array<object>` | Yes | An ordered list of argument objects passed positionally to the policy function. The structure of each object must match the parameter schema declared in the policy. Pass an empty array `[]` for zero-argument functions. |
+| `policyModule` | `string` | Ja | Der vollqualifizierte Modulname, wie er im CNL-Quellcode deklariert ist (z. B. `"Loan.Approval"`). |
+| `policyFunction` | `string` | Ja | Der Funktionsname innerhalb des Moduls, der aufgerufen werden soll (z. B. `"isEligible"`). |
+| `context` | `array<object>` | Ja | Eine geordnete Liste von Argument-Objekten, die positional an die Policy-Funktion übergeben werden. Die Struktur jedes Objekts muss dem in der Policy deklarierten Parameter-Schema entsprechen. Für parameterlose Funktionen ein leeres Array `[]` übergeben. |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -51,25 +49,25 @@ Evaluate a deployed policy by module and function name. The policy must already 
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `result` | `any` | The value returned by the policy function. The type matches the declared return type of the function (boolean, number, string, or object). |
-| `executionTimeMs` | `number` | Wall-clock time in milliseconds from request receipt to response dispatch. |
-| `error` | `string \| null` | Human-readable error message if evaluation failed; `null` on success. |
-| `decisionTrace` | `object \| null` | Structured trace of rule evaluation steps. Always `null` for this endpoint. Use `/evaluate-source?trace=true` to obtain a trace. |
+| `result` | `any` | Der von der Policy-Funktion zurückgegebene Wert. Der Typ entspricht dem deklarierten Rückgabetyp der Funktion (boolean, number, string oder object). |
+| `executionTimeMs` | `number` | Wanduhrzeit in Millisekunden vom Empfang der Anfrage bis zum Versand der Antwort. |
+| `error` | `string \| null` | Menschenlesbare Fehlermeldung, wenn die Evaluierung fehlschlug; `null` bei Erfolg. |
+| `decisionTrace` | `object \| null` | Strukturierter Trace der Regel-Evaluierungsschritte. Für diesen Endpunkt immer `null`. Verwenden Sie `/evaluate-source?trace=true`, um einen Trace zu erhalten. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Evaluation completed. Check `error` field — a non-null value indicates a policy-level failure while the HTTP call itself succeeded. |
-| `400 Bad Request` | Malformed request body or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `404 Not Found` | No deployed policy found matching `policyModule` + `policyFunction`. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Evaluierung abgeschlossen. Prüfen Sie das `error`-Feld — ein Nicht-null-Wert zeigt einen Policy-Fehler an, während der HTTP-Aufruf selbst erfolgreich war. |
+| `400 Bad Request` | Fehlerhafter Request-Body oder fehlende Pflichtfelder. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `404 Not Found` | Keine bereitgestellte Policy passend zu `policyModule` + `policyFunction` gefunden. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -124,7 +122,7 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 {

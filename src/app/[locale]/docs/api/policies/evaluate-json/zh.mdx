@@ -1,30 +1,28 @@
 ---
-title: "Evaluate Core IR JSON Policy"
+title: "评估 Core IR JSON 策略"
 ---
 
-# Evaluate Core IR JSON Policy
+# 评估 Core IR JSON 策略
 
-<TranslationFallbackBanner />
+直接评估以 Core IR JSON 对象形式表达的策略，无需 CNL 解析或编译。当你的应用自行管理编译流水线并向引擎发送预编译的策略表示时，使用此端点。
 
-Evaluate a policy expressed as a Core IR JSON object directly, without CNL parsing or compilation. Use this endpoint when your application manages its own compilation pipeline and sends pre-compiled policy representations to the engine.
-
-## Endpoint
+## 端点
 
 `POST /api/v1/policies/evaluate-json`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -33,14 +31,14 @@ Evaluate a policy expressed as a Core IR JSON object directly, without CNL parsi
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `policy` | `string` | Yes | A JSON-encoded string containing the Core IR representation of the policy. This is the serialized form produced by the Aster compiler's IR emission stage. The engine deserializes and executes this IR directly, bypassing all CNL parsing steps. |
-| `context` | `object` | Yes | A single object whose keys map to the declared parameter names of the entry-point function in the Core IR. |
+| `policy` | `string` | 是 | 包含策略 Core IR 表示的 JSON 编码字符串。这是 Aster 编译器 IR 发射阶段产生的序列化形式。引擎直接反序列化并执行此 IR，跳过所有 CNL 解析步骤。 |
+| `context` | `object` | 是 | 单个对象，其键映射到 Core IR 中入口函数声明的参数名。 |
 
-### Core IR JSON Format
+### Core IR JSON 格式
 
-The `policy` field must be a string-serialized JSON object conforming to the Core IR schema. A minimal example with a single function:
+`policy` 字段必须是符合 Core IR schema 的字符串化 JSON 对象。包含单个函数的最小示例：
 
 ```json
 {
@@ -64,9 +62,9 @@ The `policy` field must be a string-serialized JSON object conforming to the Cor
 }
 ```
 
-When embedding this as the `policy` field in the request, the object must be JSON-stringified (i.e. the entire object becomes a string value).
+将其作为请求中 `policy` 字段嵌入时，对象必须被 JSON 字符串化（即整个对象成为一个字符串值）。
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -77,24 +75,24 @@ When embedding this as the `policy` field in the request, the object must be JSO
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `result` | `any` | The value returned by the entry-point function in the Core IR. |
-| `executionTimeMs` | `number` | Wall-clock time in milliseconds from IR deserialization to response dispatch. |
-| `error` | `string \| null` | IR deserialization or runtime error message; `null` on success. |
-| `decisionTrace` | `object \| null` | Always `null` for this endpoint. Tracing is not supported for Core IR evaluation. |
+| `result` | `any` | Core IR 中入口函数返回的值。 |
+| `executionTimeMs` | `number` | 从 IR 反序列化到响应分发的挂钟时间（毫秒）。 |
+| `error` | `string \| null` | IR 反序列化或运行时错误消息；成功时为 `null`。 |
+| `decisionTrace` | `object \| null` | 此端点始终为 `null`。Core IR 评估不支持追踪。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Evaluation attempted. Check `error` for IR parsing or runtime failures. |
-| `400 Bad Request` | Malformed request body, invalid Core IR JSON, or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 已尝试评估。检查 `error` 确认是否有 IR 解析或运行时故障。 |
+| `400 Bad Request` | 请求体格式错误、Core IR JSON 无效或缺少必需字段。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -112,7 +110,7 @@ curl -X POST https://policy.aster-lang.dev/api/v1/policies/evaluate-json \
 ```
 
 ```js [JavaScript]
-// Build the Core IR object
+// 构建 Core IR 对象
 const coreIR = {
   moduleName: 'Discount',
   functions: [
@@ -143,7 +141,7 @@ const response = await fetch(
       'X-Tenant-ID': 'acme-corp',
     },
     body: JSON.stringify({
-      // Core IR must be serialized as a string
+      // Core IR 必须以字符串形式序列化
       policy: JSON.stringify(coreIR),
       context: {
         order: { total: 150 },
@@ -158,7 +156,7 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Example Response
+### 示例响应
 
 ```json
 {
