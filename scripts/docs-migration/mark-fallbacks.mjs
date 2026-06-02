@@ -89,6 +89,13 @@ function essentialContent(content) {
   return content
     .replace(/^﻿/, '')
     .replace(new RegExp(`\\n?${BANNER_MARKER}\\n?`), '')
+    // Normalize locale-prefixed internal links so a file that
+    // differs from EN only by `(/zh/docs/...)` vs `(/docs/...)` is
+    // still detected as a fallback. `applyFallback` in migrate.mjs
+    // rewrites these prefixes when copying EN content into zh/de
+    // slots, so the prefix divergence is structural — not actual
+    // translation.
+    .replace(/\]\(\/(?:en|zh|de)\/docs\//g, '](/docs/')
     .replace(/\n{3,}/g, '\n\n');
 }
 
