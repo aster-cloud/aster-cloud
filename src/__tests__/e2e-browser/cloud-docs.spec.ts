@@ -139,10 +139,10 @@ test.describe('Cloud docs - SEO heads', () => {
     );
   });
 
-  test('hreflang alternates emit correct hrefs (fallback API page)', async ({ page }) => {
-    // EN-fallback page should still have alternates pointing to the
-    // distinct /en, /zh, /de URLs even when the body content is the
-    // same EN copy.
+  test('hreflang alternates emit correct hrefs (real translation page)', async ({ page }) => {
+    // policies/evaluate is now a real Chinese translation. The page
+    // still emits reciprocal hreflang alternates pointing to the
+    // /en, /zh, /de URLs.
     await page.goto('/zh/docs/api/policies/evaluate');
     const expectations = {
       en: 'https://aster-lang.cloud/docs/api/policies/evaluate',
@@ -186,7 +186,10 @@ test.describe('Cloud docs - fallback SEO', () => {
       'https://aster-lang.cloud/docs/api/audit/logs',
     );
     const robots = page.locator('meta[name="robots"]');
+    // generate-page-wrappers.mjs emits { index: false, follow: true }
+    // which Next renders as "noindex, follow".
     await expect(robots).toHaveAttribute('content', /noindex/);
+    await expect(robots).toHaveAttribute('content', /follow/);
   });
 
   test('translated page canonicalizes to locale URL + no noindex', async ({ page }) => {
