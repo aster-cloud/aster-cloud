@@ -1,28 +1,25 @@
 import { setRequestLocale } from 'next-intl/server';
-import { locales } from '@/i18n/config';
 import { DocsTopNav } from '@/components/docs/DocsTopNav';
 import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { DocsTOC } from '@/components/docs/DocsTOC';
 import { DocsBreadcrumb } from '@/components/docs/DocsBreadcrumb';
 
 /**
- * Docs subtree is fully static — content is repo-owned MDX,
- * frontend chrome reads only from i18n bundles + the URL.
+ * Docs render dynamically.
  *
- * Force-static here tells Next not to inherit the parent locale
- * layout's `headers()` call at request time. The CSP nonce that the
- * parent layout reads still applies to dynamic dashboard/auth pages;
- * docs pages just don't need the per-request inline-script wiring.
+ * Phase-1 v1 forced these routes to SSG to skip Worker CPU. Audit
+ * round-2 caught a real conflict: the parent locale layout reads a
+ * per-request CSP nonce via `headers()` to stamp inline scripts
+ * (theme bootstrap, `__name` polyfill, framework flight chunks).
+ * Under SSG that nonce is build-time-fixed and stops matching the
+ * fresh nonce middleware regenerates on every request, which makes
+ * production CSP block hydration scripts.
  *
- * Combined with the per-page generateStaticParams emitted by the
- * route wrappers (Sessions 3-4), Cloudflare Workers serve compiled
- * RSC + HTML directly from the CDN edge without Worker CPU.
+ * Dynamic rendering keeps the nonce live. MDX compile happens at
+ * build time anyway — only RSC payload assembly + theme/intl
+ * provider wrap runs on the worker, which is fast.
  */
-export const dynamic = 'force-static';
-
-export function generateStaticParams() {
-  return locales.map((locale) => ({ locale }));
-}
+export const dynamic = 'force-dynamic';
 
 /**
  * Docs subsite layout — Session 2 chrome.
@@ -53,7 +50,11 @@ export default async function DocsLayout({ children, params }: Props) {
   return (
     <div className="min-h-screen bg-bg">
       <DocsTopNav />
-      <div className="mx-auto flex max-w-[1400px] pt-16">
+      {/* Mobile: stack drawer-above-content via flex-col so the
+          collapsible <details> in DocsSidebar lays out above the
+          article. Switch to flex-row at lg+ where the persistent
+          sidebar takes its column. */}
+      <div className="mx-auto flex flex-col lg:flex-row max-w-[1400px] pt-16">
         <DocsSidebar />
         <main className="min-w-0 flex-1 px-4 sm:px-6 lg:px-8 py-10">
           <DocsBreadcrumb />

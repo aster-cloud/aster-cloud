@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { locales } from '@/i18n/config';
 import EnContent, { frontmatter as enFrontmatter } from './en.mdx';
 import ZhContent, { frontmatter as zhFrontmatter } from './zh.mdx';
 import DeContent, { frontmatter as deFrontmatter } from './de.mdx';
@@ -19,18 +18,6 @@ import DeContent, { frontmatter as deFrontmatter } from './de.mdx';
 type Props = {
   params: Promise<{ locale: string }>;
 };
-
-/**
- * Static export — Phase 1 docs subtree is repo-owned content. Combined
- * with `generateStaticParams` below, Next.js prerenders one HTML/RSC
- * file per (locale × route) at build time. Cloudflare Workers serve
- * directly from CDN edge with no per-request CPU.
- */
-export const dynamic = 'force-static';
-
-export function generateStaticParams() {
-  return locales.map((locale) => ({ locale }));
-}
 
 const FRONTMATTER: Record<string, { title?: string; description?: string }> = {
   en: enFrontmatter ?? {},

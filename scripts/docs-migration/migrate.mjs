@@ -182,13 +182,20 @@ const PLAN = {
 /**
  * API docs in aster-lang-dev are EN-only by glossary policy. To avoid
  * 404s on /zh/docs/api/* + /de/docs/api/* we copy the EN content as a
- * fallback. A small banner injected at the top tells the reader this
- * page hasn't been translated yet (the i18n key is shipped by the
- * page wrapper, not the MDX, so the banner is locale-aware).
+ * silent fallback (no banner). Internal `/docs/` links are rewritten
+ * to the active locale so a zh reader stays in zh while navigating
+ * sibling API pages.
  *
- * Sessions 5+ will translate API docs; until then the EN fallback is
- * a strict improvement over 404 or a redirect that drops users into
- * a different language.
+ * An i18n-driven "translation in progress" banner is intentionally
+ * deferred — adding it would require wrapping every MDX with a layout
+ * that distinguishes "source language matches user locale" vs "fallback"
+ * which the per-route page.tsx doesn't currently track. The honest
+ * trade-off is: EN content silently appears in zh/de, which is
+ * strictly better than 404 and matches how rust-lang.org / golang.org
+ * handle partial translation.
+ *
+ * Future translation work (Sessions 5+) replaces these copies in
+ * place. The fallback policy then naturally retires.
  */
 function applyFallback(group, slug) {
   if (!group.startsWith('api/')) return;

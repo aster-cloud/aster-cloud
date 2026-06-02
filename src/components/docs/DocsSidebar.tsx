@@ -19,7 +19,8 @@ export function DocsSidebar() {
   const locale = useLocale();
   const pathname = usePathname();
 
-  // pathname from next-intl/navigation is locale-stripped (e.g. /docs/example).
+  // pathname from next-intl/navigation is locale-stripped
+  // (e.g. /docs/getting-started/overview).
   // Strip /docs/ prefix to compare with sidebar item hrefs.
   const currentSlug = pathname.replace(/^\/docs\/?/, '');
 

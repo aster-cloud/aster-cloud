@@ -13,10 +13,11 @@ import { DocsLanguageSwitcher } from '@/components/docs/DocsLanguageSwitcher';
  * affordances + a single "Open Console" CTA pointing back into the
  * authed app.
  *
- * Reuses the existing `<LanguageSwitcher>` and falls back on the
- * locale-layout-provided <ThemeProvider> for dark/light toggling
- * (toggle UI lives client-side in the LanguageSwitcher's neighbour
- * slot — Session 3 will add a dedicated icon button).
+ * Uses the docs-specific <DocsLanguageSwitcher> (a static <select>
+ * over @/i18n/config locales — independent of any backend probe).
+ * Theme toggle is provided by the locale-layout-provided
+ * <ThemeProvider>; a dedicated icon button can land in a future
+ * polish session.
  */
 export function DocsTopNav() {
   const t = useTranslations();
