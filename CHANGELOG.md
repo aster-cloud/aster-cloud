@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Fallback banner + sitemap + robots + Playwright E2E *(docs,seo,e2e)*
 - Chrome + migrate 25 docs pages × 3 locales (S2+S3+S4) *(docs)*
 - MDX pipeline scaffold for /docs/* subsite (Phase 1 Session 1) *(docs)*
 - Show brand logo in nav, hide wordmark on small screens *(landing)*
@@ -185,6 +186,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Final cleanup — file count + typo + dynamic note *(plan)*
 - Align URL contract + stale comment cleanup *(plan,comments)*
 - Cloud-docs-subsite — MDX docs site at /docs/* *(plan)*
