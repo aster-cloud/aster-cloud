@@ -1,30 +1,28 @@
 ---
-title: "Extract Policy Parameter Schema"
+title: "提取策略参数 Schema"
 ---
 
-# Extract Policy Parameter Schema
+# 提取策略参数 Schema
 
-<TranslationFallbackBanner />
+解析 CNL 源代码字符串，返回指定函数的参数 schema。使用此端点在构造评估请求前发现策略期望的数据形状，或为工具中的动态表单生成提供驱动。
 
-Parse a CNL source string and return the parameter schema for the specified function. Use this endpoint to discover the shape of data a policy expects before constructing evaluation requests, or to drive dynamic form generation in tooling.
-
-## Endpoint
+## 端点
 
 `POST /api/v1/policies/schema`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -34,13 +32,13 @@ Parse a CNL source string and return the parameter schema for the specified func
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `source` | `string` | Yes | Raw CNL policy source text to parse. The engine extracts type declarations from the source without executing any policy logic. |
-| `functionName` | `string` | No | Name of the function whose parameter schema to extract. If omitted, the engine extracts the schema for the first function declared in the source. |
-| `locale` | `string` | No | BCP 47 locale tag identifying the CNL keyword set. Defaults to `"en-US"`. Use `"zh-CN"` for Simplified Chinese CNL syntax. |
+| `source` | `string` | 是 | 要解析的原始 CNL 策略源代码文本。引擎从源代码中提取类型声明，不执行任何策略逻辑。 |
+| `functionName` | `string` | 否 | 要提取参数 schema 的函数名。若省略，引擎提取源代码中声明的第一个函数的 schema。 |
+| `locale` | `string` | 否 | 标识 CNL 关键字集的 BCP 47 locale 标签。默认为 `"en-US"`。简体中文 CNL 语法使用 `"zh-CN"`。 |
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -61,44 +59,44 @@ Parse a CNL source string and return the parameter schema for the specified func
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `success` | `boolean` | `true` if the source was parsed successfully and schema extraction completed without errors. |
-| `moduleName` | `string` | The module name declared in the source. |
-| `functionName` | `string` | The function name whose schema was extracted. Matches the request `functionName` or the first function if none was specified. |
-| `parameters` | `array<ParameterSchema>` | Ordered list of parameter descriptors. Order matches the positional declaration order in the CNL source. |
-| `error` | `string \| null` | Parse error message if `success` is `false`; `null` on success. |
+| `success` | `boolean` | 若源代码解析成功且 schema 提取无错完成则为 `true`。 |
+| `moduleName` | `string` | 源代码中声明的模块名。 |
+| `functionName` | `string` | 提取了 schema 的函数名。匹配请求中的 `functionName`，未指定时为第一个函数。 |
+| `parameters` | `array<ParameterSchema>` | 参数描述符的有序列表。顺序匹配 CNL 源代码中按位置的声明顺序。 |
+| `error` | `string \| null` | 当 `success` 为 `false` 时的解析错误消息；成功时为 `null`。 |
 
 ### ParameterSchema
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `name` | `string` | Parameter name as declared in the CNL source. |
-| `type` | `string` | Type name as declared (e.g. `"number"`, `"boolean"`, `"string"`, `"Order"`, `"Applicant"`). |
-| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | `PRIMITIVE` for built-in scalar types (`number`, `boolean`, `string`). `STRUCT` for user-defined record types with named fields. |
-| `optional` | `boolean` | `true` if the parameter is declared optional in the policy signature. |
-| `position` | `number` | Zero-based index of the parameter in the function signature. |
-| `fields` | `array<FieldSchema>` | Non-empty only when `typeKind` is `"STRUCT"`. Lists the named fields of the struct type. Empty array for `PRIMITIVE` parameters. |
+| `name` | `string` | CNL 源代码中声明的参数名。 |
+| `type` | `string` | 声明的类型名（如 `"number"`、`"boolean"`、`"string"`、`"Order"`、`"Applicant"`）。 |
+| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | `PRIMITIVE` 表示内建标量类型（`number`、`boolean`、`string`）。`STRUCT` 表示带命名字段的用户定义记录类型。 |
+| `optional` | `boolean` | 若参数在策略签名中声明为可选则为 `true`。 |
+| `position` | `number` | 参数在函数签名中的零基索引。 |
+| `fields` | `array<FieldSchema>` | 仅当 `typeKind` 为 `"STRUCT"` 时非空。列出 struct 类型的命名字段。`PRIMITIVE` 参数为空数组。 |
 
 ### FieldSchema
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `name` | `string` | Field name within the struct. |
-| `type` | `string` | Field type name (may itself be `PRIMITIVE` or another `STRUCT`). |
-| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | Type classification of this field. |
+| `name` | `string` | struct 内的字段名。 |
+| `type` | `string` | 字段类型名（自身可能为 `PRIMITIVE` 或另一个 `STRUCT`）。 |
+| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | 此字段的类型分类。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Request processed. Check `success` and `error` for parse failures. |
-| `400 Bad Request` | Malformed request body or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 请求已处理。检查 `success` 和 `error` 确认是否有解析失败。 |
+| `400 Bad Request` | 请求体格式错误或缺少必需字段。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -151,7 +149,7 @@ if (data.success) {
 
 </CodeGroup>
 
-### Example Response
+### 示例响应
 
 ```json
 {
@@ -176,7 +174,7 @@ if (data.success) {
 }
 ```
 
-### Example Response (Parse Failure)
+### 示例响应（解析失败）
 
 ```json
 {

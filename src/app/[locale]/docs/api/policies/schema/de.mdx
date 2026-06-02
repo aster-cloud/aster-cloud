@@ -1,30 +1,28 @@
 ---
-title: "Extract Policy Parameter Schema"
+title: "Policy-Parameter-Schema extrahieren"
 ---
 
-# Extract Policy Parameter Schema
+# Policy-Parameter-Schema extrahieren
 
-<TranslationFallbackBanner />
+Parsen Sie einen CNL-Quellcode-String und geben Sie das Parameter-Schema für die angegebene Funktion zurück. Verwenden Sie diesen Endpunkt, um die Form der Daten zu entdecken, die eine Policy erwartet, bevor Sie Evaluierungsanfragen konstruieren, oder um dynamische Formulargenerierung in Tooling zu steuern.
 
-Parse a CNL source string and return the parameter schema for the specified function. Use this endpoint to discover the shape of data a policy expects before constructing evaluation requests, or to drive dynamic form generation in tooling.
-
-## Endpoint
+## Endpunkt
 
 `POST /api/v1/policies/schema`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -34,13 +32,13 @@ Parse a CNL source string and return the parameter schema for the specified func
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `source` | `string` | Yes | Raw CNL policy source text to parse. The engine extracts type declarations from the source without executing any policy logic. |
-| `functionName` | `string` | No | Name of the function whose parameter schema to extract. If omitted, the engine extracts the schema for the first function declared in the source. |
-| `locale` | `string` | No | BCP 47 locale tag identifying the CNL keyword set. Defaults to `"en-US"`. Use `"zh-CN"` for Simplified Chinese CNL syntax. |
+| `source` | `string` | Ja | Roher CNL-Policy-Quellcode zum Parsen. Die Engine extrahiert Typdeklarationen aus dem Quellcode, ohne Policy-Logik auszuführen. |
+| `functionName` | `string` | Nein | Name der Funktion, deren Parameter-Schema extrahiert werden soll. Wenn weggelassen, extrahiert die Engine das Schema für die erste im Quellcode deklarierte Funktion. |
+| `locale` | `string` | Nein | BCP-47-Locale-Tag, das den CNL-Schlüsselwortsatz identifiziert. Standard: `"en-US"`. Verwenden Sie `"zh-CN"` für vereinfachtes Chinesisches CNL-Syntax. |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -61,44 +59,44 @@ Parse a CNL source string and return the parameter schema for the specified func
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `success` | `boolean` | `true` if the source was parsed successfully and schema extraction completed without errors. |
-| `moduleName` | `string` | The module name declared in the source. |
-| `functionName` | `string` | The function name whose schema was extracted. Matches the request `functionName` or the first function if none was specified. |
-| `parameters` | `array<ParameterSchema>` | Ordered list of parameter descriptors. Order matches the positional declaration order in the CNL source. |
-| `error` | `string \| null` | Parse error message if `success` is `false`; `null` on success. |
+| `success` | `boolean` | `true`, wenn der Quellcode erfolgreich geparst wurde und die Schema-Extraktion ohne Fehler abgeschlossen wurde. |
+| `moduleName` | `string` | Der im Quellcode deklarierte Modulname. |
+| `functionName` | `string` | Der Funktionsname, dessen Schema extrahiert wurde. Stimmt mit dem `functionName` der Anfrage überein, oder der ersten Funktion, falls keine angegeben wurde. |
+| `parameters` | `array<ParameterSchema>` | Geordnete Liste von Parameter-Deskriptoren. Die Reihenfolge entspricht der positionalen Deklarationsreihenfolge im CNL-Quellcode. |
+| `error` | `string \| null` | Parsing-Fehlermeldung, wenn `success` `false` ist; `null` bei Erfolg. |
 
 ### ParameterSchema
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `name` | `string` | Parameter name as declared in the CNL source. |
-| `type` | `string` | Type name as declared (e.g. `"number"`, `"boolean"`, `"string"`, `"Order"`, `"Applicant"`). |
-| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | `PRIMITIVE` for built-in scalar types (`number`, `boolean`, `string`). `STRUCT` for user-defined record types with named fields. |
-| `optional` | `boolean` | `true` if the parameter is declared optional in the policy signature. |
-| `position` | `number` | Zero-based index of the parameter in the function signature. |
-| `fields` | `array<FieldSchema>` | Non-empty only when `typeKind` is `"STRUCT"`. Lists the named fields of the struct type. Empty array for `PRIMITIVE` parameters. |
+| `name` | `string` | Parametername wie im CNL-Quellcode deklariert. |
+| `type` | `string` | Typname wie deklariert (z. B. `"number"`, `"boolean"`, `"string"`, `"Order"`, `"Applicant"`). |
+| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | `PRIMITIVE` für eingebaute Skalartypen (`number`, `boolean`, `string`). `STRUCT` für benutzerdefinierte Record-Typen mit benannten Feldern. |
+| `optional` | `boolean` | `true`, wenn der Parameter in der Policy-Signatur als optional deklariert ist. |
+| `position` | `number` | Nullbasierter Index des Parameters in der Funktionssignatur. |
+| `fields` | `array<FieldSchema>` | Nur dann nicht leer, wenn `typeKind` `"STRUCT"` ist. Listet die benannten Felder des Struct-Typs auf. Leeres Array für `PRIMITIVE`-Parameter. |
 
 ### FieldSchema
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `name` | `string` | Field name within the struct. |
-| `type` | `string` | Field type name (may itself be `PRIMITIVE` or another `STRUCT`). |
-| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | Type classification of this field. |
+| `name` | `string` | Feldname innerhalb des Structs. |
+| `type` | `string` | Feldtypname (kann selbst `PRIMITIVE` oder ein weiteres `STRUCT` sein). |
+| `typeKind` | `"PRIMITIVE" \| "STRUCT"` | Typklassifizierung dieses Felds. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Request processed. Check `success` and `error` for parse failures. |
-| `400 Bad Request` | Malformed request body or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Anfrage verarbeitet. Prüfen Sie `success` und `error` auf Parsing-Fehler. |
+| `400 Bad Request` | Fehlerhafter Request-Body oder fehlende Pflichtfelder. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -151,7 +149,7 @@ if (data.success) {
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 {
@@ -176,7 +174,7 @@ if (data.success) {
 }
 ```
 
-### Example Response (Parse Failure)
+### Beispiel-Antwort (Parse-Fehler)
 
 ```json
 {
