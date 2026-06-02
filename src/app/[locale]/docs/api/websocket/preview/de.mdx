@@ -1,36 +1,34 @@
 ---
-title: "WebSocket Preview Endpoint"
+title: "WebSocket-Preview-Endpunkt"
 ---
 
-# WebSocket Preview Endpoint
+# WebSocket-Preview-Endpunkt
 
-<TranslationFallbackBanner />
+Der Preview-WebSocket-Endpunkt erlaubt Entwicklern, CNL-Policy-Quellcode in Echtzeit zu evaluieren, ohne ihn in der Engine bereitzustellen. Er ist für interaktives Tooling wie Editoren, Playgrounds und CI-Preview-Jobs gedacht. Die Verbindung läuft unter einem fest codierten `preview`-Mandanten und erfordert keine Authentifizierung.
 
-The preview WebSocket endpoint allows developers to evaluate CNL policy source in real time without deploying it to the engine. It is intended for interactive tooling such as editors, playgrounds, and CI preview jobs. The connection runs under a hardcoded `preview` tenant and does not require authentication.
-
-<Callout type="warning" title="Preview Tenant">
-All evaluation on this endpoint is executed under the built-in `preview` tenant. Results are isolated from production tenant data and deployed policies. Do not use this endpoint in production workflows.
+<Callout type="warning" title="Preview-Mandant">
+Alle Evaluierungen auf diesem Endpunkt werden unter dem eingebauten `preview`-Mandanten ausgeführt. Ergebnisse sind von den Daten produktiver Mandanten und bereitgestellten Policies isoliert. Verwenden Sie diesen Endpunkt nicht in Produktions-Workflows.
 </Callout>
 
-## Endpoint
+## Endpunkt
 
 `ws://<host>/ws/preview`
 
-For TLS-secured deployments use `wss://`.
+Für TLS-gesicherte Bereitstellungen verwenden Sie `wss://`.
 
-## Authentication
+## Authentifizierung
 
-This endpoint does **not** require authentication. The WebSocket handshake completes without any token or HMAC headers. All requests are executed under the fixed `preview` tenant context.
+Dieser Endpunkt erfordert **keine** Authentifizierung. Der WebSocket-Handshake schließt ohne Token- oder HMAC-Header ab. Alle Anfragen werden unter dem festen `preview`-Mandanten-Kontext ausgeführt.
 
 <Callout type="tip">
-Because the preview endpoint bypasses the standard HMAC signing and RBAC enforcement, it should only be exposed in development or behind an internal network boundary. It is not intended for production use.
+Da der Preview-Endpunkt die Standard-HMAC-Signierung und RBAC-Erzwingung umgeht, sollte er nur in der Entwicklung oder hinter einer internen Netzwerkgrenze exponiert werden. Er ist nicht für die Produktion gedacht.
 </Callout>
 
-## Protocol
+## Protokoll
 
-The session follows a simple request-response model over a single persistent connection. The server sends a `connected` status message immediately upon handshake completion. The client then sends evaluation requests; the server responds to each one individually.
+Die Sitzung folgt einem einfachen Request-Response-Modell über eine einzige persistente Verbindung. Der Server sendet sofort nach Abschluss des Handshakes eine `connected`-Statusnachricht. Der Client sendet dann Evaluierungsanfragen; der Server antwortet auf jede einzeln.
 
-### Client Message
+### Client-Nachricht
 
 ```json
 {
@@ -47,17 +45,17 @@ The session follows a simple request-response model over a single persistent con
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | The fully-qualified module name as declared in the CNL source (e.g. `Loan.Approval`). |
-| `policyFunction` | `string` | Yes | The function within the module to invoke. |
-| `context` | `array<object>` | Yes | Ordered list of argument objects passed positionally to the policy function. Pass an empty array `[]` for zero-argument functions. |
+| `policyModule` | `string` | Ja | Der vollqualifizierte Modulname, wie er im CNL-Quellcode deklariert ist (z. B. `Loan.Approval`). |
+| `policyFunction` | `string` | Ja | Die Funktion innerhalb des Moduls, die aufgerufen werden soll. |
+| `context` | `array<object>` | Ja | Geordnete Liste von Argument-Objekten, die positional an die Policy-Funktion übergeben werden. Für parameterlose Funktionen ein leeres Array `[]` übergeben. |
 
-### Server Messages
+### Server-Nachrichten
 
-#### Connection Confirmation
+#### Verbindungsbestätigung
 
-Sent once immediately after the handshake succeeds.
+Wird einmal sofort nach erfolgreichem Handshake gesendet.
 
 ```json
 {
@@ -66,7 +64,7 @@ Sent once immediately after the handshake succeeds.
 }
 ```
 
-#### Successful Evaluation
+#### Erfolgreiche Evaluierung
 
 ```json
 {
@@ -77,7 +75,7 @@ Sent once immediately after the handshake succeeds.
 }
 ```
 
-#### Evaluation Error
+#### Evaluierungsfehler
 
 ```json
 {
@@ -88,25 +86,25 @@ Sent once immediately after the handshake succeeds.
 }
 ```
 
-### Server Message Fields
+### Felder der Server-Nachricht
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `status` | `string` | One of `connected`, `success`, or `error`. |
-| `message` | `string \| null` | Human-readable description. Non-null for `connected` and `error` statuses; `null` on `success`. |
-| `result` | `any \| null` | The value returned by the policy function. Matches the function's declared return type. `null` on error. |
-| `executionTime` | `number \| null` | Wall-clock evaluation time in milliseconds. `null` on error. |
+| `status` | `string` | Einer von `connected`, `success` oder `error`. |
+| `message` | `string \| null` | Menschenlesbare Beschreibung. Nicht-`null` für die Status `connected` und `error`; `null` bei `success`. |
+| `result` | `any \| null` | Der von der Policy-Funktion zurückgegebene Wert. Stimmt mit dem deklarierten Rückgabetyp der Funktion überein. `null` bei Fehler. |
+| `executionTime` | `number \| null` | Wanduhr-Evaluierungszeit in Millisekunden. `null` bei Fehler. |
 
-## Connection Lifecycle
+## Verbindungs-Lifecycle
 
-1. Client opens a WebSocket connection to `ws://<host>/ws/preview`.
-2. Server sends a `{ "status": "connected" }` message.
-3. Client sends a JSON evaluation request.
-4. Server responds with `{ "status": "success" }` or `{ "status": "error" }`.
-5. Steps 3-4 repeat for the duration of the session.
-6. Either party may close the connection at any time.
+1. Client öffnet eine WebSocket-Verbindung zu `ws://<host>/ws/preview`.
+2. Server sendet eine `{ "status": "connected" }`-Nachricht.
+3. Client sendet eine JSON-Evaluierungsanfrage.
+4. Server antwortet mit `{ "status": "success" }` oder `{ "status": "error" }`.
+5. Schritte 3-4 wiederholen sich während der Sitzung.
+6. Beide Parteien können die Verbindung jederzeit schließen.
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -121,7 +119,7 @@ ws.addEventListener('message', (event) => {
   const msg = JSON.parse(event.data);
 
   if (msg.status === 'connected') {
-    // Send an evaluation request once connected
+    // Evaluierungsanfrage nach Verbindungsaufbau senden
     ws.send(JSON.stringify({
       policyModule:   'Loan.Approval',
       policyFunction: 'isEligible',
@@ -184,9 +182,9 @@ ws.on('error', console.error);
 
 </CodeGroup>
 
-## WebSocket Close Codes
+## WebSocket-Schließcodes
 
-| Code | Meaning |
+| Code | Bedeutung |
 |------|---------|
-| `1000` | Normal closure — client or server closed the connection intentionally. |
-| `1011` | Unexpected server error — internal engine failure. |
+| `1000` | Normales Schließen — Client oder Server hat die Verbindung absichtlich geschlossen. |
+| `1011` | Unerwarteter Server-Fehler — interner Engine-Fehler. |

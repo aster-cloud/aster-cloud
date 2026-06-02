@@ -1,36 +1,34 @@
 ---
-title: "WebSocket Preview Endpoint"
+title: "WebSocket 预览端点"
 ---
 
-# WebSocket Preview Endpoint
+# WebSocket 预览端点
 
-<TranslationFallbackBanner />
+预览 WebSocket 端点允许开发者实时评估 CNL 策略源代码，而无需将其部署到引擎。它面向交互式工具（如编辑器、演练场和 CI 预览任务）。连接在硬编码的 `preview` 租户下运行，无需认证。
 
-The preview WebSocket endpoint allows developers to evaluate CNL policy source in real time without deploying it to the engine. It is intended for interactive tooling such as editors, playgrounds, and CI preview jobs. The connection runs under a hardcoded `preview` tenant and does not require authentication.
-
-<Callout type="warning" title="Preview Tenant">
-All evaluation on this endpoint is executed under the built-in `preview` tenant. Results are isolated from production tenant data and deployed policies. Do not use this endpoint in production workflows.
+<Callout type="warning" title="预览租户">
+此端点上的所有评估都在内建的 `preview` 租户下执行。结果与生产租户数据和已部署的策略隔离。请勿在生产工作流中使用此端点。
 </Callout>
 
-## Endpoint
+## 端点
 
 `ws://<host>/ws/preview`
 
-For TLS-secured deployments use `wss://`.
+TLS 加密部署请使用 `wss://`。
 
-## Authentication
+## 认证
 
-This endpoint does **not** require authentication. The WebSocket handshake completes without any token or HMAC headers. All requests are executed under the fixed `preview` tenant context.
+此端点**不**需要认证。WebSocket 握手在没有任何 token 或 HMAC 请求头的情况下完成。所有请求在固定的 `preview` 租户上下文下执行。
 
 <Callout type="tip">
-Because the preview endpoint bypasses the standard HMAC signing and RBAC enforcement, it should only be exposed in development or behind an internal network boundary. It is not intended for production use.
+由于预览端点绕过了标准的 HMAC 签名和 RBAC 执行，它应仅在开发或内部网络边界后暴露。它不适合生产使用。
 </Callout>
 
-## Protocol
+## 协议
 
-The session follows a simple request-response model over a single persistent connection. The server sends a `connected` status message immediately upon handshake completion. The client then sends evaluation requests; the server responds to each one individually.
+会话在单一持久连接上遵循简单的请求-响应模型。握手完成后，服务器立即发送 `connected` 状态消息。客户端随后发送评估请求；服务器对每个请求单独响应。
 
-### Client Message
+### 客户端消息
 
 ```json
 {
@@ -47,17 +45,17 @@ The session follows a simple request-response model over a single persistent con
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | The fully-qualified module name as declared in the CNL source (e.g. `Loan.Approval`). |
-| `policyFunction` | `string` | Yes | The function within the module to invoke. |
-| `context` | `array<object>` | Yes | Ordered list of argument objects passed positionally to the policy function. Pass an empty array `[]` for zero-argument functions. |
+| `policyModule` | `string` | 是 | CNL 源代码中声明的完全限定模块名（如 `Loan.Approval`）。 |
+| `policyFunction` | `string` | 是 | 要调用的模块内函数。 |
+| `context` | `array<object>` | 是 | 按位置传递给策略函数的参数对象有序列表。零参数函数请传入空数组 `[]`。 |
 
-### Server Messages
+### 服务端消息
 
-#### Connection Confirmation
+#### 连接确认
 
-Sent once immediately after the handshake succeeds.
+握手成功后立即发送一次。
 
 ```json
 {
@@ -66,7 +64,7 @@ Sent once immediately after the handshake succeeds.
 }
 ```
 
-#### Successful Evaluation
+#### 评估成功
 
 ```json
 {
@@ -77,7 +75,7 @@ Sent once immediately after the handshake succeeds.
 }
 ```
 
-#### Evaluation Error
+#### 评估错误
 
 ```json
 {
@@ -88,25 +86,25 @@ Sent once immediately after the handshake succeeds.
 }
 ```
 
-### Server Message Fields
+### 服务端消息字段
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `status` | `string` | One of `connected`, `success`, or `error`. |
-| `message` | `string \| null` | Human-readable description. Non-null for `connected` and `error` statuses; `null` on `success`. |
-| `result` | `any \| null` | The value returned by the policy function. Matches the function's declared return type. `null` on error. |
-| `executionTime` | `number \| null` | Wall-clock evaluation time in milliseconds. `null` on error. |
+| `status` | `string` | `connected`、`success` 或 `error` 之一。 |
+| `message` | `string \| null` | 人类可读的描述。`connected` 和 `error` 状态非 null；`success` 时为 `null`。 |
+| `result` | `any \| null` | 策略函数返回的值。匹配函数声明的返回类型。错误时为 `null`。 |
+| `executionTime` | `number \| null` | 挂钟评估时间（毫秒）。错误时为 `null`。 |
 
-## Connection Lifecycle
+## 连接生命周期
 
-1. Client opens a WebSocket connection to `ws://<host>/ws/preview`.
-2. Server sends a `{ "status": "connected" }` message.
-3. Client sends a JSON evaluation request.
-4. Server responds with `{ "status": "success" }` or `{ "status": "error" }`.
-5. Steps 3-4 repeat for the duration of the session.
-6. Either party may close the connection at any time.
+1. 客户端打开到 `ws://<host>/ws/preview` 的 WebSocket 连接。
+2. 服务器发送 `{ "status": "connected" }` 消息。
+3. 客户端发送 JSON 评估请求。
+4. 服务器以 `{ "status": "success" }` 或 `{ "status": "error" }` 响应。
+5. 步骤 3-4 在会话期间重复。
+6. 任一方可在任何时候关闭连接。
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -121,7 +119,7 @@ ws.addEventListener('message', (event) => {
   const msg = JSON.parse(event.data);
 
   if (msg.status === 'connected') {
-    // Send an evaluation request once connected
+    // 连接后发送评估请求
     ws.send(JSON.stringify({
       policyModule:   'Loan.Approval',
       policyFunction: 'isEligible',
@@ -184,9 +182,9 @@ ws.on('error', console.error);
 
 </CodeGroup>
 
-## WebSocket Close Codes
+## WebSocket 关闭码
 
-| Code | Meaning |
+| 码 | 含义 |
 |------|---------|
-| `1000` | Normal closure — client or server closed the connection intentionally. |
-| `1011` | Unexpected server error — internal engine failure. |
+| `1000` | 正常关闭 —— 客户端或服务器有意关闭连接。 |
+| `1011` | 非预期的服务器错误 —— 内部引擎故障。 |
