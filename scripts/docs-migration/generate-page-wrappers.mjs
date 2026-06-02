@@ -4,17 +4,21 @@
  * MDX file at request time.
  *
  * Why a per-route wrapper instead of a catch-all [...slug]/page.tsx:
- *   - Static routing is simpler to reason about and produces a
- *     deterministic route table at build time.
- *   - Next 16 + OpenNext catch-alls work but lose static eligibility
- *     for many paths; per-route keeps SSG friendly.
+ *   - Static routing yields a deterministic route table at build time
+ *     (each path shows up in the build manifest).
+ *   - Per-route page.tsx lets each page declare its own metadata and
+ *     locale-specific MDX imports without runtime branching by string.
  *
  * Why per-locale MDX file (en.mdx/zh.mdx/de.mdx) instead of a single
  * file with runtime branching:
- *   - MDX is compiled at build time. Per-locale files compile cleanly
+ *   - MDX compiles at build time. Per-locale files compile cleanly
  *     into per-locale RSC payloads.
  *   - The wrapper picks the right module via static import + locale
  *     param. No runtime fs access (Worker can't fs.readFile).
+ *
+ * Note: docs render dynamically (force-dynamic in layout.tsx) so the
+ * parent locale layout's per-request CSP nonce stays correct; the
+ * static import + locale branching here is unaffected.
  */
 
 import { readdirSync, writeFileSync, statSync } from 'node:fs';

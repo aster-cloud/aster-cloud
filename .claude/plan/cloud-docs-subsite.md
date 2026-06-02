@@ -96,7 +96,10 @@ src/app/[locale]/docs/
 
 ### 3.3 i18n 路由
 
-- 利用 next-intl 现有 `[locale]` segment：URL 长 `/en/docs/api/policies/evaluate`、`/zh/docs/...`、`/de/docs/...`
+- 利用 next-intl 现有 `[locale]` segment + `localePrefix: 'as-needed'`：
+  - EN（默认 locale）URL 为 `/docs/...`（不带前缀）
+  - zh：`/zh/docs/...`，de：`/de/docs/...`
+  - 这是 aster-cloud 全站统一策略（见 `src/i18n/navigation.ts`），不为 docs 特殊化
 - `i18n/config.ts` 已有 `locales = ['en', 'zh', 'de']`，无需改
 - docs sidebar 文案通过 `messages/{en,zh,de}.json` 的 `docs.sidebar.*` key 翻译（MDX 内容本身是文件级翻译）
 - locale 切换：保持当前路径，仅替换前缀（next-intl Link 默认行为）
@@ -118,11 +121,15 @@ src/app/[locale]/docs/
 ### 3.6 跨站 redirect 协调
 
 - aster-lang-dev `docs/public/_redirects` 在 Phase 2 改为 308 → `https://aster-lang.cloud/{locale?}/docs/...`
-- 注意：aster-lang.cloud URL 带 locale 前缀（`/en/docs/`），aster-lang.dev EN 是 `/api/`（无前缀）
+- URL 形状（`as-needed` 策略，EN 不带前缀）：
+  - EN: `https://aster-lang.cloud/docs/api/policies/evaluate`
+  - zh: `https://aster-lang.cloud/zh/docs/api/policies/evaluate`
+  - de: `https://aster-lang.cloud/de/docs/api/policies/evaluate`
 - 映射策略：
-  - `/api/*` → `https://aster-lang.cloud/en/docs/api/:splat`
-  - `/zh/api/*` → `https://aster-lang.cloud/zh/docs/api/:splat`（实际上 aster-lang.dev 没有 `/zh/api/`，但留着 defensive）
-  - `/getting-started/*` → `https://aster-lang.cloud/en/docs/getting-started/:splat`
+  - `/api/*` → `https://aster-lang.cloud/docs/api/:splat`（EN 无前缀）
+  - `/zh/api/*` → `https://aster-lang.cloud/zh/docs/api/:splat`（aster-lang.dev 实际没这条，留 defensive）
+  - `/de/api/*` → `https://aster-lang.cloud/de/docs/api/:splat`
+  - `/getting-started/*` → `https://aster-lang.cloud/docs/getting-started/:splat`
 
 ---
 
@@ -227,7 +234,7 @@ src/app/[locale]/docs/
 
 ## 7. 验收（Phase 1 整体）
 
-- ✅ aster-lang.cloud/{en,zh,de}/docs/* 共 111 个 page URL 全部 200
+- ✅ aster-lang.cloud/docs/*（EN）、/zh/docs/*、/de/docs/* 共 75 个 page URL 全部 200
 - ✅ pnpm build & pnpm preview 双通过
 - ✅ Lighthouse Performance/A11y/BP/SEO ≥ 85
 - ✅ 与主站 dark/light 主题同步

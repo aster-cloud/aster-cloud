@@ -2,12 +2,10 @@ import { redirect } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
 
 /**
- * /docs/ entry — Session-1 stub.
- *
- * Until the real getting-started + API docs are migrated (Sessions 3-4),
- * /docs/ just bounces to the example page so the route doesn't 404.
- * Once the real content lands, this redirects to
- * /docs/getting-started/overview instead.
+ * /docs/ entry — redirects the bare docs root to the first reader-
+ * facing page. `getting-started/overview` is the canonical landing for
+ * developers new to the platform; later sections are reachable via the
+ * sidebar.
  */
 type Props = {
   params: Promise<{ locale: string }>;
