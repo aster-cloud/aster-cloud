@@ -190,6 +190,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Record cross-site cleanup handoffs to ops and design *(brand)*
 - Update [skip ci] *(changelog)*
 - Add CTA + naming guide; drop "Team" from FAQ *(brand)*
@@ -533,6 +534,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Reverted
 
+- Add mt-10 back to CnlDemo wrapper *(landing)*
 - Drop deploy-worker job — Cloudflare git build owns deploys *(ci)*
 - Drop .npmrc and GITHUB_TOKEN — @aster-cloud/tokens now on public npm
 
