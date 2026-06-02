@@ -74,9 +74,10 @@ src/app/[locale]/docs/
 
 **理由**：
 - Next 16 `@next/mdx` 原生支持 `page.mdx`，零额外构建步骤
-- 静态路由 = build-time 自动生成静态 HTML，命中 Smart Placement 缓存
-- 文件结构与 URL 1:1 映射，新增/重命名页面直接动文件
-- 不需要写 sidebar generator —— 配置文件手维护（37 页 × 3 locale = 111 个 MDX 文件，sidebar 是 1 个 ts 配置文件）
+- 静态路由结构 = 确定性的 build 路由表 + 每个 path 1 个 page.tsx 入口，新增/重命名页面直接动文件
+- 文件结构与 URL 1:1 映射
+- 不需要写 sidebar generator —— 配置文件手维护（25 个 route × 3 locale = 75 个 MDX 文件，sidebar 是 1 个 ts 配置文件）
+- 注：实际渲染模式为 **dynamic**（`force-dynamic`），不是 SSG —— 父 locale layout 读取 per-request CSP nonce，SSG 会让 nonce 失效。MDX 仍在 build 期编译，只是 RSC 装配 + provider 包裹在 Worker 上跑（无 DB、无 auth，开销小）。
 
 **代价**：
 - 每页 × 3 locale = 文件数 ×3。共 37 × 3 = **111 个 MDX 文件**
@@ -113,10 +114,11 @@ src/app/[locale]/docs/
 
 ### 3.5 OpenNext / Cloudflare 兼容
 
-- 所有 `page.mdx` 在 build 阶段编译为静态 RSC payload —— Worker runtime 只 serve 静态文件
+- 所有 `.mdx` 在 build 阶段编译为 RSC payload；Worker runtime 在每请求 assembleassemble + 包裹 i18n / theme provider。docs 路由不查 DB、不走 auth，CPU 占用低。
 - `rehype-pretty-code` 的 Shiki 编译发生在 build-time，不进 Worker bundle
 - `output: standalone` + `outputFileTracingRoot` 已配 —— 不变
 - 不引入需要 fs 的 plugin（如本地图片处理）
+- ⚠️ **历史教训**：Phase-1 round-1 尝试过 `force-static` SSG，导致父 locale layout 的 per-request CSP nonce 失效（middleware 在每请求重生 nonce，build-time 的静态 HTML 上要么没 nonce 要么是过期的）。Round-2 audit 抓住后回退到 `force-dynamic`，不要再切回 SSG，除非同时改造 CSP 策略（hash-based / docs-only relaxed CSP）。
 
 ### 3.6 跨站 redirect 协调
 

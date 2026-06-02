@@ -14,5 +14,12 @@ type Props = {
 export default async function DocsIndex({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  redirect(`/${locale}/docs/getting-started/overview`);
+  // Honor `localePrefix: 'as-needed'` (src/i18n/navigation.ts): the
+  // default locale serves bare URLs, zh/de keep their prefix. This
+  // matches the URL contract in .claude/plan/cloud-docs-subsite.md §3.3.
+  const target =
+    locale === 'en'
+      ? '/docs/getting-started/overview'
+      : `/${locale}/docs/getting-started/overview`;
+  redirect(target);
 }
