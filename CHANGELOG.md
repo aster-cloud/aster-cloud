@@ -186,6 +186,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Translate first 8 API doc pages to zh + de *(i18n)*
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Final cleanup — file count + typo + dynamic note *(plan)*
 - Align URL contract + stale comment cleanup *(plan,comments)*
