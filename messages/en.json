@@ -2484,6 +2484,19 @@
       "suggestEdit": "Suggest an edit",
       "yourTenantVersion": "This page documents API version"
     },
+    "search": {
+      "placeholder": "Search docs…",
+      "inputPlaceholder": "Type a page name, heading, or keyword",
+      "noResults": "No matching pages",
+      "resultsLabel": "Search results",
+      "openShortcut": "⌘K",
+      "matchedIn": {
+        "title": "Matched in title",
+        "heading": "Matched in heading",
+        "description": "Matched in description",
+        "slug": "Matched in path"
+      }
+    },
     "codeBlock": {
       "toolbarLabel": "Code snippet actions",
       "copy": "Copy",

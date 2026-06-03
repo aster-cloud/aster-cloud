@@ -2484,6 +2484,19 @@
       "suggestEdit": "提出修改建议",
       "yourTenantVersion": "本页对应的 API 版本"
     },
+    "search": {
+      "placeholder": "搜索文档…",
+      "inputPlaceholder": "输入页面名称、章节或关键词",
+      "noResults": "没有匹配的页面",
+      "resultsLabel": "搜索结果",
+      "openShortcut": "⌘K",
+      "matchedIn": {
+        "title": "匹配到标题",
+        "heading": "匹配到章节",
+        "description": "匹配到摘要",
+        "slug": "匹配到路径"
+      }
+    },
     "codeBlock": {
       "toolbarLabel": "代码片段操作",
       "copy": "复制",

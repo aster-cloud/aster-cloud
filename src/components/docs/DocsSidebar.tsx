@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
 import { docsSidebar } from '@/lib/docs/sidebar';
+import { DocsSidebarSearchButton } from '@/components/docs/DocsSidebarSearchButton';
 
 /**
  * Left rail navigation for /docs/*.
@@ -26,6 +27,7 @@ export function DocsSidebar() {
 
   const sections = (
     <>
+      <DocsSidebarSearchButton />
       {docsSidebar.map((section) => (
         <div key={section.titleKey} className="mb-8">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-fg-muted">

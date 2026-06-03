@@ -2484,6 +2484,19 @@
       "suggestEdit": "Änderung vorschlagen",
       "yourTenantVersion": "Diese Seite dokumentiert API-Version"
     },
+    "search": {
+      "placeholder": "Docs durchsuchen…",
+      "inputPlaceholder": "Seitenname, Überschrift oder Stichwort eingeben",
+      "noResults": "Keine passenden Seiten",
+      "resultsLabel": "Suchergebnisse",
+      "openShortcut": "⌘K",
+      "matchedIn": {
+        "title": "Treffer im Titel",
+        "heading": "Treffer in der Überschrift",
+        "description": "Treffer in der Beschreibung",
+        "slug": "Treffer im Pfad"
+      }
+    },
     "codeBlock": {
       "toolbarLabel": "Code-Snippet-Aktionen",
       "copy": "Kopieren",
