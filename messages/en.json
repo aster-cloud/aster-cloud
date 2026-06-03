@@ -2437,7 +2437,18 @@
   "docs": {
     "nav": {
       "suffix": "Docs",
-      "openConsole": "Open Console"
+      "openConsole": "Open Console",
+      "signIn": "Sign in",
+      "dashboard": "Dashboard",
+      "userMenu": {
+        "label": "Account menu",
+        "dashboard": "Go to dashboard",
+        "settings": "Account settings",
+        "signOut": "Sign out"
+      }
+    },
+    "session": {
+      "probing": "Loading account state"
     },
     "breadcrumb": {
       "root": "Docs",

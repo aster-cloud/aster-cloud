@@ -2437,7 +2437,18 @@
   "docs": {
     "nav": {
       "suffix": "文档",
-      "openConsole": "打开控制台"
+      "openConsole": "打开控制台",
+      "signIn": "登录",
+      "dashboard": "仪表盘",
+      "userMenu": {
+        "label": "账户菜单",
+        "dashboard": "前往仪表盘",
+        "settings": "账户设置",
+        "signOut": "退出登录"
+      }
+    },
+    "session": {
+      "probing": "正在加载账户状态"
     },
     "breadcrumb": {
       "root": "文档",

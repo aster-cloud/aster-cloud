@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Link } from '@/i18n/navigation';
+import { clearDocsSessionCache } from '@/lib/docs/use-docs-session';
 
 interface NavItem {
   href: string;
@@ -82,6 +83,9 @@ export function UserDropdown({
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
+    // Invalidate the docs session cache so any open docs tab flips to
+    // anonymous chrome immediately via the cross-tab storage event.
+    clearDocsSessionCache();
     await signOut({ callbackUrl: '/' });
   };
 

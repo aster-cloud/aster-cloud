@@ -162,6 +162,19 @@ function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentPr
       // 重置 Turnstile
       setTurnstileToken(null);
     } else if (result?.url) {
+      // Signal any open /docs tab to revalidate its session probe so
+      // anonymous chrome flips to authenticated. We can't synthesize
+      // the authenticated state locally (we lack subjectHash and
+      // capabilities); the docs tab listens for the auth-tick and
+      // calls /api/docs/session-state to pick up the truth. Lazy
+      // import keeps the login page off the docs hook's module graph.
+      try {
+        const { signalDocsSessionRefresh } = await import('@/lib/docs/use-docs-session');
+        signalDocsSessionRefresh();
+      } catch {
+        // Best-effort; the docs tab will revalidate on next mount.
+      }
+
       // Role-aware destination: re-read the session that NextAuth just
       // minted so we can branch on isAdmin. getSession() hits the
       // /api/auth/session endpoint, which serializes the JWT we just
@@ -185,6 +198,16 @@ function LoginForm({ translations: t, turnstileSiteKey, denial }: LoginContentPr
     setIsLoading(true);
     // If user is already signed in, sign out first to prevent account linking
     if (session) {
+      // Clear the docs cache before the silent signOut so any open
+      // docs tab flips to anonymous chrome immediately; the dashboard
+      // landing after the new OAuth session will then re-emit the
+      // `in` tick via DocsSessionSignal.
+      try {
+        const { clearDocsSessionCache } = await import('@/lib/docs/use-docs-session');
+        clearDocsSessionCache();
+      } catch {
+        // Best-effort.
+      }
       await signOut({ redirect: false });
     }
     signIn(provider, { callbackUrl });

@@ -246,6 +246,73 @@ test.describe('Cloud docs - fallback SEO', () => {
   });
 });
 
+test.describe('Cloud docs - session-aware chrome', () => {
+  // The chrome starts in the `probing` state (skeleton) and resolves
+  // to `anonymous` for unauthenticated visitors. We verify the
+  // anonymous state by asserting the Sign in + Open Console controls
+  // appear after the probe settles. Authenticated state is covered by
+  // integration tests (sets a session cookie) because the live deploy
+  // doesn't carry credentials.
+
+  test('anonymous user sees Sign in + Open Console after probe', async ({ page }) => {
+    await page.goto('/docs/getting-started/overview');
+    // Probe resolves quickly; the skeleton clears within a few hundred ms.
+    await expect(page.getByRole('link', { name: /Sign in/i })).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByRole('link', { name: /Open Console/i })).toBeVisible();
+  });
+
+  test('zh docs renders the localized Sign in / Open Console', async ({ page }) => {
+    await page.goto('/zh/docs/getting-started/overview');
+    await expect(page.getByRole('link', { name: '登录' })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('link', { name: '打开控制台' })).toBeVisible();
+  });
+
+  test('de docs renders the localized Sign in / Open Console', async ({ page }) => {
+    await page.goto('/de/docs/getting-started/overview');
+    await expect(page.getByRole('link', { name: 'Anmelden' })).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByRole('link', { name: 'Konsole öffnen' })).toBeVisible();
+  });
+
+  test('session probe responds with no-store + Vary: Cookie', async ({ request }) => {
+    const res = await request.get('/api/docs/session-state');
+    expect(res.status()).toBe(200);
+    expect(res.headers()['cache-control']).toBe('private, no-store, max-age=0');
+    expect(res.headers()['vary']).toBe('Cookie');
+    const body = await res.json();
+    // PII guard — body never contains email/userId/tenant.
+    expect(body).not.toHaveProperty('email');
+    expect(body).not.toHaveProperty('userId');
+    expect(body).not.toHaveProperty('tenantId');
+    expect(body).toHaveProperty('schemaVersion', 1);
+  });
+
+  test('docs HTML contains no email-like literals (PII guard)', async ({ request }) => {
+    // Cross-locale check on a representative leaf page. The build-time
+    // PII scan covers the full surface; this guards the runtime case
+    // where an MDX edit could accidentally inline a real address.
+    for (const path of [
+      '/docs/getting-started/overview',
+      '/zh/docs/getting-started/overview',
+      '/de/docs/getting-started/overview',
+    ]) {
+      const res = await request.get(path);
+      const html = await res.text();
+      // Allow MDX sample domains (example.com, acme.com, etc.).
+      const matches = html.match(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}\b/g) ?? [];
+      const offending = matches.filter((m) => {
+        const domain = m.split('@')[1]?.toLowerCase() ?? '';
+        const sampleDomains = ['example.com', 'example.org', 'acme.com', 'acme-corp.com', 'aster-lang.dev', 'localhost'];
+        return !sampleDomains.some((d) => domain === d || domain.endsWith(`.${d}`));
+      });
+      expect(offending, `unexpected emails on ${path}: ${offending.join(', ')}`).toEqual([]);
+    }
+  });
+});
+
 test.describe('Cloud docs - sitemap + robots', () => {
   test('sitemap.xml emits one <loc> per (slug × locale) with reciprocal hreflang', async ({ request }) => {
     const res = await request.get('/sitemap.xml');

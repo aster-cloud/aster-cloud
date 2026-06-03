@@ -3,6 +3,7 @@ import { DocsTopNav } from '@/components/docs/DocsTopNav';
 import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { DocsTOC } from '@/components/docs/DocsTOC';
 import { DocsBreadcrumb } from '@/components/docs/DocsBreadcrumb';
+import { DocsSessionProvider } from '@/lib/docs/use-docs-session';
 
 /**
  * Docs render dynamically.
@@ -48,24 +49,26 @@ export default async function DocsLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <div className="min-h-screen bg-bg">
-      <DocsTopNav />
-      {/* Mobile: stack drawer-above-content via flex-col so the
-          collapsible <details> in DocsSidebar lays out above the
-          article. Switch to flex-row at lg+ where the persistent
-          sidebar takes its column. */}
-      <div className="mx-auto flex flex-col lg:flex-row max-w-[1400px] pt-16">
-        <DocsSidebar />
-        <main className="min-w-0 flex-1 px-4 sm:px-6 lg:px-8 py-10">
-          <DocsBreadcrumb />
-          <article
-            className="docs-article prose prose-zinc dark:prose-invert max-w-3xl"
-          >
-            {children}
-          </article>
-        </main>
-        <DocsTOC />
+    <DocsSessionProvider>
+      <div className="min-h-screen bg-bg">
+        <DocsTopNav />
+        {/* Mobile: stack drawer-above-content via flex-col so the
+            collapsible <details> in DocsSidebar lays out above the
+            article. Switch to flex-row at lg+ where the persistent
+            sidebar takes its column. */}
+        <div className="mx-auto flex flex-col lg:flex-row max-w-[1400px] pt-16">
+          <DocsSidebar />
+          <main className="min-w-0 flex-1 px-4 sm:px-6 lg:px-8 py-10">
+            <DocsBreadcrumb />
+            <article
+              className="docs-article prose prose-zinc dark:prose-invert max-w-3xl"
+            >
+              {children}
+            </article>
+          </main>
+          <DocsTOC />
+        </div>
       </div>
-    </div>
+    </DocsSessionProvider>
   );
 }

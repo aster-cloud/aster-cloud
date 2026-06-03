@@ -152,6 +152,19 @@ export const Events = {
   // feature earns its discovery cost.
   PALETTE_OPENED: 'palette_opened',
   PALETTE_COMMAND_SELECTED: 'palette_command_selected',
+
+  // Docs experience — see .claude/plan/docs-enterprise-ux.md §7.1.
+  // Probe is sampled to ~1/min/user via the hook's caching layer,
+  // so we don't need a separate sampling step here. Properties stay
+  // PII-free: no email/userId/tenantId fields.
+  DOCS_SESSION_PROBE: 'docs_session_probe',
+  DOCS_CTA_CLICKED: 'docs_cta_clicked',
+  DOCS_SNIPPET_COPIED: 'docs_snippet_copied',
+  DOCS_SNIPPET_OPENED: 'docs_snippet_opened',
+  DOCS_SEARCH_OPENED: 'docs_search_opened',
+  DOCS_SEARCH_RESULT_CLICKED: 'docs_search_result_clicked',
+  DOCS_HOME_PERSONALIZED: 'docs_home_personalized',
+  DOCS_TASK_VIEW_SWITCHED: 'docs_task_view_switched',
 } as const;
 
 /**

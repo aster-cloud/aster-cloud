@@ -2437,7 +2437,18 @@
   "docs": {
     "nav": {
       "suffix": "Docs",
-      "openConsole": "Konsole öffnen"
+      "openConsole": "Konsole öffnen",
+      "signIn": "Anmelden",
+      "dashboard": "Dashboard",
+      "userMenu": {
+        "label": "Kontomenü",
+        "dashboard": "Zum Dashboard",
+        "settings": "Kontoeinstellungen",
+        "signOut": "Abmelden"
+      }
+    },
+    "session": {
+      "probing": "Kontostatus wird geladen"
     },
     "breadcrumb": {
       "root": "Docs",

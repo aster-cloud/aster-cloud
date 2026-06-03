@@ -9,6 +9,7 @@ import { CommandPalette } from '@/components/dashboard/command-palette';
 import { buildCommands } from '@/components/dashboard/command-palette-commands';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
+import { DocsSessionSignal } from '@/components/docs/DocsSessionSignal';
 import { NotificationsBell } from '@/components/notifications/notifications-bell';
 import { SkipToContent } from '@/components/skip-to-content';
 import { getSession } from '@/lib/auth';
@@ -109,6 +110,12 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-bg-subtle text-fg">
       <SkipToContent targetId="dashboard-main" />
+      {/* Fire a cross-tab "session-refresh" signal so any open /docs
+          tab revalidates its probe. The dashboard is the canonical
+          post-OAuth landing route — credential sign-in fires the
+          signal from the login-content success branch, and OAuth
+          falls through to here. Renders nothing. */}
+      <DocsSessionSignal />
 
       <DashboardSidebar
         localePrefix={routePrefix}

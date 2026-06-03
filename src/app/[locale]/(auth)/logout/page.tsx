@@ -5,6 +5,7 @@ import { signOut } from 'next-auth/react';
 import { Link } from '@/i18n/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { defaultLocale } from '@/i18n/config';
+import { clearDocsSessionCache } from '@/lib/docs/use-docs-session';
 
 export default function LogoutPage() {
   const t = useTranslations('auth.logout');
@@ -16,6 +17,9 @@ export default function LogoutPage() {
   const callbackUrl = `${localePrefix}/`;
 
   useEffect(() => {
+    // Clear the docs session probe cache and emit a `storage` event
+    // so any open /docs tab flips to anonymous chrome immediately.
+    clearDocsSessionCache();
     signOut({ callbackUrl });
   }, [callbackUrl]);
 
