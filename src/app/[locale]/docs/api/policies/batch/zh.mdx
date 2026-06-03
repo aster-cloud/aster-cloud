@@ -1,31 +1,28 @@
 ---
-title: "Batch Evaluate Policies"
-fallback: true
+title: "批量评估策略"
 ---
 
-# Batch Evaluate Policies
+# 批量评估策略
 
-<TranslationFallbackBanner />
+在单个 HTTP 请求中评估最多 100 个策略调用。批次中的每一项都是独立的评估请求。结果按输入请求的顺序返回。单个项目的失败不会影响批次中的其他项目。
 
-Evaluate up to 100 policy calls in a single HTTP request. Each item in the batch is an independent evaluation request. Results are returned in the same order as the input requests. Failures in individual items do not affect the rest of the batch.
-
-## Endpoint
+## 端点
 
 `POST /api/v1/policies/evaluate/batch`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -39,21 +36,21 @@ Evaluate up to 100 policy calls in a single HTTP request. Each item in the batch
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `requests` | `array<EvaluationRequest>` | Yes | Ordered list of evaluation requests. Maximum 100 items per call. Requests beyond index 99 are rejected with a `400` error. |
+| `requests` | `array<EvaluationRequest>` | 是 | 评估请求的有序列表。每次调用最多 100 项。索引超过 99 的请求会以 `400` 错误被拒绝。 |
 
 ### EvaluationRequest
 
-Each element of `requests` follows the same schema as the single `/evaluate` request body:
+`requests` 的每个元素遵循与单个 `/evaluate` 请求体相同的 schema：
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | Fully-qualified module name of the deployed policy. |
-| `policyFunction` | `string` | Yes | Function name within the module to invoke. |
-| `context` | `array<object>` | Yes | Ordered list of argument objects passed positionally to the function. |
+| `policyModule` | `string` | 是 | 已部署策略的完全限定模块名。 |
+| `policyFunction` | `string` | 是 | 模块内要调用的函数名。 |
+| `context` | `array<object>` | 是 | 按位置传递给函数的参数对象有序列表。 |
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -71,35 +68,35 @@ Each element of `requests` follows the same schema as the single `/evaluate` req
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `responses` | `array<EvaluationResponse>` | Results in the same order as the input `requests` array. Every request produces exactly one response entry, even if evaluation failed. |
-| `totalExecutionTimeMs` | `number` | Combined wall-clock time in milliseconds for all evaluations plus batch coordination overhead. |
-| `successCount` | `number` | Number of items where `error` is `null`. |
-| `failureCount` | `number` | Number of items where `error` is non-null. |
+| `responses` | `array<EvaluationResponse>` | 与输入 `requests` 数组相同顺序的结果。每个请求恰好产生一个响应条目，即使评估失败。 |
+| `totalExecutionTimeMs` | `number` | 所有评估加上批次协调开销的合并挂钟时间（毫秒）。 |
+| `successCount` | `number` | `error` 为 `null` 的项目数量。 |
+| `failureCount` | `number` | `error` 非 null 的项目数量。 |
 
 ### EvaluationResponse
 
-Each element of `responses` has the same shape as the single `/evaluate` response:
+`responses` 的每个元素与单个 `/evaluate` 响应具有相同的形状：
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `result` | `any` | Return value of the policy function, or `null` if evaluation failed. |
-| `executionTimeMs` | `number` | Execution time for this individual item. |
-| `error` | `string \| null` | Error message for this item; `null` on success. |
-| `decisionTrace` | `object \| null` | Always `null` — decision tracing is not available in batch mode. |
+| `result` | `any` | 策略函数的返回值，若评估失败则为 `null`。 |
+| `executionTimeMs` | `number` | 此独立项目的执行时间。 |
+| `error` | `string \| null` | 此项目的错误消息；成功时为 `null`。 |
+| `decisionTrace` | `object \| null` | 始终为 `null` —— 批量模式下不提供决策追踪。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Batch processed. Inspect `failureCount` and per-item `error` fields to detect individual failures. |
-| `400 Bad Request` | Malformed request body, `requests` array exceeds 100 items, or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure affecting the entire batch. |
+| `200 OK` | 批次已处理。检查 `failureCount` 和每项的 `error` 字段以检测单个失败。 |
+| `400 Bad Request` | 请求体格式错误、`requests` 数组超过 100 项或缺少必需字段。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `500 Internal Server Error` | 影响整个批次的非预期引擎故障。 |
 
-## Examples
+## 示例
 
 <CodeGroup>
 
@@ -182,7 +179,7 @@ data.responses.forEach((res, i) => {
 
 </CodeGroup>
 
-### Example Response
+### 示例响应
 
 ```json
 {

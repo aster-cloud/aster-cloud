@@ -1,31 +1,28 @@
 ---
-title: "Batch Evaluate Policies"
-fallback: true
+title: "Policies im Batch evaluieren"
 ---
 
-# Batch Evaluate Policies
+# Policies im Batch evaluieren
 
-<TranslationFallbackBanner />
+Bewerten Sie bis zu 100 Policy-Aufrufe in einer einzigen HTTP-Anfrage. Jedes Element im Batch ist eine unabhängige Evaluierungsanfrage. Ergebnisse werden in derselben Reihenfolge wie die Eingabe-Anfragen zurückgegeben. Fehler in einzelnen Elementen wirken sich nicht auf den Rest des Batches aus.
 
-Evaluate up to 100 policy calls in a single HTTP request. Each item in the batch is an independent evaluation request. Results are returned in the same order as the input requests. Failures in individual items do not affect the rest of the batch.
-
-## Endpoint
+## Endpunkt
 
 `POST /api/v1/policies/evaluate/batch`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -39,21 +36,21 @@ Evaluate up to 100 policy calls in a single HTTP request. Each item in the batch
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `requests` | `array<EvaluationRequest>` | Yes | Ordered list of evaluation requests. Maximum 100 items per call. Requests beyond index 99 are rejected with a `400` error. |
+| `requests` | `array<EvaluationRequest>` | Ja | Geordnete Liste von Evaluierungsanfragen. Maximal 100 Elemente pro Aufruf. Anfragen über Index 99 hinaus werden mit einem `400`-Fehler abgelehnt. |
 
 ### EvaluationRequest
 
-Each element of `requests` follows the same schema as the single `/evaluate` request body:
+Jedes Element von `requests` folgt demselben Schema wie der einzelne `/evaluate`-Request-Body:
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | Yes | Fully-qualified module name of the deployed policy. |
-| `policyFunction` | `string` | Yes | Function name within the module to invoke. |
-| `context` | `array<object>` | Yes | Ordered list of argument objects passed positionally to the function. |
+| `policyModule` | `string` | Ja | Vollqualifizierter Modulname der bereitgestellten Policy. |
+| `policyFunction` | `string` | Ja | Funktionsname innerhalb des Moduls, der aufgerufen werden soll. |
+| `context` | `array<object>` | Ja | Geordnete Liste von Argument-Objekten, die positional an die Funktion übergeben werden. |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -71,35 +68,35 @@ Each element of `requests` follows the same schema as the single `/evaluate` req
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `responses` | `array<EvaluationResponse>` | Results in the same order as the input `requests` array. Every request produces exactly one response entry, even if evaluation failed. |
-| `totalExecutionTimeMs` | `number` | Combined wall-clock time in milliseconds for all evaluations plus batch coordination overhead. |
-| `successCount` | `number` | Number of items where `error` is `null`. |
-| `failureCount` | `number` | Number of items where `error` is non-null. |
+| `responses` | `array<EvaluationResponse>` | Ergebnisse in derselben Reihenfolge wie das Eingabe-`requests`-Array. Jede Anfrage erzeugt genau einen Antwort-Eintrag, auch wenn die Evaluierung fehlschlug. |
+| `totalExecutionTimeMs` | `number` | Kombinierte Wanduhrzeit in Millisekunden für alle Evaluierungen plus Batch-Koordinations-Overhead. |
+| `successCount` | `number` | Anzahl der Elemente, bei denen `error` `null` ist. |
+| `failureCount` | `number` | Anzahl der Elemente, bei denen `error` nicht `null` ist. |
 
 ### EvaluationResponse
 
-Each element of `responses` has the same shape as the single `/evaluate` response:
+Jedes Element von `responses` hat dieselbe Form wie die einzelne `/evaluate`-Antwort:
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `result` | `any` | Return value of the policy function, or `null` if evaluation failed. |
-| `executionTimeMs` | `number` | Execution time for this individual item. |
-| `error` | `string \| null` | Error message for this item; `null` on success. |
-| `decisionTrace` | `object \| null` | Always `null` — decision tracing is not available in batch mode. |
+| `result` | `any` | Rückgabewert der Policy-Funktion oder `null`, falls die Evaluierung fehlschlug. |
+| `executionTimeMs` | `number` | Ausführungszeit für dieses einzelne Element. |
+| `error` | `string \| null` | Fehlermeldung für dieses Element; `null` bei Erfolg. |
+| `decisionTrace` | `object \| null` | Immer `null` — Decision-Tracing ist im Batch-Modus nicht verfügbar. |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Batch processed. Inspect `failureCount` and per-item `error` fields to detect individual failures. |
-| `400 Bad Request` | Malformed request body, `requests` array exceeds 100 items, or missing required fields. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure affecting the entire batch. |
+| `200 OK` | Batch verarbeitet. Prüfen Sie `failureCount` und die `error`-Felder pro Element, um einzelne Fehler zu erkennen. |
+| `400 Bad Request` | Fehlerhafter Request-Body, `requests`-Array überschreitet 100 Elemente oder fehlende Pflichtfelder. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler, der den gesamten Batch betrifft. |
 
-## Examples
+## Beispiele
 
 <CodeGroup>
 
@@ -182,7 +179,7 @@ data.responses.forEach((res, i) => {
 
 </CodeGroup>
 
-### Example Response
+### Beispiel-Antwort
 
 ```json
 {

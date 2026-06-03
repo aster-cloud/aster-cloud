@@ -1,33 +1,30 @@
 ---
-title: "Clear Policy Cache"
-fallback: true
+title: "清除策略缓存"
 ---
 
-# Clear Policy Cache
+# 清除策略缓存
 
-<TranslationFallbackBanner />
+使引擎持有的缓存策略状态失效。引擎为性能缓存编译后的策略表示。在部署、回滚或需要引擎立即重新加载最新策略状态而非等待缓存自然过期的数据变更之后，使用此端点。
 
-Invalidate cached policy state held by the engine. The engine caches compiled policy representations for performance. Use this endpoint after a deployment, rollback, or data change that requires the engine to reload the latest policy state immediately rather than waiting for the cache to expire naturally.
+清除缓存不会删除策略本身。后续的评估请求将从当前激活版本重新编译并重新缓存策略。
 
-Clearing the cache does not delete the policy itself. Subsequent evaluation requests will recompile and re-cache the policy from the current active version.
-
-## Endpoint
+## 端点
 
 `DELETE /api/v1/policies/cache`
 
-## Required Role
+## 必需角色
 
 `MEMBER`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
-## Request Body
+## 请求体
 
 ```json
 {
@@ -36,21 +33,21 @@ Clearing the cache does not delete the policy itself. Subsequent evaluation requ
 }
 ```
 
-Both fields are optional. The combination of provided fields determines the scope of invalidation:
+两个字段都是可选的。所提供字段的组合决定失效的范围：
 
-| `policyModule` | `policyFunction` | Scope |
+| `policyModule` | `policyFunction` | 范围 |
 |----------------|------------------|-------|
-| Omitted | Omitted | Clears the entire policy cache for the tenant. |
-| Provided | Omitted | Clears all cached functions within the specified module. |
-| Provided | Provided | Clears only the cached entry for the specific module + function pair. |
-| Omitted | Provided | `400 Bad Request` — `policyFunction` cannot be specified without `policyModule`. |
+| 省略 | 省略 | 清除租户的整个策略缓存。 |
+| 提供 | 省略 | 清除指定模块内所有缓存的函数。 |
+| 提供 | 提供 | 仅清除特定模块 + 函数对的缓存条目。 |
+| 省略 | 提供 | `400 Bad Request` —— 不指定 `policyModule` 无法指定 `policyFunction`。 |
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | No | Module name to target for cache invalidation. |
-| `policyFunction` | `string` | No | Function name within the module to target. Requires `policyModule` to also be specified. |
+| `policyModule` | `string` | 否 | 缓存失效的目标模块名。 |
+| `policyFunction` | `string` | 否 | 模块内要针对的函数名。需要同时指定 `policyModule`。 |
 
-## Response Body
+## 响应体
 
 ```json
 {
@@ -59,24 +56,24 @@ Both fields are optional. The combination of provided fields determines the scop
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `cleared` | `number` | Number of individual cache entries that were invalidated. |
-| `scope` | `string` | Human-readable description of what was cleared (e.g. `"all"`, `"module:Loan.Approval"`, `"function:Loan.Approval.isEligible"`). |
+| `cleared` | `number` | 被失效的独立缓存条目数量。 |
+| `scope` | `string` | 描述被清除内容的人类可读说明（如 `"all"`、`"module:Loan.Approval"`、`"function:Loan.Approval.isEligible"`）。 |
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Cache cleared. `cleared` may be `0` if no matching entries were cached at the time of the request. |
-| `400 Bad Request` | `policyFunction` was specified without `policyModule`, or the request body is malformed. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. Cache state is undefined when this status is returned. |
+| `200 OK` | 缓存已清除。请求时若没有匹配的条目缓存则 `cleared` 可能为 `0`。 |
+| `400 Bad Request` | 在未指定 `policyModule` 的情况下指定了 `policyFunction`，或请求体格式错误。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `MEMBER` 角色。 |
+| `500 Internal Server Error` | 非预期的引擎故障。返回此状态时缓存状态未定义。 |
 
-## Examples
+## 示例
 
-### Clear Entire Tenant Cache
+### 清除整个租户缓存
 
 <CodeGroup>
 
@@ -108,7 +105,7 @@ console.log(`Cleared ${data.cleared} cache entries (scope: ${data.scope})`);
 
 </CodeGroup>
 
-### Clear Cache for a Specific Module
+### 清除特定模块的缓存
 
 <CodeGroup>
 
@@ -143,7 +140,7 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Clear Cache for a Specific Function
+### 清除特定函数的缓存
 
 <CodeGroup>
 
@@ -180,9 +177,9 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Example Responses
+### 示例响应
 
-**Entire tenant cache cleared:**
+**整个租户缓存已清除：**
 ```json
 {
   "cleared": 47,
@@ -190,7 +187,7 @@ const data = await response.json();
 }
 ```
 
-**Module-scoped clear:**
+**模块范围清除：**
 ```json
 {
   "cleared": 3,
@@ -198,7 +195,7 @@ const data = await response.json();
 }
 ```
 
-**Function-scoped clear:**
+**函数范围清除：**
 ```json
 {
   "cleared": 1,
@@ -206,7 +203,7 @@ const data = await response.json();
 }
 ```
 
-**No entries were cached (still succeeds):**
+**没有条目被缓存（仍然成功）：**
 ```json
 {
   "cleared": 0,

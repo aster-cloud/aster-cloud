@@ -1,33 +1,30 @@
 ---
-title: "Clear Policy Cache"
-fallback: true
+title: "Policy-Cache leeren"
 ---
 
-# Clear Policy Cache
+# Policy-Cache leeren
 
-<TranslationFallbackBanner />
+Den von der Engine gehaltenen Policy-Cache-Zustand invalidieren. Die Engine cached kompilierte Policy-Repräsentationen aus Performance-Gründen. Verwenden Sie diesen Endpunkt nach einer Bereitstellung, einem Rollback oder einer Datenänderung, die erfordert, dass die Engine den neuesten Policy-Zustand sofort neu lädt, statt darauf zu warten, dass der Cache natürlich abläuft.
 
-Invalidate cached policy state held by the engine. The engine caches compiled policy representations for performance. Use this endpoint after a deployment, rollback, or data change that requires the engine to reload the latest policy state immediately rather than waiting for the cache to expire naturally.
+Das Leeren des Caches löscht die Policy selbst nicht. Nachfolgende Evaluierungsanfragen kompilieren und cachen die Policy aus der aktuell aktiven Version neu.
 
-Clearing the cache does not delete the policy itself. Subsequent evaluation requests will recompile and re-cache the policy from the current active version.
-
-## Endpoint
+## Endpunkt
 
 `DELETE /api/v1/policies/cache`
 
-## Required Role
+## Erforderliche Rolle
 
 `MEMBER`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
-## Request Body
+## Request-Body
 
 ```json
 {
@@ -36,21 +33,21 @@ Clearing the cache does not delete the policy itself. Subsequent evaluation requ
 }
 ```
 
-Both fields are optional. The combination of provided fields determines the scope of invalidation:
+Beide Felder sind optional. Die Kombination der angegebenen Felder bestimmt den Geltungsbereich der Invalidierung:
 
-| `policyModule` | `policyFunction` | Scope |
+| `policyModule` | `policyFunction` | Geltungsbereich |
 |----------------|------------------|-------|
-| Omitted | Omitted | Clears the entire policy cache for the tenant. |
-| Provided | Omitted | Clears all cached functions within the specified module. |
-| Provided | Provided | Clears only the cached entry for the specific module + function pair. |
-| Omitted | Provided | `400 Bad Request` — `policyFunction` cannot be specified without `policyModule`. |
+| Weggelassen | Weggelassen | Leert den gesamten Policy-Cache für den Mandanten. |
+| Angegeben | Weggelassen | Leert alle gecachten Funktionen innerhalb des angegebenen Moduls. |
+| Angegeben | Angegeben | Leert nur den gecachten Eintrag für das spezifische Modul + Funktions-Paar. |
+| Weggelassen | Angegeben | `400 Bad Request` — `policyFunction` kann nicht ohne `policyModule` angegeben werden. |
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `policyModule` | `string` | No | Module name to target for cache invalidation. |
-| `policyFunction` | `string` | No | Function name within the module to target. Requires `policyModule` to also be specified. |
+| `policyModule` | `string` | Nein | Modulname als Ziel für die Cache-Invalidierung. |
+| `policyFunction` | `string` | Nein | Funktionsname innerhalb des Moduls als Ziel. Erfordert, dass `policyModule` ebenfalls angegeben wird. |
 
-## Response Body
+## Response-Body
 
 ```json
 {
@@ -59,24 +56,24 @@ Both fields are optional. The combination of provided fields determines the scop
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `cleared` | `number` | Number of individual cache entries that were invalidated. |
-| `scope` | `string` | Human-readable description of what was cleared (e.g. `"all"`, `"module:Loan.Approval"`, `"function:Loan.Approval.isEligible"`). |
+| `cleared` | `number` | Anzahl der einzelnen Cache-Einträge, die invalidiert wurden. |
+| `scope` | `string` | Menschenlesbare Beschreibung dessen, was geleert wurde (z. B. `"all"`, `"module:Loan.Approval"`, `"function:Loan.Approval.isEligible"`). |
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Cache cleared. `cleared` may be `0` if no matching entries were cached at the time of the request. |
-| `400 Bad Request` | `policyFunction` was specified without `policyModule`, or the request body is malformed. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `MEMBER` role. |
-| `500 Internal Server Error` | Unexpected engine failure. Cache state is undefined when this status is returned. |
+| `200 OK` | Cache geleert. `cleared` kann `0` sein, wenn zum Zeitpunkt der Anfrage keine übereinstimmenden Einträge gecached waren. |
+| `400 Bad Request` | `policyFunction` wurde ohne `policyModule` angegeben oder der Request-Body ist fehlerhaft. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `MEMBER`-Rolle. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. Der Cache-Zustand ist undefiniert, wenn dieser Status zurückgegeben wird. |
 
-## Examples
+## Beispiele
 
-### Clear Entire Tenant Cache
+### Gesamten Mandanten-Cache leeren
 
 <CodeGroup>
 
@@ -108,7 +105,7 @@ console.log(`Cleared ${data.cleared} cache entries (scope: ${data.scope})`);
 
 </CodeGroup>
 
-### Clear Cache for a Specific Module
+### Cache für ein bestimmtes Modul leeren
 
 <CodeGroup>
 
@@ -143,7 +140,7 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Clear Cache for a Specific Function
+### Cache für eine bestimmte Funktion leeren
 
 <CodeGroup>
 
@@ -180,9 +177,9 @@ const data = await response.json();
 
 </CodeGroup>
 
-### Example Responses
+### Beispiel-Antworten
 
-**Entire tenant cache cleared:**
+**Gesamter Mandanten-Cache geleert:**
 ```json
 {
   "cleared": 47,
@@ -190,7 +187,7 @@ const data = await response.json();
 }
 ```
 
-**Module-scoped clear:**
+**Modul-bezogene Leerung:**
 ```json
 {
   "cleared": 3,
@@ -198,7 +195,7 @@ const data = await response.json();
 }
 ```
 
-**Function-scoped clear:**
+**Funktions-bezogene Leerung:**
 ```json
 {
   "cleared": 1,
@@ -206,7 +203,7 @@ const data = await response.json();
 }
 ```
 
-**No entries were cached (still succeeds):**
+**Keine Einträge waren gecached (gelingt dennoch):**
 ```json
 {
   "cleared": 0,
