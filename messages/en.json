@@ -2450,6 +2450,40 @@
     "session": {
       "probing": "Loading account state"
     },
+    "quickstart": {
+      "stepPrefix": "Step {step}: ",
+      "steps": {
+        "tenantId": {
+          "title": "Locate your tenant ID",
+          "description": "Open the API keys page and copy the tenant identifier into a safe place. You'll send it with every request as the X-Tenant-Id header.",
+          "cta": "Open API keys"
+        },
+        "apiKey": {
+          "title": "Create your first API key",
+          "description": "Issue an API key with at least the MEMBER role so the policy evaluation endpoints accept your requests.",
+          "cta": "Create API key"
+        },
+        "playground": {
+          "title": "Run an evaluation in the Playground",
+          "description": "The Playground loads a minimal sample policy and lets you tweak the source before evaluating it against test inputs.",
+          "cta": "Open Playground"
+        },
+        "viewTraces": {
+          "title": "Inspect your first decision trace",
+          "description": "After the first evaluation lands, the policies page lists every recent run and lets you drill into each decision trace.",
+          "cta": "View my policies"
+        }
+      }
+    },
+    "trustFooter": {
+      "ariaLabel": "Page metadata and feedback",
+      "lastUpdated": "Last updated",
+      "apiVersion": "API version",
+      "compatibility": "Compatible with engine",
+      "changelog": "Changelog",
+      "suggestEdit": "Suggest an edit",
+      "yourTenantVersion": "This page documents API version"
+    },
     "codeBlock": {
       "toolbarLabel": "Code snippet actions",
       "copy": "Copy",

@@ -2450,6 +2450,40 @@
     "session": {
       "probing": "Kontostatus wird geladen"
     },
+    "quickstart": {
+      "stepPrefix": "Schritt {step}: ",
+      "steps": {
+        "tenantId": {
+          "title": "Mandanten-ID finden",
+          "description": "Öffnen Sie die API-Schlüssel-Seite und kopieren Sie die Mandantenkennung an einen sicheren Ort. Sie wird mit jedem Request im Header X-Tenant-Id mitgesendet.",
+          "cta": "API-Schlüssel öffnen"
+        },
+        "apiKey": {
+          "title": "Ersten API-Schlüssel anlegen",
+          "description": "Erstellen Sie einen API-Schlüssel mit mindestens der MEMBER-Rolle, damit die Endpunkte für die Policy-Evaluierung Ihre Anfragen akzeptieren.",
+          "cta": "API-Schlüssel anlegen"
+        },
+        "playground": {
+          "title": "Eine Evaluierung im Playground ausführen",
+          "description": "Der Playground lädt eine minimale Beispielrichtlinie und erlaubt Ihnen, den Quelltext vor der Auswertung mit Testdaten anzupassen.",
+          "cta": "Playground öffnen"
+        },
+        "viewTraces": {
+          "title": "Ersten Decision Trace prüfen",
+          "description": "Sobald die erste Evaluierung läuft, listet die Policies-Seite alle aktuellen Durchläufe auf und lässt Sie jeden Decision Trace im Detail prüfen.",
+          "cta": "Meine Policies anzeigen"
+        }
+      }
+    },
+    "trustFooter": {
+      "ariaLabel": "Seitenmetadaten und Feedback",
+      "lastUpdated": "Zuletzt aktualisiert",
+      "apiVersion": "API-Version",
+      "compatibility": "Kompatibel mit Engine",
+      "changelog": "Changelog",
+      "suggestEdit": "Änderung vorschlagen",
+      "yourTenantVersion": "Diese Seite dokumentiert API-Version"
+    },
     "codeBlock": {
       "toolbarLabel": "Code-Snippet-Aktionen",
       "copy": "Kopieren",

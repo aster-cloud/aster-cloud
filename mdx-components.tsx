@@ -1,6 +1,7 @@
 import type { MDXComponents } from 'mdx/types';
 import { Callout, CodeGroup } from '@/components/docs/mdx-callouts';
 import { DocsCodeBlock } from '@/components/docs/DocsCodeBlock';
+import { ActionableStep } from '@/components/docs/ActionableStep';
 import { TranslationFallbackBanner } from '@/components/docs/TranslationFallbackBanner';
 
 /**
@@ -26,6 +27,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     // readers get a Copy button plus, when the fence opts in via
     // `{playground=true,id=…}`, an "Open in Playground" link.
     pre: DocsCodeBlock,
+    // Phase 4 — numbered step card with optional in-product CTA.
+    // Used in MDX quickstart pages so each step becomes a one-click
+    // path into the relevant app surface.
+    ActionableStep,
     TranslationFallbackBanner,
   };
 }

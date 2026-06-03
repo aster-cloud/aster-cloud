@@ -2450,6 +2450,40 @@
     "session": {
       "probing": "正在加载账户状态"
     },
+    "quickstart": {
+      "stepPrefix": "第 {step} 步：",
+      "steps": {
+        "tenantId": {
+          "title": "找到你的租户 ID",
+          "description": "打开 API 密钥页面，将租户标识符复制到安全位置。每个请求都需要在 X-Tenant-Id 请求头中携带该值。",
+          "cta": "打开 API 密钥"
+        },
+        "apiKey": {
+          "title": "创建第一个 API 密钥",
+          "description": "签发一个至少具有 MEMBER 角色的 API 密钥，策略评估端点才会接受你的请求。",
+          "cta": "创建 API 密钥"
+        },
+        "playground": {
+          "title": "在 Playground 中运行一次评估",
+          "description": "Playground 会加载一个最小示例策略，你可以在评估测试输入之前调整源代码。",
+          "cta": "打开 Playground"
+        },
+        "viewTraces": {
+          "title": "查看第一条决策追踪",
+          "description": "首次评估完成后，策略页会列出最近的所有运行，并支持深入查看每条决策追踪。",
+          "cta": "查看我的策略"
+        }
+      }
+    },
+    "trustFooter": {
+      "ariaLabel": "页面元信息与反馈",
+      "lastUpdated": "最近更新",
+      "apiVersion": "API 版本",
+      "compatibility": "兼容引擎版本",
+      "changelog": "变更日志",
+      "suggestEdit": "提出修改建议",
+      "yourTenantVersion": "本页对应的 API 版本"
+    },
     "codeBlock": {
       "toolbarLabel": "代码片段操作",
       "copy": "复制",
