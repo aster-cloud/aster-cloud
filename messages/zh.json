@@ -1576,6 +1576,16 @@
         "cta": "查看许可证",
         "comingSoon": "即将上线"
       },
+      "licenseRevokeCard": {
+        "title": "许可证撤销",
+        "description": "撤销已泄露的许可证并发布已签名的撤销列表。",
+        "cta": "打开撤销页"
+      },
+      "issuedLicensesCard": {
+        "title": "已签发许可证",
+        "description": "浏览所有已签发的许可证，含续约谱系和遥测数据。",
+        "cta": "打开许可证总账"
+      },
       "ssoCard": {
         "title": "单点登录",
         "description": "为本组织配置 SAML / OIDC。",

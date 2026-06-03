@@ -1576,6 +1576,16 @@
         "cta": "View license",
         "comingSoon": "Coming soon"
       },
+      "licenseRevokeCard": {
+        "title": "License revocation",
+        "description": "Revoke compromised licenses and publish the signed revocation list.",
+        "cta": "Open revocation"
+      },
+      "issuedLicensesCard": {
+        "title": "Issued licenses",
+        "description": "Browse all licenses ever signed, with renewal lineage and telemetry.",
+        "cta": "Open ledger"
+      },
       "ssoCard": {
         "title": "Single sign-on",
         "description": "Configure SAML / OIDC for your organization.",

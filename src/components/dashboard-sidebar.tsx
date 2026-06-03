@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   Package,
   Lock,
+  Receipt,
+  Ban,
   ChevronsLeft,
   ChevronsRight,
   Menu,
@@ -260,6 +262,8 @@ interface DashboardSidebarProps {
     aiBreaker: string;
     riskTier: string;
     license: string;
+    licenseRevoke: string;
+    issuedLicenses: string;
     sso: string;
     billing: string;
     settings: string;
@@ -272,6 +276,8 @@ interface DashboardSidebarProps {
   adminCapabilities: {
     riskTier: boolean;
     license: boolean;
+    licenseRevoke: boolean;
+    issuedLicenses: boolean;
     sso: boolean;
   };
 }
@@ -365,6 +371,12 @@ export function DashboardSidebar({
           : []),
         ...(adminCapabilities.license
           ? [{ href: '/admin/license', label: labels.license, icon: Package } as SidebarItem]
+          : []),
+        ...(adminCapabilities.licenseRevoke
+          ? [{ href: '/admin/license-revoke', label: labels.licenseRevoke, icon: Ban } as SidebarItem]
+          : []),
+        ...(adminCapabilities.issuedLicenses
+          ? [{ href: '/admin/issued-licenses', label: labels.issuedLicenses, icon: Receipt } as SidebarItem]
           : []),
         ...(adminCapabilities.sso
           ? [{ href: '/admin/sso', label: labels.sso, icon: Lock } as SidebarItem]

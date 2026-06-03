@@ -1576,6 +1576,16 @@
         "cta": "Lizenz anzeigen",
         "comingSoon": "Demnächst verfügbar"
       },
+      "licenseRevokeCard": {
+        "title": "Lizenzwiderruf",
+        "description": "Kompromittierte Lizenzen widerrufen und die signierte Widerrufsliste veröffentlichen.",
+        "cta": "Widerruf öffnen"
+      },
+      "issuedLicensesCard": {
+        "title": "Ausgestellte Lizenzen",
+        "description": "Alle jemals signierten Lizenzen mit Verlängerungskette und Telemetrie durchsuchen.",
+        "cta": "Hauptbuch öffnen"
+      },
       "ssoCard": {
         "title": "Single Sign-On",
         "description": "SAML / OIDC für Ihre Organisation konfigurieren.",

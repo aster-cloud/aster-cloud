@@ -18,6 +18,7 @@ import {
   CAN_RISKTIER,
   CAN_LICENSE,
   CAN_SSO,
+  IS_SAAS,
 } from '@/lib/deployment-mode';
 import { getEffectiveRole, canAccess } from '@/lib/effective-role';
 import { defaultLocale } from '@/i18n/config';
@@ -129,6 +130,8 @@ export default async function DashboardLayout({
           aiBreaker: tAdminCircuit('title'),
           riskTier: tAdminRisk('title'),
           license: tAdminNav('license'),
+          licenseRevoke: tAdminNav('licenseRevoke'),
+          issuedLicenses: tAdminNav('issuedLicenses'),
           sso: tAdminNav('sso'),
           billing: t('billing'),
           settings: t('settings'),
@@ -140,6 +143,10 @@ export default async function DashboardLayout({
         adminCapabilities={{
           riskTier: CAN_RISKTIER,
           license: CAN_LICENSE,
+          // SaaS ops surfaces — Aster team revokes customer licenses
+          // and inspects the full issued-license ledger.
+          licenseRevoke: IS_SAAS,
+          issuedLicenses: IS_SAAS,
           sso: CAN_SSO,
         }}
       />

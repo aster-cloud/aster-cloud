@@ -106,14 +106,14 @@ function HomeContent({ locale }: { locale: string }) {
 function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
   // Public landing nav — evaluator-grade. Three rows of links exist
   // in the IA proposal (Product, Pricing, Docs, Blog, Sign in,
-  // Start free trial). We surface the four that have real
-  // destinations today: Pricing (SaaS only), Docs (aster-lang.dev),
-  // Blog (aster-lang.dev/blog). "Product" / "Security" placeholders
-  // are deferred until those pages exist — a dead link is worse for
-  // an evaluator than a missing one.
+  // Start free trial). We surface the destinations that have real
+  // landing pages today: Pricing (SaaS only) and Docs (internal
+  // /docs subsite). "Product" / "Security" / "Blog" placeholders are
+  // deferred until those pages exist — a dead link is worse for an
+  // evaluator than a missing one.
   //
-  // External links use a plain <a> with rel="noopener" so next-intl's
-  // <Link /> doesn't try to map them through the locale-aware router.
+  // Internal destinations use next-intl's <Link /> so the locale
+  // prefix (zh/de) is automatically attached.
   return (
     <nav
       className={cn(
@@ -165,14 +165,12 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
                   {t('nav.pricing')}
                 </a>
               )}
-              <a
-                href="https://aster-lang.dev"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/docs"
                 className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
               >
                 {t('nav.docs')}
-              </a>
+              </Link>
             </Stack>
             <Stack direction="row" gap={4} align="center">
               <LanguageSwitcher />

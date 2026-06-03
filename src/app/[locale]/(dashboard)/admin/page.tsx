@@ -20,6 +20,7 @@ import {
   CAN_RISKTIER,
   CAN_LICENSE,
   CAN_SSO,
+  IS_SAAS,
 } from '@/lib/deployment-mode';
 import {
   todayPlatformCostCents,
@@ -111,6 +112,8 @@ type OverviewCard = {
     | 'aiBreakerCard'
     | 'riskTierCard'
     | 'licenseCard'
+    | 'licenseRevokeCard'
+    | 'issuedLicensesCard'
     | 'ssoCard'
     | 'vocabCard';
   show: boolean;
@@ -142,6 +145,20 @@ const CARDS: ReadonlyArray<OverviewCard> = [
     cardKey: 'licenseCard',
     show: CAN_LICENSE,
     comingSoon: false, // PR-8 落地
+  },
+  // SaaS-only ops surfaces — Aster team uses these to revoke
+  // customer licenses and inspect the full ledger of issued licenses.
+  {
+    href: '/admin/license-revoke',
+    cardKey: 'licenseRevokeCard',
+    show: IS_SAAS,
+    comingSoon: false,
+  },
+  {
+    href: '/admin/issued-licenses',
+    cardKey: 'issuedLicensesCard',
+    show: IS_SAAS,
+    comingSoon: false,
   },
   {
     href: '/admin/sso',
