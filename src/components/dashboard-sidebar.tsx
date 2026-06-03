@@ -164,7 +164,17 @@ function SidebarContent({
           href="/dashboard"
           className="flex items-center gap-2 text-base font-semibold text-primary"
         >
-          <LayoutDashboard className="size-5 shrink-0" aria-hidden />
+          {/* Brand glyph — uses /public/logo.svg so the dashboard brand
+              matches docs / marketing surfaces. eslint-disable for
+              <img>: the logo is a tiny static asset, next/image would
+              add LCP / preconnect overhead without benefit. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.svg"
+            alt=""
+            aria-hidden
+            className="size-5 shrink-0"
+          />
           {!collapsed && <span className="truncate">{brand}</span>}
         </Link>
       </div>

@@ -52,7 +52,13 @@ import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import type { editor } from 'monaco-editor';
-import { Link } from '@/i18n/navigation';
+// `next/link` (not the next-intl variant) because every caller of
+// this component passes locale-prefixed paths via `cancelHref` /
+// `detailHrefFor`, and the in-component `<Link href={`/${uiLocale}/billing`} />`
+// for upgrade hints also pre-prefixes. Using next-intl's Link would
+// double-prepend the locale and produce 404 URLs like /zh/zh/policies
+// on prefetch.
+import Link from 'next/link';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { Breadcrumbs, buttonVariants, cn } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui';
