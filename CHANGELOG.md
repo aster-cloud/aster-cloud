@@ -186,6 +186,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Translate version-usage + mutations zh/de — 100% coverage *(i18n)*
 - Translate audit/{logs,anomalies} zh + de *(i18n)*
 - Translate policies/{batch,cache} zh + de *(i18n)*
@@ -576,6 +577,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Add postgres error details to POST /api/policies
 - Add detailed error logging to POST /api/policies
 - Add comprehensive LSP connection logging
+
+### Nav
+
+- Adopt orphan license routes, drop dead AdminSidebar *(admin)*
 
 ### Polish
 
