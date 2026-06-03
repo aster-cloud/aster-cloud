@@ -4,7 +4,6 @@ import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { DocsTOC } from '@/components/docs/DocsTOC';
 import { DocsBreadcrumb } from '@/components/docs/DocsBreadcrumb';
 import { DocsPageActions } from '@/components/docs/DocsPageActions';
-import { DocsCommandPalette } from '@/components/docs/DocsCommandPalette';
 import { DocsVisitRecorder } from '@/components/docs/DocsVisitRecorder';
 import { DocsSessionProvider } from '@/lib/docs/use-docs-session';
 
@@ -55,11 +54,9 @@ export default async function DocsLayout({ children, params }: Props) {
     <DocsSessionProvider>
       <div className="min-h-screen bg-bg">
         <DocsTopNav />
-        {/* Cmd+K / Ctrl+K palette is rendered globally so every docs
-            route shares the same shortcut + dialog. The component
-            returns null until opened, so the runtime + locale index
-            are only fetched on first invocation. */}
-        <DocsCommandPalette />
+        {/* Cmd+K / Ctrl+K palette is mounted at the root locale
+            layout (Phase 7) so every surface shares the same
+            shortcut + dialog, not just docs. */}
         {/* Records the current page's visit into localStorage so the
             personalized home (Phase 6) can show Resume Reading and
             Recent docs panels. Renders nothing. */}

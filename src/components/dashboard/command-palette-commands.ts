@@ -26,7 +26,8 @@ export type CommandIcon =
   | 'sparkles'
   | 'wallet'
   | 'settings'
-  | 'key-round';
+  | 'key-round'
+  | 'book-text';
 
 export interface Command {
   /** Stable id for keying React lists and analytics events. */
@@ -40,7 +41,7 @@ export interface Command {
   /** Route (locale prefix added by router.push call site). */
   href: string;
   /** Section header in the rendered list. */
-  group: 'navigate' | 'create' | 'settings';
+  group: 'navigate' | 'create' | 'settings' | 'docs';
   /** Optional list of extra search keywords (e.g. translations of the label
    *  in other languages so a 中文 user can still search "policy"). */
   keywords?: string[];
@@ -53,6 +54,21 @@ export interface Command {
  * highest-traffic items so 中文 / Deutsch users can still type
  * "policy" / "settings" and find the right command.
  */
+/**
+ * A docs surface command sourced from the build-time search index.
+ * Carries the docs slug so the palette can route to the locale-aware
+ * URL via the same logic the docs Cmd+K palette uses (`/docs/<slug>`
+ * with the optional locale prefix prepended by the call site).
+ */
+export type DocsCommandSeed = {
+  /** Stable id — `docs-<slug-with-dashes>`. */
+  id: string;
+  /** Title from the docs search index. */
+  label: string;
+  /** Locale-prefixed `/docs/<slug>` URL. */
+  href: string;
+};
+
 export interface BuildCommandsArgs {
   /** Locale prefix already applied to hrefs ('' for default, '/zh' etc). */
   routePrefix: string;
@@ -74,10 +90,18 @@ export interface BuildCommandsArgs {
   canCreate?: boolean;
   /** Whether to expose billing entry (admins only). */
   showBilling?: boolean;
+  /**
+   * Top docs commands from the locale's search index — passed in by
+   * the dashboard layout so the palette can surface "Open docs:
+   * Evaluate Policy" alongside app navigation. The build-time index
+   * already runs through the docs PII scan, so feeding it into the
+   * dashboard palette doesn't change the privacy story.
+   */
+  docsSeeds?: ReadonlyArray<DocsCommandSeed>;
 }
 
 export function buildCommands({
-  routePrefix, labels, canCreate = true, showBilling = true,
+  routePrefix, labels, canCreate = true, showBilling = true, docsSeeds = [],
 }: BuildCommandsArgs): Command[] {
   const p = routePrefix;
   const cmds: Command[] = [
@@ -97,6 +121,21 @@ export function buildCommands({
     { id: 'settings',  group: 'settings', icon: 'settings',  label: labels.settings, href: `${p}/settings`,          keywords: ['settings', '设置'] },
     { id: 'api-keys',  group: 'settings', icon: 'key-round', label: labels.apiKeys,  href: `${p}/settings/api-keys`, keywords: ['api', 'token', '密钥'] },
     { id: 'ai-keys',   group: 'settings', icon: 'sparkles',  label: labels.aiKeys,   href: `${p}/settings/ai-keys`,  keywords: ['byok', 'openai', 'ai 密钥'] },
+
+    // Docs surface — bound entries from the build-time search index.
+    // The dashboard layout slices the most relevant N pages from the
+    // active locale's index and passes them in so the user can type
+    // a docs title in Cmd+K and jump straight there. Slugs travel
+    // through `docs.<slug>` keywords so a partial slug match (e.g.
+    // "evaluate") still hits.
+    ...docsSeeds.map<Command>((seed) => ({
+      id: seed.id,
+      group: 'docs',
+      icon: 'book-text',
+      label: seed.label,
+      href: seed.href,
+      keywords: [seed.id.replace(/^docs-/, '')],
+    })),
   ];
   return cmds;
 }

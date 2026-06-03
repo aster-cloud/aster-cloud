@@ -10,7 +10,8 @@
  * the new shape must satisfy.
  */
 
-import { describe, it, expect, type ReactNode } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import type { ReactNode } from 'react';
 
 // Same algorithm as DocsCodeBlock.tsx — kept in sync via this test.
 function extractText(node: ReactNode): string {

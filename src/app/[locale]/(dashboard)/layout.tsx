@@ -7,6 +7,7 @@ import { LanguageSwitcher } from '@/components/language-switcher';
 import { UserDropdown } from '@/components/dashboard-nav';
 import { CommandPalette } from '@/components/dashboard/command-palette';
 import { buildCommands } from '@/components/dashboard/command-palette-commands';
+import { buildDocsSeeds } from '@/lib/docs/dashboard-docs-seeds';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
 import { DocsSessionSignal } from '@/components/docs/DocsSessionSignal';
@@ -141,6 +142,7 @@ export default async function DashboardLayout({
           issuedLicenses: tAdminNav('issuedLicenses'),
           sso: tAdminNav('sso'),
           billing: t('billing'),
+          docs: t('docs'),
           settings: t('settings'),
           collapseSidebar: t('collapseSidebar'),
           expandSidebar: t('expandSidebar'),
@@ -201,6 +203,11 @@ export default async function DashboardLayout({
                   },
                   canCreate:  canAccess(role, 'member'),
                   showBilling,
+                  // Seed the palette with a curated slice of docs
+                  // pages so logged-in users can Cmd+K → "evaluate"
+                  // from any dashboard surface and jump into the
+                  // matching reference.
+                  docsSeeds: buildDocsSeeds(locale),
                 })}
                 labels={{
                   placeholder:    tCmd('placeholder'),
@@ -208,6 +215,7 @@ export default async function DashboardLayout({
                   groupNavigate:  tCmd('groupNavigate'),
                   groupCreate:    tCmd('groupCreate'),
                   groupSettings:  tCmd('groupSettings'),
+                  groupDocs:      tCmd('groupDocs'),
                   hintOpen:       tCmd('hintOpen'),
                 }}
               />

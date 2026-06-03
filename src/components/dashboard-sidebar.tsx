@@ -20,6 +20,7 @@ import {
   Lock,
   Receipt,
   Ban,
+  BookText,
   ChevronsLeft,
   ChevronsRight,
   Menu,
@@ -266,6 +267,7 @@ interface DashboardSidebarProps {
     issuedLicenses: string;
     sso: string;
     billing: string;
+    docs: string;
     settings: string;
     collapseSidebar: string;
     expandSidebar: string;
@@ -360,6 +362,11 @@ export function DashboardSidebar({
     { href: '/security',  label: labels.security,  icon: Shield },
     { href: '/settings/api-keys', label: labels.apiKeys, icon: KeyRound },
     { href: '/settings/ai-keys',  label: labels.aiKeys,  icon: Sparkles },
+    // Docs entry — keeps the documentation one click away from every
+    // dashboard surface. Sits at the bottom of Workspace so the
+    // policy/reports/teams cluster (daily-use surfaces) stays at the
+    // top of the rail.
+    { href: '/docs',      label: labels.docs,      icon: BookText },
   ];
 
   const adminItems: SidebarItem[] = isAdmin

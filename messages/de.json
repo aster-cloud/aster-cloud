@@ -45,7 +45,7 @@
   "nav": {
     "brand": "Aster Cloud",
     "pricing": "Preise",
-    "docs": "Doku"
+    "docs": "Docs"
   },
   "hero": {
     "title": "Policy as Code in der Muttersprache",
@@ -375,6 +375,7 @@
     "domainVocabularies": "Domänen­vokabulare",
     "security": "Sicherheit",
     "billing": "Abrechnung",
+    "docs": "Docs",
     "settings": "Einstellungen",
     "mobile": {
       "openMenu": "Menü öffnen",
@@ -389,6 +390,7 @@
       "groupNavigate": "Navigieren",
       "groupCreate": "Neu",
       "groupSettings": "Einstellungen",
+      "groupDocs": "Docs",
       "hintOpen": "Befehlspalette öffnen (⌘K)",
       "newPolicy": "Neue Richtlinie",
       "apiKeys": "API-Schlüssel",

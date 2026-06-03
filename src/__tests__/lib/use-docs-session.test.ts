@@ -48,8 +48,6 @@ describe('docs session probe — fetchSessionState', () => {
     );
 
     const mod = await import('@/lib/docs/use-docs-session');
-    // @ts-expect-error — internal helper exported only for tests if available;
-    // otherwise we exercise via the public fetch contract by checking the call.
     const result = await callInternalFetch(mod);
     expect(result).toEqual({
       status: 'authenticated',

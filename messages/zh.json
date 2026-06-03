@@ -375,6 +375,7 @@
     "domainVocabularies": "领域词汇",
     "security": "安全监控",
     "billing": "账单",
+    "docs": "文档",
     "settings": "设置",
     "mobile": {
       "openMenu": "打开菜单",
@@ -389,6 +390,7 @@
       "groupNavigate": "导航",
       "groupCreate": "新建",
       "groupSettings": "设置",
+      "groupDocs": "文档",
       "hintOpen": "打开命令面板（⌘K）",
       "newPolicy": "新建策略",
       "apiKeys": "API 密钥",

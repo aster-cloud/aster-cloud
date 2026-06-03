@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { track, Events } from '@/lib/mixpanel';
 import {
   ArrowRight,
+  BookText,
   FileText,
   Home,
   KeyRound,
@@ -50,6 +51,7 @@ const ICONS: Record<CommandIcon, React.ComponentType<{ className?: string }>> = 
   'wallet':       Wallet,
   'settings':     Settings,
   'key-round':    KeyRound,
+  'book-text':    BookText,
 };
 
 // Note: buildCommands + types live in command-palette-commands.ts (no
@@ -73,6 +75,8 @@ export interface CommandPaletteProps {
     groupNavigate: string;
     groupCreate: string;
     groupSettings: string;
+    /** Header for docs entries seeded from the build-time search index. */
+    groupDocs: string;
     hintOpen: string;          // e.g. "Press ⌘K to open"
   };
 }
@@ -135,13 +139,25 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         if (!isTyping || isOurInput) {
           e.preventDefault();
+          // Stop the event so a globally-mounted docs palette (Phase 5)
+          // doesn't ALSO open on the same shortcut. Inside the
+          // dashboard surface the user's Cmd+K is for app commands;
+          // docs entries are surfaced as a group inside this palette
+          // already (see `docsSeeds` in buildCommands).
+          e.stopPropagation();
           if (open) closePalette();
           else openPalette('keyboard');
         }
       }
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    // `capture: true` runs this listener BEFORE bubble-phase listeners
+    // such as the docs palette's. Combined with stopPropagation() above
+    // we guarantee the dashboard palette wins when both are mounted
+    // (e.g. on a /dashboard route that also has the global docs
+    // palette from Phase 5).
+    window.addEventListener('keydown', handleKey, { capture: true });
+    return () =>
+      window.removeEventListener('keydown', handleKey, { capture: true });
   }, [open, openPalette, closePalette]);
 
   // Open/close the native <dialog> in sync with React state.
@@ -204,6 +220,7 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
       navigate: [],
       create: [],
       settings: [],
+      docs: [],
     };
     for (const c of filtered) groups[c.group].push(c);
     return groups;
@@ -265,13 +282,14 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
               </p>
             ) : (
               <>
-                {(['navigate', 'create', 'settings'] as const).map((group) => {
+                {(['navigate', 'create', 'settings', 'docs'] as const).map((group) => {
                   const items = grouped[group];
                   if (items.length === 0) return null;
                   const groupLabel = {
                     navigate: labels.groupNavigate,
                     create:   labels.groupCreate,
                     settings: labels.groupSettings,
+                    docs:     labels.groupDocs,
                   }[group];
                   return (
                     <div key={group} className="py-1">

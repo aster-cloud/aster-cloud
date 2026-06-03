@@ -7,6 +7,7 @@ import { Toaster } from '@aster-cloud/ui';
 import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
 import { AuthProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { DocsCommandPalette } from "@/components/docs/DocsCommandPalette";
 import { locales, type Locale } from '@/i18n/config';
 import "../globals.css";
 
@@ -123,6 +124,14 @@ export default async function LocaleLayout({ children, params }: Props) {
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider nonce={nonce}>
             <AuthProvider>{children}</AuthProvider>
+            {/* Global docs search. The palette mounts here (not just
+                in the docs layout) so Cmd+K opens it from marketing,
+                dashboard, and admin surfaces too. It returns null
+                until opened, so the runtime + locale index are only
+                fetched on first invocation. The dashboard palette
+                uses event-capture + stopPropagation to keep its own
+                Cmd+K binding on /dashboard routes. */}
+            <DocsCommandPalette />
             {/* Global toast outlet. The @aster-cloud/ui Toaster wraps
                 sonner with our brand defaults (position, theme="system",
                 richColors, closeButton, font-sans). Mounted once at

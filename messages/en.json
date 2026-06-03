@@ -375,6 +375,7 @@
     "domainVocabularies": "Domain Vocabularies",
     "security": "Security",
     "billing": "Billing",
+    "docs": "Docs",
     "settings": "Settings",
     "mobile": {
       "openMenu": "Open menu",
@@ -389,6 +390,7 @@
       "groupNavigate": "Navigate",
       "groupCreate": "Create",
       "groupSettings": "Settings",
+      "groupDocs": "Docs",
       "hintOpen": "Open command palette (⌘K)",
       "newPolicy": "New policy",
       "apiKeys": "API keys",
