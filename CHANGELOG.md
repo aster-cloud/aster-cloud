@@ -186,6 +186,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Translate version-usage + mutations zh/de — 100% coverage *(i18n)*
+- Translate audit/{logs,anomalies} zh + de *(i18n)*
+- Translate policies/{batch,cache} zh + de *(i18n)*
+- Update [skip ci] *(changelog)*
 - Fallback SEO policy + code-block cleanup (audit round 2) *(i18n,seo)*
 - Update [skip ci] *(changelog)*
 - Translate policies/evaluate-source zh + de *(i18n)*
