@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Phase 4 — Quickstart action cards + Trust footer *(docs)*
 - Phase 3 — code-block toolbar with Copy + Open in Playground *(docs)*
 - Phase 2 — page-level action bar with audit-bound jumps *(docs)*
 - Phase 1 — session-aware chrome foundation *(docs)*
@@ -189,6 +190,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
