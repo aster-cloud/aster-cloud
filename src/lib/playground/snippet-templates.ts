@@ -2,7 +2,8 @@
  * Playground snippet template registry.
  *
  * Source-of-truth for what content the policy editor pre-fills when a
- * user lands on `/policies/new?template=<id>` from a docs code block.
+ * user lands on `/policies/new?template=<id>` from a docs code block
+ * or a docs "Try in Playground" action.
  *
  * Why a server-side allow-list:
  *   - The docs URL only carries a *template id* — never raw source.
@@ -14,10 +15,27 @@
  *   - Editing a template happens here, alongside the docs MDX fences
  *     it accompanies, so the docs → editor flow stays in sync.
  *
+ * Syntax:
+ *   All templates use canonical Aster CNL — `Module X.` declares the
+ *   module, `Rule name given params as Type, produce ResultType:`
+ *   declares an evaluable function. Older Rego-style snippets
+ *   (`package`, `default allow := false`, `allow if {}`) were retired
+ *   when the unified Module/Rule grammar landed; keeping any of them
+ *   here would break the evaluator and mislead readers about the
+ *   surface syntax.
+ *
  * Naming convention:
- *   `<feature>-<flavor>` — e.g. `policy-evaluate-basic`, `policy-batch`.
- *   Stable across releases (changing an id breaks any bookmarked link
- *   that pre-fills it).
+ *   Identifiers are kebab-case. There are two id families:
+ *     - `policy-<flavor>`        — historical ids referenced by MDX
+ *                                  fences and the personalized home.
+ *     - `<endpoint-slug>`        — short ids matching the docs sidebar
+ *                                  slug tail (e.g. `evaluate-source`,
+ *                                  `workflow-events`), used by the
+ *                                  page-actions `playground(...)`
+ *                                  helper so every docs page CTA has
+ *                                  a deterministic landing template.
+ *   Ids are stable across releases — changing one breaks every bookmark
+ *   and CTA pointing at it.
  */
 
 export type SnippetTemplate = {
@@ -30,88 +48,182 @@ export type SnippetTemplate = {
   descriptionKey?: string;
 };
 
+// ---------------------------------------------------------------------
+// Canonical sources. Kept as module-level constants so multiple ids can
+// share a template body (e.g. `evaluate` and `evaluate-source` both
+// land on the basic Module/Rule example) without duplicating strings.
+// ---------------------------------------------------------------------
+
+const SOURCE_BASIC_GREETING = [
+  'Module demo.',
+  '',
+  'Rule greet given name as Text, produce Text:',
+  '  Return "Hello, " + name + "!".',
+  '',
+].join('\n');
+
+const SOURCE_AMOUNT_THRESHOLD = [
+  '# A minimal authorization policy — returns true when the request',
+  '# carries an `amount` below the configured ceiling.',
+  'Module examples.basic.',
+  '',
+  'Rule allow given amount as Number, produce Boolean:',
+  '  Return amount < 100.',
+  '',
+].join('\n');
+
+const SOURCE_TIERED_ACCESS = [
+  '# Batch-friendly rule set. The Playground will run the same',
+  '# policy against every input the user provides.',
+  'Module examples.batch.',
+  '',
+  'Rule allow given tenant as Text, tier as Text, produce Boolean:',
+  '  Return tenant has "preview" and (tier has "free" or tier has "pro").',
+  '',
+].join('\n');
+
+const SOURCE_SCHEMA_SHAPE = [
+  '# Source for schema extraction. Parameters declared on the rule',
+  '# signature are surfaced by the schema endpoint as the input shape.',
+  'Module examples.schema.',
+  '',
+  'Rule allow given userId as Text, resourceKind as Text, action as Text, produce Boolean:',
+  '  Return userId has not "" and resourceKind has "policy" and (action has "read" or action has "list").',
+  '',
+].join('\n');
+
+const SOURCE_VERSIONED_POLICY = [
+  '# Versioned policy — change a value, save, and inspect the',
+  '# revision history via the versions endpoint.',
+  'Module examples.versioning.',
+  '',
+  'Rule allow given role as Text, produce Boolean:',
+  '  Return role has "owner".',
+  '',
+].join('\n');
+
+const SOURCE_VALIDATE_ONLY = [
+  '# A policy used to exercise the validate endpoint. Compilation',
+  '# succeeds even though no runtime evaluation is performed.',
+  'Module examples.validate.',
+  '',
+  'Rule allow given action as Text, produce Boolean:',
+  '  Return action has "read" or action has "list".',
+  '',
+].join('\n');
+
+// Workflow templates. The workflow surface is observational — the
+// endpoint family records events and rolls them up into state +
+// metrics. Templates are minimal CNL modules that emit the kind of
+// decisions a workflow would observe; the docs page CTA lands the
+// reader on a real policy + a recently-touched trace so the workflow
+// docs are useful even before they wire up their first stream.
+const SOURCE_WORKFLOW_DECISION = [
+  '# Minimal policy whose decisions feed the workflow surface.',
+  '# Pair this with `?trace=true` to see the decision trace that the',
+  '# workflow events endpoint records and rolls up into state/metrics.',
+  'Module workflows.demo.',
+  '',
+  'Rule decide given event as Text, payload as Text, produce Boolean:',
+  '  Return event has "approved" or payload has "auto-approve".',
+  '',
+].join('\n');
+
+// GraphQL / WebSocket — surfaces that mostly mirror policy evaluation
+// at the transport layer. The template body is the same basic
+// Module/Rule pair so a reader can paste it into the GraphQL mutation
+// or the WS preview frame without rewriting it.
+const SOURCE_GRAPHQL_DEMO = [
+  '# Use this module as the policy body in your GraphQL evaluate',
+  '# mutation. The mutation shape mirrors the REST evaluate-source',
+  '# request, with `source`, `context`, and `functionName` arguments.',
+  'Module examples.graphql.',
+  '',
+  'Rule evaluate given subject as Text, action as Text, produce Boolean:',
+  '  Return action has "read" or subject has "admin".',
+  '',
+].join('\n');
+
+const SOURCE_WEBSOCKET_PREVIEW = [
+  '# Preview frame body for the public WebSocket endpoint. Send this',
+  '# as the `source` of an `evaluate-source` frame against the',
+  '# preview tenant; no authentication required.',
+  'Module preview.demo.',
+  '',
+  'Rule greet given name as Text, produce Text:',
+  '  Return "Hello, " + name + "!".',
+  '',
+].join('\n');
+
+const SOURCE_AUDIT_LOOKUP = [
+  '# Decisions emitted by this policy show up in the audit log under',
+  '# the calling tenant. Use the audit endpoints to verify the chain,',
+  '# enumerate version usage, or compare two evaluations.',
+  'Module examples.audit.',
+  '',
+  'Rule allow given actor as Text, resource as Text, produce Boolean:',
+  '  Return actor has not "" and resource has not "".',
+  '',
+].join('\n');
+
 /**
  * The registry. Adding a new entry requires:
  *   1. Picking a stable `id` (kebab-case, no leading slash).
- *   2. Authoring a complete, self-contained `source` that runs in
- *      the public preview tenant without external resources.
- *   3. Updating the matching MDX code fence with
- *      `{playground=true,id=<the id>}` so the docs Open-in-Playground
- *      button targets it.
+ *   2. Reusing a canonical source above when the body would otherwise
+ *      duplicate, or authoring a complete, self-contained `source`
+ *      that runs in the public preview tenant without external
+ *      resources.
+ *   3. Updating the matching MDX code fence or page-actions entry
+ *      so the docs Open-in-Playground button targets the id.
  *
- * Order: keep grouped by feature so future audits can scan it.
+ * Order: grouped by feature (policy → workflow → audit → graphql →
+ * websocket) so future audits can scan it. Within each group, the
+ * `policy-*` historical ids come first, followed by the short
+ * endpoint-tail ids referenced by `page-actions.ts`.
  */
 const TEMPLATES: ReadonlyArray<SnippetTemplate> = [
-  // Policy evaluation — the most-used template. Demonstrates the
-  // minimal request shape; the curl example in
-  // docs/api/policies/evaluate-source pairs with this template.
-  {
-    id: 'policy-evaluate-basic',
-    source: [
-      '# A minimal policy — evaluates true when the request carries',
-      '# an `amount` field less than the configured ceiling.',
-      'package examples.basic',
-      '',
-      'default allow := false',
-      '',
-      'allow if {',
-      '    input.amount < 100',
-      '}',
-      '',
-    ].join('\n'),
-  },
-  // Batch — short multi-rule example used by docs/api/policies/batch.
-  {
-    id: 'policy-batch',
-    source: [
-      '# Batch-friendly rule set. The Playground will run the same',
-      "# policy against every request the user provides.",
-      'package examples.batch',
-      '',
-      'default allow := false',
-      '',
-      'allow if {',
-      '    input.tenant == "preview"',
-      '    input.tier in {"free", "pro"}',
-      '}',
-      '',
-    ].join('\n'),
-  },
-  // Schema extraction — the docs/api/policies/schema fence shows a
-  // policy whose input shape the user can ask the engine to enumerate.
-  {
-    id: 'policy-schema',
-    source: [
-      '# Source for schema extraction. Inputs referenced as',
-      '# `input.<field>` are surfaced by the schema endpoint.',
-      'package examples.schema',
-      '',
-      'allow if {',
-      '    input.user.id != ""',
-      '    input.resource.kind == "policy"',
-      '    input.action in {"read", "list"}',
-      '}',
-      '',
-    ].join('\n'),
-  },
-  // Versioning — used by docs/api/policies/versions to demonstrate a
-  // minimal policy that the user iterates on while exercising the
-  // version-history endpoint.
-  {
-    id: 'policy-versions',
-    source: [
-      '# Versioned policy — change a value, save, and inspect the',
-      '# revision history via the versions endpoint.',
-      'package examples.versioning',
-      '',
-      'default allow := false',
-      '',
-      'allow if {',
-      '    input.role == "owner"',
-      '}',
-      '',
-    ].join('\n'),
-  },
+  // ----- Policy evaluation -----------------------------------------
+  // Historical ids used by MDX + DocsHomeAuthenticated.
+  { id: 'policy-evaluate-basic', source: SOURCE_AMOUNT_THRESHOLD },
+  { id: 'policy-batch', source: SOURCE_TIERED_ACCESS },
+  { id: 'policy-schema', source: SOURCE_SCHEMA_SHAPE },
+  { id: 'policy-versions', source: SOURCE_VERSIONED_POLICY },
+
+  // Short ids referenced by page-actions playground() helper.
+  // `evaluate-source` and `evaluate` are the two REST entry points
+  // for the basic Module/Rule body; both land on the same demo so a
+  // reader can switch between docs pages without losing context.
+  { id: 'evaluate-source', source: SOURCE_BASIC_GREETING },
+  { id: 'evaluate', source: SOURCE_BASIC_GREETING },
+  { id: 'evaluate-json', source: SOURCE_AMOUNT_THRESHOLD },
+  { id: 'batch', source: SOURCE_TIERED_ACCESS },
+  { id: 'schema', source: SOURCE_SCHEMA_SHAPE },
+  { id: 'validate', source: SOURCE_VALIDATE_ONLY },
+  { id: 'versions', source: SOURCE_VERSIONED_POLICY },
+  { id: 'rollback', source: SOURCE_VERSIONED_POLICY },
+  { id: 'cache', source: SOURCE_AMOUNT_THRESHOLD },
+
+  // ----- Workflows --------------------------------------------------
+  // Shared decision body — all three workflow docs (events, state,
+  // metrics) observe the same underlying decisions, so pointing at
+  // a single canonical module keeps the reader's mental model
+  // anchored as they read across the section.
+  { id: 'workflow-events', source: SOURCE_WORKFLOW_DECISION },
+  { id: 'workflow-state', source: SOURCE_WORKFLOW_DECISION },
+  { id: 'workflow-metrics', source: SOURCE_WORKFLOW_DECISION },
+
+  // ----- Audit -----------------------------------------------------
+  { id: 'audit-logs', source: SOURCE_AUDIT_LOOKUP },
+  { id: 'audit-verify-chain', source: SOURCE_AUDIT_LOOKUP },
+  { id: 'audit-version-usage', source: SOURCE_AUDIT_LOOKUP },
+  { id: 'audit-anomalies', source: SOURCE_AUDIT_LOOKUP },
+  { id: 'audit-compare', source: SOURCE_AUDIT_LOOKUP },
+
+  // ----- GraphQL / WebSocket ---------------------------------------
+  { id: 'graphql-overview', source: SOURCE_GRAPHQL_DEMO },
+  { id: 'graphql-queries', source: SOURCE_GRAPHQL_DEMO },
+  { id: 'graphql-mutations', source: SOURCE_GRAPHQL_DEMO },
+  { id: 'websocket-preview', source: SOURCE_WEBSOCKET_PREVIEW },
 ] as const;
 
 /**

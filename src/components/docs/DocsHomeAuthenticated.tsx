@@ -73,7 +73,7 @@ function suggestNext(capabilities: ReturnType<typeof useDocsSession> extends inf
     return {
       titleKey: 'docs.home.suggested.tryPlayground.title',
       descriptionKey: 'docs.home.suggested.tryPlayground.description',
-      href: '/playground?from=docs&template=policy-evaluate-basic',
+      href: '/policies/new?from=docs&template=policy-evaluate-basic',
       ctaKey: 'docs.home.suggested.tryPlayground.cta',
     };
   }
@@ -96,13 +96,13 @@ function suggestNext(capabilities: ReturnType<typeof useDocsSession> extends inf
   return {
     titleKey: 'docs.home.suggested.tryPlayground.title',
     descriptionKey: 'docs.home.suggested.tryPlayground.description',
-    href: '/playground?from=docs&template=policy-evaluate-basic',
+    href: '/policies/new?from=docs&template=policy-evaluate-basic',
     ctaKey: 'docs.home.suggested.tryPlayground.cta',
   };
 }
 
 const QUICK_LINKS: Array<{ key: string; href: string; labelKey: string }> = [
-  { key: 'playground', href: '/playground?from=docs', labelKey: 'docs.home.quickLinks.playground' },
+  { key: 'playground', href: '/policies/new?from=docs', labelKey: 'docs.home.quickLinks.playground' },
   { key: 'newPolicy', href: '/policies/new?from=docs', labelKey: 'docs.home.quickLinks.newPolicy' },
   { key: 'apiKeys', href: '/settings/api-keys?from=docs', labelKey: 'docs.home.quickLinks.apiKeys' },
   { key: 'recentTraces', href: '/policies?from=docs&filter=recent', labelKey: 'docs.home.quickLinks.recentTraces' },

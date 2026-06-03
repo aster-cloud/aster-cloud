@@ -77,12 +77,16 @@ export type PageActionSet = {
  * Helper to build the playground deeplink for a given template id.
  * The template is loaded server-side from a whitelist in Phase 3 —
  * the URL only carries an identifier, never raw source.
+ *
+ * The href targets `/policies/new` (the actual editor route). There
+ * is no separate `/playground` route; the editor doubles as the
+ * Playground and reads `?template=<id>` from the snippet registry.
  */
 function playground(templateId: string, audit = true): PageAction {
   return {
     id: `playground_${templateId.replace(/-/g, '_')}`,
     labelKey: 'docs.actions.tryInPlayground',
-    href: `/playground?from=docs&template=${encodeURIComponent(templateId)}`,
+    href: `/policies/new?from=docs&template=${encodeURIComponent(templateId)}`,
     capability: 'canUsePlayground',
     variant: 'primary',
     audit,

@@ -4,7 +4,6 @@ import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
 import { docsSidebar } from '@/lib/docs/sidebar';
-import { DocsSidebarSearchButton } from '@/components/docs/DocsSidebarSearchButton';
 import {
   DocsSidebarModeToggle,
   useSidebarMode,
@@ -67,7 +66,6 @@ export function DocsSidebar() {
 
   const sections = (
     <>
-      <DocsSidebarSearchButton />
       <DocsSidebarModeToggle mode={mode} onChange={setMode} />
       {mode === 'reference' ? referenceTree : <DocsSidebarTasks />}
     </>

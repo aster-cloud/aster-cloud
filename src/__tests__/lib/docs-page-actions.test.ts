@@ -76,7 +76,7 @@ describe('PAGE_ACTIONS registry', () => {
 
   it('canonicalTarget strips the query string', () => {
     expect(canonicalTarget(PAGE_ACTIONS['api/policies/evaluate'].primary)).toBe(
-      '/playground',
+      '/policies/new',
     );
   });
 });
@@ -86,7 +86,7 @@ describe('resolveAuditedAction (server-side registry binding)', () => {
     const matched = resolveAuditedAction({
       slug: 'api/policies/evaluate',
       cta_id: 'playground_evaluate',
-      target: '/playground',
+      target: '/policies/new',
     });
     expect(matched?.id).toBe('playground_evaluate');
   });
@@ -112,7 +112,7 @@ describe('resolveAuditedAction (server-side registry binding)', () => {
       resolveAuditedAction({
         slug: 'api/policies/evaluate',
         cta_id: 'playground_evaluate',
-        target: '/playground/wrong',
+        target: '/policies/wrong',
       }),
     ).toBeNull();
   });

@@ -35,6 +35,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Wordmark, cn } from '@aster-cloud/ui';
 import { DocsLanguageSwitcher } from '@/components/docs/DocsLanguageSwitcher';
+import { DocsTopNavSearchButton } from '@/components/docs/DocsTopNavSearchButton';
 import { clearDocsSessionCache, useDocsSession } from '@/lib/docs/use-docs-session';
 
 /**
@@ -256,6 +257,10 @@ export function DocsTopNav() {
           </span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4" aria-live="polite">
+          {/* Search sits to the LEFT of the language switcher so the
+              chord pattern (label + ⌘K hint) reads naturally left-to-
+              right next to the language code dropdown. */}
+          <DocsTopNavSearchButton />
           <DocsLanguageSwitcher />
           <NavRight />
         </div>

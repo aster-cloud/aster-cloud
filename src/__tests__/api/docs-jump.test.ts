@@ -72,7 +72,7 @@ describe('POST /api/docs/jump', () => {
   const validPayload = {
     slug: 'api/policies/evaluate',
     cta_id: 'playground_evaluate',
-    target: '/playground',
+    target: '/policies/new',
     locale: 'en',
   };
 
@@ -97,7 +97,7 @@ describe('POST /api/docs/jump', () => {
       resourceId: 'api/policies/evaluate',
       metadata: {
         cta_id: 'playground_evaluate',
-        target: '/playground',
+        target: '/policies/new',
         locale: 'en',
       },
     });
