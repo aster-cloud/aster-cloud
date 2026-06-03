@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Phase 6 — IA dual-mode sidebar + personalized home *(docs)*
 - Phase 5 — unified Cmd+K search with locale-aware index *(docs)*
 - Phase 4 — Quickstart action cards + Trust footer *(docs)*
 - Phase 3 — code-block toolbar with Copy + Open in Playground *(docs)*
@@ -191,6 +192,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
