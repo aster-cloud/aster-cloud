@@ -29,6 +29,45 @@ test.describe('Cloud docs - landing redirect', () => {
   });
 });
 
+test.describe('Cloud docs - section-parent redirects', () => {
+  // Section-parent URLs exist as 308 redirects so breadcrumb hover
+  // prefetches and bookmark/sitemap landings always resolve to a real
+  // page. See src/lib/docs/section-redirect.ts. If a sidebar reorder
+  // changes the first child of any section, these assertions will fail
+  // — that's intentional, the redirect target must follow the sidebar.
+  const SECTION_REDIRECTS: ReadonlyArray<{ from: string; toRe: RegExp }> = [
+    { from: '/docs/getting-started',  toRe: /\/docs\/getting-started\/overview$/ },
+    { from: '/docs/api',              toRe: /\/docs\/api\/policies\/evaluate$/ },
+    { from: '/docs/api/policies',     toRe: /\/docs\/api\/policies\/evaluate$/ },
+    { from: '/docs/api/workflows',    toRe: /\/docs\/api\/workflows\/events$/ },
+    { from: '/docs/api/audit',        toRe: /\/docs\/api\/audit\/logs$/ },
+    { from: '/docs/api/graphql',      toRe: /\/docs\/api\/graphql\/overview$/ },
+    { from: '/docs/api/websocket',    toRe: /\/docs\/api\/websocket\/preview$/ },
+  ];
+
+  for (const { from, toRe } of SECTION_REDIRECTS) {
+    test(`EN ${from} resolves (308 redirect to first child)`, async ({ page }) => {
+      const response = await page.goto(from);
+      expect(response?.status()).toBeLessThan(400);
+      await expect(page).toHaveURL(toRe);
+    });
+  }
+
+  // One ZH + one DE spot-check covers the locale-prefix branch in
+  // redirectToFirstChild() without re-asserting the full matrix.
+  test('ZH /zh/docs/api resolves to /zh/docs/api/policies/evaluate', async ({ page }) => {
+    const response = await page.goto('/zh/docs/api');
+    expect(response?.status()).toBeLessThan(400);
+    await expect(page).toHaveURL(/\/zh\/docs\/api\/policies\/evaluate$/);
+  });
+
+  test('DE /de/docs/api/workflows resolves to /de/docs/api/workflows/events', async ({ page }) => {
+    const response = await page.goto('/de/docs/api/workflows');
+    expect(response?.status()).toBeLessThan(400);
+    await expect(page).toHaveURL(/\/de\/docs\/api\/workflows\/events$/);
+  });
+});
+
 test.describe('Cloud docs - sidebar navigation', () => {
   test('sidebar lists all 6 section groups on en getting-started', async ({ page }) => {
     await page.goto('/docs/getting-started/overview');
