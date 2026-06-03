@@ -8,8 +8,6 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-const CACHE_KEY = 'aster.docs.session';
-
 // Re-import per test to reset module state (writeCache/readCache use
 // closure-free localStorage so the test reset is sufficient).
 describe('docs session probe — fetchSessionState', () => {
@@ -17,9 +15,13 @@ describe('docs session probe — fetchSessionState', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
-    (globalThis as any).window = (globalThis as any).window ?? {};
-    (globalThis as any).window.localStorage = createLocalStorageStub();
-    (globalThis as any).localStorage = (globalThis as any).window.localStorage;
+    const g = globalThis as unknown as {
+      window?: { localStorage?: Storage };
+      localStorage?: Storage;
+    };
+    g.window = g.window ?? {};
+    g.window.localStorage = createLocalStorageStub() as unknown as Storage;
+    g.localStorage = g.window.localStorage;
   });
 
   afterEach(() => {

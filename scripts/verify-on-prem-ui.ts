@@ -56,6 +56,17 @@ const IGNORE_PATH_SEGMENTS: ReadonlyArray<string> = [
   '/app/[locale]/pricing/',
   '/app/[locale]/(dashboard)/billing/',
   '/app/[locale]/(auth)/signup/',
+  // SEO infrastructure emitted as text to crawlers — these are NOT
+  // user-clickable UI links. `robots.txt` intentionally references
+  // /billing, /signup, /admin etc. under its `disallow:` rule so
+  // crawlers know not to index them; listing them is the entire
+  // point. `sitemap.xml` carries the marketing destinations (incl.
+  // /pricing) as static strings. Neither file hydrates a Link or
+  // ships in a client chunk. Real server-side / SDK leakage is
+  // covered by `verify-on-prem-bundle.ts`; this UI verifier should
+  // stay focused on the client / hydration surface.
+  '/app/robots.txt/',
+  '/app/sitemap.xml/',
 ];
 
 export interface UrlRule {

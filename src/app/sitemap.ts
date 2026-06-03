@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { readdirSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { locales, defaultLocale } from '@/i18n/config';
 
 /**
