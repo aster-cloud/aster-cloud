@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Phase 3 — code-block toolbar with Copy + Open in Playground *(docs)*
 - Phase 2 — page-level action bar with audit-bound jumps *(docs)*
 - Phase 1 — session-aware chrome foundation *(docs)*
 - Fallback banner + sitemap + robots + Playwright E2E *(docs,seo,e2e)*
@@ -188,6 +189,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
