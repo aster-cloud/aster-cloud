@@ -21,10 +21,18 @@ export type DocsSidebarItem = {
 
 export type DocsSidebarSection = {
   titleKey: string;
-  items: DocsSidebarItem[];
+  items: readonly DocsSidebarItem[];
 };
 
-export const docsSidebar: DocsSidebarSection[] = [
+/**
+ * `as const satisfies` keeps every href as a string literal in the
+ * inferred type so `RouteSlug` in `page-actions.ts` is a precise
+ * union, not `string`. Without `as const`, the
+ * `Record<RouteSlug, PageActionSet>` exhaustiveness check would
+ * silently degrade — a slug added here without a matching entry in
+ * PAGE_ACTIONS would compile cleanly. (Caught by Phase 2 audit.)
+ */
+export const docsSidebar = [
   {
     titleKey: 'docs.sidebar.gettingStarted.title',
     items: [
@@ -80,4 +88,4 @@ export const docsSidebar: DocsSidebarSection[] = [
       { labelKey: 'docs.sidebar.apiWebsocket.preview', href: 'api/websocket/preview' },
     ],
   },
-];
+] as const satisfies readonly DocsSidebarSection[];

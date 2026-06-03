@@ -2450,6 +2450,17 @@
     "session": {
       "probing": "Kontostatus wird geladen"
     },
+    "actions": {
+      "ariaLabel": "Seitenaktionen",
+      "tryInPlayground": "Im Playground ausprobieren",
+      "openInEditor": "Im Editor öffnen",
+      "viewMyAuditLogs": "Meine Audit-Logs anzeigen",
+      "viewMyTraces": "Meine letzten Decision Traces anzeigen",
+      "goToApiKeys": "API-Schlüssel verwalten",
+      "openDashboard": "Dashboard öffnen",
+      "more": "Mehr",
+      "moreLabel": "Weitere Seitenaktionen"
+    },
     "breadcrumb": {
       "root": "Docs",
       "ariaLabel": "Brotkrumen"

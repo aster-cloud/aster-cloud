@@ -158,6 +158,7 @@ export const Events = {
   // so we don't need a separate sampling step here. Properties stay
   // PII-free: no email/userId/tenantId fields.
   DOCS_SESSION_PROBE: 'docs_session_probe',
+  DOCS_CTA_IMPRESSION: 'docs_cta_impression',
   DOCS_CTA_CLICKED: 'docs_cta_clicked',
   DOCS_SNIPPET_COPIED: 'docs_snippet_copied',
   DOCS_SNIPPET_OPENED: 'docs_snippet_opened',

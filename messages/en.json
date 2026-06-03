@@ -2450,6 +2450,17 @@
     "session": {
       "probing": "Loading account state"
     },
+    "actions": {
+      "ariaLabel": "Page actions",
+      "tryInPlayground": "Try in Playground",
+      "openInEditor": "Open in Editor",
+      "viewMyAuditLogs": "View my audit logs",
+      "viewMyTraces": "View my recent decision traces",
+      "goToApiKeys": "Manage API keys",
+      "openDashboard": "Open Dashboard",
+      "more": "More",
+      "moreLabel": "More page actions"
+    },
     "breadcrumb": {
       "root": "Docs",
       "ariaLabel": "Breadcrumb"

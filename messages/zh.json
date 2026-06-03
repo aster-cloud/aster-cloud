@@ -2450,6 +2450,17 @@
     "session": {
       "probing": "正在加载账户状态"
     },
+    "actions": {
+      "ariaLabel": "页面操作",
+      "tryInPlayground": "在 Playground 试用",
+      "openInEditor": "在编辑器中打开",
+      "viewMyAuditLogs": "查看我的审计日志",
+      "viewMyTraces": "查看我最近的决策追踪",
+      "goToApiKeys": "管理 API 密钥",
+      "openDashboard": "打开仪表盘",
+      "more": "更多",
+      "moreLabel": "更多页面操作"
+    },
     "breadcrumb": {
       "root": "文档",
       "ariaLabel": "面包屑导航"

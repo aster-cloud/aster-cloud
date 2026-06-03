@@ -3,6 +3,7 @@ import { DocsTopNav } from '@/components/docs/DocsTopNav';
 import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { DocsTOC } from '@/components/docs/DocsTOC';
 import { DocsBreadcrumb } from '@/components/docs/DocsBreadcrumb';
+import { DocsPageActions } from '@/components/docs/DocsPageActions';
 import { DocsSessionProvider } from '@/lib/docs/use-docs-session';
 
 /**
@@ -60,6 +61,7 @@ export default async function DocsLayout({ children, params }: Props) {
           <DocsSidebar />
           <main className="min-w-0 flex-1 px-4 sm:px-6 lg:px-8 py-10">
             <DocsBreadcrumb />
+            <DocsPageActions />
             <article
               className="docs-article prose prose-zinc dark:prose-invert max-w-3xl"
             >

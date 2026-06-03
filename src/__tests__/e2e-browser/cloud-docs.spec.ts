@@ -313,6 +313,42 @@ test.describe('Cloud docs - session-aware chrome', () => {
   });
 });
 
+test.describe('Cloud docs - page actions', () => {
+  // The action bar mounts between breadcrumb and article. Anonymous
+  // visitors should still see the "public" primary action (e.g. Try
+  // in Playground on /docs/getting-started/quickstart since the
+  // preview tenant is public). Auth-gated actions are not rendered.
+  test('anonymous user sees the Try in Playground primary action on quickstart', async ({ page }) => {
+    await page.goto('/docs/getting-started/quickstart');
+    await expect(
+      page.getByRole('link', { name: /Try in Playground/i }),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('zh shows the localized primary action', async ({ page }) => {
+    await page.goto('/zh/docs/getting-started/quickstart');
+    await expect(page.getByRole('link', { name: '在 Playground 试用' })).toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('anonymous user does not see "Open in Editor" on policies/evaluate', async ({ page }) => {
+    await page.goto('/docs/api/policies/evaluate');
+    // primary still renders (playground public), but Editor is auth-gated.
+    await expect(page.getByRole('link', { name: /Try in Playground/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open in Editor/i })).not.toBeVisible();
+  });
+
+  test('docs/jump endpoint responds 400 on malformed body without leaking anything', async ({ request }) => {
+    const res = await request.post('/api/docs/jump', {
+      data: { slug: 'x' }, // missing fields
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.status()).toBe(400);
+    expect(res.headers()['cache-control']).toBe('private, no-store, max-age=0');
+  });
+});
+
 test.describe('Cloud docs - sitemap + robots', () => {
   test('sitemap.xml emits one <loc> per (slug × locale) with reciprocal hreflang', async ({ request }) => {
     const res = await request.get('/sitemap.xml');
