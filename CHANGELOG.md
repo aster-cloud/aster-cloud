@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Phase 2 — page-level action bar with audit-bound jumps *(docs)*
 - Phase 1 — session-aware chrome foundation *(docs)*
 - Fallback banner + sitemap + robots + Playwright E2E *(docs,seo,e2e)*
 - Chrome + migrate 25 docs pages × 3 locales (S2+S3+S4) *(docs)*
@@ -187,6 +188,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
