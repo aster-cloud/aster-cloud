@@ -2497,6 +2497,71 @@
         "slug": "Matched in path"
       }
     },
+    "tasks": {
+      "buildFirstPolicy": {
+        "title": "Build my first policy",
+        "description": "Tenant ID, API key, and your first evaluation in under five minutes."
+      },
+      "evaluatePolicy": {
+        "title": "Evaluate a policy in three ways",
+        "description": "Source, JSON, and batch — pick the request shape that fits your client."
+      },
+      "debugWithTrace": {
+        "title": "Debug with Decision Trace",
+        "description": "Trace a failed evaluation through the audit log and the chain verifier."
+      },
+      "auditDecision": {
+        "title": "Audit a compliance decision",
+        "description": "Inspect logs, version usage, and anomalies for a deployed policy."
+      },
+      "manageVersions": {
+        "title": "Manage policy versions",
+        "description": "Roll back, replay, and clear caches without downtime."
+      },
+      "setUpProductionAuth": {
+        "title": "Set up production API auth",
+        "description": "HMAC signing, tenant routing, and the error envelope you should expect."
+      }
+    },
+    "home": {
+      "ariaLabel": "Personalized documentation home",
+      "loadingAriaLabel": "Loading docs home",
+      "heading": "Pick up where you left off",
+      "headingFirstTime": "Welcome to the docs",
+      "subheading": "Your recent docs, plus a suggestion for what to read next.",
+      "subheadingFirstTime": "A few suggestions to get you moving. Visited pages will show up here next time.",
+      "resume": {
+        "title": "Resume reading"
+      },
+      "recent": {
+        "title": "Recent docs"
+      },
+      "suggested": {
+        "heading": "Suggested next step",
+        "tryPlayground": {
+          "title": "Try a policy in the Playground",
+          "description": "Run a self-contained example against the public preview tenant.",
+          "cta": "Open Playground"
+        },
+        "createTeam": {
+          "title": "Create a team to collaborate",
+          "description": "Teams let you share policies and audit history with collaborators.",
+          "cta": "Create a team"
+        },
+        "editPolicy": {
+          "title": "Author your first policy",
+          "description": "Start from a CNL template in the editor and iterate with live evaluation.",
+          "cta": "Open the editor"
+        }
+      },
+      "quickLinks": {
+        "heading": "Quick links",
+        "playground": "Playground",
+        "newPolicy": "New policy",
+        "apiKeys": "API keys",
+        "recentTraces": "Recent traces"
+      }
+    },
     "codeBlock": {
       "toolbarLabel": "Code snippet actions",
       "copy": "Copy",
@@ -2522,6 +2587,10 @@
     },
     "sidebar": {
       "ariaLabel": "Documentation sections",
+      "tasksLabel": "Tasks",
+      "modeToggleLabel": "Sidebar browse mode",
+      "modeReference": "Reference",
+      "modeTasks": "By task",
       "gettingStarted": {
         "title": "Getting Started",
         "overview": "Overview",

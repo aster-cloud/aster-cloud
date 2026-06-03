@@ -2497,6 +2497,71 @@
         "slug": "Treffer im Pfad"
       }
     },
+    "tasks": {
+      "buildFirstPolicy": {
+        "title": "Meine erste Policy bauen",
+        "description": "Mandanten-ID, API-Schlüssel und erste Evaluierung in unter fünf Minuten."
+      },
+      "evaluatePolicy": {
+        "title": "Eine Policy auf drei Wegen auswerten",
+        "description": "Source, JSON und Batch – wählen Sie die Request-Form, die zu Ihrem Client passt."
+      },
+      "debugWithTrace": {
+        "title": "Mit Decision Trace debuggen",
+        "description": "Eine fehlgeschlagene Evaluierung über das Audit-Log und den Chain-Verifier nachvollziehen."
+      },
+      "auditDecision": {
+        "title": "Eine Compliance-Entscheidung auditieren",
+        "description": "Logs, Versionsverwendung und Anomalien für eine bereitgestellte Policy prüfen."
+      },
+      "manageVersions": {
+        "title": "Policy-Versionen verwalten",
+        "description": "Rollback, Replay und Cache-Leerung ohne Downtime."
+      },
+      "setUpProductionAuth": {
+        "title": "Produktions-API-Authentifizierung einrichten",
+        "description": "HMAC-Signierung, Mandantenrouting und der erwartete Error-Envelope."
+      }
+    },
+    "home": {
+      "ariaLabel": "Personalisierte Dokumentations-Startseite",
+      "loadingAriaLabel": "Docs-Startseite wird geladen",
+      "heading": "Dort weitermachen, wo Sie aufgehört haben",
+      "headingFirstTime": "Willkommen in der Dokumentation",
+      "subheading": "Ihre zuletzt besuchten Docs sowie ein Vorschlag, was als Nächstes zu lesen ist.",
+      "subheadingFirstTime": "Einige Vorschläge für den Einstieg. Besuchte Seiten erscheinen beim nächsten Besuch hier.",
+      "resume": {
+        "title": "Weiterlesen"
+      },
+      "recent": {
+        "title": "Zuletzt besucht"
+      },
+      "suggested": {
+        "heading": "Vorgeschlagener nächster Schritt",
+        "tryPlayground": {
+          "title": "Eine Policy im Playground ausprobieren",
+          "description": "Ein eigenständiges Beispiel gegen den öffentlichen Preview-Mandanten ausführen.",
+          "cta": "Playground öffnen"
+        },
+        "createTeam": {
+          "title": "Team anlegen, um zusammenzuarbeiten",
+          "description": "Mit Teams teilen Sie Policies und Audit-Verlauf mit Mitwirkenden.",
+          "cta": "Team anlegen"
+        },
+        "editPolicy": {
+          "title": "Ihre erste Policy schreiben",
+          "description": "Starten Sie mit einer CNL-Vorlage im Editor und iterieren Sie mit Live-Evaluierung.",
+          "cta": "Editor öffnen"
+        }
+      },
+      "quickLinks": {
+        "heading": "Schnellzugriffe",
+        "playground": "Playground",
+        "newPolicy": "Neue Policy",
+        "apiKeys": "API-Schlüssel",
+        "recentTraces": "Letzte Traces"
+      }
+    },
     "codeBlock": {
       "toolbarLabel": "Code-Snippet-Aktionen",
       "copy": "Kopieren",
@@ -2522,6 +2587,10 @@
     },
     "sidebar": {
       "ariaLabel": "Dokumentationsbereiche",
+      "tasksLabel": "Aufgaben",
+      "modeToggleLabel": "Sidebar-Anzeigemodus",
+      "modeReference": "Referenz",
+      "modeTasks": "Nach Aufgabe",
       "gettingStarted": {
         "title": "Erste Schritte",
         "overview": "Übersicht",

@@ -5,6 +5,11 @@ import { usePathname } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
 import { docsSidebar } from '@/lib/docs/sidebar';
 import { DocsSidebarSearchButton } from '@/components/docs/DocsSidebarSearchButton';
+import {
+  DocsSidebarModeToggle,
+  useSidebarMode,
+} from '@/components/docs/DocsSidebarModeToggle';
+import { DocsSidebarTasks } from '@/components/docs/DocsSidebarTasks';
 
 /**
  * Left rail navigation for /docs/*.
@@ -19,15 +24,15 @@ export function DocsSidebar() {
   const t = useTranslations();
   const locale = useLocale();
   const pathname = usePathname();
+  const [mode, setMode] = useSidebarMode();
 
   // pathname from next-intl/navigation is locale-stripped
   // (e.g. /docs/getting-started/overview).
   // Strip /docs/ prefix to compare with sidebar item hrefs.
   const currentSlug = pathname.replace(/^\/docs\/?/, '');
 
-  const sections = (
+  const referenceTree = (
     <>
-      <DocsSidebarSearchButton />
       {docsSidebar.map((section) => (
         <div key={section.titleKey} className="mb-8">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-fg-muted">
@@ -57,6 +62,14 @@ export function DocsSidebar() {
           </ul>
         </div>
       ))}
+    </>
+  );
+
+  const sections = (
+    <>
+      <DocsSidebarSearchButton />
+      <DocsSidebarModeToggle mode={mode} onChange={setMode} />
+      {mode === 'reference' ? referenceTree : <DocsSidebarTasks />}
     </>
   );
 

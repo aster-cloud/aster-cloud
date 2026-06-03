@@ -2497,6 +2497,71 @@
         "slug": "匹配到路径"
       }
     },
+    "tasks": {
+      "buildFirstPolicy": {
+        "title": "构建我的第一条策略",
+        "description": "五分钟内完成租户 ID、API 密钥和首次评估。"
+      },
+      "evaluatePolicy": {
+        "title": "用三种方式评估策略",
+        "description": "Source、JSON、批量——选择最适合你客户端的请求形态。"
+      },
+      "debugWithTrace": {
+        "title": "用决策追踪调试",
+        "description": "通过审计日志和链路校验器追踪一次失败的评估。"
+      },
+      "auditDecision": {
+        "title": "审计一次合规决策",
+        "description": "查看日志、版本使用情况以及已部署策略的异常。"
+      },
+      "manageVersions": {
+        "title": "管理策略版本",
+        "description": "无停机回滚、重放并清理缓存。"
+      },
+      "setUpProductionAuth": {
+        "title": "配置生产环境 API 鉴权",
+        "description": "HMAC 签名、租户路由以及你需要预期的错误信封。"
+      }
+    },
+    "home": {
+      "ariaLabel": "个性化文档首页",
+      "loadingAriaLabel": "正在加载文档首页",
+      "heading": "从上次中断处继续",
+      "headingFirstTime": "欢迎来到文档",
+      "subheading": "你最近浏览的文档，以及推荐的下一步阅读。",
+      "subheadingFirstTime": "几个开始上手的建议。下次访问时，最近浏览过的页面会显示在这里。",
+      "resume": {
+        "title": "继续阅读"
+      },
+      "recent": {
+        "title": "最近文档"
+      },
+      "suggested": {
+        "heading": "推荐下一步",
+        "tryPlayground": {
+          "title": "在 Playground 试用策略",
+          "description": "针对公共预览租户运行一个自包含示例。",
+          "cta": "打开 Playground"
+        },
+        "createTeam": {
+          "title": "创建团队以便协作",
+          "description": "通过团队与协作者共享策略和审计历史。",
+          "cta": "创建团队"
+        },
+        "editPolicy": {
+          "title": "编写你的第一条策略",
+          "description": "从编辑器中的 CNL 模板出发，边写边实时评估。",
+          "cta": "打开编辑器"
+        }
+      },
+      "quickLinks": {
+        "heading": "快捷入口",
+        "playground": "Playground",
+        "newPolicy": "新建策略",
+        "apiKeys": "API 密钥",
+        "recentTraces": "最近追踪"
+      }
+    },
     "codeBlock": {
       "toolbarLabel": "代码片段操作",
       "copy": "复制",
@@ -2522,6 +2587,10 @@
     },
     "sidebar": {
       "ariaLabel": "文档章节",
+      "tasksLabel": "任务",
+      "modeToggleLabel": "侧栏浏览模式",
+      "modeReference": "参考",
+      "modeTasks": "按任务",
       "gettingStarted": {
         "title": "入门",
         "overview": "概览",

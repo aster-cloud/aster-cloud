@@ -5,6 +5,7 @@ import { DocsTOC } from '@/components/docs/DocsTOC';
 import { DocsBreadcrumb } from '@/components/docs/DocsBreadcrumb';
 import { DocsPageActions } from '@/components/docs/DocsPageActions';
 import { DocsCommandPalette } from '@/components/docs/DocsCommandPalette';
+import { DocsVisitRecorder } from '@/components/docs/DocsVisitRecorder';
 import { DocsSessionProvider } from '@/lib/docs/use-docs-session';
 
 /**
@@ -59,6 +60,10 @@ export default async function DocsLayout({ children, params }: Props) {
             returns null until opened, so the runtime + locale index
             are only fetched on first invocation. */}
         <DocsCommandPalette />
+        {/* Records the current page's visit into localStorage so the
+            personalized home (Phase 6) can show Resume Reading and
+            Recent docs panels. Renders nothing. */}
+        <DocsVisitRecorder />
         {/* Mobile: stack drawer-above-content via flex-col so the
             collapsible <details> in DocsSidebar lays out above the
             article. Switch to flex-row at lg+ where the persistent
