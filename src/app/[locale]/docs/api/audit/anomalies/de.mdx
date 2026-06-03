@@ -1,53 +1,50 @@
 ---
-title: "Anomaly Detection"
-fallback: true
+title: "Anomalieerkennung"
 ---
 
-# Anomaly Detection
+# Anomalieerkennung
 
-<TranslationFallbackBanner />
+Das Anomalieerkennungs-System überwacht kontinuierlich Policy-Evaluierungsmuster und meldet Abweichungen, die auf Zuverlässigkeits-, Performance- oder Versionslebenszyklus-Probleme hinweisen können. Diese Endpunkte erlauben Administratoren, erkannte Anomalien aufzulisten, zu inspizieren, zu verifizieren und zu triagieren.
 
-The anomaly detection system continuously monitors policy evaluation patterns and flags deviations that may indicate reliability, performance, or version lifecycle problems. These endpoints allow administrators to list, inspect, verify, and triage detected anomalies.
-
-## Required Role
+## Erforderliche Rolle
 
 `ADMIN`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
 ---
 
-## List Anomalies
+## Anomalien auflisten
 
-Retrieve a paginated list of anomalies detected for the tenant.
+Eine paginierte Liste der für den Mandanten erkannten Anomalien abrufen.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/anomalies`
 
-### Query Parameters
+### Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
-| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
-| `type` | `string` | No | Filter by anomaly type. One of: `HIGH_FAILURE_RATE`, `ZOMBIE_VERSION`, `PERFORMANCE_DEGRADATION`. |
-| `days` | `integer` | No | Restrict results to anomalies detected within the last N days. Defaults to `7`. |
+| `page` | `integer` | Nein | Nullbasierter Seitenindex. Standard: `0`. |
+| `size` | `integer` | Nein | Anzahl der Datensätze pro Seite. Standard: `20`. |
+| `type` | `string` | Nein | Nach Anomalietyp filtern. Einer von: `HIGH_FAILURE_RATE`, `ZOMBIE_VERSION`, `PERFORMANCE_DEGRADATION`. |
+| `days` | `integer` | Nein | Ergebnisse auf Anomalien beschränken, die innerhalb der letzten N Tage erkannt wurden. Standard: `7`. |
 
-### Anomaly Types
+### Anomalietypen
 
-| Type | Description |
+| Typ | Beschreibung |
 |------|-------------|
-| `HIGH_FAILURE_RATE` | A policy version's error rate has exceeded the configured threshold. |
-| `ZOMBIE_VERSION` | An old, superseded policy version continues to receive evaluation traffic. |
-| `PERFORMANCE_DEGRADATION` | Average execution time for a policy version has increased significantly relative to its baseline. |
+| `HIGH_FAILURE_RATE` | Die Fehlerrate einer Policy-Version hat den konfigurierten Schwellwert überschritten. |
+| `ZOMBIE_VERSION` | Eine alte, abgelöste Policy-Version erhält weiterhin Evaluierungs-Traffic. |
+| `PERFORMANCE_DEGRADATION` | Die durchschnittliche Ausführungszeit für eine Policy-Version ist relativ zu ihrer Basislinie signifikant gestiegen. |
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -71,19 +68,19 @@ Retrieve a paginated list of anomalies detected for the tenant.
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `id` | `string` | Unique anomaly identifier. |
-| `type` | `string` | Anomaly classification. |
-| `policyModule` | `string` | Affected policy module. |
-| `policyFunction` | `string` | Affected policy function. |
-| `versionId` | `string` | Policy version involved in the anomaly. |
-| `detectedAt` | `string` | ISO 8601 timestamp when the anomaly was first detected. |
-| `status` | `string` | Current triage status: `OPEN`, `VERIFYING`, `RESOLVED`, `DISMISSED`. |
-| `severity` | `string` | Assessed severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`. |
-| `summary` | `string` | Short human-readable description of the anomaly. |
+| `id` | `string` | Eindeutiger Anomalie-Bezeichner. |
+| `type` | `string` | Anomalie-Klassifizierung. |
+| `policyModule` | `string` | Betroffenes Policy-Modul. |
+| `policyFunction` | `string` | Betroffene Policy-Funktion. |
+| `versionId` | `string` | In der Anomalie involvierte Policy-Version. |
+| `detectedAt` | `string` | ISO 8601 Zeitstempel, wann die Anomalie erstmals erkannt wurde. |
+| `status` | `string` | Aktueller Triage-Status: `OPEN`, `VERIFYING`, `RESOLVED`, `DISMISSED`. |
+| `severity` | `string` | Bewertete Schwere: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`. |
+| `summary` | `string` | Kurze menschenlesbare Beschreibung der Anomalie. |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -119,21 +116,21 @@ const data = await response.json();
 
 ---
 
-## Get Anomaly Detail
+## Anomaliedetails abrufen
 
-Retrieve the full detail record for a single anomaly, including diagnostic metrics and recommended actions.
+Den vollständigen Detail-Datensatz für eine einzelne Anomalie abrufen, einschließlich Diagnosemetriken und empfohlener Maßnahmen.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/anomalies/{id}`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `id` | `string` | The anomaly identifier. |
+| `id` | `string` | Der Anomalie-Bezeichner. |
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -160,7 +157,7 @@ Retrieve the full detail record for a single anomaly, including diagnostic metri
 }
 ```
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -189,25 +186,25 @@ const anomaly = await response.json();
 
 ---
 
-## Trigger Verification
+## Verifizierung auslösen
 
-Initiate an asynchronous verification job for an anomaly. The engine will re-evaluate the evidence and update the anomaly's status once the job completes.
+Einen asynchronen Verifizierungs-Job für eine Anomalie initiieren. Die Engine wertet die Beweise erneut aus und aktualisiert den Status der Anomalie, sobald der Job abgeschlossen ist.
 
-### Endpoint
+### Endpunkt
 
 `POST /api/v1/audit/anomalies/{id}/actions/verify`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `id` | `string` | The anomaly identifier. |
+| `id` | `string` | Der Anomalie-Bezeichner. |
 
-### Response
+### Antwort
 
-Returns `202 Accepted` with an empty body. Poll `GET /api/v1/audit/anomalies/{id}` to observe status transitions (`OPEN` → `VERIFYING` → `RESOLVED` or `OPEN`).
+Gibt `202 Accepted` mit leerem Body zurück. Pollen Sie `GET /api/v1/audit/anomalies/{id}`, um Statusübergänge zu beobachten (`OPEN` → `VERIFYING` → `RESOLVED` oder `OPEN`).
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -237,34 +234,34 @@ const response = await fetch(
 
 ---
 
-## Update Anomaly Status
+## Anomalie-Status aktualisieren
 
-Update the triage status of an anomaly. Supports idempotent updates via the `Idempotency-Key` header.
+Den Triage-Status einer Anomalie aktualisieren. Unterstützt idempotente Updates über den `Idempotency-Key`-Header.
 
-### Endpoint
+### Endpunkt
 
 `PATCH /api/v1/audit/anomalies/{id}/status`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `id` | `string` | The anomaly identifier. |
+| `id` | `string` | Der Anomalie-Bezeichner. |
 
-### Headers
+### Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `Idempotency-Key` | Client-generated unique string (UUID recommended) | No |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
+| `Content-Type` | `application/json` | Ja |
+| `Idempotency-Key` | Vom Client generierter eindeutiger String (UUID empfohlen) | Nein |
 
-<Callout type="tip" title="Idempotency">
-Providing an `Idempotency-Key` guarantees that retrying the same request will not apply the status update a second time. The server caches the response for the key for 24 hours.
+<Callout type="tip" title="Idempotenz">
+Das Bereitstellen eines `Idempotency-Key` garantiert, dass das erneute Senden derselben Anfrage das Status-Update nicht ein zweites Mal anwendet. Der Server cached die Antwort für den Schlüssel 24 Stunden lang.
 </Callout>
 
-### Request Body
+### Request-Body
 
 ```json
 {
@@ -273,16 +270,16 @@ Providing an `Idempotency-Key` guarantees that retrying the same request will no
 }
 ```
 
-| Field | Type | Required | Description |
+| Feld | Typ | Erforderlich | Beschreibung |
 |-------|------|----------|-------------|
-| `status` | `string` | Yes | Target status. One of: `OPEN`, `RESOLVED`, `DISMISSED`. |
-| `note` | `string` | No | Optional free-text note to record alongside the status change. |
+| `status` | `string` | Ja | Ziel-Status. Einer von: `OPEN`, `RESOLVED`, `DISMISSED`. |
+| `note` | `string` | Nein | Optionale freie Notiz, die zusammen mit der Statusänderung aufgezeichnet wird. |
 
-### Response Body
+### Response-Body
 
-Returns the updated anomaly object (same schema as [Get Anomaly Detail](#get-anomaly-detail)).
+Gibt das aktualisierte Anomalie-Objekt zurück (gleiches Schema wie [Anomaliedetails abrufen](#get-anomaly-detail)).
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -324,15 +321,15 @@ const updated = await response.json();
 
 ---
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Request succeeded (GET and PATCH). |
-| `202 Accepted` | Verification job enqueued (POST verify). |
-| `400 Bad Request` | Malformed request body or invalid status value. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `404 Not Found` | No anomaly found with the given `id`. |
-| `409 Conflict` | Status transition is not permitted from the current state. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Anfrage erfolgreich (GET und PATCH). |
+| `202 Accepted` | Verifizierungs-Job in die Warteschlange eingereiht (POST verify). |
+| `400 Bad Request` | Fehlerhafter Request-Body oder ungültiger Statuswert. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `ADMIN`-Rolle. |
+| `404 Not Found` | Keine Anomalie mit der angegebenen `id` gefunden. |
+| `409 Conflict` | Statusübergang aus dem aktuellen Zustand nicht erlaubt. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |

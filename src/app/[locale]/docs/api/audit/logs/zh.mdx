@@ -1,40 +1,37 @@
 ---
-title: "Audit Logs"
-fallback: true
+title: "审计日志"
 ---
 
-# Audit Logs
+# 审计日志
 
-<TranslationFallbackBanner />
-
-<Callout type="tip" title="Scope">
-These endpoints are served by **aster-api** (the policy engine) and cover policy execution events that are SHA-256 hash-chained. The **aster-cloud** SaaS dashboard maintains a separate, non-chained activity log for UI events (user logins, plan changes, member invitations); that activity log is not exposed through this API.
+<Callout type="tip" title="范围">
+这些端点由 **aster-api**（策略引擎）提供，覆盖了经 SHA-256 哈希链处理的策略执行事件。**aster-cloud** SaaS 仪表板维护一个独立的、非链式的活动日志用于 UI 事件（用户登录、套餐变更、成员邀请）；该活动日志不通过此 API 暴露。
 </Callout>
 
-Retrieve audit log records for events recorded by the policy engine. All endpoints in this section require the `ADMIN` role.
+获取由策略引擎记录的事件的审计日志条目。本节中的所有端点都需要 `ADMIN` 角色。
 
-## Required Role
+## 必需角色
 
 `ADMIN`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
 ---
 
-## Get All Audit Logs
+## 获取所有审计日志
 
-Retrieve a list of all audit log entries for the tenant, ordered by event time descending.
+获取租户所有审计日志条目的列表，按事件时间降序排列。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit`
 
-### Response Body
+### 响应体
 
 ```json
 [
@@ -52,19 +49,19 @@ Retrieve a list of all audit log entries for the tenant, ordered by event time d
 ]
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `id` | `string` | Unique audit record identifier. |
-| `eventType` | `string` | The type of event that was recorded (e.g. `POLICY_EVALUATED`, `POLICY_DEPLOYED`). |
-| `policyModule` | `string` | Module name associated with the event, if applicable. |
-| `policyFunction` | `string` | Function name associated with the event, if applicable. |
-| `actorId` | `string` | Identifier of the user or service principal that triggered the event. |
-| `occurredAt` | `string` | ISO 8601 timestamp of when the event occurred. |
-| `payload` | `object` | Event-specific metadata. Structure varies by `eventType`. |
-| `hash` | `string` | SHA-256 hash of this record's content, used for chain integrity verification. |
-| `previousHash` | `string` | Hash of the immediately preceding audit record, forming the hash chain. |
+| `id` | `string` | 唯一的审计记录标识符。 |
+| `eventType` | `string` | 被记录的事件类型（如 `POLICY_EVALUATED`、`POLICY_DEPLOYED`）。 |
+| `policyModule` | `string` | 与事件相关的模块名（若适用）。 |
+| `policyFunction` | `string` | 与事件相关的函数名（若适用）。 |
+| `actorId` | `string` | 触发事件的用户或服务主体的标识符。 |
+| `occurredAt` | `string` | 事件发生时的 ISO 8601 时间戳。 |
+| `payload` | `object` | 事件特定的元数据。结构因 `eventType` 而异。 |
+| `hash` | `string` | 此记录内容的 SHA-256 哈希，用于链完整性验证。 |
+| `previousHash` | `string` | 紧邻的前一条审计记录的哈希，构成哈希链。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -92,21 +89,21 @@ const logs = await response.json();
 
 ---
 
-## Filter by Event Type
+## 按事件类型筛选
 
-Retrieve audit log entries filtered to a specific event type.
+获取筛选到特定事件类型的审计日志条目。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/type/{eventType}`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `eventType` | `string` | The event type to filter by (e.g. `POLICY_EVALUATED`, `POLICY_DEPLOYED`, `POLICY_ROLLED_BACK`). |
+| `eventType` | `string` | 要筛选的事件类型（如 `POLICY_EVALUATED`、`POLICY_DEPLOYED`、`POLICY_ROLLED_BACK`）。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -135,22 +132,22 @@ const logs = await response.json();
 
 ---
 
-## Filter by Policy
+## 按策略筛选
 
-Retrieve audit log entries for a specific policy module and function combination.
+获取特定策略模块和函数组合的审计日志条目。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/policy/{policyModule}/{policyFunction}`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `policyModule` | `string` | The fully-qualified module name (e.g. `Loan.Approval`). |
-| `policyFunction` | `string` | The function name within the module (e.g. `isEligible`). |
+| `policyModule` | `string` | 完全限定的模块名（如 `Loan.Approval`）。 |
+| `policyFunction` | `string` | 模块内的函数名（如 `isEligible`）。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -180,22 +177,22 @@ const logs = await response.json();
 
 ---
 
-## Filter by Time Range
+## 按时间范围筛选
 
-Retrieve audit log entries within a specific time window.
+获取特定时间窗口内的审计日志条目。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/range`
 
-### Query Parameters
+### 查询参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `startTime` | `string` | Yes | ISO 8601 start timestamp (inclusive). |
-| `endTime` | `string` | Yes | ISO 8601 end timestamp (inclusive). |
+| `startTime` | `string` | 是 | ISO 8601 起始时间戳（包含）。 |
+| `endTime` | `string` | 是 | ISO 8601 结束时间戳（包含）。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -228,12 +225,12 @@ const logs = await response.json();
 
 ---
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Request succeeded. Returns an array of audit log entries (may be empty). |
-| `400 Bad Request` | Missing or malformed query parameters. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 请求成功。返回审计日志条目数组（可能为空）。 |
+| `400 Bad Request` | 缺少或格式错误的查询参数。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `ADMIN` 角色。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |

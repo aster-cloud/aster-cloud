@@ -1,40 +1,37 @@
 ---
-title: "Audit Logs"
-fallback: true
+title: "Audit-Logs"
 ---
 
-# Audit Logs
+# Audit-Logs
 
-<TranslationFallbackBanner />
-
-<Callout type="tip" title="Scope">
-These endpoints are served by **aster-api** (the policy engine) and cover policy execution events that are SHA-256 hash-chained. The **aster-cloud** SaaS dashboard maintains a separate, non-chained activity log for UI events (user logins, plan changes, member invitations); that activity log is not exposed through this API.
+<Callout type="tip" title="Geltungsbereich">
+Diese Endpunkte werden von **aster-api** (der Policy-Engine) bereitgestellt und umfassen Policy-Ausführungsereignisse, die SHA-256-Hash-verkettet sind. Das **aster-cloud** SaaS-Dashboard führt ein separates, nicht verkettetes Aktivitätslog für UI-Ereignisse (Benutzeranmeldungen, Tarifänderungen, Mitglieder-Einladungen); dieses Aktivitätslog wird nicht über diese API bereitgestellt.
 </Callout>
 
-Retrieve audit log records for events recorded by the policy engine. All endpoints in this section require the `ADMIN` role.
+Audit-Log-Einträge für Ereignisse abrufen, die von der Policy-Engine aufgezeichnet wurden. Alle Endpunkte in diesem Abschnitt erfordern die `ADMIN`-Rolle.
 
-## Required Role
+## Erforderliche Rolle
 
 `ADMIN`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
 ---
 
-## Get All Audit Logs
+## Alle Audit-Logs abrufen
 
-Retrieve a list of all audit log entries for the tenant, ordered by event time descending.
+Eine Liste aller Audit-Log-Einträge für den Mandanten abrufen, absteigend nach Ereigniszeit sortiert.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit`
 
-### Response Body
+### Response-Body
 
 ```json
 [
@@ -52,19 +49,19 @@ Retrieve a list of all audit log entries for the tenant, ordered by event time d
 ]
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `id` | `string` | Unique audit record identifier. |
-| `eventType` | `string` | The type of event that was recorded (e.g. `POLICY_EVALUATED`, `POLICY_DEPLOYED`). |
-| `policyModule` | `string` | Module name associated with the event, if applicable. |
-| `policyFunction` | `string` | Function name associated with the event, if applicable. |
-| `actorId` | `string` | Identifier of the user or service principal that triggered the event. |
-| `occurredAt` | `string` | ISO 8601 timestamp of when the event occurred. |
-| `payload` | `object` | Event-specific metadata. Structure varies by `eventType`. |
-| `hash` | `string` | SHA-256 hash of this record's content, used for chain integrity verification. |
-| `previousHash` | `string` | Hash of the immediately preceding audit record, forming the hash chain. |
+| `id` | `string` | Eindeutiger Audit-Datensatz-Bezeichner. |
+| `eventType` | `string` | Der Typ des aufgezeichneten Ereignisses (z. B. `POLICY_EVALUATED`, `POLICY_DEPLOYED`). |
+| `policyModule` | `string` | Mit dem Ereignis verbundener Modulname, falls zutreffend. |
+| `policyFunction` | `string` | Mit dem Ereignis verbundener Funktionsname, falls zutreffend. |
+| `actorId` | `string` | Bezeichner des Benutzers oder Service-Principals, der das Ereignis ausgelöst hat. |
+| `occurredAt` | `string` | ISO 8601 Zeitstempel, wann das Ereignis stattfand. |
+| `payload` | `object` | Ereignisspezifische Metadaten. Die Struktur variiert je `eventType`. |
+| `hash` | `string` | SHA-256-Hash des Inhalts dieses Datensatzes, verwendet für die Ketten-Integritätsprüfung. |
+| `previousHash` | `string` | Hash des unmittelbar vorangegangenen Audit-Datensatzes, der die Hash-Kette bildet. |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -92,21 +89,21 @@ const logs = await response.json();
 
 ---
 
-## Filter by Event Type
+## Nach Ereignistyp filtern
 
-Retrieve audit log entries filtered to a specific event type.
+Audit-Log-Einträge gefiltert nach einem bestimmten Ereignistyp abrufen.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/type/{eventType}`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `eventType` | `string` | The event type to filter by (e.g. `POLICY_EVALUATED`, `POLICY_DEPLOYED`, `POLICY_ROLLED_BACK`). |
+| `eventType` | `string` | Der Ereignistyp, nach dem gefiltert werden soll (z. B. `POLICY_EVALUATED`, `POLICY_DEPLOYED`, `POLICY_ROLLED_BACK`). |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -135,22 +132,22 @@ const logs = await response.json();
 
 ---
 
-## Filter by Policy
+## Nach Policy filtern
 
-Retrieve audit log entries for a specific policy module and function combination.
+Audit-Log-Einträge für eine spezifische Kombination aus Policy-Modul und Funktion abrufen.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/policy/{policyModule}/{policyFunction}`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `policyModule` | `string` | The fully-qualified module name (e.g. `Loan.Approval`). |
-| `policyFunction` | `string` | The function name within the module (e.g. `isEligible`). |
+| `policyModule` | `string` | Der vollqualifizierte Modulname (z. B. `Loan.Approval`). |
+| `policyFunction` | `string` | Der Funktionsname innerhalb des Moduls (z. B. `isEligible`). |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -180,22 +177,22 @@ const logs = await response.json();
 
 ---
 
-## Filter by Time Range
+## Nach Zeitbereich filtern
 
-Retrieve audit log entries within a specific time window.
+Audit-Log-Einträge innerhalb eines spezifischen Zeitfensters abrufen.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/range`
 
-### Query Parameters
+### Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `startTime` | `string` | Yes | ISO 8601 start timestamp (inclusive). |
-| `endTime` | `string` | Yes | ISO 8601 end timestamp (inclusive). |
+| `startTime` | `string` | Ja | ISO 8601 Startzeitstempel (inklusive). |
+| `endTime` | `string` | Ja | ISO 8601 Endzeitstempel (inklusive). |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -228,12 +225,12 @@ const logs = await response.json();
 
 ---
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Request succeeded. Returns an array of audit log entries (may be empty). |
-| `400 Bad Request` | Missing or malformed query parameters. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Anfrage erfolgreich. Gibt ein Array von Audit-Log-Einträgen zurück (kann leer sein). |
+| `400 Bad Request` | Fehlende oder fehlerhafte Query-Parameter. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `ADMIN`-Rolle. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |

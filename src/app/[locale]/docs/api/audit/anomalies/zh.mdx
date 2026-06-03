@@ -1,53 +1,50 @@
 ---
-title: "Anomaly Detection"
-fallback: true
+title: "异常检测"
 ---
 
-# Anomaly Detection
+# 异常检测
 
-<TranslationFallbackBanner />
+异常检测系统持续监控策略评估模式，标记可能表明可靠性、性能或版本生命周期问题的偏差。这些端点允许管理员列出、检查、验证和分流检测到的异常。
 
-The anomaly detection system continuously monitors policy evaluation patterns and flags deviations that may indicate reliability, performance, or version lifecycle problems. These endpoints allow administrators to list, inspect, verify, and triage detected anomalies.
-
-## Required Role
+## 必需角色
 
 `ADMIN`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
 ---
 
-## List Anomalies
+## 列出异常
 
-Retrieve a paginated list of anomalies detected for the tenant.
+获取为租户检测到的异常的分页列表。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/anomalies`
 
-### Query Parameters
+### 查询参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
-| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
-| `type` | `string` | No | Filter by anomaly type. One of: `HIGH_FAILURE_RATE`, `ZOMBIE_VERSION`, `PERFORMANCE_DEGRADATION`. |
-| `days` | `integer` | No | Restrict results to anomalies detected within the last N days. Defaults to `7`. |
+| `page` | `integer` | 否 | 零基页索引。默认为 `0`。 |
+| `size` | `integer` | 否 | 每页记录数。默认为 `20`。 |
+| `type` | `string` | 否 | 按异常类型筛选。`HIGH_FAILURE_RATE`、`ZOMBIE_VERSION`、`PERFORMANCE_DEGRADATION` 之一。 |
+| `days` | `integer` | 否 | 将结果限制为最近 N 天内检测到的异常。默认为 `7`。 |
 
-### Anomaly Types
+### 异常类型
 
-| Type | Description |
+| 类型 | 描述 |
 |------|-------------|
-| `HIGH_FAILURE_RATE` | A policy version's error rate has exceeded the configured threshold. |
-| `ZOMBIE_VERSION` | An old, superseded policy version continues to receive evaluation traffic. |
-| `PERFORMANCE_DEGRADATION` | Average execution time for a policy version has increased significantly relative to its baseline. |
+| `HIGH_FAILURE_RATE` | 某策略版本的错误率已超过配置的阈值。 |
+| `ZOMBIE_VERSION` | 一个已被取代的旧策略版本继续接收评估流量。 |
+| `PERFORMANCE_DEGRADATION` | 某策略版本的平均执行时间相对其基线显著增加。 |
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -71,19 +68,19 @@ Retrieve a paginated list of anomalies detected for the tenant.
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `id` | `string` | Unique anomaly identifier. |
-| `type` | `string` | Anomaly classification. |
-| `policyModule` | `string` | Affected policy module. |
-| `policyFunction` | `string` | Affected policy function. |
-| `versionId` | `string` | Policy version involved in the anomaly. |
-| `detectedAt` | `string` | ISO 8601 timestamp when the anomaly was first detected. |
-| `status` | `string` | Current triage status: `OPEN`, `VERIFYING`, `RESOLVED`, `DISMISSED`. |
-| `severity` | `string` | Assessed severity: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`. |
-| `summary` | `string` | Short human-readable description of the anomaly. |
+| `id` | `string` | 唯一的异常标识符。 |
+| `type` | `string` | 异常分类。 |
+| `policyModule` | `string` | 受影响的策略模块。 |
+| `policyFunction` | `string` | 受影响的策略函数。 |
+| `versionId` | `string` | 涉及异常的策略版本。 |
+| `detectedAt` | `string` | 首次检测到异常的 ISO 8601 时间戳。 |
+| `status` | `string` | 当前分流状态：`OPEN`、`VERIFYING`、`RESOLVED`、`DISMISSED`。 |
+| `severity` | `string` | 评估的严重程度：`LOW`、`MEDIUM`、`HIGH`、`CRITICAL`。 |
+| `summary` | `string` | 异常的简短人类可读描述。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -119,21 +116,21 @@ const data = await response.json();
 
 ---
 
-## Get Anomaly Detail
+## 获取异常详情
 
-Retrieve the full detail record for a single anomaly, including diagnostic metrics and recommended actions.
+获取单个异常的完整详情记录，包括诊断指标和推荐操作。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/anomalies/{id}`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `id` | `string` | The anomaly identifier. |
+| `id` | `string` | 异常标识符。 |
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -160,7 +157,7 @@ Retrieve the full detail record for a single anomaly, including diagnostic metri
 }
 ```
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -189,25 +186,25 @@ const anomaly = await response.json();
 
 ---
 
-## Trigger Verification
+## 触发验证
 
-Initiate an asynchronous verification job for an anomaly. The engine will re-evaluate the evidence and update the anomaly's status once the job completes.
+为异常启动异步验证作业。引擎将重新评估证据，并在作业完成后更新异常的状态。
 
-### Endpoint
+### 端点
 
 `POST /api/v1/audit/anomalies/{id}/actions/verify`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `id` | `string` | The anomaly identifier. |
+| `id` | `string` | 异常标识符。 |
 
-### Response
+### 响应
 
-Returns `202 Accepted` with an empty body. Poll `GET /api/v1/audit/anomalies/{id}` to observe status transitions (`OPEN` → `VERIFYING` → `RESOLVED` or `OPEN`).
+返回 `202 Accepted`，响应体为空。轮询 `GET /api/v1/audit/anomalies/{id}` 以观察状态转换（`OPEN` → `VERIFYING` → `RESOLVED` 或 `OPEN`）。
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -237,34 +234,34 @@ const response = await fetch(
 
 ---
 
-## Update Anomaly Status
+## 更新异常状态
 
-Update the triage status of an anomaly. Supports idempotent updates via the `Idempotency-Key` header.
+更新异常的分流状态。通过 `Idempotency-Key` 请求头支持幂等更新。
 
-### Endpoint
+### 端点
 
 `PATCH /api/v1/audit/anomalies/{id}/status`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `id` | `string` | The anomaly identifier. |
+| `id` | `string` | 异常标识符。 |
 
-### Headers
+### 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `Idempotency-Key` | Client-generated unique string (UUID recommended) | No |
+| `Authorization` | `Bearer <token>` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
+| `Content-Type` | `application/json` | 是 |
+| `Idempotency-Key` | 客户端生成的唯一字符串（推荐 UUID） | 否 |
 
-<Callout type="tip" title="Idempotency">
-Providing an `Idempotency-Key` guarantees that retrying the same request will not apply the status update a second time. The server caches the response for the key for 24 hours.
+<Callout type="tip" title="幂等性">
+提供 `Idempotency-Key` 可确保重试相同请求时不会再次应用状态更新。服务器为该键缓存响应 24 小时。
 </Callout>
 
-### Request Body
+### 请求体
 
 ```json
 {
@@ -273,16 +270,16 @@ Providing an `Idempotency-Key` guarantees that retrying the same request will no
 }
 ```
 
-| Field | Type | Required | Description |
+| 字段 | 类型 | 必需 | 描述 |
 |-------|------|----------|-------------|
-| `status` | `string` | Yes | Target status. One of: `OPEN`, `RESOLVED`, `DISMISSED`. |
-| `note` | `string` | No | Optional free-text note to record alongside the status change. |
+| `status` | `string` | 是 | 目标状态。`OPEN`、`RESOLVED`、`DISMISSED` 之一。 |
+| `note` | `string` | 否 | 可选的自由文本注释，与状态变更一起记录。 |
 
-### Response Body
+### 响应体
 
-Returns the updated anomaly object (same schema as [Get Anomaly Detail](#get-anomaly-detail)).
+返回更新后的异常对象（与 [获取异常详情](#get-anomaly-detail) 的 schema 相同）。
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -324,15 +321,15 @@ const updated = await response.json();
 
 ---
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Request succeeded (GET and PATCH). |
-| `202 Accepted` | Verification job enqueued (POST verify). |
-| `400 Bad Request` | Malformed request body or invalid status value. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `404 Not Found` | No anomaly found with the given `id`. |
-| `409 Conflict` | Status transition is not permitted from the current state. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 请求成功（GET 和 PATCH）。 |
+| `202 Accepted` | 验证作业已入队（POST verify）。 |
+| `400 Bad Request` | 请求体格式错误或状态值无效。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `ADMIN` 角色。 |
+| `404 Not Found` | 未找到给定 `id` 的异常。 |
+| `409 Conflict` | 当前状态不允许此状态转换。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |
