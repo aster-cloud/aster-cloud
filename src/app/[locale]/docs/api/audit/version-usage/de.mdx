@@ -1,50 +1,47 @@
 ---
-title: "Version Usage Audit"
-fallback: true
+title: "Versionsnutzungs-Audit"
 ---
 
-# Version Usage Audit
+# Versionsnutzungs-Audit
 
-<TranslationFallbackBanner />
+Untersuchen, wie eine bestimmte Policy-Version in der Produktion verwendet wird: welche Workflows sie aufgerufen haben, wann die Evaluierungen stattfanden, welche Auswirkungen ein Rollback hätte und kumulative Nutzungsstatistiken im Zeitverlauf.
 
-Inspect how a specific policy version has been used in production: which workflows invoked it, when evaluations occurred, the impact of rolling it back, and aggregated usage statistics over time.
-
-## Required Role
+## Erforderliche Rolle
 
 `ADMIN`
 
-## Headers
+## Header
 
-| Header | Value | Required |
+| Header | Wert | Erforderlich |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | Ja |
+| `X-Tenant-ID` | Mandanten-Identifikator-String | Ja |
 
 ---
 
-## Workflow Usage
+## Workflow-Nutzung
 
-Retrieve a paginated list of workflow invocations that used a specific policy version.
+Eine paginierte Liste von Workflow-Aufrufen abrufen, die eine bestimmte Policy-Version verwendet haben.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/policy-versions/{versionId}/usage`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `versionId` | `string` | The policy version identifier. |
+| `versionId` | `string` | Policy-Versions-Identifikator. |
 
-### Query Parameters
+### Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `status` | `string` | No | Filter workflows by status. One of: `READY`, `RUNNING`, `COMPLETED`, `FAILED`, `COMPENSATING`, `COMPENSATED`, `COMPENSATION_FAILED`. |
-| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
-| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
+| `status` | `string` | Nein | Workflows nach Status filtern. Einer von: `READY`, `RUNNING`, `COMPLETED`, `FAILED`, `COMPENSATING`, `COMPENSATED`, `COMPENSATION_FAILED`. |
+| `page` | `integer` | Nein | Nullbasierter Seitenindex. Standard: `0`. |
+| `size` | `integer` | Nein | Anzahl der Datensätze pro Seite. Standard: `20`. |
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -64,7 +61,7 @@ Retrieve a paginated list of workflow invocations that used a specific policy ve
 }
 ```
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -101,30 +98,30 @@ const data = await response.json();
 
 ---
 
-## Usage Timeline
+## Nutzungs-Timeline
 
-Retrieve a paginated, time-ordered history of evaluations made using a specific policy version.
+Eine paginierte, chronologisch sortierte Historie der Evaluierungen abrufen, die mit einer bestimmten Policy-Version durchgeführt wurden.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/policy-versions/{versionId}/timeline`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `versionId` | `string` | The policy version identifier. |
+| `versionId` | `string` | Policy-Versions-Identifikator. |
 
-### Query Parameters
+### Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `from` | `string` | No | ISO 8601 start timestamp. Defaults to 30 days ago. |
-| `to` | `string` | No | ISO 8601 end timestamp. Defaults to now. |
-| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
-| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
+| `from` | `string` | Nein | ISO 8601 Startzeitstempel. Standard: vor 30 Tagen. |
+| `to` | `string` | Nein | ISO 8601 Endzeitstempel. Standard: jetzt. |
+| `page` | `integer` | Nein | Nullbasierter Seitenindex. Standard: `0`. |
+| `size` | `integer` | Nein | Anzahl der Datensätze pro Seite. Standard: `20`. |
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -143,7 +140,7 @@ Retrieve a paginated, time-ordered history of evaluations made using a specific 
 }
 ```
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -179,21 +176,21 @@ const data = await response.json();
 
 ---
 
-## Rollback Impact Assessment
+## Rollback-Auswirkungsbewertung
 
-Assess the impact of rolling back a specific policy version. The response enumerates how many active workflows would be affected and which statuses they currently hold.
+Die Auswirkungen eines Rollbacks einer bestimmten Policy-Version bewerten. Die Antwort listet die Anzahl der aktiven Workflows auf, die betroffen wären, sowie deren aktuellen Status.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/policy-versions/{versionId}/impact`
 
-### Path Parameters
+### Pfad-Parameter
 
-| Parameter | Type | Description |
+| Parameter | Typ | Beschreibung |
 |-----------|------|-------------|
-| `versionId` | `string` | The policy version identifier to assess. |
+| `versionId` | `string` | Identifikator der zu bewertenden Policy-Version. |
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -208,14 +205,14 @@ Assess the impact of rolling back a specific policy version. The response enumer
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `versionId` | `string` | The version being assessed. |
-| `affectedWorkflows` | `number` | Total number of workflows that invoked this version. |
-| `byStatus` | `object` | Breakdown of affected workflows by current status. |
-| `estimatedRisk` | `string` | Risk level of rolling back: `LOW`, `MEDIUM`, or `HIGH`. Derived from the proportion of non-terminal workflows. |
+| `versionId` | `string` | Die bewertete Version. |
+| `affectedWorkflows` | `number` | Gesamtzahl der Workflows, die diese Version aufgerufen haben. |
+| `byStatus` | `object` | Aufschlüsselung der betroffenen Workflows nach aktuellem Status. |
+| `estimatedRisk` | `string` | Risikostufe des Rollbacks: `LOW`, `MEDIUM` oder `HIGH`. Abgeleitet aus dem Anteil der Workflows in nicht-finalen Zuständen. |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -246,28 +243,28 @@ console.log(`Active workflows affected: ${impact.byStatus.RUNNING ?? 0}`);
 
 ---
 
-## Aggregated Usage Statistics
+## Aggregierte Nutzungsstatistiken
 
-Retrieve time-bucketed usage statistics for a policy version, suitable for charting trends over time.
+Nach Zeitintervallen gruppierte Nutzungsstatistiken für eine Policy-Version abrufen, geeignet zur Darstellung von Trends im Zeitverlauf.
 
-### Endpoint
+### Endpunkt
 
 `GET /api/v1/audit/stats/version-usage`
 
-### Query Parameters
+### Query-Parameter
 
-| Parameter | Type | Required | Description |
+| Parameter | Typ | Erforderlich | Beschreibung |
 |-----------|------|----------|-------------|
-| `versionId` | `string` | Yes | The policy version identifier. |
-| `granularity` | `string` | Yes | Time bucket size. One of: `hour`, `day`, `week`, `month`. |
-| `from` | `string` | No | ISO 8601 start timestamp. Defaults to 30 days ago. |
-| `to` | `string` | No | ISO 8601 end timestamp. Defaults to now. |
+| `versionId` | `string` | Ja | Policy-Versions-Identifikator. |
+| `granularity` | `string` | Ja | Bucket-Größe. Einer von: `hour`, `day`, `week`, `month`. |
+| `from` | `string` | Nein | ISO 8601 Startzeitstempel. Standard: vor 30 Tagen. |
+| `to` | `string` | Nein | ISO 8601 Endzeitstempel. Standard: jetzt. |
 
-<Callout type="warning" title="Time Window Limit">
-The requested window (`to` minus `from`) must not exceed **90 days**. Requests spanning a longer period will be rejected with `400 Bad Request`.
+<Callout type="warning" title="Zeitfenster-Limit">
+Das angeforderte Fenster (`to` minus `from`) darf **90 Tage** nicht überschreiten. Anfragen, die diese Dauer überschreiten, geben `400 Bad Request` zurück.
 </Callout>
 
-### Response Body
+### Response-Body
 
 ```json
 {
@@ -286,14 +283,14 @@ The requested window (`to` minus `from`) must not exceed **90 days**. Requests s
 }
 ```
 
-| Field | Type | Description |
+| Feld | Typ | Beschreibung |
 |-------|------|-------------|
-| `buckets[].timestamp` | `string` | Start of the time bucket (ISO 8601). |
-| `buckets[].count` | `number` | Number of evaluations in the bucket. |
-| `buckets[].avgExecutionTimeMs` | `number` | Average policy execution time in milliseconds. |
-| `buckets[].failureRate` | `number` | Fraction of evaluations that resulted in an error (0.0 to 1.0). |
+| `buckets[].timestamp` | `string` | Startzeitpunkt des Buckets (ISO 8601). |
+| `buckets[].count` | `number` | Anzahl der Evaluierungen innerhalb des Buckets. |
+| `buckets[].avgExecutionTimeMs` | `number` | Durchschnittliche Policy-Ausführungszeit in Millisekunden. |
+| `buckets[].failureRate` | `number` | Anteil fehlgeschlagener Evaluierungen (0.0 bis 1.0). |
 
-### Examples
+### Beispiele
 
 <CodeGroup>
 
@@ -329,13 +326,13 @@ const stats = await response.json();
 
 ---
 
-## HTTP Status Codes
+## HTTP-Statuscodes
 
-| Status | Meaning |
+| Status | Bedeutung |
 |--------|---------|
-| `200 OK` | Request succeeded. |
-| `400 Bad Request` | Missing required parameters, malformed timestamps, or window exceeds limit. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `404 Not Found` | No policy version found matching `versionId`. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | Anfrage erfolgreich. |
+| `400 Bad Request` | Fehlender Pflichtparameter, fehlerhaft formatierter Zeitstempel oder Fenster überschreitet das Limit. |
+| `401 Unauthorized` | Fehlender oder ungültiger Bearer-Token. |
+| `403 Forbidden` | Token ist gültig, dem Aufrufer fehlt jedoch die `ADMIN`-Rolle. |
+| `404 Not Found` | Keine Policy-Version mit der angegebenen `versionId` gefunden. |
+| `500 Internal Server Error` | Unerwarteter Engine-Fehler. |

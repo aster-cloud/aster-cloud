@@ -1,50 +1,47 @@
 ---
-title: "Version Usage Audit"
-fallback: true
+title: "版本使用审计"
 ---
 
-# Version Usage Audit
+# 版本使用审计
 
-<TranslationFallbackBanner />
+检查特定策略版本在生产中的使用情况：哪些工作流调用了它、评估发生的时间、回滚的影响以及随时间累积的使用统计。
 
-Inspect how a specific policy version has been used in production: which workflows invoked it, when evaluations occurred, the impact of rolling it back, and aggregated usage statistics over time.
-
-## Required Role
+## 必需角色
 
 `ADMIN`
 
-## Headers
+## 请求头
 
-| Header | Value | Required |
+| 请求头 | 值 | 必需 |
 |--------|-------|----------|
-| `Authorization` | `Bearer <token>` | Yes |
-| `X-Tenant-ID` | Tenant identifier string | Yes |
+| `Authorization` | `Bearer <token>` | 是 |
+| `X-Tenant-ID` | 租户标识符字符串 | 是 |
 
 ---
 
-## Workflow Usage
+## 工作流使用
 
-Retrieve a paginated list of workflow invocations that used a specific policy version.
+获取使用了特定策略版本的工作流调用的分页列表。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/policy-versions/{versionId}/usage`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `versionId` | `string` | The policy version identifier. |
+| `versionId` | `string` | 策略版本标识符。 |
 
-### Query Parameters
+### 查询参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `status` | `string` | No | Filter workflows by status. One of: `READY`, `RUNNING`, `COMPLETED`, `FAILED`, `COMPENSATING`, `COMPENSATED`, `COMPENSATION_FAILED`. |
-| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
-| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
+| `status` | `string` | 否 | 按状态筛选工作流。`READY`、`RUNNING`、`COMPLETED`、`FAILED`、`COMPENSATING`、`COMPENSATED`、`COMPENSATION_FAILED` 之一。 |
+| `page` | `integer` | 否 | 零基页索引。默认为 `0`。 |
+| `size` | `integer` | 否 | 每页记录数。默认为 `20`。 |
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -64,7 +61,7 @@ Retrieve a paginated list of workflow invocations that used a specific policy ve
 }
 ```
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -101,30 +98,30 @@ const data = await response.json();
 
 ---
 
-## Usage Timeline
+## 使用时间线
 
-Retrieve a paginated, time-ordered history of evaluations made using a specific policy version.
+获取使用特定策略版本进行的评估的按时间排序的分页历史。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/policy-versions/{versionId}/timeline`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `versionId` | `string` | The policy version identifier. |
+| `versionId` | `string` | 策略版本标识符。 |
 
-### Query Parameters
+### 查询参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `from` | `string` | No | ISO 8601 start timestamp. Defaults to 30 days ago. |
-| `to` | `string` | No | ISO 8601 end timestamp. Defaults to now. |
-| `page` | `integer` | No | Zero-based page index. Defaults to `0`. |
-| `size` | `integer` | No | Number of records per page. Defaults to `20`. |
+| `from` | `string` | 否 | ISO 8601 起始时间戳。默认为 30 天前。 |
+| `to` | `string` | 否 | ISO 8601 结束时间戳。默认为当前。 |
+| `page` | `integer` | 否 | 零基页索引。默认为 `0`。 |
+| `size` | `integer` | 否 | 每页记录数。默认为 `20`。 |
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -143,7 +140,7 @@ Retrieve a paginated, time-ordered history of evaluations made using a specific 
 }
 ```
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -179,21 +176,21 @@ const data = await response.json();
 
 ---
 
-## Rollback Impact Assessment
+## 回滚影响评估
 
-Assess the impact of rolling back a specific policy version. The response enumerates how many active workflows would be affected and which statuses they currently hold.
+评估回滚特定策略版本的影响。响应会列出将受影响的活动工作流数量，以及这些工作流当前所处的状态。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/policy-versions/{versionId}/impact`
 
-### Path Parameters
+### 路径参数
 
-| Parameter | Type | Description |
+| 参数 | 类型 | 描述 |
 |-----------|------|-------------|
-| `versionId` | `string` | The policy version identifier to assess. |
+| `versionId` | `string` | 要评估的策略版本标识符。 |
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -208,14 +205,14 @@ Assess the impact of rolling back a specific policy version. The response enumer
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `versionId` | `string` | The version being assessed. |
-| `affectedWorkflows` | `number` | Total number of workflows that invoked this version. |
-| `byStatus` | `object` | Breakdown of affected workflows by current status. |
-| `estimatedRisk` | `string` | Risk level of rolling back: `LOW`, `MEDIUM`, or `HIGH`. Derived from the proportion of non-terminal workflows. |
+| `versionId` | `string` | 被评估的版本。 |
+| `affectedWorkflows` | `number` | 调用过此版本的工作流总数。 |
+| `byStatus` | `object` | 按当前状态对受影响工作流的细分。 |
+| `estimatedRisk` | `string` | 回滚风险等级：`LOW`、`MEDIUM` 或 `HIGH`。从非终态工作流的比例派生。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -246,28 +243,28 @@ console.log(`Active workflows affected: ${impact.byStatus.RUNNING ?? 0}`);
 
 ---
 
-## Aggregated Usage Statistics
+## 聚合使用统计
 
-Retrieve time-bucketed usage statistics for a policy version, suitable for charting trends over time.
+获取策略版本的按时间桶分组的使用统计，适合绘制随时间变化的趋势图。
 
-### Endpoint
+### 端点
 
 `GET /api/v1/audit/stats/version-usage`
 
-### Query Parameters
+### 查询参数
 
-| Parameter | Type | Required | Description |
+| 参数 | 类型 | 必需 | 描述 |
 |-----------|------|----------|-------------|
-| `versionId` | `string` | Yes | The policy version identifier. |
-| `granularity` | `string` | Yes | Time bucket size. One of: `hour`, `day`, `week`, `month`. |
-| `from` | `string` | No | ISO 8601 start timestamp. Defaults to 30 days ago. |
-| `to` | `string` | No | ISO 8601 end timestamp. Defaults to now. |
+| `versionId` | `string` | 是 | 策略版本标识符。 |
+| `granularity` | `string` | 是 | 时间桶大小。`hour`、`day`、`week`、`month` 之一。 |
+| `from` | `string` | 否 | ISO 8601 起始时间戳。默认为 30 天前。 |
+| `to` | `string` | 否 | ISO 8601 结束时间戳。默认为当前。 |
 
-<Callout type="warning" title="Time Window Limit">
-The requested window (`to` minus `from`) must not exceed **90 days**. Requests spanning a longer period will be rejected with `400 Bad Request`.
+<Callout type="warning" title="时间窗口限制">
+所请求的窗口（`to` 减 `from`）不得超过 **90 天**。超过此时长的请求将返回 `400 Bad Request`。
 </Callout>
 
-### Response Body
+### 响应体
 
 ```json
 {
@@ -286,14 +283,14 @@ The requested window (`to` minus `from`) must not exceed **90 days**. Requests s
 }
 ```
 
-| Field | Type | Description |
+| 字段 | 类型 | 描述 |
 |-------|------|-------------|
-| `buckets[].timestamp` | `string` | Start of the time bucket (ISO 8601). |
-| `buckets[].count` | `number` | Number of evaluations in the bucket. |
-| `buckets[].avgExecutionTimeMs` | `number` | Average policy execution time in milliseconds. |
-| `buckets[].failureRate` | `number` | Fraction of evaluations that resulted in an error (0.0 to 1.0). |
+| `buckets[].timestamp` | `string` | 时间桶的起始（ISO 8601）。 |
+| `buckets[].count` | `number` | 桶内评估的数量。 |
+| `buckets[].avgExecutionTimeMs` | `number` | 平均策略执行时间（毫秒）。 |
+| `buckets[].failureRate` | `number` | 评估失败的比率（0.0 到 1.0）。 |
 
-### Examples
+### 示例
 
 <CodeGroup>
 
@@ -329,13 +326,13 @@ const stats = await response.json();
 
 ---
 
-## HTTP Status Codes
+## HTTP 状态码
 
-| Status | Meaning |
+| 状态 | 含义 |
 |--------|---------|
-| `200 OK` | Request succeeded. |
-| `400 Bad Request` | Missing required parameters, malformed timestamps, or window exceeds limit. |
-| `401 Unauthorized` | Missing or invalid bearer token. |
-| `403 Forbidden` | Token is valid but the caller lacks the `ADMIN` role. |
-| `404 Not Found` | No policy version found matching `versionId`. |
-| `500 Internal Server Error` | Unexpected engine failure. |
+| `200 OK` | 请求成功。 |
+| `400 Bad Request` | 缺少必需参数、时间戳格式错误，或窗口超出限制。 |
+| `401 Unauthorized` | 缺少或无效的 Bearer token。 |
+| `403 Forbidden` | Token 有效但调用者缺少 `ADMIN` 角色。 |
+| `404 Not Found` | 未找到与 `versionId` 匹配的策略版本。 |
+| `500 Internal Server Error` | 非预期的引擎故障。 |

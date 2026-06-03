@@ -1,25 +1,22 @@
 ---
-title: "GraphQL Mutations"
-fallback: true
+title: "GraphQL-Mutations"
 ---
 
-# GraphQL Mutations
+# GraphQL-Mutations
 
-<TranslationFallbackBanner />
+Mutationen sind Schreiboperationen, die Ressourcen erstellen, aktualisieren oder löschen. Alle Mutationen müssen als `POST /graphql` gesendet werden. Schreiboperationen akzeptieren optional den Header `Idempotency-Key`, um doppelte Ausführungen bei Wiederholungen zu verhindern. Details zum vollständigen Anfrageformat finden Sie in der [Übersicht](/de/docs/api/graphql/overview).
 
-Mutations are write operations that create, update, or delete resources. All mutations must be sent as `POST /graphql`. Write operations accept an optional `Idempotency-Key` header to prevent duplicate execution on retry. See [Overview](/de/docs/api/graphql/overview) for full request format details.
+## Erforderliche Rolle
 
-## Required Role
-
-`ADMIN` for policy management mutations. Cache mutations require `ADMIN`.
+`ADMIN` ist für Mutationen zur Policy-Verwaltung erforderlich. Cache-Mutationen erfordern ebenfalls `ADMIN`.
 
 ---
 
-## Policy Management
+## Policy-Verwaltung
 
 ### createPolicy
 
-Create a new policy from a CNL source string. The policy is compiled and stored but not yet deployed.
+Eine neue Policy aus einem CNL-Quelltext erstellen. Die Policy wird kompiliert und gespeichert, aber noch nicht bereitgestellt.
 
 ```graphql
 mutation CreatePolicy($input: PolicyInput!) {
@@ -34,7 +31,7 @@ mutation CreatePolicy($input: PolicyInput!) {
 }
 ```
 
-**Input type**
+**Eingabetyp**
 
 ```graphql
 input PolicyInput {
@@ -45,7 +42,7 @@ input PolicyInput {
 }
 ```
 
-**Variables**
+**Variablen**
 
 ```json
 {
@@ -121,7 +118,7 @@ const newPolicy = data?.createPolicy;
 
 ### updatePolicy
 
-Update the source or metadata of an existing policy. Creates a new version; the previous version is retained in history.
+Den Quelltext oder die Metadaten einer existierenden Policy aktualisieren. Erstellt eine neue Version; die vorherige Version bleibt in der Historie erhalten.
 
 ```graphql
 mutation UpdatePolicy($id: ID!, $input: PolicyInput!) {
@@ -136,7 +133,7 @@ mutation UpdatePolicy($id: ID!, $input: PolicyInput!) {
 }
 ```
 
-**Variables**
+**Variablen**
 
 ```json
 {
@@ -210,7 +207,7 @@ const { data, errors } = await response.json();
 
 ### deletePolicy
 
-Permanently delete a policy and all associated version history. This action cannot be undone.
+Eine Policy und ihre gesamte zugehörige Versionshistorie dauerhaft löschen. Diese Aktion kann nicht rückgängig gemacht werden.
 
 ```graphql
 mutation DeletePolicy($id: ID!) {
@@ -218,9 +215,9 @@ mutation DeletePolicy($id: ID!) {
 }
 ```
 
-The mutation returns a `Boolean` — `true` on successful deletion.
+Die Mutation gibt ein `Boolean` zurück — `true` bei erfolgreicher Löschung.
 
-**Variables**
+**Variablen**
 
 ```json
 {
@@ -265,11 +262,11 @@ const deleted = data?.deletePolicy; // true
 
 ---
 
-## Cache Management
+## Cache-Verwaltung
 
 ### clearAllCache
 
-Evict all cached policy evaluation results for the tenant. Use this after a bulk deployment or when you need a guaranteed cold start.
+Alle gecachten Policy-Evaluierungsergebnisse für den Mandanten verwerfen. Verwenden Sie dies nach einer Massenbereitstellung oder wenn Sie einen garantierten Kaltstart benötigen.
 
 ```graphql
 mutation ClearAllCache {
@@ -277,7 +274,7 @@ mutation ClearAllCache {
 }
 ```
 
-Returns a `Boolean` — `true` on success.
+Gibt ein `Boolean` zurück — `true` bei Erfolg.
 
 <CodeGroup>
 
@@ -310,7 +307,7 @@ const { data } = await response.json();
 
 ### invalidateCache
 
-Evict cached evaluation results for a specific policy module and function, leaving all other entries intact.
+Gecachte Evaluierungsergebnisse für ein bestimmtes Policy-Modul und eine bestimmte Funktion verwerfen, alle anderen Einträge bleiben unberührt.
 
 ```graphql
 mutation InvalidateCache($policyModule: String!, $policyFunction: String!) {
@@ -318,9 +315,9 @@ mutation InvalidateCache($policyModule: String!, $policyFunction: String!) {
 }
 ```
 
-Returns a `Boolean` — `true` on success.
+Gibt ein `Boolean` zurück — `true` bei Erfolg.
 
-**Variables**
+**Variablen**
 
 ```json
 {
@@ -374,13 +371,13 @@ const { data } = await response.json();
 
 ---
 
-## Error Handling
+## Fehlerbehandlung
 
-Mutation errors follow the same GraphQL error format described in [Overview](/de/docs/api/graphql/overview#error-handling). Common mutation-specific error codes:
+Mutationsfehler folgen demselben GraphQL-Fehlerformat, das in der [Übersicht](/de/docs/api/graphql/overview#error-handling) beschrieben ist. Häufige Fehlercodes speziell für Mutationen:
 
-| Code | Condition |
+| Code | Bedingung |
 |------|-----------|
-| `NOT_FOUND` | `id` supplied to `updatePolicy` or `deletePolicy` does not exist. |
-| `VALIDATION_ERROR` | CNL source provided to `createPolicy` or `updatePolicy` failed compilation. |
-| `CONFLICT` | Concurrent modification detected; retry with a fresh `Idempotency-Key`. |
-| `FORBIDDEN` | Caller lacks the `ADMIN` role. |
+| `NOT_FOUND` | Die an `updatePolicy` oder `deletePolicy` übergebene `id` existiert nicht. |
+| `VALIDATION_ERROR` | Der an `createPolicy` oder `updatePolicy` übergebene CNL-Quelltext konnte nicht kompiliert werden. |
+| `CONFLICT` | Gleichzeitige Modifikation erkannt; mit einem neuen `Idempotency-Key` wiederholen. |
+| `FORBIDDEN` | Aufrufer fehlt die `ADMIN`-Rolle. |

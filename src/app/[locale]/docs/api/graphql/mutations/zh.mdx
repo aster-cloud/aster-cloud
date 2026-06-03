@@ -1,25 +1,22 @@
 ---
-title: "GraphQL Mutations"
-fallback: true
+title: "GraphQL 变更"
 ---
 
-# GraphQL Mutations
+# GraphQL 变更
 
-<TranslationFallbackBanner />
+变更（mutations）是创建、更新或删除资源的写操作。所有变更必须以 `POST /graphql` 发送。写操作可选地接受 `Idempotency-Key` 请求头以防止重试时重复执行。完整请求格式详见 [概览](/zh/docs/api/graphql/overview)。
 
-Mutations are write operations that create, update, or delete resources. All mutations must be sent as `POST /graphql`. Write operations accept an optional `Idempotency-Key` header to prevent duplicate execution on retry. See [Overview](/zh/docs/api/graphql/overview) for full request format details.
+## 必需角色
 
-## Required Role
-
-`ADMIN` for policy management mutations. Cache mutations require `ADMIN`.
+策略管理变更需要 `ADMIN`。缓存变更需要 `ADMIN`。
 
 ---
 
-## Policy Management
+## 策略管理
 
 ### createPolicy
 
-Create a new policy from a CNL source string. The policy is compiled and stored but not yet deployed.
+从 CNL 源代码字符串创建新策略。策略将被编译并存储，但尚未部署。
 
 ```graphql
 mutation CreatePolicy($input: PolicyInput!) {
@@ -34,7 +31,7 @@ mutation CreatePolicy($input: PolicyInput!) {
 }
 ```
 
-**Input type**
+**输入类型**
 
 ```graphql
 input PolicyInput {
@@ -45,7 +42,7 @@ input PolicyInput {
 }
 ```
 
-**Variables**
+**变量**
 
 ```json
 {
@@ -121,7 +118,7 @@ const newPolicy = data?.createPolicy;
 
 ### updatePolicy
 
-Update the source or metadata of an existing policy. Creates a new version; the previous version is retained in history.
+更新现有策略的源代码或元数据。会创建一个新版本；历史中保留先前版本。
 
 ```graphql
 mutation UpdatePolicy($id: ID!, $input: PolicyInput!) {
@@ -136,7 +133,7 @@ mutation UpdatePolicy($id: ID!, $input: PolicyInput!) {
 }
 ```
 
-**Variables**
+**变量**
 
 ```json
 {
@@ -210,7 +207,7 @@ const { data, errors } = await response.json();
 
 ### deletePolicy
 
-Permanently delete a policy and all associated version history. This action cannot be undone.
+永久删除策略及其所有相关的版本历史。此操作不可撤销。
 
 ```graphql
 mutation DeletePolicy($id: ID!) {
@@ -218,9 +215,9 @@ mutation DeletePolicy($id: ID!) {
 }
 ```
 
-The mutation returns a `Boolean` — `true` on successful deletion.
+变更返回一个 `Boolean` — 删除成功时为 `true`。
 
-**Variables**
+**变量**
 
 ```json
 {
@@ -265,11 +262,11 @@ const deleted = data?.deletePolicy; // true
 
 ---
 
-## Cache Management
+## 缓存管理
 
 ### clearAllCache
 
-Evict all cached policy evaluation results for the tenant. Use this after a bulk deployment or when you need a guaranteed cold start.
+清除该租户的所有缓存策略评估结果。在批量部署后，或当需要保证冷启动时使用。
 
 ```graphql
 mutation ClearAllCache {
@@ -277,7 +274,7 @@ mutation ClearAllCache {
 }
 ```
 
-Returns a `Boolean` — `true` on success.
+返回一个 `Boolean` — 成功时为 `true`。
 
 <CodeGroup>
 
@@ -310,7 +307,7 @@ const { data } = await response.json();
 
 ### invalidateCache
 
-Evict cached evaluation results for a specific policy module and function, leaving all other entries intact.
+清除特定策略模块和函数的缓存评估结果，保持其他所有条目不变。
 
 ```graphql
 mutation InvalidateCache($policyModule: String!, $policyFunction: String!) {
@@ -318,9 +315,9 @@ mutation InvalidateCache($policyModule: String!, $policyFunction: String!) {
 }
 ```
 
-Returns a `Boolean` — `true` on success.
+返回一个 `Boolean` — 成功时为 `true`。
 
-**Variables**
+**变量**
 
 ```json
 {
@@ -374,13 +371,13 @@ const { data } = await response.json();
 
 ---
 
-## Error Handling
+## 错误处理
 
-Mutation errors follow the same GraphQL error format described in [Overview](/zh/docs/api/graphql/overview#error-handling). Common mutation-specific error codes:
+变更错误遵循与 [概览](/zh/docs/api/graphql/overview#error-handling) 中描述的相同的 GraphQL 错误格式。常见的变更特定错误代码：
 
-| Code | Condition |
+| 代码 | 条件 |
 |------|-----------|
-| `NOT_FOUND` | `id` supplied to `updatePolicy` or `deletePolicy` does not exist. |
-| `VALIDATION_ERROR` | CNL source provided to `createPolicy` or `updatePolicy` failed compilation. |
-| `CONFLICT` | Concurrent modification detected; retry with a fresh `Idempotency-Key`. |
-| `FORBIDDEN` | Caller lacks the `ADMIN` role. |
+| `NOT_FOUND` | 提供给 `updatePolicy` 或 `deletePolicy` 的 `id` 不存在。 |
+| `VALIDATION_ERROR` | 提供给 `createPolicy` 或 `updatePolicy` 的 CNL 源代码编译失败。 |
+| `CONFLICT` | 检测到并发修改；使用新的 `Idempotency-Key` 重试。 |
+| `FORBIDDEN` | 调用方缺少 `ADMIN` 角色。 |

@@ -96,12 +96,14 @@ test.describe('Cloud docs - locale switcher', () => {
 });
 
 test.describe('Cloud docs - translation fallback banner', () => {
-  // audit/logs is one of the 6 pages still pending zh/de translation
-  // (see .claude/docs-translation-status.md). When it eventually gets
-  // a real translation, switch this assertion to another deferred page.
-  test('zh API page shows fallback banner when content is EN copy', async ({ page }) => {
+  // All zh/de API pages are now fully translated, so the banner should
+  // never render in production. The infrastructure (TranslationFallbackBanner
+  // component + mark-fallbacks.mjs + fallback frontmatter flag) is retained
+  // so that future fallback content is automatically annotated; these
+  // tests assert the banner stays dormant on translated pages.
+  test('zh API page does NOT show fallback banner (real translation)', async ({ page }) => {
     await page.goto('/zh/docs/api/audit/logs');
-    await expect(page.getByText('翻译进行中')).toBeVisible();
+    await expect(page.getByText('翻译进行中')).not.toBeVisible();
   });
 
   test('zh policies/evaluate does NOT show fallback banner (real translation)', async ({ page }) => {
@@ -178,21 +180,22 @@ test.describe('Cloud docs - SEO heads', () => {
 });
 
 test.describe('Cloud docs - fallback SEO', () => {
-  test('fallback page canonicalizes to EN + emits robots noindex', async ({ page }) => {
+  // All API pages are now fully translated, so no page should emit
+  // canonical→EN + robots noindex. These assertions guard against the
+  // SEO regression where a translated page accidentally keeps the
+  // `fallback: true` frontmatter flag and gets de-indexed.
+  test('translated page canonicalizes to locale URL + no noindex (audit/logs)', async ({ page }) => {
     await page.goto('/zh/docs/api/audit/logs');
     const canonical = page.locator('link[rel="canonical"]');
     await expect(canonical).toHaveAttribute(
       'href',
-      'https://aster-lang.cloud/docs/api/audit/logs',
+      'https://aster-lang.cloud/zh/docs/api/audit/logs',
     );
     const robots = page.locator('meta[name="robots"]');
-    // generate-page-wrappers.mjs emits { index: false, follow: true }
-    // which Next renders as "noindex, follow".
-    await expect(robots).toHaveAttribute('content', /noindex/);
-    await expect(robots).toHaveAttribute('content', /follow/);
+    await expect(robots).toHaveCount(0);
   });
 
-  test('translated page canonicalizes to locale URL + no noindex', async ({ page }) => {
+  test('translated page canonicalizes to locale URL + no noindex (policies/evaluate)', async ({ page }) => {
     await page.goto('/zh/docs/api/policies/evaluate');
     const canonical = page.locator('link[rel="canonical"]');
     await expect(canonical).toHaveAttribute(
@@ -201,34 +204,6 @@ test.describe('Cloud docs - fallback SEO', () => {
     );
     const robots = page.locator('meta[name="robots"]');
     await expect(robots).toHaveCount(0);
-  });
-});
-
-test.describe('Cloud docs - fallback banner placement', () => {
-  test('banner sits between page H1 and the first H2 (DOM order)', async ({ page }) => {
-    await page.goto('/zh/docs/api/audit/logs');
-    const article = page.locator('article.docs-article');
-    await expect(article).toBeVisible();
-    await expect(article.getByText('翻译进行中')).toBeVisible();
-    // Strict ordering: H1 must precede the banner, banner must precede
-    // the first H2. This catches both "banner-before-title" regressions
-    // and "banner-deep-in-body" regressions.
-    const positions = await page.evaluate(() => {
-      const h1 = document.querySelector('article.docs-article h1');
-      const banner = document.querySelector('article.docs-article [role="status"]');
-      const h2 = document.querySelector('article.docs-article h2');
-      if (!h1 || !banner || !h2) return null;
-      const h1BeforeBanner = Boolean(
-        h1.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-      const bannerBeforeH2 = Boolean(
-        banner.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-      return { h1BeforeBanner, bannerBeforeH2 };
-    });
-    expect(positions).not.toBeNull();
-    expect(positions?.h1BeforeBanner).toBe(true);
-    expect(positions?.bannerBeforeH2).toBe(true);
   });
 });
 
