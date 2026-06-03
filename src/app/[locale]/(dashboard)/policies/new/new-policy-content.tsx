@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { PolicyForm } from '@/components/policy/policy-form';
 import type { PolicyDraftFields } from '@/components/policy/policy-form/use-policy-draft';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
+import { getSnippetTemplate } from '@/lib/playground/snippet-templates';
 
 /**
  * /policies/new — thin wrapper around <PolicyForm>.
@@ -40,6 +41,18 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
   const searchParams = useSearchParams();
   const teamId = searchParams.get('teamId') || undefined;
 
+  // Docs deeplink: `/policies/new?from=docs&template=<id>` loads the
+  // matching snippet from the server-side allow-list registry. Unknown
+  // ids silently fall back to the empty editor — the URL is never
+  // trusted to carry raw source.
+  const initial: PolicyDraftFields = useMemo(() => {
+    const templateId = searchParams.get('template');
+    if (!templateId) return EMPTY;
+    const template = getSnippetTemplate(templateId);
+    if (!template) return EMPTY;
+    return { ...EMPTY, content: template.source };
+  }, [searchParams]);
+
   const handleSave = useCallback(
     async (fields: PolicyDraftFields) => {
       const res = await fetch('/api/policies', {
@@ -64,7 +77,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       mode="create"
       uiLocale={locale}
       policyId={null}
-      initial={EMPTY}
+      initial={initial}
       title={t('form.createTitle')}
       subtitle={t('form.createSubtitle')}
       onSave={handleSave}

@@ -349,6 +349,22 @@ test.describe('Cloud docs - page actions', () => {
   });
 });
 
+test.describe('Cloud docs - code-block toolbar', () => {
+  // Every <pre> in MDX gets a Copy button via the DocsCodeBlock
+  // override in mdx-components.tsx. Verify this baseline.
+  test('docs page renders a Copy button toolbar on code fences', async ({ page }) => {
+    await page.goto('/docs/api/policies/evaluate');
+    const copyButtons = page.getByRole('button', { name: /Copy code to clipboard/i });
+    await expect(copyButtons.first()).toBeVisible();
+  });
+
+  test('zh docs renders localized Copy button label', async ({ page }) => {
+    await page.goto('/zh/docs/api/policies/evaluate');
+    const copyButtons = page.getByRole('button', { name: /将代码复制到剪贴板/ });
+    await expect(copyButtons.first()).toBeVisible();
+  });
+});
+
 test.describe('Cloud docs - sitemap + robots', () => {
   test('sitemap.xml emits one <loc> per (slug × locale) with reciprocal hreflang', async ({ request }) => {
     const res = await request.get('/sitemap.xml');

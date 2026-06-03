@@ -1,5 +1,6 @@
 import type { MDXComponents } from 'mdx/types';
 import { Callout, CodeGroup } from '@/components/docs/mdx-callouts';
+import { DocsCodeBlock } from '@/components/docs/DocsCodeBlock';
 import { TranslationFallbackBanner } from '@/components/docs/TranslationFallbackBanner';
 
 /**
@@ -21,6 +22,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ...components,
     Callout,
     CodeGroup,
+    // Phase 3 — every `<pre>` in MDX renders through DocsCodeBlock so
+    // readers get a Copy button plus, when the fence opts in via
+    // `{playground=true,id=…}`, an "Open in Playground" link.
+    pre: DocsCodeBlock,
     TranslationFallbackBanner,
   };
 }

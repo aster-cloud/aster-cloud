@@ -2450,6 +2450,14 @@
     "session": {
       "probing": "Loading account state"
     },
+    "codeBlock": {
+      "toolbarLabel": "Code snippet actions",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Copy failed",
+      "copyAriaLabel": "Copy code to clipboard",
+      "openInPlayground": "Open in Playground"
+    },
     "actions": {
       "ariaLabel": "Page actions",
       "tryInPlayground": "Try in Playground",

@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypePrettyCode from 'rehype-pretty-code';
+import { rehypeSnippetMeta } from './src/lib/mdx/rehype-snippet-meta';
 import { validateEnvOrWarn } from './src/lib/env-validation';
 import { safeEnv } from './src/lib/runtime/safe-env';
 
@@ -36,6 +37,10 @@ const withMDX = createMDX({
           keepBackground: false,
         },
       ],
+      // Phase 3 — must run AFTER rehype-pretty-code so the `<pre>`
+      // elements exist with their data-language / metastring attrs
+      // for us to copy into snippet-specific data attrs.
+      rehypeSnippetMeta,
       [
         rehypeAutolinkHeadings,
         { behavior: 'wrap', properties: { className: ['heading-anchor'] } },

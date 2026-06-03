@@ -2450,6 +2450,14 @@
     "session": {
       "probing": "Kontostatus wird geladen"
     },
+    "codeBlock": {
+      "toolbarLabel": "Code-Snippet-Aktionen",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copyFailed": "Kopieren fehlgeschlagen",
+      "copyAriaLabel": "Code in die Zwischenablage kopieren",
+      "openInPlayground": "Im Playground öffnen"
+    },
     "actions": {
       "ariaLabel": "Seitenaktionen",
       "tryInPlayground": "Im Playground ausprobieren",
