@@ -204,6 +204,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Translate version-usage + mutations zh/de — 100% coverage *(i18n)*
 - Translate audit/{logs,anomalies} zh + de *(i18n)*
 - Translate policies/{batch,cache} zh + de *(i18n)*
@@ -312,6 +313,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Move search to top nav, fix /playground 404s, refresh CNL templates *(docs)*
 - /zh/zh/policies 404 + dashboard logo *(ui)*
 - Lint + on-prem UI verifier failures from main *(ci)*
 - Resolve breadcrumb-hover 404s with section-parent redirects *(docs)*
