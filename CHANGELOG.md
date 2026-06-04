@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Phase 2 — generator + coverage verifier + CI gate *(routes)*
 - Make docs reachable from every signed-in surface *(docs)*
 - Phase 6 — IA dual-mode sidebar + personalized home *(docs)*
 - Phase 5 — unified Cmd+K search with locale-aware index *(docs)*
@@ -193,6 +194,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
