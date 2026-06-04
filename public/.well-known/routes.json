@@ -1,0 +1,540 @@
+{
+  "version": 1,
+  "site": "cloud",
+  "baseUrl": "https://aster-lang.cloud",
+  "locales": {
+    "default": "en",
+    "prefixed": [
+      "zh",
+      "de"
+    ]
+  },
+  "generatedAt": null,
+  "routes": [
+    {
+      "path": "/",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/page.tsx",
+      "locales": "all",
+      "notes": "Commercial landing page"
+    },
+    {
+      "path": "/pricing",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/pricing/page.tsx",
+      "locales": "all",
+      "notes": "Cloud SaaS pricing (lang-dev redirects /pricing → /editions same-site)"
+    },
+    {
+      "path": "/equivalence",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/equivalence/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/privacy",
+      "status": "canonical-here",
+      "owner": "legal",
+      "source": "src/app/[locale]/privacy/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/terms",
+      "status": "canonical-here",
+      "owner": "legal",
+      "source": "src/app/[locale]/terms/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/login",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/[locale]/(auth)/login/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/signup",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/[locale]/(auth)/signup/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/forgot-password",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/[locale]/(auth)/forgot-password/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/reset-password",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/[locale]/(auth)/reset-password/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/onboarding",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/[locale]/(auth)/onboarding/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/logout",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/[locale]/(auth)/logout/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/renew/:token",
+      "status": "canonical-here",
+      "owner": "billing",
+      "source": "src/app/[locale]/renew/[token]/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/dashboard",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/dashboard/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/policies",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/policies/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/policies/new",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/policies/new/page.tsx",
+      "auth": "required",
+      "locales": "all",
+      "notes": "Doubles as the Playground (accepts ?template=<id>). The bare\n/playground URL is not a route — incoming docs links must point\nhere directly. See the redirect-to entries below.\n"
+    },
+    {
+      "path": "/policies/:id",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/policies/[id]/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/billing",
+      "status": "canonical-here",
+      "owner": "billing",
+      "source": "src/app/[locale]/(dashboard)/billing/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/security",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/security/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/settings",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/settings/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/settings/api-keys",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/settings/api-keys/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/teams",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/teams/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/reports",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/reports/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/domain-vocabularies",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/domain-vocabularies/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/admin",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/admin/ai-circuit-breaker",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/ai-circuit-breaker/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/admin/domain-vocabularies",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/domain-vocabularies/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/admin/issued-licenses",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/issued-licenses/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/admin/license",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/license/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/admin/license-revoke",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/license-revoke/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/admin/risk-tier",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/risk-tier/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/admin/sso",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/sso/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
+      "path": "/billing/plans",
+      "status": "canonical-here",
+      "owner": "billing",
+      "source": "src/app/[locale]/(dashboard)/billing/plans/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/domain-vocabularies/snapshots",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/domain-vocabularies/snapshots/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/onboarding/change-password",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/[locale]/(auth)/onboarding/change-password/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/policies/:id/edit",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/policies/[id]/edit/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/policies/:id/execute",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/policies/[id]/execute/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/policies/:id/logs",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/policies/[id]/logs/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/policies/:id/versions",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/policies/[id]/versions/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/reports/:id",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/reports/[id]/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/settings/ai-keys",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/settings/ai-keys/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/settings/data",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/settings/data/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/teams/:teamId",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/teams/[teamId]/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/teams/:teamId/members",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/teams/[teamId]/members/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/teams/:teamId/policies",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/teams/[teamId]/policies/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/teams/:teamId/settings",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/teams/[teamId]/settings/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/teams/invite",
+      "status": "canonical-here",
+      "owner": "app",
+      "source": "src/app/[locale]/(dashboard)/teams/invite/page.tsx",
+      "auth": "required",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/getting-started",
+      "status": "canonical-here",
+      "owner": "docs",
+      "source": "src/app/[locale]/docs/getting-started/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/audit",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/audit/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/graphql",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/graphql/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/policies",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/policies/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/websocket",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/websocket/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/workflows",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/workflows/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs",
+      "status": "canonical-here",
+      "owner": "docs",
+      "source": "src/app/[locale]/docs/page.tsx",
+      "locales": "all",
+      "notes": "Primary docs root. lang-dev redirects legacy /api/*, /getting-started/* → here."
+    },
+    {
+      "path": "/docs/getting-started/*",
+      "status": "canonical-here",
+      "owner": "docs",
+      "source": "src/app/[locale]/docs/getting-started/**/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/policies/*",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/policies/**/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/workflows/*",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/workflows/**/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/audit/*",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/audit/**/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/graphql/*",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/graphql/**/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/docs/api/websocket/*",
+      "status": "canonical-here",
+      "owner": "docs-api",
+      "source": "src/app/[locale]/docs/api/websocket/**/page.tsx",
+      "locales": "all"
+    },
+    {
+      "path": "/playground",
+      "status": "redirect-to",
+      "canonicalUrl": "https://aster-lang.cloud/policies/new",
+      "redirectCode": 308,
+      "owner": "app",
+      "locales": "all",
+      "notes": "Historical name. Not a real route — the editor at /policies/new\ndoubles as the Playground. Phase 3 link-checker will reject any\nauthored link to /playground and require the canonical target.\n"
+    },
+    {
+      "path": "/api/v1/*",
+      "status": "canonical-here",
+      "owner": "api",
+      "source": "src/app/api/v1/**/route.ts",
+      "publicApi": true,
+      "locales": "none",
+      "notes": "Versioned public REST surface (policies, audit, workflows, …)"
+    },
+    {
+      "path": "/api/playground/evaluate-source",
+      "status": "canonical-here",
+      "owner": "api",
+      "source": "src/app/api/playground/evaluate-source/route.ts",
+      "publicApi": true,
+      "locales": "none",
+      "notes": "Anonymous preview-tenant evaluator (used by lang-dev playground too)"
+    },
+    {
+      "path": "/api/playground/*",
+      "status": "canonical-here",
+      "owner": "api",
+      "source": "src/app/api/playground/**/route.ts",
+      "publicApi": true,
+      "locales": "none"
+    },
+    {
+      "path": "/api/llm/*",
+      "status": "canonical-here",
+      "owner": "api",
+      "source": "src/app/api/llm/**/route.ts",
+      "publicApi": false,
+      "auth": "required",
+      "locales": "none"
+    },
+    {
+      "path": "/api/docs/*",
+      "status": "canonical-here",
+      "owner": "docs",
+      "source": "src/app/api/docs/**/route.ts",
+      "locales": "none",
+      "notes": "Docs session probe + jump-audit; consumed by docs RSC + client probe."
+    },
+    {
+      "path": "/api/auth/*",
+      "status": "canonical-here",
+      "owner": "auth",
+      "source": "src/app/api/auth/**/route.ts",
+      "locales": "none"
+    },
+    {
+      "path": "/api/stripe/*",
+      "status": "canonical-here",
+      "owner": "billing",
+      "source": "src/app/api/stripe/**/route.ts",
+      "locales": "none"
+    }
+  ],
+  "allowLinks": []
+}

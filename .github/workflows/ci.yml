@@ -168,6 +168,21 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - name: Verify message catalog parity (en backbone)
         run: pnpm run check:locales:strict
+      # Route ownership contract (ADR 0014). Two checks:
+      #   1. routes:build must be a no-op — the committed
+      #      public/.well-known/routes.json must match what the
+      #      generator produces from config/routes.yaml.
+      #   2. routes:check verifies every src/app/[locale]/page.tsx
+      #      and every src/app/api/route.ts has a manifest entry, and
+      #      every manifest entry with `source:` resolves to a real file.
+      # Phase 3 will add cross-site link validation against
+      # aster-lang-dev's manifest snapshot.
+      - name: Route ownership — generated JSON is up to date
+        run: |
+          pnpm run routes:build
+          git diff --exit-code public/.well-known/routes.json
+      - name: Route ownership — coverage
+        run: pnpm run routes:check
       # Glossary Contract (v7) — Stage 1 of 4-stage remediation: report-only.
       # See .claude/plan/glossary-contract.md §4.4 + glossary.config.yaml.
       # Flips to `check:glossary:strict` in Stage 4 once findings reach zero.
