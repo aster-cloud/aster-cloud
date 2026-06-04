@@ -1,0 +1,323 @@
+# Route ownership manifest — aster-cloud (aster-lang.cloud).
+#
+# THIS FILE IS THE SOURCE OF TRUTH for which public URLs aster-cloud
+# owns, mirrors, or merely redirects from. The companion file in
+# aster-lang-dev (`aster-lang-dev/config/routes.yaml`) is its sibling
+# for aster-lang.dev. Together they prevent the class of bug that
+# produced the `/playground` 404s and `/zh/zh/policies` double-prefix
+# regressions (see ADR 0014).
+#
+# Status values:
+#   canonical-here  — this site owns and serves the route
+#   mirror          — this site renders a copy; canonical lives elsewhere
+#   redirect-to     — this site only redirects to a canonical URL elsewhere
+#
+# Locales:
+#   `all`      — served at /, /zh/, /de/ (en bare per localePrefix:'as-needed')
+#   `en-only`  — only English (e.g. legal pages with no translation)
+#   `none`     — no locale segment (e.g. /api/*)
+#   ['zh','en','de'] — explicit list when partial
+#
+# This is the Phase 1 bootstrap. Phase 2 will add a generator that
+# verifies every `src/app/[locale]/**/page.tsx` appears here, and
+# Phase 3 will wire a link-checker into CI.
+
+version: 1
+site: cloud
+baseUrl: https://aster-lang.cloud
+locales:
+  default: en
+  prefixed: [zh, de]
+generatedAt: null
+
+# Manifest is intentionally curated, not auto-generated. Phase 2 will
+# verify completeness; for now this lists the highest-traffic routes
+# and every route the dual-site link contract needs to know about.
+routes:
+  # ===== Marketing / public landing =====
+  - path: /
+    status: canonical-here
+    owner: marketing
+    source: src/app/[locale]/page.tsx
+    locales: all
+    notes: Commercial landing page
+
+  - path: /pricing
+    status: canonical-here
+    owner: marketing
+    source: src/app/[locale]/pricing/page.tsx
+    locales: all
+    notes: Cloud SaaS pricing (lang-dev redirects /pricing → /editions same-site)
+
+  - path: /equivalence
+    status: canonical-here
+    owner: marketing
+    source: src/app/[locale]/equivalence/page.tsx
+    locales: all
+
+  - path: /privacy
+    status: canonical-here
+    owner: legal
+    source: src/app/[locale]/privacy/page.tsx
+    locales: all
+
+  - path: /terms
+    status: canonical-here
+    owner: legal
+    source: src/app/[locale]/terms/page.tsx
+    locales: all
+
+  # ===== Auth =====
+  - path: /login
+    status: canonical-here
+    owner: auth
+    source: src/app/[locale]/(auth)/login/page.tsx
+    locales: all
+
+  - path: /signup
+    status: canonical-here
+    owner: auth
+    source: src/app/[locale]/(auth)/signup/page.tsx
+    locales: all
+
+  - path: /forgot-password
+    status: canonical-here
+    owner: auth
+    source: src/app/[locale]/(auth)/forgot-password/page.tsx
+    locales: all
+
+  - path: /reset-password
+    status: canonical-here
+    owner: auth
+    source: src/app/[locale]/(auth)/reset-password/page.tsx
+    locales: all
+
+  - path: /onboarding
+    status: canonical-here
+    owner: auth
+    source: src/app/[locale]/(auth)/onboarding/page.tsx
+    auth: required
+    locales: all
+
+  - path: /logout
+    status: canonical-here
+    owner: auth
+    source: src/app/[locale]/(auth)/logout/page.tsx
+    locales: all
+
+  # ===== Renewal flow =====
+  # Only the token-scoped landing exists today; the bare /renew has no
+  # page.tsx. If we add a "request renewal" entry point later, declare
+  # it here at the same time as the page.
+  - path: /renew/:token
+    status: canonical-here
+    owner: billing
+    source: src/app/[locale]/renew/[token]/page.tsx
+    locales: all
+
+  # ===== Dashboard (auth-required) =====
+  - path: /dashboard
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/dashboard/page.tsx
+    auth: required
+    locales: all
+
+  - path: /policies
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/policies/page.tsx
+    auth: required
+    locales: all
+
+  - path: /policies/new
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/policies/new/page.tsx
+    auth: required
+    locales: all
+    notes: |
+      Doubles as the Playground (accepts ?template=<id>). The bare
+      /playground URL is not a route — incoming docs links must point
+      here directly. See the redirect-to entries below.
+
+  - path: /policies/:id
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/policies/[id]/page.tsx
+    auth: required
+    locales: all
+
+  - path: /billing
+    status: canonical-here
+    owner: billing
+    source: src/app/[locale]/(dashboard)/billing/page.tsx
+    auth: required
+    locales: all
+
+  - path: /security
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/security/page.tsx
+    auth: required
+    locales: all
+
+  - path: /settings
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/settings/page.tsx
+    auth: required
+    locales: all
+
+  - path: /settings/api-keys
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/settings/api-keys/page.tsx
+    auth: required
+    locales: all
+
+  - path: /teams
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/teams/page.tsx
+    auth: required
+    locales: all
+
+  - path: /reports
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/reports/page.tsx
+    auth: required
+    locales: all
+
+  - path: /domain-vocabularies
+    status: canonical-here
+    owner: app
+    source: src/app/[locale]/(dashboard)/domain-vocabularies/page.tsx
+    auth: required
+    locales: all
+
+  - path: /admin
+    status: canonical-here
+    owner: admin
+    source: src/app/[locale]/(dashboard)/admin/page.tsx
+    auth: admin
+    locales: all
+
+  # ===== Docs (the primary documentation surface as of 2026-Q3) =====
+  - path: /docs
+    status: canonical-here
+    owner: docs
+    source: src/app/[locale]/docs/page.tsx
+    locales: all
+    notes: Primary docs root. lang-dev redirects legacy /api/*, /getting-started/* → here.
+
+  - path: /docs/getting-started/*
+    status: canonical-here
+    owner: docs
+    source: src/app/[locale]/docs/getting-started/**/page.tsx
+    locales: all
+
+  - path: /docs/api/policies/*
+    status: canonical-here
+    owner: docs-api
+    source: src/app/[locale]/docs/api/policies/**/page.tsx
+    locales: all
+
+  - path: /docs/api/workflows/*
+    status: canonical-here
+    owner: docs-api
+    source: src/app/[locale]/docs/api/workflows/**/page.tsx
+    locales: all
+
+  - path: /docs/api/audit/*
+    status: canonical-here
+    owner: docs-api
+    source: src/app/[locale]/docs/api/audit/**/page.tsx
+    locales: all
+
+  - path: /docs/api/graphql/*
+    status: canonical-here
+    owner: docs-api
+    source: src/app/[locale]/docs/api/graphql/**/page.tsx
+    locales: all
+
+  - path: /docs/api/websocket/*
+    status: canonical-here
+    owner: docs-api
+    source: src/app/[locale]/docs/api/websocket/**/page.tsx
+    locales: all
+
+  # ===== Incoming aliases (URLs the wider world / docs might use) =====
+  # Per the recent /playground 404 incident: documents and bookmarks
+  # in the wild still reference /playground. We do not own that path,
+  # but we explicitly record it as a redirect contract so link
+  # checkers (Phase 3) treat external references to /playground as
+  # invalid and require callers to use the canonical /policies/new
+  # URL with the appropriate ?template=<id>.
+  - path: /playground
+    status: redirect-to
+    canonicalUrl: https://aster-lang.cloud/policies/new
+    redirectCode: 308
+    owner: app
+    locales: all
+    notes: |
+      Historical name. Not a real route — the editor at /policies/new
+      doubles as the Playground. Phase 3 link-checker will reject any
+      authored link to /playground and require the canonical target.
+
+  # ===== Public API (no locale segment) =====
+  - path: /api/v1/*
+    status: canonical-here
+    owner: api
+    source: src/app/api/v1/**/route.ts
+    publicApi: true
+    locales: none
+    notes: Versioned public REST surface (policies, audit, workflows, …)
+
+  - path: /api/playground/evaluate-source
+    status: canonical-here
+    owner: api
+    source: src/app/api/playground/evaluate-source/route.ts
+    publicApi: true
+    locales: none
+    notes: Anonymous preview-tenant evaluator (used by lang-dev playground too)
+
+  - path: /api/playground/*
+    status: canonical-here
+    owner: api
+    source: src/app/api/playground/**/route.ts
+    publicApi: true
+    locales: none
+
+  - path: /api/llm/*
+    status: canonical-here
+    owner: api
+    source: src/app/api/llm/**/route.ts
+    publicApi: false
+    auth: required
+    locales: none
+
+  - path: /api/docs/*
+    status: canonical-here
+    owner: docs
+    source: src/app/api/docs/**/route.ts
+    locales: none
+    notes: Docs session probe + jump-audit; consumed by docs RSC + client probe.
+
+  - path: /api/auth/*
+    status: canonical-here
+    owner: auth
+    source: src/app/api/auth/**/route.ts
+    locales: none
+
+  - path: /api/stripe/*
+    status: canonical-here
+    owner: billing
+    source: src/app/api/stripe/**/route.ts
+    locales: none
+
+# Allow-list: documented exceptions that the Phase 3 link-checker
+# should NOT flag, even though they look suspicious. Every entry needs
+# an owner, a reason, and an expiry — entries past expiry fail CI.
+allowLinks: []
