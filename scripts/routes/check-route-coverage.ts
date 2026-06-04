@@ -30,7 +30,7 @@ import {
   routePatternToRegex,
   validateManifest,
   type RoutesManifest,
-} from './types.ts';
+} from './types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
