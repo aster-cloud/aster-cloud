@@ -16,6 +16,10 @@ import {
   frontmatterDescription,
   isSkippable,
 } from '../../../scripts/docs-migration/inject-descriptions.mjs';
+// The search-index builder's frontmatter parser must read descriptions
+// IDENTICALLY to the injector/guard — otherwise a value can pass the
+// non-empty CI guard yet land empty/corrupted in the search index.
+import { parseFrontmatter } from '../../../scripts/docs-migration/build-docs-index.mjs';
 
 describe('deriveDescription — prose extraction', () => {
   it('takes the first real prose paragraph after the H1', () => {
@@ -134,6 +138,40 @@ describe('escapeYaml ↔ extraction round trip', () => {
     const original = 'A description with a "quoted" word and a back\\slash.';
     const fm = ['---', 'title: "T"', `description: ${escapeYaml(original)}`, '---'];
     expect(frontmatterDescription(fm)).toBe(original);
+  });
+
+  it('injector AND search-index builder read the same escaped value (consistency)', () => {
+    // The exact regression Codex flagged: both parsers must agree, or a
+    // quoted description passes the guard but corrupts the search index.
+    const original = 'Has a "quote", a back\\slash, and a colon: yes.';
+    const file = ['---', 'title: "T"', `description: ${escapeYaml(original)}`, '---', '', '# H', '', 'Body.'].join('\n');
+    // injector/guard view:
+    const { fm } = splitFrontmatter(file);
+    expect(frontmatterDescription(fm)).toBe(original);
+    // search-index builder view:
+    expect(parseFrontmatter(file).description).toBe(original);
+  });
+
+  it('both parsers agree on a YAML block scalar description', () => {
+    // A multi-line block scalar is valid YAML; the old regex parser in
+    // build-docs-index would have mis-read it. Both must now agree.
+    const file = [
+      '---',
+      'title: "T"',
+      'description: >-',
+      '  A folded block scalar description that spans',
+      '  two physical lines but is one logical string.',
+      '---',
+      '',
+      '# H',
+      '',
+      'Body.',
+    ].join('\n');
+    const expected =
+      'A folded block scalar description that spans two physical lines but is one logical string.';
+    const { fm } = splitFrontmatter(file);
+    expect(frontmatterDescription(fm)).toBe(expected);
+    expect(parseFrontmatter(file).description).toBe(expected);
   });
 });
 

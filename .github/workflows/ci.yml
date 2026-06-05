@@ -194,10 +194,11 @@ jobs:
       - name: Docs — every page has a meta description
         run: pnpm run check:docs-descriptions
       # The committed Cmd+K search index (src/lib/docs/search-index.*.json) is
-      # generated from the docs MDX by build-docs-index.mjs. Like routes:build
-      # above, regenerate and fail if it drifts — a docs edit (e.g. a changed
-      # description/heading) that forgets to commit the rebuilt index would
-      # otherwise serve a stale search index at runtime. Run
+      # generated from the docs MDX by build-docs-index.mjs. --check rebuilds
+      # in memory and compares against the committed files WITHOUT writing
+      # (side-effect-free), failing if they drift — a docs edit (e.g. a
+      # changed description/heading) that forgets to commit the rebuilt index
+      # would otherwise serve a stale index at runtime. Run
       # `pnpm docs:index:build` and commit the result to fix.
       - name: Docs — search index is up to date
         run: pnpm run check:docs-index

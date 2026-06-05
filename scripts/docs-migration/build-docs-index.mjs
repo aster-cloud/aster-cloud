@@ -36,12 +36,13 @@ import {
   readFileSync,
   writeFileSync,
   readdirSync,
-  statSync,
+  lstatSync,
   existsSync,
   mkdirSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -53,7 +54,10 @@ const GZIP_BUDGET_BYTES = 25 * 1024;
 function walk(dir, acc = []) {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
-    const s = statSync(full);
+    // lstat (not stat) so symlinks are not followed — consistent with
+    // inject-descriptions.mjs; avoids symlink-cycle runaway recursion.
+    const s = lstatSync(full);
+    if (s.isSymbolicLink()) continue;
     if (s.isDirectory()) walk(full, acc);
     else if (name.endsWith('.mdx')) acc.push(full);
   }
@@ -61,31 +65,24 @@ function walk(dir, acc = []) {
 }
 
 /**
- * Pull `title:` / `description:` out of YAML frontmatter. Quoted and
- * unquoted forms are both accepted; multi-line values are not (docs
- * frontmatter convention keeps these single-line).
+ * Pull `title:` / `description:` out of YAML frontmatter with a real YAML
+ * parser (single source of truth shared with inject-descriptions.mjs's
+ * guard). Using the actual parser — not a regex — means block/folded
+ * scalars and YAML escapes are read identically here and in the CI
+ * non-empty check, so a description can never pass the guard yet land empty
+ * or corrupted in the search index.
  */
-function parseFrontmatter(content) {
-  const m = content.match(/^(﻿)?---\r?\n([\s\S]*?)\n---\r?\n/);
+export function parseFrontmatter(content) {
+  const m = content.match(/^(﻿)?---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   if (!m) return { title: '', description: '' };
-  const body = m[2];
-  const title = extractKey(body, 'title');
-  const description = extractKey(body, 'description');
-  return { title, description };
-}
-
-function extractKey(body, key) {
-  // Double-quoted values may contain YAML escapes (\" and \\) — e.g. a
-  // description whose first sentence has a quote. The capture `[^"\n]*`
-  // stops at the first inner quote, so we instead match a quoted scalar that
-  // allows escaped chars, then unescape, keeping this reader consistent with
-  // the YAML-escaped values inject-descriptions.mjs writes.
-  const dq = body.match(new RegExp(`^${key}:\\s*"((?:[^"\\\\\\n]|\\\\.)*)"\\s*$`, 'm'));
-  if (dq) return dq[1].replace(/\\(["\\])/g, '$1').trim();
-  const sq = body.match(new RegExp(`^${key}:\\s*'([^'\\n]*)'\\s*$`, 'm'));
-  if (sq) return sq[1].trim();
-  const plain = body.match(new RegExp(`^${key}:\\s*([^\\n]*)\\s*$`, 'm'));
-  return plain ? plain[1].trim() : '';
+  try {
+    const obj = parseYaml(m[2]);
+    if (!obj || typeof obj !== 'object') return { title: '', description: '' };
+    const str = (v) => (typeof v === 'string' ? v.trim() : '');
+    return { title: str(obj.title), description: str(obj.description) };
+  } catch {
+    return { title: '', description: '' };
+  }
 }
 
 /**
@@ -154,31 +151,60 @@ function ensureDir(dir) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
-const mdxFiles = walk(DOCS_ROOT);
-ensureDir(OUTPUT_DIR);
+/**
+ * Build all locale indexes. In --check mode, compare the freshly-built JSON
+ * against what's committed on disk WITHOUT writing (a side-effect-free CI
+ * gate); otherwise write the files. Returns process exit code.
+ */
+function main(checkOnly) {
+  const mdxFiles = walk(DOCS_ROOT);
+  if (!checkOnly) ensureDir(OUTPUT_DIR);
 
-let total = 0;
-let exceeded = false;
-for (const locale of LOCALES) {
-  const index = buildIndexForLocale(locale, mdxFiles);
-  const json = JSON.stringify(index);
-  const gzipped = gzipSync(json).length;
-  const path = join(OUTPUT_DIR, `search-index.${locale}.json`);
-  writeFileSync(path, json);
-  console.log(
-    `[build-docs-index] ${locale}: ${index.entries.length} entries, ` +
-      `${json.length}B raw / ${gzipped}B gzip`,
-  );
-  total += index.entries.length;
-  if (gzipped > GZIP_BUDGET_BYTES) {
-    console.error(
-      `[build-docs-index] FAIL — ${locale} index exceeds ${GZIP_BUDGET_BYTES}B gzip budget`,
+  let total = 0;
+  let exceeded = false;
+  const drifted = [];
+  for (const locale of LOCALES) {
+    const index = buildIndexForLocale(locale, mdxFiles);
+    const json = JSON.stringify(index);
+    const gzipped = gzipSync(json).length;
+    const path = join(OUTPUT_DIR, `search-index.${locale}.json`);
+
+    if (checkOnly) {
+      const onDisk = existsSync(path) ? readFileSync(path, 'utf8') : '';
+      if (onDisk !== json) drifted.push(locale);
+    } else {
+      writeFileSync(path, json);
+    }
+
+    console.log(
+      `[build-docs-index] ${locale}: ${index.entries.length} entries, ` +
+        `${json.length}B raw / ${gzipped}B gzip`,
     );
-    exceeded = true;
+    total += index.entries.length;
+    if (gzipped > GZIP_BUDGET_BYTES) {
+      console.error(
+        `[build-docs-index] FAIL — ${locale} index exceeds ${GZIP_BUDGET_BYTES}B gzip budget`,
+      );
+      exceeded = true;
+    }
   }
+
+  if (checkOnly && drifted.length) {
+    console.error(
+      `[build-docs-index] ✗ search index out of date for: ${drifted.join(', ')}.\n` +
+        `Run: pnpm docs:index:build  (and commit src/lib/docs/search-index.*.json)`,
+    );
+    return 1;
+  }
+  if (exceeded) return 1;
+  console.log(
+    `[build-docs-index] OK — ${LOCALES.length} locales, ${total} total entries` +
+      (checkOnly ? ' (up to date)' : ''),
+  );
+  return 0;
 }
 
-if (exceeded) {
-  process.exit(1);
+// Run only when executed directly, not when imported by tests.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exit(main(process.argv.includes('--check')));
 }
-console.log(`[build-docs-index] OK — ${LOCALES.length} locales, ${total} total entries`);

@@ -37,7 +37,7 @@
     "docs:descriptions": "node scripts/docs-migration/inject-descriptions.mjs",
     "check:docs-descriptions": "node scripts/docs-migration/inject-descriptions.mjs --check",
     "docs:index:build": "node scripts/docs-migration/build-docs-index.mjs",
-    "check:docs-index": "node scripts/docs-migration/build-docs-index.mjs && git diff --exit-code src/lib/docs/search-index.en.json src/lib/docs/search-index.zh.json src/lib/docs/search-index.de.json",
+    "check:docs-index": "node scripts/docs-migration/build-docs-index.mjs --check",
     "verify:on-prem-bundle": "tsx scripts/verify-on-prem-bundle.ts",
     "verify:on-prem-ui": "tsx scripts/verify-on-prem-ui.ts",
     "verify:on-prem": "DEPLOYMENT_MODE=on-prem pnpm build && pnpm verify:on-prem-bundle && pnpm verify:on-prem-ui",

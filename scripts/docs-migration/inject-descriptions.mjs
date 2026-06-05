@@ -31,6 +31,10 @@ import { parse as parseYaml } from 'yaml';
 const __dirname = resolve(fileURLToPath(import.meta.url), '..');
 const DOCS_ROOT = resolve(__dirname, '..', '..', 'src', 'app', '[locale]', 'docs');
 const MAX_LEN = 155;
+// Hard ceiling for the --check quality guard. Slightly above the 155 soft
+// target used when deriving, so a manually-written description has a little
+// headroom but can't grow unbounded (SERP/social truncation).
+const MAX_DESC_LEN = 160;
 const CHECK_ONLY = process.argv.includes('--check');
 
 /** Recursively collect every *.mdx under the docs tree. */
@@ -212,6 +216,7 @@ export function escapeYaml(s) {
 function main() {
   const files = findMdx(DOCS_ROOT).sort();
   const missing = [];
+  const tooLong = [];
   let injected = 0;
 
   for (const file of files) {
@@ -225,7 +230,15 @@ function main() {
     // (""/whitespace) must NOT count as satisfied, or the original blank-meta
     // regression slips back in.
     const existing = frontmatterDescription(fm);
-    if (existing && existing.trim().length > 0) continue; // already has a real description
+    if (existing && existing.trim().length > 0) {
+      // Quality guard: meta descriptions beyond ~MAX_DESC_LEN get truncated in
+      // SERPs/social cards. Flag (don't auto-edit hand-written ones) so they
+      // get shortened deliberately.
+      if (CHECK_ONLY && existing.trim().length > MAX_DESC_LEN) {
+        tooLong.push(`${file.replace(DOCS_ROOT, 'docs')} (${existing.trim().length} chars)`);
+      }
+      continue; // already has a real description
+    }
 
     const desc = deriveDescription(body);
     if (!desc) {
@@ -250,13 +263,20 @@ function main() {
   }
 
   if (CHECK_ONLY) {
-    if (missing.length) {
-      console.error(`\n✗ ${missing.length} docs MDX file(s) missing frontmatter description:`);
-      for (const m of missing) console.error(`  - ${m.replace(DOCS_ROOT, 'docs')}`);
-      console.error('\nRun: node scripts/docs-migration/inject-descriptions.mjs');
+    if (missing.length || tooLong.length) {
+      if (missing.length) {
+        console.error(`\n✗ ${missing.length} docs MDX file(s) missing frontmatter description:`);
+        for (const m of missing) console.error(`  - ${m.replace(DOCS_ROOT, 'docs')}`);
+        console.error('\nRun: node scripts/docs-migration/inject-descriptions.mjs');
+      }
+      if (tooLong.length) {
+        console.error(`\n✗ ${tooLong.length} description(s) exceed ${MAX_DESC_LEN} chars (will be truncated in search results):`);
+        for (const m of tooLong) console.error(`  - ${m}`);
+        console.error('\nShorten them in the MDX frontmatter.');
+      }
       process.exit(1);
     }
-    console.log(`✓ all ${files.length} docs MDX files have a frontmatter description`);
+    console.log(`✓ all ${files.length} docs MDX files have a non-empty description ≤ ${MAX_DESC_LEN} chars`);
   } else {
     console.log(`\nInjected descriptions into ${injected} file(s); ${files.length} total scanned.`);
     if (missing.length) {
