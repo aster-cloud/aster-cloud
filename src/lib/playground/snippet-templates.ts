@@ -78,7 +78,7 @@ const SOURCE_TIERED_ACCESS = [
   'Module examples.batch.',
   '',
   'Rule allow given tenant as Text, tier as Text, produce Boolean:',
-  '  Return tenant has "preview" and (tier has "free" or tier has "pro").',
+  '  Return tenant equals to "preview" and (tier equals to "free" or tier equals to "pro").',
   '',
 ].join('\n');
 
@@ -88,7 +88,7 @@ const SOURCE_SCHEMA_SHAPE = [
   'Module examples.schema.',
   '',
   'Rule allow given userId as Text, resourceKind as Text, action as Text, produce Boolean:',
-  '  Return userId has not "" and resourceKind has "policy" and (action has "read" or action has "list").',
+  '  Return resourceKind equals to "policy" and (action equals to "read" or action equals to "list").',
   '',
 ].join('\n');
 
@@ -98,7 +98,7 @@ const SOURCE_VERSIONED_POLICY = [
   'Module examples.versioning.',
   '',
   'Rule allow given role as Text, produce Boolean:',
-  '  Return role has "owner".',
+  '  Return role equals to "owner".',
   '',
 ].join('\n');
 
@@ -108,7 +108,7 @@ const SOURCE_VALIDATE_ONLY = [
   'Module examples.validate.',
   '',
   'Rule allow given action as Text, produce Boolean:',
-  '  Return action has "read" or action has "list".',
+  '  Return action equals to "read" or action equals to "list".',
   '',
 ].join('\n');
 
@@ -125,7 +125,7 @@ const SOURCE_WORKFLOW_DECISION = [
   'Module workflows.demo.',
   '',
   'Rule decide given event as Text, payload as Text, produce Boolean:',
-  '  Return event has "approved" or payload has "auto-approve".',
+  '  Return event equals to "approved" or payload equals to "auto-approve".',
   '',
 ].join('\n');
 
@@ -140,7 +140,7 @@ const SOURCE_GRAPHQL_DEMO = [
   'Module examples.graphql.',
   '',
   'Rule evaluate given subject as Text, action as Text, produce Boolean:',
-  '  Return action has "read" or subject has "admin".',
+  '  Return action equals to "read" or subject equals to "admin".',
   '',
 ].join('\n');
 
@@ -162,7 +162,7 @@ const SOURCE_AUDIT_LOOKUP = [
   'Module examples.audit.',
   '',
   'Rule allow given actor as Text, resource as Text, produce Boolean:',
-  '  Return actor has not "" and resource has not "".',
+  '  Return actor equals to "service-account" and (resource equals to "policy" or resource equals to "audit-log").',
   '',
 ].join('\n');
 
