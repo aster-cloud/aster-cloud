@@ -239,7 +239,11 @@ export function DocsTopNav() {
       <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          aria-label={t('nav.brand')}
+          // 可访问名必须包含全部可见文字（WCAG 2.5.3）。可见内容是
+          // Wordmark（role=img，名为 "Aster Cloud"）+ 后缀 "Docs"，
+          // 因此 aria-label 取 "Aster Cloud Docs"，与可见文字一致；
+          // 仅用 nav.brand 会漏掉可见的 "Docs"，触发 label mismatch。
+          aria-label={`${t('nav.brand')} ${t('docs.nav.suffix')}`}
           className="flex items-center gap-2"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -249,10 +253,13 @@ export function DocsTopNav() {
             aria-hidden
             className="h-8 w-8 shrink-0"
           />
-          <span className="hidden sm:inline">
+          {/* Wordmark 自带 role=img + aria-label；后缀是装饰性视觉限定词。
+              整体可见文字已由上面的 Link aria-label 覆盖，这里把视觉元素
+              标 aria-hidden 避免重复进入可访问名树。 */}
+          <span className="hidden sm:inline" aria-hidden="true">
             <Wordmark variant="product" size="md" />
           </span>
-          <span className="ml-1 hidden text-sm font-medium text-fg-muted sm:inline">
+          <span className="ml-1 hidden text-sm font-medium text-fg-muted sm:inline" aria-hidden="true">
             {t('docs.nav.suffix')}
           </span>
         </Link>

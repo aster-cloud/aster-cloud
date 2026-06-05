@@ -60,7 +60,11 @@ export function DocsTopNavSearchButton() {
           NavRight take precedence in the cramped 320–375px window.
           aria-label keeps the button accessible regardless. */}
       <span className="hidden md:inline">{t('docs.search.placeholder')}</span>
+      {/* 装饰性快捷键提示：标记 aria-hidden，避免它进入按钮的可访问名
+          （否则内容计算出 "Search docs… ⌘K" 与 aria-label "Search docs…"
+          不一致，触发 WCAG 2.5.3 label-content-name-mismatch）。 */}
       <kbd
+        aria-hidden="true"
         className={cn(
           'hidden md:inline rounded border border-border bg-bg-subtle',
           'px-1.5 py-0.5 text-[10px] font-mono text-fg-muted',
