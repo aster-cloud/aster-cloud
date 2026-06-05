@@ -30,12 +30,19 @@ export function DocsTopNavSearchButton() {
   // DocsSidebarSearchButton's behavior so the chord hint is
   // consistent across both surfaces.
   const [shortcut, setShortcut] = useState('⌘K');
+  // WAI-ARIA aria-keyshortcuts format (e.g. "Meta+K" / "Control+K") — since
+  // the visible ⌘K hint is aria-hidden (to satisfy label-in-name), this is
+  // how screen-reader users discover the chord.
+  const [keyShortcuts, setKeyShortcuts] = useState('Meta+K');
   useEffect(() => {
     if (typeof navigator === 'undefined') return;
     const platform = (navigator.platform || '').toLowerCase();
     const ua = (navigator.userAgent || '').toLowerCase();
     const isMac = platform.startsWith('mac') || ua.includes('mac os x');
-    if (!isMac) setShortcut('Ctrl+K');
+    if (!isMac) {
+      setShortcut('Ctrl+K');
+      setKeyShortcuts('Control+K');
+    }
   }, []);
 
   const openSearch = () => {
@@ -48,6 +55,7 @@ export function DocsTopNavSearchButton() {
       type="button"
       onClick={openSearch}
       aria-label={t('docs.search.placeholder')}
+      aria-keyshortcuts={keyShortcuts}
       className={cn(
         'inline-flex items-center gap-2 rounded-md border border-border bg-bg px-2.5 py-1.5',
         'text-sm text-fg-muted transition-colors hover:bg-bg-subtle hover:text-fg',

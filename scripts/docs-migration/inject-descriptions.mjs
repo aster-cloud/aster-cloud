@@ -23,9 +23,10 @@
  * `--check` exits non-zero if any page is missing a description (CI guard).
  */
 
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, lstatSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 
 const __dirname = resolve(fileURLToPath(import.meta.url), '..');
 const DOCS_ROOT = resolve(__dirname, '..', '..', 'src', 'app', '[locale]', 'docs');
@@ -37,11 +38,33 @@ function findMdx(dir) {
   const out = [];
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
-    const st = statSync(full);
+    // lstat (not stat) so symlinks are not followed — avoids any chance of a
+    // symlink cycle making this recursion run away in CI.
+    const st = lstatSync(full);
+    if (st.isSymbolicLink()) continue;
     if (st.isDirectory()) out.push(...findMdx(full));
     else if (name.endsWith('.mdx')) out.push(full);
   }
   return out;
+}
+
+/**
+ * Parse the frontmatter block with a real YAML parser and return the
+ * `description` value (or undefined). Used by the presence check so that
+ * `description: ""`, `description:`, and `description: "   "` do NOT pass —
+ * a regex-only check would accept those and let blank meta descriptions
+ * regress silently.
+ */
+function frontmatterDescription(fmLines) {
+  try {
+    // fmLines includes the surrounding `---`; drop them before YAML parse.
+    const inner = fmLines.slice(1, fmLines.length - 1).join('\n');
+    const obj = parseYaml(inner);
+    const d = obj && typeof obj === 'object' ? obj.description : undefined;
+    return typeof d === 'string' ? d : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** True if the line is a non-prose construct we skip while hunting prose. */
@@ -133,7 +156,11 @@ for (const file of files) {
     missing.push(`${file} (no frontmatter)`);
     continue;
   }
-  if (fm.some((l) => /^description:/.test(l.trim()))) continue; // already present
+  // Non-empty check via real YAML parse: a present-but-blank description
+  // (""/whitespace) must NOT count as satisfied, or the original blank-meta
+  // regression slips back in.
+  const existing = frontmatterDescription(fm);
+  if (existing && existing.trim().length > 0) continue; // already has a real description
 
   const desc = deriveDescription(body);
   if (!desc) {

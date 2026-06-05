@@ -75,10 +75,17 @@ function parseFrontmatter(content) {
 }
 
 function extractKey(body, key) {
-  const re = new RegExp(`^${key}:\\s*(?:"([^"\\n]*)"|'([^'\\n]*)'|([^\\n]*))\\s*$`, 'm');
-  const m = body.match(re);
-  if (!m) return '';
-  return (m[1] ?? m[2] ?? m[3] ?? '').trim();
+  // Double-quoted values may contain YAML escapes (\" and \\) — e.g. a
+  // description whose first sentence has a quote. The capture `[^"\n]*`
+  // stops at the first inner quote, so we instead match a quoted scalar that
+  // allows escaped chars, then unescape, keeping this reader consistent with
+  // the YAML-escaped values inject-descriptions.mjs writes.
+  const dq = body.match(new RegExp(`^${key}:\\s*"((?:[^"\\\\\\n]|\\\\.)*)"\\s*$`, 'm'));
+  if (dq) return dq[1].replace(/\\(["\\])/g, '$1').trim();
+  const sq = body.match(new RegExp(`^${key}:\\s*'([^'\\n]*)'\\s*$`, 'm'));
+  if (sq) return sq[1].trim();
+  const plain = body.match(new RegExp(`^${key}:\\s*([^\\n]*)\\s*$`, 'm'));
+  return plain ? plain[1].trim() : '';
 }
 
 /**
