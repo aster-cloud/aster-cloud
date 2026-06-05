@@ -166,4 +166,28 @@ describe('pushApiKeySnapshot', () => {
     expect(body.valid).toBe(false);
     expect(body.reason).toBe('expired');
   });
+
+  it('有效 key → 下发 tenantId（租户隔离回归）', async () => {
+    // 第一次 findFirst = apiKeys 查询；第二次 = users plan 查询
+    mockFindFirst
+      .mockResolvedValueOnce({
+        id: 'k1',
+        userId: 'u1',
+        revokedAt: null,
+        expiresAt: null, // 永不过期
+      })
+      .mockResolvedValueOnce({ plan: 'pro' });
+    const hash = 'd'.repeat(64);
+    const { pushApiKeySnapshot } = await import('@/lib/snapshot-pusher');
+    await pushApiKeySnapshot(hash);
+    const [, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.valid).toBe(true);
+    expect(body.apiKeyId).toBe('k1');
+    expect(body.userId).toBe('u1');
+    // 核心断言：snapshot 必须带权威 tenantId（当前与 userId 同源）。
+    // 缺失会让 aster-api snapshot 命中路径丢失租户、退化为跨租户隔离风险。
+    expect(body.tenantId).toBe('u1');
+    expect(body.plan).toBe('pro');
+  });
 });

@@ -91,6 +91,10 @@ export async function GET(req: Request) {
     valid: !k.expiresAt || k.expiresAt.getTime() >= Date.now(),
     apiKeyId: k.id,
     userId: k.userId,
+    // tenantId 与 /api/internal/apikey/verify 同源（当前 tenantId === userId）。
+    // 显式下发让 aster-api 的 snapshot 命中路径拿到权威租户而非回退猜测；
+    // 未来引入多租户 team 时改为 k.tenantId 即可。
+    tenantId: k.userId,
     plan: userPlanMap.get(k.userId) ?? 'free',
     revokedAtEpochMs: k.revokedAt?.getTime() ?? null,
   }));

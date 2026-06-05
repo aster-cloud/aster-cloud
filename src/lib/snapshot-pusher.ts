@@ -103,6 +103,10 @@ export async function pushApiKeySnapshot(keyHash: string): Promise<void> {
         valid: true,
         apiKeyId: key.id,
         userId: key.userId,
+        // tenantId 与 /api/internal/apikey/verify 保持同源（当前 tenantId === userId）。
+        // 显式下发，让 aster-api 的 snapshot 命中路径拿到权威租户，而不是回退猜测。
+        // 未来引入真正的多租户 team 时，这里改为 key.tenantId 即可，无需改 aster-api。
+        tenantId: key.userId,
         plan: user?.plan ?? 'free',
         revokedAtEpochMs: null,
       };
