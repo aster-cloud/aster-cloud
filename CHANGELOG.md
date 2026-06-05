@@ -198,6 +198,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -320,6 +321,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- A11y label mismatches + SEO meta descriptions (live audit) *(docs)*
 - Include tenantId in API-key snapshot payloads *(snapshot)*
 - Make every snippet template actually run + add engine contract test *(playground)*
 - Drop .ts extension from relative imports *(routes)*
