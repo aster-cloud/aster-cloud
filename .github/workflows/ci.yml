@@ -183,6 +183,14 @@ jobs:
           git diff --exit-code public/.well-known/routes.json
       - name: Route ownership — coverage
         run: pnpm run routes:check
+      # Every docs MDX page must carry a frontmatter `description:` so
+      # generateMetadata emits a non-empty <meta name="description"> (SEO +
+      # social-share cards). A live Lighthouse audit found all 25 pages
+      # shipping blank meta descriptions. `--check` fails if any page is
+      # missing one; run `pnpm docs:descriptions` to backfill from the
+      # page's first prose paragraph.
+      - name: Docs — every page has a meta description
+        run: pnpm run check:docs-descriptions
       # Glossary Contract (v7) — Stage 1 of 4-stage remediation: report-only.
       # See .claude/plan/glossary-contract.md §4.4 + glossary.config.yaml.
       # Flips to `check:glossary:strict` in Stage 4 once findings reach zero.
