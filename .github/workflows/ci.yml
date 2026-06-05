@@ -193,6 +193,14 @@ jobs:
       # paragraph.
       - name: Docs — every page has a meta description
         run: pnpm run check:docs-descriptions
+      # The committed Cmd+K search index (src/lib/docs/search-index.*.json) is
+      # generated from the docs MDX by build-docs-index.mjs. Like routes:build
+      # above, regenerate and fail if it drifts — a docs edit (e.g. a changed
+      # description/heading) that forgets to commit the rebuilt index would
+      # otherwise serve a stale search index at runtime. Run
+      # `pnpm docs:index:build` and commit the result to fix.
+      - name: Docs — search index is up to date
+        run: pnpm run check:docs-index
       # Glossary Contract (v7) — Stage 1 of 4-stage remediation: report-only.
       # See .claude/plan/glossary-contract.md §4.4 + glossary.config.yaml.
       # Flips to `check:glossary:strict` in Stage 4 once findings reach zero.

@@ -55,7 +55,7 @@ function findMdx(dir) {
  * a regex-only check would accept those and let blank meta descriptions
  * regress silently.
  */
-function frontmatterDescription(fmLines) {
+export function frontmatterDescription(fmLines) {
   try {
     // fmLines includes the surrounding `---`; drop them before YAML parse.
     const inner = fmLines.slice(1, fmLines.length - 1).join('\n');
@@ -68,7 +68,7 @@ function frontmatterDescription(fmLines) {
 }
 
 /** True if the line is a non-prose construct we skip while hunting prose. */
-function isSkippable(line) {
+export function isSkippable(line) {
   const t = line.trim();
   if (t === '') return true;
   if (t.startsWith('#')) return true; // heading
@@ -77,11 +77,14 @@ function isSkippable(line) {
   if (t.startsWith('|')) return true; // table row
   if (t.startsWith('```')) return true; // code fence
   if (t.startsWith(':::')) return true; // admonition marker
+  if (t.startsWith('>')) return true; // blockquote
+  if (/^[-*+]\s/.test(t)) return true; // unordered list item
+  if (/^\d+\.\s/.test(t)) return true; // ordered list item
   return false;
 }
 
 /** Collapse inline markdown to plain text for a clean meta description. */
-function stripMarkdown(s) {
+export function stripMarkdown(s) {
   return s
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → text
     .replace(/`([^`]+)`/g, '$1') // inline code
@@ -95,32 +98,74 @@ function stripMarkdown(s) {
 /**
  * Truncate to MAX_LEN preferring a sentence boundary, else a word boundary.
  * Keeps trailing punctuation natural; appends … only when mid-sentence cut.
+ * The final string (including any appended …) never exceeds MAX_LEN.
  */
-function truncate(text) {
+export function truncate(text) {
   if (text.length <= MAX_LEN) return text;
+  // Prefer ending at the last sentence terminator within the full window.
   const window = text.slice(0, MAX_LEN);
-  // Prefer ending at the last sentence terminator within the window.
   const lastStop = Math.max(
     window.lastIndexOf('. '),
     window.lastIndexOf('。'),
+    window.lastIndexOf('！'),
+    window.lastIndexOf('？'),
     window.lastIndexOf('! '),
     window.lastIndexOf('? '),
   );
   if (lastStop >= 80) return window.slice(0, lastStop + 1).trim();
-  const lastSpace = window.lastIndexOf(' ');
-  return (lastSpace >= 80 ? window.slice(0, lastSpace) : window).trim() + '…';
+  // Mid-sentence cut: reserve one char for the … so total length ≤ MAX_LEN.
+  const ellipsisWindow = text.slice(0, MAX_LEN - 1);
+  const lastSpace = ellipsisWindow.lastIndexOf(' ');
+  return (lastSpace >= 80 ? ellipsisWindow.slice(0, lastSpace) : ellipsisWindow).trim() + '…';
 }
 
-/** Extract the first prose paragraph (already stripped + truncated). */
-function deriveDescription(body) {
-  const lines = body.split('\n');
+/**
+ * Extract the first prose paragraph (stripped + truncated), using a small
+ * state machine so we correctly skip non-prose blocks:
+ *   - fenced code blocks (``` … ```): skip the whole fence, not just the
+ *     opening line (otherwise code lines leak into the description).
+ *   - leading JSX/component blocks (<Callout>…</Callout>): skip until the
+ *     block's content is past; we only want article prose.
+ *   - headings, lists, blockquotes, tables, import/export, admonitions.
+ * Collection starts at the first real prose line and ends at the next blank
+ * line or non-prose construct.
+ */
+export function deriveDescription(body) {
+  const lines = body.split(/\r?\n/);
   let para = '';
+  let inFence = false;
+  let jsxDepth = 0; // >0 while inside a multi-line JSX component block
   for (let i = 0; i < lines.length; i++) {
-    if (isSkippable(lines[i])) {
-      if (para) break; // paragraph ended
+    const t = lines[i].trim();
+
+    // Fenced code block toggling — skip everything between fences.
+    if (t.startsWith('```')) {
+      if (para) break; // a paragraph already ended before this fence
+      inFence = !inFence;
       continue;
     }
-    para += (para ? ' ' : '') + lines[i].trim();
+    if (inFence) continue;
+
+    // JSX/component block: a line opening a tag that isn't closed/self-closed
+    // on the same line (e.g. "<Callout …>") starts a block whose *inner* prose
+    // must NOT be collected. Track depth via open vs close tags until balanced.
+    if (jsxDepth > 0) {
+      jsxDepth += countJsxOpens(t) - countJsxCloses(t);
+      continue;
+    }
+    if (t.startsWith('<')) {
+      if (para) break;
+      const delta = countJsxOpens(t) - countJsxCloses(t);
+      if (delta > 0) jsxDepth += delta; // unbalanced → enter block
+      continue; // single-line/self-closed tag: just skip this line
+    }
+
+    if (isSkippable(lines[i])) {
+      if (para) break; // blank line / non-prose ends the paragraph
+      continue;
+    }
+
+    para += (para ? ' ' : '') + t;
     // stop at a blank line right after we started collecting
     if (lines[i + 1] !== undefined && lines[i + 1].trim() === '') break;
   }
@@ -128,8 +173,22 @@ function deriveDescription(body) {
   return clean ? truncate(clean) : null;
 }
 
+/** Count opening JSX tags on a line: <Tag …> but not </Tag> nor <Tag … />. */
+function countJsxOpens(line) {
+  const m = line.match(/<[A-Za-z][^>]*>/g);
+  if (!m) return 0;
+  return m.filter((tag) => !tag.startsWith('</') && !tag.endsWith('/>')).length;
+}
+
+/** Count closing JSX tags on a line: </Tag> and self-closed <Tag …/>. */
+function countJsxCloses(line) {
+  const close = (line.match(/<\/[A-Za-z][^>]*>/g) || []).length;
+  const selfClose = (line.match(/<[A-Za-z][^>]*\/>/g) || []).length;
+  return close + selfClose;
+}
+
 /** Split a file into [frontmatterLines, bodyText]; null fm if absent. */
-function splitFrontmatter(raw) {
+export function splitFrontmatter(raw) {
   const lines = raw.split('\n');
   if (lines[0]?.trim() !== '---') return { fm: null, body: raw };
   let end = -1;
@@ -140,62 +199,74 @@ function splitFrontmatter(raw) {
   return { fm: lines.slice(0, end + 1), fmEnd: end, body: lines.slice(end + 1).join('\n'), lines };
 }
 
-function escapeYaml(s) {
+export function escapeYaml(s) {
   // Double-quote and escape embedded quotes/backslashes for a YAML string.
   return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
 }
 
-const files = findMdx(DOCS_ROOT).sort();
-const missing = [];
-let injected = 0;
+/**
+ * CLI entry: walk the docs tree, inject (or --check) descriptions.
+ * Wrapped in a function + guarded below so importing this module for unit
+ * tests does NOT trigger the file-system walk or process.exit.
+ */
+function main() {
+  const files = findMdx(DOCS_ROOT).sort();
+  const missing = [];
+  let injected = 0;
 
-for (const file of files) {
-  const raw = readFileSync(file, 'utf8');
-  const { fm, fmEnd, body, lines } = splitFrontmatter(raw);
-  if (!fm) {
-    missing.push(`${file} (no frontmatter)`);
-    continue;
-  }
-  // Non-empty check via real YAML parse: a present-but-blank description
-  // (""/whitespace) must NOT count as satisfied, or the original blank-meta
-  // regression slips back in.
-  const existing = frontmatterDescription(fm);
-  if (existing && existing.trim().length > 0) continue; // already has a real description
+  for (const file of files) {
+    const raw = readFileSync(file, 'utf8');
+    const { fm, fmEnd, body, lines } = splitFrontmatter(raw);
+    if (!fm) {
+      missing.push(`${file} (no frontmatter)`);
+      continue;
+    }
+    // Non-empty check via real YAML parse: a present-but-blank description
+    // (""/whitespace) must NOT count as satisfied, or the original blank-meta
+    // regression slips back in.
+    const existing = frontmatterDescription(fm);
+    if (existing && existing.trim().length > 0) continue; // already has a real description
 
-  const desc = deriveDescription(body);
-  if (!desc) {
-    missing.push(`${file} (could not derive — no prose paragraph)`);
-    continue;
+    const desc = deriveDescription(body);
+    if (!desc) {
+      missing.push(`${file} (could not derive — no prose paragraph)`);
+      continue;
+    }
+
+    if (CHECK_ONLY) {
+      missing.push(file);
+      continue;
+    }
+
+    // Insert `description:` right after the `title:` line (or after opening ---).
+    const titleIdx = lines.findIndex(
+      (l, i) => i > 0 && i < fmEnd && /^title:/.test(l.trim()),
+    );
+    const insertAt = titleIdx >= 0 ? titleIdx + 1 : 1;
+    lines.splice(insertAt, 0, `description: ${escapeYaml(desc)}`);
+    writeFileSync(file, lines.join('\n'), 'utf8');
+    injected++;
+    console.log(`  + ${file.replace(DOCS_ROOT, 'docs')}\n      ${desc}`);
   }
 
   if (CHECK_ONLY) {
-    missing.push(file);
-    continue;
+    if (missing.length) {
+      console.error(`\n✗ ${missing.length} docs MDX file(s) missing frontmatter description:`);
+      for (const m of missing) console.error(`  - ${m.replace(DOCS_ROOT, 'docs')}`);
+      console.error('\nRun: node scripts/docs-migration/inject-descriptions.mjs');
+      process.exit(1);
+    }
+    console.log(`✓ all ${files.length} docs MDX files have a frontmatter description`);
+  } else {
+    console.log(`\nInjected descriptions into ${injected} file(s); ${files.length} total scanned.`);
+    if (missing.length) {
+      console.warn(`\n⚠ ${missing.length} file(s) need manual attention:`);
+      for (const m of missing) console.warn(`  - ${m.replace(DOCS_ROOT, 'docs')}`);
+    }
   }
-
-  // Insert `description:` right after the `title:` line (or after opening ---).
-  const titleIdx = lines.findIndex(
-    (l, i) => i > 0 && i < fmEnd && /^title:/.test(l.trim()),
-  );
-  const insertAt = titleIdx >= 0 ? titleIdx + 1 : 1;
-  lines.splice(insertAt, 0, `description: ${escapeYaml(desc)}`);
-  writeFileSync(file, lines.join('\n'), 'utf8');
-  injected++;
-  console.log(`  + ${file.replace(DOCS_ROOT, 'docs')}\n      ${desc}`);
 }
 
-if (CHECK_ONLY) {
-  if (missing.length) {
-    console.error(`\n✗ ${missing.length} docs MDX file(s) missing frontmatter description:`);
-    for (const m of missing) console.error(`  - ${m.replace(DOCS_ROOT, 'docs')}`);
-    console.error('\nRun: node scripts/docs-migration/inject-descriptions.mjs');
-    process.exit(1);
-  }
-  console.log(`✓ all ${files.length} docs MDX files have a frontmatter description`);
-} else {
-  console.log(`\nInjected descriptions into ${injected} file(s); ${files.length} total scanned.`);
-  if (missing.length) {
-    console.warn(`\n⚠ ${missing.length} file(s) need manual attention:`);
-    for (const m of missing) console.warn(`  - ${m.replace(DOCS_ROOT, 'docs')}`);
-  }
+// Run only when executed directly (node …/inject-descriptions.mjs), not on import.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
 }
