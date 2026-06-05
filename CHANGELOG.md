@@ -196,6 +196,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -318,6 +319,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Make every snippet template actually run + add engine contract test *(playground)*
 - Drop .ts extension from relative imports *(routes)*
 - Move search to top nav, fix /playground 404s, refresh CNL templates *(docs)*
 - /zh/zh/policies 404 + dashboard logo *(ui)*
