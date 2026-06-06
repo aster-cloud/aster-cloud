@@ -122,13 +122,13 @@ Define Decision has
   rate as Int.
 
 Rule evaluateLoan given applicant, produce:
-  If applicant.age less than 18
+  If applicant.age is less than 18
     Return Decision with approved set to false, reason set to "Underage applicant", rate set to 0.
-  If applicant.creditScore less than 600
+  If applicant.creditScore is less than 600
     Return Decision with approved set to false, reason set to "Credit score too low", rate set to 0.
-  If applicant.creditScore greater than 750
+  If applicant.creditScore is greater than 750
     Return Decision with approved set to true, reason set to "Excellent credit", rate set to 350.
-  If applicant.creditScore greater than 700
+  If applicant.creditScore is at least 700
     Return Decision with approved set to true, reason set to "Good credit", rate set to 450.
   Return Decision with approved set to true, reason set to "Standard approval", rate set to 550.
 `;
