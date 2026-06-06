@@ -188,6 +188,9 @@ describe('pushApiKeySnapshot', () => {
     // 核心断言：snapshot 必须带权威 tenantId（当前与 userId 同源）。
     // 缺失会让 aster-api snapshot 命中路径丢失租户、退化为跨租户隔离风险。
     expect(body.tenantId).toBe('u1');
+    // 权威 RBAC 角色：aster-api 用它无条件覆盖 X-User-Role（防提权）。
+    // tenantId===userId → owner。
+    expect(body.role).toBe('owner');
     expect(body.plan).toBe('pro');
   });
 });

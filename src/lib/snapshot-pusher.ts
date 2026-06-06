@@ -107,6 +107,9 @@ export async function pushApiKeySnapshot(keyHash: string): Promise<void> {
         // 显式下发，让 aster-api 的 snapshot 命中路径拿到权威租户，而不是回退猜测。
         // 未来引入真正的多租户 team 时，这里改为 key.tenantId 即可，无需改 aster-api。
         tenantId: key.userId,
+        // RBAC 角色，与 verify route 同源：tenantId===userId → key 持有者是其
+        // 单用户租户的 owner。aster-api 用它无条件覆盖 X-User-Role（防提权）。
+        role: 'owner',
         plan: user?.plan ?? 'free',
         revokedAtEpochMs: null,
       };

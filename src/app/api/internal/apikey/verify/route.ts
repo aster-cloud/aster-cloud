@@ -100,5 +100,12 @@ export async function POST(req: Request) {
     tenantId: user.id, // 当前 tenantId 与 userId 同源（与 plan-gate 一致）
     plan: user.plan,
     subscriptionStatus: user.subscriptionStatus ?? null,
+    // RBAC 角色（与 aster-api Role / 本仓 teamRoleEnum 对齐：owner/admin/member/viewer）。
+    // 当前数据模型 tenantId === userId：API key 持有者就是其单用户租户的所有者，
+    // 因此对**自己的**资源（含审计/分析）拥有 owner 权限。aster-api 用该角色
+    // 无条件覆盖 X-User-Role，杜绝持普通 key 自带 ADMIN 头提权（owner ≥ admin，
+    // 满足审计端点文档约定的 ADMIN 要求）。引入真正的多租户 team 后，这里改为
+    // 查 teamMembers.role(teamId=租户, userId) 即可，aster-api 侧无需改动。
+    role: 'owner',
   });
 }

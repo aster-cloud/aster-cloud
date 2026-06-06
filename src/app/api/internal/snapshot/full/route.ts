@@ -95,6 +95,8 @@ export async function GET(req: Request) {
     // 显式下发让 aster-api 的 snapshot 命中路径拿到权威租户而非回退猜测；
     // 未来引入多租户 team 时改为 k.tenantId 即可。
     tenantId: k.userId,
+    // RBAC 角色，与 verify route 同源（tenantId===userId → owner）。
+    role: 'owner',
     plan: userPlanMap.get(k.userId) ?? 'free',
     revokedAtEpochMs: k.revokedAt?.getTime() ?? null,
   }));
