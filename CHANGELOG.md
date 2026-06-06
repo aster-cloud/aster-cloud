@@ -206,6 +206,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -620,6 +621,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Add postgres error details to POST /api/policies
 - Add detailed error logging to POST /api/policies
 - Add comprehensive LSP connection logging
+
+### Harden
+
+- Typed role const + scalable snapshot query + JSX/hex/YAML fixes *(internal/docs)*
 
 ### Nav
 
