@@ -207,6 +207,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -329,6 +330,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Validate snapshot/full limit; add route regressions *(internal-api)*
 - Unify frontmatter parsing on YAML + side-effect-free index check *(docs)*
 - Harden description tooling per multi-model review *(docs)*
 - A11y label mismatches + SEO meta descriptions (live audit) *(docs)*
