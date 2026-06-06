@@ -177,6 +177,15 @@ export function deriveDescription(body) {
   return clean ? truncate(clean) : null;
 }
 
+// Depth bookkeeping counts only tags that change multi-line nesting:
+//   - <Tag …>   opens a block (+1)        → countJsxOpens
+//   - </Tag>    closes a block (-1)        → countJsxCloses
+//   - <Tag … /> self-closed: net ZERO, must NOT touch depth — it neither
+//     opens nor closes a multi-line block. Counting it as a close (the
+//     earlier bug) made a self-closing child like <Icon /> inside a
+//     <Callout> drop jsxDepth and leak the component body into the
+//     description. So both counters deliberately exclude self-closing tags.
+
 /** Count opening JSX tags on a line: <Tag …> but not </Tag> nor <Tag … />. */
 function countJsxOpens(line) {
   const m = line.match(/<[A-Za-z][^>]*>/g);
@@ -184,11 +193,9 @@ function countJsxOpens(line) {
   return m.filter((tag) => !tag.startsWith('</') && !tag.endsWith('/>')).length;
 }
 
-/** Count closing JSX tags on a line: </Tag> and self-closed <Tag …/>. */
+/** Count real closing JSX tags on a line: </Tag> only (self-closed excluded). */
 function countJsxCloses(line) {
-  const close = (line.match(/<\/[A-Za-z][^>]*>/g) || []).length;
-  const selfClose = (line.match(/<[A-Za-z][^>]*\/>/g) || []).length;
-  return close + selfClose;
+  return (line.match(/<\/[A-Za-z][^>]*>/g) || []).length;
 }
 
 /** Split a file into [frontmatterLines, bodyText]; null fm if absent. */

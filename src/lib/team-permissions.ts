@@ -57,6 +57,15 @@ const ROLE_PERMISSIONS: Record<string, TeamPermissionType[]> = {
 const ROLE_HIERARCHY = ['viewer', 'member', 'admin', 'owner'] as const;
 export type TeamRole = (typeof ROLE_HIERARCHY)[number];
 
+/**
+ * 单用户租户（当前 tenantId === userId）下，API key 持有者对自己租户的角色。
+ * 下发给 aster-api（apikey verify + snapshot），由其无条件覆盖 X-User-Role
+ * 防止伪造提权（owner ≥ admin，满足审计端点的 ADMIN 要求）。引入真正的多租户
+ * team 后，改为查 teamMembers.role 即可——这个常量是当前模型的单一真相源，
+ * 类型受 TeamRole 约束，避免字符串字面量在多处静默漂移。
+ */
+export const SOLO_TENANT_ROLE: TeamRole = 'owner';
+
 // 结果类型（判别联合模式）
 export type TeamAccessResult =
   | { allowed: true; role: TeamRole; teamId: string }

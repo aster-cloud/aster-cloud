@@ -42,6 +42,24 @@ describe('deriveDescription — prose extraction', () => {
     expect(deriveDescription(body)).toBe('The real summary paragraph lives here.');
   });
 
+  it('does NOT exit a JSX block early on a self-closing child tag', () => {
+    // Regression: a self-closing <Icon /> inside a <Callout> must be net-zero
+    // depth — otherwise it drops jsxDepth and leaks the component body.
+    const body = [
+      '# Heading',
+      '',
+      '<Callout type="warning">',
+      '  <Icon name="alert" />',
+      '  Do not leak this callout body into the description.',
+      '</Callout>',
+      '',
+      'This is the actual page description.',
+    ].join('\n');
+    const d = deriveDescription(body);
+    expect(d).toBe('This is the actual page description.');
+    expect(d).not.toContain('leak');
+  });
+
   it('does NOT leak fenced code block contents into the description', () => {
     const body = [
       '# Example',

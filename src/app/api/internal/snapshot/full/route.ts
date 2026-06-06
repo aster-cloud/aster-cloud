@@ -9,8 +9,9 @@
 import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db, users, apiKeys } from '@/lib/prisma';
-import { gt, asc, eq, isNull } from 'drizzle-orm';
+import { gt, asc, and, inArray, isNull } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
+import { SOLO_TENANT_ROLE } from '@/lib/team-permissions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -77,11 +78,13 @@ export async function GET(req: Request) {
   const userIds = userRows.map((u) => u.id);
   let keyRows: Array<{ id: string; userId: string; key: string; revokedAt: Date | null; expiresAt: Date | null }> = [];
   if (userIds.length > 0) {
-    keyRows = (await db.query.apiKeys.findMany({
-      where: isNull(apiKeys.revokedAt),
+    // 把 userId 过滤下推到 SQL（inArray + ApiKey_userId_idx），而不是全表
+    // 拉 active keys 再在内存里 filter——后者随 key 总量线性膨胀、与 limit
+    // 无关，warmup 内存/延迟会随规模失控。
+    keyRows = await db.query.apiKeys.findMany({
+      where: and(isNull(apiKeys.revokedAt), inArray(apiKeys.userId, userIds)),
       columns: { id: true, userId: true, key: true, revokedAt: true, expiresAt: true },
-    })).filter((k) => userIds.includes(k.userId));
-    void eq;
+    });
   }
 
   // 按 userId 关联 plan，回填到 apikey snapshot
@@ -96,7 +99,7 @@ export async function GET(req: Request) {
     // 未来引入多租户 team 时改为 k.tenantId 即可。
     tenantId: k.userId,
     // RBAC 角色，与 verify route 同源（tenantId===userId → owner）。
-    role: 'owner',
+    role: SOLO_TENANT_ROLE,
     plan: userPlanMap.get(k.userId) ?? 'free',
     revokedAtEpochMs: k.revokedAt?.getTime() ?? null,
   }));

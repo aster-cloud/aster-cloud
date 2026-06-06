@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db, apiKeys, users } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
+import { SOLO_TENANT_ROLE } from '@/lib/team-permissions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
-  if (!body.keyHash || typeof body.keyHash !== 'string' || body.keyHash.length !== 64) {
+  if (typeof body.keyHash !== 'string' || !/^[0-9a-f]{64}$/i.test(body.keyHash)) {
     return NextResponse.json({ error: 'Missing or invalid keyHash (expect 64 hex chars)' }, { status: 400 });
   }
 
@@ -106,6 +107,6 @@ export async function POST(req: Request) {
     // 无条件覆盖 X-User-Role，杜绝持普通 key 自带 ADMIN 头提权（owner ≥ admin，
     // 满足审计端点文档约定的 ADMIN 要求）。引入真正的多租户 team 后，这里改为
     // 查 teamMembers.role(teamId=租户, userId) 即可，aster-api 侧无需改动。
-    role: 'owner',
+    role: SOLO_TENANT_ROLE,
   });
 }

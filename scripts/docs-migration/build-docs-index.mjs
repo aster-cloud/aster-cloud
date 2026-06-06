@@ -75,14 +75,12 @@ function walk(dir, acc = []) {
 export function parseFrontmatter(content) {
   const m = content.match(/^(﻿)?---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   if (!m) return { title: '', description: '' };
-  try {
-    const obj = parseYaml(m[2]);
-    if (!obj || typeof obj !== 'object') return { title: '', description: '' };
-    const str = (v) => (typeof v === 'string' ? v.trim() : '');
-    return { title: str(obj.title), description: str(obj.description) };
-  } catch {
-    return { title: '', description: '' };
-  }
+  // 注意：YAML 解析错误**不吞**——抛出让调用方带文件路径报告并 fail。
+  // 静默吞成空 metadata 会让 frontmatter 语法错误伪装成"内容缺失"，难排查。
+  const obj = parseYaml(m[2]);
+  if (!obj || typeof obj !== 'object') return { title: '', description: '' };
+  const str = (v) => (typeof v === 'string' ? v.trim() : '');
+  return { title: str(obj.title), description: str(obj.description) };
 }
 
 /**
@@ -137,7 +135,13 @@ function buildIndexForLocale(locale, mdxFiles) {
     if (seen.has(slug)) continue;
     seen.add(slug);
     const content = readFileSync(file, 'utf8');
-    const { title, description } = parseFrontmatter(content);
+    let title, description;
+    try {
+      ({ title, description } = parseFrontmatter(content));
+    } catch (e) {
+      // 带文件路径 fail：YAML 语法错误必须显式暴露，而不是退化成空 metadata。
+      throw new Error(`[build-docs-index] invalid YAML frontmatter in ${file}: ${e.message}`);
+    }
     const headings = parseHeadings(stripFrontmatter(content));
     if (!title && headings.length === 0) continue; // empty page
     entries.push({ slug, title, description, headings });

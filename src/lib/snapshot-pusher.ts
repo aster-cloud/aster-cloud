@@ -12,6 +12,7 @@ import { db, users, apiKeys } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 import { safeEnv } from '@/lib/runtime/safe-env';
+import { SOLO_TENANT_ROLE } from '@/lib/team-permissions';
 
 const ASTER_API_INTERNAL_URL =
   safeEnv('ASTER_API_INTERNAL_URL') ?? 'http://aster-api:8080';
@@ -70,7 +71,8 @@ export async function pushUserSnapshot(userId: string): Promise<void> {
  * 撤销场景下 valid=false + reason='revoked'，aster-api 端立即对应拒绝。
  */
 export async function pushApiKeySnapshot(keyHash: string): Promise<void> {
-  if (!keyHash || keyHash.length !== 64) return;
+  // keyHash 是 SHA-256 hex；校验 hex 而非仅长度，收紧输入卫生。
+  if (!/^[0-9a-f]{64}$/i.test(keyHash)) return;
   try {
     const key = await db.query.apiKeys.findFirst({
       where: eq(apiKeys.key, keyHash),
@@ -109,7 +111,7 @@ export async function pushApiKeySnapshot(keyHash: string): Promise<void> {
         tenantId: key.userId,
         // RBAC 角色，与 verify route 同源：tenantId===userId → key 持有者是其
         // 单用户租户的 owner。aster-api 用它无条件覆盖 X-User-Role（防提权）。
-        role: 'owner',
+        role: SOLO_TENANT_ROLE,
         plan: user?.plan ?? 'free',
         revokedAtEpochMs: null,
       };
