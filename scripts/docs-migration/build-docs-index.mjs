@@ -140,7 +140,8 @@ function buildIndexForLocale(locale, mdxFiles) {
       ({ title, description } = parseFrontmatter(content));
     } catch (e) {
       // 带文件路径 fail：YAML 语法错误必须显式暴露，而不是退化成空 metadata。
-      throw new Error(`[build-docs-index] invalid YAML frontmatter in ${file}: ${e.message}`);
+      const detail = e instanceof Error ? e.message : String(e);
+      throw new Error(`[build-docs-index] invalid YAML frontmatter in ${file}: ${detail}`);
     }
     const headings = parseHeadings(stripFrontmatter(content));
     if (!title && headings.length === 0) continue; // empty page

@@ -41,7 +41,20 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const cursor = url.searchParams.get('cursor');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '1000', 10), 5000);
+  // limit 缺省 1000；显式传入必须是 [1,5000] 的有限整数。parseInt('abc')→NaN
+  // 会经 Math.min 透传成 NaN 再喂给 Drizzle limit（500 或异常 SQL），故先校验。
+  const limitParam = url.searchParams.get('limit');
+  let limit = 1000;
+  if (limitParam !== null) {
+    const parsed = Number(limitParam);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 5000) {
+      return NextResponse.json(
+        { error: 'limit must be an integer between 1 and 5000' },
+        { status: 400 },
+      );
+    }
+    limit = parsed;
+  }
 
   const userRows = await db.query.users.findMany({
     where: cursor ? gt(users.id, cursor) : undefined,

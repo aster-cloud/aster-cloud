@@ -122,6 +122,13 @@ describe('pushApiKeySnapshot', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it('keyHash 长度 64 但非 hex → no-op（不查 DB、不 fetch）', async () => {
+    const { pushApiKeySnapshot } = await import('@/lib/snapshot-pusher');
+    await pushApiKeySnapshot('g'.repeat(64));
+    expect(mockFindFirst).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it('未找到 key → 推送 valid:false reason:not_found', async () => {
     mockFindFirst.mockResolvedValue(undefined);
     const hash = 'a'.repeat(64);
