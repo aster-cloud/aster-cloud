@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Loan example uses natural-English `is` comparators *(examples)*
 - Return authoritative role in API-key verify + snapshots *(internal)*
 - Backfill meta descriptions for all docs pages + CI guard *(docs)*
 - Phase 2 — generator + coverage verifier + CI gate *(routes)*
@@ -196,6 +197,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
