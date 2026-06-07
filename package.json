@@ -47,7 +47,7 @@
     "test:e2e:browser:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@aster-cloud/aster-lang-ts": "file:vendor/aster-cloud-aster-lang-ts-0.2.1.tgz",
+    "@aster-cloud/aster-lang-ts": "file:vendor/aster-cloud-aster-lang-ts-0.2.2.tgz",
     "@aster-cloud/tokens": "^0.2.0",
     "@aster-cloud/ui": "^0.3.0",
     "@auth/drizzle-adapter": "^1.11.1",

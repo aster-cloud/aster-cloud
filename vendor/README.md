@@ -2,8 +2,9 @@
 
 ## 目的
 
-`aster-cloud-aster-lang-ts-0.2.1.tgz` 是 `aster-lang-ts@0.2.1` 的 npm pack 产物，
+`aster-cloud-aster-lang-ts-0.2.2.tgz` 是 `aster-lang-ts@0.2.2` 的 npm pack 产物，
 commit 进 repo 让 `aster-cloud` 能消费 P0-R / P0-R2 / P0-R3 / P0-R4 / P0-R5 修复，
+以及 0.2.2 的 typechecker 函数返回类型推断修复（算术 Call + dotted Name 字段访问），
 **不依赖 npm registry**。
 
 ## 为什么不用 npm publish？

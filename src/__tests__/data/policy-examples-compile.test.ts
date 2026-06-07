@@ -17,19 +17,13 @@ const LEXICONS: Record<SupportedLocale, unknown> = {
   'de-DE': DE_DE,
 };
 
-// 已知仍有编译问题的样例（pre-existing，本次只修了用户报告的 loan）。
-// 这些是各样例源自身的写作 bug（类型不匹配 / Let 绑定语法 / 缺句号 / zh
-// Expected newline），范围远超 loan，单独追踪修复。不让它们阻塞 loan 的回归锁。
-const KNOWN_FAILING = new Set<string>([
-  'healthcare-eligibility:en-US',
-  'healthcare-eligibility:zh-CN',
-  'healthcare-eligibility:de-DE',
-  'auto-insurance-quote:zh-CN',
-  'fraud-detection:zh-CN',
-  'creditcard-application:en-US',
-  'creditcard-application:zh-CN',
-  'creditcard-application:de-DE',
-]);
+// 全部内置样例（en-US / zh-CN / de-DE）现已编译零错误，无 known-failing。
+// 历史失败已根治：
+// - zh 样例错误关键词（令...为→定义为、非→不是、单字 乘/加→乘以/加上）
+// - healthcare 三语 price/patientCost 数字字段缺/错类型（统一 Float）
+// - creditcard 三语 typechecker 函数返回类型推断局限（算术/字段访问返回 Unknown），
+//   已在 aster-lang-ts 0.2.2 修复（inferStaticType 支持算术 Call + dotted Name）。
+const KNOWN_FAILING = new Set<string>();
 
 describe('内置策略样例编译验证（防 Undefined variable / 语法错误）', () => {
   for (const example of POLICY_EXAMPLES) {
