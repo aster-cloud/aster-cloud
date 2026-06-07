@@ -234,6 +234,35 @@ async function executeWithSimpleEngine(
 }
 
 /**
+ * 判断一个 CNL 布尔字段值是否为真。
+ *
+ * 关键：CNL 引擎执行后，Bool 字段保留**本地化字面量**（中文 `真`/`假`、
+ * 德文 `wahr`/`falsch`、英文 `true`/`false`），而非统一规范化为 JS boolean。
+ * 例如中文 loan 策略 `批准 将 设为 真` 的执行结果是 `{ "批准": "真", ... }`。
+ *
+ * 此前真值判断只认 `true` / `"true"`，导致中文/德文 Bool（`真`/`wahr`）被误判
+ * 为 false → 「信用良好、批准=真」却被前端判成拒绝、理由进 deniedReasons（用户
+ * 反馈的违反直觉案例）。这里统一识别三语言的真/假字面量。
+ */
+export function isCnlTruthy(val: unknown): boolean {
+  if (typeof val === 'boolean') {
+    return val;
+  }
+  if (typeof val === 'number') {
+    return val !== 0;
+  }
+  if (typeof val === 'string') {
+    const s = val.trim().toLowerCase();
+    // 三语言真值字面量。zh-CN 的 Bool 字面量是「真值/假值」（2 字，故意避免与
+    // 业务标识符冲突，见 aster-lang-ts zh-CN lexicon），同时容忍单字「真/是」。
+    return s === 'true' || s === '真值' || s === '真' || s === '是'
+        || s === 'wahr' || s === 'ja'
+        || s === 'yes' || s === '1';
+  }
+  return false;
+}
+
+/**
  * 从 CNL 结果中解析批准状态
  *
  * CNL 函数可能返回：
@@ -275,7 +304,7 @@ export function parseApprovalFromResult(result: unknown): { approved: boolean; m
     const approvalField = approvalFields.find(f => f in obj);
     if (approvalField) {
       const val = obj[approvalField];
-      const approved = val === true || val === 'true';
+      const approved = isCnlTruthy(val);
       // 查找理由字段
       const reasonField = reasonFields.find(f => f in obj && obj[f] !== '');
       // 查找结果值字段（用于构造有意义的消息）
