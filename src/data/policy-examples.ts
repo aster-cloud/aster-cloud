@@ -198,12 +198,12 @@ Define Patient has
 Define Service has
   code,
   name,
-  price.
+  price as Float.
 
 Define Result has
   eligible as Bool,
   coverage as Int,
-  patientCost as Int,
+  patientCost as Float,
   reason.
 
 Rule checkEligibility given patient, service, produce:
@@ -227,22 +227,22 @@ const HEALTHCARE_SOURCE_ZH = `模块 医疗.资格审核。
 定义 服务 包含
   代码，
   名称，
-  价格。
+  价格 as 小数。
 
 定义 审核结果 包含
   合格 as 布尔，
   覆盖率 as 整数，
-  患者费用 as 整数，
+  患者费用 as 小数，
   理由。
 
 规则 检查资格 给定 患者，服务，产出：
-  如果 非 患者.有保险
+  如果 不是 患者.有保险
     返回 审核结果 包含 合格 将 设为 假值, 覆盖率 将 设为 0, 患者费用 将 设为 服务.价格, 理由 将 设为 「无保险」。
   如果 患者.年龄 小于 18
-    返回 审核结果 包含 合格 将 设为 真值, 覆盖率 将 设为 90, 患者费用 将 设为 服务.价格 乘 10 除以 100, 理由 将 设为 「未成年人覆盖」。
+    返回 审核结果 包含 合格 将 设为 真值, 覆盖率 将 设为 90, 患者费用 将 设为 服务.价格 乘以 10 除以 100, 理由 将 设为 「未成年人覆盖」。
   如果 患者.年龄 大于 65
-    返回 审核结果 包含 合格 将 设为 真值, 覆盖率 将 设为 85, 患者费用 将 设为 服务.价格 乘 15 除以 100, 理由 将 设为 「老年人覆盖」。
-  返回 审核结果 包含 合格 将 设为 真值, 覆盖率 将 设为 70, 患者费用 将 设为 服务.价格 乘 30 除以 100, 理由 将 设为 「标准覆盖」。
+    返回 审核结果 包含 合格 将 设为 真值, 覆盖率 将 设为 85, 患者费用 将 设为 服务.价格 乘以 15 除以 100, 理由 将 设为 「老年人覆盖」。
+  返回 审核结果 包含 合格 将 设为 真值, 覆盖率 将 设为 70, 患者费用 将 设为 服务.价格 乘以 30 除以 100, 理由 将 设为 「标准覆盖」。
 `;
 
 const HEALTHCARE_SOURCE_DE = `Modul gesundheit.berechtigung.
@@ -256,12 +256,12 @@ Definiere Patient hat
 Definiere Leistung hat
   code,
   name,
-  preis.
+  preis as Dezimal.
 
 Definiere Ergebnis hat
   berechtigt as Boolesch,
   deckung as Ganzzahl,
-  patientenkosten as Ganzzahl,
+  patientenkosten as Dezimal,
   begruendung.
 
 Regel berechtigungPruefen gegeben patient, leistung, liefert:
@@ -351,9 +351,9 @@ const AUTO_SOURCE_ZH = `模块 保险.汽车。
     返回 报价 包含 批准 将 设为 假值, 保费 将 设为 0, 免赔额 将 设为 0, 理由 将 设为 「驾驶员未满18岁」。
   如果 驾驶员.事故数 大于 3
     返回 报价 包含 批准 将 设为 假值, 保费 将 设为 0, 免赔额 将 设为 0, 理由 将 设为 「事故过多」。
-  令 基础保费 为 计算基础(驾驶员, 车辆)。
-  令 风险系数 为 计算风险(驾驶员)。
-  令 最终保费 为 基础保费 乘 风险系数 除以 100。
+  令 基础保费 定义为 计算基础(驾驶员, 车辆)。
+  令 风险系数 定义为 计算风险(驾驶员)。
+  令 最终保费 定义为 基础保费 乘以 风险系数 除以 100。
   返回 报价 包含 批准 将 设为 真值, 保费 将 设为 最终保费, 免赔额 将 设为 500, 理由 将 设为 「已批准」。
 
 规则 计算基础 给定 驾驶员，车辆，产出：
@@ -364,11 +364,11 @@ const AUTO_SOURCE_ZH = `模块 保险.汽车。
   返回 250。
 
 规则 计算风险 给定 驾驶员，产出：
-  令 基数 为 100。
+  令 基数 定义为 100。
   如果 驾驶员.事故数 大于 0
-    令 基数 为 基数 加 驾驶员.事故数 乘 20。
+    令 基数 定义为 基数 加上 驾驶员.事故数 乘以 20。
   如果 驾驶员.违章数 大于 0
-    令 基数 为 基数 加 驾驶员.违章数 乘 10。
+    令 基数 定义为 基数 加上 驾驶员.违章数 乘以 10。
   返回 基数。
 `;
 
@@ -480,7 +480,7 @@ const FRAUD_SOURCE_ZH = `模块 金融.欺诈。
     返回 欺诈结果 包含 可疑 将 设为 真值, 风险评分 将 设为 85, 理由 将 设为 「高度可疑活动」。
   如果 历史.账龄 小于 30
     返回 欺诈结果 包含 可疑 将 设为 真值, 风险评分 将 设为 70, 理由 将 设为 「新账户风险」。
-  如果 交易.金额 大于 历史.平均金额 乘 10
+  如果 交易.金额 大于 历史.平均金额 乘以 10
     返回 欺诈结果 包含 可疑 将 设为 真值, 风险评分 将 设为 60, 理由 将 设为 「异常金额」。
   返回 欺诈结果 包含 可疑 将 设为 假值, 风险评分 将 设为 10, 理由 将 设为 「正常交易」。
 `;
@@ -530,7 +530,7 @@ Define Applicant has
   existingCards.
 
 Define Application has
-  requestedLimit,
+  requestedLimit as Int,
   cardType.
 
 Define Decision has
@@ -575,7 +575,7 @@ const CREDITCARD_SOURCE_ZH = `模块 金融.信用卡。
   现有卡数。
 
 定义 申请 包含
-  申请额度，
+  申请额度 as 整数，
   卡类型。
 
 定义 决定 包含
@@ -591,16 +591,16 @@ const CREDITCARD_SOURCE_ZH = `模块 金融.信用卡。
     返回 决定 包含 批准 将 设为 假值, 批准额度 将 设为 0, 利率 将 设为 0, 理由 将 设为 「信用评分过低」。
   如果 申请人.现有卡数 大于 5
     返回 决定 包含 批准 将 设为 假值, 批准额度 将 设为 0, 利率 将 设为 0, 理由 将 设为 「现有卡数过多」。
-  令 额度 为 确定额度(申请人, 申请)。
-  令 利率值 为 确定利率(申请人)。
+  令 额度 定义为 确定额度(申请人, 申请)。
+  令 利率值 定义为 确定利率(申请人)。
   返回 决定 包含 批准 将 设为 真值, 批准额度 将 设为 额度, 利率 将 设为 利率值, 理由 将 设为 「已批准」。
 
 规则 确定额度 给定 申请人，申请，产出：
   如果 申请人.信用评分 大于 750
     返回 申请.申请额度。
   如果 申请人.信用评分 大于 700
-    返回 申请.申请额度 乘 80 除以 100。
-  返回 申请.申请额度 乘 50 除以 100。
+    返回 申请.申请额度 乘以 80 除以 100。
+  返回 申请.申请额度 乘以 50 除以 100。
 
 规则 确定利率 给定 申请人，产出：
   如果 申请人.信用评分 大于 750
@@ -620,7 +620,7 @@ Definiere Antragsteller hat
   vorhandeneKarten.
 
 Definiere Antrag hat
-  gewuenschtesLimit,
+  gewuenschtesLimit as Ganzzahl,
   kartentyp.
 
 Definiere Entscheidung hat
