@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Register user vocab into engine + carry snapshot vocab at execute (#17) *(vocab)*
 - Loan example uses natural-English `is` comparators *(examples)*
 - Return authoritative role in API-key verify + snapshots *(internal)*
 - Backfill meta descriptions for all docs pages + CI guard *(docs)*
@@ -197,6 +198,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
