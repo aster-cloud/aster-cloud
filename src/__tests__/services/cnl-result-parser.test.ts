@@ -118,4 +118,52 @@ describe('parseApprovalFromResult — 决策字段识别', () => {
       expect(parseApprovalFromResult('denied: insufficient credit').approved).toBe(false);
     });
   });
+
+  // 本地化布尔字面量：CNL 引擎执行后 Bool 字段保留本地化字符串（真/wahr），
+  // 而非统一 JS boolean。此前真值判断只认 true/'true' → 中文/德文 Bool 被误判
+  // false，「批准=真、信用良好」却落入 deniedReasons（用户反馈的违反直觉案例）。
+  describe('本地化布尔值（zh 真/假 · de wahr/falsch）', () => {
+    it('中文：批准="真" + 理由="信用良好" → approved: true（不进 deniedReasons）', () => {
+      const r = parseApprovalFromResult({
+        _type: '决定',
+        批准: '真',
+        利率: 450,
+        理由: '信用良好',
+      });
+      expect(r.approved).toBe(true);
+      expect(r.message).toBe('信用良好');
+    });
+
+    it('中文：批准="假" + 理由="信用评分过低" → approved: false', () => {
+      const r = parseApprovalFromResult({
+        _type: '决定',
+        批准: '假',
+        理由: '信用评分过低',
+      });
+      expect(r.approved).toBe(false);
+      expect(r.message).toBe('信用评分过低');
+    });
+
+    it('德文：genehmigt="wahr" → approved: true', () => {
+      const r = parseApprovalFromResult({
+        _type: 'Entscheidung',
+        genehmigt: 'wahr',
+        begruendung: 'Gute Bonitaet',
+      });
+      expect(r.approved).toBe(true);
+    });
+
+    it('德文：genehmigt="falsch" → approved: false', () => {
+      const r = parseApprovalFromResult({
+        genehmigt: 'falsch',
+        begruendung: 'Bonitaet zu niedrig',
+      });
+      expect(r.approved).toBe(false);
+    });
+
+    it('英文 boolean true/"true" 仍正确（无回归）', () => {
+      expect(parseApprovalFromResult({ approved: true, reason: 'ok' }).approved).toBe(true);
+      expect(parseApprovalFromResult({ approved: 'true', reason: 'ok' }).approved).toBe(true);
+    });
+  });
 });
