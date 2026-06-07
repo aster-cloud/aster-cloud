@@ -14,8 +14,10 @@ import {
   type Lexicon,
   type DomainVocabulary,
 } from '@/lib/aster-lexicon';
+import { useSession } from 'next-auth/react';
 import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
 import { useDomainVocabularyInvalidate } from '@/hooks/useDomainVocabularyInvalidate';
+import { useUserVocabularyRegistration } from '@/hooks/useUserVocabularyRegistration';
 import type { TypecheckDiagnostic } from '@aster-cloud/aster-lang-ts/browser';
 import { violet, sky, emerald, amber, rose, zinc } from '@aster-cloud/tokens';
 
@@ -384,6 +386,21 @@ export function MonacoPolicyEditor({
   // Handle both short ('zh', 'de') and full ('zh-CN', 'de-DE') locale formats
   const compilerLocale: CNLLocale = locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
 
+  // 租户标识符 = 当前会话用户 id（cloud tenantId === userId）。仅作为引擎
+  // registry 的自定义词汇分区键；服务端 API 已用 session.user.id 鉴权，
+  // 此处不构成安全边界。
+  const { data: session } = useSession();
+  const tenantId = session?.user?.id;
+
+  // ADR 0014 线B：把用户自定义领域词汇 registerCustom 进引擎，让编译/翻译层
+  // 也能识别用户术语（而非仅高亮）。内部订阅 SSE 失效自动重新注册，返回组装
+  // 后的用户词汇 + 随注册递增的 epoch。
+  const { vocabulary: userVocabulary, epoch: userVocabEpoch } = useUserVocabularyRegistration({
+    tenantId,
+    domain,
+    locale: compilerLocale,
+  });
+
   // F10: subscribe to user-vocabulary SSE invalidates so a user adding /
   // removing a term in another tab triggers a re-fetch + Monaco
   // re-registration. The tick is folded into the vocabulary memo's deps so
@@ -392,10 +409,12 @@ export function MonacoPolicyEditor({
     enabled: Boolean(domain),
     match: domain ? { domain, locale: compilerLocale } : undefined,
   });
+  // 高亮词汇：优先用户自定义词汇（已 registerCustom，含用户术语），缺省回退
+  // 内置。userVocabEpoch 进 deps 保证用户增删词后高亮同步刷新。
   const vocabulary = useMemo(
-    () => (domain ? getVocabulary(domain, compilerLocale) : undefined),
+    () => userVocabulary ?? (domain ? getVocabulary(domain, compilerLocale) : undefined),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [domain, compilerLocale, vocabTick],
+    [domain, compilerLocale, vocabTick, userVocabulary, userVocabEpoch],
   );
 
   // Local compiler for real-time validation with accurate error positions
@@ -404,6 +423,10 @@ export function MonacoPolicyEditor({
     monaco: isEditorReady ? monacoRef.current : null,
     locale: compilerLocale,
     domain,
+    tenantId,
+    // 用户词异步注册成功后 epoch 递增，触发重新校验（否则 diagnostics 会
+    // 停留在「未识别用户词」的旧结果直到用户再次输入）。
+    externalInvalidationKey: userVocabEpoch,
     debounceDelay,
     enableValidation: true,
   });

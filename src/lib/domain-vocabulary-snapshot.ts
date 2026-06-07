@@ -31,6 +31,7 @@ import {
   assembleDomainVocabularyFromLinks,
   type TermKind,
 } from '@/lib/domain-vocabulary-validation';
+import type { DomainVocabulary } from '@aster-cloud/aster-lang-ts/lexicons/identifiers/types';
 import { VocabularyError } from '@/lib/domain-vocabulary';
 
 export interface SnapshotRef {
@@ -233,6 +234,51 @@ export async function createSnapshotsForOwner(
   }
 
   return refs;
+}
+
+/**
+ * 按 policyVersions.vocabularySnapshotIds 加载并合并冻结的领域词汇，得到执行
+ * 端需要的单个 DomainVocabulary。
+ *
+ * <p>ADR 0014 线C：发布的策略执行（evaluate-source）时，把其快照词汇透传到
+ * Java 执行端，使规范化阶段能翻译用户自定义术语。一个策略可能跨多个领域
+ * 引用多个快照——这里把各快照的 structs/fields/functions/enumValues 合并成
+ * 一个词汇表（id 用首个快照的 domain，足以驱动 IdentifierIndex 翻译）。
+ *
+ * @param refs policyVersions.vocabularySnapshotIds（{snapshotId,domain,locale}[]）
+ * @returns 合并后的词汇表；无引用或加载不到时返回 null（执行端退化为仅内置）
+ */
+export async function loadVocabularyForExecution(
+  refs: ReadonlyArray<SnapshotRef> | null | undefined,
+): Promise<DomainVocabulary | null> {
+  if (!refs || refs.length === 0) return null;
+
+  const snapshotIds = refs.map((r) => r.snapshotId);
+  const rows = await db.query.userVocabularySnapshots.findMany({
+    where: inArray(userVocabularySnapshots.id, snapshotIds),
+    columns: { vocabularyJson: true, domain: true, locale: true },
+  });
+  if (rows.length === 0) return null;
+
+  const vocabs = rows
+    .map((r) => r.vocabularyJson as DomainVocabulary | null)
+    .filter((v): v is DomainVocabulary => v != null);
+  if (vocabs.length === 0) return null;
+
+  // 单快照直接返回；多快照合并各类映射数组。
+  if (vocabs.length === 1) return vocabs[0]!;
+
+  const first = vocabs[0]!;
+  return {
+    id: first.id,
+    name: first.name,
+    locale: first.locale,
+    version: 'merged',
+    structs: vocabs.flatMap((v) => v.structs ?? []),
+    fields: vocabs.flatMap((v) => v.fields ?? []),
+    functions: vocabs.flatMap((v) => v.functions ?? []),
+    enumValues: vocabs.flatMap((v) => v.enumValues ?? []),
+  };
 }
 
 /**

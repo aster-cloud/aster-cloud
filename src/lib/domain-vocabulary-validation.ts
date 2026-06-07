@@ -10,27 +10,23 @@
 
 import { createHash } from 'node:crypto';
 import {
-  IdentifierKind,
   type DomainVocabulary,
-  type IdentifierMapping,
   validateVocabulary,
 } from '@aster-cloud/aster-lang-ts/lexicons/identifiers/types';
+// 纯组装逻辑下沉到 domain-vocabulary-assemble.ts（无 Node 依赖），客户端
+// editor 与服务端共享同一来源。本文件保留依赖 node:crypto 的 dedup 计算。
+import {
+  assembleDomainVocabularyFromLinks,
+  type TermKind,
+  type TermLikeRow,
+  type AssembleVocabularyOptions,
+} from './domain-vocabulary-assemble';
 
 export type VocabularyValidationResult = ReturnType<typeof validateVocabulary>;
 
-export type TermKind = 'struct' | 'field' | 'function' | 'enum_value';
-
-export interface TermLikeRow {
-  domainTermId: string;
-  domain: string;
-  locale: string;
-  kind: TermKind | string;
-  canonical: string;
-  localized: string;
-  parentCanonical?: string | null;
-  aliases?: readonly string[] | null;
-  description?: string | null;
-}
+// 向后兼容：原从本模块导出的组装 API/类型，转发自纯叶子模块。
+export { assembleDomainVocabularyFromLinks };
+export type { TermKind, TermLikeRow, AssembleVocabularyOptions };
 
 export interface NormalizedTermInput {
   domain: string;
@@ -44,13 +40,6 @@ export interface NormalizedTermInput {
   parentCanonicalNorm: string;
   description?: string;
   aliases: string[];
-}
-
-export interface AssembleVocabularyOptions {
-  domain?: string;
-  locale?: string;
-  name?: string;
-  version?: string;
 }
 
 function canonicalJson(value: unknown): string {
@@ -68,78 +57,6 @@ function canonicalJson(value: unknown): string {
 
 function normalizeText(value: string | null | undefined): string {
   return (value ?? '').trim().toLowerCase();
-}
-
-function toIdentifierKind(kind: string): IdentifierKind {
-  switch (kind) {
-    case 'struct':
-      return IdentifierKind.STRUCT;
-    case 'field':
-      return IdentifierKind.FIELD;
-    case 'function':
-      return IdentifierKind.FUNCTION;
-    case 'enum_value':
-      return IdentifierKind.ENUM_VALUE;
-    default:
-      throw new Error(`Unsupported vocabulary kind: ${kind}`);
-  }
-}
-
-function mappingFromRow(row: TermLikeRow): IdentifierMapping {
-  return {
-    canonical: row.canonical,
-    localized: row.localized,
-    kind: toIdentifierKind(row.kind),
-    ...(row.parentCanonical ? { parent: row.parentCanonical } : {}),
-    ...(row.description ? { description: row.description } : {}),
-    ...(row.aliases && row.aliases.length > 0 ? { aliases: [...row.aliases] } : {}),
-  };
-}
-
-/**
- * Group rows by kind into a DomainVocabulary shape suitable for
- * aster-lang-ts lowering or Monaco re-registration.
- */
-export function assembleDomainVocabularyFromLinks(
-  termRows: readonly TermLikeRow[],
-  opts: AssembleVocabularyOptions = {},
-): DomainVocabulary {
-  const first = termRows[0];
-  const domain = opts.domain ?? first?.domain ?? 'custom';
-  const locale = opts.locale ?? first?.locale ?? 'en-US';
-  const structs: IdentifierMapping[] = [];
-  const fields: IdentifierMapping[] = [];
-  const functions: IdentifierMapping[] = [];
-  const enumValues: IdentifierMapping[] = [];
-
-  for (const row of termRows) {
-    const mapping = mappingFromRow(row);
-    switch (mapping.kind) {
-      case IdentifierKind.STRUCT:
-        structs.push(mapping);
-        break;
-      case IdentifierKind.FIELD:
-        fields.push(mapping);
-        break;
-      case IdentifierKind.FUNCTION:
-        functions.push(mapping);
-        break;
-      case IdentifierKind.ENUM_VALUE:
-        enumValues.push(mapping);
-        break;
-    }
-  }
-
-  return {
-    id: domain,
-    name: opts.name ?? domain,
-    locale,
-    version: opts.version ?? 'user',
-    structs,
-    fields,
-    functions,
-    enumValues,
-  };
 }
 
 /** Validate a DomainVocabulary using the shared aster-lang-ts validator. */

@@ -49,6 +49,18 @@ export interface UseAsterCompilerOptions {
   locale?: CNLLocale;
   /** 领域标识符（如 'insurance.auto'），启用领域标识符翻译 */
   domain?: string;
+  /**
+   * 租户标识符。提供时，领域词汇翻译优先命中该租户经
+   * `vocabularyRegistry.registerCustom` 注册的自定义词汇（用户自定义术语），
+   * 未命中再回退到内置词汇。
+   */
+  tenantId?: string;
+  /**
+   * 外部失效键。当其值变化时强制重新校验当前源码。用于「用户自定义词汇
+   * 异步注册完成」这类不改源码但需重编译的场景：注册 hook 每次注册成功递增
+   * epoch，传入此处即可在注册后自动刷新 diagnostics（否则要等用户再输入）。
+   */
+  externalInvalidationKey?: unknown;
   /** Debounce delay for validation in ms */
   debounceDelay?: number;
   /** Enable real-time validation */
@@ -98,6 +110,8 @@ export function useAsterCompiler({
   monaco,
   locale = 'en-US',
   domain,
+  tenantId,
+  externalInvalidationKey,
   debounceDelay = 300,
   enableValidation = true,
 }: UseAsterCompilerOptions): UseAsterCompilerResult {
@@ -191,7 +205,7 @@ export function useAsterCompiler({
     if (!source) return [];
 
     try {
-      const result = compileAndTypecheck(source, { lexicon, domain });
+      const result = compileAndTypecheck(source, { lexicon, domain, tenantId });
 
       // Collect all diagnostics
       const allDiagnostics: TypecheckDiagnostic[] = [];
@@ -239,7 +253,7 @@ export function useAsterCompiler({
       setErrors([errorDiag.message]);
       return [errorDiag];
     }
-  }, [getSource, lexicon, domain]);
+  }, [getSource, lexicon, domain, tenantId]);
 
   /**
    * Compile the current source
@@ -250,7 +264,7 @@ export function useAsterCompiler({
 
     setCompiling(true);
     try {
-      const result = compileAndTypecheck(source, { lexicon, domain });
+      const result = compileAndTypecheck(source, { lexicon, domain, tenantId });
       setCompileResult(result);
 
       // Collect all diagnostics
@@ -293,7 +307,7 @@ export function useAsterCompiler({
     } finally {
       setCompiling(false);
     }
-  }, [getSource, lexicon, domain]);
+  }, [getSource, lexicon, domain, tenantId]);
 
   /**
    * Clear all errors
@@ -366,7 +380,9 @@ export function useAsterCompiler({
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [editor, enableValidation, validate, applyDiagnostics, debouncedValidate]);
+    // externalInvalidationKey 进 deps：用户词异步注册完成后（不改源码）也能
+    // 重新校验，清除「词已注册但仍报错」的陈旧 diagnostics。
+  }, [editor, enableValidation, validate, applyDiagnostics, debouncedValidate, externalInvalidationKey]);
 
   // Cleanup on unmount
   useEffect(() => {
