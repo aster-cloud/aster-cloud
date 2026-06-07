@@ -301,13 +301,23 @@ export class PolicyApiClient {
   async evaluateSource(
     source: string,
     context: Record<string, unknown> | unknown[],
-    options?: { locale?: string; functionName?: string }
+    options?: {
+      locale?: string;
+      functionName?: string;
+      /**
+       * 领域词汇表（DomainVocabulary 的 JSON）。ADR 0014 线C：发布的策略
+       * 携带其快照领域词汇，使执行端规范化阶段能翻译用户自定义术语。
+       */
+      vocabulary?: Record<string, unknown>;
+    }
   ): Promise<PolicyEvaluateResponse> {
     return this.request<PolicyEvaluateResponse>('POST', API_ENDPOINTS.evaluateSource, {
       source,
       context,
       locale: options?.locale || 'en-US',
       functionName: options?.functionName || 'evaluate',
+      // 仅在有词汇时携带，避免空字段无谓增大请求体。
+      ...(options?.vocabulary ? { vocabulary: options.vocabulary } : {}),
     });
   }
 
