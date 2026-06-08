@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   evaluateSource: `${prefix}/policies/evaluate-source`,
   compile: `${prefix}/policies/compile`,
   schema: `${prefix}/policies/schema`,
+  moduleCatalog: `${prefix}/modules/catalog`,
 
   // 健康检查
   healthLive: '/q/health/live',

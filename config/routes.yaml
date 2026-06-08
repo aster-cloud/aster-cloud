@@ -478,6 +478,14 @@ routes:
     locales: none
     notes: Anonymous preview-tenant evaluator (used by lang-dev playground too)
 
+  - path: /api/aster/modules/catalog
+    status: canonical-here
+    owner: api
+    source: src/app/api/aster/modules/catalog/route.ts
+    publicApi: false
+    locales: none
+    notes: ADR 0015 阶段3d — tenant-scoped 可引用 library 模块目录（Monaco Use 补全/hover）
+
   - path: /api/playground/*
     status: canonical-here
     owner: api

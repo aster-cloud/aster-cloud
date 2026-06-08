@@ -1103,6 +1103,16 @@
       "ambiguousHint": "This policy has multiple Rules and no @entry marker. Select the Rule to execute.",
       "entryHover": "Main entry Rule"
     },
+    "modules": {
+      "moduleNotFound": "Module \"{moduleName}\" is not available in this tenant.",
+      "versionNotFound": "Module \"{moduleName}\" version {version} is not available. Available versions: {versions}.",
+      "moduleVersionRequired": "Pin \"{moduleName}\" with an explicit version.",
+      "moduleCatalogLoadFailed": "Module catalog could not be loaded. Use diagnostics are temporarily unavailable.",
+      "moduleHoverSource": "Source function: {functionName}. Versions: {versions}.",
+      "moduleHoverVersion": "Version {version}: published {publishedAt}",
+      "moduleCompletionDetail": "Source function: {functionName}",
+      "versionCompletionDetail": "Pin {moduleName} to a published version"
+    },
     "execute": {
       "title": "Execute: {name}",
       "subtitle": "Test your policy with sample input data",

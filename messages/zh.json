@@ -1103,6 +1103,16 @@
       "ambiguousHint": "此策略有多个 Rule 且没有 @entry 标记。请选择要执行的 Rule。",
       "entryHover": "主入口 Rule"
     },
+    "modules": {
+      "moduleNotFound": "当前租户不可引用模块 \"{moduleName}\"。",
+      "versionNotFound": "模块 \"{moduleName}\" 的版本 {version} 不可用。可用版本：{versions}。",
+      "moduleVersionRequired": "请为 \"{moduleName}\" 显式钉住版本。",
+      "moduleCatalogLoadFailed": "模块目录暂时无法加载，Use 诊断暂不可用。",
+      "moduleHoverSource": "来源函数：{functionName}。版本：{versions}。",
+      "moduleHoverVersion": "版本 {version}：发布于 {publishedAt}",
+      "moduleCompletionDetail": "来源函数：{functionName}",
+      "versionCompletionDetail": "将 {moduleName} 钉到已发布版本"
+    },
     "execute": {
       "title": "执行：{name}",
       "subtitle": "使用示例输入数据测试您的策略",
