@@ -267,3 +267,15 @@ body {
   color: var(--aster-color-zinc-400, #a1a1aa);
   font-weight: 400;
 }
+
+.aster-entry-rule-glyph::before {
+  content: '@';
+  display: block;
+  color: var(--aster-color-violet-600, #7c3aed);
+  font-weight: 700;
+  text-align: center;
+}
+
+.aster-entry-rule-line {
+  border-left: 2px solid var(--aster-color-violet-500, #8b5cf6);
+}

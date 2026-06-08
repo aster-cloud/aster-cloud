@@ -20,6 +20,7 @@ import { useDomainVocabularyInvalidate } from '@/hooks/useDomainVocabularyInvali
 import { useUserVocabularyRegistration } from '@/hooks/useUserVocabularyRegistration';
 import type { TypecheckDiagnostic } from '@aster-cloud/aster-lang-ts/browser';
 import { violet, sky, emerald, amber, rose, zinc } from '@aster-cloud/tokens';
+import { useEntryRuleDecorations } from './use-entry-rule-decorations';
 
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
@@ -376,6 +377,7 @@ export function MonacoPolicyEditor({
   const inlineCompletionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { resolvedTheme } = useTheme();
   const t = useTranslations('diagnostics');
+  const tEntry = useTranslations('policies.ruleSelector');
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [showProblems, setShowProblems] = useState(false);
 
@@ -440,6 +442,13 @@ export function MonacoPolicyEditor({
     }
     return { errorCount: errors, warningCount: warnings };
   }, [diagnostics]);
+
+  useEntryRuleDecorations(
+    isEditorReady ? editorRef.current : null,
+    isEditorReady ? monacoRef.current : null,
+    value,
+    tEntry('entryHover'),
+  );
 
   const revealDiagnostic = useCallback((diag: TypecheckDiagnostic) => {
     const ed = editorRef.current;
@@ -668,6 +677,7 @@ export function MonacoPolicyEditor({
           fontSize: 14,
           fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, Consolas, monospace",
           lineNumbers: 'on',
+          glyphMargin: true,
           renderLineHighlight: 'line',
           scrollBeyondLastLine: false,
           wordWrap: 'on',

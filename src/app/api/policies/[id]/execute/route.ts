@@ -59,9 +59,12 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Request body must be a valid object' }, { status: 400 });
     }
 
-    const { input } = bodyResult as { input?: unknown };
+    const { input, functionName } = bodyResult as { input?: unknown; functionName?: unknown };
     if (!input || typeof input !== 'object' || Array.isArray(input)) {
       return NextResponse.json({ error: 'Input must be a valid object' }, { status: 400 });
+    }
+    if (functionName !== undefined && typeof functionName !== 'string') {
+      return NextResponse.json({ error: 'functionName must be a string' }, { status: 400 });
     }
 
     const validatedInput = input as Record<string, unknown>;
@@ -220,6 +223,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       input: validatedInput,
       userId,
       tenantId: policy.teamId || policy.userId,
+      functionName: functionName || undefined,
     });
 
     // 配额检查
@@ -335,6 +339,8 @@ export async function POST(req: Request, { params }: RouteParams) {
       output: executionResult,
       error: primaryError,
       durationMs,
+      executedFunction: executionResult.executedFunction,
+      diagnostics: executionResult.diagnostics,
       // 临时添加 timings 用于调试
       _timings: { ...timings, cacheHit },
     });

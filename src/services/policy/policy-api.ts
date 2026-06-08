@@ -59,6 +59,16 @@ export interface PolicyEvaluateResponse {
   executionTimeMs: number;
   /** 错误信息 (null 表示成功) */
   error: string | null;
+  /** 实际执行的 Rule/function 名称 */
+  executedFunction?: string;
+  /** 可恢复或阻断性诊断 */
+  diagnostics?: PolicyEvaluateDiagnostic[];
+}
+
+export interface PolicyEvaluateDiagnostic {
+  code: string;
+  message: string;
+  candidates?: string[];
 }
 
 export interface PolicyCompileResponse {
@@ -238,7 +248,8 @@ export class PolicyApiClient {
         throw new PolicyApiError(
           errorData.message || `HTTP ${response.status}: ${response.statusText}`,
           response.status,
-          errorData.code
+          errorData.code,
+          Array.isArray(errorData.diagnostics) ? errorData.diagnostics : undefined
         );
       }
 
@@ -315,7 +326,7 @@ export class PolicyApiClient {
       source,
       context,
       locale: options?.locale || 'en-US',
-      functionName: options?.functionName || 'evaluate',
+      ...(options?.functionName ? { functionName: options.functionName } : {}),
       // 仅在有词汇时携带，避免空字段无谓增大请求体。
       ...(options?.vocabulary ? { vocabulary: options.vocabulary } : {}),
     });
@@ -426,7 +437,8 @@ export class PolicyApiError extends Error {
   constructor(
     message: string,
     public readonly statusCode: number,
-    public readonly code?: string
+    public readonly code?: string,
+    public readonly diagnostics?: PolicyEvaluateDiagnostic[]
   ) {
     super(message);
     this.name = 'PolicyApiError';

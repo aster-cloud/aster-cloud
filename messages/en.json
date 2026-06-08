@@ -1095,6 +1095,14 @@
       "name": "Loan Approval Policy",
       "description": "Rules for evaluating loan applications based on credit score and income"
     },
+    "ruleSelector": {
+      "label": "Rule",
+      "placeholder": "Select a Rule",
+      "empty": "No Rules found",
+      "entryOption": "{name} (entry)",
+      "ambiguousHint": "This policy has multiple Rules and no @entry marker. Select the Rule to execute.",
+      "entryHover": "Main entry Rule"
+    },
     "execute": {
       "title": "Execute: {name}",
       "subtitle": "Test your policy with sample input data",
@@ -1108,6 +1116,7 @@
       "success": "Success",
       "failed": "Failed",
       "duration": "Duration",
+      "executedRule": "Executed Rule",
       "decision": "Decision",
       "approved": "Approved",
       "rejected": "Rejected",
@@ -1127,6 +1136,8 @@
       "schemaExtractionFailedHint": "The policy syntax may have issues. The \"Generate sample\" feature is unavailable. You can manually enter JSON data to execute the policy.",
       "policyFetchFailed": "Failed to load policy",
       "policyEmptyContent": "Policy has no content",
+      "entryAmbiguousTitle": "Choose a Rule to execute",
+      "entryAmbiguousBody": "The policy has multiple Rules and no entry Rule. Pick one candidate and run again.",
       "viewDetails": "View details"
     },
     "logs": {
