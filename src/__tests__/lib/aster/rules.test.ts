@@ -35,14 +35,25 @@ describe('extractRuleSymbols', () => {
     expect(chooseDefaultRule(rules)).toBe('main');
   });
 
-  it('does not treat standalone @entry on the previous line as an entry rule', () => {
+  it('treats standalone @entry on the previous line as an entry rule (aster-lang-core#9)', () => {
+    // grammar (annotation NEWLINE*)* RULE 支持 @entry 独立成行
     const rules = extractRuleSymbols('@entry\nRule main:\nRule fallback:');
+
+    expect(rules.map((rule) => ({ name: rule.name, isEntry: rule.isEntry }))).toEqual([
+      { name: 'main', isEntry: true },
+      { name: 'fallback', isEntry: false },
+    ]);
+    expect(chooseDefaultRule(rules)).toBe('main');
+  });
+
+  it('does not leak standalone @entry past an intervening non-annotation line', () => {
+    // @entry 后若隔着非注解内容行，不应误标后续 Rule
+    const rules = extractRuleSymbols('@entry\nDefine X has a.\nRule main:\nRule fallback:');
 
     expect(rules.map((rule) => ({ name: rule.name, isEntry: rule.isEntry }))).toEqual([
       { name: 'main', isEntry: false },
       { name: 'fallback', isEntry: false },
     ]);
-    expect(chooseDefaultRule(rules)).toBeNull();
   });
 
   it('skips comment lines', () => {
