@@ -747,7 +747,7 @@ export function MonacoPolicyEditor({
           };
           const modules = moduleCatalogRef.current;
 
-          if (/^\s*Use\s+[\w\u4e00-\u9fff.]*$/i.test(lineUntilPosition)) {
+          if (/^\s*(?:Use|\u5f15\u7528|verwende)\s+[\w\u4e00-\u9fff.]*$/i.test(lineUntilPosition)) {
             return {
               suggestions: modules.map((moduleEntry) => ({
                 label: moduleEntry.moduleName,
@@ -760,7 +760,7 @@ export function MonacoPolicyEditor({
             };
           }
 
-          const versionMatch = /^\s*Use\s+([A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*(?:\.[A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*)*)\s+(?:version\s+\d*)?$/i.exec(lineUntilPosition);
+          const versionMatch = /^\s*(?:Use|\u5f15\u7528|verwende)\s+([A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*(?:\.[A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*)*)\s+(?:(?:version|\u7248\u672c)\s+\d*)?$/i.exec(lineUntilPosition);
           if (!versionMatch) {
             return { suggestions: [] };
           }
@@ -770,7 +770,7 @@ export function MonacoPolicyEditor({
             return { suggestions: [] };
           }
 
-          const completingNumber = /\bversion\s+\d*$/i.test(lineUntilPosition);
+          const completingNumber = /(?:\bversion|版本)\s+\d*$/i.test(lineUntilPosition);
           const range = completingNumber
             ? wordRange
             : {
