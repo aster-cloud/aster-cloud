@@ -2074,39 +2074,54 @@
   },
   "equivalencePage": {
     "seo": {
-      "title": "Dual-Engine-Äquivalenz — Aster Lang",
-      "description": "Die Java- und TypeScript-Engines von Aster Lang werden durch ein automatisiertes Test-Corpus semantisch äquivalent gehalten. Diese Seite zeigt die aktuelle, nächtlich aktualisierte Äquivalenzrate."
+      "title": "Dual-Engine-Parse-Parität — Aster Lang",
+      "description": "Verfolgen Sie Schicht für Schicht, wie übereinstimmend die Java- und TypeScript-Engines von Aster Lang sind. Die Parse-Parität (beide Engines akzeptieren denselben Quelltext) ist live und wird nächtlich aktualisiert. Die Laufzeit-Parität wird separat gemessen, bekannte Divergenzen werden offen ausgewiesen."
     },
     "hero": {
-      "title": "Dual-Engine-Äquivalenz",
-      "subtitle": "Aster Lang betreibt zwei Produktions-Engines (Java und TypeScript). Wir testen sie jede Nacht gegen ein gemeinsames Corpus und veröffentlichen das Ergebnis hier."
+      "title": "Dual-Engine-Parse-Parität",
+      "subtitle": "Aster Lang betreibt zwei Produktions-Engines (Java und TypeScript). Wir testen sie jede Nacht gegen ein gemeinsames Corpus und veröffentlichen geschichtete Belege — Parse-Akzeptanz sowie die bekannten Laufzeit-Divergenzen, die wir noch schließen."
     },
     "unavailable": "Live-Daten derzeit nicht verfügbar. Aktuelle Messung im Repository einsehen.",
-    "currentRate": "Aktuelle Äquivalenzrate",
-    "measuredOn": "{equivalent} / {total} Samples — gemessen am {date}",
+    "currentRate": "Parse-Paritätsrate",
+    "measuredOn": "{equivalent} / {total} Tier-1-Samples, von beiden Engines akzeptiert — gemessen am {date}",
+    "qualifier": "Nur Parse-Ebene: Dies misst, ob beide Engines denselben Quelltext akzeptieren. Es sichert nicht zu, dass sie identische Laufzeit-Ausgaben erzeugen. Die semantische Laufzeit-Parität wird separat verfolgt und weist derzeit bekannte Divergenzen auf (siehe unten).",
     "stats": {
-      "equivalent": "Äquivalent",
-      "equivalentDesc": "beide Engines akzeptieren",
-      "divergent": "Divergent",
-      "divergentDesc": "eine Engine schlägt fehl",
-      "total": "Corpus gesamt",
-      "totalDesc": "tier1 + tier2 Samples"
+      "equivalent": "Von beiden akzeptiert",
+      "equivalentDesc": "nur Parse-Ebene; keine Laufzeit-Zusicherung",
+      "divergent": "Parse-Divergenz",
+      "divergentDesc": "eine Engine kann nicht parsen",
+      "total": "Tier-1-Corpus",
+      "totalDesc": "Parse-Paritäts-Samples (ohne tier2/tier3)"
     },
     "trend": {
-      "heading": "Verlauf",
+      "heading": "Verlauf der Parse-Parität",
       "date": "Datum",
-      "ratio": "Äquivalent / Gesamt",
+      "ratio": "Akzeptiert / Gesamt",
       "rate": "Rate",
       "delta": "Δ"
     },
-    "progress": "Gestartet bei {initial} am {date}. Verbesserung um +{delta} Prozentpunkte über {count} Messungen.",
+    "progress": "Die Parse-Parität verbesserte sich von {initial} am {date} um +{delta} Prozentpunkte über {count} Messungen, bezogen auf den aktuellen Tier-1-Parse-Nenner (tier2-Divergenz-Samples werden separat verfolgt, nicht in diesem Nenner).",
+    "divergences": {
+      "heading": "Bekannte Laufzeit-Divergenzen",
+      "intro": "Die Parse-Parität erfasst diese nicht. Es sind Fälle, die beide Engines akzeptieren, aber unterschiedlich auswerten — offen ausgewiesen und bis zur Behebung verfolgt.",
+      "colCase": "Fall",
+      "colLayer": "Ebene",
+      "colTs": "TypeScript",
+      "colJava": "Java",
+      "rows": [
+        { "case": "06-string-concat", "layer": "Auswertung", "ts": "\"Hello, …\" (String-Verkettung)", "java": "NumberFormatException (add nur Integer)" },
+        { "case": "08-arithmetic-divide", "layer": "Auswertung", "ts": "7 / 2 → 3.5 (Float)", "java": "7 / 2 → 3 (Integer-Trunkierung)" },
+        { "case": "09-arithmetic-modulo", "layer": "Auswertung", "ts": "7 is not even → true", "java": "7 is not even → false" }
+      ]
+    },
     "footer": {
-      "heading": "So wird gemessen",
+      "heading": "Was dies misst (und was nicht)",
       "items": [
-        "Quell-Corpus: aster-cloud/aster-lang-test, tier1 (Äquivalenz) + tier2 (Divergenz).",
-        "Beide Engines parsen jedes Sample. Ein Sample gilt nur als äquivalent, wenn beide erfolgreich sind.",
+        "Quell-Corpus: aster-cloud/aster-lang-test, nur Tier-1-Parse-Paritäts-Samples (tier2-Divergenz und tier3-Einzel-Engine-Fixtures sind aus diesem Nenner ausgeschlossen).",
+        "Dies ist Parse-Akzeptanz-Parität: Ein Sample besteht nur, wenn beide Engines es parsen/akzeptieren. Es sichert KEINE identische Laufzeit-Ausgabe, Core-IR, Typprüfung oder Fehlerdiagnostik zu.",
+        "Die semantische Laufzeit-Parität (Auswertung) ist eine separate Metrik, die gerade eine Baseline erhält; die bekannten Divergenzen oben werden offen bis zur Behebung verfolgt.",
         "Erneute Messung täglich um 02:00 UTC via GitHub Action nightly-equivalence; Verlauf wird in equivalence-history.csv zurückgeschrieben.",
-        "Methodik siehe RFC „dual-engine syntax baseline“."
+        "Methodik und Divergenz-Register siehe RFC „dual-engine syntax baseline“ und DIVERGENT-MANIFEST.md."
       ]
     }
   },

@@ -2074,39 +2074,54 @@
   },
   "equivalencePage": {
     "seo": {
-      "title": "Dual-Engine Equivalence — Aster Lang",
-      "description": "Aster Lang's Java and TypeScript engines are kept semantically equivalent by an automated test corpus. This page shows the live equivalence rate, refreshed nightly."
+      "title": "Dual-Engine Parse Parity — Aster Lang",
+      "description": "Track how Aster Lang's Java and TypeScript engines agree, layer by layer. Parse parity (both engines accept the same source) is live and refreshed nightly. Runtime parity is measured separately and known divergences are disclosed openly."
     },
     "hero": {
-      "title": "Dual-Engine Equivalence",
-      "subtitle": "Aster Lang ships two production engines (Java and TypeScript). We test them against a shared corpus every night and publish the result here."
+      "title": "Dual-Engine Parse Parity",
+      "subtitle": "Aster Lang ships two production engines (Java and TypeScript). We test them against a shared corpus every night and publish layered evidence — parse acceptance, plus the known runtime divergences we are still closing."
     },
     "unavailable": "Live data unavailable right now. See the repository for the latest measurement.",
-    "currentRate": "Current equivalence rate",
-    "measuredOn": "{equivalent} / {total} samples — measured {date}",
+    "currentRate": "Parse parity rate",
+    "measuredOn": "{equivalent} / {total} Tier 1 samples accepted by both engines — measured {date}",
+    "qualifier": "Parse-level only: this measures whether both engines accept the same source. It does not assert that they produce identical runtime output. Runtime semantic parity is tracked separately and currently has known divergences (see below).",
     "stats": {
-      "equivalent": "Equivalent",
-      "equivalentDesc": "both engines accept",
-      "divergent": "Divergent",
-      "divergentDesc": "one engine fails",
-      "total": "Total corpus",
-      "totalDesc": "tier1 + tier2 samples"
+      "equivalent": "Accepted by both",
+      "equivalentDesc": "parse-level only; no runtime claim",
+      "divergent": "Parse divergence",
+      "divergentDesc": "one engine fails to parse",
+      "total": "Tier 1 corpus",
+      "totalDesc": "parse-parity samples (tier2/tier3 excluded)"
     },
     "trend": {
-      "heading": "Trend",
+      "heading": "Parse parity trend",
       "date": "Date",
-      "ratio": "Equivalent / Total",
+      "ratio": "Accepted / Total",
       "rate": "Rate",
       "delta": "Δ"
     },
-    "progress": "Started at {initial} on {date}. Improved by +{delta} percentage points across {count} measurements.",
+    "progress": "Parse parity improved from {initial} on {date} by +{delta} percentage points across {count} measurements, under the current Tier 1 parse denominator (tier2 divergent samples are tracked separately, not in this denominator).",
+    "divergences": {
+      "heading": "Known runtime divergences",
+      "intro": "Parse parity does not catch these. They are cases both engines accept but evaluate differently — disclosed openly and tracked to resolution.",
+      "colCase": "Case",
+      "colLayer": "Layer",
+      "colTs": "TypeScript",
+      "colJava": "Java",
+      "rows": [
+        { "case": "06-string-concat", "layer": "eval", "ts": "\"Hello, …\" (string concat)", "java": "NumberFormatException (integer-only add)" },
+        { "case": "08-arithmetic-divide", "layer": "eval", "ts": "7 / 2 → 3.5 (float)", "java": "7 / 2 → 3 (integer truncation)" },
+        { "case": "09-arithmetic-modulo", "layer": "eval", "ts": "7 is not even → true", "java": "7 is not even → false" }
+      ]
+    },
     "footer": {
-      "heading": "How this is measured",
+      "heading": "What this measures (and what it doesn't)",
       "items": [
-        "Source corpus: aster-cloud/aster-lang-test, tier1 (equivalence) + tier2 (divergent) samples.",
-        "Both engines parse every sample. A sample is equivalent only if both engines succeed.",
+        "Source corpus: aster-cloud/aster-lang-test, Tier 1 parse-parity samples only (tier2 divergent and tier3 single-engine fixtures are excluded from this denominator).",
+        "This is parse-acceptance parity: a sample passes only if both engines parse/accept it. It does NOT assert identical runtime output, Core IR, type-checking, or error diagnostics.",
+        "Runtime semantic parity (eval) is a separate metric, currently being baselined; the known divergences above are tracked openly until resolved.",
         "Re-measured nightly at 02:00 UTC via the nightly-equivalence GitHub Action; history committed back to equivalence-history.csv.",
-        "See the dual-engine syntax baseline RFC for the methodology."
+        "See the dual-engine syntax baseline RFC and DIVERGENT-MANIFEST.md for the full methodology and divergence ledger."
       ]
     }
   },

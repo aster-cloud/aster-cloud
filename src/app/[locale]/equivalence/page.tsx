@@ -24,6 +24,13 @@ type HistoryRow = {
   rate: number;
 };
 
+type DivergenceRow = {
+  case: string;
+  layer: string;
+  ts: string;
+  java: string;
+};
+
 const HISTORY_URL =
   'https://raw.githubusercontent.com/aster-cloud/aster-lang-test/main/equivalence-history.csv';
 const REPO_URL = 'https://github.com/aster-cloud/aster-lang-test';
@@ -87,18 +94,20 @@ export default async function EquivalencePage({ params }: Props) {
   const history = await fetchHistory();
   const latest = history[history.length - 1];
   const initial = history[0];
+  // 已知运行时分歧台账：parse 等价但 eval 输出不同的样本，公开披露以增强可信度。
+  const divergences = t.raw('divergences.rows') as DivergenceRow[];
 
   const jsonLd = latest
     ? {
         '@context': 'https://schema.org',
         '@type': 'Dataset',
-        name: 'Aster Lang dual-engine equivalence rate',
+        name: 'Aster Lang dual-engine parse parity history',
         description:
-          'Daily-recomputed equivalence rate between the Java and TypeScript Aster Lang engines, measured over the shared aster-lang-test corpus.',
+          'Daily-recomputed parse-acceptance parity between the Java and TypeScript Aster Lang engines over the declared Tier 1 corpus. This measures whether both engines accept the same source; it does NOT assert identical runtime output. Runtime semantic parity is tracked separately and has disclosed known divergences.',
         url: HISTORY_URL,
         creator: { '@type': 'Organization', name: 'Aster Cloud' },
         license: 'https://opensource.org/license/mit',
-        variableMeasured: 'equivalence rate (equivalent / total samples)',
+        variableMeasured: 'parse parity rate (both engines accept / total declared Tier 1 parse-parity samples)',
         temporalCoverage: `${formatTimestamp(history[0]?.timestamp ?? '', 'en')}/..`,
       }
     : null;
@@ -146,6 +155,9 @@ export default async function EquivalencePage({ params }: Props) {
                 date: formatTimestamp(latest.timestamp, locale),
               })}
             </p>
+            <p className="mt-4 rounded-lg bg-white/15 p-4 text-sm leading-relaxed text-white/95">
+              {t('qualifier')}
+            </p>
           </section>
 
           <section className="mb-12 grid gap-6 sm:grid-cols-3">
@@ -171,6 +183,45 @@ export default async function EquivalencePage({ params }: Props) {
               <p className="text-xs text-gray-500 dark:text-gray-400">{t('stats.totalDesc')}</p>
             </div>
           </section>
+
+          {divergences.length > 0 && (
+            <section className="mb-12">
+              <h2 className="mb-2 text-xl font-semibold">{t('divergences.heading')}</h2>
+              <p className="mb-4 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
+                {t('divergences.intro')}
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-amber-300 dark:border-amber-700">
+                <table className="min-w-full divide-y divide-amber-200 dark:divide-amber-800">
+                  <thead className="bg-amber-50 dark:bg-amber-900/20">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        {t('divergences.colCase')}
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        {t('divergences.colLayer')}
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        {t('divergences.colTs')}
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        {t('divergences.colJava')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-200 dark:divide-amber-800">
+                    {divergences.map((d) => (
+                      <tr key={d.case}>
+                        <td className="px-4 py-2 font-mono text-xs">{d.case}</td>
+                        <td className="px-4 py-2 text-xs">{d.layer}</td>
+                        <td className="px-4 py-2 text-xs">{d.ts}</td>
+                        <td className="px-4 py-2 text-xs">{d.java}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {history.length > 1 && (
             <section className="mb-12">
