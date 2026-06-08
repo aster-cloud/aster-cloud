@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Rule selector + @entry highlight + entry-point UX (ADR 0015 phase 2) (#29) *(policy)*
 - Register user vocab into engine + carry snapshot vocab at execute (#17) *(vocab)*
 - Loan example uses natural-English `is` comparators *(examples)*
 - Return authoritative role in API-key verify + snapshots *(internal)*
@@ -198,6 +199,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
