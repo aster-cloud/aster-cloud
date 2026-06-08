@@ -16,14 +16,18 @@ import {
 } from '@/lib/aster-lexicon';
 import { useSession } from 'next-auth/react';
 import { useAsterCompiler, type CNLLocale } from '@/hooks/useAsterCompiler';
+import { useAsterModuleCatalog } from '@/hooks/useAsterModuleCatalog';
 import { useDomainVocabularyInvalidate } from '@/hooks/useDomainVocabularyInvalidate';
 import { useUserVocabularyRegistration } from '@/hooks/useUserVocabularyRegistration';
 import type { TypecheckDiagnostic } from '@aster-cloud/aster-lang-ts/browser';
 import { violet, sky, emerald, amber, rose, zinc } from '@aster-cloud/tokens';
 import { useEntryRuleDecorations } from './use-entry-rule-decorations';
+import { extractUseRefs, type UseRef } from '@/lib/aster/modules';
+import type { AsterModuleCatalogEntry } from '@/services/policy/policy-api';
 
 // Monaco 语言 ID
 const ASTER_LANG_ID = 'aster-cnl';
+const MODULE_CATALOG_MARKER_OWNER = 'aster-module-catalog';
 
 // 模块级初始化内置词汇表（幂等，仅执行一次）
 initBuiltinVocabularies();
@@ -357,6 +361,30 @@ function defineAsterTheme(monaco: typeof import('monaco-editor'), isDark: boolea
   return themeName;
 }
 
+function isCommentLine(line: string): boolean {
+  return /^\s*(?:\/\/|#)/.test(line);
+}
+
+function rangeContainsPosition(range: UseRef['moduleRange'], position: import('monaco-editor').Position): boolean {
+  return (
+    position.lineNumber === range.startLineNumber &&
+    position.column >= range.startColumn &&
+    position.column <= range.endColumn
+  );
+}
+
+function versionsLabel(moduleEntry: AsterModuleCatalogEntry): string {
+  return moduleEntry.versions.map((item) => item.version).join(', ');
+}
+
+function formatPublishedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString();
+}
+
 export function MonacoPolicyEditor({
   value,
   onChange,
@@ -374,10 +402,13 @@ export function MonacoPolicyEditor({
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
   const inlineProviderDisposableRef = useRef<{ dispose: () => void } | null>(null);
+  const moduleCompletionProviderDisposableRef = useRef<{ dispose: () => void } | null>(null);
+  const moduleHoverProviderDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const inlineCompletionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { resolvedTheme } = useTheme();
   const t = useTranslations('diagnostics');
   const tEntry = useTranslations('policies.ruleSelector');
+  const tModules = useTranslations('policies.modules');
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [showProblems, setShowProblems] = useState(false);
 
@@ -393,6 +424,45 @@ export function MonacoPolicyEditor({
   // 此处不构成安全边界。
   const { data: session } = useSession();
   const tenantId = session?.user?.id;
+  const moduleCatalog = useAsterModuleCatalog(Boolean(tenantId));
+  const moduleCatalogRef = useRef<AsterModuleCatalogEntry[]>([]);
+  const moduleMessagesRef = useRef({
+    moduleNotFound: (moduleName: string) => tModules('moduleNotFound', { moduleName }),
+    versionNotFound: (moduleName: string, version: number, versions: string) =>
+      tModules('versionNotFound', { moduleName, version, versions }),
+    moduleVersionRequired: (moduleName: string) => tModules('moduleVersionRequired', { moduleName }),
+    moduleCatalogLoadFailed: () => tModules('moduleCatalogLoadFailed'),
+    moduleHoverSource: (functionName: string, versions: string) =>
+      tModules('moduleHoverSource', { functionName, versions }),
+    moduleHoverVersion: (version: number, publishedAt: string) =>
+      tModules('moduleHoverVersion', { version, publishedAt }),
+    moduleCompletionDetail: (functionName: string) =>
+      tModules('moduleCompletionDetail', { functionName }),
+    versionCompletionDetail: (moduleName: string) =>
+      tModules('versionCompletionDetail', { moduleName }),
+  });
+
+  useEffect(() => {
+    moduleCatalogRef.current = moduleCatalog.modules;
+  }, [moduleCatalog.modules]);
+
+  useEffect(() => {
+    moduleMessagesRef.current = {
+      moduleNotFound: (moduleName: string) => tModules('moduleNotFound', { moduleName }),
+      versionNotFound: (moduleName: string, version: number, versions: string) =>
+        tModules('versionNotFound', { moduleName, version, versions }),
+      moduleVersionRequired: (moduleName: string) => tModules('moduleVersionRequired', { moduleName }),
+      moduleCatalogLoadFailed: () => tModules('moduleCatalogLoadFailed'),
+      moduleHoverSource: (functionName: string, versions: string) =>
+        tModules('moduleHoverSource', { functionName, versions }),
+      moduleHoverVersion: (version: number, publishedAt: string) =>
+        tModules('moduleHoverVersion', { version, publishedAt }),
+      moduleCompletionDetail: (functionName: string) =>
+        tModules('moduleCompletionDetail', { functionName }),
+      versionCompletionDetail: (moduleName: string) =>
+        tModules('versionCompletionDetail', { moduleName }),
+    };
+  }, [tModules]);
 
   // ADR 0014 线B：把用户自定义领域词汇 registerCustom 进引擎，让编译/翻译层
   // 也能识别用户术语（而非仅高亮）。内部订阅 SSE 失效自动重新注册，返回组装
@@ -449,6 +519,68 @@ export function MonacoPolicyEditor({
     value,
     tEntry('entryHover'),
   );
+
+  useEffect(() => {
+    const ed = editorRef.current;
+    const monaco = monacoRef.current;
+    const model = ed?.getModel();
+    if (!isEditorReady || !monaco || !model) {
+      return;
+    }
+
+    if (moduleCatalog.error) {
+      monaco.editor.setModelMarkers(model, MODULE_CATALOG_MARKER_OWNER, [{
+        severity: monaco.MarkerSeverity.Warning,
+        message: moduleMessagesRef.current.moduleCatalogLoadFailed(),
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: Math.max(1, model.getLineMaxColumn(1)),
+        source: MODULE_CATALOG_MARKER_OWNER,
+      }]);
+      return;
+    }
+
+    if (moduleCatalog.loading) {
+      monaco.editor.setModelMarkers(model, MODULE_CATALOG_MARKER_OWNER, []);
+      return;
+    }
+
+    const modulesByName = new Map(moduleCatalog.modules.map((item) => [item.moduleName, item]));
+    const markers = extractUseRefs(value).flatMap((ref) => {
+      const moduleEntry = modulesByName.get(ref.moduleName);
+      if (!moduleEntry) {
+        return [{
+          severity: monaco.MarkerSeverity.Error,
+          message: moduleMessagesRef.current.moduleNotFound(ref.moduleName),
+          ...ref.moduleRange,
+          source: MODULE_CATALOG_MARKER_OWNER,
+        }];
+      }
+
+      if (ref.version === null) {
+        return [{
+          severity: monaco.MarkerSeverity.Warning,
+          message: moduleMessagesRef.current.moduleVersionRequired(ref.moduleName),
+          ...ref.moduleRange,
+          source: MODULE_CATALOG_MARKER_OWNER,
+        }];
+      }
+
+      if (!moduleEntry.versions.some((item) => item.version === ref.version)) {
+        return [{
+          severity: monaco.MarkerSeverity.Error,
+          message: moduleMessagesRef.current.versionNotFound(ref.moduleName, ref.version, versionsLabel(moduleEntry)),
+          ...(ref.versionRange ?? ref.moduleRange),
+          source: MODULE_CATALOG_MARKER_OWNER,
+        }];
+      }
+
+      return [];
+    });
+
+    monaco.editor.setModelMarkers(model, MODULE_CATALOG_MARKER_OWNER, markers);
+  }, [isEditorReady, moduleCatalog.error, moduleCatalog.loading, moduleCatalog.modules, value]);
 
   const revealDiagnostic = useCallback((diag: TypecheckDiagnostic) => {
     const ed = editorRef.current;
@@ -592,6 +724,101 @@ export function MonacoPolicyEditor({
         });
       }
 
+      moduleCompletionProviderDisposableRef.current?.dispose();
+      moduleCompletionProviderDisposableRef.current = monaco.languages.registerCompletionItemProvider(ASTER_LANG_ID, {
+        triggerCharacters: [' ', '.'],
+        provideCompletionItems: (model: editor.ITextModel, position: import('monaco-editor').Position) => {
+          const lineUntilPosition = model.getValueInRange({
+            startLineNumber: position.lineNumber,
+            startColumn: 1,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column,
+          });
+          if (isCommentLine(lineUntilPosition)) {
+            return { suggestions: [] };
+          }
+
+          const word = model.getWordUntilPosition(position);
+          const wordRange = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+          const modules = moduleCatalogRef.current;
+
+          if (/^\s*Use\s+[\w\u4e00-\u9fff.]*$/i.test(lineUntilPosition)) {
+            return {
+              suggestions: modules.map((moduleEntry) => ({
+                label: moduleEntry.moduleName,
+                kind: monaco.languages.CompletionItemKind.Module,
+                insertText: moduleEntry.moduleName,
+                detail: moduleMessagesRef.current.moduleCompletionDetail(moduleEntry.functionName),
+                documentation: moduleMessagesRef.current.moduleHoverSource(moduleEntry.functionName, versionsLabel(moduleEntry)),
+                range: wordRange,
+              })),
+            };
+          }
+
+          const versionMatch = /^\s*Use\s+([A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*(?:\.[A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*)*)\s+(?:version\s+\d*)?$/i.exec(lineUntilPosition);
+          if (!versionMatch) {
+            return { suggestions: [] };
+          }
+
+          const moduleEntry = modules.find((item) => item.moduleName === versionMatch[1]);
+          if (!moduleEntry) {
+            return { suggestions: [] };
+          }
+
+          const completingNumber = /\bversion\s+\d*$/i.test(lineUntilPosition);
+          const range = completingNumber
+            ? wordRange
+            : {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endColumn: position.column,
+              };
+
+          return {
+            suggestions: moduleEntry.versions.map((version) => ({
+              label: completingNumber ? String(version.version) : `version ${version.version}`,
+              kind: monaco.languages.CompletionItemKind.Value,
+              insertText: completingNumber ? String(version.version) : `version ${version.version}`,
+              detail: moduleMessagesRef.current.versionCompletionDetail(moduleEntry.moduleName),
+              documentation: formatPublishedAt(version.publishedAt),
+              range,
+            })),
+          };
+        },
+      });
+
+      moduleHoverProviderDisposableRef.current?.dispose();
+      moduleHoverProviderDisposableRef.current = monaco.languages.registerHoverProvider(ASTER_LANG_ID, {
+        provideHover: (model: editor.ITextModel, position: import('monaco-editor').Position) => {
+          const ref = extractUseRefs(model.getValue()).find((item) => rangeContainsPosition(item.moduleRange, position));
+          if (!ref) {
+            return null;
+          }
+
+          const moduleEntry = moduleCatalogRef.current.find((item) => item.moduleName === ref.moduleName);
+          if (!moduleEntry) {
+            return null;
+          }
+
+          return {
+            range: ref.moduleRange,
+            contents: [
+              { value: `**${moduleEntry.moduleName}**` },
+              { value: moduleMessagesRef.current.moduleHoverSource(moduleEntry.functionName, versionsLabel(moduleEntry)) },
+              ...moduleEntry.versions.map((version) => ({
+                value: moduleMessagesRef.current.moduleHoverVersion(version.version, formatPublishedAt(version.publishedAt)),
+              })),
+            ],
+          };
+        },
+      });
+
       setIsEditorReady(true);
       // Expose the monaco namespace on globalThis so sibling client
       // hooks (e.g. useMonacoMarkers in policy-form/) can call
@@ -627,6 +854,12 @@ export function MonacoPolicyEditor({
     return () => {
       if (inlineCompletionTimerRef.current) clearTimeout(inlineCompletionTimerRef.current);
       inlineProviderDisposableRef.current?.dispose();
+      moduleCompletionProviderDisposableRef.current?.dispose();
+      moduleHoverProviderDisposableRef.current?.dispose();
+      const model = editorRef.current?.getModel();
+      if (model && monacoRef.current) {
+        monacoRef.current.editor.setModelMarkers(model, MODULE_CATALOG_MARKER_OWNER, []);
+      }
     };
   }, []);
 

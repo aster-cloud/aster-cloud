@@ -1103,6 +1103,16 @@
       "ambiguousHint": "Diese Richtlinie hat mehrere Rules und keine @entry-Markierung. Wählen Sie die auszuführende Rule.",
       "entryHover": "Haupt-Einstiegs-Rule"
     },
+    "modules": {
+      "moduleNotFound": "Modul \"{moduleName}\" ist in diesem Mandanten nicht verfügbar.",
+      "versionNotFound": "Modul \"{moduleName}\" Version {version} ist nicht verfügbar. Verfügbare Versionen: {versions}.",
+      "moduleVersionRequired": "Pinnen Sie \"{moduleName}\" mit einer expliziten Version.",
+      "moduleCatalogLoadFailed": "Der Modulkatalog konnte nicht geladen werden. Use-Diagnosen sind vorübergehend nicht verfügbar.",
+      "moduleHoverSource": "Quellfunktion: {functionName}. Versionen: {versions}.",
+      "moduleHoverVersion": "Version {version}: veröffentlicht {publishedAt}",
+      "moduleCompletionDetail": "Quellfunktion: {functionName}",
+      "versionCompletionDetail": "{moduleName} auf eine veröffentlichte Version pinnen"
+    },
     "execute": {
       "title": "Ausführen: {name}",
       "subtitle": "Testen Sie Ihre Richtlinie mit Beispieldaten",

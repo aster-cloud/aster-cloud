@@ -160,6 +160,21 @@ export interface PolicySchemaResponse {
   error?: string;
 }
 
+export interface AsterModuleCatalogVersion {
+  version: number;
+  publishedAt: string;
+}
+
+export interface AsterModuleCatalogEntry {
+  moduleName: string;
+  functionName: string;
+  versions: AsterModuleCatalogVersion[];
+}
+
+export interface AsterModuleCatalogResponse {
+  modules: AsterModuleCatalogEntry[];
+}
+
 // WebSocket 消息类型
 export interface PreviewMessage {
   type: 'preview' | 'error' | 'diagnostics';
@@ -304,6 +319,13 @@ export class PolicyApiClient {
       functionName: options?.functionName,
       locale: options?.locale || 'en-US',
     });
+  }
+
+  /**
+   * 获取当前租户可引用的已发布模块目录
+   */
+  async getModuleCatalog(): Promise<AsterModuleCatalogResponse> {
+    return this.request<AsterModuleCatalogResponse>('GET', API_ENDPOINTS.moduleCatalog);
   }
 
   /**
