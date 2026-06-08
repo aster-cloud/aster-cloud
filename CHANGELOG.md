@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- ExtractUseRefs supports zh/de Use keywords (ADR 0015) (#31) *(aster)*
 - Module catalog editor experience for Use (ADR 0015 phase 3d) (#30) *(policy)*
 - Rule selector + @entry highlight + entry-point UX (ADR 0015 phase 2) (#29) *(policy)*
 - Register user vocab into engine + carry snapshot vocab at execute (#17) *(vocab)*
@@ -200,6 +201,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
