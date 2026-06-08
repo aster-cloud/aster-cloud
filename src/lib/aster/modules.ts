@@ -15,8 +15,10 @@ export interface UseRef {
 }
 
 const COMMENT_LINE_RE = /^\s*(?:\/\/|#)/;
-// TODO(ADR-0015): Add zh/de Use equivalents once the canonical CNL lexicon names them.
-const USE_DECLARATION_RE = /(?:^|\s)(Use)\s+([A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*(?:\.[A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*)*)(?:\s+version\s+(\d+))?(?:\s+as\s+([A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*))?\s*\./i;
+// ADR 0015\uff1a\u4e09\u8bed Use/version/as \u5173\u952e\u8bcd\uff08lexicon: en Use/version/as\u3001zh \u5f15\u7528/\u7248\u672c/\u4f5c\u4e3a\u3001
+// de verwende/version/als\uff09\u3002\u6355\u83b7\u7ec4\u987a\u5e8f\u4e0d\u53d8\uff1a1=keyword 2=module 3=version 4=alias\u3002
+const USE_DECLARATION_RE =
+  /(?:^|\s)(Use|\u5f15\u7528|verwende)\s+([A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*(?:\.[A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*)*)(?:\s+(?:version|\u7248\u672c)\s+(\d+))?(?:\s+(?:as|\u4f5c\u4e3a|als)\s+([A-Za-z_\u4e00-\u9fff][\w\u4e00-\u9fff]*))?\s*[.\u3002]/iu;
 
 function rangeFor(lineNumber: number, startOffset: number, length: number): AsterSourceRange {
   return {

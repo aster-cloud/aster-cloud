@@ -85,4 +85,18 @@ describe('extractUseRefs', () => {
       { moduleName: 'risk.Fraud', version: null, alias: 'FraudCheck' },
     ]);
   });
+
+  it('extracts zh 引用/版本/作为 (Chinese keywords + 。terminator)', () => {
+    const refs = extractUseRefs('引用 risk.Scoring 版本 2 作为 Score。');
+
+    expect(refs).toHaveLength(1);
+    expect(refs[0]).toMatchObject({ moduleName: 'risk.Scoring', version: 2, alias: 'Score' });
+  });
+
+  it('extracts de verwende/version/als (German keywords)', () => {
+    const refs = extractUseRefs('verwende risk.Scoring version 2 als Score.');
+
+    expect(refs).toHaveLength(1);
+    expect(refs[0]).toMatchObject({ moduleName: 'risk.Scoring', version: 2, alias: 'Score' });
+  });
 });
