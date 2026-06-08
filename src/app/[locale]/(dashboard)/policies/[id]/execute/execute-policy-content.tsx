@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
@@ -24,7 +24,9 @@ const FUNCTION_LABEL: Record<string, string> = {
 };
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
+import { RuleSelector } from '@/components/policy/rule-selector';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
+import { chooseDefaultRule, extractRuleSymbols } from '@/lib/aster/rules';
 // P0-R2 (codex review Low #9): import 必须在顶部
 import { detectCNLLanguage, isHighConfidence } from '@/lib/cnl-language-detector';
 
@@ -53,6 +55,14 @@ interface ExecutionResult {
   decisionTrace?: DecisionTrace;
   error?: string;
   durationMs: number;
+  executedFunction?: string;
+  diagnostics?: ExecutionDiagnostic[];
+}
+
+interface ExecutionDiagnostic {
+  code: string;
+  message: string;
+  candidates?: string[];
 }
 
 // Use SchemaResult as PolicySchema (same interface)
@@ -135,6 +145,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [error, setError] = useState('');
   const [policyName, setPolicyName] = useState('');
   const [policyLocale, setPolicyLocale] = useState<PolicyLocale>('en-US');
+  const [selectedRule, setSelectedRule] = useState<string | null>(null);
+  const [executionDiagnostics, setExecutionDiagnostics] = useState<ExecutionDiagnostic[]>([]);
 
   // P0-R2 (codex review High Medium #6): schemaError 结构化为
   // { messageKey, detail }。主文案走 i18n，detail 仅在折叠区显示，
@@ -155,6 +167,9 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   // 策略源码用于 DecisionTracePanel 的 AI Explain 功能 —— 之前未读导致
   // AI Explain 按钮在生产链路永远不显示，详见 ADR-0009 P0-2 修复。
   const [policyContent, setPolicyContent] = useState('');
+
+  const ruleSymbols = useMemo(() => extractRuleSymbols(policyContent), [policyContent]);
+  const ambiguousEntryDiagnostic = executionDiagnostics.find((diag) => diag.code === 'ENTRY_AMBIGUOUS');
 
 
   // 获取策略参数模式（本地编译，无需 API 调用）
@@ -233,6 +248,10 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       });
   }, [policyId, fetchSchema, locale]);
 
+  useEffect(() => {
+    setSelectedRule(chooseDefaultRule(ruleSymbols));
+  }, [ruleSymbols]);
+
   // 重新生成示例数据（使用检测到的策略语言生成本地化示例值）
   const regenerateSampleData = useCallback(() => {
     if (schema?.parameters) {
@@ -261,10 +280,15 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
     });
   };
 
-  const handleExecute = async () => {
+  const handleExecute = async (functionNameOverride?: string) => {
+    const functionName = functionNameOverride ?? selectedRule;
+    if (functionNameOverride) {
+      setSelectedRule(functionNameOverride);
+    }
     setIsLoading(true);
     setError('');
     setResult(null);
+    setExecutionDiagnostics([]);
 
     try {
       let parsedInput: unknown;
@@ -281,10 +305,14 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       const res = await fetch(`/api/policies/${policyId}/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: parsedInput }),
+        body: JSON.stringify({
+          input: parsedInput,
+          ...(functionName ? { functionName } : {}),
+        }),
       });
 
       const data = await res.json();
+      setExecutionDiagnostics(Array.isArray(data.diagnostics) ? data.diagnostics : []);
 
       if (!res.ok) {
         // 优先显示详细消息，支持冻结和配额超限场景
@@ -298,6 +326,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
       }
 
       setResult(data);
+      setExecutionDiagnostics(Array.isArray(data.diagnostics) ? data.diagnostics : []);
     } catch (err) {
       if (err instanceof SyntaxError) {
         setError(t('invalidJson'));
@@ -599,8 +628,16 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
               />
             )}
 
+            <div className="mt-4">
+              <RuleSelector
+                rules={ruleSymbols}
+                value={selectedRule}
+                onChange={setSelectedRule}
+              />
+            </div>
+
             <button
-              onClick={handleExecute}
+              onClick={() => handleExecute()}
               disabled={isLoading}
               className="mt-4 w-full inline-flex justify-center items-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-primary-hover focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -646,6 +683,37 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
               );
             })()}
 
+            {ambiguousEntryDiagnostic?.candidates && ambiguousEntryDiagnostic.candidates.length > 0 && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
+                <div className="flex gap-3">
+                  <svg className="h-5 w-5 shrink-0 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                      {t('entryAmbiguousTitle')}
+                    </h4>
+                    <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                      {ambiguousEntryDiagnostic.message || t('entryAmbiguousBody')}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {ambiguousEntryDiagnostic.candidates.map((candidate) => (
+                        <button
+                          key={candidate}
+                          type="button"
+                          onClick={() => handleExecute(candidate)}
+                          disabled={isLoading}
+                          className="rounded-md border border-amber-300 bg-bg px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:bg-gray-900 dark:text-amber-100 dark:hover:bg-amber-900/30"
+                        >
+                          {candidate}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {result && (
               <div className="space-y-4">
                 {/* Status */}
@@ -667,6 +735,13 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                   <span className="text-sm text-fg-muted">{t('duration')}</span>
                   <span className="text-sm font-medium text-fg">{result.durationMs}ms</span>
                 </div>
+
+                {result.executedFunction && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-fg-muted">{t('executedRule')}</span>
+                    <span className="font-mono text-sm font-medium text-fg">{result.executedFunction}</span>
+                  </div>
+                )}
 
                 {/* Decision */}
                 {result.output && (

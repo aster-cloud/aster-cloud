@@ -1095,6 +1095,14 @@
       "name": "Kreditgenehmigungsrichtlinie",
       "description": "Regeln zur Bewertung von Kreditanträgen basierend auf Kreditwürdigkeit und Einkommen"
     },
+    "ruleSelector": {
+      "label": "Rule",
+      "placeholder": "Rule auswählen",
+      "empty": "Keine Rules gefunden",
+      "entryOption": "{name} (entry)",
+      "ambiguousHint": "Diese Richtlinie hat mehrere Rules und keine @entry-Markierung. Wählen Sie die auszuführende Rule.",
+      "entryHover": "Haupt-Einstiegs-Rule"
+    },
     "execute": {
       "title": "Ausführen: {name}",
       "subtitle": "Testen Sie Ihre Richtlinie mit Beispieldaten",
@@ -1108,6 +1116,7 @@
       "success": "Erfolgreich",
       "failed": "Fehlgeschlagen",
       "duration": "Dauer",
+      "executedRule": "Ausgeführte Rule",
       "decision": "Entscheidung",
       "approved": "Genehmigt",
       "rejected": "Abgelehnt",
@@ -1127,6 +1136,8 @@
       "schemaExtractionFailedHint": "Die Richtliniensyntax hat möglicherweise Probleme. Die Funktion \"Beispiel generieren\" ist nicht verfügbar. Sie können JSON-Daten manuell eingeben.",
       "policyFetchFailed": "Richtlinie konnte nicht geladen werden",
       "policyEmptyContent": "Richtlinie hat keinen Inhalt",
+      "entryAmbiguousTitle": "Rule zur Ausführung wählen",
+      "entryAmbiguousBody": "Die Richtlinie enthält mehrere Rules und keine Entry-Rule. Wählen Sie einen Kandidaten und führen Sie erneut aus.",
       "viewDetails": "Details anzeigen"
     },
     "logs": {

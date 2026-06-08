@@ -1095,6 +1095,14 @@
       "name": "贷款审批策略",
       "description": "基于信用评分和收入评估贷款申请的规则"
     },
+    "ruleSelector": {
+      "label": "Rule",
+      "placeholder": "选择 Rule",
+      "empty": "未找到 Rule",
+      "entryOption": "{name} (入口)",
+      "ambiguousHint": "此策略有多个 Rule 且没有 @entry 标记。请选择要执行的 Rule。",
+      "entryHover": "主入口 Rule"
+    },
     "execute": {
       "title": "执行：{name}",
       "subtitle": "使用示例输入数据测试您的策略",
@@ -1108,6 +1116,7 @@
       "success": "成功",
       "failed": "失败",
       "duration": "耗时",
+      "executedRule": "实际执行 Rule",
       "decision": "决策",
       "approved": "通过",
       "rejected": "拒绝",
@@ -1127,6 +1136,8 @@
       "schemaExtractionFailedHint": "策略语法可能存在问题，「生成示例」功能暂不可用。您可以手动输入 JSON 数据执行策略。",
       "policyFetchFailed": "无法加载策略",
       "policyEmptyContent": "策略没有内容",
+      "entryAmbiguousTitle": "选择要执行的 Rule",
+      "entryAmbiguousBody": "该策略包含多个 Rule 且没有入口 Rule。选择一个候选 Rule 后重跑。",
       "viewDetails": "查看详情"
     },
     "logs": {

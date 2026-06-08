@@ -5,7 +5,7 @@
  * 供 Dashboard 和 API v1 两个执行端点复用。
  */
 
-import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateResponse } from './policy-api';
+import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateDiagnostic, type PolicyEvaluateResponse } from './policy-api';
 import { executePolicy as executeSimplePolicy } from './executor';
 import type { Policy } from '@/lib/prisma';
 
@@ -109,6 +109,10 @@ export interface PolicyExecutionResult {
   };
   /** CNL 引擎返回的原始结果 */
   result?: unknown;
+  /** 实际执行的 CNL Rule/function 名称 */
+  executedFunction?: string;
+  /** CNL 引擎诊断，可用于可恢复错误 */
+  diagnostics?: PolicyEvaluateDiagnostic[];
 }
 
 /**
@@ -123,6 +127,8 @@ export interface ExecutePolicyOptions {
   userId: string;
   /** 租户 ID（可选，默认使用策略的 teamId 或 userId） */
   tenantId?: string;
+  /** 指定 CNL Rule/function 名称 */
+  functionName?: string;
 }
 
 /**
@@ -135,12 +141,12 @@ export interface ExecutePolicyOptions {
 export async function executePolicyUnified(
   options: ExecutePolicyOptions
 ): Promise<PolicyExecutionResult> {
-  const { policy, input, userId, tenantId } = options;
+  const { policy, input, userId, tenantId, functionName } = options;
   const policyContent = policy.content || '';
   const useAsterEngine = isAsterCNL(policyContent);
 
   if (useAsterEngine) {
-    return executeWithAsterEngine(policy, policyContent, input, userId, tenantId);
+    return executeWithAsterEngine(policy, policyContent, input, userId, tenantId, functionName);
   } else {
     return executeWithSimpleEngine(policy, policyContent, input, userId);
   }
@@ -157,14 +163,15 @@ async function executeWithAsterEngine(
   policyContent: string,
   input: Record<string, unknown>,
   userId: string,
-  tenantId?: string
+  tenantId?: string,
+  functionName?: string
 ): Promise<PolicyExecutionResult> {
   const locale = detectCNLLocale(policyContent) as CNLLocale;
   const effectiveTenantId = tenantId || policy.teamId || policy.userId;
   const apiClient = createPolicyApiClient(effectiveTenantId, userId);
 
   try {
-    const response = await apiClient.evaluateSource(policyContent, input, { locale });
+    const response = await apiClient.evaluateSource(policyContent, input, { locale, functionName });
     return buildCNLResult(policy, response);
   } catch (error) {
     return buildCNLErrorResult(policy, error);
@@ -385,6 +392,8 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
         executionTime: apiResponse.executionTimeMs,
       },
       result: apiResponse.result,
+      executedFunction: apiResponse.executedFunction,
+      diagnostics: apiResponse.diagnostics,
     };
   }
 
@@ -405,6 +414,8 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
       executionTime: apiResponse.executionTimeMs,
     },
     result: apiResponse.result,
+    executedFunction: apiResponse.executedFunction,
+    diagnostics: apiResponse.diagnostics,
   };
 }
 
@@ -434,6 +445,7 @@ function buildCNLErrorResult(policy: Policy, error: unknown): PolicyExecutionRes
       engine: 'aster-cnl',
       engineError: true,
     },
+    diagnostics: error instanceof PolicyApiError ? error.diagnostics : undefined,
   };
 }
 
