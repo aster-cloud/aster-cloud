@@ -152,6 +152,18 @@
 }
 
 /*
+ * Draw-on animation for the equivalence parity trend line (SVG <path>).
+ * Gated behind motion-safe: in the component, so reduced-motion users get
+ * the fully-drawn line immediately. stroke-dasharray is set large enough
+ * to cover the longest path in the 720-wide viewBox.
+ */
+@keyframes parity-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/*
  * Dashboard shell padding driver.
  *
  * The dashboard sidebar is a client component that toggles between
