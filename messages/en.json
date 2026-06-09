@@ -2101,7 +2101,15 @@
       "delta": "Δ",
       "parseSeries": "Parse parity",
       "evalSeries": "Runtime eval parity",
-      "range": { "week": "Week", "month": "Month", "year": "Year", "all": "All" },
+      "irSeries": "IR field-level parity",
+      "evalCoverageSeries": "Eval coverage",
+      "featureCoverageSeries": "Feature coverage",
+      "range": {
+        "week": "Week",
+        "month": "Month",
+        "year": "Year",
+        "all": "All"
+      },
       "tooltipRatio": "%value% / %total% accepted",
       "detailsToggle": "Show data table",
       "empty": "No trend data yet."
@@ -2120,9 +2128,24 @@
       "colWas": "Was (TS → Java)",
       "colResolution": "Resolution",
       "rows": [
-        { "case": "06-string-concat", "ts": "\"Hello, Alice\"", "java": "\"Hello, \" (dropped name)", "resolution": "int/double numeric promotion; string-concat keeps both operands" },
-        { "case": "08-arithmetic-divide", "ts": "7 / 2 → 3.5", "java": "7 / 2 → 3", "resolution": "/ is float division on both engines (byte-identical)" },
-        { "case": "09-arithmetic-modulo", "ts": "even-check → true", "java": "→ false", "resolution": "added real modulo operator; 09 restored to a genuine even-check" }
+        {
+          "case": "06-string-concat",
+          "ts": "\"Hello, Alice\"",
+          "java": "\"Hello, \" (dropped name)",
+          "resolution": "int/double numeric promotion; string-concat keeps both operands"
+        },
+        {
+          "case": "08-arithmetic-divide",
+          "ts": "7 / 2 → 3.5",
+          "java": "7 / 2 → 3",
+          "resolution": "/ is float division on both engines (byte-identical)"
+        },
+        {
+          "case": "09-arithmetic-modulo",
+          "ts": "even-check → true",
+          "java": "→ false",
+          "resolution": "added real modulo operator; 09 restored to a genuine even-check"
+        }
       ]
     },
     "footer": {
