@@ -41,6 +41,9 @@ interface PricingContentProps {
   proYearly: number;
   proMonthlyDisplay: string;
   proYearlyDisplay: string;
+  /** Per-request CSP nonce, threaded from the server page (this is a client
+   *  component and can't read headers() itself). Required by strict-dynamic CSP. */
+  nonce?: string;
 }
 
 export function PricingContent({
@@ -50,6 +53,7 @@ export function PricingContent({
   proYearly,
   proMonthlyDisplay,
   proYearlyDisplay,
+  nonce,
 }: PricingContentProps) {
   const t = useTranslations('pricingPage');
   const [interval, setInterval] = useState<BillingInterval>('monthly');
@@ -109,6 +113,7 @@ export function PricingContent({
       <SkipToContent targetId="main" />
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 

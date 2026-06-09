@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { CAN_PRICING } from '@/lib/deployment-mode';
@@ -34,6 +35,11 @@ export default async function PricingPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
+  // Per-request CSP nonce (x-nonce, set by middleware.ts). PricingContent is a
+  // client component and can't read headers() itself, so the JSON-LD <script>'s
+  // nonce must be threaded in from here, otherwise strict-dynamic CSP blocks it.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   const currency: CurrencyCode = getPublicCurrency(locale);
   const proMonthly = PUBLIC_PRO_MONTHLY_PRICE[currency];
   const proYearly = getAnnualAmount(proMonthly);
@@ -50,6 +56,7 @@ export default async function PricingPage({ params }: Props) {
       proYearly={proYearly}
       proMonthlyDisplay={proMonthlyDisplay}
       proYearlyDisplay={proYearlyDisplay}
+      nonce={nonce}
     />
   );
 }
