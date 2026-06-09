@@ -6,6 +6,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- ExtractRuleSymbols recognizes standalone @entry line (aster-lang-core#9) (#33) *(aster)*
+- Monaco Use completion triggers on zh/de keywords (ADR 0015) (#32) *(policy)*
 - ExtractUseRefs supports zh/de Use keywords (ADR 0015) (#31) *(aster)*
 - Module catalog editor experience for Use (ADR 0015 phase 3d) (#30) *(policy)*
 - Rule selector + @entry highlight + entry-point UX (ADR 0015 phase 2) (#29) *(policy)*
@@ -224,6 +226,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -346,6 +349,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Label public metric as parse-parity, disclose runtime divergences (#35) *(equivalence)*
 - Make all built-in policy samples compile clean (3 locales) (#28) *(samples)*
 - Recognize localized CNL booleans (真值/wahr) in execute + fix zh samples (#27) *(policy)*
 - Validate snapshot/full limit; add route regressions *(internal-api)*
