@@ -2098,7 +2098,11 @@
       "date": "Datum",
       "ratio": "Akzeptiert / Gesamt",
       "rate": "Rate",
-      "delta": "Δ"
+      "delta": "Δ",
+      "range": { "week": "Woche", "month": "Monat", "year": "Jahr", "all": "Alle" },
+      "tooltipRatio": "%value% / %total% akzeptiert",
+      "detailsToggle": "Datentabelle anzeigen",
+      "empty": "Noch keine Verlaufsdaten."
     },
     "progress": "Die Parse-Parität verbesserte sich von {initial} am {date} um +{delta} Prozentpunkte über {count} Messungen, bezogen auf den aktuellen Tier-1-Parse-Nenner (tier2-Divergenz-Samples werden separat verfolgt, nicht in diesem Nenner).",
     "evalParity": {

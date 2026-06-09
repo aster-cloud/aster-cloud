@@ -9,6 +9,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { ParityTrendChart, type ParityTrendLabels } from '@/components/equivalence/parity-trend-chart';
 
 // 不能 force-static：JSON-LD 内联 <script> 必须带 middleware 设置的 per-request
 // CSP nonce（strict-dynamic 下无 nonce 会被拦），而 nonce 是请求级的，
@@ -139,6 +140,32 @@ export default async function EquivalencePage({ params }: Props) {
   // 已解决分歧台账：曾经 parse 等价但 eval 输出不同、现已修复的样本。
   // 公开披露「追踪→修复」闭环，比隐藏历史更可信。
   const resolvedDivergences = t.raw('resolvedDivergences.rows') as ResolvedDivergence[];
+
+  // 解析一致率走势图的数据点与本地化标签（client 子组件渲染交互式 SVG 图）。
+  const trendPoints = history.map((r) => ({
+    timestamp: r.timestamp,
+    rate: r.rate,
+    value: r.equivalent,
+    total: r.total,
+  }));
+  const trendLabels: ParityTrendLabels = {
+    heading: t('trend.heading'),
+    ranges: {
+      week: t('trend.range.week'),
+      month: t('trend.range.month'),
+      year: t('trend.range.year'),
+      all: t('trend.range.all'),
+    },
+    axisRate: t('trend.rate'),
+    axisDate: t('trend.date'),
+    tooltipRatio: t('trend.tooltipRatio'),
+    delta: t('trend.delta'),
+    detailsToggle: t('trend.detailsToggle'),
+    colDate: t('trend.date'),
+    colRatio: t('trend.ratio'),
+    colRate: t('trend.rate'),
+    empty: t('trend.empty'),
+  };
 
   const jsonLd = latest
     ? {
@@ -293,55 +320,7 @@ export default async function EquivalencePage({ params }: Props) {
           )}
 
           {history.length > 1 && (
-            <section className="mb-12">
-              <h2 className="mb-4 text-xl font-semibold">{t('trend.heading')}</h2>
-              <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-800">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        {t('trend.date')}
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                        {t('trend.ratio')}
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                        {t('trend.rate')}
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                        {t('trend.delta')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {[...history].reverse().slice(0, 20).map((r, i, arr) => {
-                      const prev = arr[i + 1];
-                      const delta = prev ? r.rate - prev.rate : null;
-                      return (
-                        <tr key={r.timestamp}>
-                          <td className="px-4 py-2 text-sm tabular-nums">
-                            {formatTimestamp(r.timestamp, locale)}
-                          </td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums">
-                            {r.equivalent} / {r.total}
-                          </td>
-                          <td className="px-4 py-2 text-right text-sm font-medium tabular-nums">
-                            {formatPercent(r.rate, locale)}
-                          </td>
-                          <td className="px-4 py-2 text-right text-sm tabular-nums">
-                            {delta === null
-                              ? '—'
-                              : delta === 0
-                              ? '0'
-                              : (delta > 0 ? '+' : '') + (delta * 100).toFixed(2) + 'pp'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+            <ParityTrendChart points={trendPoints} labels={trendLabels} locale={locale} accent="violet" />
           )}
 
           {initial && initial.timestamp !== latest.timestamp && (

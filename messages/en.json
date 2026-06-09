@@ -2098,7 +2098,11 @@
       "date": "Date",
       "ratio": "Accepted / Total",
       "rate": "Rate",
-      "delta": "Δ"
+      "delta": "Δ",
+      "range": { "week": "Week", "month": "Month", "year": "Year", "all": "All" },
+      "tooltipRatio": "%value% / %total% accepted",
+      "detailsToggle": "Show data table",
+      "empty": "No trend data yet."
     },
     "progress": "Parse parity improved from {initial} on {date} by +{delta} percentage points across {count} measurements, under the current Tier 1 parse denominator (tier2 divergent samples are tracked separately, not in this denominator).",
     "evalParity": {
