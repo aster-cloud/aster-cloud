@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Surface runtime eval-parity + replace stale divergence ledger (#38) *(equivalence)*
 - ExtractRuleSymbols recognizes standalone @entry line (aster-lang-core#9) (#33) *(aster)*
 - Monaco Use completion triggers on zh/de keywords (ADR 0015) (#32) *(policy)*
 - ExtractUseRefs supports zh/de Use keywords (ADR 0015) (#31) *(aster)*
@@ -203,6 +204,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
