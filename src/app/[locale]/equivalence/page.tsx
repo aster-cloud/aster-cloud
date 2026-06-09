@@ -50,11 +50,49 @@ type EvalHistoryRow = {
   rate: number;
 };
 
-const HISTORY_URL =
-  'https://raw.githubusercontent.com/aster-cloud/aster-lang-test/main/equivalence-history.csv';
-const EVAL_HISTORY_URL =
-  'https://raw.githubusercontent.com/aster-cloud/aster-lang-test/main/eval-history.csv';
+const RAW_BASE = 'https://raw.githubusercontent.com/aster-cloud/aster-lang-test/main';
+const HISTORY_URL = `${RAW_BASE}/equivalence-history.csv`;
+const EVAL_HISTORY_URL = `${RAW_BASE}/eval-history.csv`;
+const IR_HISTORY_URL = `${RAW_BASE}/ir-history.csv`;
+const EVAL_COVERAGE_HISTORY_URL = `${RAW_BASE}/eval-coverage-history.csv`;
+const FEATURE_COVERAGE_HISTORY_URL = `${RAW_BASE}/feature-coverage-history.csv`;
 const REPO_URL = 'https://github.com/aster-cloud/aster-lang-test';
+
+/**
+ * 通用趋势 CSV 读取器。所有 history CSV 的列约定一致：第 1 列 timestamp、第 2 列
+ * 是分子（identical/equivalent/value）、最后一列是 rate（0..1）。第 3 列若存在则是
+ * 分母（total）；ir/eval/parse 的第 2 列是 identical、第 3 列 total 之外还有 divergent，
+ * 但分母统一取 total（紧跟 timestamp 之后的那一列在 coverage CSV 是 total）。为稳健，
+ * 分母直接读名为 total 的列（位置因 schema 而异），故按表头定位。
+ */
+async function fetchTrendCsv(url: string): Promise<TrendPoint[]> {
+  try {
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    const text = await res.text();
+    const rows = text.trim().split('\n');
+    if (rows.length < 2) return [];
+    const header = rows[0].split(',');
+    const tsIdx = header.indexOf('timestamp');
+    const totalIdx = header.indexOf('total');
+    const rateIdx = header.indexOf('rate');
+    // 分子列：value（coverage CSV）或 identical/equivalent（parity CSV）。
+    const valueIdx = ['value', 'identical', 'equivalent'].map((c) => header.indexOf(c)).find((i) => i >= 0) ?? -1;
+    return rows.slice(1).map((line) => {
+      const cols = line.split(',');
+      const total = Number(cols[totalIdx]);
+      const value = valueIdx >= 0 ? Number(cols[valueIdx]) : total;
+      return {
+        timestamp: cols[tsIdx],
+        total,
+        value,
+        rate: rateIdx >= 0 ? Number(cols[rateIdx]) : total > 0 ? value / total : 0,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
 
 async function fetchHistory(): Promise<HistoryRow[]> {
   try {
@@ -158,6 +196,10 @@ export default async function EquivalencePage({ params }: Props) {
   // 运行时求值一致率（eval-parity）趋势 — 比 parse 接受率更强的指标。
   const evalHistory = await fetchEvalHistory();
   const evalLatest = evalHistory[evalHistory.length - 1];
+  // 三条补充趋势：IR 字段级一致率、eval 覆盖率、特性覆盖率（通用 schema CSV）。
+  const irHistory = await fetchTrendCsv(IR_HISTORY_URL);
+  const evalCoverageHistory = await fetchTrendCsv(EVAL_COVERAGE_HISTORY_URL);
+  const featureCoverageHistory = await fetchTrendCsv(FEATURE_COVERAGE_HISTORY_URL);
   // 已解决分歧台账：曾经 parse 等价但 eval 输出不同、现已修复的样本。
   // 公开披露「追踪→修复」闭环，比隐藏历史更可信。
   const resolvedDivergences = t.raw('resolvedDivergences.rows') as ResolvedDivergence[];
@@ -194,6 +236,24 @@ export default async function EquivalencePage({ params }: Props) {
           total: r.total,
         })),
       ),
+    },
+    {
+      key: 'ir',
+      label: t('trend.irSeries'),
+      accent: 'sky',
+      points: dedupeByDay(irHistory),
+    },
+    {
+      key: 'evalCoverage',
+      label: t('trend.evalCoverageSeries'),
+      accent: 'amber',
+      points: dedupeByDay(evalCoverageHistory),
+    },
+    {
+      key: 'featureCoverage',
+      label: t('trend.featureCoverageSeries'),
+      accent: 'rose',
+      points: dedupeByDay(featureCoverageHistory),
     },
   ];
   const trendLabels: ParityTrendLabels = {

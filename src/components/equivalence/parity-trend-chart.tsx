@@ -34,7 +34,7 @@ export type TrendPoint = {
   total: number;
 };
 
-export type SeriesAccent = 'violet' | 'emerald';
+export type SeriesAccent = 'violet' | 'emerald' | 'sky' | 'amber' | 'rose';
 
 export type TrendSeries = {
   key: string;
@@ -85,6 +85,21 @@ const ACCENTS: Record<SeriesAccent, { fill: string; text: string; dot: string }>
     fill: 'var(--aster-success, #059669)',
     text: 'text-emerald-600 dark:text-emerald-400',
     dot: 'bg-emerald-600 dark:bg-emerald-400',
+  },
+  sky: {
+    fill: '#0284c7',
+    text: 'text-sky-600 dark:text-sky-400',
+    dot: 'bg-sky-600 dark:bg-sky-400',
+  },
+  amber: {
+    fill: '#d97706',
+    text: 'text-amber-600 dark:text-amber-400',
+    dot: 'bg-amber-600 dark:bg-amber-400',
+  },
+  rose: {
+    fill: '#e11d48',
+    text: 'text-rose-600 dark:text-rose-400',
+    dot: 'bg-rose-600 dark:bg-rose-400',
   },
 };
 

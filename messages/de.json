@@ -2101,7 +2101,15 @@
       "delta": "Δ",
       "parseSeries": "Parse-Parität",
       "evalSeries": "Laufzeit-Auswertungsparität",
-      "range": { "week": "Woche", "month": "Monat", "year": "Jahr", "all": "Alle" },
+      "irSeries": "IR-Feldgleichheit",
+      "evalCoverageSeries": "Eval-Abdeckung",
+      "featureCoverageSeries": "Feature-Abdeckung",
+      "range": {
+        "week": "Woche",
+        "month": "Monat",
+        "year": "Jahr",
+        "all": "Alle"
+      },
       "tooltipRatio": "%value% / %total% akzeptiert",
       "detailsToggle": "Datentabelle anzeigen",
       "empty": "Noch keine Verlaufsdaten."
@@ -2120,9 +2128,24 @@
       "colWas": "Vorher (TS → Java)",
       "colResolution": "Behebung",
       "rows": [
-        { "case": "06-string-concat", "ts": "\"Hello, Alice\"", "java": "\"Hello, \" (name verloren)", "resolution": "int/double-Zahlenpromotion; String-Verkettung behält beide Operanden" },
-        { "case": "08-arithmetic-divide", "ts": "7 / 2 → 3.5", "java": "7 / 2 → 3", "resolution": "/ ist Float-Division auf beiden Engines (byte-identisch)" },
-        { "case": "09-arithmetic-modulo", "ts": "Gerade-Prüfung → true", "java": "→ false", "resolution": "echter modulo-Operator ergänzt; 09 als echte Gerade-Prüfung wiederhergestellt" }
+        {
+          "case": "06-string-concat",
+          "ts": "\"Hello, Alice\"",
+          "java": "\"Hello, \" (name verloren)",
+          "resolution": "int/double-Zahlenpromotion; String-Verkettung behält beide Operanden"
+        },
+        {
+          "case": "08-arithmetic-divide",
+          "ts": "7 / 2 → 3.5",
+          "java": "7 / 2 → 3",
+          "resolution": "/ ist Float-Division auf beiden Engines (byte-identisch)"
+        },
+        {
+          "case": "09-arithmetic-modulo",
+          "ts": "Gerade-Prüfung → true",
+          "java": "→ false",
+          "resolution": "echter modulo-Operator ergänzt; 09 als echte Gerade-Prüfung wiederhergestellt"
+        }
       ]
     },
     "footer": {

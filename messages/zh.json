@@ -2101,7 +2101,15 @@
       "delta": "Δ",
       "parseSeries": "解析一致率",
       "evalSeries": "运行求值一致率",
-      "range": { "week": "周", "month": "月", "year": "年", "all": "全部" },
+      "irSeries": "IR 字段级一致",
+      "evalCoverageSeries": "求值覆盖率",
+      "featureCoverageSeries": "特性覆盖率",
+      "range": {
+        "week": "周",
+        "month": "月",
+        "year": "年",
+        "all": "全部"
+      },
       "tooltipRatio": "接受 %value% / %total%",
       "detailsToggle": "显示数据明细",
       "empty": "暂无趋势数据。"
@@ -2120,9 +2128,24 @@
       "colWas": "曾经（TS → Java）",
       "colResolution": "解决方式",
       "rows": [
-        { "case": "06-string-concat", "ts": "\"Hello, Alice\"", "java": "\"Hello, \"（丢失 name）", "resolution": "int/double 数值提升；字符串拼接保留两个操作数" },
-        { "case": "08-arithmetic-divide", "ts": "7 / 2 → 3.5", "java": "7 / 2 → 3", "resolution": "/ 在两个引擎上都是浮点除法（逐位一致）" },
-        { "case": "09-arithmetic-modulo", "ts": "偶数检查 → true", "java": "→ false", "resolution": "新增真正的 modulo 运算符；09 恢复为有意义的偶数检查" }
+        {
+          "case": "06-string-concat",
+          "ts": "\"Hello, Alice\"",
+          "java": "\"Hello, \"（丢失 name）",
+          "resolution": "int/double 数值提升；字符串拼接保留两个操作数"
+        },
+        {
+          "case": "08-arithmetic-divide",
+          "ts": "7 / 2 → 3.5",
+          "java": "7 / 2 → 3",
+          "resolution": "/ 在两个引擎上都是浮点除法（逐位一致）"
+        },
+        {
+          "case": "09-arithmetic-modulo",
+          "ts": "偶数检查 → true",
+          "java": "→ false",
+          "resolution": "新增真正的 modulo 运算符；09 恢复为有意义的偶数检查"
+        }
       ]
     },
     "footer": {
