@@ -2094,7 +2094,7 @@
       "totalDesc": "解析一致率样本（不含 tier2/tier3）"
     },
     "trend": {
-      "heading": "解析一致率趋势",
+      "heading": "一致性趋势",
       "date": "日期",
       "ratio": "接受 / 总数",
       "rate": "一致率",
