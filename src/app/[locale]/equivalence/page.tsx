@@ -27,15 +27,27 @@ type HistoryRow = {
   rate: number;
 };
 
-type DivergenceRow = {
+// 一个曾经存在、现已解决的运行时分歧（resolved divergence ledger）。
+type ResolvedDivergence = {
   case: string;
-  layer: string;
   ts: string;
   java: string;
+  resolution: string;
+};
+
+// eval-history.csv 一行：运行时求值一致率趋势（total/identical/divergent/rate）。
+type EvalHistoryRow = {
+  timestamp: string;
+  total: number;
+  identical: number;
+  divergent: number;
+  rate: number;
 };
 
 const HISTORY_URL =
   'https://raw.githubusercontent.com/aster-cloud/aster-lang-test/main/equivalence-history.csv';
+const EVAL_HISTORY_URL =
+  'https://raw.githubusercontent.com/aster-cloud/aster-lang-test/main/eval-history.csv';
 const REPO_URL = 'https://github.com/aster-cloud/aster-lang-test';
 
 async function fetchHistory(): Promise<HistoryRow[]> {
@@ -50,6 +62,27 @@ async function fetchHistory(): Promise<HistoryRow[]> {
         timestamp,
         total: Number(total),
         equivalent: Number(equivalent),
+        divergent: Number(divergent),
+        rate: Number(rate),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function fetchEvalHistory(): Promise<EvalHistoryRow[]> {
+  try {
+    const res = await fetch(EVAL_HISTORY_URL, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    const text = await res.text();
+    const lines = text.trim().split('\n').slice(1); // skip header
+    return lines.map((line) => {
+      const [timestamp, total, identical, divergent, rate] = line.split(',');
+      return {
+        timestamp,
+        total: Number(total),
+        identical: Number(identical),
         divergent: Number(divergent),
         rate: Number(rate),
       };
@@ -100,20 +133,27 @@ export default async function EquivalencePage({ params }: Props) {
   const history = await fetchHistory();
   const latest = history[history.length - 1];
   const initial = history[0];
-  // 已知运行时分歧台账：parse 等价但 eval 输出不同的样本，公开披露以增强可信度。
-  const divergences = t.raw('divergences.rows') as DivergenceRow[];
+  // 运行时求值一致率（eval-parity）趋势 — 比 parse 接受率更强的指标。
+  const evalHistory = await fetchEvalHistory();
+  const evalLatest = evalHistory[evalHistory.length - 1];
+  // 已解决分歧台账：曾经 parse 等价但 eval 输出不同、现已修复的样本。
+  // 公开披露「追踪→修复」闭环，比隐藏历史更可信。
+  const resolvedDivergences = t.raw('resolvedDivergences.rows') as ResolvedDivergence[];
 
   const jsonLd = latest
     ? {
         '@context': 'https://schema.org',
         '@type': 'Dataset',
-        name: 'Aster Lang dual-engine parse parity history',
+        name: 'Aster Lang dual-engine parity history',
         description:
-          'Daily-recomputed parse-acceptance parity between the Java and TypeScript Aster Lang engines over the declared Tier 1 corpus. This measures whether both engines accept the same source; it does NOT assert identical runtime output. Runtime semantic parity is tracked separately and has disclosed known divergences.',
+          'Daily-recomputed parity between the Java and TypeScript Aster Lang engines over the declared Tier 1 corpus, across two layers: parse-acceptance parity (both engines accept the same source) and runtime eval parity (both produce identical output on the golden cases). Tracked separately, both published openly alongside a ledger of resolved divergences.',
         url: HISTORY_URL,
         creator: { '@type': 'Organization', name: 'Aster Cloud' },
         license: 'https://opensource.org/license/mit',
-        variableMeasured: 'parse parity rate (both engines accept / total declared Tier 1 parse-parity samples)',
+        variableMeasured: [
+          'parse parity rate (both engines accept / total declared Tier 1 parse-parity samples)',
+          'runtime eval parity rate (identical output / total golden cases)',
+        ],
         temporalCoverage: `${formatTimestamp(history[0]?.timestamp ?? '', 'en')}/..`,
       }
     : null;
@@ -191,37 +231,59 @@ export default async function EquivalencePage({ params }: Props) {
             </div>
           </section>
 
-          {divergences.length > 0 && (
+          {evalLatest && (
             <section className="mb-12">
-              <h2 className="mb-2 text-xl font-semibold">{t('divergences.heading')}</h2>
+              <h2 className="mb-2 text-xl font-semibold">{t('evalParity.heading')}</h2>
               <p className="mb-4 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
-                {t('divergences.intro')}
+                {t('evalParity.intro')}
               </p>
-              <div className="overflow-x-auto rounded-lg border border-amber-300 dark:border-amber-700">
-                <table className="min-w-full divide-y divide-amber-200 dark:divide-amber-800">
-                  <thead className="bg-amber-50 dark:bg-amber-900/20">
+              <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-6 dark:border-emerald-700 dark:bg-emerald-900/20 sm:p-8">
+                <p className="text-sm uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                  {t('evalParity.rateLabel')}
+                </p>
+                <p className="mt-1 text-5xl font-bold tabular-nums text-emerald-700 dark:text-emerald-300 sm:text-6xl">
+                  {formatPercent(evalLatest.rate, locale)}
+                </p>
+                <p className="mt-2 text-sm text-emerald-800/90 dark:text-emerald-200/90">
+                  {t('evalParity.measuredOn', {
+                    identical: evalLatest.identical,
+                    total: evalLatest.total,
+                    date: formatTimestamp(evalLatest.timestamp, locale),
+                  })}
+                </p>
+              </div>
+            </section>
+          )}
+
+          {resolvedDivergences.length > 0 && (
+            <section className="mb-12">
+              <h2 className="mb-2 text-xl font-semibold">{t('resolvedDivergences.heading')}</h2>
+              <p className="mb-4 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
+                {t('resolvedDivergences.intro')}
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-emerald-300 dark:border-emerald-700">
+                <table className="min-w-full divide-y divide-emerald-200 dark:divide-emerald-800">
+                  <thead className="bg-emerald-50 dark:bg-emerald-900/20">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        {t('divergences.colCase')}
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                        {t('resolvedDivergences.colCase')}
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        {t('divergences.colLayer')}
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                        {t('resolvedDivergences.colWas')}
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        {t('divergences.colTs')}
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        {t('divergences.colJava')}
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                        {t('resolvedDivergences.colResolution')}
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-amber-200 dark:divide-amber-800">
-                    {divergences.map((d) => (
+                  <tbody className="divide-y divide-emerald-200 dark:divide-emerald-800">
+                    {resolvedDivergences.map((d) => (
                       <tr key={d.case}>
                         <td className="px-4 py-2 font-mono text-xs">{d.case}</td>
-                        <td className="px-4 py-2 text-xs">{d.layer}</td>
-                        <td className="px-4 py-2 text-xs">{d.ts}</td>
-                        <td className="px-4 py-2 text-xs">{d.java}</td>
+                        <td className="px-4 py-2 text-xs text-gray-500 line-through dark:text-gray-400">
+                          {d.ts} → {d.java}
+                        </td>
+                        <td className="px-4 py-2 text-xs">✅ {d.resolution}</td>
                       </tr>
                     ))}
                   </tbody>
