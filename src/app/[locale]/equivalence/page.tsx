@@ -7,9 +7,12 @@
  * 目的：把 RFC §9 中描述的"双引擎语义等价"从空头文档变成可被外部审计的事实。
  */
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
-export const dynamic = 'force-static';
+// 不能 force-static：JSON-LD 内联 <script> 必须带 middleware 设置的 per-request
+// CSP nonce（strict-dynamic 下无 nonce 会被拦），而 nonce 是请求级的，
+// 静态生成拿不到。读 headers() 自动转为动态渲染。配 revalidate 仍享 ISR 缓存。
 export const revalidate = 3600; // 每小时重 revalidate
 
 type Props = {
@@ -90,6 +93,9 @@ function formatTimestamp(iso: string, locale: string): string {
 export default async function EquivalencePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
+  // Per-request CSP nonce set by middleware.ts (x-nonce header). The JSON-LD
+  // <script> below must carry it, otherwise strict-dynamic CSP blocks it.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   const t = await getTranslations('equivalencePage');
   const history = await fetchHistory();
   const latest = history[history.length - 1];
@@ -119,6 +125,7 @@ export default async function EquivalencePage({ params }: Props) {
       {jsonLd && (
         <script
           type="application/ld+json"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
