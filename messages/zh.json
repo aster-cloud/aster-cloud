@@ -2074,20 +2074,20 @@
   },
   "equivalencePage": {
     "seo": {
-      "title": "双引擎解析一致率 — Aster Lang",
-      "description": "逐层追踪 Aster Lang 的 Java 与 TypeScript 引擎一致程度。解析一致率（两个引擎都接受同一份源码）每日刷新；运行时一致率单独测量，已知分歧公开披露。"
+      "title": "双引擎一致率 — Aster Lang",
+      "description": "逐层追踪 Aster Lang 的 Java 与 TypeScript 引擎一致程度。解析一致率（两个引擎都接受同一份源码）与运行时求值一致率（两端产生相同输出）每晚测量并公开，附已解决分歧台账。"
     },
     "hero": {
-      "title": "双引擎解析一致率",
-      "subtitle": "Aster Lang 同时维护两个生产引擎（Java 与 TypeScript）。我们每晚用共享语料库测试，并公开分层证据——解析层一致率，以及仍在收敛的已知运行时分歧。"
+      "title": "双引擎一致率",
+      "subtitle": "Aster Lang 同时维护两个生产引擎（Java 与 TypeScript）。我们每晚用共享语料库测试，并公开分层证据——解析层接受一致率与运行时输出一致率——以及我们已经闭环修复的分歧台账。"
     },
     "unavailable": "当前无法获取实时数据。请前往代码仓库查看最新测量结果。",
     "currentRate": "解析一致率",
     "measuredOn": "两个引擎都接受的 {equivalent} / {total} 个 Tier 1 样本 — 测量于 {date}",
-    "qualifier": "仅解析层：本指标只衡量两个引擎是否都接受同一份源码，并不保证它们产生相同的运行时输出。运行时语义一致率单独追踪，目前存在已知分歧（见下方）。",
+    "qualifier": "解析层：本指标衡量两个引擎是否都接受同一份源码。运行时输出是否一致由下方的求值一致率单独衡量。两层都公开追踪。",
     "stats": {
       "equivalent": "两端均接受",
-      "equivalentDesc": "仅解析层，不代表运行时一致",
+      "equivalentDesc": "仅解析层，运行时见下方单列",
       "divergent": "解析分歧",
       "divergentDesc": "其中一个引擎解析失败",
       "total": "Tier 1 语料",
@@ -2101,27 +2101,32 @@
       "delta": "Δ"
     },
     "progress": "解析一致率从 {date} 的 {initial} 起步，在 {count} 次测量中累计提升 +{delta} 个百分点（基于当前 Tier 1 解析分母；tier2 分歧样本单独追踪，不计入此分母）。",
-    "divergences": {
-      "heading": "已知运行时分歧",
-      "intro": "解析一致率无法捕获以下情况：两个引擎都接受、但求值结果不同的样本。我们公开披露并追踪至修复。",
+    "evalParity": {
+      "heading": "运行时求值一致率",
+      "intro": "更强的指标：两个引擎对相同输入求值、必须产生相同输出（而非仅接受源码）。每晚在黄金用例上测量。",
+      "rateLabel": "运行时求值一致率",
+      "measuredOn": "两端产生相同输出的 {identical} / {total} 个黄金用例 — 测量于 {date}"
+    },
+    "resolvedDivergences": {
+      "heading": "已解决的运行时分歧",
+      "intro": "曾经两端都接受、但求值结果不同的用例——现已修复并被黄金测试锁定。我们公开这份已闭环台账，因为把分歧追踪至修复才是信任信号，而非隐藏它们曾经存在。",
       "colCase": "用例",
-      "colLayer": "层级",
-      "colTs": "TypeScript",
-      "colJava": "Java",
+      "colWas": "曾经（TS → Java）",
+      "colResolution": "解决方式",
       "rows": [
-        { "case": "06-string-concat", "layer": "求值", "ts": "\"Hello, …\"（字符串拼接）", "java": "NumberFormatException（add 仅支持整数）" },
-        { "case": "08-arithmetic-divide", "layer": "求值", "ts": "7 / 2 → 3.5（浮点）", "java": "7 / 2 → 3（整数截断）" },
-        { "case": "09-arithmetic-modulo", "layer": "求值", "ts": "7 is not even → true", "java": "7 is not even → false" }
+        { "case": "06-string-concat", "ts": "\"Hello, Alice\"", "java": "\"Hello, \"（丢失 name）", "resolution": "int/double 数值提升；字符串拼接保留两个操作数" },
+        { "case": "08-arithmetic-divide", "ts": "7 / 2 → 3.5", "java": "7 / 2 → 3", "resolution": "/ 在两个引擎上都是浮点除法（逐位一致）" },
+        { "case": "09-arithmetic-modulo", "ts": "偶数检查 → true", "java": "→ false", "resolution": "新增真正的 modulo 运算符；09 恢复为有意义的偶数检查" }
       ]
     },
     "footer": {
       "heading": "本指标衡量什么（以及不衡量什么）",
       "items": [
-        "源语料：aster-cloud/aster-lang-test，仅 Tier 1 解析一致率样本（tier2 分歧样本与 tier3 单端 fixture 不计入此分母）。",
-        "这是解析接受一致率：只有两个引擎都能解析/接受才算通过。它并不保证运行时输出、Core IR、类型检查或错误诊断一致。",
-        "运行时语义一致率（求值）是独立指标，目前正在建立基线；上方已知分歧公开追踪至修复。",
-        "每天 02:00 UTC 由 nightly-equivalence GitHub Action 重新测量；历史数据回写 equivalence-history.csv。",
-        "完整方法与分歧台账详见 dual-engine syntax baseline RFC 与 DIVERGENT-MANIFEST.md。"
+        "源语料：aster-cloud/aster-lang-test，仅 Tier 1 一致率样本（tier2 分歧样本与 tier3 单端 fixture 不计入这些分母）。",
+        "解析一致率：只有两个引擎都能解析/接受才算通过。求值一致率：两个引擎在黄金用例上必须产生相同的运行时输出。求值一致率是更强的保证。",
+        "这些比率暂不涵盖：Core IR 字段级一致、类型检查、错误诊断一致（单独追踪）。",
+        "两个比率每天 02:00 UTC 由 nightly-equivalence GitHub Action 重新测量；历史回写 equivalence-history.csv 与 eval-history.csv。",
+        "完整方法与已解决分歧台账详见 dual-engine syntax baseline RFC 与 DIVERGENT-MANIFEST.md。"
       ]
     }
   },

@@ -2074,20 +2074,20 @@
   },
   "equivalencePage": {
     "seo": {
-      "title": "Dual-Engine Parse Parity — Aster Lang",
-      "description": "Track how Aster Lang's Java and TypeScript engines agree, layer by layer. Parse parity (both engines accept the same source) is live and refreshed nightly. Runtime parity is measured separately and known divergences are disclosed openly."
+      "title": "Dual-Engine Parity — Aster Lang",
+      "description": "Track how Aster Lang's Java and TypeScript engines agree, layer by layer. Parse parity (both engines accept the same source) and runtime eval parity (both produce identical output) are both measured nightly and published openly, with a ledger of resolved divergences."
     },
     "hero": {
-      "title": "Dual-Engine Parse Parity",
-      "subtitle": "Aster Lang ships two production engines (Java and TypeScript). We test them against a shared corpus every night and publish layered evidence — parse acceptance, plus the known runtime divergences we are still closing."
+      "title": "Dual-Engine Parity",
+      "subtitle": "Aster Lang ships two production engines (Java and TypeScript). We test them against a shared corpus every night and publish layered evidence — parse acceptance and runtime output equality — plus an open ledger of the divergences we've already closed."
     },
     "unavailable": "Live data unavailable right now. See the repository for the latest measurement.",
     "currentRate": "Parse parity rate",
     "measuredOn": "{equivalent} / {total} Tier 1 samples accepted by both engines — measured {date}",
-    "qualifier": "Parse-level only: this measures whether both engines accept the same source. It does not assert that they produce identical runtime output. Runtime semantic parity is tracked separately and currently has known divergences (see below).",
+    "qualifier": "Parse-level: this measures whether both engines accept the same source. Runtime output equality is measured separately as eval parity (below). Both layers are tracked openly.",
     "stats": {
       "equivalent": "Accepted by both",
-      "equivalentDesc": "parse-level only; no runtime claim",
+      "equivalentDesc": "parse-level; runtime shown separately below",
       "divergent": "Parse divergence",
       "divergentDesc": "one engine fails to parse",
       "total": "Tier 1 corpus",
@@ -2101,27 +2101,32 @@
       "delta": "Δ"
     },
     "progress": "Parse parity improved from {initial} on {date} by +{delta} percentage points across {count} measurements, under the current Tier 1 parse denominator (tier2 divergent samples are tracked separately, not in this denominator).",
-    "divergences": {
-      "heading": "Known runtime divergences",
-      "intro": "Parse parity does not catch these. They are cases both engines accept but evaluate differently — disclosed openly and tracked to resolution.",
+    "evalParity": {
+      "heading": "Runtime eval parity",
+      "intro": "The stronger metric: both engines evaluate the same inputs and must produce identical output (not just accept the source). Measured nightly over the golden cases.",
+      "rateLabel": "Runtime eval parity",
+      "measuredOn": "{identical} / {total} golden cases produce identical output across both engines — measured {date}"
+    },
+    "resolvedDivergences": {
+      "heading": "Resolved runtime divergences",
+      "intro": "Cases both engines once accepted but evaluated differently — now fixed and locked by golden tests. We publish the closed ledger because tracking divergences to resolution is the trust signal, not hiding that they existed.",
       "colCase": "Case",
-      "colLayer": "Layer",
-      "colTs": "TypeScript",
-      "colJava": "Java",
+      "colWas": "Was (TS → Java)",
+      "colResolution": "Resolution",
       "rows": [
-        { "case": "06-string-concat", "layer": "eval", "ts": "\"Hello, …\" (string concat)", "java": "NumberFormatException (integer-only add)" },
-        { "case": "08-arithmetic-divide", "layer": "eval", "ts": "7 / 2 → 3.5 (float)", "java": "7 / 2 → 3 (integer truncation)" },
-        { "case": "09-arithmetic-modulo", "layer": "eval", "ts": "7 is not even → true", "java": "7 is not even → false" }
+        { "case": "06-string-concat", "ts": "\"Hello, Alice\"", "java": "\"Hello, \" (dropped name)", "resolution": "int/double numeric promotion; string-concat keeps both operands" },
+        { "case": "08-arithmetic-divide", "ts": "7 / 2 → 3.5", "java": "7 / 2 → 3", "resolution": "/ is float division on both engines (byte-identical)" },
+        { "case": "09-arithmetic-modulo", "ts": "even-check → true", "java": "→ false", "resolution": "added real modulo operator; 09 restored to a genuine even-check" }
       ]
     },
     "footer": {
       "heading": "What this measures (and what it doesn't)",
       "items": [
-        "Source corpus: aster-cloud/aster-lang-test, Tier 1 parse-parity samples only (tier2 divergent and tier3 single-engine fixtures are excluded from this denominator).",
-        "This is parse-acceptance parity: a sample passes only if both engines parse/accept it. It does NOT assert identical runtime output, Core IR, type-checking, or error diagnostics.",
-        "Runtime semantic parity (eval) is a separate metric, currently being baselined; the known divergences above are tracked openly until resolved.",
-        "Re-measured nightly at 02:00 UTC via the nightly-equivalence GitHub Action; history committed back to equivalence-history.csv.",
-        "See the dual-engine syntax baseline RFC and DIVERGENT-MANIFEST.md for the full methodology and divergence ledger."
+        "Source corpus: aster-cloud/aster-lang-test, Tier 1 parity samples only (tier2 divergent and tier3 single-engine fixtures are excluded from these denominators).",
+        "Parse parity: a sample passes only if both engines parse/accept it. Eval parity: both engines must produce identical runtime output on the golden cases. Eval parity is the stronger guarantee.",
+        "Not yet covered by these rates: Core IR field-level parity, type-checking, and error-diagnostic parity (tracked separately).",
+        "Both rates are re-measured nightly at 02:00 UTC via the nightly-equivalence GitHub Action; history committed back to equivalence-history.csv and eval-history.csv.",
+        "See the dual-engine syntax baseline RFC and DIVERGENT-MANIFEST.md for the full methodology and the resolved-divergence ledger."
       ]
     }
   },
