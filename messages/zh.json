@@ -2074,39 +2074,54 @@
   },
   "equivalencePage": {
     "seo": {
-      "title": "双引擎等价性 — Aster Lang",
-      "description": "Aster Lang 的 Java 与 TypeScript 引擎通过自动化测试语料库保持语义等价。本页面展示每日刷新的等价率。"
+      "title": "双引擎解析一致率 — Aster Lang",
+      "description": "逐层追踪 Aster Lang 的 Java 与 TypeScript 引擎一致程度。解析一致率（两个引擎都接受同一份源码）每日刷新；运行时一致率单独测量，已知分歧公开披露。"
     },
     "hero": {
-      "title": "双引擎等价性",
-      "subtitle": "Aster Lang 同时维护两个生产引擎（Java 与 TypeScript）。我们每晚用共享语料库测试它们的一致性，并把结果发布在这里。"
+      "title": "双引擎解析一致率",
+      "subtitle": "Aster Lang 同时维护两个生产引擎（Java 与 TypeScript）。我们每晚用共享语料库测试，并公开分层证据——解析层一致率，以及仍在收敛的已知运行时分歧。"
     },
     "unavailable": "当前无法获取实时数据。请前往代码仓库查看最新测量结果。",
-    "currentRate": "当前等价率",
-    "measuredOn": "{equivalent} / {total} 个样本 — 测量于 {date}",
+    "currentRate": "解析一致率",
+    "measuredOn": "两个引擎都接受的 {equivalent} / {total} 个 Tier 1 样本 — 测量于 {date}",
+    "qualifier": "仅解析层：本指标只衡量两个引擎是否都接受同一份源码，并不保证它们产生相同的运行时输出。运行时语义一致率单独追踪，目前存在已知分歧（见下方）。",
     "stats": {
-      "equivalent": "等价",
-      "equivalentDesc": "两个引擎都接受",
-      "divergent": "分歧",
-      "divergentDesc": "其中一个引擎失败",
-      "total": "语料总数",
-      "totalDesc": "tier1 + tier2 样本"
+      "equivalent": "两端均接受",
+      "equivalentDesc": "仅解析层，不代表运行时一致",
+      "divergent": "解析分歧",
+      "divergentDesc": "其中一个引擎解析失败",
+      "total": "Tier 1 语料",
+      "totalDesc": "解析一致率样本（不含 tier2/tier3）"
     },
     "trend": {
-      "heading": "趋势",
+      "heading": "解析一致率趋势",
       "date": "日期",
-      "ratio": "等价 / 总数",
-      "rate": "等价率",
+      "ratio": "接受 / 总数",
+      "rate": "一致率",
       "delta": "Δ"
     },
-    "progress": "从 {date} 的 {initial} 起步。{count} 次测量中累计提升 +{delta} 个百分点。",
+    "progress": "解析一致率从 {date} 的 {initial} 起步，在 {count} 次测量中累计提升 +{delta} 个百分点（基于当前 Tier 1 解析分母；tier2 分歧样本单独追踪，不计入此分母）。",
+    "divergences": {
+      "heading": "已知运行时分歧",
+      "intro": "解析一致率无法捕获以下情况：两个引擎都接受、但求值结果不同的样本。我们公开披露并追踪至修复。",
+      "colCase": "用例",
+      "colLayer": "层级",
+      "colTs": "TypeScript",
+      "colJava": "Java",
+      "rows": [
+        { "case": "06-string-concat", "layer": "求值", "ts": "\"Hello, …\"（字符串拼接）", "java": "NumberFormatException（add 仅支持整数）" },
+        { "case": "08-arithmetic-divide", "layer": "求值", "ts": "7 / 2 → 3.5（浮点）", "java": "7 / 2 → 3（整数截断）" },
+        { "case": "09-arithmetic-modulo", "layer": "求值", "ts": "7 is not even → true", "java": "7 is not even → false" }
+      ]
+    },
     "footer": {
-      "heading": "测量方法",
+      "heading": "本指标衡量什么（以及不衡量什么）",
       "items": [
-        "源语料：aster-cloud/aster-lang-test，tier1（等价）+ tier2（分歧）样本。",
-        "两个引擎都解析每个样本。只有两边都成功才计为「等价」。",
+        "源语料：aster-cloud/aster-lang-test，仅 Tier 1 解析一致率样本（tier2 分歧样本与 tier3 单端 fixture 不计入此分母）。",
+        "这是解析接受一致率：只有两个引擎都能解析/接受才算通过。它并不保证运行时输出、Core IR、类型检查或错误诊断一致。",
+        "运行时语义一致率（求值）是独立指标，目前正在建立基线；上方已知分歧公开追踪至修复。",
         "每天 02:00 UTC 由 nightly-equivalence GitHub Action 重新测量；历史数据回写 equivalence-history.csv。",
-        "测量方法详见 dual-engine syntax baseline RFC。"
+        "完整方法与分歧台账详见 dual-engine syntax baseline RFC 与 DIVERGENT-MANIFEST.md。"
       ]
     }
   },
