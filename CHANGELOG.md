@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Interactive parity trend chart ("market ticker" view) (#39) *(equivalence)*
 - Surface runtime eval-parity + replace stale divergence ledger (#38) *(equivalence)*
 - ExtractRuleSymbols recognizes standalone @entry line (aster-lang-core#9) (#33) *(aster)*
 - Monaco Use completion triggers on zh/de keywords (ADR 0015) (#32) *(policy)*
@@ -204,6 +205,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
