@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Chart all five consistency metrics (#41) *(equivalence)*
 - Grouped bar trend chart (parse + eval), below hero, daily dedup (#40) *(equivalence)*
 - Interactive parity trend chart ("market ticker" view) (#39) *(equivalence)*
 - Surface runtime eval-parity + replace stale divergence ledger (#38) *(equivalence)*
@@ -206,6 +207,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
