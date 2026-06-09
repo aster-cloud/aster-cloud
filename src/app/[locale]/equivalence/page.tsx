@@ -9,7 +9,12 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { ParityTrendChart, type ParityTrendLabels } from '@/components/equivalence/parity-trend-chart';
+import {
+  ParityTrendChart,
+  type ParityTrendLabels,
+  type TrendSeries,
+  type TrendPoint,
+} from '@/components/equivalence/parity-trend-chart';
 
 // 不能 force-static：JSON-LD 内联 <script> 必须带 middleware 设置的 per-request
 // CSP nonce（strict-dynamic 下无 nonce 会被拦），而 nonce 是请求级的，
@@ -93,6 +98,22 @@ async function fetchEvalHistory(): Promise<EvalHistoryRow[]> {
   }
 }
 
+/**
+ * 同一天多组测量 → 每天只保留最新一条（按 timestamp 取最大）。
+ * 用 UTC 日期作分组键，与 CSV 的 ISO timestamp 一致；输出按时间升序。
+ */
+function dedupeByDay(points: TrendPoint[]): TrendPoint[] {
+  const byDay = new Map<string, TrendPoint>();
+  for (const p of points) {
+    const day = p.timestamp.slice(0, 10); // YYYY-MM-DD (UTC)
+    const existing = byDay.get(day);
+    if (!existing || p.timestamp > existing.timestamp) {
+      byDay.set(day, p);
+    }
+  }
+  return [...byDay.values()].sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'equivalencePage.seo' });
@@ -141,13 +162,40 @@ export default async function EquivalencePage({ params }: Props) {
   // 公开披露「追踪→修复」闭环，比隐藏历史更可信。
   const resolvedDivergences = t.raw('resolvedDivergences.rows') as ResolvedDivergence[];
 
-  // 解析一致率走势图的数据点与本地化标签（client 子组件渲染交互式 SVG 图）。
-  const trendPoints = history.map((r) => ({
-    timestamp: r.timestamp,
-    rate: r.rate,
-    value: r.equivalent,
-    total: r.total,
-  }));
+  // 走势图：两条 series —— 解析一致率（紫，主线，带面积）+ 运行求值一致率（绿）。
+  // client 子组件渲染交互式多线 SVG 图。eval 当前可能只有 1 点 → 显示为单点标记。
+  //
+  // 同一天若有多组测量（nightly cron + 手动 dispatch，或修复后重跑），图上每天
+  // 只取最新一条（按 timestamp 取最大）——避免一天画多个点造成锯齿/误读。
+  const trendSeries: TrendSeries[] = [
+    {
+      key: 'parse',
+      label: t('trend.parseSeries'),
+      accent: 'violet',
+      area: true,
+      points: dedupeByDay(
+        history.map((r) => ({
+          timestamp: r.timestamp,
+          rate: r.rate,
+          value: r.equivalent,
+          total: r.total,
+        })),
+      ),
+    },
+    {
+      key: 'eval',
+      label: t('trend.evalSeries'),
+      accent: 'emerald',
+      points: dedupeByDay(
+        evalHistory.map((r) => ({
+          timestamp: r.timestamp,
+          rate: r.rate,
+          value: r.identical,
+          total: r.total,
+        })),
+      ),
+    },
+  ];
   const trendLabels: ParityTrendLabels = {
     heading: t('trend.heading'),
     ranges: {
@@ -156,8 +204,6 @@ export default async function EquivalencePage({ params }: Props) {
       year: t('trend.range.year'),
       all: t('trend.range.all'),
     },
-    axisRate: t('trend.rate'),
-    axisDate: t('trend.date'),
     tooltipRatio: t('trend.tooltipRatio'),
     delta: t('trend.delta'),
     detailsToggle: t('trend.detailsToggle'),
@@ -233,6 +279,11 @@ export default async function EquivalencePage({ params }: Props) {
               {t('qualifier')}
             </p>
           </section>
+
+          {/* 走势图紧跟 hero——作为页面核心叙事，最先映入眼帘。 */}
+          {history.length > 1 && (
+            <ParityTrendChart series={trendSeries} labels={trendLabels} locale={locale} />
+          )}
 
           <section className="mb-12 grid gap-6 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
@@ -317,10 +368,6 @@ export default async function EquivalencePage({ params }: Props) {
                 </table>
               </div>
             </section>
-          )}
-
-          {history.length > 1 && (
-            <ParityTrendChart points={trendPoints} labels={trendLabels} locale={locale} accent="violet" />
           )}
 
           {initial && initial.timestamp !== latest.timestamp && (

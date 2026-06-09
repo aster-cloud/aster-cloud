@@ -152,14 +152,16 @@
 }
 
 /*
- * Draw-on animation for the equivalence parity trend line (SVG <path>).
- * Gated behind motion-safe: in the component, so reduced-motion users get
- * the fully-drawn line immediately. stroke-dasharray is set large enough
- * to cover the longest path in the 720-wide viewBox.
+ * Grow-up animation for the equivalence parity trend bars (SVG <rect>).
+ * Gated behind motion-safe: in the component (with transform-box: fill-box +
+ * origin-bottom), so reduced-motion users get the full-height bars immediately.
  */
-@keyframes parity-draw {
+@keyframes parity-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
   to {
-    stroke-dashoffset: 0;
+    transform: scaleY(1);
   }
 }
 

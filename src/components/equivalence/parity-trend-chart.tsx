@@ -1,6 +1,11 @@
 /**
- * Parity trend chart — a hand-rolled SVG line/area chart ("market ticker" feel)
- * for the dual-engine equivalence dashboard.
+ * Parity trend chart — a hand-rolled SVG grouped bar chart for the dual-engine
+ * equivalence dashboard.
+ *
+ * Why bars (not lines): both metrics (parse-acceptance parity and runtime eval
+ * parity) sit near 100%, so two lines would overlap at the top and be hard to
+ * tell apart. Grouped bars place the two series side by side per day — even
+ * near-identical values stay visually distinct.
  *
  * Why no chart library: this is a server-rendered marketing/trust page on
  * Cloudflare Workers under a strict-dynamic CSP. A 100KB+ chart lib (recharts/
@@ -9,9 +14,10 @@
  * and renders identically server- and client-side.
  *
  * Features: adjustable time range (week / month / year / all), a magnified
- * y-axis that focuses on the actual value band (not 0–100, the way a market
- * index chart zooms into the relevant range), hover crosshair + tooltip with
- * Δ, and a progressively-disclosed detail table.
+ * y-axis that focuses on the actual value band (the way a market chart zooms
+ * into the relevant range), a legend, hover tooltip on the nearest bar, and a
+ * progressively-disclosed detail table. A series with no data for a given day
+ * simply omits its bar there.
  */
 'use client';
 
@@ -28,6 +34,17 @@ export type TrendPoint = {
   total: number;
 };
 
+export type SeriesAccent = 'violet' | 'emerald';
+
+export type TrendSeries = {
+  key: string;
+  label: string;
+  accent: SeriesAccent;
+  points: TrendPoint[];
+  /** Unused for bars; kept for API compatibility with the page. */
+  area?: boolean;
+};
+
 type RangeKey = 'week' | 'month' | 'year' | 'all';
 
 const RANGE_DAYS: Record<Exclude<RangeKey, 'all'>, number> = {
@@ -39,9 +56,7 @@ const RANGE_DAYS: Record<Exclude<RangeKey, 'all'>, number> = {
 export type ParityTrendLabels = {
   heading: string;
   ranges: Record<RangeKey, string>;
-  axisRate: string;
-  axisDate: string;
-  tooltipRatio: string; // "{value} / {total}"
+  tooltipRatio: string; // "%value% / %total% …"
   delta: string; // "Δ"
   detailsToggle: string;
   colDate: string;
@@ -51,16 +66,27 @@ export type ParityTrendLabels = {
 };
 
 type Props = {
-  points: TrendPoint[];
+  series: TrendSeries[];
   labels: ParityTrendLabels;
   locale: string;
-  /** Tailwind stroke/fill accent. Defaults to the brand violet. */
-  accent?: 'violet' | 'emerald';
 };
 
-const PAD = { top: 16, right: 16, bottom: 28, left: 44 };
+const PAD = { top: 18, right: 16, bottom: 30, left: 44 };
 const VIEW_W = 720;
 const VIEW_H = 280;
+
+const ACCENTS: Record<SeriesAccent, { fill: string; text: string; dot: string }> = {
+  violet: {
+    fill: 'var(--aster-primary, #7c3aed)',
+    text: 'text-[var(--aster-primary,#7c3aed)]',
+    dot: 'bg-[var(--aster-primary,#7c3aed)]',
+  },
+  emerald: {
+    fill: 'var(--aster-success, #059669)',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    dot: 'bg-emerald-600 dark:bg-emerald-400',
+  },
+};
 
 function fmtPercent(rate: number, locale: string, digits = 1): string {
   return new Intl.NumberFormat(locale, {
@@ -78,70 +104,97 @@ function fmtDate(iso: string, locale: string, opts: Intl.DateTimeFormatOptions):
   }
 }
 
-const ACCENTS = {
-  violet: { stroke: 'var(--aster-primary, #7c3aed)', text: 'text-[var(--aster-primary,#7c3aed)]' },
-  emerald: { stroke: 'var(--aster-success, #059669)', text: 'text-emerald-600 dark:text-emerald-400' },
-} as const;
+type Bar = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  series: TrendSeries;
+  point: TrendPoint;
+};
 
-export function ParityTrendChart({ points, labels, locale, accent = 'violet' }: Props) {
-  const gradId = useId();
+export function ParityTrendChart({ series, labels, locale }: Props) {
+  const clipId = useId();
   const [range, setRange] = useState<RangeKey>('all');
   const [hover, setHover] = useState<number | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  // Sort ascending by time and filter to the chosen window (relative to the
-  // most recent point, so the chart stays meaningful even on stale data).
-  const sorted = useMemo(
-    () => [...points].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp)),
-    [points],
+  const sortedSeries = useMemo(
+    () =>
+      series.map((s) => ({
+        ...s,
+        points: [...s.points].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp)),
+      })),
+    [series],
   );
 
-  const data = useMemo(() => {
-    if (range === 'all' || sorted.length === 0) return sorted;
-    const newest = +new Date(sorted[sorted.length - 1]!.timestamp);
-    const cutoff = newest - RANGE_DAYS[range] * 86_400_000;
-    const filtered = sorted.filter((p) => +new Date(p.timestamp) >= cutoff);
-    // Always keep at least two points so a line can be drawn.
-    return filtered.length >= 2 ? filtered : sorted.slice(-2);
-  }, [sorted, range]);
+  const allTimes = useMemo(
+    () => sortedSeries.flatMap((s) => s.points.map((p) => +new Date(p.timestamp))),
+    [sortedSeries],
+  );
+  const newest = allTimes.length ? Math.max(...allTimes) : 0;
+  const oldest = allTimes.length ? Math.min(...allTimes) : 0;
 
-  const { line, area, coords, ticks } = useMemo(() => {
-    const rates = data.map((d) => d.rate);
-    const lo = Math.min(...rates, 1);
-    const hi = Math.max(...rates, 0);
-    // Magnified band: floor to the nearest 5% below the min, ceil to 100%.
+  const rangedSeries = useMemo(() => {
+    if (range === 'all') return sortedSeries;
+    const cutoff = newest - RANGE_DAYS[range] * 86_400_000;
+    return sortedSeries.map((s) => ({
+      ...s,
+      points: s.points.filter((p) => +new Date(p.timestamp) >= cutoff),
+    }));
+  }, [sortedSeries, range, newest]);
+
+  const { bars, ticks, days, activeSeries } = useMemo(() => {
+    // Categories = the union of all days present in any series, sorted.
+    const dayKeys = Array.from(
+      new Set(rangedSeries.flatMap((s) => s.points.map((p) => p.timestamp.slice(0, 10)))),
+    ).sort();
+
+    // The series that actually have at least one point in range, in order.
+    const liveSeries = rangedSeries.filter((s) => s.points.length > 0);
+
+    const rates = rangedSeries.flatMap((s) => s.points.map((p) => p.rate));
+    if (rates.length === 0 || dayKeys.length === 0) {
+      return { bars: [] as Bar[], ticks: [] as { v: number; y: number }[], days: [] as string[], activeSeries: liveSeries };
+    }
+    const lo = Math.min(...rates);
+    const hi = Math.max(...rates);
     const yLo = Math.max(0, Math.floor((lo - 0.001) * 20) / 20);
     const yHi = Math.min(1, Math.ceil((hi + 0.001) * 20) / 20);
     const span = Math.max(yHi - yLo, 0.05);
 
     const innerW = VIEW_W - PAD.left - PAD.right;
     const innerH = VIEW_H - PAD.top - PAD.bottom;
-    const xOf = (i: number) =>
-      PAD.left + (data.length <= 1 ? innerW / 2 : (i / (data.length - 1)) * innerW);
+    const baseY = PAD.top + innerH;
     const yOf = (r: number) => PAD.top + (1 - (r - yLo) / span) * innerH;
 
-    const pts = data.map((d, i) => ({ x: xOf(i), y: yOf(d.rate), d }));
-    const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    const areaPath =
-      pts.length > 0
-        ? `${linePath} L${pts[pts.length - 1]!.x.toFixed(1)},${(VIEW_H - PAD.bottom).toFixed(1)} ` +
-          `L${pts[0]!.x.toFixed(1)},${(VIEW_H - PAD.bottom).toFixed(1)} Z`
-        : '';
+    // Group geometry: each day is a slot; bars for live series sit side by side.
+    const slotW = innerW / dayKeys.length;
+    const groupPad = Math.min(slotW * 0.22, 14); // gap between day groups
+    const groupW = slotW - groupPad;
+    const n = Math.max(liveSeries.length, 1);
+    const barGap = n > 1 ? Math.min(groupW * 0.12, 6) : 0;
+    const barW = (groupW - barGap * (n - 1)) / n;
 
-    // 4 horizontal gridlines / y ticks.
+    const out: Bar[] = [];
+    dayKeys.forEach((day, di) => {
+      const slotX = PAD.left + di * slotW + groupPad / 2;
+      liveSeries.forEach((s, si) => {
+        const p = s.points.find((pt) => pt.timestamp.slice(0, 10) === day);
+        if (!p) return;
+        const x = slotX + si * (barW + barGap);
+        const y = yOf(p.rate);
+        out.push({ x, y, w: barW, h: Math.max(baseY - y, 1), series: s, point: p });
+      });
+    });
+
     const tickVals = Array.from({ length: 4 }, (_, i) => yLo + (span * i) / 3);
-    return {
-      line: linePath,
-      area: areaPath,
-      coords: pts,
-      ticks: tickVals.map((v) => ({ v, y: yOf(v) })),
-    };
-  }, [data]);
+    const tk = tickVals.map((v) => ({ v, y: yOf(v) }));
+    return { bars: out, ticks: tk, days: dayKeys, activeSeries: liveSeries };
+  }, [rangedSeries]);
 
-  const a = ACCENTS[accent];
-  const active = hover != null ? coords[hover] : undefined;
-
-  if (sorted.length === 0) {
+  const hasAny = sortedSeries.some((s) => s.points.length > 0);
+  if (!hasAny) {
     return (
       <section className="mb-12">
         <h2 className="mb-4 text-xl font-semibold">{labels.heading}</h2>
@@ -154,17 +207,21 @@ export function ParityTrendChart({ points, labels, locale, accent = 'violet' }: 
 
   const availableRanges = (['week', 'month', 'year', 'all'] as RangeKey[]).filter((r) => {
     if (r === 'all') return true;
-    const newest = +new Date(sorted[sorted.length - 1]!.timestamp);
-    const oldest = +new Date(sorted[0]!.timestamp);
-    // Only offer a range if the data actually spans at least ~half of it
-    // (a "week" toggle is pointless if all data is from one day).
     return newest - oldest >= RANGE_DAYS[r] * 86_400_000 * 0.5;
   });
   const ranges = availableRanges.length >= 2 ? availableRanges : (['all'] as RangeKey[]);
 
+  const active = hover != null ? bars[hover] : undefined;
+  // Primary series (first live one) drives the detail table.
+  const primary = activeSeries[0];
+  const primaryRows = primary ? [...primary.points].reverse() : [];
+
+  // x labels: first + last day only, to avoid clutter.
+  const labelDays = days.length <= 1 ? days : [days[0]!, days[days.length - 1]!];
+
   return (
     <section className="mb-12">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="text-xl font-semibold">{labels.heading}</h2>
         {ranges.length > 1 && (
           <div
@@ -198,6 +255,16 @@ export function ParityTrendChart({ points, labels, locale, accent = 'violet' }: 
         )}
       </div>
 
+      {/* legend */}
+      <div className="mb-3 flex flex-wrap gap-4">
+        {activeSeries.map((s) => (
+          <span key={s.key} className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+            <span className={'inline-block h-2.5 w-2.5 rounded-[3px] ' + ACCENTS[s.accent].dot} aria-hidden />
+            {s.label}
+          </span>
+        ))}
+      </div>
+
       <div className="relative rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900 sm:p-5">
         <svg
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -207,13 +274,19 @@ export function ParityTrendChart({ points, labels, locale, accent = 'violet' }: 
           aria-label={labels.heading}
           onMouseLeave={() => setHover(null)}
           onMouseMove={(e) => {
+            if (bars.length === 0) return;
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * VIEW_W;
-            // nearest point by x
+            const y = ((e.clientY - rect.top) / rect.height) * VIEW_H;
+            // nearest bar by horizontal center, tie-broken by vertical proximity
             let best = 0;
             let bestDist = Infinity;
-            for (let i = 0; i < coords.length; i++) {
-              const dist = Math.abs(coords[i]!.x - x);
+            for (let i = 0; i < bars.length; i++) {
+              const b = bars[i]!;
+              const cx = b.x + b.w / 2;
+              const dx = cx - x;
+              const dy = Math.max(0, b.y - y, y - (b.y + b.h));
+              const dist = dx * dx + dy * dy * 0.15;
               if (dist < bestDist) {
                 bestDist = dist;
                 best = i;
@@ -223,10 +296,9 @@ export function ParityTrendChart({ points, labels, locale, accent = 'violet' }: 
           }}
         >
           <defs>
-            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={a.stroke} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={a.stroke} stopOpacity="0" />
-            </linearGradient>
+            <clipPath id={clipId}>
+              <rect x="0" y="0" width={VIEW_W} height={VIEW_H} rx="3" />
+            </clipPath>
           </defs>
 
           {/* y gridlines + labels */}
@@ -251,68 +323,46 @@ export function ParityTrendChart({ points, labels, locale, accent = 'violet' }: 
             </g>
           ))}
 
-          {/* area + line */}
-          <path d={area} fill={`url(#${gradId})`} />
-          <path
-            d={line}
-            fill="none"
-            stroke={a.stroke}
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            className="motion-safe:[stroke-dasharray:1600] motion-safe:[stroke-dashoffset:1600] motion-safe:[animation:parity-draw_900ms_cubic-bezier(0.22,1,0.36,1)_forwards]"
-          />
-
-          {/* latest point marker (always shown) */}
-          {coords.length > 0 && (
-            <circle
-              cx={coords[coords.length - 1]!.x}
-              cy={coords[coords.length - 1]!.y}
-              r="3.5"
-              fill={a.stroke}
-              className="stroke-white dark:stroke-gray-900"
-              strokeWidth="2"
-            />
-          )}
-
-          {/* hover crosshair + point */}
-          {active && (
-            <g>
-              <line
-                x1={active.x}
-                x2={active.x}
-                y1={PAD.top}
-                y2={VIEW_H - PAD.bottom}
-                className="stroke-gray-300 dark:stroke-gray-600"
-                strokeWidth="1"
-                strokeDasharray="3 3"
+          {/* bars */}
+          {bars.map((b, i) => {
+            const isActive = active && active === b;
+            return (
+              <rect
+                key={i}
+                x={b.x}
+                y={b.y}
+                width={b.w}
+                height={b.h}
+                rx={Math.min(b.w / 2, 3)}
+                fill={ACCENTS[b.series.accent].fill}
+                className={
+                  'origin-bottom transition-opacity ' +
+                  (active && !isActive ? 'opacity-55' : 'opacity-100') +
+                  ' motion-safe:[animation:parity-bar-grow_700ms_cubic-bezier(0.22,1,0.36,1)_backwards]'
+                }
+                style={{ animationDelay: `${Math.min(i * 40, 400)}ms`, transformBox: 'fill-box' }}
               />
-              <circle
-                cx={active.x}
-                cy={active.y}
-                r="4.5"
-                fill={a.stroke}
-                className="stroke-white dark:stroke-gray-900"
-                strokeWidth="2"
-              />
-            </g>
-          )}
+            );
+          })}
 
-          {/* x labels: first + last (+ middle when room) */}
-          {coords.length > 0 &&
-            [0, coords.length - 1]
-              .filter((v, i, arr) => arr.indexOf(v) === i)
-              .map((idx) => (
-                <text
-                  key={idx}
-                  x={coords[idx]!.x}
-                  y={VIEW_H - 8}
-                  textAnchor={idx === 0 ? 'start' : 'end'}
-                  className="fill-gray-400 font-mono text-[10px] dark:fill-gray-500"
-                >
-                  {fmtDate(coords[idx]!.d.timestamp, locale, { month: 'short', day: 'numeric' })}
-                </text>
-              ))}
+          {/* x labels: first + last day */}
+          {labelDays.map((day) => {
+            const dayBars = bars.filter((b) => b.point.timestamp.slice(0, 10) === day);
+            if (dayBars.length === 0) return null;
+            const cx = dayBars.reduce((s, b) => s + b.x + b.w / 2, 0) / dayBars.length;
+            const isFirst = day === days[0];
+            return (
+              <text
+                key={day}
+                x={cx}
+                y={VIEW_H - 9}
+                textAnchor={days.length <= 1 ? 'middle' : isFirst ? 'start' : 'end'}
+                className="fill-gray-400 font-mono text-[10px] dark:fill-gray-500"
+              >
+                {fmtDate(dayBars[0]!.point.timestamp, locale, { month: 'short', day: 'numeric' })}
+              </text>
+            );
+          })}
         </svg>
 
         {/* tooltip */}
@@ -320,81 +370,87 @@ export function ParityTrendChart({ points, labels, locale, accent = 'violet' }: 
           <div
             className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-800"
             style={{
-              left: `calc(${(active.x / VIEW_W) * 100}% )`,
+              left: `${((active.x + active.w / 2) / VIEW_W) * 100}%`,
               top: `calc(${(active.y / VIEW_H) * 100}% - 10px)`,
             }}
           >
-            <div className="font-semibold tabular-nums">
-              {fmtDate(active.d.timestamp, locale, { year: 'numeric', month: 'short', day: 'numeric' })}
+            <div className="flex items-center gap-1.5 font-semibold tabular-nums">
+              <span className={'inline-block h-2 w-2 rounded-[3px] ' + ACCENTS[active.series.accent].dot} aria-hidden />
+              {active.series.label}
             </div>
-            <div className={'mt-0.5 text-base font-bold tabular-nums ' + a.text}>
-              {fmtPercent(active.d.rate, locale)}
+            <div className="mt-0.5 text-gray-600 tabular-nums dark:text-gray-300">
+              {fmtDate(active.point.timestamp, locale, { year: 'numeric', month: 'short', day: 'numeric' })}
+            </div>
+            <div className={'mt-0.5 text-base font-bold tabular-nums ' + ACCENTS[active.series.accent].text}>
+              {fmtPercent(active.point.rate, locale)}
             </div>
             <div className="mt-0.5 text-gray-500 tabular-nums dark:text-gray-400">
               {labels.tooltipRatio
-                .replace('%value%', String(active.d.value))
-                .replace('%total%', String(active.d.total))}
+                .replace('%value%', String(active.point.value))
+                .replace('%total%', String(active.point.total))}
             </div>
           </div>
         )}
       </div>
 
-      {/* progressively-disclosed detail table */}
-      <details
-        className="mt-3"
-        open={showDetails}
-        onToggle={(e) => setShowDetails((e.currentTarget as HTMLDetailsElement).open)}
-      >
-        <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
-          {labels.detailsToggle}
-        </summary>
-        <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  {labels.colDate}
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  {labels.colRatio}
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  {labels.colRate}
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  {labels.delta}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {[...data].reverse().map((r, i, arr) => {
-                const prev = arr[i + 1];
-                const delta = prev ? r.rate - prev.rate : null;
-                return (
-                  <tr key={r.timestamp}>
-                    <td className="px-4 py-2 text-sm tabular-nums">
-                      {fmtDate(r.timestamp, locale, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm tabular-nums">
-                      {r.value} / {r.total}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm font-medium tabular-nums">
-                      {fmtPercent(r.rate, locale)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm tabular-nums">
-                      {delta === null
-                        ? '—'
-                        : delta === 0
-                        ? '0'
-                        : (delta > 0 ? '+' : '') + (delta * 100).toFixed(2) + 'pp'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </details>
+      {/* progressively-disclosed detail table (primary series) */}
+      {primary && primary.points.length > 1 && (
+        <details
+          className="mt-3"
+          open={showDetails}
+          onToggle={(e) => setShowDetails((e.currentTarget as HTMLDetailsElement).open)}
+        >
+          <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+            {labels.detailsToggle}
+          </summary>
+          <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    {labels.colDate}
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    {labels.colRatio}
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    {labels.colRate}
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    {labels.delta}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {primaryRows.map((p, i, arr) => {
+                  const prev = arr[i + 1];
+                  const delta = prev ? p.rate - prev.rate : null;
+                  return (
+                    <tr key={p.timestamp}>
+                      <td className="px-4 py-2 text-sm tabular-nums">
+                        {fmtDate(p.timestamp, locale, { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm tabular-nums">
+                        {p.value} / {p.total}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm font-medium tabular-nums">
+                        {fmtPercent(p.rate, locale)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm tabular-nums">
+                        {delta === null
+                          ? '—'
+                          : delta === 0
+                          ? '0'
+                          : (delta > 0 ? '+' : '') + (delta * 100).toFixed(2) + 'pp'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
     </section>
   );
 }

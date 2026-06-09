@@ -2099,6 +2099,8 @@
       "ratio": "Akzeptiert / Gesamt",
       "rate": "Rate",
       "delta": "Δ",
+      "parseSeries": "Parse-Parität",
+      "evalSeries": "Laufzeit-Auswertungsparität",
       "range": { "week": "Woche", "month": "Monat", "year": "Jahr", "all": "Alle" },
       "tooltipRatio": "%value% / %total% akzeptiert",
       "detailsToggle": "Datentabelle anzeigen",
