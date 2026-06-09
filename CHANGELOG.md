@@ -237,6 +237,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -359,6 +360,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Generalize trend chart heading to 'Consistency trend' (#42) *(equivalence)*
 - Thread CSP nonce to JSON-LD script in client component (#37) *(pricing)*
 - Add CSP nonce to JSON-LD script; drop force-static (#36) *(equivalence)*
 - Label public metric as parse-parity, disclose runtime divergences (#35) *(equivalence)*
