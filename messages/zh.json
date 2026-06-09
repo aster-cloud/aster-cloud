@@ -2099,6 +2099,8 @@
       "ratio": "接受 / 总数",
       "rate": "一致率",
       "delta": "Δ",
+      "parseSeries": "解析一致率",
+      "evalSeries": "运行求值一致率",
       "range": { "week": "周", "month": "月", "year": "年", "all": "全部" },
       "tooltipRatio": "接受 %value% / %total%",
       "detailsToggle": "显示数据明细",
