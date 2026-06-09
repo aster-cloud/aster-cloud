@@ -2094,7 +2094,7 @@
       "totalDesc": "Parse-Paritäts-Samples (ohne tier2/tier3)"
     },
     "trend": {
-      "heading": "Verlauf der Parse-Parität",
+      "heading": "Konsistenzverlauf",
       "date": "Datum",
       "ratio": "Akzeptiert / Gesamt",
       "rate": "Rate",

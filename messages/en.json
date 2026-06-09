@@ -2094,7 +2094,7 @@
       "totalDesc": "parse-parity samples (tier2/tier3 excluded)"
     },
     "trend": {
-      "heading": "Parse parity trend",
+      "heading": "Consistency trend",
       "date": "Date",
       "ratio": "Accepted / Total",
       "rate": "Rate",
