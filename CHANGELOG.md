@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Grouped bar trend chart (parse + eval), below hero, daily dedup (#40) *(equivalence)*
 - Interactive parity trend chart ("market ticker" view) (#39) *(equivalence)*
 - Surface runtime eval-parity + replace stale divergence ledger (#38) *(equivalence)*
 - ExtractRuleSymbols recognizes standalone @entry line (aster-lang-core#9) (#33) *(aster)*
@@ -205,6 +206,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
