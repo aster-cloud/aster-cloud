@@ -2085,6 +2085,13 @@
     "currentRate": "解析一致率",
     "measuredOn": "两个引擎都接受的 {equivalent} / {total} 个 Tier 1 样本 — 测量于 {date}",
     "qualifier": "解析层：本指标衡量两个引擎是否都接受同一份源码。运行时输出是否一致由下方的求值一致率单独衡量。两层都公开追踪。",
+    "chips": {
+      "parse": "解析一致",
+      "eval": "运行求值一致",
+      "ir": "IR 字段级一致",
+      "evalCoverage": "求值覆盖",
+      "featureCoverage": "特性覆盖"
+    },
     "stats": {
       "equivalent": "两端均接受",
       "equivalentDesc": "仅解析层，运行时见下方单列",

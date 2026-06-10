@@ -195,7 +195,6 @@ export default async function EquivalencePage({ params }: Props) {
   const t = await getTranslations('equivalencePage');
   const history = await fetchHistory();
   const latest = history[history.length - 1];
-  const initial = history[0];
   // 运行时求值一致率（eval-parity）趋势 — 比 parse 接受率更强的指标。
   const evalHistory = await fetchEvalHistory();
   const evalLatest = evalHistory[evalHistory.length - 1];
@@ -276,6 +275,27 @@ export default async function EquivalencePage({ params }: Props) {
     empty: t('trend.empty'),
   };
 
+  // 五个一致性指标的最新值，组成柱状图下方的指标 chip 行（颜色对齐图例）。
+  const irLatest = irHistory[irHistory.length - 1];
+  const evalCoverageLatest = evalCoverageHistory[evalCoverageHistory.length - 1];
+  const featureCoverageLatest = featureCoverageHistory[featureCoverageHistory.length - 1];
+  const metricChips = [
+    latest && { key: 'parse', accent: 'violet', label: t('chips.parse'), rate: latest.rate, value: latest.equivalent, total: latest.total },
+    evalLatest && { key: 'eval', accent: 'emerald', label: t('chips.eval'), rate: evalLatest.rate, value: evalLatest.identical, total: evalLatest.total },
+    irLatest && { key: 'ir', accent: 'sky', label: t('chips.ir'), rate: irLatest.rate, value: irLatest.value, total: irLatest.total },
+    evalCoverageLatest && { key: 'evalCoverage', accent: 'amber', label: t('chips.evalCoverage'), rate: evalCoverageLatest.rate, value: evalCoverageLatest.value, total: evalCoverageLatest.total },
+    featureCoverageLatest && { key: 'featureCoverage', accent: 'rose', label: t('chips.featureCoverage'), rate: featureCoverageLatest.rate, value: featureCoverageLatest.value, total: featureCoverageLatest.total },
+  ].filter(Boolean) as { key: string; accent: string; label: string; rate: number; value: number; total: number }[];
+
+  // 指标 chip 的左色点 class（与 ParityTrendChart 的 accent 配色一致）。
+  const CHIP_DOT: Record<string, string> = {
+    violet: 'bg-[var(--aster-primary,#7c3aed)]',
+    emerald: 'bg-emerald-600 dark:bg-emerald-400',
+    sky: 'bg-sky-600 dark:bg-sky-400',
+    amber: 'bg-amber-600 dark:bg-amber-400',
+    rose: 'bg-rose-600 dark:bg-rose-400',
+  };
+
   const jsonLd = latest
     ? {
         '@context': 'https://schema.org',
@@ -326,75 +346,37 @@ export default async function EquivalencePage({ params }: Props) {
 
       {latest && (
         <>
-          <section className="mb-12 rounded-2xl bg-gradient-to-br from-primary to-accent p-8 text-white shadow-xl sm:p-12">
-            <p className="text-sm uppercase tracking-wider opacity-80">{t('currentRate')}</p>
-            <p className="mt-2 text-7xl font-bold tabular-nums sm:text-8xl">
-              {formatPercent(latest.rate, locale)}
-            </p>
-            <p className="mt-2 text-sm opacity-90">
-              {t('measuredOn', {
-                equivalent: latest.equivalent,
-                total: latest.total,
-                date: formatTimestamp(latest.timestamp, locale),
-              })}
-            </p>
-            <p className="mt-4 rounded-lg bg-white/15 p-4 text-sm leading-relaxed text-white/95">
-              {t('qualifier')}
-            </p>
-          </section>
-
-          {/* 走势图紧跟 hero——作为页面核心叙事，最先映入眼帘。 */}
+          {/* 核心叙事：走势图最先映入眼帘（五层一致性按天并排）。 */}
           {history.length > 1 && (
             <ParityTrendChart series={trendSeries} labels={trendLabels} locale={locale} />
           )}
 
-          <section className="mb-12 grid gap-6 sm:grid-cols-3">
-            <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                {t('stats.equivalent')}
-              </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">{latest.equivalent}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('stats.equivalentDesc')}</p>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                {t('stats.divergent')}
-              </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">{latest.divergent}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('stats.divergentDesc')}</p>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                {t('stats.total')}
-              </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">{latest.total}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('stats.totalDesc')}</p>
-            </div>
-          </section>
-
-          {evalLatest && (
-            <section className="mb-12">
-              <h2 className="mb-2 text-xl font-semibold">{t('evalParity.heading')}</h2>
-              <p className="mb-4 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
-                {t('evalParity.intro')}
-              </p>
-              <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-6 dark:border-emerald-700 dark:bg-emerald-900/20 sm:p-8">
-                <p className="text-sm uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                  {t('evalParity.rateLabel')}
-                </p>
-                <p className="mt-1 text-5xl font-bold tabular-nums text-emerald-700 dark:text-emerald-300 sm:text-6xl">
-                  {formatPercent(evalLatest.rate, locale)}
-                </p>
-                <p className="mt-2 text-sm text-emerald-800/90 dark:text-emerald-200/90">
-                  {t('evalParity.measuredOn', {
-                    identical: evalLatest.identical,
-                    total: evalLatest.total,
-                    date: formatTimestamp(evalLatest.timestamp, locale),
-                  })}
-                </p>
-              </div>
+          {/* 五个一致性指标的当前快照——一行 chip，颜色对齐图例，替代原先散落的
+              大卡 / 统计小卡 / 绿卡。每个 chip：色点 + 名称 + 率 + 分子/分母。 */}
+          {metricChips.length > 0 && (
+            <section className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {metricChips.map((m) => (
+                <div
+                  key={m.key}
+                  className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${CHIP_DOT[m.accent]}`} />
+                    <p className="truncate text-xs font-medium text-gray-600 dark:text-gray-300">{m.label}</p>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold tabular-nums">{formatPercent(m.rate, locale)}</p>
+                  <p className="mt-0.5 text-xs tabular-nums text-gray-400 dark:text-gray-500">
+                    {m.value} / {m.total}
+                  </p>
+                </div>
+              ))}
             </section>
           )}
+
+          {/* 分层说明：parse 与 eval 的区别（原 hero qualifier 文案，精简保留）。 */}
+          <p className="mb-12 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+            {t('qualifier')}
+          </p>
 
           {resolvedDivergences.length > 0 && (
             <section className="mb-12">
@@ -433,18 +415,6 @@ export default async function EquivalencePage({ params }: Props) {
             </section>
           )}
 
-          {initial && initial.timestamp !== latest.timestamp && (
-            <section className="mb-12 rounded-lg border border-gray-200 bg-gray-50 p-6 text-sm dark:border-gray-700 dark:bg-gray-900">
-              <p>
-                {t('progress', {
-                  initial: formatPercent(initial.rate, locale),
-                  date: formatTimestamp(initial.timestamp, locale),
-                  delta: ((latest.rate - initial.rate) * 100).toFixed(1),
-                  count: history.length,
-                })}
-              </p>
-            </section>
-          )}
         </>
       )}
 

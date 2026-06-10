@@ -2085,6 +2085,13 @@
     "currentRate": "Parse-Paritätsrate",
     "measuredOn": "{equivalent} / {total} Tier-1-Samples, von beiden Engines akzeptiert — gemessen am {date}",
     "qualifier": "Parse-Ebene: Dies misst, ob beide Engines denselben Quelltext akzeptieren. Die Gleichheit der Laufzeit-Ausgabe wird separat als Auswertungsparität gemessen (unten). Beide Ebenen werden offen verfolgt.",
+    "chips": {
+      "parse": "Parse-Parität",
+      "eval": "Laufzeit-Eval-Parität",
+      "ir": "IR-Feldgleichheit",
+      "evalCoverage": "Eval-Abdeckung",
+      "featureCoverage": "Feature-Abdeckung"
+    },
     "stats": {
       "equivalent": "Von beiden akzeptiert",
       "equivalentDesc": "nur Parse-Ebene; Laufzeit separat unten",
