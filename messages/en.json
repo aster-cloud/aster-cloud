@@ -48,9 +48,9 @@
     "docs": "Docs"
   },
   "hero": {
-    "title": "Policy as Code in native language",
+    "title": "Prove every decision came from an approved rule",
     "titleHighlight": "{locales}",
-    "description": "Write business rules in your native language. AI drafts, humans approve, GraalVM executes. Hash-chained audit included.",
+    "description": "Aster Lang lets risk, compliance, and engineering govern executable business rules together — loan approvals, KYC exceptions, claims, access policies. AI drafts, humans approve, two independent engines prove identical execution, and a hash-chained audit makes every decision replayable.",
     "builtOnAsterLang": "Built on the open-source Aster Lang engine. Read the language docs →",
     "noCreditCard": "No credit card required."
   },

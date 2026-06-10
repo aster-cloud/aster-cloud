@@ -262,7 +262,9 @@ function Hero({
           <h1
             className={cn(
               'font-display font-semibold tracking-tighter text-fg',
-              'leading-[1.1] text-[clamp(1.125rem,5.5vw,4.75rem)] whitespace-nowrap',
+              // 收敛后的 title 较长（价值主张句而非短标语），允许自然折行——
+              // 不再用 whitespace-nowrap，否则长句会被 clamp 压成过小字号或溢出。
+              'text-balance leading-[1.1] text-[clamp(1.75rem,4.5vw,3.75rem)]',
             )}
           >
             {t('hero.title')}
