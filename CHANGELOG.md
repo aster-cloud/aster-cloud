@@ -239,6 +239,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -361,6 +362,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Pin trend dates to UTC to stop hydration mismatch (#44) *(equivalence)*
 - Give trend y-axis a floor buffer (#43) *(equivalence)*
 - Generalize trend chart heading to 'Consistency trend' (#42) *(equivalence)*
 - Thread CSP nonce to JSON-LD script in client component (#37) *(pricing)*
