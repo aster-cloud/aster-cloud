@@ -243,6 +243,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -365,6 +366,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Converge hero narrative on provable rule governance (#47) *(landing)*
 - Zero-based trend y-axis so bar height = percentage (#45) *(equivalence)*
 - Pin trend dates to UTC to stop hydration mismatch (#44) *(equivalence)*
 - Give trend y-axis a floor buffer (#43) *(equivalence)*
