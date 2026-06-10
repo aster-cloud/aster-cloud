@@ -177,18 +177,15 @@ export function ParityTrendChart({ series, labels, locale }: Props) {
     if (rates.length === 0 || dayKeys.length === 0) {
       return { bars: [] as Bar[], ticks: [] as { v: number; y: number }[], days: [] as string[], activeSeries: liveSeries };
     }
-    const lo = Math.min(...rates);
-    const hi = Math.max(...rates);
-    const yHi = Math.min(1, Math.ceil((hi + 0.001) * 20) / 20);
-    // Magnified y-axis (zooms into the high band so a 92.9%→100% climb is
-    // legible) BUT with a floor buffer: the lowest value must not sit flush at
-    // the bottom, or a real-but-lower bar (e.g. feature coverage 90.7% next to
-    // four 100% bars) reads as ~zero. Pick yLo so the lowest bar fills ≥35% of
-    // the axis: from (lo - yLo)/(yHi - yLo) ≥ 0.35 → yLo ≤ (lo - 0.35·yHi)/0.65.
-    // Snap down to a 5% tick and clamp to [0, lo).
-    const yLoTarget = (lo - 0.35 * yHi) / 0.65;
-    const yLo = Math.max(0, Math.min(Math.floor((lo - 0.001) * 20) / 20, Math.floor(yLoTarget * 20) / 20));
-    const span = Math.max(yHi - yLo, 0.05);
+    // Zero-based y-axis: a bar's height is the percentage directly. These are
+    // coverage/parity *rates*, and the intuitive reading of "90.7%" is "almost
+    // full" — a magnified axis (e.g. 85–100%) makes a 90.7% bar look under half,
+    // which misleads. On a 0–100% axis the near-100% bars sit almost level and
+    // accurately say "all close to full". (A magnified axis once helped show the
+    // 92.9%→100% parse climb, but that climb is historical — now all at 100%.)
+    const yLo = 0;
+    const yHi = 1;
+    const span = yHi - yLo;
 
     const innerW = VIEW_W - PAD.left - PAD.right;
     const innerH = VIEW_H - PAD.top - PAD.bottom;
@@ -215,7 +212,8 @@ export function ParityTrendChart({ series, labels, locale }: Props) {
       });
     });
 
-    const tickVals = Array.from({ length: 4 }, (_, i) => yLo + (span * i) / 3);
+    // Even gridlines at 0 / 25 / 50 / 75 / 100% (the axis is fixed 0–100%).
+    const tickVals = [0, 0.25, 0.5, 0.75, 1];
     const tk = tickVals.map((v) => ({ v, y: yOf(v) }));
     return { bars: out, ticks: tk, days: dayKeys, activeSeries: liveSeries };
   }, [rangedSeries]);
