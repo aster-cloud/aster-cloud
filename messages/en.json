@@ -2085,6 +2085,13 @@
     "currentRate": "Parse parity rate",
     "measuredOn": "{equivalent} / {total} Tier 1 samples accepted by both engines — measured {date}",
     "qualifier": "Parse-level: this measures whether both engines accept the same source. Runtime output equality is measured separately as eval parity (below). Both layers are tracked openly.",
+    "chips": {
+      "parse": "Parse parity",
+      "eval": "Runtime eval parity",
+      "ir": "IR field-level parity",
+      "evalCoverage": "Eval coverage",
+      "featureCoverage": "Feature coverage"
+    },
     "stats": {
       "equivalent": "Accepted by both",
       "equivalentDesc": "parse-level; runtime shown separately below",
