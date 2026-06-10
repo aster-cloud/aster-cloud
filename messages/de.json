@@ -48,9 +48,9 @@
     "docs": "Docs"
   },
   "hero": {
-    "title": "Policy as Code in der Muttersprache",
+    "title": "Beweisen Sie, dass jede Entscheidung aus einer genehmigten Regel stammt",
     "titleHighlight": "{locales}",
-    "description": "Schreiben Sie Geschäftsregeln in Ihrer Muttersprache. KI entwirft, Menschen genehmigen, GraalVM führt aus. Manipulationssicheres Audit inklusive.",
+    "description": "Aster Lang lässt Risk, Compliance und Engineering ausführbare Geschäftsregeln gemeinsam steuern — Kreditzusagen, KYC-Ausnahmen, Schadensfälle, Zugriffsrichtlinien. KI entwirft, Menschen genehmigen, zwei unabhängige Engines beweisen identische Ausführung, und ein hash-verkettetes Audit macht jede Entscheidung wiederholbar.",
     "builtOnAsterLang": "Aufgebaut auf der Open-Source-Engine Aster Lang. Sprach-Dokumentation lesen →",
     "noCreditCard": "Keine Kreditkarte erforderlich."
   },
