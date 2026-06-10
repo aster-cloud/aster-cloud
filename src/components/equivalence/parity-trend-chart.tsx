@@ -113,7 +113,12 @@ function fmtPercent(rate: number, locale: string, digits = 1): string {
 
 function fmtDate(iso: string, locale: string, opts: Intl.DateTimeFormatOptions): string {
   try {
-    return new Intl.DateTimeFormat(locale, opts).format(new Date(iso));
+    // Pin to UTC. The timestamps are UTC ISO strings; without an explicit
+    // timeZone, Intl uses the runtime zone — UTC on the server (Cloudflare
+    // Workers) but the visitor's local zone in the browser — which makes the
+    // SSR and CSR date text differ and triggers a hydration mismatch
+    // (React #418). Formatting in UTC keeps both renders identical.
+    return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...opts }).format(new Date(iso));
   } catch {
     return iso;
   }

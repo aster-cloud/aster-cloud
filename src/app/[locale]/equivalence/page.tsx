@@ -177,7 +177,10 @@ function formatPercent(n: number, locale: string): string {
 
 function formatTimestamp(iso: string, locale: string): string {
   try {
-    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso));
+    // UTC: timestamps are UTC ISO strings; pin the zone so the rendered date is
+    // stable and matches the chart's UTC-formatted labels (and avoids any
+    // server/client zone drift).
+    return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', dateStyle: 'medium' }).format(new Date(iso));
   } catch {
     return iso;
   }
