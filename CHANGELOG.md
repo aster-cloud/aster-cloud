@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Minimal dashboard — chart + 5-metric chip row (#46) *(equivalence)*
 - Chart all five consistency metrics (#41) *(equivalence)*
 - Grouped bar trend chart (parse + eval), below hero, daily dedup (#40) *(equivalence)*
 - Interactive parity trend chart ("market ticker" view) (#39) *(equivalence)*
@@ -207,6 +208,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
