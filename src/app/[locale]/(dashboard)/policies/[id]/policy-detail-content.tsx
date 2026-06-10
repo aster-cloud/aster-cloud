@@ -27,6 +27,8 @@ interface Policy {
   createdAt: string;
   updatedAt: string;
   versions: PolicyVersion[];
+  // 冻结：套餐降级超限后该策略只读（不可执行/编辑），与列表页一致。
+  isFrozen: boolean;
   _count: {
     executions: number;
   };
@@ -57,6 +59,14 @@ interface Translations {
     description: string;
     confirm: string;
     cancel: string;
+  };
+  freeze: {
+    badge: string;
+    title: string;
+    message: string;
+    cannotExecute: string;
+    cannotEdit: string;
+    upgradeLink: string;
   };
 }
 
@@ -124,18 +134,40 @@ export function PolicyDetailContent({
           )}
         </div>
         <div className="mt-4 md:mt-0 flex space-x-3">
-          <Link
-            href={`/${locale}/policies/${policy.id}/execute`}
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
-          >
-            {t.executeAction}
-          </Link>
-          <Link
-            href={`/${locale}/policies/${policy.id}/edit`}
-            className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-bg-subtle"
-          >
-            {t.edit}
-          </Link>
+          {/* 冻结策略只读：Execute/Edit 渲染为禁用态（与列表页一致）；
+              Delete 仍允许——删除是用户解除冻结（降到限额内）的途径。 */}
+          {policy.isFrozen ? (
+            <span
+              className="inline-flex items-center rounded-md bg-bg-muted px-3 py-2 text-sm font-semibold text-fg-subtle cursor-not-allowed select-none"
+              aria-disabled="true"
+              title={t.freeze.cannotExecute}
+            >
+              {t.executeAction}
+            </span>
+          ) : (
+            <Link
+              href={`/${locale}/policies/${policy.id}/execute`}
+              className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+            >
+              {t.executeAction}
+            </Link>
+          )}
+          {policy.isFrozen ? (
+            <span
+              className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg-subtle shadow-sm ring-1 ring-inset ring-gray-300 cursor-not-allowed select-none"
+              aria-disabled="true"
+              title={t.freeze.cannotEdit}
+            >
+              {t.edit}
+            </span>
+          ) : (
+            <Link
+              href={`/${locale}/policies/${policy.id}/edit`}
+              className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-bg-subtle"
+            >
+              {t.edit}
+            </Link>
+          )}
           <button
             onClick={handleDeleteClick}
             className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
@@ -144,6 +176,34 @@ export function PolicyDetailContent({
           </button>
         </div>
       </div>
+
+      {/* 冻结横幅：套餐降级超限后该策略只读，引导升级 */}
+      {policy.isFrozen && (
+        <div className="mb-6 rounded-md bg-amber-50 ring-1 ring-amber-200 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-semibold text-amber-800">
+                {t.freeze.title}
+                <span className="ml-2 inline-flex items-center rounded-full bg-amber-200 px-2 py-0.5 text-xs font-medium text-amber-900">
+                  {t.freeze.badge}
+                </span>
+              </h3>
+              <p className="mt-1 text-sm text-amber-700">{t.freeze.message}</p>
+              <Link
+                href={`/${locale}/billing`}
+                className="mt-2 inline-block text-sm font-medium text-amber-800 underline hover:text-amber-900"
+              >
+                {t.freeze.upgradeLink} →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4 mb-6">

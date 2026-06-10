@@ -132,15 +132,46 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
     }
 
-    // 阶段3：乐观执行 - 尽早启动 API 调用
-    const executionPromise = executePolicyUnified({
-      policy: policy as Parameters<typeof executePolicyUnified>[0]['policy'],
-      input: validatedInput,
-      userId,
-      tenantId: policy.teamId || policy.userId,
-    });
+    // 团队成员权限检查（仅非所有者）
+    if (!isOwner && policy.teamId) {
+      const permCheck = await checkTeamPermission(userId, policy.teamId, TeamPermission.POLICY_EXECUTE);
+      if (!permCheck.allowed) {
+        return NextResponse.json({ error: permCheck.error }, { status: permCheck.status });
+      }
+    }
 
-    // 配额检查
+    // 策略冻结检查：冻结取决于「策略所有者」的套餐限制，与调用者是否为所有者无关。
+    // 所有者套餐降级后超限的策略同样被冻结——所有者执行自己的冻结策略也必须拦截。
+    // 旧实现把此检查放在 if(!isOwner) 内，导致所有者可执行自己的冻结策略（越权点）。
+    // 冻结是「策略状态」级拦截，须先于用量配额检查——避免对一个根本不可运行的
+    // 冻结策略报「配额超限(429)」误导用户，正确语义是「策略已冻结(403)」。
+    const ownerData = await db.query.users.findFirst({
+      where: eq(users.id, policy.userId),
+      columns: { plan: true, trialEndsAt: true },
+    });
+    if (ownerData) {
+      const ownerPlan: PlanType = (ownerData.plan && ownerData.plan in PLANS ? ownerData.plan : 'free') as PlanType;
+      const ownerTrialExpired = ownerPlan === 'trial' && ownerData.trialEndsAt && ownerData.trialEndsAt < new Date();
+      const ownerEffectivePlan: PlanType = ownerTrialExpired ? 'free' : ownerPlan;
+      const ownerPolicyLimit = PLANS[ownerEffectivePlan].limits.policies;
+
+      if (ownerPolicyLimit !== -1) {
+        const activePolicies = await db.query.policies.findMany({
+          where: eq(policies.userId, policy.userId),
+          orderBy: [desc(policies.updatedAt), asc(policies.id)],
+          limit: ownerPolicyLimit,
+          columns: { id: true },
+        });
+        if (!activePolicies.some(p => p.id === id)) {
+          return NextResponse.json(
+            { error: 'Policy is frozen', message: `This policy is frozen because the owner's plan limit has been exceeded.`, frozen: true },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // 配额检查（调用者自身用量）
     const rawPlan = userData?.plan;
     const plan: PlanType = (rawPlan && rawPlan in PLANS ? rawPlan : 'free') as PlanType;
     const trialExpired = plan === 'trial' && userData?.trialEndsAt && userData.trialEndsAt < new Date();
@@ -169,45 +200,15 @@ export async function POST(req: Request, { params }: RouteParams) {
       );
     }
 
-    // 仅非所有者需要额外检查
-    if (!isOwner) {
-      if (policy.teamId) {
-        const permCheck = await checkTeamPermission(userId, policy.teamId, TeamPermission.POLICY_EXECUTE);
-        if (!permCheck.allowed) {
-          return NextResponse.json({ error: permCheck.error }, { status: permCheck.status });
-        }
-      }
-
-      const ownerData = await db.query.users.findFirst({
-        where: eq(users.id, policy.userId),
-        columns: { plan: true, trialEndsAt: true },
-      });
-
-      if (ownerData) {
-        const ownerPlan: PlanType = (ownerData.plan && ownerData.plan in PLANS ? ownerData.plan : 'free') as PlanType;
-        const ownerTrialExpired = ownerPlan === 'trial' && ownerData.trialEndsAt && ownerData.trialEndsAt < new Date();
-        const ownerEffectivePlan: PlanType = ownerTrialExpired ? 'free' : ownerPlan;
-        const ownerPolicyLimit = PLANS[ownerEffectivePlan].limits.policies;
-
-        if (ownerPolicyLimit !== -1) {
-          const activePolicies = await db.query.policies.findMany({
-            where: eq(policies.userId, policy.userId),
-            orderBy: [desc(policies.updatedAt), asc(policies.id)],
-            limit: ownerPolicyLimit,
-            columns: { id: true },
-          });
-          if (!activePolicies.some(p => p.id === id)) {
-            return NextResponse.json(
-              { error: 'Policy is frozen', message: `This policy is frozen because the owner's plan limit has been exceeded.`, frozen: true },
-              { status: 403 }
-            );
-          }
-        }
-      }
-    }
-
-    // 阶段4：等待乐观执行结果
-    const executionResult = await executionPromise;
+    // 阶段3+4：所有门（权限/冻结/配额）通过后才真正执行策略。
+    // 旧实现「乐观执行」在门检查之前就调后端 evaluateSource，导致即使返回
+    // 403/429，策略已在后端执行一次——冻结策略必须零执行。
+    const executionResult = await executePolicyUnified({
+      policy: policy as Parameters<typeof executePolicyUnified>[0]['policy'],
+      input: validatedInput,
+      userId,
+      tenantId: policy.teamId || policy.userId,
+    });
     const primaryError = getPrimaryError(executionResult);
     const durationMs = Date.now() - startTime;
 

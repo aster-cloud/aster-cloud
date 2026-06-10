@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db, policies } from '@/lib/prisma';
 import { eq, and } from 'drizzle-orm';
+import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { EditPolicyContent } from './edit-policy-content';
 
 interface PageProps {
@@ -32,6 +33,13 @@ export default async function EditPolicyPage({ params }: PageProps) {
 
   if (!policyData) {
     notFound();
+  }
+
+  // 冻结策略只读：套餐降级超限后该策略被冻结，不可编辑。
+  // 入口处服务端拦截，避免用户进编辑器改完后才在保存时被 API 403 拒绝。
+  const freeze = await isPolicyFrozen(session.user.id, id);
+  if (freeze.isFrozen) {
+    redirect(`/${locale}/policies/${id}?frozen=1`);
   }
 
   // 序列化策略数据
