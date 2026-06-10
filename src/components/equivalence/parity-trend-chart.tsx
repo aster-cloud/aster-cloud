@@ -174,8 +174,15 @@ export function ParityTrendChart({ series, labels, locale }: Props) {
     }
     const lo = Math.min(...rates);
     const hi = Math.max(...rates);
-    const yLo = Math.max(0, Math.floor((lo - 0.001) * 20) / 20);
     const yHi = Math.min(1, Math.ceil((hi + 0.001) * 20) / 20);
+    // Magnified y-axis (zooms into the high band so a 92.9%→100% climb is
+    // legible) BUT with a floor buffer: the lowest value must not sit flush at
+    // the bottom, or a real-but-lower bar (e.g. feature coverage 90.7% next to
+    // four 100% bars) reads as ~zero. Pick yLo so the lowest bar fills ≥35% of
+    // the axis: from (lo - yLo)/(yHi - yLo) ≥ 0.35 → yLo ≤ (lo - 0.35·yHi)/0.65.
+    // Snap down to a 5% tick and clamp to [0, lo).
+    const yLoTarget = (lo - 0.35 * yHi) / 0.65;
+    const yLo = Math.max(0, Math.min(Math.floor((lo - 0.001) * 20) / 20, Math.floor(yLoTarget * 20) / 20));
     const span = Math.max(yHi - yLo, 0.05);
 
     const innerW = VIEW_W - PAD.left - PAD.right;
