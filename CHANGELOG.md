@@ -244,6 +244,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Introduce route ownership contract (Phase 1) *(adr)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -366,6 +367,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Frozen policy was still executable by its owner + UI let users in (#49) *(policy)*
 - Converge hero narrative on provable rule governance (#47) *(landing)*
 - Zero-based trend y-axis so bar height = percentage (#45) *(equivalence)*
 - Pin trend dates to UTC to stop hydration mismatch (#44) *(equivalence)*
