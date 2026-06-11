@@ -52,6 +52,7 @@
     "titleHighlight": "{locales}",
     "description": "监管或客户问起某笔决策怎么来的，调出当时的规则和数据，重算出一模一样的结果——不是翻一条日志，是还原真正的答案。两个独立引擎逐字节证明执行一致，哈希链审计让记录不可篡改，AI 起草、人工审批。适用于贷款准入、KYC 例外、理赔与访问策略。",
     "builtOnAsterLang": "基于开源 Aster Lang 引擎构建。查看语言文档 →",
+    "tryDemo": "回放一笔真实的信贷决策",
     "noCreditCard": "无需信用卡。"
   },
   "cnlDemo": {
@@ -146,6 +147,7 @@
     "terms": "服务条款",
     "documentation": "文档",
     "support": "支持",
+    "demo": "在线演示",
     "equivalence": "引擎等价性",
     "copyright": "版权所有。"
   },
@@ -2071,6 +2073,48 @@
       "body": "Pro 支持邀请团队成员、按角色分配权限。升级 Pro 即可加人。"
     },
     "contactAdmin": "联系管理员"
+  },
+  "demoPage": {
+    "seo": {
+      "title": "回放一笔信贷决策 — Aster Lang 演示",
+      "description": "端到端看一遍：一条真实的贷款准入规则、一个样例申请人、决策结果，以及一份你能给监管看的逐字节回放。无需注册。"
+    },
+    "eyebrow": "实时演示 · 信贷风控",
+    "title": "回放一笔信贷决策",
+    "subtitle": "选一个申请人，看决策结果，再回放它究竟是怎么算出来的——这是你给监管的答案，不是现场猜。",
+    "step1": {
+      "title": "信贷规则",
+      "hint": "用受控自然语言写成——风控和合规都读得懂，不只是工程师。每一笔申请都由这条规则决定。"
+    },
+    "step2": {
+      "title": "选一个申请人",
+      "hint": "三个真实案例：干净的批准、边界的转人工、以及一笔拒绝。"
+    },
+    "step3": {
+      "title": "决策结果"
+    },
+    "step4": {
+      "title": "回放这笔决策",
+      "auditorNote": "这就是你递给审计员的东西。导向这笔决策的每一步，都从当时的规则和输入重新算出——不是一条日志，是真正的路径。"
+    },
+    "scenarios": {
+      "approved": { "label": "优质申请人" },
+      "refer": { "label": "边界案例" },
+      "declined": { "label": "低于门槛" }
+    },
+    "fields": {
+      "creditScore": "信用评分",
+      "monthlyIncome": "月收入",
+      "monthlyDebt": "月负债",
+      "requestedAmount": "申请额度"
+    },
+    "decisionLabel": "决策",
+    "replayButton": "回放这笔决策",
+    "cta": {
+      "title": "带上你自己的信贷规则",
+      "subtitle": "把真实的贷款准入或额度规则跑进 Aster，回放任意一笔决策。免费开始。",
+      "button": "免费开始"
+    }
   },
   "equivalencePage": {
     "seo": {
