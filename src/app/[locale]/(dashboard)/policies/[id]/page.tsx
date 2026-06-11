@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import { db, policies, executions } from '@/lib/prisma';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
+import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { PolicyDetailContent } from './policy-detail-content';
 
 // 服务端数据获取
@@ -66,6 +67,10 @@ export default async function PolicyDetailPage({
     notFound();
   }
 
+  // 冻结状态：套餐降级超限后该策略只读（不可执行/编辑）。
+  // 详情页据此禁用按钮并展示冻结横幅，与列表页一致。
+  const freeze = await isPolicyFrozen(session.user.id, id);
+
   const t = await getTranslations('policies');
 
   // 预渲染翻译字符串
@@ -95,11 +100,23 @@ export default async function PolicyDetailPage({
       confirm: t('deleteDialog.confirm'),
       cancel: t('deleteDialog.cancel'),
     },
+    freeze: {
+      badge: t('freeze.badge'),
+      title: t('freeze.title'),
+      message: t('freeze.message', {
+        frozen: freeze.frozenCount,
+        total: freeze.totalPolicies,
+        limit: freeze.activePoliciesLimit,
+      }),
+      cannotExecute: t('freeze.cannotExecute'),
+      cannotEdit: t('freeze.cannotEdit'),
+      upgradeLink: t('freeze.upgradeLink'),
+    },
   };
 
   return (
     <PolicyDetailContent
-      policy={policy}
+      policy={{ ...policy, isFrozen: freeze.isFrozen }}
       translations={translations}
       locale={locale}
     />

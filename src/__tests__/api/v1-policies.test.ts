@@ -499,7 +499,7 @@ describe('V1 Policies API - Drizzle Migration', () => {
         policy_team_id: null,
         is_team_member: false,
       });
-      // Owner has free plan (limit=3) but target policy not in active set
+      // Owner has free plan but target policy not in active set
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'free' }));
       vi.mocked(db.query.policies.findMany).mockResolvedValue([
         mockPolicy({ id: 'p-active-1' }), mockPolicy({ id: 'p-active-2' }), mockPolicy({ id: 'p-active-3' }),
@@ -514,6 +514,36 @@ describe('V1 Policies API - Drizzle Migration', () => {
 
       expect(response.status).toBe(403);
       expect(body.frozen).toBe(true);
+    });
+
+    // 回归测试：所有者执行自己的冻结策略也必须被拦截。
+    // 旧实现把冻结检查放在 if(!isOwner) 内，所有者越权执行自己的冻结策略。
+    it('should return 403 when OWNER executes their own frozen policy', async () => {
+      // caller === owner (user-1)，所有者套餐降级到 free 后该策略超限被冻结
+      setupExecuteRow({
+        policy_user_id: 'user-1',
+        policy_is_public: false,
+        policy_team_id: null,
+        is_team_member: false,
+        user_plan: 'free',
+      });
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser({ plan: 'free' }));
+      vi.mocked(db.query.policies.findMany).mockResolvedValue([
+        mockPolicy({ id: 'p-active-1' }), mockPolicy({ id: 'p-active-2' }), mockPolicy({ id: 'p-active-3' }),
+        // 'p1' 不在活跃列表 → 冻结
+      ]);
+      mockExecutePolicyUnified.mockResolvedValue(mockExecutionResult());
+
+      const response = await POST(
+        makeRequest('http://localhost/api/v1/policies/p1/execute', 'POST', validBody),
+        mockParams
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(body.frozen).toBe(true);
+      // 冻结策略必须零执行：门拦截发生在调用后端执行之前
+      expect(mockExecutePolicyUnified).not.toHaveBeenCalled();
     });
 
     it('should return 500 on internal error', async () => {
