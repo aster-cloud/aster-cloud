@@ -38,9 +38,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aster Cloud — Replay any decision",
-  description: "Replay any rule-based decision: pull the exact rules and data from that moment and recompute the identical result. Two independent engines prove execution byte-for-byte; a hash-chained audit makes it tamper-evident. For loan approvals, KYC, claims, and access policies.",
-  keywords: ["decision replay", "auditable decisions", "explainable rules", "business rules", "compliance", "policy management", "decision audit"],
+  title: "Aster Cloud — Replay any credit decision",
+  description: "Explainable credit-risk decisioning. Replay any loan-approval or limit decision: pull the exact rules and data from that moment and recompute the identical result — proof for regulators, not a guess. Two independent engines verify execution byte-for-byte; a hash-chained audit makes it tamper-evident; rules are versioned and approval-governed.",
+  keywords: ["credit risk decisioning", "explainable lending decisions", "loan approval rules", "decision replay", "auditable credit decisions", "model governance", "regulatory explainability", "credit policy management"],
 };
 
 // P1-R19: viewport meta — without this mobile browsers render at 980px

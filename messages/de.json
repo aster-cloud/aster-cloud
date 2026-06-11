@@ -77,7 +77,7 @@
     }
   },
   "features": {
-    "title": "Gemacht für regelkonformen Policy-Betrieb",
+    "title": "Gemacht für Kreditrisiko-Entscheidungen",
     "nativeLanguage": {
       "title": "CNL in Muttersprache",
       "description": "Regeln auf English, 中文 oder Deutsch — identische Semantik über alle drei Lexikon-Pakete."
@@ -138,8 +138,8 @@
     }
   },
   "cta": {
-    "title": "Bereit, Ihre Richtlinienverwaltung zu vereinfachen?",
-    "description": "Schließen Sie sich Tausenden von Unternehmen an, die Aster Cloud zur Verwaltung ihrer Geschäftsrichtlinien nutzen."
+    "title": "Testen Sie Ihre Kreditregeln mit Aster — kostenlos",
+    "description": "Bringen Sie eine echte Kreditzusage- oder Limit-Regel mit. Wir zeigen Ihnen die komplette Kette: Regel genehmigen, Version festschreiben, ausführen und jede Entscheidung für einen Prüfer abspielen. Keine Kreditkarte."
   },
   "footer": {
     "privacy": "Datenschutz",
