@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Interactive credit-risk decision-replay demo at /demo (#52) *(demo)*
 - Verticalize for credit-risk decisioning + honest CTA (#51) *(landing)*
 - Reposition hero around "Replay any decision" (#50) *(landing)*
 - Minimal dashboard — chart + 5-metric chip row (#46) *(equivalence)*
@@ -210,6 +211,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
