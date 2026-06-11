@@ -77,7 +77,7 @@
     }
   },
   "features": {
-    "title": "为合规策略运营而生",
+    "title": "为信贷风控决策而生",
     "nativeLanguage": {
       "title": "母语 CNL",
       "description": "用 English / 中文 / Deutsch 任意一种撰写规则——三套词典语义完全一致。"
@@ -138,8 +138,8 @@
     }
   },
   "cta": {
-    "title": "准备好简化您的策略管理了吗？",
-    "description": "加入数千家使用 Aster Cloud 管理业务策略的公司。"
+    "title": "免费把你的信贷规则跑一遍",
+    "description": "带一条真实的贷款准入或额度规则来，我们演示完整链路：规则审批、版本固化、执行、再向审计员回放任意一笔决策。无需信用卡。"
   },
   "footer": {
     "privacy": "隐私政策",

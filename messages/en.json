@@ -77,7 +77,7 @@
     }
   },
   "features": {
-    "title": "Built for compliant policy operations",
+    "title": "Built for credit-risk decisioning",
     "nativeLanguage": {
       "title": "Native-language CNL",
       "description": "Write rules in English, 中文, or Deutsch — same semantics across all three lexicon packs."
@@ -138,8 +138,8 @@
     }
   },
   "cta": {
-    "title": "Ready to simplify your policy management?",
-    "description": "Join thousands of companies using Aster Cloud to manage their business policies."
+    "title": "Run your credit rules through Aster — free",
+    "description": "Bring a real loan-approval or limit rule. We'll show you the full chain: approve the rule, pin the version, execute, and replay any decision for an auditor. No credit card."
   },
   "footer": {
     "privacy": "Privacy",
