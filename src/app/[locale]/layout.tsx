@@ -38,9 +38,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aster Cloud - Policy Management Platform",
-  description: "Commercial SaaS platform for Aster policy management with PII protection and compliance monitoring.",
-  keywords: ["policy management", "PII protection", "compliance", "GDPR", "business rules"],
+  title: "Aster Cloud — Replay any decision",
+  description: "Replay any rule-based decision: pull the exact rules and data from that moment and recompute the identical result. Two independent engines prove execution byte-for-byte; a hash-chained audit makes it tamper-evident. For loan approvals, KYC, claims, and access policies.",
+  keywords: ["decision replay", "auditable decisions", "explainable rules", "business rules", "compliance", "policy management", "decision audit"],
 };
 
 // P1-R19: viewport meta — without this mobile browsers render at 980px

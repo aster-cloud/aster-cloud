@@ -48,9 +48,9 @@
     "docs": "Docs"
   },
   "hero": {
-    "title": "Prove every decision came from an approved rule",
+    "title": "Replay any decision.",
     "titleHighlight": "{locales}",
-    "description": "Aster Lang lets risk, compliance, and engineering govern executable business rules together — loan approvals, KYC exceptions, claims, access policies. AI drafts, humans approve, two independent engines prove identical execution, and a hash-chained audit makes every decision replayable.",
+    "description": "When a regulator or customer asks how a decision was made, pull the exact rules and data from that moment and recompute the identical result — not a log entry, the real answer. Two independent engines prove the execution byte-for-byte, a hash-chained audit makes it tamper-evident, and AI drafts while humans approve. For loan approvals, KYC exceptions, claims, and access policies.",
     "builtOnAsterLang": "Built on the open-source Aster Lang engine. Read the language docs →",
     "noCreditCard": "No credit card required."
   },
