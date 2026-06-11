@@ -35,6 +35,14 @@
       "locales": "all"
     },
     {
+      "path": "/demo",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/demo/page.tsx",
+      "locales": "all",
+      "notes": "Interactive credit-risk decision-replay demo (sales)"
+    },
+    {
       "path": "/privacy",
       "status": "canonical-here",
       "owner": "legal",
