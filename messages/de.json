@@ -52,6 +52,7 @@
     "titleHighlight": "{locales}",
     "description": "Wenn eine Aufsichtsbehörde oder ein Kunde fragt, wie eine Entscheidung zustande kam, holen Sie die exakten Regeln und Daten von damals zurück und berechnen das identische Ergebnis erneut — kein Log-Eintrag, die echte Antwort. Zwei unabhängige Engines beweisen die Ausführung Byte für Byte, ein hash-verkettetes Audit macht sie manipulationssicher, und KI entwirft, während Menschen genehmigen. Für Kreditzusagen, KYC-Ausnahmen, Schadensfälle und Zugriffsrichtlinien.",
     "builtOnAsterLang": "Aufgebaut auf der Open-Source-Engine Aster Lang. Sprach-Dokumentation lesen →",
+    "tryDemo": "Eine echte Kreditentscheidung abspielen",
     "noCreditCard": "Keine Kreditkarte erforderlich."
   },
   "cnlDemo": {
@@ -146,6 +147,7 @@
     "terms": "AGB",
     "documentation": "Dokumentation",
     "support": "Support",
+    "demo": "Live-Demo",
     "equivalence": "Engine-Äquivalenz",
     "copyright": "Alle Rechte vorbehalten."
   },
@@ -2071,6 +2073,48 @@
       "body": "Pro ermöglicht das Einladen von Teamkollegen mit rollenbasierter Zugriffskontrolle. Upgraden Sie, um Mitglieder hinzuzufügen."
     },
     "contactAdmin": "Administrator kontaktieren"
+  },
+  "demoPage": {
+    "seo": {
+      "title": "Eine Kreditentscheidung abspielen — Aster-Lang-Demo",
+      "description": "End-to-end: eine echte Kreditzusage-Regel, ein Beispielantragsteller, die Entscheidung und eine Byte-für-Byte-Wiederholung, die Sie einer Aufsichtsbehörde zeigen können. Ohne Anmeldung."
+    },
+    "eyebrow": "Live-Demo · Kreditrisiko",
+    "title": "Eine Kreditentscheidung abspielen",
+    "subtitle": "Wählen Sie einen Antragsteller, sehen Sie die Entscheidung und spielen Sie dann genau ab, wie sie zustande kam — die Antwort für eine Aufsichtsbehörde, kein Raten.",
+    "step1": {
+      "title": "Die Kreditregel",
+      "hint": "In kontrolliertem Klartext geschrieben — lesbar für Risk und Compliance, nicht nur für Entwickler. Diese Regel entscheidet über jeden Antrag."
+    },
+    "step2": {
+      "title": "Antragsteller wählen",
+      "hint": "Drei reale Fälle: eine klare Zusage, ein Grenzfall zur manuellen Prüfung und eine Ablehnung."
+    },
+    "step3": {
+      "title": "Die Entscheidung"
+    },
+    "step4": {
+      "title": "Diese Entscheidung abspielen",
+      "auditorNote": "Das übergeben Sie einem Prüfer. Jeder Schritt, der zur Entscheidung führte, neu berechnet aus der exakten Regel und den Eingaben — kein Log-Eintrag, der echte Pfad."
+    },
+    "scenarios": {
+      "approved": { "label": "Starker Antragsteller" },
+      "refer": { "label": "Grenzfall" },
+      "declined": { "label": "Unter dem Schwellenwert" }
+    },
+    "fields": {
+      "creditScore": "Kreditwürdigkeit",
+      "monthlyIncome": "Monatliches Einkommen",
+      "monthlyDebt": "Monatliche Schulden",
+      "requestedAmount": "Beantragter Betrag"
+    },
+    "decisionLabel": "Entscheidung",
+    "replayButton": "Diese Entscheidung abspielen",
+    "cta": {
+      "title": "Bringen Sie Ihre eigenen Kreditregeln mit",
+      "subtitle": "Führen Sie eine echte Kreditzusage- oder Limit-Regel durch Aster und spielen Sie jede Entscheidung ab. Kostenlos starten.",
+      "button": "Kostenlos starten"
+    }
   },
   "equivalencePage": {
     "seo": {

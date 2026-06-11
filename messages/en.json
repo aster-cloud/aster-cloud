@@ -52,6 +52,7 @@
     "titleHighlight": "{locales}",
     "description": "When a regulator or customer asks how a decision was made, pull the exact rules and data from that moment and recompute the identical result — not a log entry, the real answer. Two independent engines prove the execution byte-for-byte, a hash-chained audit makes it tamper-evident, and AI drafts while humans approve. For loan approvals, KYC exceptions, claims, and access policies.",
     "builtOnAsterLang": "Built on the open-source Aster Lang engine. Read the language docs →",
+    "tryDemo": "Replay a real credit decision",
     "noCreditCard": "No credit card required."
   },
   "cnlDemo": {
@@ -146,6 +147,7 @@
     "terms": "Terms",
     "documentation": "Documentation",
     "support": "Support",
+    "demo": "Live demo",
     "equivalence": "Engine equivalence",
     "copyright": "All rights reserved."
   },
@@ -2071,6 +2073,48 @@
       "body": "Pro lets you invite teammates with role-based access. Upgrade to add a member."
     },
     "contactAdmin": "Contact your administrator"
+  },
+  "demoPage": {
+    "seo": {
+      "title": "Replay a credit decision — Aster Lang demo",
+      "description": "See it end to end: a real loan-approval rule, a sample applicant, the decision, and a byte-for-byte replay you'd show a regulator. No signup."
+    },
+    "eyebrow": "Live demo · credit risk",
+    "title": "Replay a credit decision",
+    "subtitle": "Pick an applicant, see the decision, then replay exactly how it was reached — the answer you give a regulator, not a guess.",
+    "step1": {
+      "title": "The credit rule",
+      "hint": "Written in plain, controlled English — readable by risk and compliance, not just engineers. This is the rule that decides every application."
+    },
+    "step2": {
+      "title": "Pick an applicant",
+      "hint": "Three real-world cases: a clean approval, a borderline referral, and a decline."
+    },
+    "step3": {
+      "title": "The decision"
+    },
+    "step4": {
+      "title": "Replay this decision",
+      "auditorNote": "This is what you hand an auditor. Every step that led to the decision, recomputed from the exact rule and inputs — not a log entry, the real path."
+    },
+    "scenarios": {
+      "approved": { "label": "Strong applicant" },
+      "refer": { "label": "Borderline case" },
+      "declined": { "label": "Below threshold" }
+    },
+    "fields": {
+      "creditScore": "Credit score",
+      "monthlyIncome": "Monthly income",
+      "monthlyDebt": "Monthly debt",
+      "requestedAmount": "Requested amount"
+    },
+    "decisionLabel": "Decision",
+    "replayButton": "Replay this decision",
+    "cta": {
+      "title": "Bring your own credit rules",
+      "subtitle": "Run a real loan-approval or limit rule through Aster and replay any decision. Free to start.",
+      "button": "Get started — free"
+    }
   },
   "equivalencePage": {
     "seo": {
