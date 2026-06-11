@@ -48,9 +48,9 @@
     "docs": "Docs"
   },
   "hero": {
-    "title": "Beweisen Sie, dass jede Entscheidung aus einer genehmigten Regel stammt",
+    "title": "Jede Entscheidung abspielen.",
     "titleHighlight": "{locales}",
-    "description": "Aster Lang lässt Risk, Compliance und Engineering ausführbare Geschäftsregeln gemeinsam steuern — Kreditzusagen, KYC-Ausnahmen, Schadensfälle, Zugriffsrichtlinien. KI entwirft, Menschen genehmigen, zwei unabhängige Engines beweisen identische Ausführung, und ein hash-verkettetes Audit macht jede Entscheidung wiederholbar.",
+    "description": "Wenn eine Aufsichtsbehörde oder ein Kunde fragt, wie eine Entscheidung zustande kam, holen Sie die exakten Regeln und Daten von damals zurück und berechnen das identische Ergebnis erneut — kein Log-Eintrag, die echte Antwort. Zwei unabhängige Engines beweisen die Ausführung Byte für Byte, ein hash-verkettetes Audit macht sie manipulationssicher, und KI entwirft, während Menschen genehmigen. Für Kreditzusagen, KYC-Ausnahmen, Schadensfälle und Zugriffsrichtlinien.",
     "builtOnAsterLang": "Aufgebaut auf der Open-Source-Engine Aster Lang. Sprach-Dokumentation lesen →",
     "noCreditCard": "Keine Kreditkarte erforderlich."
   },
