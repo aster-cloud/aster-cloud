@@ -2108,6 +2108,14 @@
       "monthlyDebt": "月负债",
       "requestedAmount": "申请额度"
     },
+    "adverse": {
+      "label": "不利决策理由",
+      "reasons": {
+        "creditScore": "信用分 {actual} 低于批准所需的最低门槛 {threshold}。",
+        "tierMiss": "信用分 {actual} 未达自动批准门槛 {threshold}，已转人工审核。"
+      },
+      "note": "这是信贷不利决策依法必须披露的理由——下方回放就是它的逐步佐证，从当时的规则和输入重新算出。"
+    },
     "decisionLabel": "决策",
     "replayButton": "回放这笔决策",
     "cta": {

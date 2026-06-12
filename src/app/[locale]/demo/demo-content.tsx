@@ -127,6 +127,30 @@ export function DemoContent({ locale }: DemoContentProps) {
             <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">4</span>
             {t('step4.title')}
           </h2>
+
+          {/* 不利决策理由（adverse-action）—— 拒贷/转人工的法律披露物。
+              从下方 trace 的决定性步骤推导，是信贷买家最想看到的瞬间：
+              "凭什么拒我"→ 当场给出人话理由 + 可逐步回放佐证。 */}
+          {selected.adverseReason && (
+            <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <svg className="mt-0.5 size-5 flex-shrink-0 text-amber-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">{t('adverse.label')}</div>
+                  <p className="mt-1 text-sm font-medium text-amber-900">
+                    {t(`adverse.reasons.${selected.adverseReason.reasonKey}`, {
+                      actual: selected.adverseReason.actual,
+                      threshold: selected.adverseReason.threshold,
+                    })}
+                  </p>
+                  <p className="mt-1.5 text-xs text-amber-700">{t('adverse.note')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <p className="mb-4 rounded-md bg-primary-subtle px-4 py-3 text-sm text-fg">{t('step4.auditorNote')}</p>
           <DecisionTracePanel trace={selected.trace} source={rule} locale={locale} />
         </section>
