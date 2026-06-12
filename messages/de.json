@@ -2108,6 +2108,14 @@
       "monthlyDebt": "Monatliche Schulden",
       "requestedAmount": "Beantragter Betrag"
     },
+    "adverse": {
+      "label": "Begründung der Ablehnung",
+      "reasons": {
+        "creditScore": "Bonität von {actual} liegt unter dem für die Genehmigung erforderlichen Mindestwert von {threshold}.",
+        "tierMiss": "Bonität von {actual} erreichte den Schwellenwert {threshold} für die automatische Genehmigung nicht; zur manuellen Prüfung weitergeleitet."
+      },
+      "note": "Dies ist die offenlegungspflichtige Begründung für nachteilige Kreditentscheidungen — und die Wiederholung unten ist ihr schrittweiser Nachweis, neu berechnet aus der exakten Regel und den Eingaben."
+    },
     "decisionLabel": "Entscheidung",
     "replayButton": "Diese Entscheidung abspielen",
     "cta": {

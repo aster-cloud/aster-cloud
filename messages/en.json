@@ -2108,6 +2108,14 @@
       "monthlyDebt": "Monthly debt",
       "requestedAmount": "Requested amount"
     },
+    "adverse": {
+      "label": "Adverse-action reason",
+      "reasons": {
+        "creditScore": "Credit score of {actual} is below the {threshold} minimum required for approval.",
+        "tierMiss": "Credit score of {actual} did not meet the {threshold} threshold for automatic approval; sent to manual review."
+      },
+      "note": "This is the disclosable reason required for adverse credit decisions — and the replay below is its step-by-step proof, recomputed from the exact rule and inputs."
+    },
     "decisionLabel": "Decision",
     "replayButton": "Replay this decision",
     "cta": {

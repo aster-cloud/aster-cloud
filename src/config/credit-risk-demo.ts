@@ -102,6 +102,22 @@ export interface DemoApplicant {
   requestedAmount: number;
 }
 
+/**
+ * 不利决策理由（adverse-action reason）——拒贷/转人工的法律披露物。
+ *
+ * 从回放 trace 里**那个让决策落定的决定性步骤**推导，不是另写一套：
+ * UI 用 i18n + 这些数值组成人话理由（"因信用分 561 低于 600 门槛"），
+ * 与下方 trace 的对应步骤一一对应、互为佐证。批准场景为 null。
+ */
+export interface AdverseReason {
+  /** i18n key 后缀：reasons.<reasonKey> —— 决定哪条理由模板 */
+  reasonKey: 'creditScore' | 'tierMiss';
+  /** 实际值（如信用分 561） */
+  actual: number;
+  /** 门槛值（如 600） */
+  threshold: number;
+}
+
 /** 一个 demo 场景：申请人 + 决策结果 + 可回放的 DecisionTrace。 */
 export interface DemoScenario {
   /** i18n key 后缀（scenarios.<key>.label） */
@@ -111,6 +127,8 @@ export interface DemoScenario {
   decision: string;
   /** 决策语气：approved / refer / declined，用于 UI 着色。 */
   outcome: 'approved' | 'refer' | 'declined';
+  /** 不利决策理由（拒贷/转人工时非空；批准为 null）。 */
+  adverseReason: AdverseReason | null;
   /** 该笔决策的逐步回放（喂给 DecisionTracePanel）。 */
   trace: DecisionTrace;
 }
@@ -186,6 +204,7 @@ function buildScenarios(loc: DemoLocale): DemoScenario[] {
     applicant: a,
     decision: d.approved,
     outcome: 'approved',
+    adverseReason: null, // 批准——无不利决策理由
     trace: {
       moduleName: 'credit.approval',
       functionName: 'decide',
@@ -211,6 +230,8 @@ function buildScenarios(loc: DemoLocale): DemoScenario[] {
     applicant: b,
     decision: d.refer,
     outcome: 'refer',
+    // 信用分 642 ≥ 600（够转人工）但未满足前两档（740/660+DTI）→ 转人工的理由是"未达自动批准档"
+    adverseReason: { reasonKey: 'tierMiss', actual: 642, threshold: 660 },
     trace: {
       moduleName: 'credit.approval',
       functionName: 'decide',
@@ -238,6 +259,8 @@ function buildScenarios(loc: DemoLocale): DemoScenario[] {
     applicant: c,
     decision: d.declined,
     outcome: 'declined',
+    // 决定性步骤：信用分 561 < 600 门槛 → 拒贷的法律披露理由
+    adverseReason: { reasonKey: 'creditScore', actual: 561, threshold: 600 },
     trace: {
       moduleName: 'credit.approval',
       functionName: 'decide',
