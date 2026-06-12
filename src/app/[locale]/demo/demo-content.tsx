@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { DecisionTracePanel } from '@/components/policy/decision-trace-panel';
-import { CREDIT_RISK_RULE_SOURCE, DEMO_SCENARIOS, type DemoScenario } from '@/config/credit-risk-demo';
+import { getCreditRiskRule, getDemoScenarios, type DemoScenario } from '@/config/credit-risk-demo';
 import { cn } from '@/components/ui';
 
 interface DemoContentProps {
@@ -18,7 +18,10 @@ const OUTCOME_STYLES: Record<DemoScenario['outcome'], string> = {
 
 export function DemoContent({ locale }: DemoContentProps) {
   const t = useTranslations('demoPage');
-  const [selected, setSelected] = useState<DemoScenario>(DEMO_SCENARIOS[0]);
+  // 按当前语言取规则源码 + 场景（中文站显示中文规则，德文站显示德文规则）。
+  const rule = getCreditRiskRule(locale);
+  const scenarios = getDemoScenarios(locale);
+  const [selected, setSelected] = useState<DemoScenario>(scenarios[0]);
   const [replayed, setReplayed] = useState(false);
 
   function pickScenario(s: DemoScenario) {
@@ -47,7 +50,7 @@ export function DemoContent({ locale }: DemoContentProps) {
         </h2>
         <p className="mb-3 text-sm text-fg-muted">{t('step1.hint')}</p>
         <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-100">
-          {CREDIT_RISK_RULE_SOURCE}
+          {rule}
         </pre>
       </section>
 
@@ -59,7 +62,7 @@ export function DemoContent({ locale }: DemoContentProps) {
         </h2>
         <p className="mb-3 text-sm text-fg-muted">{t('step2.hint')}</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {DEMO_SCENARIOS.map((s) => (
+          {scenarios.map((s) => (
             <button
               key={s.key}
               onClick={() => pickScenario(s)}
@@ -125,7 +128,7 @@ export function DemoContent({ locale }: DemoContentProps) {
             {t('step4.title')}
           </h2>
           <p className="mb-4 rounded-md bg-primary-subtle px-4 py-3 text-sm text-fg">{t('step4.auditorNote')}</p>
-          <DecisionTracePanel trace={selected.trace} source={CREDIT_RISK_RULE_SOURCE} locale={locale} />
+          <DecisionTracePanel trace={selected.trace} source={rule} locale={locale} />
         </section>
       )}
 
