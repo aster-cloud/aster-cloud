@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { compile, evaluate, EN_US, ZH_CN, DE_DE } from '@aster-cloud/aster-lang-ts/browser';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
 import {
@@ -46,6 +47,13 @@ interface RunResult {
 export function DemoContent({ locale }: DemoContentProps) {
   const t = useTranslations('demoPage');
   const loc = toDemoLocale(locale);
+  const { status } = useSession();
+  const isAuthed = status === 'authenticated';
+  // 已登录 → AI 解释接口能用，显示可用按钮（signInHref 留空）。
+  // 未登录 → AI 解释会 401，给登录链接，并用 callbackUrl 在登录后跳回 demo（不丢现场）。
+  const signInHref = isAuthed
+    ? undefined
+    : `/${locale}/login?callbackUrl=${encodeURIComponent(`/${locale}/demo`)}`;
 
   // 申请人输入（可改）+ 关键阈值（可改）。改任一项 → 规则源码与重跑结果随之变化。
   const [applicant, setApplicant] = useState<DemoApplicant>(DEMO_APPLICANTS.approved);
@@ -230,8 +238,8 @@ export function DemoContent({ locale }: DemoContentProps) {
           )}
 
           <p className="mb-4 rounded-md bg-primary-subtle px-4 py-3 text-sm text-fg">{t('step4.auditorNote')}</p>
-          {/* 公开 demo：AI 解释需登录，传 signInHref 让面板引导注册而非 401。 */}
-          <DecisionTracePanel trace={run.trace} source={run.source} locale={locale} signInHref={`/${locale}/login`} />
+          {/* 已登录显示可用 AI 解释按钮；未登录给「登录后体验」链接（带 callbackUrl 跳回 demo）。 */}
+          <DecisionTracePanel trace={run.trace} source={run.source} locale={locale} signInHref={signInHref} />
         </section>
       )}
 
