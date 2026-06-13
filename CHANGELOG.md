@@ -216,6 +216,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -390,6 +391,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Render explanation as Markdown + make requested amount a live decision lever (#57) *(ai-explain,demo)*
 - Localize the credit rule + replay per language (en/zh/de) (#54) *(demo)*
 - Frozen policy was still executable by its owner + UI let users in (#49) *(policy)*
 - Converge hero narrative on provable rule governance (#47) *(landing)*
