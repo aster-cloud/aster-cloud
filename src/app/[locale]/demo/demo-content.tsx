@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useSession } from 'next-auth/react';
 import { compile, evaluate, EN_US, ZH_CN, DE_DE } from '@aster-cloud/aster-lang-ts/browser';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
 import {
@@ -44,21 +43,11 @@ interface RunResult {
   trace: DecisionTrace;
   /** 确定性解释模型（值已代入，不经 LLM）。 */
   explanation: CreditExplanationModel;
-  /** 引擎与镜像是否一致——不一致则降级提示（正常情况下恒为 true，有 CI 守护）。 */
-  consistent: boolean;
-  source: string;
 }
 
 export function DemoContent({ locale }: DemoContentProps) {
   const t = useTranslations('demoPage');
   const loc = toDemoLocale(locale);
-  const { status } = useSession();
-  const isAuthed = status === 'authenticated';
-  // 已登录 → AI 解释接口能用，显示可用按钮（signInHref 留空）。
-  // 未登录 → AI 解释会 401，给登录链接，并用 callbackUrl 在登录后跳回 demo（不丢现场）。
-  const signInHref = isAuthed
-    ? undefined
-    : `/${locale}/login?callbackUrl=${encodeURIComponent(`/${locale}/demo`)}`;
 
   // 申请人输入（可改）+ 关键阈值（可改）。改任一项 → 规则源码与重跑结果随之变化。
   const [applicant, setApplicant] = useState<DemoApplicant>(DEMO_APPLICANTS.approved);
@@ -102,8 +91,6 @@ export function DemoContent({ locale }: DemoContentProps) {
       adverseReason: mirror.adverseReason,
       trace: { ...mirror.trace, executionTimeMs: ev.executionTimeMs ?? mirror.trace.executionTimeMs },
       explanation: buildExplanation(loc, applicant, thresholds),
-      consistent: ev.success && engineDecision === mirror.decision,
-      source: ruleSource,
     });
   }
 
@@ -252,8 +239,8 @@ export function DemoContent({ locale }: DemoContentProps) {
             <CreditExplanation explanation={run.explanation} />
           </div>
 
-          {/* 原始执行轨迹 + 可选 AI 散文解读（事实已在上方确定性给出，AI 仅润色）。 */}
-          <DecisionTracePanel trace={run.trace} source={run.source} locale={locale} signInHref={signInHref} />
+          {/* 原始执行轨迹（事实已在上方确定性给出，这里是逐步的执行佐证）。 */}
+          <DecisionTracePanel trace={run.trace} />
         </section>
       )}
 

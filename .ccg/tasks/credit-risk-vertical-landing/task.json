@@ -1,0 +1,12 @@
+{
+  "id": "credit-risk-vertical-landing",
+  "title": "landing 信贷风控强垂直化 + cta 诚实化(去虚假客户数)",
+  "status": "in_progress",
+  "strategy": "guided-develop",
+  "currentPhase": "1",
+  "nextAction": "改 features+cta 三语到信贷风控垂直, 技术点降为能力印章, cta 去 thousands of companies 虚假声明",
+  "gate": null,
+  "branch": "main",
+  "scope": "credit-risk-vertical-landing",
+  "createdAt": "2026-06-12T00:00:00Z"
+}

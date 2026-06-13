@@ -164,8 +164,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [schemaError, setSchemaError] = useState<SchemaError | null>(null);
   const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
-  // 策略源码用于 DecisionTracePanel 的 AI Explain 功能 —— 之前未读导致
-  // AI Explain 按钮在生产链路永远不显示，详见 ADR-0009 P0-2 修复。
+  // 策略源码：用于提取规则符号（ruleSymbols）和按 locale 选词典。
   const [policyContent, setPolicyContent] = useState('');
 
   const ruleSymbols = useMemo(() => extractRuleSymbols(policyContent), [policyContent]);
@@ -820,11 +819,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
           </div>
         </div>
         {result?.decisionTrace && (
-          <DecisionTracePanel
-            trace={result.decisionTrace}
-            source={policyContent}
-            locale={policyLocale}
-          />
+          <DecisionTracePanel trace={result.decisionTrace} />
         )}
       </div>
     </div>

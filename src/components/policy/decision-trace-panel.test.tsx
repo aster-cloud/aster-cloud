@@ -1,30 +1,16 @@
 /**
- * DecisionTracePanel 的 AI 解释入口分支契约。
+ * DecisionTracePanel 渲染契约。
  *
- * 线上问题：公开 demo 的「AI 解释」按钮对匿名访客 401；改成 signInHref 链接后又出现
- * 「登录后跳 dashboard」「登录后按钮仍是登录提示」。修复后语义：
- *   - 传 signInHref（未登录）→ 渲染「登录后体验」链接，href 带 callbackUrl 跳回原页；
- *   - 不传 signInHref（已登录/受保护页）→ 渲染可用的 AI 解释按钮。
- * 本测试钉住这两个分支。
+ * 面板纯确定性渲染执行轨迹（步骤 + 表达式 + 结果 + 命中），不含任何 LLM/AI 解释——
+ * LLM 解释代不准值、渲染坏、超宽，已全局移除，事实由 trace 本身（及 demo 的确定性
+ * 解释）给出。本测试钉住：步骤逐项渲染、最终结果显示、无 AI 入口。
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { DecisionTracePanel, type DecisionTrace } from './decision-trace-panel';
 
-// next-intl：key 原样返回，便于断言。
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
-}));
-
-// useAIAssistant：稳定空态，避免触发真实请求。
-vi.mock('@/hooks/useAIAssistant', () => ({
-  useAIAssistant: () => ({
-    explain: vi.fn(),
-    reset: vi.fn(),
-    content: '',
-    streaming: false,
-    error: null,
-  }),
 }));
 
 afterEach(cleanup);
@@ -32,39 +18,34 @@ afterEach(cleanup);
 const TRACE: DecisionTrace = {
   moduleName: 'credit.approval',
   functionName: 'decide',
-  finalResult: 'Declined',
+  finalResult: 'Approved — premium rate',
   executionTimeMs: 0.3,
-  steps: [{ sequence: 1, expression: 'creditScore 561 >= 600', result: 'false', matched: false }],
+  steps: [
+    { sequence: 1, expression: 'creditScore 768 >= 740', result: 'true', matched: true },
+    { sequence: 2, expression: 'dtiRatio 0.30 <= 0.35', result: 'true', matched: true },
+  ],
 };
 
-describe('DecisionTracePanel AI-explain entry point', () => {
-  it('renders a sign-in link (not the explain button) when signInHref is set', () => {
-    render(
-      <DecisionTracePanel
-        trace={TRACE}
-        source="Module m."
-        locale="zh"
-        signInHref="/zh/login?callbackUrl=%2Fzh%2Fdemo"
-      />,
-    );
-    const link = screen.getByText('explainSignedIn').closest('a');
-    expect(link).not.toBeNull();
-    expect(link?.getAttribute('href')).toBe('/zh/login?callbackUrl=%2Fzh%2Fdemo');
-    // 不应同时出现可点的「AI 解释」按钮。
-    expect(screen.queryByRole('button', { name: 'explain' })).toBeNull();
+describe('DecisionTracePanel', () => {
+  it('renders every step expression and the final result', () => {
+    render(<DecisionTracePanel trace={TRACE} />);
+    expect(screen.getByText('creditScore 768 >= 740')).toBeTruthy();
+    expect(screen.getByText('dtiRatio 0.30 <= 0.35')).toBeTruthy();
+    expect(screen.getByText('Approved — premium rate')).toBeTruthy();
+    // module.function 头部存在。
+    expect(screen.getByText(/credit\.approval\.decide/)).toBeTruthy();
   });
 
-  it('renders the working AI Explain button when signInHref is absent', () => {
-    render(<DecisionTracePanel trace={TRACE} source="Module m." locale="zh" />);
-    // 渲染为按钮（已登录态），而非登录链接。
-    const btn = screen.getByText('explain').closest('button');
-    expect(btn).not.toBeNull();
-    expect(screen.queryByText('explainSignedIn')).toBeNull();
-  });
-
-  it('renders no AI entry at all when source is absent', () => {
-    render(<DecisionTracePanel trace={TRACE} locale="zh" />);
+  it('has no AI / explain entry point at all', () => {
+    render(<DecisionTracePanel trace={TRACE} />);
+    // 全局移除了 LLM 解释：不应出现 explain/登录 相关入口。
     expect(screen.queryByText('explain')).toBeNull();
     expect(screen.queryByText('explainSignedIn')).toBeNull();
+    expect(document.querySelector('a[href*="login"]')).toBeNull();
+  });
+
+  it('shows the empty state when there are no steps', () => {
+    render(<DecisionTracePanel trace={{ ...TRACE, steps: [] }} />);
+    expect(screen.getByText('empty')).toBeTruthy();
   });
 });

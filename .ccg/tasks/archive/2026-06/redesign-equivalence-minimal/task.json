@@ -1,0 +1,12 @@
+{
+  "id": "redesign-equivalence-minimal",
+  "title": "特性覆盖加 exempt 边界达 100% + equivalence 页极简仪表盘重设计",
+  "status": "archived",
+  "strategy": "refactor-safely",
+  "currentPhase": "5-verify",
+  "nextAction": "DONE — feature 100% + 极简仪表盘 已部署+Chrome实测",
+  "gate": null,
+  "branch": "main",
+  "scope": "redesign-equivalence-minimal",
+  "createdAt": "2026-06-10T09:47:23Z"
+}

@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"path\", \"reason\": \"why\"}. Seed rows are skipped."}
+{"file":"aster-lang-test/scripts/feature-coverage.mjs","reason":"加 exempt 边界让分母诚实 (5 个 by-design 盲点)"}
+{"file":"aster-cloud/src/app/[locale]/equivalence/page.tsx","reason":"极简重构: 保留 head+chart, 删大卡/文案, 加 5 指标汇总行"}
+{"file":"aster-cloud/src/components/equivalence/parity-trend-chart.tsx","reason":"保留不动 (head+chart 契约)"}
