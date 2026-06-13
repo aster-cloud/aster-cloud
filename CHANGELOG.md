@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Editable rerun demo + downloadable whitepaper, fully localized (#56) *(demo,equivalence)*
 - Surface the adverse-action reason on declined/refer replays (#55) *(demo)*
 - Interactive credit-risk decision-replay demo at /demo (#52) *(demo)*
 - Verticalize for credit-risk decisioning + honest CTA (#51) *(landing)*
@@ -212,6 +213,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
