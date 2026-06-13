@@ -2040,7 +2040,8 @@
     "diffGenerated": "Generiert",
     "acceptDiff": "Aenderungen uebernehmen",
     "rejectDiff": "Aenderungen verwerfen",
-    "inlineCompletionLoading": "KI-Vervollstaendigung wird geladen..."
+    "inlineCompletionLoading": "KI-Vervollstaendigung wird geladen...",
+    "explainSignedIn": "Anmelden für KI-Erklärung"
   },
   "upgradeBlocker": {
     "viewPlans": "Pläne ansehen",
@@ -2120,7 +2121,8 @@
       "label": "Begründung der Ablehnung",
       "reasons": {
         "creditScore": "Bonität von {actual} liegt unter dem für die Genehmigung erforderlichen Mindestwert von {threshold}.",
-        "tierMiss": "Bonität von {actual} erreichte den Schwellenwert {threshold} für die automatische Genehmigung nicht; zur manuellen Prüfung weitergeleitet."
+        "tierMiss": "Bonität von {actual} erreichte den Schwellenwert {threshold} für die automatische Genehmigung nicht; zur manuellen Prüfung weitergeleitet.",
+        "overCap": "Beantragter Betrag von {actual} überschreitet das Leistbarkeitslimit von {threshold} (einkommensbasiert); übergroßer Kredit zur manuellen Prüfung weitergeleitet."
       },
       "note": "Dies ist die offenlegungspflichtige Begründung für nachteilige Kreditentscheidungen — und die Wiederholung unten ist ihr schrittweiser Nachweis, neu berechnet aus der exakten Regel und den Eingaben."
     },
@@ -2136,7 +2138,8 @@
       "standardScore": "Standard-Score",
       "standardDti": "Standard-DTI-Grenze",
       "minScore": "Mindest-Score",
-      "reset": "Auf Standard zurücksetzen"
+      "reset": "Auf Standard zurücksetzen",
+      "maxLti": "Max. Kredit-Einkommen-Verhältnis"
     },
     "runButton": "Regel ausführen",
     "runHint": "Ändern Sie oben eine Eingabe oder einen Schwellenwert und führen Sie aus — die Entscheidung wird live von derselben Engine berechnet, die in der Produktion läuft.",

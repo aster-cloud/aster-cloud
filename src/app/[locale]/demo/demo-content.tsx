@@ -165,6 +165,8 @@ export function DemoContent({ locale }: DemoContentProps) {
             onChange={(v) => editThreshold({ standardDti: v })} />
           <NumberField label={t('thresholds.minScore')} value={thresholds.minScore} step={1}
             onChange={(v) => editThreshold({ minScore: v })} />
+          <NumberField label={t('thresholds.maxLti')} value={thresholds.maxLti} step={0.5}
+            onChange={(v) => editThreshold({ maxLti: v })} />
           <div className="flex items-end">
             <button
               onClick={() => { setThresholds(DEFAULT_THRESHOLDS); setRun(null); }}
@@ -228,7 +230,8 @@ export function DemoContent({ locale }: DemoContentProps) {
           )}
 
           <p className="mb-4 rounded-md bg-primary-subtle px-4 py-3 text-sm text-fg">{t('step4.auditorNote')}</p>
-          <DecisionTracePanel trace={run.trace} source={run.source} locale={locale} />
+          {/* 公开 demo：AI 解释需登录，传 signInHref 让面板引导注册而非 401。 */}
+          <DecisionTracePanel trace={run.trace} source={run.source} locale={locale} signInHref={`/${locale}/login`} />
         </section>
       )}
 
