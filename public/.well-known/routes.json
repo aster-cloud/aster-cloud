@@ -35,6 +35,14 @@
       "locales": "all"
     },
     {
+      "path": "/equivalence/whitepaper",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/equivalence/whitepaper/page.tsx",
+      "locales": "all",
+      "notes": "Dual-engine equivalence white paper (readable + print-to-PDF), for risk & compliance"
+    },
+    {
       "path": "/demo",
       "status": "canonical-here",
       "owner": "marketing",
