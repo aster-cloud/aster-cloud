@@ -2143,7 +2143,28 @@
     },
     "runButton": "Run the rule",
     "runHint": "Edit any input or threshold above, then run — the decision is computed live by the same engine that runs in production.",
-    "replayTitle": "Replay this decision"
+    "replayTitle": "Replay this decision",
+    "explanation": {
+      "heading": "Why this decision",
+      "sub": "Computed directly from the rule and the inputs — every value is exact, not generated.",
+      "overviewHeading": "Overview",
+      "module": "Module",
+      "rule": "Rule",
+      "decision": "Decision",
+      "fieldsHeading": "Applicant fields",
+      "colField": "Field",
+      "colType": "Type",
+      "colValue": "Value",
+      "colPurpose": "Used for",
+      "metricsHeading": "Intermediate values",
+      "stepsHeading": "Decision steps",
+      "matched": "matched",
+      "notMatched": "not matched",
+      "skipped": "not evaluated",
+      "reasonHeading": "In one line",
+      "aiNarrative": "AI summary",
+      "aiNarrativeHint": "Optional plain-language read of the facts above."
+    }
   },
   "equivalencePage": {
     "seo": {

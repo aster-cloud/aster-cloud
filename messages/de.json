@@ -2143,7 +2143,28 @@
     },
     "runButton": "Regel ausführen",
     "runHint": "Ändern Sie oben eine Eingabe oder einen Schwellenwert und führen Sie aus — die Entscheidung wird live von derselben Engine berechnet, die in der Produktion läuft.",
-    "replayTitle": "Diese Entscheidung abspielen"
+    "replayTitle": "Diese Entscheidung abspielen",
+    "explanation": {
+      "heading": "Warum diese Entscheidung",
+      "sub": "Direkt aus der Regel und den Eingaben berechnet — jeder Wert ist exakt, nicht generiert.",
+      "overviewHeading": "Überblick",
+      "module": "Modul",
+      "rule": "Regel",
+      "decision": "Entscheidung",
+      "fieldsHeading": "Antragsteller-Felder",
+      "colField": "Feld",
+      "colType": "Typ",
+      "colValue": "Wert",
+      "colPurpose": "Verwendet für",
+      "metricsHeading": "Zwischenwerte",
+      "stepsHeading": "Entscheidungsschritte",
+      "matched": "erfüllt",
+      "notMatched": "nicht erfüllt",
+      "skipped": "nicht ausgewertet",
+      "reasonHeading": "In einem Satz",
+      "aiNarrative": "KI-Zusammenfassung",
+      "aiNarrativeHint": "Optional: eine Klartext-Lesart der obigen Fakten."
+    }
   },
   "equivalencePage": {
     "seo": {

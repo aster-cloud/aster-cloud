@@ -317,3 +317,240 @@ export function toEvalContext(loc: DemoLocale, app: DemoApplicant): Record<strin
 export function getRuleName(loc: DemoLocale): string {
   return IDS[loc].ruleName;
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// 确定性解释模型（不依赖 LLM）。
+//
+// 事实部分（字段、值、中间指标、逐步判断、最终理由）由此处从 trace/规则/阈值
+// 直接构造，保证数字 100% 正确——LLM 即便被要求引用也会吐空值，故事实绝不交给它。
+// LLM 仅用于在事实之上生成一段人话叙述（可选）。
+// ───────────────────────────────────────────────────────────────────────────
+
+/** 一个字段在本次执行中的说明（名称/类型/实际值/用途）。 */
+export interface ExplainedField {
+  name: string;
+  type: string;
+  value: string;
+  purpose: string;
+}
+
+/** 一个中间指标（如负债比、可负担上限）的计算说明。 */
+export interface ExplainedMetric {
+  name: string;
+  formula: string;
+  computation: string;
+  result: string;
+}
+
+/** 一个判断档位的说明：条件 + 是否求值 + 结果。 */
+export interface ExplainedTier {
+  title: string;
+  /** 该档位是否在本次执行中被求值（短路后的档位为 false）。 */
+  evaluated: boolean;
+  /** 求值时：条件表达式（含实际值）+ 真假。未求值时：短路说明。 */
+  detail: string;
+  matched: boolean | null; // null = 未求值
+}
+
+/** 完整的确定性解释模型（全部值已代入，已本地化）。 */
+export interface CreditExplanation {
+  moduleName: string;
+  ruleName: string;
+  decision: string;
+  outcome: Outcome;
+  fields: ExplainedField[];
+  metrics: ExplainedMetric[];
+  tiers: ExplainedTier[];
+  /** 一句话原因（含实际值）。 */
+  oneLineReason: string;
+}
+
+interface ExplainStrings {
+  fieldTypes: { int: string; float: string };
+  purposes: { score: string; income: string; debt: string; amount: string };
+  metricNames: { dti: string; afford: string };
+  metricFormulas: { dti: string; afford: string };
+  tierTitles: { premium: string; standard: string; refer: string; declined: string };
+  // 短路说明：「前面某档已返回，本档未执行」。
+  shortCircuit: string;
+  // 档位条件文本（含实际值）。amt 仅 premium/standard 用。
+  scoreDtiAmt: (s: number, sT: number, dti: string, dtiT: number, amt: number, cap: number) => string;
+  minScore: (s: number, thr: number) => string;
+  // 一句话原因构造（按结果）。
+  reasonPremium: (s: number, sT: number, dti: string, dtiT: number, amt: number, cap: number) => string;
+  reasonStandard: (s: number, sT: number, dti: string, dtiT: number, amt: number, cap: number) => string;
+  reasonReferScore: (s: number, sT: number, minT: number) => string;
+  reasonReferAmount: (amt: number, cap: number) => string;
+  reasonDeclined: (s: number, minT: number) => string;
+  matchedYes: string;
+  matchedNo: string;
+}
+
+const EXPLAIN: Record<DemoLocale, ExplainStrings> = {
+  en: {
+    fieldTypes: { int: 'Int', float: 'Float' },
+    purposes: {
+      score: 'Decides the premium / standard / manual-review tier',
+      income: 'Computes the DTI ratio and the affordability cap',
+      debt: 'Computes the DTI ratio',
+      amount: 'Checked against the affordability cap',
+    },
+    metricNames: { dti: 'DTI ratio', afford: 'Affordability cap' },
+    metricFormulas: { dti: 'monthlyDebt ÷ monthlyIncome', afford: 'monthlyIncome × 12 × max loan-to-income' },
+    tierTitles: { premium: 'Approved — premium rate', standard: 'Approved — standard rate', refer: 'Refer to manual underwriting', declined: 'Declined' },
+    shortCircuit: 'An earlier branch already returned a result, so this branch was not evaluated.',
+    scoreDtiAmt: (s, sT, dti, dtiT, amt, cap) =>
+      `score ${s} ≥ ${sT} AND DTI ${dti} ≤ ${dtiT} AND amount ${amt} ≤ cap ${cap}`,
+    minScore: (s, thr) => `score ${s} ≥ ${thr}`,
+    reasonPremium: (s, sT, dti, dtiT, amt, cap) =>
+      `Credit score ${s} meets the ${sT} premium threshold, DTI ${dti} is within ${dtiT}, and the requested amount ${amt} is within the affordability cap ${cap}.`,
+    reasonStandard: (s, sT, dti, dtiT, amt, cap) =>
+      `Credit score ${s} meets the ${sT} standard threshold, DTI ${dti} is within ${dtiT}, and the requested amount ${amt} is within the affordability cap ${cap} — but it did not meet the premium tier.`,
+    reasonReferScore: (s, sT, minT) =>
+      `Credit score ${s} clears the ${minT} minimum but not the ${sT} threshold for automatic approval, so it goes to manual review.`,
+    reasonReferAmount: (amt, cap) =>
+      `The requested amount ${amt} exceeds the affordability cap ${cap}, so even with a qualifying score it goes to manual review for an oversized loan.`,
+    reasonDeclined: (s, minT) =>
+      `Credit score ${s} is below the ${minT} minimum required to lend, so the application is declined.`,
+    matchedYes: 'true', matchedNo: 'false',
+  },
+  zh: {
+    fieldTypes: { int: '整数', float: '小数' },
+    purposes: {
+      score: '决定优惠 / 标准 / 人工审核档位',
+      income: '用于计算负债比和可负担上限',
+      debt: '用于计算负债比',
+      amount: '用于和可负担上限比较',
+    },
+    metricNames: { dti: '负债比', afford: '可负担上限' },
+    metricFormulas: { dti: '月负债 ÷ 月收入', afford: '月收入 × 12 × 贷款收入比上限' },
+    tierTitles: { premium: '批准 — 优惠利率', standard: '批准 — 标准利率', refer: '转人工审核', declined: '拒绝' },
+    shortCircuit: '前面的档位已返回结果，本档位未被求值。',
+    scoreDtiAmt: (s, sT, dti, dtiT, amt, cap) =>
+      `信用分 ${s} ≥ ${sT} 且 负债比 ${dti} ≤ ${dtiT} 且 申请额度 ${amt} ≤ 可负担上限 ${cap}`,
+    minScore: (s, thr) => `信用分 ${s} ≥ ${thr}`,
+    reasonPremium: (s, sT, dti, dtiT, amt, cap) =>
+      `信用分 ${s} 达到优惠门槛 ${sT}，负债比 ${dti} 不超过 ${dtiT}，且申请额度 ${amt} 不超过可负担上限 ${cap}。`,
+    reasonStandard: (s, sT, dti, dtiT, amt, cap) =>
+      `信用分 ${s} 达到标准门槛 ${sT}，负债比 ${dti} 不超过 ${dtiT}，且申请额度 ${amt} 不超过可负担上限 ${cap}——但未达到优惠档。`,
+    reasonReferScore: (s, sT, minT) =>
+      `信用分 ${s} 超过最低门槛 ${minT}，但未达自动批准门槛 ${sT}，因此转人工审核。`,
+    reasonReferAmount: (amt, cap) =>
+      `申请额度 ${amt} 超过可负担上限 ${cap}，即便信用分达标也因超额贷款转人工审核。`,
+    reasonDeclined: (s, minT) =>
+      `信用分 ${s} 低于放贷所需的最低门槛 ${minT}，因此拒绝。`,
+    matchedYes: '真', matchedNo: '假',
+  },
+  de: {
+    fieldTypes: { int: 'Ganzzahl', float: 'Dezimal' },
+    purposes: {
+      score: 'Bestimmt die Stufe (Vorzug / Standard / manuelle Prüfung)',
+      income: 'Berechnet die DTI-Quote und das Leistbarkeitslimit',
+      debt: 'Berechnet die DTI-Quote',
+      amount: 'Wird mit dem Leistbarkeitslimit verglichen',
+    },
+    metricNames: { dti: 'DTI-Quote', afford: 'Leistbarkeitslimit' },
+    metricFormulas: { dti: 'schulden ÷ einkommen', afford: 'einkommen × 12 × max. Kredit-Einkommen-Verhältnis' },
+    tierTitles: { premium: 'Genehmigt — Vorzugszins', standard: 'Genehmigt — Standardzins', refer: 'Zur Einzelfallprüfung', declined: 'Abgelehnt' },
+    shortCircuit: 'Ein früherer Zweig hat bereits ein Ergebnis geliefert, daher wurde dieser Zweig nicht ausgewertet.',
+    scoreDtiAmt: (s, sT, dti, dtiT, amt, cap) =>
+      `Score ${s} ≥ ${sT} und Quote ${dti} ≤ ${dtiT} und Betrag ${amt} ≤ Limit ${cap}`,
+    minScore: (s, thr) => `Score ${s} ≥ ${thr}`,
+    reasonPremium: (s, sT, dti, dtiT, amt, cap) =>
+      `Score ${s} erreicht die Vorzugsschwelle ${sT}, die Quote ${dti} liegt innerhalb ${dtiT}, und der Betrag ${amt} liegt innerhalb des Limits ${cap}.`,
+    reasonStandard: (s, sT, dti, dtiT, amt, cap) =>
+      `Score ${s} erreicht die Standardschwelle ${sT}, die Quote ${dti} liegt innerhalb ${dtiT}, und der Betrag ${amt} liegt innerhalb des Limits ${cap} — die Vorzugsstufe wurde jedoch nicht erreicht.`,
+    reasonReferScore: (s, sT, minT) =>
+      `Score ${s} überschreitet das Minimum ${minT}, aber nicht die Schwelle ${sT} für eine automatische Genehmigung; daher manuelle Prüfung.`,
+    reasonReferAmount: (amt, cap) =>
+      `Der Betrag ${amt} überschreitet das Limit ${cap}; trotz ausreichendem Score erfolgt wegen des übergroßen Kredits eine manuelle Prüfung.`,
+    reasonDeclined: (s, minT) =>
+      `Score ${s} liegt unter dem für eine Kreditvergabe erforderlichen Minimum ${minT}; der Antrag wird abgelehnt.`,
+    matchedYes: 'wahr', matchedNo: 'falsch',
+  },
+};
+
+/**
+ * 构造确定性解释模型：把规则、阈值、申请人值、决策全部代入，保证数字正确。
+ * 这是 AI 解释的「事实基座」——前端直接渲染它，不经过 LLM。
+ */
+export function buildExplanation(loc: DemoLocale, app: DemoApplicant, th: Thresholds): CreditExplanation {
+  const id = IDS[loc];
+  const s = EXPLAIN[loc];
+  const result = computeDecision(loc, app, th);
+  const dti = app.monthlyDebt / app.monthlyIncome;
+  const dtiStr = dti.toFixed(2);
+  const affordCap = app.monthlyIncome * 12 * th.maxLti;
+
+  const fields: ExplainedField[] = [
+    { name: id.fScore, type: s.fieldTypes.int, value: String(app.creditScore), purpose: s.purposes.score },
+    { name: id.fIncome, type: s.fieldTypes.float, value: String(app.monthlyIncome), purpose: s.purposes.income },
+    { name: id.fDebt, type: s.fieldTypes.float, value: String(app.monthlyDebt), purpose: s.purposes.debt },
+    { name: id.fAmount, type: s.fieldTypes.float, value: String(app.requestedAmount), purpose: s.purposes.amount },
+  ];
+
+  const metrics: ExplainedMetric[] = [
+    { name: s.metricNames.dti, formula: s.metricFormulas.dti, computation: `${app.monthlyDebt} ÷ ${app.monthlyIncome}`, result: dtiStr },
+    { name: s.metricNames.afford, formula: s.metricFormulas.afford, computation: `${app.monthlyIncome} × 12 × ${th.maxLti}`, result: String(affordCap) },
+  ];
+
+  // 各档位的求值情况：premium 永远求值；其余档位只有在前面都不满足时才求值。
+  const premiumScoreOk = app.creditScore >= th.premiumScore;
+  const premiumDtiOk = dti <= th.premiumDti;
+  const amountOk = app.requestedAmount <= affordCap;
+  const premiumOk = premiumScoreOk && premiumDtiOk && amountOk;
+  const standardScoreOk = app.creditScore >= th.standardScore;
+  const standardDtiOk = dti <= th.standardDti;
+  const standardOk = standardScoreOk && standardDtiOk && amountOk;
+  const minOk = app.creditScore >= th.minScore;
+
+  const tiers: ExplainedTier[] = [];
+  // premium：总被求值。
+  tiers.push({
+    title: s.tierTitles.premium, evaluated: true,
+    detail: s.scoreDtiAmt(app.creditScore, th.premiumScore, dtiStr, th.premiumDti, app.requestedAmount, affordCap),
+    matched: premiumOk,
+  });
+  // standard：仅 premium 不满足时求值。
+  tiers.push(premiumOk
+    ? { title: s.tierTitles.standard, evaluated: false, detail: s.shortCircuit, matched: null }
+    : {
+        title: s.tierTitles.standard, evaluated: true,
+        detail: s.scoreDtiAmt(app.creditScore, th.standardScore, dtiStr, th.standardDti, app.requestedAmount, affordCap),
+        matched: standardOk,
+      });
+  // refer：仅 premium、standard 都不满足时求值。
+  tiers.push(premiumOk || standardOk
+    ? { title: s.tierTitles.refer, evaluated: false, detail: s.shortCircuit, matched: null }
+    : { title: s.tierTitles.refer, evaluated: true, detail: s.minScore(app.creditScore, th.minScore), matched: minOk });
+  // declined：仅前面都不满足且分数不足时为最终分支。
+  tiers.push(premiumOk || standardOk || minOk
+    ? { title: s.tierTitles.declined, evaluated: false, detail: s.shortCircuit, matched: null }
+    : { title: s.tierTitles.declined, evaluated: true, detail: s.minScore(app.creditScore, th.minScore), matched: false });
+
+  // 一句话原因：按最终结果挑对应文案（含实际值）。
+  let oneLineReason: string;
+  if (premiumOk) {
+    oneLineReason = s.reasonPremium(app.creditScore, th.premiumScore, dtiStr, th.premiumDti, app.requestedAmount, affordCap);
+  } else if (standardOk) {
+    oneLineReason = s.reasonStandard(app.creditScore, th.standardScore, dtiStr, th.standardDti, app.requestedAmount, affordCap);
+  } else if (minOk) {
+    // 好分但超额 → 额度原因；否则分数边界原因。
+    oneLineReason = !amountOk && standardScoreOk && standardDtiOk
+      ? s.reasonReferAmount(app.requestedAmount, affordCap)
+      : s.reasonReferScore(app.creditScore, th.standardScore, th.minScore);
+  } else {
+    oneLineReason = s.reasonDeclined(app.creditScore, th.minScore);
+  }
+
+  return {
+    moduleName: id.module,
+    ruleName: id.ruleName,
+    decision: result.decision,
+    outcome: result.outcome,
+    fields,
+    metrics,
+    tiers,
+    oneLineReason,
+  };
+}

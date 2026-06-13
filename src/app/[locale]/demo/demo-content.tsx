@@ -11,6 +11,7 @@ import {
   toEvalContext,
   getRuleName,
   computeDecision,
+  buildExplanation,
   DEFAULT_THRESHOLDS,
   DEMO_APPLICANTS,
   type DemoLocale,
@@ -18,7 +19,9 @@ import {
   type Thresholds,
   type Outcome,
   type AdverseReason,
+  type CreditExplanation as CreditExplanationModel,
 } from '@/config/credit-risk-demo';
+import { CreditExplanation } from './credit-explanation';
 import { cn } from '@/components/ui';
 
 interface DemoContentProps {
@@ -39,6 +42,8 @@ interface RunResult {
   outcome: Outcome;
   adverseReason: AdverseReason | null;
   trace: DecisionTrace;
+  /** 确定性解释模型（值已代入，不经 LLM）。 */
+  explanation: CreditExplanationModel;
   /** 引擎与镜像是否一致——不一致则降级提示（正常情况下恒为 true，有 CI 守护）。 */
   consistent: boolean;
   source: string;
@@ -96,6 +101,7 @@ export function DemoContent({ locale }: DemoContentProps) {
       outcome: mirror.outcome,
       adverseReason: mirror.adverseReason,
       trace: { ...mirror.trace, executionTimeMs: ev.executionTimeMs ?? mirror.trace.executionTimeMs },
+      explanation: buildExplanation(loc, applicant, thresholds),
       consistent: ev.success && engineDecision === mirror.decision,
       source: ruleSource,
     });
@@ -238,7 +244,15 @@ export function DemoContent({ locale }: DemoContentProps) {
           )}
 
           <p className="mb-4 rounded-md bg-primary-subtle px-4 py-3 text-sm text-fg">{t('step4.auditorNote')}</p>
-          {/* 已登录显示可用 AI 解释按钮；未登录给「登录后体验」链接（带 callbackUrl 跳回 demo）。 */}
+
+          {/* 确定性决策解释（值已代入，不经 LLM）——这才是「为什么是这个决策」的准确答案。 */}
+          <div className="mb-4">
+            <h3 className="mb-1 text-sm font-semibold text-fg">{t('explanation.heading')}</h3>
+            <p className="mb-3 text-xs text-fg-muted">{t('explanation.sub')}</p>
+            <CreditExplanation explanation={run.explanation} />
+          </div>
+
+          {/* 原始执行轨迹 + 可选 AI 散文解读（事实已在上方确定性给出，AI 仅润色）。 */}
           <DecisionTracePanel trace={run.trace} source={run.source} locale={locale} signInHref={signInHref} />
         </section>
       )}

@@ -2143,7 +2143,28 @@
     },
     "runButton": "运行规则",
     "runHint": "改动上方任意输入或阈值，然后运行——决策由与生产环境同款的引擎实时算出。",
-    "replayTitle": "回放这笔决策"
+    "replayTitle": "回放这笔决策",
+    "explanation": {
+      "heading": "为什么是这个决策",
+      "sub": "直接从规则和输入算出——每个值都精确，不是生成的。",
+      "overviewHeading": "概览",
+      "module": "模块",
+      "rule": "规则",
+      "decision": "决策",
+      "fieldsHeading": "申请人字段",
+      "colField": "字段",
+      "colType": "类型",
+      "colValue": "实际值",
+      "colPurpose": "用途",
+      "metricsHeading": "中间指标",
+      "stepsHeading": "逐步判断",
+      "matched": "满足",
+      "notMatched": "不满足",
+      "skipped": "未求值",
+      "reasonHeading": "一句话原因",
+      "aiNarrative": "AI 解读",
+      "aiNarrativeHint": "可选：对上述事实的一段人话解读。"
+    }
   },
   "equivalencePage": {
     "seo": {
