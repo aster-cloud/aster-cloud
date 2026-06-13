@@ -34,16 +34,17 @@ interface Identifiers {
   fDebt: string;
   fAmount: string;
   vDti: string;
+  vAfford: string;
 }
 
 const IDS: Record<DemoLocale, Identifiers> = {
   en: { module: 'credit.approval', typeName: 'Applicant', ruleName: 'decide', param: 'applicant',
-    fScore: 'creditScore', fIncome: 'monthlyIncome', fDebt: 'monthlyDebt', fAmount: 'requestedAmount', vDti: 'dtiRatio' },
+    fScore: 'creditScore', fIncome: 'monthlyIncome', fDebt: 'monthlyDebt', fAmount: 'requestedAmount', vDti: 'dtiRatio', vAfford: 'affordabilityCap' },
   zh: { module: '信贷.准入', typeName: '申请人', ruleName: '评估', param: '申请人',
-    fScore: '信用分', fIncome: '月收入', fDebt: '月负债', fAmount: '申请额度', vDti: '负债比' },
+    fScore: '信用分', fIncome: '月收入', fDebt: '月负债', fAmount: '申请额度', vDti: '负债比', vAfford: '可负担上限' },
   // de：标识符避开 ue/ae/oe（canonicalizer 会转 umlaut，毁掉 eval key 匹配）。
   de: { module: 'kredit.zulassung', typeName: 'Antragsteller', ruleName: 'entscheiden', param: 'antrag',
-    fScore: 'score', fIncome: 'einkommen', fDebt: 'schulden', fAmount: 'betrag', vDti: 'quote' },
+    fScore: 'score', fIncome: 'einkommen', fDebt: 'schulden', fAmount: 'betrag', vDti: 'quote', vAfford: 'leistbar' },
 };
 
 /** demo 可调阈值。 */
@@ -53,10 +54,16 @@ export interface Thresholds {
   standardScore: number;
   standardDti: number;
   minScore: number;
+  /**
+   * 可负担额度上限 = 年收入（月收入 × 12）× maxLti（贷款收入比上限）。
+   * 申请额度超过此上限 → 即便信用分/负债比达标也不自动批准，转人工复核
+   * （超额贷款须人工评估）。这让「申请额度」字段真正参与决策。
+   */
+  maxLti: number;
 }
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
-  premiumScore: 740, premiumDti: 0.35, standardScore: 660, standardDti: 0.43, minScore: 600,
+  premiumScore: 740, premiumDti: 0.35, standardScore: 660, standardDti: 0.43, minScore: 600, maxLti: 5,
 };
 
 /** 各语言决策文本（与规则 Return 字面量逐字一致；de 避开 ue）。 */
@@ -97,10 +104,11 @@ export function buildRuleSource(loc: DemoLocale, th: Thresholds): string {
 
 规则 ${id.ruleName} 给定 ${id.param} 作为 ${id.typeName} 产出 文本：
   令 ${id.vDti} 定义为 ${id.param}.${id.fDebt} 除以 ${id.param}.${id.fIncome}。
-  如果 ${id.param}.${id.fScore} 至少 ${th.premiumScore} 并且 ${id.vDti} 至多 ${th.premiumDti}：
+  令 ${id.vAfford} 定义为 ${id.param}.${id.fIncome} 乘以 12 乘以 ${th.maxLti}。
+  如果 ${id.param}.${id.fScore} 至少 ${th.premiumScore} 并且 ${id.vDti} 至多 ${th.premiumDti} 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
     返回 "${dec.premium}"。
   否则：
-    如果 ${id.param}.${id.fScore} 至少 ${th.standardScore} 并且 ${id.vDti} 至多 ${th.standardDti}：
+    如果 ${id.param}.${id.fScore} 至少 ${th.standardScore} 并且 ${id.vDti} 至多 ${th.standardDti} 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
       返回 "${dec.standard}"。
     否则：
       如果 ${id.param}.${id.fScore} 至少 ${th.minScore}：
@@ -120,10 +128,11 @@ Definiere ${id.typeName} hat
 
 Regel ${id.ruleName} gegeben ${id.param} als ${id.typeName} liefert Text:
   sei ${id.vDti} gleich ${id.param}.${id.fDebt} geteilt durch ${id.param}.${id.fIncome}.
-  wenn ${id.param}.${id.fScore} mindestens ${th.premiumScore} und ${id.vDti} höchstens ${th.premiumDti}:
+  sei ${id.vAfford} gleich ${id.param}.${id.fIncome} mal 12 mal ${th.maxLti}.
+  wenn ${id.param}.${id.fScore} mindestens ${th.premiumScore} und ${id.vDti} höchstens ${th.premiumDti} und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
     gib zurück "${dec.premium}".
   sonst:
-    wenn ${id.param}.${id.fScore} mindestens ${th.standardScore} und ${id.vDti} höchstens ${th.standardDti}:
+    wenn ${id.param}.${id.fScore} mindestens ${th.standardScore} und ${id.vDti} höchstens ${th.standardDti} und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
       gib zurück "${dec.standard}".
     sonst:
       wenn ${id.param}.${id.fScore} mindestens ${th.minScore}:
@@ -142,10 +151,11 @@ Define ${id.typeName} has
 
 Rule ${id.ruleName} given ${id.param} as ${id.typeName}, produce Text:
   Let ${id.vDti} be ${id.param}.${id.fDebt} divided by ${id.param}.${id.fIncome}.
-  If ${id.param}.${id.fScore} at least ${th.premiumScore} and ${id.vDti} at most ${th.premiumDti}:
+  Let ${id.vAfford} be ${id.param}.${id.fIncome} times 12 times ${th.maxLti}.
+  If ${id.param}.${id.fScore} at least ${th.premiumScore} and ${id.vDti} at most ${th.premiumDti} and ${id.param}.${id.fAmount} at most ${id.vAfford}:
     Return "${dec.premium}".
   Otherwise:
-    If ${id.param}.${id.fScore} at least ${th.standardScore} and ${id.vDti} at most ${th.standardDti}:
+    If ${id.param}.${id.fScore} at least ${th.standardScore} and ${id.vDti} at most ${th.standardDti} and ${id.param}.${id.fAmount} at most ${id.vAfford}:
       Return "${dec.standard}".
     Otherwise:
       If ${id.param}.${id.fScore} at least ${th.minScore}:
@@ -173,7 +183,7 @@ export const DEMO_APPLICANTS: Record<'approved' | 'refer' | 'declined', DemoAppl
 export type Outcome = 'approved' | 'refer' | 'declined';
 
 export interface AdverseReason {
-  reasonKey: 'creditScore' | 'tierMiss';
+  reasonKey: 'creditScore' | 'tierMiss' | 'overCap';
   actual: number;
   threshold: number;
 }
@@ -188,31 +198,36 @@ export interface DemoResult {
 // trace 表达式本地化片段。
 const TR: Record<DemoLocale, {
   dti: string;
-  scoreAndDti: (s: number, sOk: boolean, dti: string, dtiOk: boolean, both: boolean) => string;
+  afford: string;
+  // 档位条件：信用分 + 负债比 + 申请额度三项 AND（amtOk = 额度 ≤ 可负担上限）。
+  tier: (s: number, sOk: boolean, dti: string, dtiOk: boolean, amt: number, amtOk: boolean, all: boolean) => string;
   minScore: (s: number, ok: boolean, thr: number) => string;
   ret: (t: string) => string;
   truthy: string; falsy: string;
 }> = {
   en: {
     dti: 'Let dtiRatio be monthlyDebt ÷ monthlyIncome',
-    scoreAndDti: (s, sOk, dti, dtiOk, both) =>
-      `${s} score ${sOk ? '✓' : '✗'} AND ${dti} DTI ${dtiOk ? '✓' : '✗'} → ${both ? 'true' : 'false'}`,
+    afford: 'Let affordabilityCap be monthlyIncome × 12 × LTI',
+    tier: (s, sOk, dti, dtiOk, amt, amtOk, all) =>
+      `score ${s} ${sOk ? '✓' : '✗'} AND DTI ${dti} ${dtiOk ? '✓' : '✗'} AND amount ${amt} ≤ cap ${amtOk ? '✓' : '✗'} → ${all ? 'true' : 'false'}`,
     minScore: (s, ok, thr) => `${s} ≥ ${thr} ${ok ? '✓ → true' : '✗ → false'}`,
     ret: (t) => `Return "${t}"`,
     truthy: 'true', falsy: 'false',
   },
   zh: {
     dti: '令 负债比 = 月负债 ÷ 月收入',
-    scoreAndDti: (s, sOk, dti, dtiOk, both) =>
-      `信用分 ${s} ${sOk ? '✓' : '✗'} 并且 负债比 ${dti} ${dtiOk ? '✓' : '✗'} → ${both ? '真' : '假'}`,
+    afford: '令 可负担上限 = 月收入 × 12 × 贷款收入比',
+    tier: (s, sOk, dti, dtiOk, amt, amtOk, all) =>
+      `信用分 ${s} ${sOk ? '✓' : '✗'} 并且 负债比 ${dti} ${dtiOk ? '✓' : '✗'} 并且 额度 ${amt} ≤ 上限 ${amtOk ? '✓' : '✗'} → ${all ? '真' : '假'}`,
     minScore: (s, ok, thr) => `信用分 ${s} ≥ ${thr} ${ok ? '✓ → 真' : '✗ → 假'}`,
     ret: (t) => `返回 "${t}"`,
     truthy: '真', falsy: '假',
   },
   de: {
     dti: 'sei quote = schulden ÷ einkommen',
-    scoreAndDti: (s, sOk, dti, dtiOk, both) =>
-      `Score ${s} ${sOk ? '✓' : '✗'} und Quote ${dti} ${dtiOk ? '✓' : '✗'} → ${both ? 'wahr' : 'falsch'}`,
+    afford: 'sei leistbar = einkommen × 12 × LTI',
+    tier: (s, sOk, dti, dtiOk, amt, amtOk, all) =>
+      `Score ${s} ${sOk ? '✓' : '✗'} und Quote ${dti} ${dtiOk ? '✓' : '✗'} und Betrag ${amt} ≤ Limit ${amtOk ? '✓' : '✗'} → ${all ? 'wahr' : 'falsch'}`,
     minScore: (s, ok, thr) => `Score ${s} ≥ ${thr} ${ok ? '✓ → wahr' : '✗ → falsch'}`,
     ret: (t) => `gib zurück "${t}"`,
     truthy: 'wahr', falsy: 'falsch',
@@ -220,47 +235,58 @@ const TR: Record<DemoLocale, {
 };
 
 /**
- * 纯函数：按规则逻辑算出决策 + 回放 trace（镜像规则的三段式条件）。
+ * 纯函数：按规则逻辑算出决策 + 回放 trace（镜像规则的四段式条件）。
  * 用于 ①生成回放 trace ②作为引擎执行结果的一致性参照。决策本身以引擎为准。
+ *
+ * 「申请额度」通过可负担上限（月收入 × 12 × maxLti）参与决策：额度超上限时，
+ * 即便信用分/负债比达标也无法自动批准 → 转人工复核（超额贷款需人工评估）。
  */
 export function computeDecision(loc: DemoLocale, app: DemoApplicant, th: Thresholds): DemoResult {
   const dec = DECISIONS[loc];
   const tr = TR[loc];
   const dti = app.monthlyDebt / app.monthlyIncome;
   const dtiStr = dti.toFixed(2);
+  const affordCap = app.monthlyIncome * 12 * th.maxLti;
+  const amountOk = app.requestedAmount <= affordCap;
 
   const premiumScoreOk = app.creditScore >= th.premiumScore;
   const premiumDtiOk = dti <= th.premiumDti;
+  const premiumOk = premiumScoreOk && premiumDtiOk && amountOk;
   const standardScoreOk = app.creditScore >= th.standardScore;
   const standardDtiOk = dti <= th.standardDti;
+  const standardOk = standardScoreOk && standardDtiOk && amountOk;
   const minOk = app.creditScore >= th.minScore;
 
   const steps: DecisionTrace['steps'] = [
     { sequence: 1, expression: tr.dti, result: `${app.monthlyDebt} ÷ ${app.monthlyIncome} = ${dtiStr}`, matched: true },
+    { sequence: 2, expression: tr.afford, result: `${app.monthlyIncome} × 12 × ${th.maxLti} = ${affordCap}`, matched: true },
   ];
 
   let decision: string;
   let outcome: Outcome;
   let adverseReason: AdverseReason | null = null;
 
-  if (premiumScoreOk && premiumDtiOk) {
+  if (premiumOk) {
     decision = dec.premium; outcome = 'approved';
-    steps.push({ sequence: 2, expression: tr.scoreAndDti(app.creditScore, premiumScoreOk, dtiStr, premiumDtiOk, true), result: tr.truthy, matched: true, children: [{ sequence: 3, expression: tr.ret(decision), result: decision, matched: true }] });
+    steps.push({ sequence: 3, expression: tr.tier(app.creditScore, premiumScoreOk, dtiStr, premiumDtiOk, app.requestedAmount, amountOk, true), result: tr.truthy, matched: true, children: [{ sequence: 4, expression: tr.ret(decision), result: decision, matched: true }] });
   } else {
-    steps.push({ sequence: 2, expression: tr.scoreAndDti(app.creditScore, premiumScoreOk, dtiStr, premiumDtiOk, false), result: tr.falsy, matched: false });
-    if (standardScoreOk && standardDtiOk) {
+    steps.push({ sequence: 3, expression: tr.tier(app.creditScore, premiumScoreOk, dtiStr, premiumDtiOk, app.requestedAmount, amountOk, false), result: tr.falsy, matched: false });
+    if (standardOk) {
       decision = dec.standard; outcome = 'approved';
-      steps.push({ sequence: 3, expression: tr.scoreAndDti(app.creditScore, standardScoreOk, dtiStr, standardDtiOk, true), result: tr.truthy, matched: true, children: [{ sequence: 4, expression: tr.ret(decision), result: decision, matched: true }] });
+      steps.push({ sequence: 4, expression: tr.tier(app.creditScore, standardScoreOk, dtiStr, standardDtiOk, app.requestedAmount, amountOk, true), result: tr.truthy, matched: true, children: [{ sequence: 5, expression: tr.ret(decision), result: decision, matched: true }] });
     } else {
-      steps.push({ sequence: 3, expression: tr.scoreAndDti(app.creditScore, standardScoreOk, dtiStr, standardDtiOk, false), result: tr.falsy, matched: false });
+      steps.push({ sequence: 4, expression: tr.tier(app.creditScore, standardScoreOk, dtiStr, standardDtiOk, app.requestedAmount, amountOk, false), result: tr.falsy, matched: false });
       if (minOk) {
         decision = dec.refer; outcome = 'refer';
-        adverseReason = { reasonKey: 'tierMiss', actual: app.creditScore, threshold: th.standardScore };
-        steps.push({ sequence: 4, expression: tr.minScore(app.creditScore, true, th.minScore), result: tr.truthy, matched: true, children: [{ sequence: 5, expression: tr.ret(decision), result: decision, matched: true }] });
+        // 好分但超额 → 因额度转人工；否则因分数边界转人工。
+        adverseReason = !amountOk && standardScoreOk && standardDtiOk
+          ? { reasonKey: 'overCap', actual: app.requestedAmount, threshold: affordCap }
+          : { reasonKey: 'tierMiss', actual: app.creditScore, threshold: th.standardScore };
+        steps.push({ sequence: 5, expression: tr.minScore(app.creditScore, true, th.minScore), result: tr.truthy, matched: true, children: [{ sequence: 6, expression: tr.ret(decision), result: decision, matched: true }] });
       } else {
         decision = dec.declined; outcome = 'declined';
         adverseReason = { reasonKey: 'creditScore', actual: app.creditScore, threshold: th.minScore };
-        steps.push({ sequence: 4, expression: tr.minScore(app.creditScore, false, th.minScore), result: tr.falsy, matched: false, children: [{ sequence: 5, expression: tr.ret(decision), result: decision, matched: true }] });
+        steps.push({ sequence: 5, expression: tr.minScore(app.creditScore, false, th.minScore), result: tr.falsy, matched: false, children: [{ sequence: 6, expression: tr.ret(decision), result: decision, matched: true }] });
       }
     }
   }

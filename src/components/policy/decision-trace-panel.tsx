@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
+import { AiMarkdown } from './ai-markdown';
 
 export interface TraceStep {
   sequence: number;
@@ -26,6 +27,11 @@ interface DecisionTracePanelProps {
   source?: string;
   locale?: string;
   tenantId?: string;
+  /**
+   * 登录跳转地址。用于匿名场景（如公开 demo）：AI 解释接口需 session，
+   * 匿名调用会 401。传入后，AI 解释改为「登录后体验」链接，引导注册而非报错。
+   */
+  signInHref?: string;
 }
 
 function TraceStepItem({ step, depth }: { step: TraceStep; depth: number }) {
@@ -82,7 +88,7 @@ function TraceStepItem({ step, depth }: { step: TraceStep; depth: number }) {
   );
 }
 
-export function DecisionTracePanel({ trace, source, locale, tenantId }: DecisionTracePanelProps) {
+export function DecisionTracePanel({ trace, source, locale, tenantId, signInHref }: DecisionTracePanelProps) {
   const t = useTranslations('decisionTrace');
   const tAI = useTranslations('ai');
   const [showExplanation, setShowExplanation] = useState(false);
@@ -109,7 +115,19 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-fg dark:text-gray-100">{t('title')}</h3>
         <div className="flex items-center gap-3">
-          {source && (
+          {source && signInHref && (
+            // 匿名场景：AI 解释需登录，改为引导注册而非点了 401。
+            <a
+              href={signInHref}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              {tAI('explainSignedIn')}
+            </a>
+          )}
+          {source && !signInHref && (
             <button
               type="button"
               onClick={handleExplain}
@@ -171,8 +189,8 @@ export function DecisionTracePanel({ trace, source, locale, tenantId }: Decision
               </div>
             </div>
           )}
-          <div className="text-xs text-fg dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-            {ai.content}
+          <div className="text-xs text-fg dark:text-gray-300 leading-relaxed">
+            <AiMarkdown content={ai.content} />
             {ai.streaming && <span className="inline-block w-1 h-3 bg-primary animate-pulse ml-0.5" />}
           </div>
           {ai.error && (

@@ -2040,7 +2040,8 @@
     "diffGenerated": "Generated",
     "acceptDiff": "Accept Changes",
     "rejectDiff": "Reject Changes",
-    "inlineCompletionLoading": "Fetching AI completion..."
+    "inlineCompletionLoading": "Fetching AI completion...",
+    "explainSignedIn": "Sign in to try AI explanation"
   },
   "upgradeBlocker": {
     "viewPlans": "View plans",
@@ -2120,7 +2121,8 @@
       "label": "Adverse-action reason",
       "reasons": {
         "creditScore": "Credit score of {actual} is below the {threshold} minimum required for approval.",
-        "tierMiss": "Credit score of {actual} did not meet the {threshold} threshold for automatic approval; sent to manual review."
+        "tierMiss": "Credit score of {actual} did not meet the {threshold} threshold for automatic approval; sent to manual review.",
+        "overCap": "Requested amount of {actual} exceeds the affordability cap of {threshold} (income-based); sent to manual review for an oversized loan."
       },
       "note": "This is the disclosable reason required for adverse credit decisions — and the replay below is its step-by-step proof, recomputed from the exact rule and inputs."
     },
@@ -2136,7 +2138,8 @@
       "standardScore": "Standard score",
       "standardDti": "Standard DTI cap",
       "minScore": "Minimum score",
-      "reset": "Reset to defaults"
+      "reset": "Reset to defaults",
+      "maxLti": "Max loan-to-income"
     },
     "runButton": "Run the rule",
     "runHint": "Edit any input or threshold above, then run — the decision is computed live by the same engine that runs in production.",

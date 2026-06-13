@@ -60,13 +60,14 @@ describe('credit-risk demo rules compile & run in every language', () => {
   });
 
   describe('edited thresholds re-run (改规则重跑)', () => {
-    // 放宽 premium 门槛：分数门槛降到 600、DTI 上限放到 0.50。
+    // 放宽 premium 门槛：分数门槛降到 600、DTI 上限放到 0.50（可负担上限保持宽松）。
     const relaxed: Thresholds = {
       premiumScore: 600,
       premiumDti: 0.5,
       standardScore: 660,
       standardDti: 0.43,
       minScore: 600,
+      maxLti: 5,
     };
 
     for (const loc of LOCALES) {
@@ -86,5 +87,33 @@ describe('credit-risk demo rules compile & run in every language', () => {
       const ev = evaluate(result.core!, getRuleName('en'), toEvalContext('en', DEMO_APPLICANTS.refer));
       expect(String(ev.value)).toBe(after.decision);
     });
+  });
+
+  describe('requested amount is a live decision lever (申请额度生效)', () => {
+    // 申请额度通过可负担上限（月收入 × 12 × maxLti）参与决策。强申请人若申请额度
+    // 暴增到超过上限，即便信用分/负债比仍达标，也从「批准」降级为「转人工」。
+    for (const loc of LOCALES) {
+      it(`${loc}: oversized requested amount downgrades an otherwise-approved applicant`, () => {
+        const strong = DEMO_APPLICANTS.approved; // 768 / income 9200
+        // 默认 maxLti=5 → cap = 9200 × 12 × 5 = 552000。
+        const within = { ...strong, requestedAmount: 240000 }; // ≤ cap → premium
+        const over = { ...strong, requestedAmount: 900000 }; // > cap → refer
+
+        const result = compile(buildRuleSource(loc, DEFAULT_THRESHOLDS), { lexicon: LEXICONS[loc] } as Parameters<typeof compile>[1]);
+        expect(result.core, `[${loc}] core`).toBeTruthy();
+
+        const evWithin = evaluate(result.core!, getRuleName(loc), toEvalContext(loc, within));
+        const evOver = evaluate(result.core!, getRuleName(loc), toEvalContext(loc, over));
+        const mirrorWithin = computeDecision(loc, within, DEFAULT_THRESHOLDS);
+        const mirrorOver = computeDecision(loc, over, DEFAULT_THRESHOLDS);
+
+        // 引擎与镜像一致，且额度确实改变了结果（approved → refer）。
+        expect(String(evWithin.value), `[${loc}] within`).toBe(mirrorWithin.decision);
+        expect(String(evOver.value), `[${loc}] over`).toBe(mirrorOver.decision);
+        expect(mirrorWithin.outcome).toBe('approved');
+        expect(mirrorOver.outcome).toBe('refer');
+        expect(evWithin.value).not.toBe(evOver.value);
+      });
+    }
   });
 });

@@ -2040,7 +2040,8 @@
     "diffGenerated": "生成",
     "acceptDiff": "接受变更",
     "rejectDiff": "拒绝变更",
-    "inlineCompletionLoading": "正在获取 AI 补全..."
+    "inlineCompletionLoading": "正在获取 AI 补全...",
+    "explainSignedIn": "登录后体验 AI 解释"
   },
   "upgradeBlocker": {
     "viewPlans": "查看套餐",
@@ -2120,7 +2121,8 @@
       "label": "不利决策理由",
       "reasons": {
         "creditScore": "信用分 {actual} 低于批准所需的最低门槛 {threshold}。",
-        "tierMiss": "信用分 {actual} 未达自动批准门槛 {threshold}，已转人工审核。"
+        "tierMiss": "信用分 {actual} 未达自动批准门槛 {threshold}，已转人工审核。",
+        "overCap": "申请额度 {actual} 超过可负担上限 {threshold}（按收入计）；超额贷款已转人工审核。"
       },
       "note": "这是信贷不利决策依法必须披露的理由——下方回放就是它的逐步佐证，从当时的规则和输入重新算出。"
     },
@@ -2136,7 +2138,8 @@
       "standardScore": "标准分门槛",
       "standardDti": "标准负债比上限",
       "minScore": "最低分门槛",
-      "reset": "恢复默认"
+      "reset": "恢复默认",
+      "maxLti": "贷款收入比上限"
     },
     "runButton": "运行规则",
     "runHint": "改动上方任意输入或阈值，然后运行——决策由与生产环境同款的引擎实时算出。",
