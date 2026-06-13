@@ -15,7 +15,6 @@ import { useSSEStream } from './useSSEStream';
  */
 const SSE_PROXY = {
   generate: '/api/llm/generate',
-  explain: '/api/llm/explain',
   suggest: '/api/llm/suggest',
 } as const;
 
@@ -25,12 +24,6 @@ export interface GenerateOptions {
   existingSource?: string;
   schema?: unknown;
   model?: string;
-}
-
-export interface ExplainOptions {
-  source: string;
-  locale: string;
-  traceData?: unknown;
 }
 
 export interface SuggestOptions {
@@ -51,7 +44,6 @@ export interface UseAIAssistantResult {
   /** 修复进度（如 "2/5"） */
   repairProgress: string | null;
   generate: (options: GenerateOptions, tenantId?: string) => Promise<void>;
-  explain: (options: ExplainOptions, tenantId?: string) => Promise<void>;
   suggest: (options: SuggestOptions, tenantId?: string) => Promise<void>;
   cancel: () => void;
   reset: () => void;
@@ -69,18 +61,6 @@ export function useAIAssistant(): UseAIAssistantResult {
         existingSource: options.existingSource,
         schema: options.schema,
         model: options.model,
-      },
-      {},
-    );
-  }, [sse]);
-
-  const explain = useCallback(async (options: ExplainOptions, _tenantId?: string) => {
-    await sse.startStream(
-      SSE_PROXY.explain,
-      {
-        source: options.source,
-        locale: options.locale,
-        traceData: options.traceData,
       },
       {},
     );
@@ -108,7 +88,6 @@ export function useAIAssistant(): UseAIAssistantResult {
     validated: sse.validated,
     repairProgress: sse.repairProgress,
     generate,
-    explain,
     suggest,
     cancel: sse.cancel,
     reset: sse.reset,

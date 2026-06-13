@@ -2023,7 +2023,6 @@
     "reject": "Discard",
     "retry": "Retry",
     "close": "Close",
-    "explain": "AI Explain",
     "generating": "Generating...",
     "validationPassed": "Compilation passed",
     "autoApplied": "Compilation passed — applied to editor",
@@ -2040,8 +2039,7 @@
     "diffGenerated": "Generated",
     "acceptDiff": "Accept Changes",
     "rejectDiff": "Reject Changes",
-    "inlineCompletionLoading": "Fetching AI completion...",
-    "explainSignedIn": "Sign in to try AI explanation"
+    "inlineCompletionLoading": "Fetching AI completion..."
   },
   "upgradeBlocker": {
     "viewPlans": "View plans",

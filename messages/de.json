@@ -2023,7 +2023,6 @@
     "reject": "Verwerfen",
     "retry": "Wiederholen",
     "close": "Schliessen",
-    "explain": "KI-Erklaerung",
     "generating": "Wird generiert...",
     "autoApplied": "Kompilierung bestanden — im Editor angewendet",
     "repairing": "Wird repariert",
@@ -2040,8 +2039,7 @@
     "diffGenerated": "Generiert",
     "acceptDiff": "Aenderungen uebernehmen",
     "rejectDiff": "Aenderungen verwerfen",
-    "inlineCompletionLoading": "KI-Vervollstaendigung wird geladen...",
-    "explainSignedIn": "Anmelden für KI-Erklärung"
+    "inlineCompletionLoading": "KI-Vervollstaendigung wird geladen..."
   },
   "upgradeBlocker": {
     "viewPlans": "Pläne ansehen",

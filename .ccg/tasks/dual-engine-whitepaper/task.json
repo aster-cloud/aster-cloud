@@ -1,0 +1,12 @@
+{
+  "id": "dual-engine-whitepaper",
+  "title": "双引擎等价白皮书(风控/合规受众, 仓内 Markdown)",
+  "status": "in_progress",
+  "strategy": "guided-develop",
+  "currentPhase": "1",
+  "nextAction": "写给风控/合规决策人的双引擎等价白皮书, 信贷场景为例, 配 aster-lang-test 实测数据, 含诚实分歧账本",
+  "gate": null,
+  "branch": "main",
+  "scope": "dual-engine-whitepaper",
+  "createdAt": "2026-06-12T00:00:00Z"
+}
