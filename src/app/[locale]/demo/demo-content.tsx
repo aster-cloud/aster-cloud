@@ -1,35 +1,97 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { DecisionTracePanel } from '@/components/policy/decision-trace-panel';
-import { getCreditRiskRule, getDemoScenarios, type DemoScenario } from '@/config/credit-risk-demo';
+import { compile, evaluate, EN_US, ZH_CN, DE_DE } from '@aster-cloud/aster-lang-ts/browser';
+import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
+import {
+  toDemoLocale,
+  buildRuleSource,
+  toEvalContext,
+  getRuleName,
+  computeDecision,
+  DEFAULT_THRESHOLDS,
+  DEMO_APPLICANTS,
+  type DemoLocale,
+  type DemoApplicant,
+  type Thresholds,
+  type Outcome,
+  type AdverseReason,
+} from '@/config/credit-risk-demo';
 import { cn } from '@/components/ui';
 
 interface DemoContentProps {
   locale: string;
 }
 
-const OUTCOME_STYLES: Record<DemoScenario['outcome'], string> = {
+const LEXICONS: Record<DemoLocale, unknown> = { en: EN_US, zh: ZH_CN, de: DE_DE };
+
+const OUTCOME_STYLES: Record<Outcome, string> = {
   approved: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
   refer: 'bg-amber-50 text-amber-800 ring-amber-200',
   declined: 'bg-rose-50 text-rose-800 ring-rose-200',
 };
 
+/** 一次「重跑」的结果：决策来自真实引擎，trace 来自客户端镜像。 */
+interface RunResult {
+  decision: string;
+  outcome: Outcome;
+  adverseReason: AdverseReason | null;
+  trace: DecisionTrace;
+  /** 引擎与镜像是否一致——不一致则降级提示（正常情况下恒为 true，有 CI 守护）。 */
+  consistent: boolean;
+  source: string;
+}
+
 export function DemoContent({ locale }: DemoContentProps) {
   const t = useTranslations('demoPage');
-  // 按当前语言取规则源码 + 场景（中文站显示中文规则，德文站显示德文规则）。
-  const rule = getCreditRiskRule(locale);
-  const scenarios = getDemoScenarios(locale);
-  const [selected, setSelected] = useState<DemoScenario>(scenarios[0]);
-  const [replayed, setReplayed] = useState(false);
+  const loc = toDemoLocale(locale);
 
-  function pickScenario(s: DemoScenario) {
-    setSelected(s);
-    setReplayed(false); // 切场景重置回放，让用户重新「按下回放」
+  // 申请人输入（可改）+ 关键阈值（可改）。改任一项 → 规则源码与重跑结果随之变化。
+  const [applicant, setApplicant] = useState<DemoApplicant>(DEMO_APPLICANTS.approved);
+  const [presetKey, setPresetKey] = useState<keyof typeof DEMO_APPLICANTS | null>('approved');
+  const [thresholds, setThresholds] = useState<Thresholds>(DEFAULT_THRESHOLDS);
+  const [run, setRun] = useState<RunResult | null>(null);
+
+  // 规则源码：随当前阈值实时重建（改阈值 → 规则文本立刻变），证明展示的就是要执行的。
+  const ruleSource = useMemo(() => buildRuleSource(loc, thresholds), [loc, thresholds]);
+
+  function pickPreset(key: keyof typeof DEMO_APPLICANTS) {
+    setApplicant(DEMO_APPLICANTS[key]);
+    setPresetKey(key);
+    setRun(null); // 换输入 → 旧结果作废，必须重跑
   }
 
-  const a = selected.applicant;
+  function editApplicant(patch: Partial<DemoApplicant>) {
+    setApplicant((a) => ({ ...a, ...patch }));
+    setPresetKey(null); // 手改 → 脱离预设
+    setRun(null);
+  }
+
+  function editThreshold(patch: Partial<Thresholds>) {
+    setThresholds((th) => ({ ...th, ...patch }));
+    setRun(null);
+  }
+
+  // 「重跑」：用真实浏览器引擎编译当前规则 + 执行当前申请人，决策以引擎为准。
+  function rerun() {
+    const result = compile(ruleSource, { lexicon: LEXICONS[loc] } as Parameters<typeof compile>[1]);
+    if (!result.core) {
+      setRun(null);
+      return;
+    }
+    const ev = evaluate(result.core, getRuleName(loc), toEvalContext(loc, applicant));
+    const mirror = computeDecision(loc, applicant, thresholds);
+    const engineDecision = ev.success ? String(ev.value) : mirror.decision;
+    setRun({
+      decision: engineDecision,
+      outcome: mirror.outcome,
+      adverseReason: mirror.adverseReason,
+      trace: { ...mirror.trace, executionTimeMs: ev.executionTimeMs ?? mirror.trace.executionTimeMs },
+      consistent: ev.success && engineDecision === mirror.decision,
+      source: ruleSource,
+    });
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
@@ -42,96 +104,110 @@ export function DemoContent({ locale }: DemoContentProps) {
         <p className="mx-auto mt-3 max-w-2xl text-lg text-fg-muted">{t('subtitle')}</p>
       </div>
 
-      {/* 步骤 1：信贷规则（只读展示，证明规则可读可审） */}
+      {/* 步骤 1：信贷规则（随阈值实时重建，只读展示） */}
       <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-fg">
-          <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
-          {t('step1.title')}
-        </h2>
+        <StepHeading n={1} title={t('step1.title')} />
         <p className="mb-3 text-sm text-fg-muted">{t('step1.hint')}</p>
         <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-100">
-          {rule}
+          {ruleSource}
         </pre>
       </section>
 
-      {/* 步骤 2：选一个申请人 */}
+      {/* 步骤 2：选申请人 + 改输入 */}
       <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-fg">
-          <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
-          {t('step2.title')}
-        </h2>
+        <StepHeading n={2} title={t('step2.title')} />
         <p className="mb-3 text-sm text-fg-muted">{t('step2.hint')}</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {scenarios.map((s) => (
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {(Object.keys(DEMO_APPLICANTS) as (keyof typeof DEMO_APPLICANTS)[]).map((key) => (
             <button
-              key={s.key}
-              onClick={() => pickScenario(s)}
+              key={key}
+              onClick={() => pickPreset(key)}
               className={cn(
                 'rounded-lg border p-4 text-left transition-colors',
-                selected.key === s.key
+                presetKey === key
                   ? 'border-primary bg-primary-subtle ring-1 ring-primary'
                   : 'border-border bg-bg hover:bg-bg-subtle',
               )}
             >
-              <div className="font-mono text-xs text-fg-subtle">{s.applicant.id}</div>
-              <div className="mt-1 text-sm font-semibold text-fg">{t(`scenarios.${s.key}.label`)}</div>
+              <div className="font-mono text-xs text-fg-subtle">{DEMO_APPLICANTS[key].id}</div>
+              <div className="mt-1 text-sm font-semibold text-fg">{t(`scenarios.${key}.label`)}</div>
               <div className="mt-1 text-xs text-fg-muted">
-                {t('fields.creditScore')} {s.applicant.creditScore}
+                {t('fields.creditScore')} {DEMO_APPLICANTS[key].creditScore}
               </div>
             </button>
           ))}
         </div>
-      </section>
-
-      {/* 选中申请人的明细 */}
-      <section className="mb-8 rounded-lg border border-border bg-bg-subtle p-4">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-          <Field label={t('fields.creditScore')} value={String(a.creditScore)} />
-          <Field label={t('fields.monthlyIncome')} value={`$${a.monthlyIncome.toLocaleString()}`} />
-          <Field label={t('fields.monthlyDebt')} value={`$${a.monthlyDebt.toLocaleString()}`} />
-          <Field label={t('fields.requestedAmount')} value={`$${a.requestedAmount.toLocaleString()}`} />
+        {/* 可编辑申请人字段 */}
+        <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-bg-subtle p-4 sm:grid-cols-4">
+          <NumberField label={t('fields.creditScore')} value={applicant.creditScore} step={1}
+            onChange={(v) => editApplicant({ creditScore: v })} />
+          <NumberField label={t('fields.monthlyIncome')} value={applicant.monthlyIncome} step={100} prefix="$"
+            onChange={(v) => editApplicant({ monthlyIncome: v })} />
+          <NumberField label={t('fields.monthlyDebt')} value={applicant.monthlyDebt} step={100} prefix="$"
+            onChange={(v) => editApplicant({ monthlyDebt: v })} />
+          <NumberField label={t('fields.requestedAmount')} value={applicant.requestedAmount} step={1000} prefix="$"
+            onChange={(v) => editApplicant({ requestedAmount: v })} />
         </div>
       </section>
 
-      {/* 步骤 3：决策结果 + 回放按钮 */}
+      {/* 步骤 3：改阈值（改规则） */}
       <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-fg">
-          <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">3</span>
-          {t('step3.title')}
-        </h2>
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-fg-subtle">{t('decisionLabel')}</div>
-            <div className={cn('mt-1 inline-flex items-center rounded-full px-3 py-1 text-base font-semibold ring-1', OUTCOME_STYLES[selected.outcome])}>
-              {selected.decision}
-            </div>
-          </div>
-          {!replayed && (
+        <StepHeading n={3} title={t('step3.title')} />
+        <p className="mb-3 text-sm text-fg-muted">{t('step3.hint')}</p>
+        <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-bg-subtle p-4 sm:grid-cols-3">
+          <NumberField label={t('thresholds.premiumScore')} value={thresholds.premiumScore} step={1}
+            onChange={(v) => editThreshold({ premiumScore: v })} />
+          <NumberField label={t('thresholds.premiumDti')} value={thresholds.premiumDti} step={0.01}
+            onChange={(v) => editThreshold({ premiumDti: v })} />
+          <NumberField label={t('thresholds.standardScore')} value={thresholds.standardScore} step={1}
+            onChange={(v) => editThreshold({ standardScore: v })} />
+          <NumberField label={t('thresholds.standardDti')} value={thresholds.standardDti} step={0.01}
+            onChange={(v) => editThreshold({ standardDti: v })} />
+          <NumberField label={t('thresholds.minScore')} value={thresholds.minScore} step={1}
+            onChange={(v) => editThreshold({ minScore: v })} />
+          <div className="flex items-end">
             <button
-              onClick={() => setReplayed(true)}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+              onClick={() => { setThresholds(DEFAULT_THRESHOLDS); setRun(null); }}
+              className="text-xs font-medium text-fg-subtle underline-offset-2 hover:text-fg hover:underline"
             >
-              <svg className="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                <path d="M4 4.5v11l9-5.5-9-5.5z" />
-              </svg>
-              {t('replayButton')}
+              {t('thresholds.reset')}
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 步骤 4：重跑 → 决策 */}
+      <section className="mb-8">
+        <StepHeading n={4} title={t('step4.title')} />
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            onClick={rerun}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+          >
+            <svg className="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+              <path d="M4 4.5v11l9-5.5-9-5.5z" />
+            </svg>
+            {t('runButton')}
+          </button>
+          {run && (
+            <div className="text-right">
+              <div className="text-xs font-medium uppercase tracking-wide text-fg-subtle">{t('decisionLabel')}</div>
+              <div className={cn('mt-1 inline-flex items-center rounded-full px-3 py-1 text-base font-semibold ring-1', OUTCOME_STYLES[run.outcome])}>
+                {run.decision}
+              </div>
+            </div>
           )}
         </div>
+        {!run && <p className="mt-3 text-sm text-fg-muted">{t('runHint')}</p>}
       </section>
 
-      {/* 步骤 4：回放（DecisionTracePanel）—— 杀手卖点 */}
-      {replayed && (
+      {/* 步骤 5：回放（DecisionTracePanel）—— 杀手卖点 */}
+      {run && (
         <section className="mb-8">
-          <h2 className="mb-2 text-sm font-semibold text-fg">
-            <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">4</span>
-            {t('step4.title')}
-          </h2>
+          <StepHeading n={5} title={t('replayTitle')} />
 
-          {/* 不利决策理由（adverse-action）—— 拒贷/转人工的法律披露物。
-              从下方 trace 的决定性步骤推导，是信贷买家最想看到的瞬间：
-              "凭什么拒我"→ 当场给出人话理由 + 可逐步回放佐证。 */}
-          {selected.adverseReason && (
+          {/* 不利决策理由（adverse-action）——拒贷/转人工的法律披露物。 */}
+          {run.adverseReason && (
             <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
                 <svg className="mt-0.5 size-5 flex-shrink-0 text-amber-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -140,9 +216,9 @@ export function DemoContent({ locale }: DemoContentProps) {
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">{t('adverse.label')}</div>
                   <p className="mt-1 text-sm font-medium text-amber-900">
-                    {t(`adverse.reasons.${selected.adverseReason.reasonKey}`, {
-                      actual: selected.adverseReason.actual,
-                      threshold: selected.adverseReason.threshold,
+                    {t(`adverse.reasons.${run.adverseReason.reasonKey}`, {
+                      actual: run.adverseReason.actual,
+                      threshold: run.adverseReason.threshold,
                     })}
                   </p>
                   <p className="mt-1.5 text-xs text-amber-700">{t('adverse.note')}</p>
@@ -152,7 +228,7 @@ export function DemoContent({ locale }: DemoContentProps) {
           )}
 
           <p className="mb-4 rounded-md bg-primary-subtle px-4 py-3 text-sm text-fg">{t('step4.auditorNote')}</p>
-          <DecisionTracePanel trace={selected.trace} source={rule} locale={locale} />
+          <DecisionTracePanel trace={run.trace} source={run.source} locale={locale} />
         </section>
       )}
 
@@ -171,11 +247,41 @@ export function DemoContent({ locale }: DemoContentProps) {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function StepHeading({ n, title }: { n: number; title: string }) {
   return (
-    <div>
-      <div className="text-xs text-fg-subtle">{label}</div>
-      <div className="mt-0.5 font-mono text-sm font-medium text-fg">{value}</div>
-    </div>
+    <h2 className="mb-2 text-sm font-semibold text-fg">
+      <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{n}</span>
+      {title}
+    </h2>
+  );
+}
+
+function NumberField({
+  label, value, onChange, step = 1, prefix,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+  prefix?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs text-fg-subtle">{label}</span>
+      <div className="mt-1 flex items-center rounded-md border border-border bg-bg focus-within:ring-1 focus-within:ring-primary">
+        {prefix && <span className="pl-2 text-sm text-fg-subtle">{prefix}</span>}
+        <input
+          type="number"
+          inputMode="decimal"
+          step={step}
+          value={value}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (Number.isFinite(v)) onChange(v);
+          }}
+          className="w-full bg-transparent px-2 py-1.5 font-mono text-sm font-medium text-fg outline-none"
+        />
+      </div>
+    </label>
   );
 }

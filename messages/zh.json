@@ -149,7 +149,8 @@
     "support": "支持",
     "demo": "在线演示",
     "equivalence": "引擎等价性",
-    "copyright": "版权所有。"
+    "copyright": "版权所有。",
+    "whitepaper": "白皮书"
   },
   "legal": {
     "terms": {
@@ -2091,16 +2092,23 @@
       "hint": "三个真实案例：干净的批准、边界的转人工、以及一笔拒绝。"
     },
     "step3": {
-      "title": "决策结果"
+      "title": "调整阈值",
+      "hint": "这些门槛就是规则本身——改动它们，上方规则会随之改写。这正是信贷专员真正会做的策略调整。"
     },
     "step4": {
       "title": "回放这笔决策",
       "auditorNote": "这就是你递给审计员的东西。导向这笔决策的每一步，都从当时的规则和输入重新算出——不是一条日志，是真正的路径。"
     },
     "scenarios": {
-      "approved": { "label": "优质申请人" },
-      "refer": { "label": "边界案例" },
-      "declined": { "label": "低于门槛" }
+      "approved": {
+        "label": "优质申请人"
+      },
+      "refer": {
+        "label": "边界案例"
+      },
+      "declined": {
+        "label": "低于门槛"
+      }
     },
     "fields": {
       "creditScore": "信用评分",
@@ -2117,12 +2125,22 @@
       "note": "这是信贷不利决策依法必须披露的理由——下方回放就是它的逐步佐证，从当时的规则和输入重新算出。"
     },
     "decisionLabel": "决策",
-    "replayButton": "回放这笔决策",
     "cta": {
       "title": "带上你自己的信贷规则",
       "subtitle": "把真实的贷款准入或额度规则跑进 Aster，回放任意一笔决策。免费开始。",
       "button": "免费开始"
-    }
+    },
+    "thresholds": {
+      "premiumScore": "优惠分门槛",
+      "premiumDti": "优惠负债比上限",
+      "standardScore": "标准分门槛",
+      "standardDti": "标准负债比上限",
+      "minScore": "最低分门槛",
+      "reset": "恢复默认"
+    },
+    "runButton": "运行规则",
+    "runHint": "改动上方任意输入或阈值，然后运行——决策由与生产环境同款的引擎实时算出。",
+    "replayTitle": "回放这笔决策"
   },
   "equivalencePage": {
     "seo": {
@@ -2216,6 +2234,11 @@
         "两个比率每天 02:00 UTC 由 nightly-equivalence GitHub Action 重新测量；历史回写 equivalence-history.csv 与 eval-history.csv。",
         "完整方法与已解决分歧台账详见 dual-engine syntax baseline RFC 与 DIVERGENT-MANIFEST.md。"
       ]
+    },
+    "whitepaperCta": {
+      "heading": "白皮书",
+      "body": "面向风控与合规、用平实语言解释双引擎等价——含证据、一个信贷实例演练，以及诚实的范围说明。可在线阅读或下载 PDF。",
+      "link": "阅读白皮书 →"
     }
   },
   "pricingPage": {

@@ -293,3 +293,75 @@ body {
 .aster-entry-rule-line {
   border-left: 2px solid var(--aster-color-violet-500, #8b5cf6);
 }
+
+/*
+ * 白皮书页（/equivalence/whitepaper）：
+ *  - .prose-p 段落统一行距/间距/正文色（白皮书是长文，避免逐段写 class）。
+ *  - 「下载 PDF」按钮触发 window.print()，下方 @media print 把页面收紧成一份
+ *    干净的可打印文档：隐藏站点导航/页脚与 .no-print 操作条，去掉花哨背景，
+ *    黑字白底、避免段落/表格跨页割裂。浏览器「另存为 PDF」即得白皮书 PDF。
+ *    零第三方依赖，PDF 永远与页面内容同源一致。
+ */
+.whitepaper .prose-p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+  color: var(--fg-muted, #52525b);
+}
+
+@media print {
+  /* 站点框架（页眉/页脚/导航）与页内操作条不进 PDF。 */
+  header[data-site-header],
+  footer[data-site-footer],
+  nav[data-site-nav],
+  .no-print {
+    display: none !important;
+  }
+
+  /* 正文铺满打印页，黑字白底，去阴影/圆角的视觉噪声。 */
+  html,
+  body {
+    background: #fff !important;
+    color: #18181b !important;
+  }
+  .whitepaper {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt;
+  }
+  .whitepaper h1 {
+    font-size: 20pt;
+  }
+  .whitepaper h2 {
+    font-size: 13pt;
+  }
+  .whitepaper .prose-p,
+  .whitepaper p,
+  .whitepaper li,
+  .whitepaper td {
+    color: #27272a !important;
+  }
+
+  /* 标题、表格、代码块、引用块尽量不被分页切断。 */
+  .whitepaper h1,
+  .whitepaper h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .whitepaper table,
+  .whitepaper pre,
+  .whitepaper blockquote,
+  .whitepaper li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .whitepaper a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  @page {
+    margin: 1.6cm;
+  }
+}

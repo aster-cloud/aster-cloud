@@ -149,7 +149,8 @@
     "support": "Support",
     "demo": "Live-Demo",
     "equivalence": "Engine-Äquivalenz",
-    "copyright": "Alle Rechte vorbehalten."
+    "copyright": "Alle Rechte vorbehalten.",
+    "whitepaper": "Whitepaper"
   },
   "legal": {
     "terms": {
@@ -2091,16 +2092,23 @@
       "hint": "Drei reale Fälle: eine klare Zusage, ein Grenzfall zur manuellen Prüfung und eine Ablehnung."
     },
     "step3": {
-      "title": "Die Entscheidung"
+      "title": "Schwellenwerte anpassen",
+      "hint": "Diese Grenzwerte SIND die Regel — ändern Sie sie, und die Regel oben schreibt sich neu. Genau diese Richtlinienänderung würde ein Kreditsachbearbeiter vornehmen."
     },
     "step4": {
       "title": "Diese Entscheidung abspielen",
       "auditorNote": "Das übergeben Sie einem Prüfer. Jeder Schritt, der zur Entscheidung führte, neu berechnet aus der exakten Regel und den Eingaben — kein Log-Eintrag, der echte Pfad."
     },
     "scenarios": {
-      "approved": { "label": "Starker Antragsteller" },
-      "refer": { "label": "Grenzfall" },
-      "declined": { "label": "Unter dem Schwellenwert" }
+      "approved": {
+        "label": "Starker Antragsteller"
+      },
+      "refer": {
+        "label": "Grenzfall"
+      },
+      "declined": {
+        "label": "Unter dem Schwellenwert"
+      }
     },
     "fields": {
       "creditScore": "Kreditwürdigkeit",
@@ -2117,12 +2125,22 @@
       "note": "Dies ist die offenlegungspflichtige Begründung für nachteilige Kreditentscheidungen — und die Wiederholung unten ist ihr schrittweiser Nachweis, neu berechnet aus der exakten Regel und den Eingaben."
     },
     "decisionLabel": "Entscheidung",
-    "replayButton": "Diese Entscheidung abspielen",
     "cta": {
       "title": "Bringen Sie Ihre eigenen Kreditregeln mit",
       "subtitle": "Führen Sie eine echte Kreditzusage- oder Limit-Regel durch Aster und spielen Sie jede Entscheidung ab. Kostenlos starten.",
       "button": "Kostenlos starten"
-    }
+    },
+    "thresholds": {
+      "premiumScore": "Vorzugs-Score",
+      "premiumDti": "Vorzugs-DTI-Grenze",
+      "standardScore": "Standard-Score",
+      "standardDti": "Standard-DTI-Grenze",
+      "minScore": "Mindest-Score",
+      "reset": "Auf Standard zurücksetzen"
+    },
+    "runButton": "Regel ausführen",
+    "runHint": "Ändern Sie oben eine Eingabe oder einen Schwellenwert und führen Sie aus — die Entscheidung wird live von derselben Engine berechnet, die in der Produktion läuft.",
+    "replayTitle": "Diese Entscheidung abspielen"
   },
   "equivalencePage": {
     "seo": {
@@ -2216,6 +2234,11 @@
         "Beide Raten werden täglich um 02:00 UTC via GitHub Action nightly-equivalence neu gemessen; Verlauf wird in equivalence-history.csv und eval-history.csv zurückgeschrieben.",
         "Methodik und Register behobener Divergenzen siehe RFC „dual-engine syntax baseline“ und DIVERGENT-MANIFEST.md."
       ]
+    },
+    "whitepaperCta": {
+      "heading": "Das Whitepaper",
+      "body": "Eine Klartext-Erklärung der Dual-Engine-Äquivalenz für Risk & Compliance — mit den Belegen, einem durchgerechneten Kreditbeispiel und einem ehrlichen Geltungsbereich. Online lesen oder als PDF herunterladen.",
+      "link": "Whitepaper lesen →"
     }
   },
   "pricingPage": {
