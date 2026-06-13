@@ -149,7 +149,8 @@
     "support": "Support",
     "demo": "Live demo",
     "equivalence": "Engine equivalence",
-    "copyright": "All rights reserved."
+    "copyright": "All rights reserved.",
+    "whitepaper": "White paper"
   },
   "legal": {
     "terms": {
@@ -2091,16 +2092,23 @@
       "hint": "Three real-world cases: a clean approval, a borderline referral, and a decline."
     },
     "step3": {
-      "title": "The decision"
+      "title": "Tune the thresholds",
+      "hint": "These cut-offs ARE the rule — edit them and the rule above rewrites itself. This is the policy change a credit officer would actually make."
     },
     "step4": {
       "title": "Replay this decision",
       "auditorNote": "This is what you hand an auditor. Every step that led to the decision, recomputed from the exact rule and inputs — not a log entry, the real path."
     },
     "scenarios": {
-      "approved": { "label": "Strong applicant" },
-      "refer": { "label": "Borderline case" },
-      "declined": { "label": "Below threshold" }
+      "approved": {
+        "label": "Strong applicant"
+      },
+      "refer": {
+        "label": "Borderline case"
+      },
+      "declined": {
+        "label": "Below threshold"
+      }
     },
     "fields": {
       "creditScore": "Credit score",
@@ -2117,12 +2125,22 @@
       "note": "This is the disclosable reason required for adverse credit decisions — and the replay below is its step-by-step proof, recomputed from the exact rule and inputs."
     },
     "decisionLabel": "Decision",
-    "replayButton": "Replay this decision",
     "cta": {
       "title": "Bring your own credit rules",
       "subtitle": "Run a real loan-approval or limit rule through Aster and replay any decision. Free to start.",
       "button": "Get started — free"
-    }
+    },
+    "thresholds": {
+      "premiumScore": "Premium score",
+      "premiumDti": "Premium DTI cap",
+      "standardScore": "Standard score",
+      "standardDti": "Standard DTI cap",
+      "minScore": "Minimum score",
+      "reset": "Reset to defaults"
+    },
+    "runButton": "Run the rule",
+    "runHint": "Edit any input or threshold above, then run — the decision is computed live by the same engine that runs in production.",
+    "replayTitle": "Replay this decision"
   },
   "equivalencePage": {
     "seo": {
@@ -2216,6 +2234,11 @@
         "Both rates are re-measured nightly at 02:00 UTC via the nightly-equivalence GitHub Action; history committed back to equivalence-history.csv and eval-history.csv.",
         "See the dual-engine syntax baseline RFC and DIVERGENT-MANIFEST.md for the full methodology and the resolved-divergence ledger."
       ]
+    },
+    "whitepaperCta": {
+      "heading": "The white paper",
+      "body": "A plain-language explanation of dual-engine equivalence for risk & compliance — with the evidence, a worked credit example, and an honest scope. Read it online or download as PDF.",
+      "link": "Read the white paper →"
     }
   },
   "pricingPage": {

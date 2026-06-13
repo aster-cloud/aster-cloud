@@ -374,9 +374,23 @@ export default async function EquivalencePage({ params }: Props) {
           )}
 
           {/* 分层说明：parse 与 eval 的区别（原 hero qualifier 文案，精简保留）。 */}
-          <p className="mb-12 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+          <p className="mb-8 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
             {t('qualifier')}
           </p>
+
+          {/* 白皮书入口：把这些数字背后的「为什么可信」讲给风控/合规，可读 + 下载 PDF。 */}
+          <section className="mb-12 rounded-xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-900/40">
+            <h2 className="text-lg font-semibold">{t('whitepaperCta.heading')}</h2>
+            <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
+              {t('whitepaperCta.body')}
+            </p>
+            <a
+              href={`/${locale}/equivalence/whitepaper`}
+              className="mt-4 inline-flex items-center text-sm font-semibold text-[var(--aster-primary,#7c3aed)] hover:underline"
+            >
+              {t('whitepaperCta.link')}
+            </a>
+          </section>
 
           {resolvedDivergences.length > 0 && (
             <section className="mb-12">

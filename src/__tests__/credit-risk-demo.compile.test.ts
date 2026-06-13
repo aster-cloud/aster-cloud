@@ -1,69 +1,90 @@
 /**
  * 信贷风控 demo 规则的**生产可验证性**契约。
  *
- * /demo 页按语言展示规则（中文站中文规则、德文站德文规则）。这些规则不是
- * 装饰性文本——它们必须能在生产同款引擎里**真正编译且执行**，否则就是给客户/监管
- * 演示时当场翻车。本测试用与生产相同的 `@aster-cloud/aster-lang-ts/browser` 引擎，
- * 对 en/zh/de 三语规则逐一：
- *   1. 编译成功（产出 Core IR），无诊断错误；
- *   2. 用三个 demo 申请人执行，产出与 demo 场景声明一致的决策文本。
- * 任一语言不编译或决策不符 = CI 硬失败。
+ * /demo 页按语言展示规则（中文站中文规则、德文站德文规则），且**标识符也本地化**
+ * （模块/类型/规则/参数/字段名按语言）。这些规则不是装饰性文本——它们必须能在生产同款
+ * 引擎里**真正编译且执行**，否则就是给客户/监管演示时当场翻车。
+ *
+ * 本测试用与生产相同的 `@aster-cloud/aster-lang-ts/browser` 引擎，覆盖两条路径：
+ *   1. **默认阈值**：en/zh/de 三语规则逐一编译（无诊断错误）并对三个申请人执行，
+ *      引擎决策必须与客户端镜像 `computeDecision()` 完全一致。
+ *   2. **改阈值重跑**（demo 核心交互）：放宽阈值后引擎重新编译/执行，决策随之变化，
+ *      且仍与 `computeDecision()` 一致——证明「改规则 → 浏览器引擎重跑」真实可信。
+ * 任一语言不编译、或引擎决策与镜像不符 = CI 硬失败。
  */
 import { describe, it, expect } from 'vitest';
 import { compile, evaluate, EN_US, ZH_CN, DE_DE } from '@aster-cloud/aster-lang-ts/browser';
 import {
-  CREDIT_RISK_RULE_BY_LOCALE,
-  getDemoScenarios,
+  buildRuleSource,
+  toEvalContext,
+  getRuleName,
+  computeDecision,
+  DEFAULT_THRESHOLDS,
+  DEMO_APPLICANTS,
   type DemoLocale,
+  type Thresholds,
 } from '@/config/credit-risk-demo';
 
-const LEXICONS: Record<DemoLocale, unknown> = {
-  en: EN_US,
-  zh: ZH_CN,
-  de: DE_DE,
-};
+const LEXICONS: Record<DemoLocale, unknown> = { en: EN_US, zh: ZH_CN, de: DE_DE };
+const LOCALES: DemoLocale[] = ['en', 'zh', 'de'];
+
+/** 编译 + 逐申请人执行，断言引擎决策 === 客户端镜像 computeDecision。 */
+function assertEngineMatchesMirror(loc: DemoLocale, th: Thresholds) {
+  const source = buildRuleSource(loc, th);
+  const result = compile(source, { lexicon: LEXICONS[loc] } as Parameters<typeof compile>[1]);
+  const diags = ((result as { diagnostics?: { severity?: string }[] }).diagnostics ?? []).filter(
+    (d) => d.severity === 'error',
+  );
+  if (!result.core || diags.length > 0) {
+    console.error(`[${loc}] compile failed:`, JSON.stringify(diags));
+  }
+  expect(result.core, `[${loc}] core`).toBeTruthy();
+  expect(diags.length, `[${loc}] diagnostics: ${JSON.stringify(diags)}`).toBe(0);
+
+  for (const app of Object.values(DEMO_APPLICANTS)) {
+    const ev = evaluate(result.core!, getRuleName(loc), toEvalContext(loc, app));
+    expect(ev.success, `[${loc}] ${app.id} eval failed: ${ev.error ?? ''}`).toBe(true);
+    const mirror = computeDecision(loc, app, th);
+    // 引擎是决策权威；镜像必须逐字吻合，否则回放 trace 会与真实决策脱节。
+    expect(String(ev.value), `[${loc}] ${app.id}`).toBe(mirror.decision);
+  }
+}
 
 describe('credit-risk demo rules compile & run in every language', () => {
-  for (const loc of ['en', 'zh', 'de'] as DemoLocale[]) {
-    describe(`${loc}`, () => {
-      const source = CREDIT_RISK_RULE_BY_LOCALE[loc];
-
-      it('compiles to Core IR with no errors', () => {
-        const result = compile(source, { lexicon: LEXICONS[loc] } as Parameters<typeof compile>[1]);
-        const diags = (result as { diagnostics?: unknown[] }).diagnostics ?? [];
-        if (!result.core) {
-          // 失败时打印诊断，便于定位是哪个关键词/语法在该语言下不被接受。
-          console.error(`[${loc}] compile failed:`, JSON.stringify(diags));
-        }
-        expect(result.core).toBeTruthy();
-        expect(diags.length).toBe(0);
+  describe('default thresholds', () => {
+    for (const loc of LOCALES) {
+      it(`${loc}: localized rule compiles and every applicant matches the mirror`, () => {
+        assertEngineMatchesMirror(loc, DEFAULT_THRESHOLDS);
       });
+    }
+  });
 
-      it('runs each demo applicant to the declared decision', () => {
-        const result = compile(source, { lexicon: LEXICONS[loc] } as Parameters<typeof compile>[1]);
-        expect(result.core).toBeTruthy();
+  describe('edited thresholds re-run (改规则重跑)', () => {
+    // 放宽 premium 门槛：分数门槛降到 600、DTI 上限放到 0.50。
+    const relaxed: Thresholds = {
+      premiumScore: 600,
+      premiumDti: 0.5,
+      standardScore: 660,
+      standardDti: 0.43,
+      minScore: 600,
+    };
 
-        for (const scenario of getDemoScenarios(loc)) {
-          const a = scenario.applicant;
-          // decide(applicant): 命名式 context，参数名 applicant 映射到 Applicant 结构。
-          const evalResult = evaluate(result.core!, 'decide', {
-            applicant: {
-              id: a.id,
-              creditScore: a.creditScore,
-              monthlyIncome: a.monthlyIncome,
-              monthlyDebt: a.monthlyDebt,
-              requestedAmount: a.requestedAmount,
-            },
-          });
-
-          expect(
-            evalResult.success,
-            `[${loc}] ${scenario.key} eval failed: ${evalResult.error ?? ''}`,
-          ).toBe(true);
-          // 引擎产出必须与 demo 场景声明的决策文本一致——保证页面展示的结果是真算出来的。
-          expect(String(evalResult.value)).toBe(scenario.decision);
-        }
+    for (const loc of LOCALES) {
+      it(`${loc}: relaxing thresholds re-runs through the engine and still matches`, () => {
+        assertEngineMatchesMirror(loc, relaxed);
       });
+    }
+
+    it('relaxed premium threshold actually flips the refer applicant to approved', () => {
+      // 守住「改阈值确实改变决策」——否则测试看似通过却没验证到重跑语义。
+      const before = computeDecision('en', DEMO_APPLICANTS.refer, DEFAULT_THRESHOLDS);
+      const after = computeDecision('en', DEMO_APPLICANTS.refer, relaxed);
+      expect(before.outcome).toBe('refer');
+      expect(after.outcome).toBe('approved');
+
+      const result = compile(buildRuleSource('en', relaxed), { lexicon: EN_US } as Parameters<typeof compile>[1]);
+      const ev = evaluate(result.core!, getRuleName('en'), toEvalContext('en', DEMO_APPLICANTS.refer));
+      expect(String(ev.value)).toBe(after.decision);
     });
-  }
+  });
 });
