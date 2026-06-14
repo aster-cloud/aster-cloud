@@ -11,13 +11,13 @@ import {
   type CatMood, type CatScene as CatSceneData,
 } from '@/config/cat-mood';
 import dynamic from 'next/dynamic';
-import type { Cat3DHandle } from './cat-3d-scene';
+import type { Cat25DHandle } from './cat-25d-scene';
 import { cn } from '@/components/ui';
 
-// 3D 场景含 WebGL，不能 SSR；客户端动态加载，加载前显示占位。
-const Cat3DScene = dynamic(() => import('./cat-3d-scene').then((m) => m.Cat3DScene), {
+// 2.5D 场景（纯 SVG + CSS，无 WebGL）；客户端动态加载，加载前显示占位。
+const Cat25DScene = dynamic(() => import('./cat-25d-scene').then((m) => m.Cat25DScene), {
   ssr: false,
-  loading: () => <div className="cat-3d-stage cat-3d-loading" aria-hidden />,
+  loading: () => <div className="cat-3d-stage" aria-hidden />,
 });
 
 /** 正则转义。 */
@@ -53,7 +53,7 @@ export function CatMoodContent({ locale }: { locale: string }) {
   const loc = toDemoLocale(locale);
   const rule = CAT_RULES[loc];
   const [run, setRun] = useState<RunResult | null>(null);
-  const sceneRef = useRef<Cat3DHandle>(null);
+  const sceneRef = useRef<Cat25DHandle>(null);
 
   // 编译猫规则（注入猫词汇）。
   const core = useMemo(() => {
@@ -86,7 +86,7 @@ export function CatMoodContent({ locale }: { locale: string }) {
 
       {/* 活猫布景（C 位，始终在场——平时自主游荡，运行规则时响应） */}
       <section className="mb-3">
-        <Cat3DScene ref={sceneRef} />
+        <Cat25DScene ref={sceneRef} />
       </section>
 
       {/* 心情说明（运行后显示） */}
