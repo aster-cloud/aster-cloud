@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { compile, evaluate, EN_US } from '@aster-cloud/aster-lang-ts/browser';
+import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
 import {
   VOCAB_DOMAINS,
   VOCAB_DOMAIN_IDS,
   VOCAB_DEMO_TENANT,
   registerVocabForDomain,
+  lexiconFor,
+  toDemoLocale,
   type VocabDomainId,
 } from '@/config/vocab-demo';
 import { cn } from '@/components/ui';
@@ -15,40 +17,40 @@ import { cn } from '@/components/ui';
 interface RunResult {
   caseId: string;
   decision: string;
-  /** 引擎成功与否（正常恒 true，有 CI 守护）。 */
   ok: boolean;
 }
 
-export function VocabDemoContent() {
+export function VocabDemoContent({ locale }: { locale: string }) {
   const t = useTranslations('vocabDemoPage');
+  const loc = toDemoLocale(locale);
   const [domainId, setDomainId] = useState<VocabDomainId>('healthcare');
   const [run, setRun] = useState<RunResult | null>(null);
 
   const domain = VOCAB_DOMAINS[domainId];
+  const rule = domain.rules[loc];
 
-  // 编译该领域规则：注入领域词汇 → compile(domain) 把行业术语翻成 canonical IR。
-  // useMemo 缓存 core，切领域时重算。
+  // 编译该领域规则（按当前语言）：注入对应 locale 的领域词汇 → compile 翻成 canonical IR。
   const core = useMemo(() => {
-    registerVocabForDomain(domain, 'en-US');
-    const r = compile(domain.source, {
-      lexicon: EN_US,
-      domain: domain.id,
+    const domainKey = registerVocabForDomain(domain, loc);
+    const r = compile(rule.source, {
+      lexicon: lexiconFor(loc),
+      domain: domainKey,
       tenantId: VOCAB_DEMO_TENANT,
     } as Parameters<typeof compile>[1]);
     return r.core ?? null;
-  }, [domain]);
+  }, [domain, rule, loc]);
 
   function pickDomain(id: VocabDomainId) {
     setDomainId(id);
     setRun(null);
   }
 
-  // 运行某案例：eval 输入用 canonical 字段名（领域词只在表层，IR 是规范名）。
+  // 运行案例：eval 输入用 canonical 字段名（领域词只在表层，IR 是规范名）。
   function runCase(caseId: string) {
     const c = domain.cases.find((x) => x.id === caseId);
     if (!c || !core) return;
-    const ev = evaluate(core, domain.ruleName, { [domain.paramLocalized]: c.input });
-    setRun({ caseId, decision: ev.success ? String(ev.value) : c.expect, ok: ev.success });
+    const ev = evaluate(core, rule.ruleName, { [rule.paramName]: c.input });
+    setRun({ caseId, decision: ev.success ? String(ev.value) : c.expect[loc], ok: ev.success });
   }
 
   return (
@@ -85,7 +87,7 @@ export function VocabDemoContent() {
         </div>
       </section>
 
-      {/* 步骤 2：领域术语表 */}
+      {/* 步骤 2：领域术语表（行业词用当前语言） */}
       <section className="mb-8">
         <StepHeading n={2} title={t('step2.title')} />
         <p className="mb-3 text-sm text-fg-muted">{t('step2.hint')}</p>
@@ -102,7 +104,7 @@ export function VocabDemoContent() {
             <tbody className="divide-y divide-border">
               {domain.terms.map((term) => (
                 <tr key={term.canonical}>
-                  <td className="px-4 py-2 font-mono font-medium text-sky-700 dark:text-sky-400">{term.localized}</td>
+                  <td className="px-4 py-2 font-mono font-medium text-sky-700 dark:text-sky-400">{term.localized[loc]}</td>
                   <td className="px-4 py-2 font-mono text-xs text-fg-muted">{term.canonical}</td>
                   <td className="px-4 py-2 text-xs text-fg-muted">{t(`terms.kind.${term.kind}`)}</td>
                   <td className="px-4 py-2 text-fg-muted">{t(`glosses.${term.canonical}`)}</td>
@@ -114,12 +116,12 @@ export function VocabDemoContent() {
         <p className="mt-2 text-xs text-fg-subtle">{t('terms.note')}</p>
       </section>
 
-      {/* 步骤 3：用行业术语写的规则 */}
+      {/* 步骤 3：用行业术语 + 当前语言 CNL 写的规则 */}
       <section className="mb-8">
         <StepHeading n={3} title={t('step3.title')} />
         <p className="mb-3 text-sm text-fg-muted">{t('step3.hint')}</p>
         <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-100">
-          {domain.source}
+          {rule.source}
         </pre>
       </section>
 
