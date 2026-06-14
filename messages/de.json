@@ -2842,7 +2842,9 @@
     },
     "step3": {
       "title": "Die Regel, in Ihren Worten",
-      "hint": "Vollständig im obigen Branchenvokabular geschrieben — lesbar für die, die die Richtlinie verantworten."
+      "hint": "Vollständig im obigen Branchenvokabular geschrieben — lesbar für die, die die Richtlinie verantworten.",
+      "legendTerm": "Hervorgehoben",
+      "legend": "= Ihr Branchenvokabular (die Engine übersetzt es in die kanonische Form)."
     },
     "step4": {
       "title": "Einen Fall ausführen",

@@ -15,6 +15,36 @@ import {
   type CaseExplanation,
 } from '@/config/vocab-demo';
 import { cn } from '@/components/ui';
+import type { ReactNode } from 'react';
+
+/** 正则元字符转义（术语名可能含特殊字符，安全起见）。 */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 把规则源码里的领域术语高亮成 sky 色（呼应 monaco 编辑器「your vocabulary」约定）。
+ * 让访客一眼看出哪些是「你的行业词」。最长优先匹配避免子串误切；术语名互不包含，
+ * 但仍按长度降序拼正则以稳妥。中文无词边界，故不加 \b（术语集内无包含关系，安全）。
+ */
+function highlightVocab(source: string, terms: string[]): ReactNode[] {
+  const valid = terms.filter((t) => t && t.length > 0).sort((a, b) => b.length - a.length);
+  if (valid.length === 0) return [source];
+  const re = new RegExp(`(${valid.map(escapeRegExp).join('|')})`, 'g');
+  const out: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = re.exec(source)) !== null) {
+    if (m.index > last) out.push(source.slice(last, m.index));
+    out.push(
+      <span key={key++} className="font-semibold text-sky-400">{m[0]}</span>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < source.length) out.push(source.slice(last));
+  return out;
+}
 
 interface RunResult {
   caseId: string;
@@ -134,8 +164,12 @@ export function VocabDemoContent({ locale }: { locale: string }) {
         <StepHeading n={3} title={t('step3.title')} />
         <p className="mb-3 text-sm text-fg-muted">{t('step3.hint')}</p>
         <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-100">
-          {rule.source}
+          {highlightVocab(rule.source, domain.terms.map((t) => t.localized[loc]))}
         </pre>
+        <p className="mt-2 text-xs text-fg-subtle">
+          <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{t('step3.legendTerm')}</span>
+          {' '}{t('step3.legend')}
+        </p>
       </section>
 
       {/* 步骤 4：选案例运行 */}
