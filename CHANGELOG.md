@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Procedural Three.js cat — drop CC0 model, hand-built low-poly + useFrame (#74) *(cat-mood)*
 - 3D realistic cat — Three.js GLTF model driven by rule engine (#71) *(cat-mood)*
 - Real walking gait, clean rule interrupt + multi-beat feed, controls moved up (#70) *(cat-mood)*
 - Living cat that roams a cozy room + reacts to rules (#69) *(cat-mood)*
@@ -222,6 +223,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
