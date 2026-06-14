@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Real walking gait, clean rule interrupt + multi-beat feed, controls moved up (#70) *(cat-mood)*
 - Living cat that roams a cozy room + reacts to rules (#69) *(cat-mood)*
 - Richer illustrated cat (gradient fur, 3D eyes) — drop the line sketch (#68) *(cat-mood)*
 - Redraw the cat in kawaii (Japanese cartoon) style (#67) *(cat-mood)*
@@ -220,6 +221,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
