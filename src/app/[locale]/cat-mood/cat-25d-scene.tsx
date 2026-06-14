@@ -26,13 +26,14 @@ export type Cat3DHandle = Cat25DHandle;
 
 /* ── 舞台坐标 → 地面像素坐标 ──────────────────────────────────────────
  * 舞台 x:0..100（横向）, y:0..100（纵深，越大越靠前）。
- * 地板用一个 CSS rotateX 的平面，子元素按 left%/top% 落在平面上即获得等距纵深。
- * 这里把 y 压到地板可见区间，x 直接用百分比。 */
+ * 关键：墙占舞台 top 0~52%、可见地板 56%~92%。猫的游走带 y∈[78,85]，actor 锚点
+ * translate(-50%,-82%) 让脚落在 top + ~6%。为避免猫"滑到墙上"，必须把整个游走带映射
+ * 到地板区——这里 y[70,100] → top[54,84]，故 y78→top60(脚~66)、y85→top67(脚~73)，
+ * 全程在 56% 地板线以下。 */
 function groundPos(x: number, y: number): { left: number; top: number } {
-  // x 0..100 → 地板 8%..92%；y 78..86（猫活动区）→ 地板 30%..82%（越靠前 top 越大）
   const left = 8 + (x / 100) * 84;
-  const top = 22 + ((y - 70) / 30) * 64;
-  return { left, top: Math.max(8, Math.min(92, top)) };
+  const top = 54 + ((y - 70) / 30) * 30; // y70→54, y100→84
+  return { left, top: Math.max(54, Math.min(86, top)) };
 }
 
 // 猫越靠后（y 小）越小、越靠前（y 大）越大，做远近缩放（伪透视）。
