@@ -265,8 +265,11 @@ export const Cat25DScene = forwardRef<Cat25DHandle, {}>(function Cat25DScene(_pr
   useImperativeHandle(ref, () => ({ react: behavior.react }), [behavior.react]);
   const { state } = behavior;
 
-  const ground = groundPos(state.x, state.y);
-  const scale = depthScale(state.y);
+  // perch：把猫定位到爬架顶窝（爬架 base top 64%、顶窝在其上方约 33%），其余按地面。
+  // 顶窝偏右一点对齐窝口；猫在高处略缩小（远 + 蹲）。
+  const perching = state.pose === 'perch';
+  const ground = perching ? { left: 14.5, top: 33 } : groundPos(state.x, state.y);
+  const scale = perching ? 0.6 : depthScale(state.y);
 
   // 食盆按舞台坐标放（与 PROP_POS.purr 对齐：x74,y85）。
   const bowlPos = groundPos(74, 85);
@@ -286,7 +289,7 @@ export const Cat25DScene = forwardRef<Cat25DHandle, {}>(function Cat25DScene(_pr
         }}
       />
 
-      {/* 猫（按 y 排序 zIndex，越靠前越上层） */}
+      {/* 猫（按 y 排序 zIndex，越靠前越上层；perch 时坐爬架顶窝、压在爬架之上） */}
       <div
         className="cat25-actor"
         style={{
@@ -295,12 +298,15 @@ export const Cat25DScene = forwardRef<Cat25DHandle, {}>(function Cat25DScene(_pr
           transform: `translate(-50%, -82%) scale(${scale})`,
           transition: state.moveMs
             ? `left ${state.moveMs}ms linear, top ${state.moveMs}ms linear, transform ${state.moveMs}ms linear`
-            : 'transform 220ms ease',
-          zIndex: Math.round(ground.top),
+            : perching
+              ? 'left 520ms cubic-bezier(.5,-0.3,.5,1), top 520ms cubic-bezier(.5,-0.3,.5,1), transform 520ms ease'
+              : 'transform 220ms ease',
+          zIndex: perching ? 70 : Math.round(ground.top),
         }}
       >
         <CatSprite state={state} />
-        <div className="cat25-shadow" />
+        {/* 蹲爬架时不在地面投影 */}
+        {!perching && <div className="cat25-shadow" />}
       </div>
 
       {/* 食盆（前排） */}
