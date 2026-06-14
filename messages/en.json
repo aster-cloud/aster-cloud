@@ -2842,7 +2842,9 @@
     },
     "step3": {
       "title": "The rule, in your words",
-      "hint": "Written entirely in the industry vocabulary above — readable by the people who own the policy."
+      "hint": "Written entirely in the industry vocabulary above — readable by the people who own the policy.",
+      "legendTerm": "Highlighted",
+      "legend": "= your industry vocabulary (the engine translates these to its canonical form)."
     },
     "step4": {
       "title": "Run a case",
