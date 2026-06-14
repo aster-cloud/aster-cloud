@@ -150,7 +150,8 @@
     "demo": "Live-Demo",
     "equivalence": "Engine-Äquivalenz",
     "copyright": "Alle Rechte vorbehalten.",
-    "whitepaper": "Whitepaper"
+    "whitepaper": "Whitepaper",
+    "vocabDemo": "Domänen-Vokabular"
   },
   "legal": {
     "terms": {
@@ -2821,6 +2822,93 @@
     "fallbackBanner": {
       "title": "Übersetzung in Arbeit",
       "body": "Diese Seite ist noch nicht übersetzt. Unten ist die englische Originalfassung zu sehen."
+    }
+  },
+  "vocabDemoPage": {
+    "seo": {
+      "title": "Regeln in den Begriffen Ihrer Branche schreiben — Aster-Lang-Demo",
+      "description": "Gesundheit, Versicherung, Logistik: Schreiben Sie die Regel in der Fachsprache Ihrer Domäne, die Engine kompiliert und führt sie aus. Ohne Anmeldung."
+    },
+    "eyebrow": "Live-Demo · Domänen-Vokabular",
+    "title": "Ihre Begriffe. Dieselbe Engine.",
+    "subtitle": "Schreiben Sie Regeln im Vokabular Ihrer Branche — die Engine bildet Ihre Begriffe auf ihre kanonische Form ab, kompiliert und führt sie aus. Eine Sprache, jede Domäne.",
+    "step1": {
+      "title": "Domäne wählen",
+      "hint": "Drei Branchen, drei Vokabulare — dieselbe Engine darunter."
+    },
+    "step2": {
+      "title": "Ihr Domänen-Vokabular",
+      "hint": "Das sind die Begriffe Ihrer Branche. Die Engine weiß, worauf jeder intern abbildet."
+    },
+    "step3": {
+      "title": "Die Regel, in Ihren Worten",
+      "hint": "Vollständig im obigen Branchenvokabular geschrieben — lesbar für die, die die Richtlinie verantworten."
+    },
+    "step4": {
+      "title": "Einen Fall ausführen",
+      "hint": "Wählen Sie einen Fall; die Browser-Engine injiziert Ihr Vokabular, kompiliert und berechnet die Entscheidung live."
+    },
+    "terms": {
+      "colIndustry": "Branchenbegriff",
+      "colCanonical": "Engine-Begriff",
+      "colKind": "Art",
+      "colGloss": "Bedeutung",
+      "kind": {
+        "struct": "Typ",
+        "field": "Feld"
+      },
+      "note": "Den Branchenbegriff schreiben Sie; der Engine-Begriff ist das Kompilat. Gleiche Logik, Ihre Worte."
+    },
+    "result": {
+      "label": "Entscheidung",
+      "note": "Live von derselben Engine berechnet, die in der Produktion läuft — Ihr Vokabular in die kanonische Form übersetzt und dann ausgeführt."
+    },
+    "cta": {
+      "title": "Bringen Sie Ihr eigenes Vokabular mit",
+      "subtitle": "Definieren Sie die Begriffe Ihrer Domäne einmal; Ihr ganzes Team schreibt Regeln in den Worten, die es ohnehin verwendet."
+    },
+    "domains": {
+      "healthcare": {
+        "name": "Gesundheit",
+        "tagline": "Klinische Triage",
+        "cases": {
+          "emergency": "Kritische Vitalwerte",
+          "refer": "Grenzfall",
+          "routine": "Stabiler Patient"
+        }
+      },
+      "insurance": {
+        "name": "Versicherung",
+        "tagline": "Schadenannahme",
+        "cases": {
+          "approve": "Klarer Schaden",
+          "refer": "Großschaden",
+          "declined": "Unter Selbstbehalt"
+        }
+      },
+      "logistics": {
+        "name": "Logistik",
+        "tagline": "Auftragsrouting",
+        "cases": {
+          "air": "Eilsendung",
+          "freight": "Schwer / Fernverkehr",
+          "courier": "Standardpaket"
+        }
+      }
+    },
+    "glosses": {
+      "Patient": "Patientenbesuch",
+      "systolic": "Systolischer Druck (mmHg)",
+      "heartRate": "Herzfrequenz (1/min)",
+      "age": "Alter",
+      "Claim": "Versicherungsfall",
+      "claimAmount": "Schadenhöhe",
+      "deductible": "Selbstbehalt",
+      "priorClaims": "Frühere Schäden",
+      "Shipment": "Sendung / Paket",
+      "weightKg": "Bruttogewicht (kg)",
+      "distanceKm": "Distanz (km)",
+      "priority": "SLA-Stufe (1-3)"
     }
   }
 }
