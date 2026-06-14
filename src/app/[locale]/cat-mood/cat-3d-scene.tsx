@@ -78,6 +78,72 @@ const BELLY = '#f6e0c4';
 const EAR_IN = '#f3b3a0';
 const NOSE = '#d96b6b';
 
+/**
+ * 程序化毛发贴图：在客户端 2D canvas 上画细密短毛笔触 + 虎斑条纹，生成 color/roughness
+ * 贴图（CanvasTexture，零外部文件、无 eval、CSP 安全）。让表面读起来像毛而非塑料。
+ * @param base 主色  @param stripe 条纹色  @param tabby 是否画虎斑条纹
+ */
+function makeFurTexture(base: string, stripe: string, tabby: boolean): {
+  map: THREE.CanvasTexture;
+  rough: THREE.CanvasTexture;
+} {
+  const S = 256;
+  const cvs = document.createElement('canvas');
+  cvs.width = cvs.height = S;
+  const ctx = cvs.getContext('2d')!;
+  // 底色
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, S, S);
+
+  // 虎斑：竖向不规则深色条带（环绕身体方向）。
+  if (tabby) {
+    ctx.fillStyle = stripe;
+    ctx.globalAlpha = 0.5;
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * S + Math.sin(i * 1.7) * 12;
+      const w = 8 + (i % 3) * 4;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      for (let y = 0; y <= S; y += 16) {
+        ctx.lineTo(x + Math.sin(y * 0.05 + i) * 6, y);
+      }
+      for (let y = S; y >= 0; y -= 16) {
+        ctx.lineTo(x + w + Math.sin(y * 0.05 + i) * 6, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // 短毛笔触：大量细短线，深浅交替，方向略随机 → 毛感。
+  for (let i = 0; i < 4200; i++) {
+    const x = Math.random() * S;
+    const y = Math.random() * S;
+    const len = 3 + Math.random() * 5;
+    const ang = -Math.PI / 2 + (Math.random() - 0.5) * 0.7; // 大体竖向
+    const dark = Math.random() < 0.5;
+    ctx.strokeStyle = dark ? stripe : '#fff7ea';
+    ctx.globalAlpha = 0.05 + Math.random() * 0.08;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  const map = new THREE.CanvasTexture(cvs);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(2, 2);
+  map.anisotropy = 4;
+
+  // 粗糙度贴图：复用毛笔触的明暗作微观粗糙变化（直接共用 canvas，repeat 不同）。
+  const rough = new THREE.CanvasTexture(cvs);
+  rough.wrapS = rough.wrapT = THREE.RepeatWrapping;
+  rough.repeat.set(3, 3);
+  return { map, rough };
+}
+
 function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> }) {
   const root = useRef<THREE.Group>(null);
   const body = useRef<THREE.Group>(null);
@@ -216,9 +282,27 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
   });
 
   // 圆角材质（柔和）。
-  const matFur = useMemo(() => new THREE.MeshStandardMaterial({ color: FUR, roughness: 0.85 }), []);
-  const matDark = useMemo(() => new THREE.MeshStandardMaterial({ color: FUR_DARK, roughness: 0.85 }), []);
-  const matBelly = useMemo(() => new THREE.MeshStandardMaterial({ color: BELLY, roughness: 0.9 }), []);
+  // 毛发贴图（程序化 canvas，毛笔触 + 虎斑）；主体用虎斑，肚皮用素毛。
+  const furTex = useMemo(() => makeFurTexture(FUR, FUR_DARK, true), []);
+  const bellyTex = useMemo(() => makeFurTexture(BELLY, '#e6cba6', false), []);
+  const matFur = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: FUR,
+        roughness: 0.92,
+        map: furTex.map,
+        roughnessMap: furTex.rough,
+      }),
+    [furTex],
+  );
+  const matDark = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: FUR_DARK, roughness: 0.9, map: furTex.map }),
+    [furTex],
+  );
+  const matBelly = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: BELLY, roughness: 0.95, map: bellyTex.map }),
+    [bellyTex],
+  );
   const matEar = useMemo(() => new THREE.MeshStandardMaterial({ color: EAR_IN, roughness: 0.9 }), []);
   const matNose = useMemo(() => new THREE.MeshStandardMaterial({ color: NOSE, roughness: 0.6 }), []);
   // 眼：琥珀色虹膜 + 深色竖瞳（扁球做竖瞳形）。
