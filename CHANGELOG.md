@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Add "climb the cat tree" (perch) rule + scene — cat sits in the top nest (#90) *(cat-mood)*
 - Replace 3D with refined 2.5D — SVG isometric room + cat (drop Three.js) (#87) *(cat-mood)*
 - Idle micro-life — blinking, ear flicks, half-lidded eyes by pose (#78) *(cat-mood)*
 - Procedural fur texture — canvas-generated coat (no plastic look) (#77) *(cat-mood)*
@@ -228,6 +229,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
