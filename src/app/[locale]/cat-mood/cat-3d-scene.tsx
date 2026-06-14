@@ -8,7 +8,7 @@ import type { CatMood } from '@/config/cat-mood';
 import { useCatBehavior, type CatPose } from './use-cat-behavior';
 
 /**
- * 3D 真实猫场景：Three.js + R3F 加载 CC0 rigged 模型（public/models/critter.gltf =
+ * 3D 真实猫场景：Three.js + R3F 加载 CC0 rigged 模型（public/models/critter.glb =
  * Quaternius Fox，小型猫科形态四足动物），用 useCatBehavior 状态机驱动——把 2D 行为
  * （pose/x/y）映射成 3D 位置 + 动画 clip + 朝向。真 3D 光照/接触阴影/平滑过渡。
  *
@@ -18,7 +18,9 @@ import { useCatBehavior, type CatPose } from './use-cat-behavior';
  *   walk→Walk, sit/idle→Idle, groom→Idle_2_HeadLow, stretch→Jump_ToIdle, sleep→Idle_2,
  *   eat→Eating, purr→Idle_2(满足), loaf→Idle_2(趴), floof→Attack(炸毛/弓背), judge→Idle_HitReact1
  */
-const MODEL_URL = '/models/critter.gltf';
+// 用 .glb（二进制单文件）。.gltf 内嵌 data-URI buffer 在 Workers 边缘运行时
+// GLTFLoader 解码会失败（"Failed to load buffer data:..."），.glb 走干净 ArrayBuffer。
+const MODEL_URL = '/models/critter.glb';
 useGLTF.preload(MODEL_URL);
 
 const CLIP_FOR: Record<CatPose, string> = {
