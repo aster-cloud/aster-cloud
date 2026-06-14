@@ -10,7 +10,9 @@ import {
   registerVocabForDomain,
   lexiconFor,
   toDemoLocale,
+  explainCase,
   type VocabDomainId,
+  type CaseExplanation,
 } from '@/config/vocab-demo';
 import { cn } from '@/components/ui';
 
@@ -18,6 +20,8 @@ interface RunResult {
   caseId: string;
   decision: string;
   ok: boolean;
+  /** 确定性回放（行业术语逐步说明，不经 LLM）。 */
+  explanation: CaseExplanation;
 }
 
 export function VocabDemoContent({ locale }: { locale: string }) {
@@ -28,6 +32,10 @@ export function VocabDemoContent({ locale }: { locale: string }) {
 
   const domain = VOCAB_DOMAINS[domainId];
   const rule = domain.rules[loc];
+
+  // canonical 字段名 → 当前语言行业术语（案例输入按行业说法展示，与规则一致）。
+  const termLabel = (canonical: string): string =>
+    domain.terms.find((term) => term.canonical === canonical)?.localized[loc] ?? canonical;
 
   // 编译该领域规则（按当前语言）：注入对应 locale 的领域词汇 → compile 翻成 canonical IR。
   const core = useMemo(() => {
@@ -50,7 +58,12 @@ export function VocabDemoContent({ locale }: { locale: string }) {
     const c = domain.cases.find((x) => x.id === caseId);
     if (!c || !core) return;
     const ev = evaluate(core, rule.ruleName, { [rule.paramName]: c.input });
-    setRun({ caseId, decision: ev.success ? String(ev.value) : c.expect[loc], ok: ev.success });
+    setRun({
+      caseId,
+      decision: ev.success ? String(ev.value) : c.expect[loc],
+      ok: ev.success,
+      explanation: explainCase(domain, loc, c.input),
+    });
   }
 
   return (
@@ -145,7 +158,8 @@ export function VocabDemoContent({ locale }: { locale: string }) {
               <div className="mt-1 text-sm font-semibold text-fg">{t(`domains.${domainId}.cases.${c.labelKey}`)}</div>
               <div className="mt-1 space-y-0.5 text-xs text-fg-muted">
                 {Object.entries(c.input).map(([k, v]) => (
-                  <div key={k} className="font-mono">{k}: {v}</div>
+                  // 显示行业术语而非 canonical key（与该语言规则一致）。
+                  <div key={k} className="font-mono">{termLabel(k)}: {v}</div>
                 ))}
               </div>
             </button>
@@ -153,13 +167,54 @@ export function VocabDemoContent({ locale }: { locale: string }) {
         </div>
       </section>
 
-      {/* 决策结果 */}
+      {/* 决策结果 + 轻量回放（行业术语逐步说明，可审计） */}
       {run && (
         <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-5">
           <div className="text-xs font-medium uppercase tracking-wide text-fg-subtle">{t('result.label')}</div>
           <div className="mt-2 inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-base font-semibold text-emerald-800 ring-1 ring-emerald-200">
             {run.decision}
           </div>
+
+          {/* 决策回放：逐档展示命中/未命中（行业术语 + 实际值）。 */}
+          <div className="mt-4">
+            <div className="mb-2 text-xs font-semibold text-fg">{t('replay.title')}</div>
+            <ol className="space-y-2">
+              {run.explanation.tiers.map((tier, i) => (
+                <li key={i} className="border-l-2 border-border pl-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-fg">{tier.decision}</span>
+                    {tier.evaluated ? (
+                      <span
+                        className={cn(
+                          'rounded px-1.5 py-0.5 text-[10px] font-semibold',
+                          tier.matched ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
+                        )}
+                      >
+                        {tier.matched ? t('replay.matched') : t('replay.notMatched')}
+                      </span>
+                    ) : (
+                      <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 dark:bg-zinc-800">
+                        {t('replay.skipped')}
+                      </span>
+                    )}
+                  </div>
+                  {tier.conditions.length > 0 && (
+                    <ul className="mt-0.5 space-y-0.5">
+                      {tier.conditions.map((cond, j) => (
+                        <li key={j} className="font-mono text-xs text-fg-muted">
+                          {cond.expression}{' '}
+                          <span className={cond.matched ? 'text-emerald-600' : 'text-fg-subtle'}>
+                            {cond.matched ? '✓' : '✗'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+
           <p className="mt-3 text-sm text-fg-muted">{t('result.note')}</p>
         </section>
       )}

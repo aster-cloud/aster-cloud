@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest';
 import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
 import {
   VOCAB_DOMAINS, VOCAB_DOMAIN_IDS, VOCAB_DEMO_TENANT,
-  registerVocabForDomain, lexiconFor,
+  registerVocabForDomain, lexiconFor, explainCase,
   type DemoLocale,
 } from '@/config/vocab-demo';
 
@@ -39,6 +39,13 @@ describe('vocab demo: industry-term rules compile & run in every language', () =
           const ev = evaluate(r.core!, rule.ruleName, { [rule.paramName]: c.input });
           expect(ev.success, `[${id}/${loc}] ${c.id} eval: ${ev.error ?? ''}`).toBe(true);
           expect(String(ev.value), `[${id}/${loc}] ${c.id}`).toBe(c.expect[loc]);
+
+          // 轻量回放镜像必须与引擎决策一致（回放可信的前提）。
+          const replay = explainCase(domain, loc, c.input);
+          expect(replay.decision, `[${id}/${loc}] ${c.id} replay`).toBe(String(ev.value));
+          // 命中档之前的档都已求值；命中档存在。
+          const matchedTier = replay.tiers.find((t) => t.matched);
+          expect(matchedTier, `[${id}/${loc}] ${c.id} has matched tier`).toBeTruthy();
         }
       });
     }
