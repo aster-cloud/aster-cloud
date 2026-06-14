@@ -68,8 +68,8 @@ const POSE: Record<CatPose, PoseParams> = {
 };
 
 // 站立时 body group 中心离地高度——核定使四脚脚掌正好落在 y=0。
-// 腿支点在 body 内 y=-0.18，腿圆柱底 + 脚掌球心约在支点下 0.46 → 0.18+0.46≈0.64。
-const BODY_BASE = 0.64;
+// 髋支点在 body 内 y=-0.16，大腿 0.26 + 小腿 0.26 + 脚掌底 ≈0.05 → 0.16+0.57≈0.73。
+const BODY_BASE = 0.73;
 
 // 暖橘虎斑配色。
 const FUR = '#e8a25c';
@@ -88,10 +88,16 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
   const tail3 = useRef<THREE.Group>(null);
   const earL = useRef<THREE.Group>(null);
   const earR = useRef<THREE.Group>(null);
-  const legFL = useRef<THREE.Group>(null);
-  const legFR = useRef<THREE.Group>(null);
-  const legBL = useRef<THREE.Group>(null);
-  const legBR = useRef<THREE.Group>(null);
+  // 每条腿两节：hip（大腿摆动支点）+ knee（小腿弯曲支点）。
+  const hipFL = useRef<THREE.Group>(null);
+  const hipFR = useRef<THREE.Group>(null);
+  const hipBL = useRef<THREE.Group>(null);
+  const hipBR = useRef<THREE.Group>(null);
+  const kneeFL = useRef<THREE.Group>(null);
+  const kneeFR = useRef<THREE.Group>(null);
+  const kneeBL = useRef<THREE.Group>(null);
+  const kneeBR = useRef<THREE.Group>(null);
+  const spine = useRef<THREE.Group>(null);
 
   const { state } = behavior;
 
@@ -148,8 +154,17 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
 
     // 头：俯仰 + 走路轻微点头 + 炸毛抖。
     if (head.current) {
-      const nod = state.pose === 'walk' ? Math.sin(tNow * cur.step) * 0.06 : 0;
+      const nod = state.pose === 'walk' ? Math.sin(tNow * cur.step) * 0.05 : 0;
       head.current.rotation.x = cur.headPitch + nod + jit * 2;
+      // 走路时头微微左右摆（重心转移），idle 时偶尔转头由 breathe 微动近似。
+      head.current.rotation.y = state.pose === 'walk' ? Math.sin(tNow * cur.step * 0.5) * 0.06 : 0;
+    }
+
+    // 脊柱：走路时随步态轻微侧弯 + 起伏（重心转移感），弓背叠加。
+    if (spine.current) {
+      const flex = state.pose === 'walk' ? Math.sin(tNow * cur.step) * 0.04 : 0;
+      spine.current.rotation.z = flex;
+      spine.current.rotation.y = state.pose === 'walk' ? Math.sin(tNow * cur.step * 0.5) * 0.05 : 0;
     }
 
     // 耳朵：警觉时（floof/judge）轻抖。
@@ -163,14 +178,41 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
     if (tail2.current) tail2.current.rotation.z = Math.sin(tNow * cur.tailWag - 0.6) * cur.tailAmp * 1.1;
     if (tail3.current) tail3.current.rotation.z = Math.sin(tNow * cur.tailWag - 1.2) * cur.tailAmp * 1.2;
 
-    // 四条腿：走路 sin 交替（对角同相），其它 pose 收拢/站立。
-    const swing = cur.step > 0 ? cur.legSwing : 0;
+    // 四条腿：真实四拍步态（lateral-sequence walk：后左→前左→后右→前右）。
+    // 每条腿一个相位偏移；摆动相（脚抬起前移）膝弯曲，支撑相（脚着地后扫）腿伸直。
+    const walking = cur.step > 0.5;
     const ph = tNow * cur.step;
-    const crouchLift = cur.crouch * 0.18; // 趴下时腿收起
-    if (legFL.current) legFL.current.rotation.x = Math.sin(ph) * swing - crouchLift;
-    if (legBR.current) legBR.current.rotation.x = Math.sin(ph) * swing - crouchLift;
-    if (legFR.current) legFR.current.rotation.x = Math.sin(ph + Math.PI) * swing - crouchLift;
-    if (legBL.current) legBL.current.rotation.x = Math.sin(ph + Math.PI) * swing - crouchLift;
+    const swing = cur.legSwing;
+    const crouchLift = cur.crouch * 0.22; // 趴/坐：大腿收起
+    const crouchKnee = cur.crouch * 0.9; // 趴/坐：小腿折叠
+
+    // 单腿姿态：返回 [大腿绕X, 小腿绕X]。phase 偏移决定步态序列。
+    const legPose = (offset: number, front: boolean): [number, number] => {
+      if (!walking) return [-crouchLift, crouchKnee];
+      const a = ph + offset;
+      const s = Math.sin(a); // 前后摆：>0 前摆/抬，<0 后扫/着地
+      const lift = Math.max(0, s); // 仅抬腿相为正
+      const hipRot = s * swing * (front ? 1 : 0.9);
+      // 抬腿时膝/肘弯曲（前腿弯肘、后腿弯膝，方向相反更像猫）
+      const kneeRot = lift * (front ? -0.7 : 0.8);
+      return [hipRot, kneeRot];
+    };
+
+    // 步态序列相位（弧度）：BL=0, FL=π/2, BR=π, FR=3π/2 → lateral sequence。
+    const setLeg = (
+      hip: React.RefObject<THREE.Group | null>,
+      knee: React.RefObject<THREE.Group | null>,
+      offset: number,
+      front: boolean,
+    ) => {
+      const [h, kn] = legPose(offset, front);
+      if (hip.current) hip.current.rotation.x = h;
+      if (knee.current) knee.current.rotation.x = kn;
+    };
+    setLeg(hipBL, kneeBL, 0, false);
+    setLeg(hipFL, kneeFL, Math.PI / 2, true);
+    setLeg(hipBR, kneeBR, Math.PI, false);
+    setLeg(hipFR, kneeFR, (Math.PI * 3) / 2, true);
   });
 
   // 圆角材质（柔和）。
@@ -179,101 +221,185 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
   const matBelly = useMemo(() => new THREE.MeshStandardMaterial({ color: BELLY, roughness: 0.9 }), []);
   const matEar = useMemo(() => new THREE.MeshStandardMaterial({ color: EAR_IN, roughness: 0.9 }), []);
   const matNose = useMemo(() => new THREE.MeshStandardMaterial({ color: NOSE, roughness: 0.6 }), []);
-  const matEye = useMemo(() => new THREE.MeshStandardMaterial({ color: '#2b2b33', roughness: 0.3 }), []);
-
-  // 一条腿（共用）：上端为旋转支点，圆柱向下 + 圆脚掌。
-  const Leg = ({ refX, pos }: { refX: React.RefObject<THREE.Group | null>; pos: [number, number, number] }) => (
-    <group ref={refX} position={pos}>
-      <mesh castShadow position={[0, -0.22, 0]} material={matFur}>
-        <cylinderGeometry args={[0.08, 0.1, 0.44, 12]} />
-      </mesh>
-      <mesh castShadow position={[0, -0.44, 0.02]} material={matDark}>
-        <sphereGeometry args={[0.1, 12, 12]} />
-      </mesh>
-    </group>
+  // 眼：琥珀色虹膜 + 深色竖瞳（扁球做竖瞳形）。
+  const matIris = useMemo(() => new THREE.MeshStandardMaterial({ color: '#cfa23a', roughness: 0.25 }), []);
+  const matPupil = useMemo(() => new THREE.MeshStandardMaterial({ color: '#1a1a1f', roughness: 0.2 }), []);
+  const matWhisker = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#fbf3e6', roughness: 0.6 }),
+    [],
   );
+
+  // 一条腿（两节关节）：hip 组（大腿，支点在髋）→ 大腿圆台 + knee 组（支点在膝）
+  // → 小腿圆台 + 脚掌。front 决定粗细（前腿略细）。
+  const Leg = ({
+    hipRef,
+    kneeRef,
+    pos,
+    front,
+  }: {
+    hipRef: React.RefObject<THREE.Group | null>;
+    kneeRef: React.RefObject<THREE.Group | null>;
+    pos: [number, number, number];
+    front: boolean;
+  }) => {
+    const thighLen = 0.26;
+    const shinLen = 0.26;
+    const r0 = front ? 0.085 : 0.1; // 髋端半径
+    const r1 = front ? 0.07 : 0.08; // 膝端半径
+    return (
+      <group ref={hipRef} position={pos}>
+        {/* 大腿：从髋向下，肌肉感用上粗下细圆台 */}
+        <mesh castShadow position={[0, -thighLen / 2, 0]} material={matFur}>
+          <cylinderGeometry args={[r1, r0, thighLen, 12]} />
+        </mesh>
+        {/* 膝关节球 */}
+        <mesh position={[0, -thighLen, 0]} material={matFur}>
+          <sphereGeometry args={[r1, 10, 10]} />
+        </mesh>
+        {/* knee 组：支点在膝，小腿 + 脚掌 */}
+        <group ref={kneeRef} position={[0, -thighLen, 0]}>
+          <mesh castShadow position={[0, -shinLen / 2, 0]} material={matFur}>
+            <cylinderGeometry args={[r1 * 0.8, r1, shinLen, 12]} />
+          </mesh>
+          {/* 脚掌：扁椭球 */}
+          <mesh castShadow position={[0, -shinLen, 0.03]} material={matDark} scale={[1, 0.55, 1.3]}>
+            <sphereGeometry args={[r1 * 1.15, 12, 12]} />
+          </mesh>
+        </group>
+      </group>
+    );
+  };
 
   return (
     <group ref={root} dispose={null} position={[0, 0, 0.5]}>
       {/* body：旋转/缩放支点在身体中心，站立时离地 BODY_BASE → 四脚落地。 */}
       <group ref={body} position={[0, BODY_BASE, 0]}>
-        {/* trunk：躯干视觉网格组，单独做呼吸/猫面包压扁（不连累腿/头/尾的世界高度）。 */}
-        <group ref={trunk}>
-          {/* 躯干：拉长 capsule，沿 Z 朝前 */}
-          <mesh castShadow material={matFur} rotation={[Math.PI / 2, 0, 0]}>
-            <capsuleGeometry args={[0.33, 0.7, 8, 16]} />
-          </mesh>
-          {/* 肚皮：浅色小 capsule 贴下方 */}
-          <mesh position={[0, -0.18, 0.05]} material={matBelly} rotation={[Math.PI / 2, 0, 0]}>
-            <capsuleGeometry args={[0.26, 0.5, 8, 16]} />
-          </mesh>
-          {/* 背部虎斑（深色细条） */}
-          <mesh position={[0, 0.28, 0]} material={matDark} rotation={[Math.PI / 2, 0, 0]}>
-            <capsuleGeometry args={[0.12, 0.6, 6, 12]} />
-          </mesh>
-        </group>
-
-        {/* head：连在躯干前端（+Z） */}
-        <group ref={head} position={[0, 0.18, 0.62]}>
-          <mesh castShadow material={matFur}>
-            <sphereGeometry args={[0.3, 20, 20]} />
-          </mesh>
-          {/* 口鼻 */}
-          <mesh position={[0, -0.05, 0.27]} material={matBelly}>
-            <sphereGeometry args={[0.16, 16, 16]} />
-          </mesh>
-          {/* 鼻 */}
-          <mesh position={[0, -0.02, 0.4]} material={matNose}>
-            <coneGeometry args={[0.05, 0.06, 8]} />
-          </mesh>
-          {/* 眼 */}
-          <mesh position={[-0.12, 0.06, 0.25]} material={matEye}>
-            <sphereGeometry args={[0.055, 12, 12]} />
-          </mesh>
-          <mesh position={[0.12, 0.06, 0.25]} material={matEye}>
-            <sphereGeometry args={[0.055, 12, 12]} />
-          </mesh>
-          {/* 耳：圆锥，支点在耳根 */}
-          <group ref={earL} position={[-0.18, 0.24, 0]}>
-            <mesh castShadow material={matFur} position={[0, 0.1, 0]}>
-              <coneGeometry args={[0.12, 0.26, 4]} />
+        {/* spine：躯干 + 头 + 尾（走路时随步态侧弯/起伏），腿不在内（腿世界高度独立）。 */}
+        <group ref={spine}>
+          {/* trunk：躯干视觉网格组，单独做呼吸/猫面包压扁。 */}
+          <group ref={trunk}>
+            {/* 躯干主体：略短的 capsule（更瘦长由胸/臀球补足锥度） */}
+            <mesh castShadow material={matFur} rotation={[Math.PI / 2, 0, 0]}>
+              <capsuleGeometry args={[0.3, 0.66, 10, 18]} />
             </mesh>
-            <mesh material={matEar} position={[0, 0.09, 0.04]} scale={[0.6, 0.7, 0.6]}>
-              <coneGeometry args={[0.12, 0.26, 4]} />
+            {/* 胸（前端更宽） */}
+            <mesh castShadow position={[0, 0.0, 0.42]} material={matFur}>
+              <sphereGeometry args={[0.32, 16, 16]} />
             </mesh>
-          </group>
-          <group ref={earR} position={[0.18, 0.24, 0]}>
-            <mesh castShadow material={matFur} position={[0, 0.1, 0]}>
-              <coneGeometry args={[0.12, 0.26, 4]} />
+            {/* 后臀（圆润髋部） */}
+            <mesh castShadow position={[0, 0.02, -0.42]} material={matFur} scale={[1, 1.05, 1]}>
+              <sphereGeometry args={[0.31, 16, 16]} />
             </mesh>
-            <mesh material={matEar} position={[0, 0.09, 0.04]} scale={[0.6, 0.7, 0.6]}>
-              <coneGeometry args={[0.12, 0.26, 4]} />
+            {/* 肚皮：浅色 */}
+            <mesh position={[0, -0.18, 0.02]} material={matBelly} rotation={[Math.PI / 2, 0, 0]}>
+              <capsuleGeometry args={[0.24, 0.46, 8, 16]} />
             </mesh>
-          </group>
-        </group>
-
-        {/* tail：三节链，连在躯干后端（-Z），逐节缩短 */}
-        <group ref={tail} position={[0, 0.15, -0.62]}>
-          <mesh castShadow material={matFur} position={[0, 0.12, 0]}>
-            <capsuleGeometry args={[0.07, 0.22, 6, 12]} />
-          </mesh>
-          <group ref={tail2} position={[0, 0.26, 0]}>
-            <mesh castShadow material={matFur} position={[0, 0.1, 0]}>
-              <capsuleGeometry args={[0.06, 0.18, 6, 12]} />
-            </mesh>
-            <group ref={tail3} position={[0, 0.22, 0]}>
-              <mesh castShadow material={matDark} position={[0, 0.08, 0]}>
-                <capsuleGeometry args={[0.05, 0.14, 6, 12]} />
+            {/* 背部虎斑（几条横向深色细条，沿脊背等距） */}
+            {[-0.32, -0.12, 0.08, 0.28].map((z, i) => (
+              <mesh key={i} position={[0, 0.27, z]} material={matDark} rotation={[0, 0, Math.PI / 2]}>
+                <capsuleGeometry args={[0.035, 0.36, 4, 8]} />
               </mesh>
+            ))}
+          </group>
+
+          {/* 颈：连胸与头 */}
+          <mesh castShadow position={[0, 0.16, 0.6]} material={matFur} rotation={[Math.PI / 2.6, 0, 0]}>
+            <cylinderGeometry args={[0.16, 0.2, 0.26, 14]} />
+          </mesh>
+
+          {/* head：略小，连在颈前上方 */}
+          <group ref={head} position={[0, 0.26, 0.76]}>
+            {/* 头颅：略扁球 */}
+            <mesh castShadow material={matFur} scale={[1, 0.92, 1]}>
+              <sphereGeometry args={[0.26, 20, 20]} />
+            </mesh>
+            {/* 脸颊绒毛（两侧鼓起） */}
+            <mesh position={[-0.2, -0.04, 0.06]} material={matFur} scale={[0.8, 0.9, 0.8]}>
+              <sphereGeometry args={[0.12, 12, 12]} />
+            </mesh>
+            <mesh position={[0.2, -0.04, 0.06]} material={matFur} scale={[0.8, 0.9, 0.8]}>
+              <sphereGeometry args={[0.12, 12, 12]} />
+            </mesh>
+            {/* 口鼻（短而钝） */}
+            <mesh position={[0, -0.07, 0.22]} material={matBelly} scale={[1.1, 0.8, 1]}>
+              <sphereGeometry args={[0.13, 16, 16]} />
+            </mesh>
+            {/* 鼻（小粉三角） */}
+            <mesh position={[0, -0.03, 0.33]} material={matNose} rotation={[Math.PI, 0, 0]}>
+              <coneGeometry args={[0.04, 0.05, 8]} />
+            </mesh>
+            {/* 眼：琥珀虹膜 + 竖瞳（瞳孔扁球压成竖缝） */}
+            <group position={[-0.12, 0.05, 0.2]}>
+              <mesh material={matIris}>
+                <sphereGeometry args={[0.06, 14, 14]} />
+              </mesh>
+              <mesh position={[0, 0, 0.045]} material={matPupil} scale={[0.3, 0.9, 0.4]}>
+                <sphereGeometry args={[0.05, 12, 12]} />
+              </mesh>
+            </group>
+            <group position={[0.12, 0.05, 0.2]}>
+              <mesh material={matIris}>
+                <sphereGeometry args={[0.06, 14, 14]} />
+              </mesh>
+              <mesh position={[0, 0, 0.045]} material={matPupil} scale={[0.3, 0.9, 0.4]}>
+                <sphereGeometry args={[0.05, 12, 12]} />
+              </mesh>
+            </group>
+            {/* 胡须：每侧三根细长圆柱，从口鼻两侧向外斜伸 */}
+            {([-1, 1] as const).map((side) =>
+              [0.04, -0.02, -0.08].map((yy, i) => (
+                <mesh
+                  key={`${side}-${i}`}
+                  position={[side * 0.16, -0.05 + yy * 0.5, 0.24]}
+                  rotation={[0, side * 0.5, side * (0.1 + i * 0.12)]}
+                  material={matWhisker}
+                >
+                  <cylinderGeometry args={[0.004, 0.004, 0.34, 4]} />
+                </mesh>
+              )),
+            )}
+            {/* 耳：圆锥（更高更尖），支点在耳根 */}
+            <group ref={earL} position={[-0.15, 0.2, -0.02]}>
+              <mesh castShadow material={matFur} position={[0, 0.11, 0]}>
+                <coneGeometry args={[0.11, 0.28, 5]} />
+              </mesh>
+              <mesh material={matEar} position={[0, 0.1, 0.03]} scale={[0.6, 0.7, 0.6]}>
+                <coneGeometry args={[0.11, 0.28, 5]} />
+              </mesh>
+            </group>
+            <group ref={earR} position={[0.15, 0.2, -0.02]}>
+              <mesh castShadow material={matFur} position={[0, 0.11, 0]}>
+                <coneGeometry args={[0.11, 0.28, 5]} />
+              </mesh>
+              <mesh material={matEar} position={[0, 0.1, 0.03]} scale={[0.6, 0.7, 0.6]}>
+                <coneGeometry args={[0.11, 0.28, 5]} />
+              </mesh>
+            </group>
+          </group>
+
+          {/* tail：三节链，连在臀后（-Z），逐节缩短，尖端深色 */}
+          <group ref={tail} position={[0, 0.18, -0.62]}>
+            <mesh castShadow material={matFur} position={[0, 0.12, 0]}>
+              <capsuleGeometry args={[0.065, 0.22, 6, 12]} />
+            </mesh>
+            <group ref={tail2} position={[0, 0.26, 0]}>
+              <mesh castShadow material={matFur} position={[0, 0.1, 0]}>
+                <capsuleGeometry args={[0.055, 0.18, 6, 12]} />
+              </mesh>
+              <group ref={tail3} position={[0, 0.22, 0]}>
+                <mesh castShadow material={matDark} position={[0, 0.08, 0]}>
+                  <capsuleGeometry args={[0.05, 0.16, 6, 12]} />
+                </mesh>
+              </group>
             </group>
           </group>
         </group>
 
-        {/* 四条腿：支点在身体中心略下，前后各一对 */}
-        <Leg refX={legFL} pos={[-0.2, -0.18, 0.4]} />
-        <Leg refX={legFR} pos={[0.2, -0.18, 0.4]} />
-        <Leg refX={legBL} pos={[-0.2, -0.18, -0.4]} />
-        <Leg refX={legBR} pos={[0.2, -0.18, -0.4]} />
+        {/* 四条关节腿：前一对靠胸、后一对靠臀（腿不在 spine 内，世界高度独立保证贴地） */}
+        <Leg hipRef={hipFL} kneeRef={kneeFL} pos={[-0.18, -0.16, 0.34]} front />
+        <Leg hipRef={hipFR} kneeRef={kneeFR} pos={[0.18, -0.16, 0.34]} front />
+        <Leg hipRef={hipBL} kneeRef={kneeBL} pos={[-0.19, -0.16, -0.36]} front={false} />
+        <Leg hipRef={hipBR} kneeRef={kneeBR} pos={[0.19, -0.16, -0.36]} front={false} />
       </group>
     </group>
   );
