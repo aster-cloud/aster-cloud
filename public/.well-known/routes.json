@@ -59,6 +59,14 @@
       "notes": "Domain-vocabulary demo — write rules in industry terms across 3 domains (sales)"
     },
     {
+      "path": "/cat-mood",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/cat-mood/page.tsx",
+      "locales": "all",
+      "notes": "Fun demo — Cat Mood Engine, poetic cat-vocabulary rule drives a 5s sketch animation"
+    },
+    {
       "path": "/privacy",
       "status": "canonical-here",
       "owner": "legal",
