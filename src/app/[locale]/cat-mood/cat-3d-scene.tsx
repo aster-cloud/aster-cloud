@@ -52,19 +52,24 @@ interface PoseParams {
   breathe: number; // 呼吸频率
 }
 
+// bodyY = 相对 BODY_BASE 的小偏移（站立≈0）；下蹲/趴用 crouch 控制（会同时收腿+降身保持脚贴地）。
 const POSE: Record<CatPose, PoseParams> = {
   walk:    { step: 7,  legSwing: 0.55, bodyY: 0.0,  bob: 0.05, tailWag: 3,   tailAmp: 0.35, headPitch: 0,    scale: 1,    arch: 0,    jitter: 0,   crouch: 0,   breathe: 2 },
-  sit:     { step: 0,  legSwing: 0,    bodyY: 0.05, bob: 0,    tailWag: 1.2, tailAmp: 0.25, headPitch: -0.1, scale: 1,    arch: 0,    jitter: 0,   crouch: 0.3, breathe: 2 },
-  groom:   { step: 0,  legSwing: 0,    bodyY: 0.05, bob: 0,    tailWag: 0.8, tailAmp: 0.15, headPitch: 0.7,  scale: 1,    arch: 0.1,  jitter: 0,   crouch: 0.3, breathe: 2 },
-  stretch: { step: 0,  legSwing: 0,    bodyY: -0.05,bob: 0,    tailWag: 1,   tailAmp: 0.4,  headPitch: -0.3, scale: 1,    arch: -0.5, jitter: 0,   crouch: 0,   breathe: 1.5 },
-  sleep:   { step: 0,  legSwing: 0,    bodyY: -0.18,bob: 0,    tailWag: 0.3, tailAmp: 0.1,  headPitch: 0.5,  scale: 1,    arch: 0,    jitter: 0,   crouch: 0.9, breathe: 1 },
-  eat:     { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 1.5, tailAmp: 0.2,  headPitch: 0.9,  scale: 1,    arch: 0.15, jitter: 0,   crouch: 0.2, breathe: 3 },
+  sit:     { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 1.2, tailAmp: 0.25, headPitch: -0.1, scale: 1,    arch: 0,    jitter: 0,   crouch: 0.4, breathe: 2 },
+  groom:   { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 0.8, tailAmp: 0.15, headPitch: 0.7,  scale: 1,    arch: 0.1,  jitter: 0,   crouch: 0.4, breathe: 2 },
+  stretch: { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 1,   tailAmp: 0.4,  headPitch: -0.3, scale: 1,    arch: -0.5, jitter: 0,   crouch: 0,   breathe: 1.5 },
+  sleep:   { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 0.3, tailAmp: 0.1,  headPitch: 0.5,  scale: 1,    arch: 0,    jitter: 0,   crouch: 1,   breathe: 1 },
+  eat:     { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 1.5, tailAmp: 0.2,  headPitch: 0.9,  scale: 1,    arch: 0.15, jitter: 0,   crouch: 0.3, breathe: 3 },
   // CatMood：
-  purr:    { step: 0,  legSwing: 0,    bodyY: 0.05, bob: 0,    tailWag: 1,   tailAmp: 0.3,  headPitch: -0.05,scale: 1.02, arch: 0,    jitter: 0.4, crouch: 0.3, breathe: 4 },
-  loaf:    { step: 0,  legSwing: 0,    bodyY: -0.12,bob: 0,    tailWag: 0.4, tailAmp: 0.08, headPitch: 0.1,  scale: 1,    arch: 0,    jitter: 0,   crouch: 1,   breathe: 1.4 },
-  floof:   { step: 0,  legSwing: 0,    bodyY: 0.08, bob: 0,    tailWag: 8,   tailAmp: 0.6,  headPitch: -0.2, scale: 1.18, arch: 0.7,  jitter: 1.2, crouch: 0,   breathe: 5 },
-  judge:   { step: 0,  legSwing: 0,    bodyY: 0.1,  bob: 0,    tailWag: 0.6, tailAmp: 0.45, headPitch: -0.25,scale: 1,    arch: 0,    jitter: 0,   crouch: 0.2, breathe: 1.8 },
+  purr:    { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 1,   tailAmp: 0.3,  headPitch: -0.05,scale: 1.02, arch: 0,    jitter: 0.4, crouch: 0.4, breathe: 4 },
+  loaf:    { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 0.4, tailAmp: 0.08, headPitch: 0.1,  scale: 1,    arch: 0,    jitter: 0,   crouch: 1,   breathe: 1.4 },
+  floof:   { step: 0,  legSwing: 0,    bodyY: 0.06, bob: 0,    tailWag: 8,   tailAmp: 0.6,  headPitch: -0.2, scale: 1.18, arch: 0.7,  jitter: 1.2, crouch: 0,   breathe: 5 },
+  judge:   { step: 0,  legSwing: 0,    bodyY: 0.0,  bob: 0,    tailWag: 0.6, tailAmp: 0.45, headPitch: -0.25,scale: 1,    arch: 0,    jitter: 0,   crouch: 0.3, breathe: 1.8 },
 };
+
+// 站立时 body group 中心离地高度——核定使四脚脚掌正好落在 y=0。
+// 腿支点在 body 内 y=-0.18，腿圆柱底 + 脚掌球心约在支点下 0.46 → 0.18+0.46≈0.64。
+const BODY_BASE = 0.64;
 
 // 暖橘虎斑配色。
 const FUR = '#e8a25c';
@@ -76,6 +81,7 @@ const NOSE = '#d96b6b';
 function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> }) {
   const root = useRef<THREE.Group>(null);
   const body = useRef<THREE.Group>(null);
+  const trunk = useRef<THREE.Group>(null);
   const head = useRef<THREE.Group>(null);
   const tail = useRef<THREE.Group>(null);
   const tail2 = useRef<THREE.Group>(null);
@@ -126,14 +132,18 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
     const breath = Math.sin(tNow * cur.breathe) * 0.012;
 
     // 身体：高度 + 走路起伏 + 弓背 + 缩放（含炸毛 jitter）+ 呼吸。
+    // bodyY 是相对站立基准 BODY_BASE 的偏移；trunk（躯干视觉网格）单独压扁做猫面包，
+    // body group 本身不缩 y（缩 y 会把腿一起拔起→脚悬空）。crouch 时整体略降，腿靠
+    // crouchLift 收起，保证脚仍贴地。
     if (body.current) {
       const bob = cur.bob > 0 ? Math.abs(Math.sin(tNow * cur.step)) * cur.bob : 0;
-      body.current.position.y = cur.bodyY + bob + jit;
+      body.current.position.y = BODY_BASE + cur.bodyY - cur.crouch * 0.12 + bob + jit;
       body.current.rotation.x = -cur.arch; // 负=弓背向上拱
-      const s = cur.scale + breath;
-      body.current.scale.setScalar(s);
-      // 趴/猫面包：身体压扁。
-      body.current.scale.y = (cur.scale + breath) * (1 - cur.crouch * 0.35);
+      body.current.scale.setScalar(cur.scale);
+    }
+    // 躯干视觉网格单独做呼吸 + 猫面包压扁（不影响腿的世界高度）。
+    if (trunk.current) {
+      trunk.current.scale.set(1, (1 + breath) * (1 - cur.crouch * 0.3), 1);
     }
 
     // 头：俯仰 + 走路轻微点头 + 炸毛抖。
@@ -185,20 +195,23 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
 
   return (
     <group ref={root} dispose={null} position={[0, 0, 0.5]}>
-      {/* body：旋转/缩放支点在身体中心，离地约 0.5 */}
-      <group ref={body} position={[0, 0.5, 0]}>
-        {/* 躯干：拉长 capsule，沿 Z 朝前 */}
-        <mesh castShadow material={matFur} rotation={[Math.PI / 2, 0, 0]}>
-          <capsuleGeometry args={[0.33, 0.7, 8, 16]} />
-        </mesh>
-        {/* 肚皮：浅色小 capsule 贴下方 */}
-        <mesh position={[0, -0.18, 0.05]} material={matBelly} rotation={[Math.PI / 2, 0, 0]}>
-          <capsuleGeometry args={[0.26, 0.5, 8, 16]} />
-        </mesh>
-        {/* 背部虎斑（深色细条） */}
-        <mesh position={[0, 0.28, 0]} material={matDark} rotation={[Math.PI / 2, 0, 0]}>
-          <capsuleGeometry args={[0.12, 0.6, 6, 12]} />
-        </mesh>
+      {/* body：旋转/缩放支点在身体中心，站立时离地 BODY_BASE → 四脚落地。 */}
+      <group ref={body} position={[0, BODY_BASE, 0]}>
+        {/* trunk：躯干视觉网格组，单独做呼吸/猫面包压扁（不连累腿/头/尾的世界高度）。 */}
+        <group ref={trunk}>
+          {/* 躯干：拉长 capsule，沿 Z 朝前 */}
+          <mesh castShadow material={matFur} rotation={[Math.PI / 2, 0, 0]}>
+            <capsuleGeometry args={[0.33, 0.7, 8, 16]} />
+          </mesh>
+          {/* 肚皮：浅色小 capsule 贴下方 */}
+          <mesh position={[0, -0.18, 0.05]} material={matBelly} rotation={[Math.PI / 2, 0, 0]}>
+            <capsuleGeometry args={[0.26, 0.5, 8, 16]} />
+          </mesh>
+          {/* 背部虎斑（深色细条） */}
+          <mesh position={[0, 0.28, 0]} material={matDark} rotation={[Math.PI / 2, 0, 0]}>
+            <capsuleGeometry args={[0.12, 0.6, 6, 12]} />
+          </mesh>
+        </group>
 
         {/* head：连在躯干前端（+Z） */}
         <group ref={head} position={[0, 0.18, 0.62]}>
@@ -266,6 +279,168 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
   );
 }
 
+/* ── 室内布景子组件（纯几何，零外部资源） ───────────────────────────── */
+
+// 房间：木地板 + 三面墙（后墙 -Z、左墙 -X、右墙 +X），墙面只朝内（BackSide 朝相机透出去）。
+function Room() {
+  const wallH = 5;
+  const halfW = 7; // 房间半宽（X）
+  const depth = 9; // 房间纵深（Z），后墙在 z=-back
+  const back = -5.5;
+  return (
+    <group>
+      {/* 木地板（条纹靠材质色，足够简洁） */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[halfW * 2, depth + 4]} />
+        <meshStandardMaterial color="#dcb079" roughness={0.85} />
+      </mesh>
+      {/* 后墙（米色） */}
+      <mesh position={[0, wallH / 2, back]} receiveShadow>
+        <planeGeometry args={[halfW * 2, wallH]} />
+        <meshStandardMaterial color="#f3e7d6" roughness={1} />
+      </mesh>
+      {/* 左墙 */}
+      <mesh rotation={[0, Math.PI / 2, 0]} position={[-halfW, wallH / 2, back + depth / 2]} receiveShadow>
+        <planeGeometry args={[depth, wallH]} />
+        <meshStandardMaterial color="#ecdfcd" roughness={1} />
+      </mesh>
+      {/* 右墙 */}
+      <mesh rotation={[0, -Math.PI / 2, 0]} position={[halfW, wallH / 2, back + depth / 2]} receiveShadow>
+        <planeGeometry args={[depth, wallH]} />
+        <meshStandardMaterial color="#ecdfcd" roughness={1} />
+      </mesh>
+      {/* 踢脚线（后墙底，深色细条增加立体感） */}
+      <mesh position={[0, 0.12, back + 0.02]}>
+        <boxGeometry args={[halfW * 2, 0.24, 0.05]} />
+        <meshStandardMaterial color="#c8a87e" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
+// 窗户：嵌在后墙上的方窗，木框 + 浅蓝天空 + 十字窗棂，透出暖阳。
+function Window({ x = -2.4, y = 2.7, z = -5.46 }: { x?: number; y?: number; z?: number }) {
+  const w = 2.6;
+  const h = 2.2;
+  const frame = '#b98a5e';
+  return (
+    <group position={[x, y, z]}>
+      {/* 天空（窗内，朝相机 +Z；用 basic 自发光感，不受光） */}
+      <mesh position={[0, 0, 0.01]}>
+        <planeGeometry args={[w, h]} />
+        <meshBasicMaterial color="#bfe3ff" />
+      </mesh>
+      {/* 远处暖阳光晕 */}
+      <mesh position={[0.5, 0.4, 0.02]}>
+        <circleGeometry args={[0.5, 32]} />
+        <meshBasicMaterial color="#fff3c4" transparent opacity={0.85} />
+      </mesh>
+      {/* 窗框（四边 box） */}
+      <mesh position={[0, h / 2 + 0.08, 0.04]} castShadow>
+        <boxGeometry args={[w + 0.32, 0.16, 0.18]} />
+        <meshStandardMaterial color={frame} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, -h / 2 - 0.08, 0.04]} castShadow>
+        <boxGeometry args={[w + 0.32, 0.16, 0.22]} />
+        <meshStandardMaterial color={frame} roughness={0.7} />
+      </mesh>
+      <mesh position={[-w / 2 - 0.08, 0, 0.04]} castShadow>
+        <boxGeometry args={[0.16, h + 0.16, 0.18]} />
+        <meshStandardMaterial color={frame} roughness={0.7} />
+      </mesh>
+      <mesh position={[w / 2 + 0.08, 0, 0.04]} castShadow>
+        <boxGeometry args={[0.16, h + 0.16, 0.18]} />
+        <meshStandardMaterial color={frame} roughness={0.7} />
+      </mesh>
+      {/* 窗棂十字 */}
+      <mesh position={[0, 0, 0.05]}>
+        <boxGeometry args={[0.08, h, 0.06]} />
+        <meshStandardMaterial color={frame} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0, 0.05]}>
+        <boxGeometry args={[w, 0.08, 0.06]} />
+        <meshStandardMaterial color={frame} roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+// 立体食盆：外碗 + 内凹深色 + 猫粮（右侧地面，对齐 PROP_POS.purr → 舞台 x≈74 → world x≈2.6）。
+function FoodBowl({ pos = [2.6, 0, 0.6] as [number, number, number] }) {
+  return (
+    <group position={pos}>
+      <mesh position={[0, 0.11, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.42, 0.3, 0.22, 28]} />
+        <meshStandardMaterial color="#6fb6d6" roughness={0.5} />
+      </mesh>
+      {/* 内凹（深色，营造碗的厚度） */}
+      <mesh position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.34, 0.34, 0.04, 28]} />
+        <meshStandardMaterial color="#4a90ad" roughness={0.6} />
+      </mesh>
+      {/* 猫粮（小颗粒堆，几个棕色小球） */}
+      {[
+        [0, 0.22, 0],
+        [0.12, 0.22, 0.05],
+        [-0.1, 0.22, -0.06],
+        [0.04, 0.24, -0.1],
+        [-0.06, 0.24, 0.1],
+      ].map((p, i) => (
+        <mesh key={i} position={p as [number, number, number]} castShadow>
+          <sphereGeometry args={[0.06, 8, 8]} />
+          <meshStandardMaterial color="#a9743c" roughness={0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// 猫爬架：底座 + 立柱（缠绳纹用色）+ 两层平台 + 顶层窝（后排左角）。
+function CatTree({ pos = [-4.6, 0, -3.8] as [number, number, number] }) {
+  const post = '#c9a06a';
+  const rope = '#cdb289';
+  const plat = '#d98c84';
+  return (
+    <group position={pos}>
+      {/* 底座 */}
+      <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.85, 0.95, 0.16, 24]} />
+        <meshStandardMaterial color={post} roughness={0.8} />
+      </mesh>
+      {/* 主立柱（缠绳） */}
+      <mesh position={[0, 1.2, 0]} castShadow>
+        <cylinderGeometry args={[0.2, 0.2, 2.3, 20]} />
+        <meshStandardMaterial color={rope} roughness={1} />
+      </mesh>
+      {/* 第二根短柱（到中层） */}
+      <mesh position={[0.55, 0.75, 0.2]} castShadow>
+        <cylinderGeometry args={[0.16, 0.16, 1.4, 16]} />
+        <meshStandardMaterial color={rope} roughness={1} />
+      </mesh>
+      {/* 中层平台 */}
+      <mesh position={[0.55, 1.5, 0.2]} castShadow receiveShadow>
+        <boxGeometry args={[1.1, 0.12, 1.1]} />
+        <meshStandardMaterial color={plat} roughness={0.95} />
+      </mesh>
+      {/* 顶层平台 */}
+      <mesh position={[0, 2.42, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.3, 0.14, 1.3]} />
+        <meshStandardMaterial color={plat} roughness={0.95} />
+      </mesh>
+      {/* 顶层猫窝（半开口圆筒） */}
+      <mesh position={[0, 2.75, -0.1]} castShadow>
+        <cylinderGeometry args={[0.55, 0.55, 0.5, 20, 1, true]} />
+        <meshStandardMaterial color="#e8b96f" roughness={0.95} side={THREE.DoubleSide} />
+      </mesh>
+      {/* 悬挂逗猫球 */}
+      <mesh position={[0.55, 2.0, 0.55]} castShadow>
+        <sphereGeometry args={[0.12, 12, 12]} />
+        <meshStandardMaterial color="#e06b6b" roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export const Cat3DScene = forwardRef<Cat3DHandle, {}>(function Cat3DScene(_props, ref) {
   const behavior = useCatBehavior();
@@ -276,48 +451,49 @@ export const Cat3DScene = forwardRef<Cat3DHandle, {}>(function Cat3DScene(_props
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [0, 3.2, 7.5], fov: 38 }}
+        camera={{ position: [0, 3.4, 8.2], fov: 42 }}
         gl={{ antialias: true, preserveDrawingBuffer: false }}
       >
-        {/* 暖色室内光（纯本地光，无远程 HDR）：半球光柔和环境 + 斜射主光投影 + 暖补光 */}
-        <hemisphereLight args={['#fff4e2', '#caa376', 0.9]} />
-        <ambientLight intensity={0.45} />
+        {/* 暖色室内光（纯本地光，无远程 HDR）：半球环境光 + 从窗口斜射的阳光（投影）+ 暖补光 */}
+        <hemisphereLight args={['#fff4e2', '#c8a878', 0.85]} />
+        <ambientLight intensity={0.4} />
+        {/* 阳光：从窗（后墙左上）方向斜射进屋，目标对准地面阳光斑，投出长影 */}
         <directionalLight
-          position={[4, 8, 5]}
-          intensity={1.9}
-          color="#fff2dd"
+          position={[-3, 6, -2]}
+          intensity={2.1}
+          color="#fff0cf"
           castShadow
-          shadow-mapSize={[1024, 1024]}
-          shadow-camera-left={-8}
-          shadow-camera-right={8}
-          shadow-camera-top={8}
-          shadow-camera-bottom={-8}
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-left={-9}
+          shadow-camera-right={9}
+          shadow-camera-top={9}
+          shadow-camera-bottom={-9}
+          shadow-bias={-0.0005}
         />
-        <directionalLight position={[-5, 3, -4]} intensity={0.5} color="#ffd9a8" />
+        {/* 暖补光（右前，填阴影） */}
+        <directionalLight position={[5, 3, 4]} intensity={0.4} color="#ffe2b8" />
 
-        {/* 木地板 */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-          <planeGeometry args={[24, 16]} />
-          <meshStandardMaterial color="#e0b67f" roughness={0.9} />
+        {/* 房间（地板 + 三面墙）+ 窗 */}
+        <Room />
+        <Window />
+
+        {/* 窗光投到地面的阳光斑（暖色半透发光片，对齐 PROP_POS.loaf → 舞台 x≈28 → world x≈-2） */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-2, 0.012, 0.4]}>
+          <circleGeometry args={[1.8, 40]} />
+          <meshBasicMaterial color="#ffe9a8" transparent opacity={0.45} />
         </mesh>
-        {/* 地毯（judge 道具感，中央） */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0.6]} receiveShadow>
-          <circleGeometry args={[2.6, 48]} />
+        {/* 地毯（judge 道具感，中央偏前） */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.4, 0.006, 0.8]} receiveShadow>
+          <circleGeometry args={[2.3, 48]} />
           <meshStandardMaterial color="#e88f86" roughness={1} />
         </mesh>
-        {/* 阳光斑（左侧，发光面片） */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3, 0.01, 0.3]}>
-          <circleGeometry args={[1.7, 40]} />
-          <meshBasicMaterial color="#ffe9a8" transparent opacity={0.5} />
-        </mesh>
-        {/* 饭碗（右侧） */}
-        <mesh position={[2.6, 0.12, 0.6]} castShadow>
-          <cylinderGeometry args={[0.42, 0.32, 0.22, 24]} />
-          <meshStandardMaterial color="#6fb6d6" roughness={0.5} />
-        </mesh>
+
+        {/* 道具：食盆（右）+ 猫爬架（后左角） */}
+        <FoodBowl />
+        <CatTree />
 
         <CatModel behavior={behavior} />
-        <ContactShadows position={[0, 0.005, 0]} opacity={0.4} scale={14} blur={2.2} far={5} />
+        <ContactShadows position={[0, 0.004, 0]} opacity={0.35} scale={14} blur={2.4} far={5} />
       </Canvas>
     </div>
   );
