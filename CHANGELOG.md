@@ -254,6 +254,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -428,6 +429,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Ground the cat tree on the floor (was floating on the wall) (#88) *(cat-mood)*
 - Drop drei WASM decoder + remote HDR — CSP violations on prod (#73) *(cat-mood)*
 - Use binary .glb — embedded-buffer .gltf fails to load on Workers edge (#72) *(cat-mood)*
 - Localize rules to each language (zh/de CNL + terms + decisions) (#63) *(vocab-demo)*
