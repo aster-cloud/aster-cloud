@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Idle micro-life — blinking, ear flicks, half-lidded eyes by pose (#78) *(cat-mood)*
 - Procedural fur texture — canvas-generated coat (no plastic look) (#77) *(cat-mood)*
 - More realistic cat — articulated 2-segment legs, 4-beat gait, head detail (#76) *(cat-mood)*
 - 3D room (walls/window/sunlight/bowl/cat-tree) + ground the cat's feet (#75) *(cat-mood)*
@@ -226,6 +227,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
