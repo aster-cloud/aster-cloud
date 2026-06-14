@@ -151,7 +151,8 @@
     "equivalence": "Engine-Äquivalenz",
     "copyright": "Alle Rechte vorbehalten.",
     "whitepaper": "Whitepaper",
-    "vocabDemo": "Domänen-Vokabular"
+    "vocabDemo": "Domänen-Vokabular",
+    "catMood": "Katzenlaune 🐱"
   },
   "legal": {
     "terms": {
@@ -2918,5 +2919,52 @@
       "notMatched": "nicht erfüllt",
       "skipped": "nicht ausgewertet"
     }
+  },
+  "catMoodPage": {
+    "seo": {
+      "title": "Die Katzen-Stimmungs-Engine — eine poetische Aster-Lang-Demo",
+      "description": "Schreiben Sie eine Regel im Katzenflüsterer-Vokabular, lassen Sie sie von der echten Engine ausführen und sehen Sie einer Strichkatze 5 Sekunden beim Reagieren zu."
+    },
+    "eyebrow": "Spaß-Demo · Katzen-Vokabular",
+    "title": "Die Katzen-Stimmungs-Engine",
+    "subtitle": "Eine Regel im heiligen Vokabular der Katzenflüsterer — kompiliert und ausgeführt von derselben Engine, die über Kredite entscheidet. Die Katze interessiert das nicht, aber sie wird reagieren.",
+    "poem": "Wo der Sonnenfleck liegt und der Napf ist voll,\nbeschließt der kleine Gott, welche Laune er will.\nKein Eindringling? Dann Wärme, ein Schnurren, oder — pfft —\nder langsame Blick des Urteils, exquisit kühl und still.",
+    "ruleTitle": "Die Regel (in fließendem Katzisch)",
+    "legendTerm": "Hervorgehoben",
+    "legend": "= Katzen-Vokabular, das die Engine für diese Demo gelernt hat.",
+    "sceneTitle": "Die Szene setzen",
+    "scenes": {
+      "purr": {
+        "label": "Gut gefüttert"
+      },
+      "loaf": {
+        "label": "Sonnenfleck-Zeit"
+      },
+      "floof": {
+        "label": "Ein Fremder!"
+      },
+      "judge": {
+        "label": "Unbeeindruckt"
+      }
+    },
+    "moods": {
+      "purr": {
+        "name": "😌 Schnurren",
+        "quip": "Bauch voll, Welt vergeben. Der Motor läuft. Du darfst weiter existieren."
+      },
+      "loaf": {
+        "name": "🍞 Laib",
+        "quip": "Wärme erkannt. Knochen jetzt optional. Die Katze ist zu Brot geworden."
+      },
+      "floof": {
+        "name": "🙀 Plustern",
+        "quip": "EIN FREMDER. Doppelt so groß, dreifach so misstrauisch. Alles gut. (Ist es nicht.)"
+      },
+      "judge": {
+        "name": "😼 Urteil",
+        "quip": "Keine Sonne, keine Snacks, keine Geduld. Du wirst bewertet. Du bist durchgefallen."
+      }
+    },
+    "footer": "Albernes Vokabular, ernste Engine: Diese Katzenregel kompilierte und lief auf derselben Aster-Lang-Laufzeit wie eine Kreditrichtlinie. Ihre Worte — selbst diese — werden zu einer prüfbaren Entscheidung."
   }
 }

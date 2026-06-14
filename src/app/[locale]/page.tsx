@@ -648,6 +648,7 @@ function Footer({ t }: { t: ReturnType<typeof useTranslations> }) {
               <FooterLink href="/terms">{t('footer.terms')}</FooterLink>
               <FooterLink href="/demo">{t('footer.demo')}</FooterLink>
               <FooterLink href="/vocab-demo">{t('footer.vocabDemo')}</FooterLink>
+              <FooterLink href="/cat-mood">{t('footer.catMood')}</FooterLink>
               <FooterLink href="/equivalence">{t('footer.equivalence')}</FooterLink>
               <FooterLink href="/equivalence/whitepaper">{t('footer.whitepaper')}</FooterLink>
               <FooterLink href="https://aster-lang.dev/" external>
