@@ -164,6 +164,8 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
   const kneeBL = useRef<THREE.Group>(null);
   const kneeBR = useRef<THREE.Group>(null);
   const spine = useRef<THREE.Group>(null);
+  const eyeL = useRef<THREE.Group>(null);
+  const eyeR = useRef<THREE.Group>(null);
 
   const { state } = behavior;
 
@@ -233,10 +235,28 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
       spine.current.rotation.y = state.pose === 'walk' ? Math.sin(tNow * cur.step * 0.5) * 0.05 : 0;
     }
 
-    // 耳朵：警觉时（floof/judge）轻抖。
+    // 耳朵：警觉时（floof/judge）轻抖 + idle 偶发耳廓抽动（每 ~3.3s 一次短促前后转）。
     const earTwitch = (state.pose === 'floof' ? 0.25 : 0.05) * Math.sin(tNow * 12);
-    if (earL.current) earL.current.rotation.z = 0.25 + earTwitch;
-    if (earR.current) earR.current.rotation.z = -0.25 - earTwitch;
+    const earFlick = Math.max(0, Math.sin(tNow * 1.9) - 0.96) * 18; // 稀疏脉冲
+    if (earL.current) {
+      earL.current.rotation.z = 0.25 + earTwitch;
+      earL.current.rotation.x = -earFlick * 0.4;
+    }
+    if (earR.current) {
+      earR.current.rotation.z = -0.25 - earTwitch;
+      earR.current.rotation.x = -earFlick * 0.4;
+    }
+
+    // 眨眼：睡觉时眼半闭；其它时每 ~4s 快速眨一下（用 y 缩放压扁眼组模拟闭眼）。
+    let lid = 1;
+    if (state.pose === 'sleep') lid = 0.15;
+    else if (state.pose === 'loaf') lid = 0.6;
+    else {
+      const blink = Math.max(0, Math.sin(tNow * 1.6) - 0.985) * 70; // 稀疏快脉冲 0..~1
+      lid = 1 - Math.min(1, blink);
+    }
+    if (eyeL.current) eyeL.current.scale.y = lid;
+    if (eyeR.current) eyeR.current.scale.y = lid;
 
     // 尾巴三节链：逐节相位延迟做柔顺波动。
     const wag = Math.sin(tNow * cur.tailWag);
@@ -412,8 +432,8 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
             <mesh position={[0, -0.03, 0.33]} material={matNose} rotation={[Math.PI, 0, 0]}>
               <coneGeometry args={[0.04, 0.05, 8]} />
             </mesh>
-            {/* 眼：琥珀虹膜 + 竖瞳（瞳孔扁球压成竖缝） */}
-            <group position={[-0.12, 0.05, 0.2]}>
+            {/* 眼：琥珀虹膜 + 竖瞳（瞳孔扁球压成竖缝）；外层 eyeL/R 组做眨眼 y 缩放 */}
+            <group ref={eyeL} position={[-0.12, 0.05, 0.2]}>
               <mesh material={matIris}>
                 <sphereGeometry args={[0.06, 14, 14]} />
               </mesh>
@@ -421,7 +441,7 @@ function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> })
                 <sphereGeometry args={[0.05, 12, 12]} />
               </mesh>
             </group>
-            <group position={[0.12, 0.05, 0.2]}>
+            <group ref={eyeR} position={[0.12, 0.05, 0.2]}>
               <mesh material={matIris}>
                 <sphereGeometry args={[0.06, 14, 14]} />
               </mesh>
