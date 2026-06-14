@@ -382,47 +382,52 @@ body {
 }
 .cat-svg {
   width: 100%;
-  max-width: 340px;
+  max-width: 360px;
   height: auto;
   overflow: visible;
 }
-/* 柔和炭色描边、圆角；身体/脸暖白填充。 */
-.cat-svg path,
-.cat-svg ellipse,
-.cat-svg circle {
-  fill: none;
-  stroke: #4b4036;
-  stroke-width: 3.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.cat-face,
-.cat-body { fill: #fffdf9; }
-.cat-paw { fill: #fffdf9; }
-.cat-ear { fill: #fffdf9; }
-.cat-ear-in { fill: #ffb4a8; stroke: none; }
-.cat-nose { fill: #ff9a8b; }
-.cat-forehead path { stroke-width: 2.2; }
-.cat-whiskers path { stroke-width: 1.6; stroke: #8a7a6a; }
-/* 大眼：深填充 + 白高光 = kawaii 灵魂。 */
-.cat-eyeball { fill: url(#catEyeGrad); stroke: #2a2118; stroke-width: 1.5; }
+/* 默认：无描边、无填充（各元素自行上色/上渐变）。用 :where() 把特异性降到 0，
+ * 否则 `.cat-svg ellipse`(0,1,1) 会盖过 `.cat-fur`(0,1,0) 的渐变填充。 */
+:where(.cat-svg path, .cat-svg ellipse, .cat-svg circle) { fill: none; stroke: none; }
+
+/* 橘猫毛色（渐变填充 + 暖棕描边勾边）。 */
+.cat-fur { fill: url(#catFur); stroke: #b9682a; stroke-width: 2.4; stroke-linejoin: round; }
+.cat-belly,
+.cat-muzzle { fill: url(#catCream); stroke: #e8b888; stroke-width: 1.4; }
+.cat-ear-in { fill: url(#catEarIn); stroke: none; }
+.cat-pad { fill: #ff9aa6; stroke: none; }
+/* 虎斑纹（深橘半透明笔触）。 */
+.cat-stripe,
+.cat-tail-stripe,
+.cat-cheekstripe path,
+.cat-forehead path { fill: none; stroke: #c96a24; stroke-width: 3; stroke-linecap: round; opacity: 0.8; }
+.cat-tail-tip { fill: none; stroke: #fffdf8; stroke-width: 6; stroke-linecap: round; }
+.cat-tail-body { fill: url(#catFur); stroke: #b9682a; stroke-width: 2.4; }
+/* 鼻 + 嘴 + 胡须。 */
+.cat-nose { fill: #ff8a98; stroke: #d96576; stroke-width: 1; }
+.cat-mouth { fill: none; stroke: #8a5a3a; stroke-width: 2.4; stroke-linecap: round; }
+.cat-whiskers path { fill: none; stroke: #cbb49a; stroke-width: 1.6; stroke-linecap: round; }
+/* 立体眼：眼白 + 渐变虹膜 + 瞳孔 + 双高光。 */
+.cat-eyewhite { fill: #fffaf3; stroke: #6b4a2a; stroke-width: 1.4; }
+.cat-iris { fill: url(#catIris); stroke: none; }
+.cat-pupil { fill: #2a2118; stroke: none; }
 .cat-glint { fill: #ffffff; stroke: none; }
 .cat-happy-eyes { opacity: 0; }
-.cat-happy-eyes path { stroke-width: 3.4; }
+.cat-happy-eyes path { fill: none; stroke: #6b4a2a; stroke-width: 3.4; stroke-linecap: round; }
 /* 腮红：柔粉，半透明。 */
-.cat-blush { fill: #ffb0b8; stroke: none; opacity: 0.75; }
-/* 飘出物默认隐藏。 */
+.cat-blush { fill: #ff9fb0; stroke: none; opacity: 0.55; }
+/* 投影 / 阳光斑 / 飘出物。 */
+.cat-ground { fill: #d99a55; stroke: none; opacity: 0.25; }
+.cat-sun { fill: url(#catSunG); stroke: none; opacity: 0; }
 .cat-note,
-.cat-bang { font-size: 24px; fill: #f472b6; stroke: none; opacity: 0; font-weight: 700; }
+.cat-bang { font-size: 26px; fill: #f472b6; stroke: none; opacity: 0; font-weight: 700; }
 .cat-bang { fill: #ef4444; }
 .cat-heart { fill: #fb7185; stroke: none; opacity: 0; }
-.cat-sun { fill: #ffe08a; stroke: none; opacity: 0; }
-.cat-floof-spikes path { opacity: 0; stroke-width: 2.6; }
+.cat-floof-spikes path { fill: none; stroke: #c96a24; stroke-width: 3; stroke-linecap: round; opacity: 0; }
 
-.cat-head { transform-origin: 110px 76px; }
-.cat-body { transform-origin: 110px 130px; }
-.cat-tail { transform-origin: 168px 150px; }
-.cat-blush { transform-origin: center; }
+.cat-head { transform-origin: 120px 86px; }
+.cat-body { transform-origin: 120px 150px; }
+.cat-tail { transform-origin: 176px 162px; }
 
 /* ── purr 呼噜：眯眯笑眼 + 腮红加深 + 飘爱心音符 + 身子 Q 弹 ── */
 .cat-purr .cat-eyes { opacity: 0; }
@@ -452,7 +457,7 @@ body {
 .cat-loaf .cat-eyes { opacity: 0; }
 .cat-loaf .cat-happy-eyes { opacity: 1; }
 .cat-loaf .cat-body { animation: catLoaf 5s ease-in-out both; }
-.cat-loaf .cat-paw { animation: catLoaf 5s ease-in-out both; }
+.cat-loaf .cat-paws { animation: catLoaf 5s ease-in-out both; transform-origin: 120px 184px; }
 .cat-loaf .cat-head { animation: catDoze 5s ease-in-out both; }
 .cat-loaf .cat-blush { opacity: 0.7; }
 @keyframes catSunGlow { 0% { opacity: 0; } 30% { opacity: 0.95; } 100% { opacity: 0.95; } }
