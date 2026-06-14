@@ -267,21 +267,21 @@ export const Cat25DScene = forwardRef<Cat25DHandle, {}>(function Cat25DScene(_pr
   const ground = groundPos(state.x, state.y);
   const scale = depthScale(state.y);
 
-  // 道具按舞台坐标放（与 PROP_POS 对齐：饭碗 x74,y85；爬架后左 x12,y74）。
+  // 食盆按舞台坐标放（与 PROP_POS.purr 对齐：x74,y85）。
   const bowlPos = groundPos(74, 85);
-  const treePos = groundPos(10, 74);
 
   return (
     <div className="cat-3d-stage cat25-stage">
       <Room />
 
-      {/* 爬架（后排，先画=被前面遮挡） */}
+      {/* 爬架（后左角，底座立在可见地板上）：墙底约 52%、地板可见 56%~92%，
+          所以让爬架底边(translate -100%)落在 top≈64%，整架在地板里、不浮到墙上。 */}
       <CatTree
         style={{
-          left: `${treePos.left}%`,
-          top: `${treePos.top}%`,
-          transform: `translate(-50%, -86%) scale(${depthScale(74)})`,
-          zIndex: Math.round(treePos.top),
+          left: '14%',
+          top: '64%',
+          transform: 'translate(-50%, -100%) scale(0.82)',
+          zIndex: 64,
         }}
       />
 
