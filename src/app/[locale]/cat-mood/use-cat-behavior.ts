@@ -4,110 +4,131 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { CatMood } from '@/config/cat-mood';
 
 /**
- * 活猫行为状态机——让猫在布景里像真猫一样自主游荡，规则运行时打断去做心情响应。
+ * 活猫行为状态机——让猫在布景里像真猫一样自主游荡，规则运行时打断去做多拍心情响应。
  *
- * 平时（idle 循环）：随机选一个落脚点 → 走过去（walk）→ 到达后随机挑一个小动作
- * （sit 坐 / groom 舔爪 / stretch 伸懒腰 / sleep 打盹）停一会 → 再选下一个点。
- * 朝向随移动方向翻转。眨眼/尾摆/耳动是独立的随机微动（在 CSS 层，由 pose 不影响）。
+ * 平时（idle 循环）：随机选落脚点 → 走过去（walk）→ 到达后随机小动作（sit/groom/
+ * stretch/sleep）停一会 → 再选下一个点。眨眼/尾摆/耳动是独立的随机微动（CSS 层）。
  *
- * 运行规则时：react(mood) 把猫引向相关道具（炸毛=原地、呼噜=饭碗、猫面包=阳光斑、
- * 高冷=地毯中央），到位后摆出该心情 pose 数秒，然后回到 idle 游荡。
+ * 运行规则（react）：**立即中断并清空上一个响应**（取消所有计时器、重置序列），猫走向
+ * 相关道具做**多拍**响应。如喂饭(purr)=走到饭碗→低头吃(eat 拍, 停顿)→吃饱呼噜；
+ * 其它心情各自的走位 + pose。响应结束回到自主游荡。任意时刻点新规则都能干净切换。
  *
- * 坐标用 0..100 的舞台百分比（布景容器内定位）。纯 setTimeout 调度，组件卸载清理。
+ * 走动「不滑行」：位移用线性时长 + walk pose 的踏步/竖直小跳，读起来像走而非漂。
+ * 坐标 0..100 舞台百分比。计时器集中管理，组件卸载/中断一次清空。
  */
 
-export type CatPose = 'walk' | 'sit' | 'groom' | 'stretch' | 'sleep' | CatMood;
+export type CatPose = 'walk' | 'sit' | 'groom' | 'stretch' | 'sleep' | 'eat' | CatMood;
 
 export interface CatState {
-  x: number;          // 0..100（舞台宽百分比）
-  y: number;          // 0..100（舞台高百分比，猫脚位置）
-  facing: 1 | -1;     // 1=朝右, -1=朝左
+  x: number; y: number;
+  facing: 1 | -1;
   pose: CatPose;
-  /** 当前是否在「规则响应」中（用于 UI 提示/锁定）。 */
+  /** 是否在规则响应中（锁住 idle）。 */
   reacting: boolean;
+  /** 移动用 transition 时长（ms），walk 时按距离算，停留时 0。 */
+  moveMs: number;
 }
 
-// 落脚点候选（地板活动区，避开家具）。y 是猫站立的地面线附近。
-const ROAM_SPOTS: { x: number; y: number }[] = [
-  { x: 22, y: 78 }, { x: 40, y: 82 }, { x: 58, y: 79 },
-  { x: 74, y: 83 }, { x: 50, y: 76 }, { x: 30, y: 84 },
-];
-// 道具位置（响应时走过去）。
-const PROP_POS: Record<CatMood, { x: number; y: number }> = {
-  purr: { x: 76, y: 84 },   // 饭碗在右下
-  loaf: { x: 30, y: 80 },   // 阳光斑在左
-  judge: { x: 50, y: 80 },  // 地毯中央
-  floof: { x: 50, y: 80 },  // 原地炸毛（用当前位置覆盖）
-};
+interface Beat {
+  to?: { x: number; y: number };  // 有则先走过去
+  pose: CatPose;                  // 到位后的姿态
+  hold: number;                   // 停留毫秒
+}
 
+const ROAM_SPOTS = [
+  { x: 24, y: 80 }, { x: 42, y: 83 }, { x: 58, y: 80 },
+  { x: 72, y: 84 }, { x: 50, y: 78 }, { x: 32, y: 85 },
+];
+const PROP_POS: Record<CatMood, { x: number; y: number }> = {
+  purr: { x: 74, y: 85 },   // 饭碗
+  loaf: { x: 28, y: 81 },   // 阳光斑
+  judge: { x: 50, y: 82 },  // 地毯中央
+  floof: { x: 50, y: 82 },  // 原地（react 时用当前位置覆盖）
+};
 const IDLE_POSES: CatPose[] = ['sit', 'groom', 'stretch', 'sit', 'sleep'];
+const WALK_SPEED = 55;   // ms/单位距离（越大越慢，配合踏步感）
+const MIN_WALK = 800;
+
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-/** 走路时长（毫秒）正比于距离，给平滑过渡用。 */
-function walkDuration(from: { x: number; y: number }, to: { x: number; y: number }): number {
-  const d = Math.hypot(to.x - from.x, to.y - from.y);
-  return Math.max(900, Math.round(d * 70));
+const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(b.x - a.x, b.y - a.y);
+
+/** 每种心情的多拍序列（道具坐标在 buildBeats 里填，floof 用当前位置）。 */
+function buildBeats(mood: CatMood, here: { x: number; y: number }): Beat[] {
+  switch (mood) {
+    case 'purr': // 喂饭→吃→吃饱呼噜
+      return [
+        { to: PROP_POS.purr, pose: 'eat', hold: 2200 },   // 走到饭碗低头吃
+        { pose: 'purr', hold: 4200 },                      // 吃饱满足呼噜
+      ];
+    case 'loaf': // 走到阳光斑→摊成猫面包
+      return [{ to: PROP_POS.loaf, pose: 'loaf', hold: 5000 }];
+    case 'judge': // 走到地毯中央→端坐审视
+      return [{ to: PROP_POS.judge, pose: 'judge', hold: 5000 }];
+    case 'floof': // 原地炸毛（不走）
+      return [{ to: here, pose: 'floof', hold: 5000 }];
+  }
 }
 
-export function useCatBehavior(): {
-  state: CatState;
-  walkMs: number;
-  react: (mood: CatMood) => void;
-} {
-  const [state, setState] = useState<CatState>({ x: 50, y: 80, facing: 1, pose: 'sit', reacting: false });
-  const [walkMs, setWalkMs] = useState(1200);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function useCatBehavior(): { state: CatState; react: (mood: CatMood) => void } {
+  const [state, setState] = useState<CatState>({ x: 50, y: 82, facing: 1, pose: 'sit', reacting: false, moveMs: 0 });
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const reactingRef = useRef(false);
-  const posRef = useRef({ x: 50, y: 80 });
+  const posRef = useRef({ x: 50, y: 82 });
 
-  const clear = () => { if (timer.current) clearTimeout(timer.current); };
+  const after = (ms: number, fn: () => void) => { timers.current.push(setTimeout(fn, ms)); };
+  const clearAll = useCallback(() => { timers.current.forEach(clearTimeout); timers.current = []; }, []);
 
-  // 走向某点：设置朝向 + walk pose + 目标坐标 + 时长；返回到达耗时。
+  // 走向某点，到达后回调。设置朝向 + walk pose + 距离比例时长。
   const walkTo = useCallback((to: { x: number; y: number }, then: () => void) => {
     const from = posRef.current;
-    const ms = walkDuration(from, to);
-    setWalkMs(ms);
-    setState((s) => ({ ...s, x: to.x, y: to.y, facing: to.x >= from.x ? 1 : -1, pose: 'walk' }));
+    const ms = Math.max(MIN_WALK, Math.round(dist(from, to) * WALK_SPEED));
     posRef.current = to;
-    timer.current = setTimeout(then, ms + 60);
+    setState((s) => ({ ...s, x: to.x, y: to.y, facing: to.x >= from.x ? 1 : -1, pose: 'walk', moveMs: ms }));
+    after(ms + 50, then);
   }, []);
 
   // idle 循环：到点 → 停留摆 pose → 下一点。
   const idleLoop = useCallback(() => {
     if (reactingRef.current) return;
-    const spot = pick(ROAM_SPOTS);
-    walkTo(spot, () => {
+    walkTo(pick(ROAM_SPOTS), () => {
       if (reactingRef.current) return;
       const pose = pick(IDLE_POSES);
-      setState((s) => ({ ...s, pose }));
-      // 打盹停久点，其它短些。
+      setState((s) => ({ ...s, pose, moveMs: 0 }));
       const hold = pose === 'sleep' ? rand(3500, 6000) : rand(1800, 3600);
-      timer.current = setTimeout(() => { if (!reactingRef.current) idleLoop(); }, hold);
+      after(hold, () => { if (!reactingRef.current) idleLoop(); });
     });
   }, [walkTo]);
 
-  // 启动自主游荡（首次延迟一下，先坐着）。
   useEffect(() => {
-    timer.current = setTimeout(idleLoop, 1400);
-    return clear;
-  }, [idleLoop]);
+    after(1200, idleLoop);
+    return clearAll;
+  }, [idleLoop, clearAll]);
 
-  // 规则响应：打断游荡 → 走向道具 → 摆心情 pose 数秒 → 回 idle。
-  const react = useCallback((mood: CatMood) => {
-    clear();
-    reactingRef.current = true;
-    setState((s) => ({ ...s, reacting: true }));
-    const target = mood === 'floof' ? posRef.current : PROP_POS[mood];
-    walkTo(target, () => {
-      setState((s) => ({ ...s, pose: mood }));
-      // 心情 pose 展示 ~5.5 秒后恢复自主游荡。
-      timer.current = setTimeout(() => {
-        reactingRef.current = false;
-        setState((s) => ({ ...s, reacting: false, pose: 'sit' }));
-        idleLoop();
-      }, 5500);
-    });
+  // 跑一串拍：每拍可选先走过去，再摆 pose 停 hold，然后下一拍；末拍后回 idle。
+  const runBeats = useCallback((beats: Beat[], i: number) => {
+    if (i >= beats.length) {
+      reactingRef.current = false;
+      setState((s) => ({ ...s, reacting: false, pose: 'sit', moveMs: 0 }));
+      idleLoop();
+      return;
+    }
+    const beat = beats[i];
+    const enter = () => {
+      setState((s) => ({ ...s, pose: beat.pose, moveMs: 0 }));
+      after(beat.hold, () => runBeats(beats, i + 1));
+    };
+    if (beat.to) walkTo(beat.to, enter); else enter();
   }, [walkTo, idleLoop]);
 
-  return { state, walkMs, react };
+  // 规则响应：**立即清空上一个响应**，从头跑新心情的多拍序列。
+  const react = useCallback((mood: CatMood) => {
+    clearAll();                       // 中断并清掉之前所有计时器/序列
+    reactingRef.current = true;
+    setState((s) => ({ ...s, reacting: true }));
+    const beats = buildBeats(mood, posRef.current);
+    runBeats(beats, 0);
+  }, [clearAll, runBeats]);
+
+  return { state, react };
 }

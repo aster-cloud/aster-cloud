@@ -83,7 +83,7 @@ export function CatMoodContent({ locale }: { locale: string }) {
       </section>
 
       {/* 心情说明（运行后显示） */}
-      <div className="mb-8 min-h-16 text-center">
+      <div className="mb-4 min-h-14 text-center">
         {run ? (
           <>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-base font-semibold text-emerald-800 ring-1 ring-emerald-200">
@@ -92,30 +92,11 @@ export function CatMoodContent({ locale }: { locale: string }) {
             <p className="mx-auto mt-2 max-w-md text-sm italic text-fg-muted">{t(`moods.${run.mood}.quip`)}</p>
           </>
         ) : (
-          <p className="mt-3 text-sm text-fg-subtle">{t('idleHint')}</p>
+          <p className="mt-2 text-sm text-fg-subtle">{t('idleHint')}</p>
         )}
       </div>
 
-      {/* 诗 */}
-      <blockquote className="mx-auto mb-8 max-w-xl rounded-lg border-l-4 border-primary bg-primary-subtle px-5 py-4 text-center text-sm italic leading-relaxed text-fg">
-        {t('poem').split('\n').map((line, i) => (
-          <span key={i} className="block">{line}</span>
-        ))}
-      </blockquote>
-
-      {/* 规则（撸猫领域词高亮） */}
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-fg">{t('ruleTitle')}</h2>
-        <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-100">
-          {highlightVocab(rule.source, catVocabTerms(loc))}
-        </pre>
-        <p className="mt-2 text-xs text-fg-subtle">
-          <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{t('legendTerm')}</span>
-          {' '}{t('legend')}
-        </p>
-      </section>
-
-      {/* 场景按钮（运行规则 → 活猫响应） */}
+      {/* 场景按钮（紧跟布景，方便控制 → 运行规则 → 活猫响应） */}
       <section className="mb-8">
         <h2 className="mb-2 text-sm font-semibold text-fg">{t('sceneTitle')}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -139,6 +120,25 @@ export function CatMoodContent({ locale }: { locale: string }) {
             </button>
           ))}
         </div>
+      </section>
+
+      {/* 诗 */}
+      <blockquote className="mx-auto mb-8 max-w-xl rounded-lg border-l-4 border-primary bg-primary-subtle px-5 py-4 text-center text-sm italic leading-relaxed text-fg">
+        {t('poem').split('\n').map((line, i) => (
+          <span key={i} className="block">{line}</span>
+        ))}
+      </blockquote>
+
+      {/* 规则（撸猫领域词高亮） */}
+      <section className="mb-8">
+        <h2 className="mb-2 text-sm font-semibold text-fg">{t('ruleTitle')}</h2>
+        <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-100">
+          {highlightVocab(rule.source, catVocabTerms(loc))}
+        </pre>
+        <p className="mt-2 text-xs text-fg-subtle">
+          <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{t('legendTerm')}</span>
+          {' '}{t('legend')}
+        </p>
       </section>
 
       {/* 收尾彩蛋 */}

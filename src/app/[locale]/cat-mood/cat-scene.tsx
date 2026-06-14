@@ -20,7 +20,7 @@ export interface CatSceneHandle {
 }
 
 export const CatScene = forwardRef<CatSceneHandle, { reducedHeight?: boolean }>(function CatScene(_props, ref) {
-  const { state, walkMs, react } = useCatBehavior();
+  const { state, react } = useCatBehavior();
   useImperativeHandle(ref, () => ({ react, reacting: state.reacting }), [react, state.reacting]);
 
   return (
@@ -89,7 +89,10 @@ export const CatScene = forwardRef<CatSceneHandle, { reducedHeight?: boolean }>(
         style={{
           left: `${state.x}%`,
           top: `${state.y}%`,
-          transition: `left ${walkMs}ms ease-in-out, top ${walkMs}ms ease-in-out`,
+          // 走动用线性时长（配合踏步竖直小跳 = 走而非滑）；停留(moveMs=0)瞬时不过渡。
+          transition: state.moveMs > 0
+            ? `left ${state.moveMs}ms linear, top ${state.moveMs}ms linear`
+            : 'none',
           // facing：-1 时水平翻转。
           ['--facing' as string]: String(state.facing),
         }}
