@@ -33,7 +33,7 @@ export default async function VocabDemoPage({ params }: Props) {
   setRequestLocale(locale);
   return (
     <main className="bg-bg">
-      <VocabDemoContent />
+      <VocabDemoContent locale={locale} />
     </main>
   );
 }
