@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- 🐱 Cat Mood Engine fun-demo — poetic cat-vocabulary rule → 5s sketch animation (#66) *(cat-mood)*
 - Highlight domain vocabulary in the rule code block (#65) *(vocab-demo)*
 - Show industry terms in case inputs + lightweight decision replay (#64) *(vocab-demo)*
 - Public domain-vocabulary demo — write rules in your industry's terms (#62) *(vocab-demo)*
@@ -216,6 +217,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
