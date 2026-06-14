@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
@@ -8,9 +8,9 @@ import {
   CAT_RULES, CAT_SCENES, CAT_DEMO_TENANT,
   registerCatVocab, catLexiconFor, catMoodOf, catTermLabel, catVocabTerms,
   toDemoLocale,
-  type CatMood, type CatScene,
+  type CatMood, type CatScene as CatSceneData,
 } from '@/config/cat-mood';
-import { CatAnimation } from './cat-animation';
+import { CatScene, type CatSceneHandle } from './cat-scene';
 import { cn } from '@/components/ui';
 
 /** 正则转义。 */
@@ -39,8 +39,6 @@ function highlightVocab(source: string, terms: string[]): ReactNode[] {
 interface RunResult {
   sceneId: CatMood;
   mood: CatMood;
-  /** 引擎与镜像是否一致（恒 true，有 CI 守护）。 */
-  consistent: boolean;
 }
 
 export function CatMoodContent({ locale }: { locale: string }) {
@@ -48,6 +46,7 @@ export function CatMoodContent({ locale }: { locale: string }) {
   const loc = toDemoLocale(locale);
   const rule = CAT_RULES[loc];
   const [run, setRun] = useState<RunResult | null>(null);
+  const sceneRef = useRef<CatSceneHandle>(null);
 
   // 编译猫规则（注入猫词汇）。
   const core = useMemo(() => {
@@ -58,22 +57,43 @@ export function CatMoodContent({ locale }: { locale: string }) {
     return r.core ?? null;
   }, [rule, loc]);
 
-  function runScene(scene: CatScene) {
+  // 运行场景：引擎求心情 → 让活猫走过去做出响应。
+  function runScene(scene: CatSceneData) {
     if (!core) return;
     const ev = evaluate(core, rule.ruleName, { [rule.paramName]: scene.input });
     const mood = (ev.success ? String(ev.value) : catMoodOf(scene.input)) as CatMood;
-    setRun({ sceneId: scene.id, mood, consistent: ev.success && String(ev.value) === catMoodOf(scene.input) });
+    setRun({ sceneId: scene.id, mood });
+    sceneRef.current?.react(mood);
   }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:py-16">
       {/* 标题区 */}
-      <div className="mb-8 text-center">
+      <div className="mb-6 text-center">
         <p className="text-sm font-semibold uppercase tracking-wide text-primary">{t('eyebrow')}</p>
         <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
           {t('title')}
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-lg text-fg-muted">{t('subtitle')}</p>
+      </div>
+
+      {/* 活猫布景（C 位，始终在场——平时自主游荡，运行规则时响应） */}
+      <section className="mb-3">
+        <CatScene ref={sceneRef} />
+      </section>
+
+      {/* 心情说明（运行后显示） */}
+      <div className="mb-8 min-h-16 text-center">
+        {run ? (
+          <>
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-base font-semibold text-emerald-800 ring-1 ring-emerald-200">
+              {t(`moods.${run.mood}.name`)}
+            </div>
+            <p className="mx-auto mt-2 max-w-md text-sm italic text-fg-muted">{t(`moods.${run.mood}.quip`)}</p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-fg-subtle">{t('idleHint')}</p>
+        )}
       </div>
 
       {/* 诗 */}
@@ -95,7 +115,7 @@ export function CatMoodContent({ locale }: { locale: string }) {
         </p>
       </section>
 
-      {/* 场景按钮 */}
+      {/* 场景按钮（运行规则 → 活猫响应） */}
       <section className="mb-8">
         <h2 className="mb-2 text-sm font-semibold text-fg">{t('sceneTitle')}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -120,19 +140,6 @@ export function CatMoodContent({ locale }: { locale: string }) {
           ))}
         </div>
       </section>
-
-      {/* 5 秒动画 + 心情说明 */}
-      {run && (
-        <section className="mb-8 text-center">
-          <div className="mx-auto max-w-sm">
-            <CatAnimation mood={run.mood} />
-          </div>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-base font-semibold text-emerald-800 ring-1 ring-emerald-200">
-            {t(`moods.${run.mood}.name`)}
-          </div>
-          <p className="mx-auto mt-3 max-w-md text-sm italic text-fg-muted">{t(`moods.${run.mood}.quip`)}</p>
-        </section>
-      )}
 
       {/* 收尾彩蛋 */}
       <div className="mt-10 rounded-xl border border-border bg-bg-subtle p-5 text-center">
