@@ -240,6 +240,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -414,6 +415,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Use binary .glb — embedded-buffer .gltf fails to load on Workers edge (#72) *(cat-mood)*
 - Localize rules to each language (zh/de CNL + terms + decisions) (#63) *(vocab-demo)*
 - Remove unreliable LLM decision explanation; deterministic only (#60)
 - Deterministic decision explanation — exact values, no LLM template blanks (#59) *(demo)*
