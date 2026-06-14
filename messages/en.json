@@ -150,7 +150,8 @@
     "demo": "Live demo",
     "equivalence": "Engine equivalence",
     "copyright": "All rights reserved.",
-    "whitepaper": "White paper"
+    "whitepaper": "White paper",
+    "vocabDemo": "Domain vocabulary"
   },
   "legal": {
     "terms": {
@@ -2821,6 +2822,93 @@
     "fallbackBanner": {
       "title": "Translation in progress",
       "body": "This page has not been translated yet. The English original is shown below."
+    }
+  },
+  "vocabDemoPage": {
+    "seo": {
+      "title": "Write rules in your own industry terms — Aster Lang demo",
+      "description": "Healthcare, insurance, logistics: write the rule in your domain's vocabulary and the engine compiles and runs it. No signup."
+    },
+    "eyebrow": "Live demo · domain vocabulary",
+    "title": "Your words. The same engine.",
+    "subtitle": "Write rules in your industry's own vocabulary — the engine maps your terms to its canonical form, compiles, and runs them. One language, every domain.",
+    "step1": {
+      "title": "Pick a domain",
+      "hint": "Three industries, three vocabularies — the same engine underneath."
+    },
+    "step2": {
+      "title": "Your domain vocabulary",
+      "hint": "These are your industry words. The engine knows what each maps to internally."
+    },
+    "step3": {
+      "title": "The rule, in your words",
+      "hint": "Written entirely in the industry vocabulary above — readable by the people who own the policy."
+    },
+    "step4": {
+      "title": "Run a case",
+      "hint": "Pick a case; the browser engine injects your vocabulary, compiles, and computes the decision live."
+    },
+    "terms": {
+      "colIndustry": "Industry term",
+      "colCanonical": "Engine term",
+      "colKind": "Kind",
+      "colGloss": "Meaning",
+      "kind": {
+        "struct": "type",
+        "field": "field"
+      },
+      "note": "The industry term is what you write; the engine term is what it compiles to. Same logic, your words."
+    },
+    "result": {
+      "label": "Decision",
+      "note": "Computed live by the same engine that runs in production — your vocabulary translated to canonical form, then executed."
+    },
+    "cta": {
+      "title": "Bring your own vocabulary",
+      "subtitle": "Define your domain's terms once; your whole team writes rules in words they already use."
+    },
+    "domains": {
+      "healthcare": {
+        "name": "Healthcare",
+        "tagline": "Clinical triage",
+        "cases": {
+          "emergency": "Critical vitals",
+          "refer": "Borderline case",
+          "routine": "Stable patient"
+        }
+      },
+      "insurance": {
+        "name": "Insurance",
+        "tagline": "Claims intake",
+        "cases": {
+          "approve": "Clean claim",
+          "refer": "Large claim",
+          "declined": "Below deductible"
+        }
+      },
+      "logistics": {
+        "name": "Logistics",
+        "tagline": "Order routing",
+        "cases": {
+          "air": "Urgent shipment",
+          "freight": "Heavy / long-haul",
+          "courier": "Standard parcel"
+        }
+      }
+    },
+    "glosses": {
+      "Patient": "Patient visit case",
+      "systolic": "Systolic BP (mmHg)",
+      "heartRate": "Heart rate (bpm)",
+      "age": "Age",
+      "Claim": "Insurance claim",
+      "claimAmount": "Claimed amount",
+      "deductible": "Deductible",
+      "priorClaims": "Prior claims count",
+      "Shipment": "Shipment / parcel",
+      "weightKg": "Gross weight (kg)",
+      "distanceKm": "Distance (km)",
+      "priority": "SLA tier (1-3)"
     }
   }
 }

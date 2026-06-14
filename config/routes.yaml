@@ -69,6 +69,13 @@ routes:
     locales: all
     notes: Interactive credit-risk decision-replay demo (sales)
 
+  - path: /vocab-demo
+    status: canonical-here
+    owner: marketing
+    source: src/app/[locale]/vocab-demo/page.tsx
+    locales: all
+    notes: Domain-vocabulary demo — write rules in industry terms across 3 domains (sales)
+
   - path: /privacy
     status: canonical-here
     owner: legal

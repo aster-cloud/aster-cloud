@@ -150,7 +150,8 @@
     "demo": "在线演示",
     "equivalence": "引擎等价性",
     "copyright": "版权所有。",
-    "whitepaper": "白皮书"
+    "whitepaper": "白皮书",
+    "vocabDemo": "领域词汇"
   },
   "legal": {
     "terms": {
@@ -2821,6 +2822,93 @@
     "fallbackBanner": {
       "title": "翻译进行中",
       "body": "此页面尚未翻译，以下显示英文原文。"
+    }
+  },
+  "vocabDemoPage": {
+    "seo": {
+      "title": "用你自己的行业术语写规则 — Aster Lang 演示",
+      "description": "医疗、保险、物流：用你领域的词汇写规则，引擎照样编译执行。无需注册。"
+    },
+    "eyebrow": "实时演示 · 领域词汇",
+    "title": "你的词汇，同一套引擎",
+    "subtitle": "用你行业自己的词汇写规则——引擎把你的术语映射到规范形式，编译并执行。一种语言，覆盖每个领域。",
+    "step1": {
+      "title": "选一个领域",
+      "hint": "三个行业，三套词汇——底层是同一套引擎。"
+    },
+    "step2": {
+      "title": "你的领域术语",
+      "hint": "这些是你行业的说法。引擎知道每个词内部对应什么。"
+    },
+    "step3": {
+      "title": "用你的词写的规则",
+      "hint": "完全用上方的行业词汇写成——制定策略的人自己读得懂。"
+    },
+    "step4": {
+      "title": "运行一个案例",
+      "hint": "选一个案例；浏览器引擎注入你的词汇、编译、当场算出决策。"
+    },
+    "terms": {
+      "colIndustry": "行业术语",
+      "colCanonical": "引擎术语",
+      "colKind": "类别",
+      "colGloss": "含义",
+      "kind": {
+        "struct": "类型",
+        "field": "字段"
+      },
+      "note": "行业术语是你写的；引擎术语是它编译成的。同一套逻辑，你的词。"
+    },
+    "result": {
+      "label": "决策",
+      "note": "由与生产环境同款的引擎当场算出——你的词汇被翻译成规范形式后执行。"
+    },
+    "cta": {
+      "title": "带上你自己的词汇",
+      "subtitle": "一次定义你领域的术语；整个团队就能用他们本来就在用的词写规则。"
+    },
+    "domains": {
+      "healthcare": {
+        "name": "医疗",
+        "tagline": "临床分诊",
+        "cases": {
+          "emergency": "危急生命体征",
+          "refer": "边界案例",
+          "routine": "稳定患者"
+        }
+      },
+      "insurance": {
+        "name": "保险",
+        "tagline": "理赔准入",
+        "cases": {
+          "approve": "干净理赔",
+          "refer": "大额理赔",
+          "declined": "低于免赔额"
+        }
+      },
+      "logistics": {
+        "name": "物流",
+        "tagline": "订单路由",
+        "cases": {
+          "air": "加急货件",
+          "freight": "重货/长途",
+          "courier": "标准包裹"
+        }
+      }
+    },
+    "glosses": {
+      "Patient": "患者就诊病例",
+      "systolic": "收缩压 (mmHg)",
+      "heartRate": "心率 (次/分)",
+      "age": "年龄",
+      "Claim": "理赔案件",
+      "claimAmount": "索赔金额",
+      "deductible": "免赔额",
+      "priorClaims": "历史出险次数",
+      "Shipment": "货件/包裹",
+      "weightKg": "毛重 (kg)",
+      "distanceKm": "运距 (km)",
+      "priority": "时效等级 (1-3)"
     }
   }
 }
