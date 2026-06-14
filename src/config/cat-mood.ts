@@ -36,8 +36,8 @@ const LOCALE_TAGS: Record<DemoLocale, string> = { en: 'en-US', zh: 'zh-CN', de: 
 export const CAT_DEMO_TENANT = 'cat-mood-anon';
 export const CAT_DOMAIN = 'cat.mood';
 
-/** 四种猫心情（决策 key → 动画）。 */
-export type CatMood = 'floof' | 'loaf' | 'purr' | 'judge';
+/** 五种猫心情（决策 key → 动画）。perch=登高，走到爬架爬上顶窝。 */
+export type CatMood = 'perch' | 'floof' | 'loaf' | 'purr' | 'judge';
 
 /** 撸猫领域术语：canonical 跨语言不变，localized 是各语言可爱说法。 */
 interface CatTerm {
@@ -54,6 +54,7 @@ export const CAT_TERMS: CatTerm[] = [
   { kind: 'field', canonical: 'belly', parent: 'CatState', localized: { en: 'tummyFullness', zh: '肚皮饱度', de: 'bauchFulle' } },
   { kind: 'field', canonical: 'sunbeam', parent: 'CatState', localized: { en: 'sunPatchWarmth', zh: '阳光斑温度', de: 'sonnenWarme' } },
   { kind: 'field', canonical: 'strangers', parent: 'CatState', localized: { en: 'intruderCount', zh: '陌生人数', de: 'eindringlinge' } },
+  { kind: 'field', canonical: 'perchUrge', parent: 'CatState', localized: { en: 'highGroundUrge', zh: '登高欲', de: 'kletterLust' } },
 ];
 
 /** 某语言下的规则 + 函数/参数名。 */
@@ -72,10 +73,11 @@ export interface CatTier {
 }
 
 export const CAT_TIERS: CatTier[] = [
+  { mood: 'perch', field: 'perchUrge', op: '>=', threshold: 1 }, // 登高欲最高优先：先爬架
   { mood: 'floof', field: 'strangers', op: '>=', threshold: 1 },
   { mood: 'loaf', field: 'sunbeam', op: '>=', threshold: 7 },
   { mood: 'purr', field: 'belly', op: '>=', threshold: 8 },
-  { mood: 'judge' }, // 兜底：既无人闯入、又没阳光、又没吃饱 → 高冷审视
+  { mood: 'judge' }, // 兜底：既不想登高、又无人闯入、又没阳光、又没吃饱 → 高冷审视
 ];
 
 export const CAT_RULES: Record<DemoLocale, CatRule> = {
@@ -86,19 +88,23 @@ export const CAT_RULES: Record<DemoLocale, CatRule> = {
 Define Kitty has
   tummyFullness as Int,
   sunPatchWarmth as Int,
-  intruderCount as Int.
+  intruderCount as Int,
+  highGroundUrge as Int.
 
 Rule mood given moggy as Kitty, produce Text:
-  If moggy.intruderCount at least 1:
-    Return "floof".
+  If moggy.highGroundUrge at least 1:
+    Return "perch".
   Otherwise:
-    If moggy.sunPatchWarmth at least 7:
-      Return "loaf".
+    If moggy.intruderCount at least 1:
+      Return "floof".
     Otherwise:
-      If moggy.tummyFullness at least 8:
-        Return "purr".
+      If moggy.sunPatchWarmth at least 7:
+        Return "loaf".
       Otherwise:
-        Return "judge".
+        If moggy.tummyFullness at least 8:
+          Return "purr".
+        Otherwise:
+          Return "judge".
 `,
   },
   zh: {
@@ -108,19 +114,23 @@ Rule mood given moggy as Kitty, produce Text:
 定义 主子 包含
   肚皮饱度 作为 整数，
   阳光斑温度 作为 整数，
-  陌生人数 作为 整数。
+  陌生人数 作为 整数，
+  登高欲 作为 整数。
 
 规则 心情 给定 喵主子 作为 主子 产出 文本：
-  如果 喵主子.陌生人数 至少 1：
-    返回 "floof"。
+  如果 喵主子.登高欲 至少 1：
+    返回 "perch"。
   否则：
-    如果 喵主子.阳光斑温度 至少 7：
-      返回 "loaf"。
+    如果 喵主子.陌生人数 至少 1：
+      返回 "floof"。
     否则：
-      如果 喵主子.肚皮饱度 至少 8：
-        返回 "purr"。
+      如果 喵主子.阳光斑温度 至少 7：
+        返回 "loaf"。
       否则：
-        返回 "judge"。
+        如果 喵主子.肚皮饱度 至少 8：
+          返回 "purr"。
+        否则：
+          返回 "judge"。
 `,
   },
   de: {
@@ -130,19 +140,23 @@ Rule mood given moggy as Kitty, produce Text:
 Definiere Mieze hat
   bauchFulle als Ganzzahl,
   sonnenWarme als Ganzzahl,
-  eindringlinge als Ganzzahl.
+  eindringlinge als Ganzzahl,
+  kletterLust als Ganzzahl.
 
 Regel stimmung gegeben kater als Mieze liefert Text:
-  wenn kater.eindringlinge mindestens 1:
-    gib zurück "floof".
+  wenn kater.kletterLust mindestens 1:
+    gib zurück "perch".
   sonst:
-    wenn kater.sonnenWarme mindestens 7:
-      gib zurück "loaf".
+    wenn kater.eindringlinge mindestens 1:
+      gib zurück "floof".
     sonst:
-      wenn kater.bauchFulle mindestens 8:
-        gib zurück "purr".
+      wenn kater.sonnenWarme mindestens 7:
+        gib zurück "loaf".
       sonst:
-        gib zurück "judge".
+        wenn kater.bauchFulle mindestens 8:
+          gib zurück "purr".
+        sonst:
+          gib zurück "judge".
 `,
   },
 };
@@ -154,10 +168,11 @@ export interface CatScene {
 }
 
 export const CAT_SCENES: CatScene[] = [
-  { id: 'purr', input: { belly: 9, sunbeam: 3, strangers: 0 } },   // 吃饱了 → 呼噜
-  { id: 'loaf', input: { belly: 5, sunbeam: 9, strangers: 0 } },   // 暖阳里 → 摊成猫面包
-  { id: 'floof', input: { belly: 9, sunbeam: 9, strangers: 2 } },  // 有人闯入 → 炸毛（优先级最高）
-  { id: 'judge', input: { belly: 3, sunbeam: 2, strangers: 0 } },  // 啥也不满足 → 高冷审视
+  { id: 'perch', input: { belly: 6, sunbeam: 3, strangers: 0, perchUrge: 1 } }, // 想登高 → 爬上爬架顶窝
+  { id: 'purr', input: { belly: 9, sunbeam: 3, strangers: 0, perchUrge: 0 } },  // 吃饱了 → 呼噜
+  { id: 'loaf', input: { belly: 5, sunbeam: 9, strangers: 0, perchUrge: 0 } },  // 暖阳里 → 摊成猫面包
+  { id: 'floof', input: { belly: 9, sunbeam: 9, strangers: 2, perchUrge: 0 } }, // 有人闯入 → 炸毛
+  { id: 'judge', input: { belly: 3, sunbeam: 2, strangers: 0, perchUrge: 0 } }, // 啥也不满足 → 高冷审视
 ];
 
 /** 注入猫词汇到引擎，返回当前语言的 registry domain key。 */

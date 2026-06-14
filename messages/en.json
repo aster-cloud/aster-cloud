@@ -2934,6 +2934,9 @@
     "legend": "= cat vocabulary the engine learned for this demo.",
     "sceneTitle": "Set the scene",
     "scenes": {
+      "perch": {
+        "label": "Claim High Ground"
+      },
       "purr": {
         "label": "Well-fed"
       },
@@ -2948,6 +2951,10 @@
       }
     },
     "moods": {
+      "perch": {
+        "name": "🐈 Perch",
+        "quip": "High ground secured. From this throne the whole domain is under surveillance. As it should be."
+      },
       "purr": {
         "name": "😌 Purr",
         "quip": "Belly full, world forgiven. The motor is running. You may continue to exist."

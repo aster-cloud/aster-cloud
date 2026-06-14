@@ -2934,6 +2934,9 @@
     "legend": "= Katzen-Vokabular, das die Engine für diese Demo gelernt hat.",
     "sceneTitle": "Die Szene setzen",
     "scenes": {
+      "perch": {
+        "label": "Höhe erobern"
+      },
       "purr": {
         "label": "Gut gefüttert"
       },
@@ -2948,6 +2951,10 @@
       }
     },
     "moods": {
+      "perch": {
+        "name": "🐈 Hochsitz",
+        "quip": "Höhe gesichert. Von diesem Thron ist das ganze Reich unter Beobachtung. So gehört es sich."
+      },
       "purr": {
         "name": "😌 Schnurren",
         "quip": "Bauch voll, Welt vergeben. Der Motor läuft. Du darfst weiter existieren."

@@ -40,6 +40,7 @@ const ROAM_SPOTS = [
   { x: 72, y: 84 }, { x: 50, y: 78 }, { x: 32, y: 85 },
 ];
 const PROP_POS: Record<CatMood, { x: number; y: number }> = {
+  perch: { x: 12, y: 80 },  // 爬架底座（之后渲染层把 perch pose 抬到顶窝）
   purr: { x: 74, y: 85 },   // 饭碗
   loaf: { x: 28, y: 81 },   // 阳光斑
   judge: { x: 50, y: 82 },  // 地毯中央
@@ -56,6 +57,11 @@ const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.
 /** 每种心情的多拍序列（道具坐标在 buildBeats 里填，floof 用当前位置）。 */
 function buildBeats(mood: CatMood, here: { x: number; y: number }): Beat[] {
   switch (mood) {
+    case 'perch': // 走到爬架底座→纵身一跃→蹲在顶窝
+      return [
+        { to: PROP_POS.perch, pose: 'walk', hold: 250 },  // 走到爬架底
+        { pose: 'perch', hold: 6000 },                     // 爬上去蹲在顶窝（渲染层抬高）
+      ];
     case 'purr': // 喂饭→吃→吃饱呼噜
       return [
         { to: PROP_POS.purr, pose: 'eat', hold: 2200 },   // 走到饭碗低头吃
