@@ -2965,6 +2965,7 @@
         "quip": "No sun, no snacks, no patience. You are being evaluated. You did not pass."
       }
     },
-    "footer": "Silly vocabulary, serious engine: this cat rule compiled and ran on the same Aster Lang runtime as a credit policy. Your words — even these — become an auditable decision."
+    "footer": "Silly vocabulary, serious engine: this cat rule compiled and ran on the same Aster Lang runtime as a credit policy. Your words — even these — become an auditable decision.",
+    "idleHint": "The cat is doing its own thing. Pick a scene below to see how it reacts."
   }
 }

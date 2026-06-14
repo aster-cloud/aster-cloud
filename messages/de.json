@@ -2965,6 +2965,7 @@
         "quip": "Keine Sonne, keine Snacks, keine Geduld. Du wirst bewertet. Du bist durchgefallen."
       }
     },
-    "footer": "Albernes Vokabular, ernste Engine: Diese Katzenregel kompilierte und lief auf derselben Aster-Lang-Laufzeit wie eine Kreditrichtlinie. Ihre Worte — selbst diese — werden zu einer prüfbaren Entscheidung."
+    "footer": "Albernes Vokabular, ernste Engine: Diese Katzenregel kompilierte und lief auf derselben Aster-Lang-Laufzeit wie eine Kreditrichtlinie. Ihre Worte — selbst diese — werden zu einer prüfbaren Entscheidung.",
+    "idleHint": "Die Katze macht ihr eigenes Ding. Wähle unten eine Szene und sieh, wie sie reagiert."
   }
 }
