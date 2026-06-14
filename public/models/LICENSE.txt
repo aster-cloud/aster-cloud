@@ -1,0 +1,4 @@
+3D model: "Animated Animals" (Fox) by Quaternius
+License: CC0 1.0 Universal (Public Domain) — https://creativecommons.org/publicdomain/zero/1.0/
+Source: https://quaternius.com/  (Patreon: https://www.patreon.com/quaternius)
+Used in the /cat-mood fun-demo as the 3D critter (this pack has no cat; the fox is the closest small feline-like quadruped).

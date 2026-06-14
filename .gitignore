@@ -64,3 +64,6 @@ package-lock.json
 glossary-findings.json
 test-results/
 playwright-report/
+
+# CCG workflow scratch (tasks/specs) — not product code
+.ccg/

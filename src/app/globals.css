@@ -550,3 +550,23 @@ body {
   .cat-room *, .cat-sprite * { animation: none !important; }
   .cat-sprite .cat-happy-eyes { opacity: 1; } .cat-sprite .cat-eyes { opacity: 0; }
 }
+
+/* 3D 猫场景容器（/cat-mood 的 Three.js Canvas）。 */
+.cat-3d-stage {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  aspect-ratio: 16 / 11;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: radial-gradient(120% 100% at 50% 0%, #fff3e6 0%, #ffe6cf 60%, #f7d3b2 100%);
+  box-shadow: 0 10px 30px rgba(180, 120, 60, 0.2);
+}
+.cat-3d-stage canvas { display: block; width: 100% !important; height: 100% !important; }
+.cat-3d-loading::after {
+  content: '🐾';
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; opacity: 0.5; animation: cat3dPulse 1.2s ease-in-out infinite;
+}
+@keyframes cat3dPulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
