@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Show industry terms in case inputs + lightweight decision replay (#64) *(vocab-demo)*
 - Public domain-vocabulary demo — write rules in your industry's terms (#62) *(vocab-demo)*
 - Editable rerun demo + downloadable whitepaper, fully localized (#56) *(demo,equivalence)*
 - Surface the adverse-action reason on declined/refer replays (#55) *(demo)*
@@ -214,6 +215,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
