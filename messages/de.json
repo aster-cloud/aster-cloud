@@ -2909,6 +2909,12 @@
       "weightKg": "Bruttogewicht (kg)",
       "distanceKm": "Distanz (km)",
       "priority": "SLA-Stufe (1-3)"
+    },
+    "replay": {
+      "title": "Entscheidungs-Wiederholung",
+      "matched": "erfüllt",
+      "notMatched": "nicht erfüllt",
+      "skipped": "nicht ausgewertet"
     }
   }
 }

@@ -66,6 +66,26 @@ export interface LocalizedRule {
   paramName: string;
 }
 
+/** 一个比较条件：canonical 字段 op 阈值（轻量回放用，与规则镜像）。
+ *  阈值二选一：threshold（常量）或 thresholdField（与另一字段比，如索赔额 ≤ 免赔额）。 */
+export interface TierCondition {
+  field: string; // canonical 字段名
+  op: '>=' | '<=';
+  threshold?: number;
+  thresholdField?: string; // canonical 字段名（与另一字段比较时用）
+}
+
+/**
+ * 一个决策档位：满足任一条件即命中（demo 规则的「A 或 B」语义，回放层用 OR；
+ * 引擎层因 or 算子 bug 改写成嵌套 If，但语义等价）。命中返回 decisionKey。
+ */
+export interface DecisionTier {
+  /** 命中本档的决策 key（对应 cases.expect 的语言文本 + i18n 决策标签）。 */
+  decisionKey: string;
+  /** 任一条件满足即命中（OR）。空数组 = 兜底档（总命中）。 */
+  any: TierCondition[];
+}
+
 export interface VocabDomain {
   id: VocabDomainId;
   terms: VocabTerm[];
@@ -73,6 +93,11 @@ export interface VocabDomain {
   rules: Record<DemoLocale, LocalizedRule>;
   /** 案例：canonical-key 输入 + 每语言预期决策。 */
   cases: { id: string; labelKey: string; input: CaseInput; expect: Record<DemoLocale, string> }[];
+  /**
+   * 决策档位阶梯（声明式，按序求值，第一个命中即返回）——轻量回放的数据源。
+   * 镜像规则逻辑：引擎是决策权威，此为客户端回放镜像（与信贷 demo 同理念）。
+   */
+  tiers: DecisionTier[];
 }
 
 // ── 医疗/临床分诊 ──
@@ -159,6 +184,11 @@ Regel triage gegeben fall als Fallakte liefert Text:
       expect: { en: 'Refer to specialist', zh: '转专科', de: 'Zur Fachabteilung' } },
     { id: 'PT-7783', labelKey: 'routine', input: { systolic: 124, heartRate: 72, age: 41 },
       expect: { en: 'Routine follow-up', zh: '常规随访', de: 'Routinekontrolle' } },
+  ],
+  tiers: [
+    { decisionKey: 'emergency', any: [{ field: 'systolic', op: '>=', threshold: 180 }] },
+    { decisionKey: 'refer', any: [{ field: 'systolic', op: '>=', threshold: 140 }, { field: 'heartRate', op: '>=', threshold: 110 }] },
+    { decisionKey: 'routine', any: [] },
   ],
 };
 
@@ -247,6 +277,11 @@ Regel bewerten gegeben vorgang als Schadenakte liefert Text:
     { id: 'CLM-3303', labelKey: 'declined', input: { claimAmount: 300, deductible: 500, priorClaims: 2 },
       expect: { en: 'Declined — below deductible', zh: '拒赔 — 低于免赔额', de: 'Abgelehnt — unter Selbstbehalt' } },
   ],
+  tiers: [
+    { decisionKey: 'declined', any: [{ field: 'claimAmount', op: '<=', thresholdField: 'deductible' }] },
+    { decisionKey: 'refer', any: [{ field: 'claimAmount', op: '>=', threshold: 50000 }, { field: 'priorClaims', op: '>=', threshold: 3 }] },
+    { decisionKey: 'approve', any: [] },
+  ],
 };
 
 // ── 物流/订单履约 ──
@@ -334,6 +369,11 @@ Regel leiten gegeben paket als Sendung liefert Text:
     { id: 'SHP-9003', labelKey: 'courier', input: { weightKg: 8, distanceKm: 60, priority: 1 },
       expect: { en: 'Local courier', zh: '本地快递', de: 'Lokaler Kurier' } },
   ],
+  tiers: [
+    { decisionKey: 'air', any: [{ field: 'priority', op: '>=', threshold: 3 }] },
+    { decisionKey: 'freight', any: [{ field: 'weightKg', op: '>=', threshold: 30 }, { field: 'distanceKm', op: '>=', threshold: 800 }] },
+    { decisionKey: 'courier', any: [] },
+  ],
 };
 
 export const VOCAB_DOMAINS: Record<VocabDomainId, VocabDomain> = {
@@ -374,6 +414,85 @@ export function registerVocabForDomain(domain: VocabDomain, loc: DemoLocale): st
 /** 当前语言的 lexicon（compile 用）。 */
 export function lexiconFor(loc: DemoLocale): Lexicon {
   return LEXICONS[loc];
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// 轻量决策回放（确定性，不经 LLM）。
+//
+// 按 tiers 阶梯逐档求值，记录每个条件的「行业术语 实际值 op 阈值 → 命中?」，
+// 用当前语言行业术语展示。镜像规则逻辑（引擎是决策权威，此为客户端回放镜像，
+// 与信贷 demo 同理念）。决策文本取 cases.expect 对应 decisionKey 的同一来源。
+// ───────────────────────────────────────────────────────────────────────────
+
+/** 回放的一个条件判断。 */
+export interface ExplainCondition {
+  /** 行业术语表达式（含实际值），如「收缩压 188 ≥ 180」。 */
+  expression: string;
+  matched: boolean;
+}
+
+/** 回放的一个档位。 */
+export interface ExplainTier {
+  /** 该档的决策文本（命中时即最终决策）。 */
+  decision: string;
+  /** 是否被求值（命中前的档都求值；命中后短路）。 */
+  evaluated: boolean;
+  /** 该档各条件（OR 语义；任一命中则档命中）。兜底档无条件。 */
+  conditions: ExplainCondition[];
+  matched: boolean;
+}
+
+export interface CaseExplanation {
+  decision: string;
+  decisionKey: string;
+  tiers: ExplainTier[];
+}
+
+const OP_SYMBOL: Record<TierCondition['op'], string> = { '>=': '≥', '<=': '≤' };
+
+/** 决策档 key → 该语言决策文本（从 cases.expect 收集，保证与运行结果同源）。 */
+function decisionTextFor(domain: VocabDomain, decisionKey: string, loc: DemoLocale): string {
+  const c = domain.cases.find((x) => x.labelKey === decisionKey);
+  return c ? c.expect[loc] : decisionKey;
+}
+
+/**
+ * 确定性回放：对给定输入逐档求值，产出本地化逐步说明。
+ * tiers 按序，第一个命中即最终决策；其后档标 evaluated=false（短路）。
+ */
+export function explainCase(domain: VocabDomain, loc: DemoLocale, input: CaseInput): CaseExplanation {
+  const label = (canonical: string) =>
+    domain.terms.find((t) => t.canonical === canonical)?.localized[loc] ?? canonical;
+
+  const evalCond = (cond: TierCondition): ExplainCondition => {
+    const actual = input[cond.field];
+    const threshold = cond.thresholdField !== undefined ? input[cond.thresholdField] : (cond.threshold ?? 0);
+    const matched = cond.op === '>=' ? actual >= threshold : actual <= threshold;
+    const rhs = cond.thresholdField !== undefined ? `${label(cond.thresholdField)} ${threshold}` : `${threshold}`;
+    return { expression: `${label(cond.field)} ${actual} ${OP_SYMBOL[cond.op]} ${rhs}`, matched };
+  };
+
+  const tiers: ExplainTier[] = [];
+  let decided = false;
+  let decisionKey = domain.tiers[domain.tiers.length - 1]?.decisionKey ?? '';
+
+  for (const tier of domain.tiers) {
+    const decisionText = decisionTextFor(domain, tier.decisionKey, loc);
+    if (decided) {
+      tiers.push({ decision: decisionText, evaluated: false, conditions: [], matched: false });
+      continue;
+    }
+    const conditions = tier.any.map(evalCond);
+    // 兜底档（无条件）总命中；否则任一条件命中即命中。
+    const matched = tier.any.length === 0 || conditions.some((c) => c.matched);
+    tiers.push({ decision: decisionText, evaluated: true, conditions, matched });
+    if (matched) {
+      decided = true;
+      decisionKey = tier.decisionKey;
+    }
+  }
+
+  return { decision: decisionTextFor(domain, decisionKey, loc), decisionKey, tiers };
 }
 
 export type { DomainVocabulary };
