@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useGLTF, useAnimations, Environment, ContactShadows } from '@react-three/drei';
+import { useGLTF, useAnimations, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import type { CatMood } from '@/config/cat-mood';
 import { useCatBehavior, type CatPose } from './use-cat-behavior';
@@ -21,7 +21,12 @@ import { useCatBehavior, type CatPose } from './use-cat-behavior';
 // 用 .glb（二进制单文件）。.gltf 内嵌 data-URI buffer 在 Workers 边缘运行时
 // GLTFLoader 解码会失败（"Failed to load buffer data:..."），.glb 走干净 ArrayBuffer。
 const MODEL_URL = '/models/critter.glb';
-useGLTF.preload(MODEL_URL);
+
+// 关键：useGLTF(path, useDraco=false, useMeshopt=false)。drei 默认会装 Meshopt WASM
+// 解码器（MeshoptDecoder()→WebAssembly.instantiate()），生产 CSP 没有 'unsafe-eval'
+// 会直接报 CompileError。我们的模型是未压缩 glb（extensionsUsed=[]），关掉两个解码器
+// 即可走纯 GLTFLoader，零 WASM、零 CDN 拉取。
+useGLTF.preload(MODEL_URL, false, false);
 
 const CLIP_FOR: Record<CatPose, string> = {
   walk: 'Walk',
@@ -49,7 +54,7 @@ function toWorld(x: number, y: number): [number, number] {
 
 function CatModel({ behavior }: { behavior: ReturnType<typeof useCatBehavior> }) {
   const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF(MODEL_URL);
+  const { scene, animations } = useGLTF(MODEL_URL, false, false);
   // 克隆，避免多实例共享骨架。
   const cloned = useMemo(() => scene.clone(true), [scene]);
   const { actions, mixer } = useAnimations(animations, group);
@@ -116,14 +121,17 @@ export const Cat3DScene = forwardRef<Cat3DHandle, {}>(function Cat3DScene(_props
         camera={{ position: [0, 3.2, 7.5], fov: 38 }}
         gl={{ antialias: true, preserveDrawingBuffer: false }}
       >
-        {/* 暖色室内光：环境 + 斜射主光（投影）+ 暖补光（窗光感） */}
-        <ambientLight intensity={0.6} />
+        {/* 暖色室内光（纯本地光，无远程 HDR——CSP connect-src 'self'）：
+            半球光给天空/地面渐变的柔和环境，替代原 <Environment> 的 IBL；
+            斜射主光投影 + 暖补光做窗光感。 */}
+        <hemisphereLight args={['#fff4e2', '#caa376', 0.9]} />
+        <ambientLight intensity={0.45} />
         <directionalLight
-          position={[4, 8, 5]} intensity={1.6} color="#fff2dd"
+          position={[4, 8, 5]} intensity={1.9} color="#fff2dd"
           castShadow shadow-mapSize={[1024, 1024]}
           shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={8} shadow-camera-bottom={-8}
         />
-        <directionalLight position={[-5, 3, -4]} intensity={0.4} color="#ffd9a8" />
+        <directionalLight position={[-5, 3, -4]} intensity={0.5} color="#ffd9a8" />
 
         {/* 木地板 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
@@ -148,7 +156,6 @@ export const Cat3DScene = forwardRef<Cat3DHandle, {}>(function Cat3DScene(_props
 
         <CatModel behavior={behavior} />
         <ContactShadows position={[0, 0.005, 0]} opacity={0.4} scale={14} blur={2.2} far={5} />
-        <Environment preset="apartment" />
       </Canvas>
     </div>
   );
