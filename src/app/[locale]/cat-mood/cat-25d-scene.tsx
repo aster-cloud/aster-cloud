@@ -49,8 +49,9 @@ const CAT_H = 140;
 function CatSprite({ state }: { state: CatState }) {
   // pose → CSS class，驱动 globals.css 里的关键帧/姿态。
   const poseClass = `cat25-${state.pose}`;
-  // 朝向：facing -1 时水平翻转。
-  const flip = state.facing === -1 ? -1 : 1;
+  // SVG 猫默认头朝左（head x≈52、tail x≈110+）。facing=1 表示向右移动 → 需水平翻转
+  // 让头朝右；facing=-1 向左移动 → 保持默认朝左。否则头与行进方向相反=倒着走。
+  const flip = state.facing === 1 ? -1 : 1;
 
   return (
     <div
