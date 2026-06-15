@@ -265,11 +265,15 @@ export const Cat25DScene = forwardRef<Cat25DHandle, {}>(function Cat25DScene(_pr
   useImperativeHandle(ref, () => ({ react: behavior.react }), [behavior.react]);
   const { state } = behavior;
 
-  // perch：把猫定位到爬架顶窝（爬架 base top 64%、顶窝在其上方约 33%），其余按地面。
-  // 顶窝偏右一点对齐窝口；猫在高处略缩小（远 + 蹲）。
+  // perch：把猫定位到爬架顶窝（坐进窝口）；leap：起跳/落地的腾空中间点（顶窝与地面之间，
+  // 略偏外，读起来像一道下落/上跳弧线）；其余按地面。高处略缩小（远 + 蹲）。
+  const NEST = { left: 14.5, top: 35 };       // 顶窝（坐进窝里）
+  const TREE_FOOT = groundPos(12, 80);        // 爬架底座地面点
+  const LEAP = { left: (NEST.left + TREE_FOOT.left) / 2 + 2, top: (NEST.top + TREE_FOOT.top) / 2 - 4 };
   const perching = state.pose === 'perch';
-  const ground = perching ? { left: 14.5, top: 33 } : groundPos(state.x, state.y);
-  const scale = perching ? 0.6 : depthScale(state.y);
+  const leaping = state.pose === 'leap';
+  const ground = perching ? NEST : leaping ? LEAP : groundPos(state.x, state.y);
+  const scale = perching ? 0.58 : leaping ? 0.66 : depthScale(state.y);
 
   // 食盆按舞台坐标放（与 PROP_POS.purr 对齐：x74,y85）。
   const bowlPos = groundPos(74, 85);
@@ -289,7 +293,7 @@ export const Cat25DScene = forwardRef<Cat25DHandle, {}>(function Cat25DScene(_pr
         }}
       />
 
-      {/* 猫（按 y 排序 zIndex，越靠前越上层；perch 时坐爬架顶窝、压在爬架之上） */}
+      {/* 猫（按 y 排序 zIndex；perch 坐爬架顶窝、leap 腾空，都压在爬架之上） */}
       <div
         className="cat25-actor"
         style={{
@@ -298,15 +302,15 @@ export const Cat25DScene = forwardRef<Cat25DHandle, {}>(function Cat25DScene(_pr
           transform: `translate(-50%, -82%) scale(${scale})`,
           transition: state.moveMs
             ? `left ${state.moveMs}ms linear, top ${state.moveMs}ms linear, transform ${state.moveMs}ms linear`
-            : perching
-              ? 'left 520ms cubic-bezier(.5,-0.3,.5,1), top 520ms cubic-bezier(.5,-0.3,.5,1), transform 520ms ease'
+            : perching || leaping
+              ? 'left 440ms cubic-bezier(.4,-0.2,.5,1), top 440ms cubic-bezier(.3,-0.4,.6,1), transform 440ms ease'
               : 'transform 220ms ease',
-          zIndex: perching ? 70 : Math.round(ground.top),
+          zIndex: perching || leaping ? 70 : Math.round(ground.top),
         }}
       >
         <CatSprite state={state} />
-        {/* 蹲爬架时不在地面投影 */}
-        {!perching && <div className="cat25-shadow" />}
+        {/* 蹲爬架/腾空时不在地面投影 */}
+        {!perching && !leaping && <div className="cat25-shadow" />}
       </div>
 
       {/* 食盆（前排） */}

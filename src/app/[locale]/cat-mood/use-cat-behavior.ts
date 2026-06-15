@@ -17,7 +17,7 @@ import type { CatMood } from '@/config/cat-mood';
  * 坐标 0..100 舞台百分比。计时器集中管理，组件卸载/中断一次清空。
  */
 
-export type CatPose = 'walk' | 'sit' | 'groom' | 'stretch' | 'sleep' | 'eat' | CatMood;
+export type CatPose = 'walk' | 'leap' | 'sit' | 'groom' | 'stretch' | 'sleep' | 'eat' | CatMood;
 
 export interface CatState {
   x: number; y: number;
@@ -57,10 +57,11 @@ const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.
 /** 每种心情的多拍序列（道具坐标在 buildBeats 里填，floof 用当前位置）。 */
 function buildBeats(mood: CatMood, here: { x: number; y: number }): Beat[] {
   switch (mood) {
-    case 'perch': // 走到爬架底座→纵身一跃→蹲在顶窝
+    case 'perch': // 走到爬架底座→蹲身蓄力→纵身一跃(leap)→蹲在顶窝
       return [
-        { to: PROP_POS.perch, pose: 'walk', hold: 250 },  // 走到爬架底
-        { pose: 'perch', hold: 6000 },                     // 爬上去蹲在顶窝（渲染层抬高）
+        { to: PROP_POS.perch, pose: 'walk', hold: 200 },  // 走到爬架底
+        { pose: 'leap', hold: 480 },                       // 腾空跳跃（渲染层从地面升到顶窝）
+        { pose: 'perch', hold: 6000 },                     // 落定蹲顶窝
       ];
     case 'purr': // 喂饭→吃→吃饱呼噜
       return [
@@ -81,6 +82,8 @@ export function useCatBehavior(): { state: CatState; react: (mood: CatMood) => v
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const reactingRef = useRef(false);
   const posRef = useRef({ x: 50, y: 82 });
+  // 当前是否在爬架顶窝（perch/leap-up 后）——切其他规则要先跳下来，不能直接飘回地面。
+  const perchedRef = useRef(false);
 
   const after = (ms: number, fn: () => void) => { timers.current.push(setTimeout(fn, ms)); };
   const clearAll = useCallback(() => { timers.current.forEach(clearTimeout); timers.current = []; }, []);
@@ -121,6 +124,9 @@ export function useCatBehavior(): { state: CatState; react: (mood: CatMood) => v
     }
     const beat = beats[i];
     const enter = () => {
+      // 进入 perch=在窝里；leap 之后若不是 perch 则已落地。
+      if (beat.pose === 'perch') perchedRef.current = true;
+      else if (beat.pose !== 'leap') perchedRef.current = false;
       setState((s) => ({ ...s, pose: beat.pose, moveMs: 0 }));
       after(beat.hold, () => runBeats(beats, i + 1));
     };
@@ -128,12 +134,22 @@ export function useCatBehavior(): { state: CatState; react: (mood: CatMood) => v
   }, [walkTo, idleLoop]);
 
   // 规则响应：**立即清空上一个响应**，从头跑新心情的多拍序列。
+  // 若当前蹲在爬架顶窝，先插一个"跳下落地"的 leap 拍（渲染层从顶窝落回地面），
+  // 再跑新心情——避免从高处直接"飘"回地面。
   const react = useCallback((mood: CatMood) => {
-    clearAll();                       // 中断并清掉之前所有计时器/序列
+    clearAll();
     reactingRef.current = true;
     setState((s) => ({ ...s, reacting: true }));
     const beats = buildBeats(mood, posRef.current);
-    runBeats(beats, 0);
+    if (perchedRef.current && mood !== 'perch') {
+      perchedRef.current = false;
+      // 落地 leap：位置回到爬架底座，pose=leap（渲染层做下落弧线），落定后跑新心情。
+      posRef.current = { ...PROP_POS.perch };
+      setState((s) => ({ ...s, x: PROP_POS.perch.x, y: PROP_POS.perch.y, pose: 'leap', moveMs: 0 }));
+      after(460, () => runBeats(beats, 0));
+    } else {
+      runBeats(beats, 0);
+    }
   }, [clearAll, runBeats]);
 
   return { state, react };

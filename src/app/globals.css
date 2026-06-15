@@ -511,13 +511,23 @@ body {
 .cat25-floof .cat25-eye { animation: none; transform: scaleY(1.3) scaleX(1.2); }
 @keyframes c25Floof { 0% { transform: translate(0,0); } 25% { transform: translate(1.5px,-1px); } 50% { transform: translate(-1.5px,1px); } 75% { transform: translate(1px,1px); } 100% { transform: translate(0,0); } }
 
-/* perch：蹲在爬架顶窝——身体微缩坐定、尾巴垂下卷绕、惬意眯眼、轻呼吸 */
-.cat25-perch .cat25-body { animation: c25Breathe 3.2s ease-in-out infinite; transform: translateY(2px); }
-.cat25-perch .cat25-frontlegs { transform: translateY(3px) scaleY(0.7); }
+/* perch：蹲进爬架顶窝——身体缩坐定、前腿收、尾垂卷、惬意眯眼、轻呼吸、偶尔张望 */
+.cat25-perch .cat25-body { animation: c25Breathe 3.2s ease-in-out infinite; transform: translateY(4px) scale(0.96); }
+.cat25-perch .cat25-frontlegs { transform: translateY(4px) scaleY(0.6); }
 .cat25-perch .cat25-tail { animation: c25TailIdle 4s ease-in-out infinite; transform-origin: 112px 92px; }
 .cat25-perch .cat25-eye { animation: c25Blink 5.4s ease-in-out infinite; }
 .cat25-perch .cat25-head { animation: c25PerchLook 6s ease-in-out infinite; }
 @keyframes c25PerchLook { 0%,100% { transform: rotate(0); } 30% { transform: rotate(-6deg); } 60% { transform: rotate(5deg); } }
+
+/* leap：腾空跳跃——身体前倾拉伸、四肢收拢蹬展、尾巴向后流、耳贴头 */
+.cat25-leap .cat25-body { transform: rotate(-12deg) scaleX(1.08) scaleY(0.94); }
+.cat25-leap .cat25-frontlegs { transform: translateY(-4px) rotate(-18deg); }
+.cat25-leap .cat25-hindleg { transform: translate(4px, 4px) rotate(16deg); }
+.cat25-leap .cat25-tail { animation: none; transform: rotate(-28deg); }
+.cat25-leap .cat25-head { transform: rotate(-10deg) translateY(-2px); }
+.cat25-leap .cat25-eye { animation: none; transform: scaleY(1.1); }
+.cat25-leap .cat25-earL,
+.cat25-leap .cat25-earR { transform: rotate(0) translateY(2px); }
 
 @media (prefers-reduced-motion: reduce) {
   .cat25-actor { transition: none !important; }
