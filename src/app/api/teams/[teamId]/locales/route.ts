@@ -1,0 +1,90 @@
+import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
+import { getTeamEnabledLocales, setTeamEnabledLocales } from '@/lib/team-locales';
+import { locales, defaultLocale, type Locale } from '@/i18n/config';
+
+type RouteParams = { params: Promise<{ teamId: string }> };
+
+/**
+ * GET /api/teams/[teamId]/locales — 读取团队语言白名单。
+ *
+ * 返回：
+ *  - `compiled`: 平台编译支持的全部 locale（i18n/config）
+ *  - `enabled`: 当前团队白名单；`null` = 未配置 = 全部开放
+ *  - `defaultLocale`: 不可关闭的默认语言
+ */
+export async function GET(_req: Request, { params }: RouteParams) {
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: '未授权' }, { status: 401 });
+    }
+    const { teamId } = await params;
+
+    // 读取需 TEAM_VIEW；写入才需 TEAM_UPDATE_LOCALES。
+    const permission = await checkTeamPermission(session.user.id, teamId, TeamPermission.TEAM_VIEW);
+    if (!permission.allowed) {
+      return NextResponse.json({ error: permission.error }, { status: permission.status });
+    }
+
+    const enabled = await getTeamEnabledLocales(teamId);
+    return NextResponse.json({
+      compiled: [...locales],
+      enabled,
+      defaultLocale,
+    });
+  } catch (error) {
+    console.error('Error reading team locales:', error);
+    return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
+  }
+}
+
+/**
+ * PUT /api/teams/[teamId]/locales — 更新团队语言白名单。
+ *
+ * Body: `{ enabled: string[] }` — 期望开放的 locale 列表。
+ * 经 normalizeEnabledLocales 处理（去重 + 仅留编译支持 + 强制含 defaultLocale，
+ * 全集时存 null）。需 TEAM_UPDATE_LOCALES（owner/admin）。
+ */
+export async function PUT(req: Request, { params }: RouteParams) {
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: '未授权' }, { status: 401 });
+    }
+    const { teamId } = await params;
+
+    const permission = await checkTeamPermission(
+      session.user.id,
+      teamId,
+      TeamPermission.TEAM_UPDATE_LOCALES,
+    );
+    if (!permission.allowed) {
+      return NextResponse.json({ error: permission.error }, { status: permission.status });
+    }
+
+    const body = (await req.json()) as { enabled?: unknown };
+    if (!Array.isArray(body.enabled) || !body.enabled.every((l) => typeof l === 'string')) {
+      return NextResponse.json(
+        { error: 'enabled 必须是 locale 字符串数组' },
+        { status: 400 },
+      );
+    }
+    // 仅接受编译支持的 locale，拒绝未知值（防止存入垃圾）。
+    const unknown = body.enabled.filter((l) => !(locales as readonly string[]).includes(l));
+    if (unknown.length > 0) {
+      return NextResponse.json(
+        { error: `不支持的语言: ${unknown.join(', ')}` },
+        { status: 400 },
+      );
+    }
+
+    await setTeamEnabledLocales(teamId, body.enabled as Locale[]);
+    const enabled = await getTeamEnabledLocales(teamId);
+    return NextResponse.json({ enabled, defaultLocale });
+  } catch (error) {
+    console.error('Error updating team locales:', error);
+    return NextResponse.json({ error: '服务器内部错误' }, { status: 500 });
+  }
+}

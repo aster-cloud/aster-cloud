@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { ConfirmDialog, Input, Label, Select, toast } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
+import { TeamLanguageCard } from '@/components/teams/team-language-card';
 
 interface Team {
   id: string;
@@ -285,6 +286,9 @@ export default function TeamSettingsPage() {
           </div>
         </form>
       </div>
+
+      {/* 语言可用性 — owner/admin 设置开放给团队用户的 UI 语言（ADR 0017）。 */}
+      <TeamLanguageCard teamId={teamId} />
 
       {/* Ownership transfer — owner-only, separate card so it doesn't
           look like part of the destructive zone. */}

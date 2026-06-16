@@ -31,27 +31,49 @@ function lexiconIdToUiLocale(lexId: string): string {
 }
 
 /**
- * 计算"可用 UI 语言" = compiled-supported (locales) ∩ backend-available (lexicons)。
+ * 计算"可用 UI 语言"：
+ *   compiled-supported (locales) ∩ backend-available (lexicons) ∩ team-allowed
+ *
+ * 第三项（团队语言白名单）仅在 `allowedLocales` 非 null 时生效——团队 owner/admin
+ * 通过语言可用性设置配置；landing/docs 等无团队上下文的场景传 null（不限制）。
  * 永远至少包含 defaultLocale，避免下拉空白时无法切换。
  */
-function intersect(lexicons: LexiconInfo[]): Locale[] {
+function intersect(lexicons: LexiconInfo[], allowedLocales: readonly Locale[] | null): Locale[] {
   const backendSet = new Set(lexicons.map(l => lexiconIdToUiLocale(l.id)));
-  const available = locales.filter(l => backendSet.has(l));
+  let available = locales.filter(l => backendSet.has(l));
   if (available.length === 0) {
     // 后端尚未返回时退化为只显示 default，避免下拉闪烁成空
     return [defaultLocale];
   }
+  // 团队白名单（第三重交集）。null = 不限制。
+  if (allowedLocales) {
+    const allow = new Set(allowedLocales);
+    const gated = available.filter(l => allow.has(l));
+    // 兜底：团队把当前所有可用语言都关了（异常配置）→ 至少留 default。
+    available = gated.length > 0 ? gated : [defaultLocale];
+  }
   return available as Locale[];
 }
 
-export function LanguageSwitcher() {
+export interface LanguageSwitcherProps {
+  /**
+   * 团队语言白名单（locale 数组）。`null`/省略 = 不按团队限制（landing/docs，
+   * 或未配置白名单的团队）。由 dashboard 服务端解析当前用户团队后下传。
+   */
+  allowedLocales?: readonly Locale[] | null;
+}
+
+export function LanguageSwitcher({ allowedLocales = null }: LanguageSwitcherProps = {}) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('common');
 
   const { lexicons, loading } = useAvailableLexicons();
-  const available = useMemo(() => intersect(lexicons), [lexicons]);
+  const available = useMemo(
+    () => intersect(lexicons, allowedLocales),
+    [lexicons, allowedLocales],
+  );
 
   // toast 状态：当前 locale 离开 available 集合时弹"已切回 English"提示。
   // 挂载时从 sessionStorage 回收上次离场前写入的 toast（跨 router.replace 桥接）。

@@ -23,6 +23,7 @@ import {
   IS_SAAS,
 } from '@/lib/deployment-mode';
 import { getEffectiveRole, canAccess } from '@/lib/effective-role';
+import { resolveUserAllowedLocales } from '@/lib/team-locales';
 import { defaultLocale } from '@/i18n/config';
 
 /*
@@ -94,9 +95,11 @@ export default async function DashboardLayout({
     }
   }
 
-  const [admin, role] = await Promise.all([
+  const [admin, role, allowedLocales] = await Promise.all([
     isAdminFromSession(),
     userId ? getEffectiveRole(userId) : Promise.resolve('owner' as const),
+    // 当前用户各团队语言白名单的并集；null = 不限制（无团队 / 至少一团队全开）。
+    userId ? resolveUserAllowedLocales(userId) : Promise.resolve(null),
   ]);
 
   const userMenuLabels = {
@@ -234,7 +237,7 @@ export default async function DashboardLayout({
                   system: tCommon('themeSystem'),
                 }}
               />
-              <LanguageSwitcher />
+              <LanguageSwitcher allowedLocales={allowedLocales} />
               <UserDropdown
                 userMenuLabels={userMenuLabels}
                 userName={session?.user?.name || undefined}

@@ -162,6 +162,13 @@
       "when": 1779130000000,
       "tag": "0023_lexicon_bulk_job_input",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0024_team_enabled_locales",
+      "breakpoints": true
     }
   ]
 }

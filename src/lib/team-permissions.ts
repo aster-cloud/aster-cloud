@@ -7,6 +7,8 @@ export const TeamPermission = {
   TEAM_UPDATE: 'team.update',
   TEAM_DELETE: 'team.delete',
   TEAM_TRANSFER: 'team.transfer',
+  // 设置团队向用户开放的 UI 语言白名单（owner/admin）。
+  TEAM_UPDATE_LOCALES: 'team.updateLocales',
   MEMBER_VIEW: 'member.view',
   MEMBER_INVITE: 'member.invite',
   MEMBER_REMOVE: 'member.remove',
@@ -29,6 +31,7 @@ const ROLE_PERMISSIONS: Record<string, TeamPermissionType[]> = {
   admin: [
     TeamPermission.TEAM_VIEW,
     TeamPermission.TEAM_UPDATE,
+    TeamPermission.TEAM_UPDATE_LOCALES,
     TeamPermission.MEMBER_VIEW,
     TeamPermission.MEMBER_INVITE,
     TeamPermission.MEMBER_REMOVE,

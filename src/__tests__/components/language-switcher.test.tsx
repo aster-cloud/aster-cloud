@@ -84,6 +84,30 @@ describe('LanguageSwitcher', () => {
     expect(select.value).toBe('en');
   });
 
+  // 团队语言白名单（第三重交集，ADR 0017 Phase 2）。
+  it('allowedLocales=null 时不限制（显示全部后端可用语言）', () => {
+    render(<LanguageSwitcher allowedLocales={null} />);
+    expect(screen.getByText('English')).toBeInTheDocument();
+    expect(screen.getByText('中文')).toBeInTheDocument();
+    expect(screen.getByText('Deutsch')).toBeInTheDocument();
+  });
+
+  it('allowedLocales 把可选项收窄到团队白名单（compiled ∩ backend ∩ team-allowed）', () => {
+    render(<LanguageSwitcher allowedLocales={['en', 'zh']} />);
+    expect(screen.getByText('English')).toBeInTheDocument();
+    expect(screen.getByText('中文')).toBeInTheDocument();
+    // de 被团队白名单排除，即使后端可用也不显示
+    expect(screen.queryByText('Deutsch')).not.toBeInTheDocument();
+  });
+
+  it('allowedLocales 与后端可用集无交集时兜底 default（不锁死零语言）', () => {
+    // 团队只允许一个不在 compiled 集里的伪 locale → 兜底 en
+    render(<LanguageSwitcher allowedLocales={['xx' as never]} />);
+    expect(screen.getByText('English')).toBeInTheDocument();
+    expect(screen.queryByText('中文')).not.toBeInTheDocument();
+    expect(screen.queryByText('Deutsch')).not.toBeInTheDocument();
+  });
+
   it('should call router.replace with correct locale when changed', () => {
     render(<LanguageSwitcher />);
     const select = screen.getByRole('combobox');

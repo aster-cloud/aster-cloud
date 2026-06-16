@@ -15,6 +15,7 @@ import {
   EN_US,
   ZH_CN,
   DE_DE,
+  HI_IN,
   extractMonarchKeywords,
   extractPrimitiveTypeKeywordsAll,
 } from './aster-lexicon';
@@ -91,6 +92,7 @@ export function registerAsterLanguage(monaco: Monaco): void {
   const keywords = filterTypes(extractMonarchKeywords(EN_US));
   const chineseKeywords = filterTypes(extractMonarchKeywords(ZH_CN));
   const germanKeywords = filterTypes(extractMonarchKeywords(DE_DE));
+  const hindiKeywords = filterTypes(extractMonarchKeywords(HI_IN));
 
   // Set language configuration
   monaco.languages.setLanguageConfiguration('aster-cnl', {
@@ -137,6 +139,7 @@ export function registerAsterLanguage(monaco: Monaco): void {
     keywords,
     chineseKeywords,
     germanKeywords,
+    hindiKeywords,
 
     // Type keywords come from the lexicon (primitives) + monaco-only extras.
     // Previous version hardcoded 27 string literals across 3 locales; that
@@ -163,6 +166,8 @@ export function registerAsterLanguage(monaco: Monaco): void {
       '。', // Chinese period
       '：', // Chinese colon
       '、', // Chinese enumeration comma
+      '।', // Devanagari danda (Hindi statement-end)
+      '॥', // Devanagari double danda
     ],
 
     symbols: /[=><!~?:&|+\-*\/\^%]+/,
@@ -173,7 +178,10 @@ export function registerAsterLanguage(monaco: Monaco): void {
       root: [
         // Identifiers and keywords
         [
-          /[a-zA-Z_\u4e00-\u9fa5\u00C0-\u024F][\w\u4e00-\u9fa5\u00C0-\u024F]*/,
+          // \u0900-\u097f = Devanagari\uff08Hindi\uff09\uff1a\u8f85\u97f3/\u5143\u97f3\u7b26\u53f7/virama \u7ec4\u5408\u8bb0\u53f7\u90fd\u5728\u6b64\u533a\u6bb5\uff0c
+          // \u5fc5\u987b\u7eb3\u5165\u6807\u8bc6\u7b26\u5b57\u7b26\u7c7b\uff0c\u5426\u5219\u5929\u57ce\u6587\u8bcd\u4f1a\u5728\u7ec4\u5408\u8bb0\u53f7\u5904\u788e\u88c2\u3002danda\u300c\u0964\u300d(U+0964)
+          // \u662f\u53e5\u672b\u7b26\u4e0d\u662f\u5b57\u6bcd\uff0c\u4f46\u5b83\u843d\u5728\u6807\u70b9\u5206\u652f\uff08@symbols / \u4e0b\u65b9\u89c4\u5219\uff09\u5904\u7406\uff0c\u4e0d\u5728\u6b64\u7c7b\u3002
+          /[a-zA-Z_\u4e00-\u9fa5\u00C0-\u024F\u0900-\u0963\u0966-\u097f][\w\u4e00-\u9fa5\u00C0-\u024F\u0900-\u0963\u0966-\u097f]*/,
           {
             // typeKeywords evaluated FIRST so primitive type tokens render as
             // 'type' rather than being eaten by the generic 'keyword' arm.
@@ -184,6 +192,7 @@ export function registerAsterLanguage(monaco: Monaco): void {
               '@keywords': 'keyword',
               '@chineseKeywords': 'keyword',
               '@germanKeywords': 'keyword',
+              '@hindiKeywords': 'keyword',
               '@default': 'identifier',
             },
           },
@@ -195,6 +204,9 @@ export function registerAsterLanguage(monaco: Monaco): void {
         // Delimiters and operators
         [/[{}()\[\]]/, '@brackets'],
         [/[「」【】]/, '@brackets'], // Chinese brackets
+        // 非 ASCII 标点（中文标点 + 天城文 danda「।」「॥」）渲染为 delimiter，
+        // 否则会落到 defaultToken='invalid'。这些不在 @symbols 正则里。
+        [/[，。：、।॥]/, 'delimiter'],
         [
           /@symbols/,
           {
