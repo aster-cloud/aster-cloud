@@ -197,4 +197,23 @@ describe('LanguageSwitcher', () => {
     render(<LanguageSwitcher />);
     expect(mockReplace).not.toHaveBeenCalled();
   });
+
+  // React #418 hydration mismatch 回归：受控 <select value={locale}> 必须始终有
+  // 匹配的 <option>。后端未返回时 available 退化为 [en]，但当前 locale（如 hi/zh）
+  // 仍须作为选项渲染，否则 SSR 的 select 与 client hydration 不一致。
+  it('当前 locale 不在后端可用集时仍渲染为选项（防 hydration mismatch）', () => {
+    mockUseLocale.mockReturnValue('zh');
+    mockHook.mockReturnValueOnce({
+      lexicons: [], // 后端尚未返回 → available 退化为只剩 default(en)
+      loading: true,
+      connected: false,
+      error: null,
+    });
+    render(<LanguageSwitcher />);
+    const select = screen.getByRole('combobox') as HTMLSelectElement;
+    // 受控 value 是 zh，且 zh 必须存在于选项中（与 value 匹配）
+    expect(select.value).toBe('zh');
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toContain('zh');
+  });
 });

@@ -75,6 +75,16 @@ export function LanguageSwitcher({ allowedLocales = null }: LanguageSwitcherProp
     [lexicons, allowedLocales],
   );
 
+  // 渲染用选项：始终包含当前 locale，即便它暂不在 available 中（后端尚未返回时
+  // available 退化为只剩 defaultLocale）。否则受控 `<select value={locale}>` 找不到
+  // 匹配 <option>，服务端渲染的 select 与客户端 hydration 不一致 → React #418
+  // hydration mismatch。把当前 locale 兜进选项让两端一致；真正的"语言失效"降级仍由
+  // 下方 effect（available 不含 locale 时切回 default）处理。
+  const options = useMemo<Locale[]>(() => {
+    if (available.includes(locale as Locale)) return available;
+    return [locale as Locale, ...available];
+  }, [available, locale]);
+
   // toast 状态：当前 locale 离开 available 集合时弹"已切回 English"提示。
   // 挂载时从 sessionStorage 回收上次离场前写入的 toast（跨 router.replace 桥接）。
   const [toast, setToast] = useState<string | null>(null);
@@ -137,7 +147,7 @@ export function LanguageSwitcher({ allowedLocales = null }: LanguageSwitcherProp
         disabled={loading}
         className="bg-transparent border border-border-strong rounded-md px-2 py-1 text-sm text-fg-muted hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer disabled:opacity-50"
       >
-        {available.map((loc) => (
+        {options.map((loc) => (
           <option key={loc} value={loc}>
             {localeNames[loc]}
           </option>
