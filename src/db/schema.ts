@@ -642,6 +642,11 @@ export const teams = pgTable(
     name: text('name').notNull(),
     slug: text('slug').notNull().unique(),
     ownerId: text('ownerId').notNull(),
+    // 团队向其用户开放的 UI 语言白名单（locale 代号数组，如 ['en','hi']）。
+    // null = 未配置 = 所有后端可用语言都开放（默认行为，不破坏现有团队）。
+    // 由团队 owner/admin 通过语言可用性设置管理。语言切换器的可用集 =
+    // 编译支持 ∩ 后端可用 ∩ 此白名单（null 时跳过第三项交集）。
+    enabledLocales: jsonb('enabledLocales').$type<string[]>(),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },

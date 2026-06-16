@@ -2974,5 +2974,16 @@
     },
     "footer": "词汇很无厘头，引擎很认真：这条猫规则跑在与信贷策略同一套 Aster Lang 运行时上。你的词——哪怕是这些——也能变成一笔可审计的决策。",
     "idleHint": "主子正自顾自地溜达。在下面选个场景，看它作何反应。"
+  },
+  "languageSettings": {
+    "title": "语言可用性",
+    "description": "选择向团队用户开放哪些语言。已禁用的语言不会出现在语言切换器中。",
+    "enabledLabel": "已启用",
+    "disabledLabel": "已禁用",
+    "defaultLocaleNote": "默认语言无法被禁用。",
+    "saving": "保存中…",
+    "saved": "已保存",
+    "permissionDenied": "仅团队所有者或管理员可更改语言。",
+    "save": "保存"
   }
 }

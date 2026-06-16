@@ -10,6 +10,9 @@ import type { DomainVocabulary, IdentifierIndex } from '@aster-cloud/aster-lang-
 import { EN_US } from '@aster-cloud/aster-lang-ts/lexicons/en-US';
 import { ZH_CN } from '@aster-cloud/aster-lang-ts/lexicons/zh-CN';
 import { DE_DE } from '@aster-cloud/aster-lang-ts/lexicons/de-DE';
+// hi-IN（Hindi/天城文，第四语种）。1.0.1 包暂未暴露 ./lexicons/hi-IN 子路径
+// （只有 en/zh/de 有），但 HI_IN 已从 ./lexicons barrel 导出，故从 barrel 引入。
+import { HI_IN } from '@aster-cloud/aster-lang-ts/lexicons';
 import { SemanticTokenKind } from '@aster-cloud/aster-lang-ts/token-kind';
 import {
   vocabularyRegistry,
@@ -18,7 +21,7 @@ import {
 import { buildIdentifierIndex } from '@aster-cloud/aster-lang-ts/lexicons/identifiers/types';
 
 export type { Lexicon, DomainVocabulary, IdentifierIndex };
-export { EN_US, ZH_CN, DE_DE, SemanticTokenKind };
+export { EN_US, ZH_CN, DE_DE, HI_IN, SemanticTokenKind };
 export { vocabularyRegistry, initBuiltinVocabularies, buildIdentifierIndex };
 
 // LSP UI 本地化文本将在 aster-lang-ts 下一版本发布后从包导入
@@ -30,6 +33,7 @@ export { vocabularyRegistry, initBuiltinVocabularies, buildIdentifierIndex };
 export function getLexicon(locale: string): Lexicon {
   if (locale === 'zh' || locale === 'zh-CN') return ZH_CN;
   if (locale === 'de' || locale === 'de-DE') return DE_DE;
+  if (locale === 'hi' || locale === 'hi-IN') return HI_IN;
   return EN_US;
 }
 

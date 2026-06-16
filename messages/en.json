@@ -2974,5 +2974,16 @@
     },
     "footer": "Silly vocabulary, serious engine: this cat rule compiled and ran on the same Aster Lang runtime as a credit policy. Your words — even these — become an auditable decision.",
     "idleHint": "The cat is doing its own thing. Pick a scene below to see how it reacts."
+  },
+  "languageSettings": {
+    "title": "Language availability",
+    "description": "Choose which languages are available to your team's users. Disabled languages will not appear in the language switcher.",
+    "enabledLabel": "Enabled",
+    "disabledLabel": "Disabled",
+    "defaultLocaleNote": "The default language cannot be disabled.",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "permissionDenied": "Only team owners or admins can change languages.",
+    "save": "Save"
   }
 }

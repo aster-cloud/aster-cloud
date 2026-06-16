@@ -1,9 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { locales as configLocales } from '@/i18n/config';
 
 // 读取所有翻译文件
 const messagesDir = path.join(process.cwd(), 'messages');
+
+// 完整翻译的 locale（每个 key 都必须翻译）。这些走严格的逐 key 校验。
+// 部分翻译的 locale（如 hi）刻意只译核心 UI shell，其余在运行时 deep-merge 回退到
+// en（见 src/i18n/request.ts），因此不纳入逐 key 严格校验——否则会因有意的回退
+// 报假失败。新增完整语言时把它加到这里；新增部分语言时无需改动本数组。
 const locales = ['en', 'zh', 'de'] as const;
 
 // 动态加载翻译文件
@@ -175,15 +181,22 @@ describe('i18n Translation Files', () => {
   });
 
   describe('Locale config consistency', () => {
-    it('should have matching locales in config and translation files', () => {
+    it('每个翻译文件都对应一个已配置的 locale，且配置的每个 locale 都有文件', () => {
       const filesInDir = fs.readdirSync(messagesDir)
         .filter(f => f.endsWith('.json'))
         .map(f => f.replace('.json', ''))
         .sort();
 
-      const expectedLocales = [...locales].sort();
+      // 与 i18n/config 的 locales 对齐（含部分翻译的 hi）——不再硬编码三语。
+      const expectedLocales = [...configLocales].sort();
 
       expect(filesInDir).toEqual(expectedLocales);
+    });
+
+    it('完整翻译集是配置 locales 的子集（部分翻译语言除外）', () => {
+      for (const l of locales) {
+        expect(configLocales).toContain(l);
+      }
     });
   });
 });
