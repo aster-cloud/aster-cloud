@@ -1,33 +1,47 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { locales, localeNames, type Locale } from '@/i18n/config';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
+import { useAvailableLexicons } from '@/hooks/useAvailableLexicons';
+import { backendAvailableLocales } from '@/lib/lexicon-locale';
 
 interface LocalesResponse {
   compiled: Locale[];
+  // 团队可勾选的 locale = 平台允许集（团队是平台子集）。
+  selectable: Locale[];
   enabled: Locale[] | null;
   defaultLocale: Locale;
 }
 
 /**
- * 团队语言可用性卡片（ADR 0017 Phase 2）。
+ * 团队语言可用性卡片（ADR 0017）。
  *
- * 团队 owner/admin 勾选哪些 UI 语言开放给团队用户。默认语言始终启用且禁用其复选框
- * （defaultLocaleNote）。`enabled === null` 表示"全部开放"——初始全选。
+ * 团队 owner/admin 勾选哪些 UI 语言开放给团队用户。**只列平台允许的语言**
+ * （`selectable` = 平台层白名单）——团队不能开放平台已禁用的语言。默认语言
+ * 始终启用且禁用其复选框。`enabled === null` 表示"全部开放"——初始全选。
  *
- * 保存调用 PUT /api/teams/[teamId]/locales；后端 normalize（去重 + 强制含 default +
- * 全集存 null）。语言切换器据此过滤可选项（compiled ∩ backend ∩ team-allowed）。
+ * 保存调用 PUT /api/teams/[teamId]/locales；后端 clamp 到平台允许集 + normalize。
+ * 语言切换器据此过滤（compiled ∩ backend ∩ platform-allowed ∩ team-allowed）。
  */
 export function TeamLanguageCard({ teamId }: { teamId: string }) {
   const t = useTranslations('languageSettings');
   const [defaultLocale, setDefaultLocale] = useState<Locale>('en');
+  // 平台允许的可勾选集；默认全集（平台未配置时）。
+  const [selectable, setSelectable] = useState<Locale[]>([...locales]);
   const [selected, setSelected] = useState<Set<Locale>>(new Set(locales));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(false);
   const [error, setError] = useState('');
+
+  // 后端实时可用 lexicon（SSE）。运维热插拔/卸载某语言时卡片实时标注。
+  const { lexicons } = useAvailableLexicons();
+  const backendSet = useMemo(() => {
+    const avail = backendAvailableLocales(lexicons);
+    return avail === null ? null : new Set(avail);
+  }, [lexicons]);
 
   const load = useCallback(async () => {
     try {
@@ -35,8 +49,10 @@ export function TeamLanguageCard({ teamId }: { teamId: string }) {
       const data = (await res.json()) as LocalesResponse;
       if (!res.ok) throw new Error(extractErrorMessage(data) || 'failed');
       setDefaultLocale(data.defaultLocale);
-      // enabled === null = 全部开放 → 全选。
-      setSelected(new Set(data.enabled ?? data.compiled));
+      const sel = data.selectable ?? data.compiled;
+      setSelectable(sel);
+      // enabled === null = 全部开放 → 选中所有平台允许的语言。
+      setSelected(new Set(data.enabled ?? sel));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed');
     } finally {
@@ -97,9 +113,10 @@ export function TeamLanguageCard({ teamId }: { teamId: string }) {
           <div className="h-6 w-32 animate-pulse rounded bg-bg-muted" />
         ) : (
           <fieldset className="space-y-2" aria-label={t('title')}>
-            {locales.map((loc) => {
+            {selectable.map((loc) => {
               const isDefault = loc === defaultLocale;
               const checked = selected.has(loc);
+              const backendDown = backendSet !== null && !backendSet.has(loc) && !isDefault;
               return (
                 <label
                   key={loc}
@@ -118,6 +135,9 @@ export function TeamLanguageCard({ teamId }: { teamId: string }) {
                   </span>
                   {isDefault && (
                     <span className="text-xs text-fg-subtle">— {t('defaultLocaleNote')}</span>
+                  )}
+                  {backendDown && (
+                    <span className="text-xs text-amber-600">— {t('backendUnavailable')}</span>
                   )}
                 </label>
               );

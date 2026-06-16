@@ -2984,6 +2984,20 @@
     "saving": "Wird gespeichert…",
     "saved": "Gespeichert",
     "permissionDenied": "Nur Team-Inhaber oder Administratoren können Sprachen ändern.",
-    "save": "Speichern"
+    "save": "Speichern",
+    "backendUnavailable": "Lexikon im Backend nicht geladen"
+  },
+  "platformLanguageSettings": {
+    "title": "Plattform-Sprachverfügbarkeit",
+    "description": "Wählen Sie, welche Sprachen plattformweit verfügbar sind. Team-Spracheinstellungen sind eine Teilmenge davon — Teams können keine hier deaktivierte Sprache aktivieren.",
+    "enabledLabel": "Aktiviert",
+    "disabledLabel": "Deaktiviert",
+    "defaultLocaleNote": "Die Standardsprache kann nicht deaktiviert werden.",
+    "saving": "Wird gespeichert…",
+    "saved": "Gespeichert",
+    "save": "Speichern",
+    "saveFailed": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    "loadFailed": "Plattform-Spracheinstellungen konnten nicht geladen werden.",
+    "backendUnavailable": "Lexikon im Backend nicht geladen"
   }
 }

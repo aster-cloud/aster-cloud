@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   normalizeEnabledLocales,
   applyTeamLocaleAllowlist,
+  intersectAllowlists,
 } from '@/lib/team-locales';
 import { locales, defaultLocale, type Locale } from '@/i18n/config';
 
@@ -75,5 +76,44 @@ describe('applyTeamLocaleAllowlist', () => {
   it('保持候选集顺序', () => {
     const allowed = [...locales];
     expect(applyTeamLocaleAllowlist(candidates, allowed)).toEqual(candidates);
+  });
+});
+
+describe('intersectAllowlists（平台 ∩ 团队 两层语言门合成）', () => {
+  it('两层都 null（都不限制）→ null', () => {
+    expect(intersectAllowlists(null, null)).toBeNull();
+  });
+
+  it('平台 null（不限制）→ 取团队层', () => {
+    const team: Locale[] = [defaultLocale, 'zh' as Locale];
+    expect(intersectAllowlists(null, team)).toEqual(team);
+  });
+
+  it('团队 null（不限制）→ 取平台层', () => {
+    const platform: Locale[] = [defaultLocale, 'hi' as Locale];
+    expect(intersectAllowlists(platform, null)).toEqual(platform);
+  });
+
+  it('都非 null → 交集（团队是平台子集，平台禁的语言被剔除）', () => {
+    const platform: Locale[] = [defaultLocale, 'zh' as Locale]; // 平台只开 en+zh
+    const team: Locale[] = [defaultLocale, 'zh' as Locale, 'hi' as Locale]; // 团队想开 en+zh+hi
+    const out = intersectAllowlists(platform, team);
+    // hi 被平台禁 → 不在结果里
+    expect(out).not.toBeNull();
+    expect(out as string[]).not.toContain('hi');
+    expect(out).toContain('zh' as Locale);
+    expect(out).toContain(defaultLocale);
+  });
+
+  it('交集结果始终含 defaultLocale', () => {
+    const platform: Locale[] = ['zh' as Locale];
+    const team: Locale[] = ['hi' as Locale];
+    const out = intersectAllowlists(platform, team);
+    // 交集为空 → 兜底 [defaultLocale]
+    expect(out).toContain(defaultLocale);
+  });
+
+  it('交集等于全集 → 折叠成 null（不限制）', () => {
+    expect(intersectAllowlists([...locales], [...locales])).toBeNull();
   });
 });

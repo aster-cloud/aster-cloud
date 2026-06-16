@@ -2984,6 +2984,20 @@
     "saving": "Saving…",
     "saved": "Saved",
     "permissionDenied": "Only team owners or admins can change languages.",
-    "save": "Save"
+    "save": "Save",
+    "backendUnavailable": "lexicon not loaded on backend"
+  },
+  "platformLanguageSettings": {
+    "title": "Platform language availability",
+    "description": "Choose which languages are available across the entire platform. Team-level language settings are a subset of this — teams cannot enable a language disabled here.",
+    "enabledLabel": "Enabled",
+    "disabledLabel": "Disabled",
+    "defaultLocaleNote": "The default language cannot be disabled.",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "save": "Save",
+    "saveFailed": "Could not save. Please try again.",
+    "loadFailed": "Could not load platform language settings.",
+    "backendUnavailable": "lexicon not loaded on backend"
   }
 }
