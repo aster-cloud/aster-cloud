@@ -16,6 +16,7 @@ import { desc, gte, sql } from 'drizzle-orm';
 import { db, users, auditLogs } from '@/lib/prisma';
 import { Link } from '@/i18n/navigation';
 import { FeatureFlagsCard } from '@/components/admin/feature-flags-card';
+import { PlatformLanguageCard } from '@/components/admin/platform-language-card';
 import {
   CAN_RISKTIER,
   CAN_LICENSE,
@@ -242,6 +243,9 @@ export default async function AdminOverviewPage({ params }: Props) {
           Feature flags
         </h2>
         <FeatureFlagsCard />
+        <div className="mt-4">
+          <PlatformLanguageCard />
+        </div>
       </section>
 
       <section aria-labelledby="admin-overview-tools-heading">

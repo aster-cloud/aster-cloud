@@ -2984,6 +2984,20 @@
     "saving": "保存中…",
     "saved": "已保存",
     "permissionDenied": "仅团队所有者或管理员可更改语言。",
-    "save": "保存"
+    "save": "保存",
+    "backendUnavailable": "后端未加载该语言包"
+  },
+  "platformLanguageSettings": {
+    "title": "平台语言可用性",
+    "description": "选择整个平台开放哪些语言。团队级语言设定是其子集——团队无法启用此处禁用的语言。",
+    "enabledLabel": "已启用",
+    "disabledLabel": "已禁用",
+    "defaultLocaleNote": "默认语言无法被禁用。",
+    "saving": "保存中…",
+    "saved": "已保存",
+    "save": "保存",
+    "saveFailed": "保存失败，请重试。",
+    "loadFailed": "无法加载平台语言设置。",
+    "backendUnavailable": "后端未加载该语言包"
   }
 }

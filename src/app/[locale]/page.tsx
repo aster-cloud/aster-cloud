@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { getPlatformEnabledLocales } from '@/lib/platform-settings';
 import { SkipToContent } from '@/components/skip-to-content';
 import { locales, localeNames, type Locale } from '@/i18n/config';
 import {
@@ -66,10 +67,18 @@ type Props = {
 export default async function Home({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <HomeContent locale={locale} />;
+  // 匿名访客也受平台级语言白名单约束（系统全局管理员设定）。fail-open=null。
+  const platformLocales = await getPlatformEnabledLocales().catch(() => null);
+  return <HomeContent locale={locale} allowedLocales={platformLocales} />;
 }
 
-function HomeContent({ locale }: { locale: string }) {
+function HomeContent({
+  locale,
+  allowedLocales,
+}: {
+  locale: string;
+  allowedLocales: Locale[] | null;
+}) {
   const t = useTranslations();
   const currency = getCurrencyForLocale(locale);
   const proMonthlyPrice = formatPrice(getProPrice(currency, 'monthly'), currency);
@@ -77,7 +86,7 @@ function HomeContent({ locale }: { locale: string }) {
   return (
     <div className="flex min-h-screen flex-col bg-bg text-fg">
       <SkipToContent targetId="main" />
-      <Nav t={t} />
+      <Nav t={t} allowedLocales={allowedLocales} />
       <main id="main" className="flex flex-col">
         <Hero t={t} locale={locale} />
         <TrustBand t={t} />
@@ -103,7 +112,13 @@ function HomeContent({ locale }: { locale: string }) {
 /* Navigation                                                          */
 /* ------------------------------------------------------------------ */
 
-function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
+function Nav({
+  t,
+  allowedLocales,
+}: {
+  t: ReturnType<typeof useTranslations>;
+  allowedLocales: Locale[] | null;
+}) {
   // Public landing nav — evaluator-grade. Three rows of links exist
   // in the IA proposal (Product, Pricing, Docs, Blog, Sign in,
   // Start free trial). We surface the destinations that have real
@@ -173,7 +188,7 @@ function Nav({ t }: { t: ReturnType<typeof useTranslations> }) {
               </Link>
             </Stack>
             <Stack direction="row" gap={4} align="center">
-              <LanguageSwitcher />
+              <LanguageSwitcher allowedLocales={allowedLocales} />
               <Link
                 href="/login"
                 className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
