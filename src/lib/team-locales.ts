@@ -78,31 +78,40 @@ export async function setTeamEnabledLocales(teamId: string, input: readonly stri
  * @returns 并集后的 locale 数组；`null` = 不限制
  */
 export async function resolveUserAllowedLocales(userId: string): Promise<Locale[] | null> {
-  const memberships = await db.query.teamMembers.findMany({
-    where: eq(teamMembers.userId, userId),
-    columns: { teamId: true },
-  });
-  if (memberships.length === 0) return null; // 无团队 → 不限制
+  // Fail-open：此函数在每次 dashboard Server Component 渲染时调用。任何 DB 错误
+  // （含迁移滞后导致 Team.enabledLocales 列尚不存在）都必须降级为"不限制"
+  // （null），绝不能抛出——否则整个 dashboard 渲染崩溃。语言门是非关键增强，
+  // 出错时回退到"全部语言可用"的既有行为是安全且符合最小意外原则的。
+  try {
+    const memberships = await db.query.teamMembers.findMany({
+      where: eq(teamMembers.userId, userId),
+      columns: { teamId: true },
+    });
+    if (memberships.length === 0) return null; // 无团队 → 不限制
 
-  const teamIds = memberships.map((m) => m.teamId);
-  const rows = await db.query.teams.findMany({
-    where: inArray(teams.id, teamIds),
-    columns: { enabledLocales: true },
-  });
+    const teamIds = memberships.map((m) => m.teamId);
+    const rows = await db.query.teams.findMany({
+      where: inArray(teams.id, teamIds),
+      columns: { enabledLocales: true },
+    });
 
-  const union = new Set<Locale>();
-  for (const row of rows) {
-    const raw = row.enabledLocales;
-    // 任一团队"全部开放"（null/非数组）→ 整体不限制。
-    if (!raw || !Array.isArray(raw)) return null;
-    for (const l of raw) {
-      if ((locales as readonly string[]).includes(l)) union.add(l as Locale);
+    const union = new Set<Locale>();
+    for (const row of rows) {
+      const raw = row.enabledLocales;
+      // 任一团队"全部开放"（null/非数组）→ 整体不限制。
+      if (!raw || !Array.isArray(raw)) return null;
+      for (const l of raw) {
+        if ((locales as readonly string[]).includes(l)) union.add(l as Locale);
+      }
     }
+    union.add(defaultLocale); // 默认语言始终在内
+    // 等价全集 → 视为不限制，避免无谓 gating。
+    if (union.size >= locales.length) return null;
+    return locales.filter((l) => union.has(l));
+  } catch (err) {
+    console.error('[team-locales] resolveUserAllowedLocales failed; falling back to unrestricted', err);
+    return null;
   }
-  union.add(defaultLocale); // 默认语言始终在内
-  // 等价全集 → 视为不限制，避免无谓 gating。
-  if (union.size >= locales.length) return null;
-  return locales.filter((l) => union.has(l));
 }
 
 /**
