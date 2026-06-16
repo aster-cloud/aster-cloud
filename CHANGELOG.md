@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Platform-level language availability + live backend (SSE) status (#97) *(i18n)*
 - Add Hindi (hi) locale + per-team language availability gating (#94) *(i18n)*
 - Perch polish — sit deeper in nest, add leap pose, jump down before other rules (#91) *(cat-mood)*
 - Add "climb the cat tree" (perch) rule + scene — cat sits in the top nest (#90) *(cat-mood)*
@@ -231,6 +232,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
