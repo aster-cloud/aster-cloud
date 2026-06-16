@@ -60,6 +60,48 @@ const MONACO_CDN_DOMAINS = [
   'https://cdn.jsdelivr.net',
 ];
 
+// WebSocket origins the app legitimately connects to (connect-src). Previously
+// connect-src allowed bare `wss:` — i.e. ANY wss host — which defeats the point
+// of the allowlist (exfil to attacker-controlled WS). Scope to:
+//   - the standalone LSP proxy:  NEXT_PUBLIC_LSP_HOST  (src/hooks/useAsterLSP.ts)
+//   - the policy preview socket: NEXT_PUBLIC_ASTER_POLICY_WS_URL (src/services/policy/policy-api.ts)
+// Both are read from env (so on-prem deployments that point these at customer
+// infra get the matching CSP entry); fall back to the known production hosts.
+//
+// Same module-load-time constraint as ASTER_API_DOMAINS: read via safeEnv so the
+// middleware import chain doesn't ReferenceError on no-process runtimes.
+function normalizeWsOrigin(raw: string): string | null {
+  // Accept either a bare host (`lsp.aster-lang.dev`) or a full ws(s)/http(s) URL.
+  const value = raw.trim();
+  if (!value) return null;
+  if (/^wss?:\/\//.test(value) || /^https?:\/\//.test(value)) {
+    try {
+      const u = new URL(value);
+      const scheme = u.protocol === 'http:' ? 'ws:' : 'wss:';
+      return `${scheme}//${u.host}`;
+    } catch {
+      return null;
+    }
+  }
+  // Bare host → assume secure (browser client uses wss: for non-localhost).
+  const host = value.replace(/\/$/, '');
+  const scheme = host.startsWith('localhost') ? 'ws:' : 'wss:';
+  return `${scheme}//${host}`;
+}
+
+function computeWsConnectSrc(): string[] {
+  const out = new Set<string>();
+  const lspHost = safeEnv('NEXT_PUBLIC_LSP_HOST');
+  const policyWs = safeEnv('NEXT_PUBLIC_ASTER_POLICY_WS_URL');
+
+  const lsp = lspHost ? normalizeWsOrigin(lspHost) : 'wss://lsp.aster-lang.dev';
+  const policy = policyWs ? normalizeWsOrigin(policyWs) : 'wss://policy.aster-lang.dev';
+  if (lsp) out.add(lsp);
+  if (policy) out.add(policy);
+  return [...out];
+}
+const WS_CONNECT_SRC = computeWsConnectSrc();
+
 const ALL_TRUSTED_SCRIPT_SRC = [
   ...STRIPE_DOMAINS,
   ...MIXPANEL_DOMAINS,
@@ -70,8 +112,9 @@ const ALL_TRUSTED_CONNECT_SRC = [
   ...MIXPANEL_DOMAINS,
   ...ASTER_API_DOMAINS,
   ...MONACO_CDN_DOMAINS,
-  // SSE / WebSocket
-  "wss:",
+  // SSE / WebSocket — scoped to known LSP + policy-preview hosts rather than the
+  // wildcard `wss:` (which allowed exfil to any WS server). #98.
+  ...WS_CONNECT_SRC,
 ];
 
 /**
@@ -108,6 +151,11 @@ export function buildCspHeader(nonce: string): string {
       ...MONACO_CDN_DOMAINS,
     ],
     'style-src-attr': ["'unsafe-inline'"],
+    // TODO(#98): `https:` here allows images from ANY https host. Tightening to a
+    // known allowlist (avatar/CDN/docs image sources) needs an inventory of every
+    // legitimate <img> origin first — user-uploaded avatars, Gravatar, docs
+    // screenshots, Stripe/marketing assets, OG images — so it's left broad for now
+    // to avoid breaking prod image loads. Narrow once the source inventory exists.
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'", 'data:'],
     'connect-src': [

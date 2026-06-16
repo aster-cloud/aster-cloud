@@ -166,8 +166,20 @@ jobs:
 
       - run: pnpm lint
       - run: pnpm exec tsc --noEmit
+      # #98: the standalone LSP image must pin the same compiler version as the
+      # app, else the deployed language server runs a stale compiler.
+      - name: LSP compiler pin matches app
+        run: pnpm run check:lsp-pin
+      # #98: .env.production is bundled to the client — only NEXT_PUBLIC_* allowed.
+      - name: .env.production has only NEXT_PUBLIC_* keys
+        run: pnpm run check:env-production
       - name: Verify message catalog parity (en backbone)
         run: pnpm run check:locales:strict
+      # #98: report partial-locale coverage (hi shipped ~7%). Non-blocking —
+      # the threshold is a product decision; deep-merge fallback prevents crashes.
+      - name: Locale coverage report (non-blocking)
+        run: pnpm run check:locale-coverage
+        continue-on-error: true
       # Route ownership contract (ADR 0014). Two checks:
       #   1. routes:build must be a no-op — the committed
       #      public/.well-known/routes.json must match what the

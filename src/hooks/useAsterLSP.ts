@@ -198,6 +198,11 @@ export function useAsterLSP({
     if (typeof window === 'undefined') return '';
 
     const lspHost = process.env.NEXT_PUBLIC_LSP_HOST;
+    // Shared-secret token for the standalone LSP WS gate (#98). Browsers can't
+    // set custom WS headers, so it's appended as a query param. Optional: when
+    // unset the URL is unchanged (server enforces its own policy).
+    const lspToken = process.env.NEXT_PUBLIC_LSP_TOKEN;
+    const tokenParam = lspToken ? `&token=${encodeURIComponent(lspToken)}` : '';
 
     if (lspHost) {
       let host = lspHost;
@@ -208,11 +213,11 @@ export function useAsterLSP({
       }
       host = host.replace(/\/$/, '');
       const protocol = host.startsWith('localhost') ? 'ws:' : 'wss:';
-      return `${protocol}//${host}/lsp?locale=${locale}`;
+      return `${protocol}//${host}/lsp?locale=${locale}${tokenParam}`;
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}/api/lsp?locale=${locale}`;
+    return `${protocol}//${window.location.host}/api/lsp?locale=${locale}${tokenParam}`;
   }, [locale]);
 
   /**
