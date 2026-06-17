@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Runtime message loading via backend + KV (ADR 0018 P2 frontend) (#102) *(i18n)*
 - Platform-level language availability + live backend (SSE) status (#97) *(i18n)*
 - Add Hindi (hi) locale + per-team language availability gating (#94) *(i18n)*
 - Perch polish — sit deeper in nest, add leap pose, jump down before other rules (#91) *(cat-mood)*
@@ -232,6 +233,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
