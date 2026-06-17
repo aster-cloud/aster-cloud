@@ -67,6 +67,25 @@ describe('buildCspHeader', () => {
     const csp = buildCspHeader(NONCE);
     expect(csp).toContain('upgrade-insecure-requests');
   });
+
+  it('does not allow wildcard wss: in connect-src (#98)', () => {
+    env.NODE_ENV = 'production';
+    const csp = buildCspHeader(NONCE);
+    const connectSrc = csp
+      .split(';')
+      .map((d) => d.trim())
+      .find((d) => d.startsWith('connect-src'));
+    expect(connectSrc).toBeDefined();
+    // A bare `wss:` token (wildcard) must not be present; scoped wss://host is fine.
+    expect(connectSrc!.split(/\s+/)).not.toContain('wss:');
+  });
+
+  it('scopes wss connect-src to the known LSP/policy hosts by default', () => {
+    env.NODE_ENV = 'production';
+    const csp = buildCspHeader(NONCE);
+    expect(csp).toContain('wss://lsp.aster-lang.dev');
+    expect(csp).toContain('wss://policy.aster-lang.dev');
+  });
 });
 
 describe('securityHeadersOnly', () => {

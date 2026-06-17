@@ -40,6 +40,9 @@ yarn-error.log*
 # open-next
 .open-next
 
+# wrangler / miniflare local dev cache (KV/D1/R2 sqlite state) — never commit
+.wrangler/
+
 # IDEs and editors
 .vscode/
 .idea/
