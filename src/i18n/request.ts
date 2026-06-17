@@ -1,5 +1,6 @@
 import { getRequestConfig } from 'next-intl/server';
 import { defaultLocale, locales, type Locale } from './config';
+import { loadMessages } from './messages-loader';
 
 /**
  * Deep-merge `override` 树到 `base` 之上。
@@ -47,15 +48,16 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = defaultLocale;
   }
 
+  // 运行时加载（ADR 0018 Phase 2）：KV → 后端 /api/v1/messages → 内嵌兜底。
+  // loadMessages 永远 fail-open 返回一个 MessageTree，绝不白屏。
   // 加载 fallback（永远是 en）作为底
-  const fallbackMessages = (await import(`../../messages/${defaultLocale}.json`))
-    .default as MessageTree;
+  const fallbackMessages = await loadMessages(defaultLocale);
 
   // 当前 locale 的消息树叠加在上层；缺失的 key 自动落到 en
   const localeMessages =
     locale === defaultLocale
       ? fallbackMessages
-      : ((await import(`../../messages/${locale}.json`)).default as MessageTree);
+      : await loadMessages(locale as Locale);
 
   const messages =
     locale === defaultLocale
