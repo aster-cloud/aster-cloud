@@ -32,8 +32,17 @@ const LOCALE_ID_MAP: Record<Locale, string> = {
 const API_BASE =
   process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
 
-/** KV 缓存 TTL（秒）。版本化 key 已避免 stale，TTL 只是漏掉 reload 事件时的兜底上限。 */
-const KV_TTL_SECONDS = 300;
+/**
+ * 版本化 KV body 的 TTL（秒）。key 含 sha → 内容对某 key 不可变（版本变则 key 变），
+ * 故 TTL 长一些只是回收旧版本 entry 的上限，不影响新鲜度（新鲜度由 manifest sha 保证）。
+ */
+const KV_BODY_TTL_SECONDS = 86_400; // 1 天
+
+/**
+ * manifest（locale→sha 版本表）的回源缓存窗口（秒）。manifest 是版本源，要相对快地
+ * 反映后端 sha 变化，但不必每个 SSR 请求都打后端——用 Next fetch 缓存兜一层。
+ */
+const MANIFEST_REVALIDATE_SECONDS = 60;
 
 type MessageTree = Record<string, unknown>;
 
@@ -78,8 +87,38 @@ async function loadEmbedded(locale: Locale): Promise<MessageTree> {
   }
 }
 
+/** manifest 条目：{ locale: 全码 id, sha: 8 位版本 }。 */
+interface ManifestEntry {
+  locale: string;
+  sha: string;
+}
+
 /**
- * 运行时获取某 locale 的界面文案：KV → 后端 → 内嵌兜底。
+ * 取某 locale 的 messages 版本 sha（ADR 0020 优化 1）。
+ *
+ * <p>回源 /api/v1/messages-manifest（带 Next fetch 缓存，60s 窗口），返回该 locale 的
+ * 8 位 sha。失败 / 该 locale 不在 manifest → null（调用方退回固定 key 或内嵌兜底）。
+ * sha 用于拼版本化 KV key：后端版本一变 → manifest sha 变 → KV key 换 → 边缘随版本
+ * 即时刷新，不靠 body 的 TTL 等过期。
+ */
+async function fetchMessagesSha(fullId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/messages-manifest`, {
+      headers: { Accept: 'application/json' },
+      // Worker fetch 缓存兜一层：manifest 小，60s 窗口够新鲜又不每请求打后端。
+      next: { revalidate: MANIFEST_REVALIDATE_SECONDS },
+    });
+    if (!res.ok) return null;
+    const entries = (await res.json()) as ManifestEntry[];
+    return entries.find((e) => e.locale === fullId)?.sha ?? null;
+  } catch (error) {
+    console.warn(`[i18n] messages-manifest fetch failed:`, error);
+    return null;
+  }
+}
+
+/**
+ * 运行时获取某 locale 的界面文案：manifest 版本 → 版本化 KV → 后端 → 内嵌兜底。
  *
  * @returns 永远返回一个 MessageTree（fail-open，不抛）。
  */
@@ -90,9 +129,13 @@ export async function loadMessages(locale: Locale): Promise<MessageTree> {
   }
 
   const kv = await getKV();
-  const kvKey = `ui-messages:${fullId}`;
 
-  // 1) 查 KV
+  // 1) 取版本（manifest sha）→ 版本化 KV key。manifest 不可达时退回固定 key
+  //    （仍可用，只是回退到 TTL 失效语义，fail-open）。
+  const sha = await fetchMessagesSha(fullId);
+  const kvKey = sha ? `ui-messages:${fullId}:v${sha}` : `ui-messages:${fullId}`;
+
+  // 2) 查 KV（版本化 key 命中 = 该版本内容，天然新鲜）
   if (kv) {
     try {
       const cached = await kv.get(kvKey);
@@ -100,23 +143,22 @@ export async function loadMessages(locale: Locale): Promise<MessageTree> {
         return JSON.parse(cached) as MessageTree;
       }
     } catch (error) {
-      console.warn(`[i18n] KV read failed for ${fullId}:`, error);
+      console.warn(`[i18n] KV read failed for ${kvKey}:`, error);
     }
   }
 
-  // 2) 回源后端 /api/v1/messages/<full-id>
+  // 3) 回源后端 /api/v1/messages/<full-id>（KV miss / 新版本）
   try {
     const res = await fetch(`${API_BASE}/api/v1/messages/${fullId}`, {
-      // 后端 ETag 驱动版本；这里只要拿到 body 即可，缓存交给 KV。
       headers: { Accept: 'application/json' },
     });
     if (res.ok) {
       const text = await res.text();
       const tree = JSON.parse(text) as MessageTree;
-      // 异步回填 KV（不阻塞响应）。
+      // 异步回填版本化 KV（不阻塞响应）。版本化 key 内容不可变，给长 TTL 即可。
       if (kv) {
-        kv.put(kvKey, text, { expirationTtl: KV_TTL_SECONDS }).catch((err) =>
-          console.warn(`[i18n] KV write failed for ${fullId}:`, err)
+        kv.put(kvKey, text, { expirationTtl: KV_BODY_TTL_SECONDS }).catch((err) =>
+          console.warn(`[i18n] KV write failed for ${kvKey}:`, err)
         );
       }
       return tree;
@@ -127,6 +169,6 @@ export async function loadMessages(locale: Locale): Promise<MessageTree> {
     console.warn(`[i18n] backend messages fetch failed for ${fullId}; using embedded:`, error);
   }
 
-  // 3) 兜底：内嵌（绝不白屏）
+  // 4) 兜底：内嵌（绝不白屏）
   return loadEmbedded(locale);
 }
