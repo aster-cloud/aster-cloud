@@ -227,6 +227,12 @@ export async function POST(req: NextRequest) {
         'Accept': 'application/json',
         'X-Tenant-Id': 'trial-playground',
         'X-User-Role': 'MEMBER',
+        // Forward the (already-allowlist-validated) browser Origin so aster-api's
+        // TrialEndpointGuard Origin check passes. The server→server fetch otherwise
+        // sends no Origin → guard returns origin_not_allowed once the trial guard is
+        // enabled. We only reach here after `origin` cleared the BFF allowlist above,
+        // and aster-api's own allowlist mirrors it (aster-lang.dev / .cloud).
+        ...(origin ? { Origin: origin } : {}),
         // R31-4: forward Turnstile token (may be empty in dev / pre-rollout)
         ...(turnstileToken ? { 'X-Trial-Turnstile-Token': turnstileToken } : {}),
         ...signedHeaders,
