@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Version-keyed KV via messages-manifest (ADR 0020 优化 1) (#104) *(i18n)*
 - Runtime message loading via backend + KV (ADR 0018 P2 frontend) (#102) *(i18n)*
 - Platform-level language availability + live backend (SSE) status (#97) *(i18n)*
 - Add Hindi (hi) locale + per-team language availability gating (#94) *(i18n)*
@@ -233,6 +234,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
