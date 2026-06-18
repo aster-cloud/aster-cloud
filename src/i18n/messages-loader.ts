@@ -87,7 +87,7 @@ async function loadEmbedded(locale: Locale): Promise<MessageTree> {
   }
 }
 
-/** manifest 条目：{ locale: 全码 id, sha: 8 位版本 }。 */
+/** manifest 条目：{ locale: 全码 id, sha: 16 位版本 }。 */
 interface ManifestEntry {
   locale: string;
   sha: string;
@@ -97,7 +97,7 @@ interface ManifestEntry {
  * 取某 locale 的 messages 版本 sha（ADR 0020 优化 1）。
  *
  * <p>回源 /api/v1/messages-manifest（带 Next fetch 缓存，60s 窗口），返回该 locale 的
- * 8 位 sha。失败 / 该 locale 不在 manifest → null（调用方退回固定 key 或内嵌兜底）。
+ * 16 位 sha。失败 / 该 locale 不在 manifest → null（调用方退回固定 key 或内嵌兜底）。
  * sha 用于拼版本化 KV key：后端版本一变 → manifest sha 变 → KV key 换 → 边缘随版本
  * 即时刷新，不靠 body 的 TTL 等过期。
  */
@@ -120,8 +120,8 @@ async function fetchMessagesSha(fullId: string): Promise<string | null> {
 /**
  * body 响应的 ETag 是否与 manifest sha 一致（ADR 0020 优化 1 的版本一致性校验）。
  *
- * <p>后端 messages 端点的 ETag = 完整 sha256；manifest 的 sha = 前 8 位。一致 = ETag
- * 去引号后以该 8 位 sha 开头。**无 manifest sha（走固定 key 路径）时返回 true**——没有
+ * <p>后端 messages 端点的 ETag = 完整 sha256；manifest 的 sha = 前 16 位。一致 = ETag
+ * 去引号后以该 16 位 sha 开头。**无 manifest sha（走固定 key 路径）时返回 true**——没有
  * 版本契约可违反，固定 key 不涉及"错版本污染"。无 ETag 时保守返回 false（不回填版本化
  * key，避免把不可校验的 body 钉进版本 key）。
  */
