@@ -36,11 +36,14 @@ import { loadMessages } from '@/i18n/messages-loader';
 /**
  * 按 URL 路由的 fetch mock：manifest 返回给定 {locale,sha}[]，messages 返回 body。
  * messagesBody=null 时 messages 端点返回 404。
+ * messagesEtag 设置 body 响应的 ETag（版本一致性校验用）；默认与 manifest 第一个 sha
+ * 一致（happy path），可显式传不同值模拟 split-brain。
  */
 function routedFetch(opts: {
   manifest?: Array<{ locale: string; sha: string }>;
   messagesBody?: string | null;
   messagesStatus?: number;
+  messagesEtag?: string | null;
 }) {
   return vi.fn(async (url: string) => {
     if (String(url).includes('/api/v1/messages-manifest')) {
@@ -49,7 +52,14 @@ function routedFetch(opts: {
     if (opts.messagesBody == null) {
       return new Response('', { status: opts.messagesStatus ?? 404 });
     }
-    return new Response(opts.messagesBody, { status: opts.messagesStatus ?? 200 });
+    // 默认 body ETag = manifest 第一个 sha（一致），除非显式覆盖。
+    const defaultEtag = opts.manifest?.[0]?.sha
+      ? `"${opts.manifest[0].sha}ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"`
+      : undefined;
+    const etag = opts.messagesEtag === undefined ? defaultEtag : opts.messagesEtag;
+    const headers: Record<string, string> = {};
+    if (etag) headers['ETag'] = etag;
+    return new Response(opts.messagesBody, { status: opts.messagesStatus ?? 200, headers });
   }) as unknown as typeof fetch;
 }
 
@@ -117,6 +127,41 @@ describe('messages-loader', () => {
       JSON.stringify(fresh),
       expect.anything()
     );
+  });
+
+  it('split-brain: manifest 报新 sha 但 body ETag 是旧 sha → 不污染版本化 key', async () => {
+    // 滚动发布/多实例下：manifest 命中新实例(NEWSHA11)，body 命中旧实例(返回旧 ETag)。
+    // 不能把旧 body 写进 v新sha key（否则被长 TTL 钉住=错版本污染，Codex 审查）。
+    const body = { common: { save: 'POSSIBLY_STALE_BODY' } };
+    global.fetch = routedFetch({
+      manifest: [{ locale: 'zh-CN', sha: 'NEWSHA11' }],
+      messagesBody: JSON.stringify(body),
+      messagesEtag: '"OLDSHA00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"', // 旧 sha
+    });
+
+    const msgs = await loadMessages('zh');
+    // 本次请求仍返回 body（fail-open，不白屏）
+    expect(msgs).toEqual(body);
+    // 但**绝不**写进 v新sha key（避免错版本污染）
+    const pollutingWrite = kv!.put.mock.calls.find(
+      (c) => c[0] === 'ui-messages:zh-CN:vNEWSHA11'
+    );
+    expect(pollutingWrite).toBeUndefined();
+  });
+
+  it('body 无 ETag（无法校验版本）→ 不回填版本化 key', async () => {
+    global.fetch = routedFetch({
+      manifest: [{ locale: 'zh-CN', sha: 'SOMESHA1' }],
+      messagesBody: JSON.stringify({ common: { save: 'NO_ETAG' } }),
+      messagesEtag: null, // 显式无 ETag
+    });
+
+    const msgs = await loadMessages('zh');
+    expect(msgs).toEqual({ common: { save: 'NO_ETAG' } });
+    const versionedWrite = kv!.put.mock.calls.find(
+      (c) => c[0] === 'ui-messages:zh-CN:vSOMESHA1'
+    );
+    expect(versionedWrite).toBeUndefined();
   });
 
   it('manifest 不可达 → 退回固定 key（仍 fail-open 可用）', async () => {

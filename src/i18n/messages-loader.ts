@@ -118,6 +118,22 @@ async function fetchMessagesSha(fullId: string): Promise<string | null> {
 }
 
 /**
+ * body 响应的 ETag 是否与 manifest sha 一致（ADR 0020 优化 1 的版本一致性校验）。
+ *
+ * <p>后端 messages 端点的 ETag = 完整 sha256；manifest 的 sha = 前 8 位。一致 = ETag
+ * 去引号后以该 8 位 sha 开头。**无 manifest sha（走固定 key 路径）时返回 true**——没有
+ * 版本契约可违反，固定 key 不涉及"错版本污染"。无 ETag 时保守返回 false（不回填版本化
+ * key，避免把不可校验的 body 钉进版本 key）。
+ */
+function bodyMatchesSha(res: Response, sha: string | null): boolean {
+  if (!sha) return true; // 固定 key 路径，无版本契约
+  const etag = res.headers.get('ETag');
+  if (!etag) return false; // 无法校验 → 不污染版本化 key
+  const normalized = etag.replace(/^W\//, '').replace(/^"|"$/g, '');
+  return normalized.startsWith(sha);
+}
+
+/**
  * 运行时获取某 locale 的界面文案：manifest 版本 → 版本化 KV → 后端 → 内嵌兜底。
  *
  * @returns 永远返回一个 MessageTree（fail-open，不抛）。
@@ -156,9 +172,17 @@ export async function loadMessages(locale: Locale): Promise<MessageTree> {
       const text = await res.text();
       const tree = JSON.parse(text) as MessageTree;
       // 异步回填版本化 KV（不阻塞响应）。版本化 key 内容不可变，给长 TTL 即可。
-      if (kv) {
+      // **版本一致性校验（Codex 审查）**：manifest 与 body 是两次独立请求；滚动发布/
+      // 多实例/边缘缓存下，可能拿到新 sha 的 manifest 但旧 body。若直接把旧 body 写进
+      // 新 `v<sha>` key，会被长 TTL 钉住 = 错版本污染。故仅当 body 的 ETag 与 manifest
+      // sha 一致时才回填版本化 key；不一致只返回 body 给本次请求、不污染 KV。
+      if (kv && bodyMatchesSha(res, sha)) {
         kv.put(kvKey, text, { expirationTtl: KV_BODY_TTL_SECONDS }).catch((err) =>
           console.warn(`[i18n] KV write failed for ${kvKey}:`, err)
+        );
+      } else if (kv && sha) {
+        console.warn(
+          `[i18n] body/manifest sha 不一致（${fullId} 期望 v${sha}），跳过 KV 回填避免错版本污染`
         );
       }
       return tree;
