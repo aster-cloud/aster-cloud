@@ -50,19 +50,19 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   // 运行时加载（ADR 0018 Phase 2）：KV → 后端 /api/v1/messages → 内嵌兜底。
   // loadMessages 永远 fail-open 返回一个 MessageTree，绝不白屏。
-  // 加载 fallback（永远是 en）作为底
-  const fallbackMessages = await loadMessages(defaultLocale);
-
-  // 当前 locale 的消息树叠加在上层；缺失的 key 自动落到 en
-  const localeMessages =
-    locale === defaultLocale
-      ? fallbackMessages
-      : await loadMessages(locale as Locale);
-
-  const messages =
-    locale === defaultLocale
-      ? fallbackMessages
-      : deepMergeMessages(fallbackMessages, localeMessages);
+  let messages: MessageTree;
+  if (locale === defaultLocale) {
+    // 默认 locale：只加载一次 en（既是底座也是结果）。
+    messages = await loadMessages(defaultLocale);
+  } else {
+    // 非默认 locale：en 底座 + 当前 locale 两棵树。**并行加载**（ADR 0020 优化 2，
+    // 两次加载互相独立，串行白白多一轮 KV/fetch 延迟）。缺失 key 自动落到 en。
+    const [fallbackMessages, localeMessages] = await Promise.all([
+      loadMessages(defaultLocale),
+      loadMessages(locale as Locale),
+    ]);
+    messages = deepMergeMessages(fallbackMessages, localeMessages);
+  }
 
   return {
     locale,
