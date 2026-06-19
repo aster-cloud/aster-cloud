@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Redesign platform language availability as per-row toggles (#108) *(admin)*
 - Platform language availability controls dev language options (#106) *(admin)*
 - Version-keyed KV via messages-manifest (ADR 0020 优化 1) (#104) *(i18n)*
 - Runtime message loading via backend + KV (ADR 0018 P2 frontend) (#102) *(i18n)*
@@ -235,6 +236,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
