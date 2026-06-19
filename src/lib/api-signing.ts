@@ -104,3 +104,50 @@ export async function signInternalCallerHeaders(
     'X-Internal-Signature': signature,
   };
 }
+
+export interface LexiconAdminHeaders {
+  'X-Aster-Timestamp': string;
+  'X-Aster-Nonce': string;
+  'X-Internal-Signature': string;
+}
+
+/**
+ * 为 aster-api 的 LexiconAdminResource 端点（/api/v1/admin/lexicons/{id}/disable|enable）
+ * 生成签名头。
+ *
+ * 后端 verifyHmac 的 canonical 是 **8 行换行拼接**（与 signRequest 的管道格式、
+ * signInternalCallerHeaders 的 3 行格式都不同）：
+ * <pre>
+ *   method + "\n"
+ *   path + "\n"
+ *   timestamp(秒) + "\n"
+ *   nonce + "\n"
+ *   content-type-or-empty + "\n"
+ *   content-length + "\n"
+ *   body-sha256-hex-or-empty + "\n"
+ *   sanitized-filename-or-empty
+ * </pre>
+ * disable/enable 无 body、无 filename → 第 5/7/8 行为空、第 6 行为 0。
+ * 密钥同 plan-gate（ASTER_PLAN_GATE_HMAC_KEY = 后端 aster.plan-gate.hmac-key）。
+ * timestamp 用 unix **秒**（后端按秒比对 5min 时钟偏移）。nonce 必须每次唯一
+ * （后端原子预约，重放即拒）。
+ */
+export async function signLexiconAdminHeaders(
+  method: string,
+  path: string
+): Promise<LexiconAdminHeaders> {
+  const secret = process.env.ASTER_PLAN_GATE_HMAC_KEY;
+  if (!secret) {
+    throw new Error('ASTER_PLAN_GATE_HMAC_KEY not configured');
+  }
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = generateNonce();
+  // 8 行 canonical，无 body/filename：ct=空, len=0, sha=空, fn=空。
+  const canonical = `${method}\n${path}\n${timestamp}\n${nonce}\n\n0\n\n`;
+  const signature = await hmacSha256(secret, canonical);
+  return {
+    'X-Aster-Timestamp': timestamp,
+    'X-Aster-Nonce': nonce,
+    'X-Internal-Signature': signature,
+  };
+}
