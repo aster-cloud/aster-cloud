@@ -283,6 +283,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -781,6 +782,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 ### Harden
 
 - Typed role const + scalable snapshot query + JSX/hex/YAML fixes *(internal/docs)*
+
+### I18n
+
+- Complete Hindi translation (7.2% → 100%) (#107) *(hi)*
 
 ### Nav
 
