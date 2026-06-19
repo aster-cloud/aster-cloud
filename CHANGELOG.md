@@ -216,6 +216,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Single source of truth — consume @aster-cloud/ui-messages npm, drop messages/* (#109) *(i18n)*
 - Drop dead STARTER_PLAN code path *(vocab)*
 - Derive primitive types from lang-ts lexicon (D12) *(monaco)*
 - Single-root resolution + canonical locale-utils *(glossary)*
@@ -236,6 +237,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
