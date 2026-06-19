@@ -27,10 +27,8 @@ const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, '..');
 
 const BACKBONE = 'en';
-// 注意：hi 是已上线的第四 UI 语种，但尚未加入 COMPARE——它有 ~29 处未翻译 key
-// （fall-back 到 en），strict 模式下纳入会令 CI 因这些既有缺口失败。补齐 hi 翻译
-// 后再加入 COMPARE 是单独任务。本次手动同步了 hi.json 的 platformLanguageSettings。
-const COMPARE = ['zh', 'de'];
+// hi 现已全量翻译（2154/2154，覆盖率 100%），纳入 strict 对比以捕获未来 key 漂移。
+const COMPARE = ['zh', 'de', 'hi'];
 
 interface Finding {
   level: 'error' | 'warn';
