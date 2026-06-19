@@ -3,18 +3,20 @@ import fs from 'fs';
 import path from 'path';
 import { locales as configLocales } from '@/i18n/config';
 
-// 读取所有翻译文件
-const messagesDir = path.join(process.cwd(), 'messages');
+// UI 文案真相源 = @aster-cloud/ui-messages npm 包（aster-lang-locales 发布）。cloud 不再
+// 手维护 messages/*。包内文件按全码 id 命名（en-US.json）。
+const messagesDir = path.join(process.cwd(), 'node_modules', '@aster-cloud', 'ui-messages');
 
 // 完整翻译的 locale（每个 key 都必须翻译）。这些走严格的逐 key 校验。
-// 部分翻译的 locale（如 hi）刻意只译核心 UI shell，其余在运行时 deep-merge 回退到
-// en（见 src/i18n/request.ts），因此不纳入逐 key 严格校验——否则会因有意的回退
-// 报假失败。新增完整语言时把它加到这里；新增部分语言时无需改动本数组。
+// 短码 → 包内全码 id。hi 全量翻译且在独立包，逐 key 校验由 check-locales 覆盖，这里
+// 维持 en/zh/de（公共 ui-messages 包内三语）。
+const LOCALE_IDS = { en: 'en-US', zh: 'zh-CN', de: 'de-DE' } as const;
 const locales = ['en', 'zh', 'de'] as const;
 
 // 动态加载翻译文件
 function loadTranslations(locale: string): Record<string, unknown> {
-  const filePath = path.join(messagesDir, `${locale}.json`);
+  const id = LOCALE_IDS[locale as keyof typeof LOCALE_IDS] ?? locale;
+  const filePath = path.join(messagesDir, `${id}.json`);
   const content = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(content);
 }
@@ -61,8 +63,9 @@ describe('i18n Translation Files', () => {
   }
 
   describe('Translation file existence', () => {
-    it.each(locales)('should have %s.json translation file', (locale) => {
-      const filePath = path.join(messagesDir, `${locale}.json`);
+    it.each(locales)('should have %s translation file', (locale) => {
+      const id = LOCALE_IDS[locale as keyof typeof LOCALE_IDS] ?? locale;
+      const filePath = path.join(messagesDir, `${id}.json`);
       expect(fs.existsSync(filePath)).toBe(true);
     });
   });
@@ -181,16 +184,24 @@ describe('i18n Translation Files', () => {
   });
 
   describe('Locale config consistency', () => {
-    it('每个翻译文件都对应一个已配置的 locale，且配置的每个 locale 都有文件', () => {
-      const filesInDir = fs.readdirSync(messagesDir)
-        .filter(f => f.endsWith('.json'))
-        .map(f => f.replace('.json', ''))
-        .sort();
-
-      // 与 i18n/config 的 locales 对齐（含部分翻译的 hi）——不再硬编码三语。
-      const expectedLocales = [...configLocales].sort();
-
-      expect(filesInDir).toEqual(expectedLocales);
+    it('配置的每个 locale 都有可解析的 ui-messages 文件（en/zh/de 在主包，hi 在 -hi 包）', () => {
+      // 真相源 = @aster-cloud/ui-messages(en/zh/de) + @aster-cloud/ui-messages-hi(hi)。
+      // cloud 不再手维护 messages/*。校验每个配置 locale 在对应包内都有全码 id 文件。
+      const FULL: Record<string, { dir: string; id: string }> = {
+        en: { dir: messagesDir, id: 'en-US' },
+        zh: { dir: messagesDir, id: 'zh-CN' },
+        de: { dir: messagesDir, id: 'de-DE' },
+        hi: {
+          dir: path.join(process.cwd(), 'node_modules', '@aster-cloud', 'ui-messages-hi'),
+          id: 'hi-IN',
+        },
+      };
+      for (const loc of configLocales) {
+        const entry = FULL[loc];
+        expect(entry, `locale ${loc} 未映射到 ui-messages 包`).toBeDefined();
+        const filePath = path.join(entry.dir, `${entry.id}.json`);
+        expect(fs.existsSync(filePath), `缺文件 ${filePath}`).toBe(true);
+      }
     });
 
     it('完整翻译集是配置 locales 的子集（部分翻译语言除外）', () => {

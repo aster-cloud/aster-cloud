@@ -187,9 +187,20 @@ describe('messages-loader', () => {
     global.fetch = routedFetch({ manifest: [], messagesBody: null, messagesStatus: 404 });
 
     const msgs = await loadMessages('en');
-    // 内嵌 messages/en.json 真实存在，应拿到非空树（含 common 等 namespace）
+    // 内嵌兜底（@aster-cloud/ui-messages/en-US.json）真实存在，应拿到非空树（含 common 等）
     expect(msgs).toBeTypeOf('object');
     expect(Object.keys(msgs).length).toBeGreaterThan(0);
+  });
+
+  it('hi 后端 404 → fail-open 到 hi 内嵌（@aster-cloud/ui-messages-hi/hi-IN.json，非空，不抛）', async () => {
+    global.fetch = routedFetch({ manifest: [], messagesBody: null, messagesStatus: 404 });
+
+    const msgs = await loadMessages('hi');
+    // hi 内嵌源是**独立的 -hi 包**（与 en/zh/de 不同包），验证它能作兜底正常加载。
+    expect(msgs).toBeTypeOf('object');
+    expect(Object.keys(msgs).length).toBeGreaterThan(0);
+    // hi 全量翻译含 platformLanguageSettings 等 namespace（非仅 en 兜底）。
+    expect(msgs).toHaveProperty('platformLanguageSettings');
   });
 
   it('fetch 抛网络错误 → fail-open 到内嵌（不抛）', async () => {

@@ -8,11 +8,11 @@
  *   Workers KV (CACHE, 版本化 key)  ──miss──▶  后端 /api/v1/messages/<full-id>
  *                                                        │
  *                                          任意环节失败 ▼
- *                                   内嵌 messages/<locale>.json（构建期 bundle）
+ *                          内嵌 @aster-cloud/ui-messages(-hi) npm 包（构建期 bundle）
  *
  * **铁律：fail-open**。fetch / KV / 解析任何一步失败，都 fallback 到内嵌 messages
- * （构建期仍打进 bundle，见 messages/ 目录），**绝不让用户看到白屏**。这是 hero
- * dashboard 崩溃教训的同款纪律：hot-path 必须降级到安全默认。
+ * （构建期打进 bundle，源 = `@aster-cloud/ui-messages` npm 包，与后端 aster-api 同源），
+ * **绝不让用户看到白屏**。这是 hero dashboard 崩溃教训的同款纪律：hot-path 必须降级到安全默认。
  *
  * 这样后端加一门语言（或改文案）→ 前端运行时 fetch 到新 messages → **无需重新
  * 构建部署**即可显示（前端热插拔贯通）。后端 messages 未发版时，内嵌副本兜底，
@@ -69,16 +69,29 @@ async function getKV(): Promise<KVNamespace | null> {
 
 /**
  * 内嵌 messages（构建期 bundle）—— 最终兜底，永不失败。
- * 动态 import 保证按需加载、不把所有 locale 都拉进首屏。
+ *
+ * 真相源 = `@aster-cloud/ui-messages`(en/zh/de) + `@aster-cloud/ui-messages-hi`(hi) npm 包
+ * （ADR 0018，aster-lang-locales / aster-lang-hi 仓发布）。cloud 不再手维护 `messages/*`：
+ * 单一真相源，与后端 aster-api 同源，杜绝漂移。
+ *
+ * 包内文件按**全码 id**命名（en-US.json），hi 在独立的 `-hi` 包。静态列举各 locale 的
+ * import 表达式（而非模板字面量），让打包器能正确解析子包资源、按需加载。
  */
+const EMBEDDED_LOADERS: Record<Locale, () => Promise<{ default: MessageTree }>> = {
+  en: () => import('@aster-cloud/ui-messages/en-US.json'),
+  zh: () => import('@aster-cloud/ui-messages/zh-CN.json'),
+  de: () => import('@aster-cloud/ui-messages/de-DE.json'),
+  hi: () => import('@aster-cloud/ui-messages-hi/hi-IN.json'),
+};
+
 async function loadEmbedded(locale: Locale): Promise<MessageTree> {
   try {
-    return (await import(`../../messages/${locale}.json`)).default as MessageTree;
+    return (await EMBEDDED_LOADERS[locale]()).default;
   } catch {
     // 连内嵌都失败（理论上不该发生）→ 退到 en，再不行返回空对象（next-intl 用 key 兜底）。
     if (locale !== defaultLocale) {
       try {
-        return (await import(`../../messages/${defaultLocale}.json`)).default as MessageTree;
+        return (await EMBEDDED_LOADERS[defaultLocale]()).default;
       } catch {
         /* fall through */
       }

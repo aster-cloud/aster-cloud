@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import en from '../../../messages/en.json';
-import zh from '../../../messages/zh.json';
-import de from '../../../messages/de.json';
+import en from '@aster-cloud/ui-messages/en-US.json';
+import zh from '@aster-cloud/ui-messages/zh-CN.json';
+import de from '@aster-cloud/ui-messages/de-DE.json';
 
 /**
  * i18n 一致性测试
@@ -12,6 +12,9 @@ import de from '../../../messages/de.json';
  *   - ICU 占位符（{name}）必须三语一致
  *
  * 不校验翻译质量，仅校验结构一致。
+ *
+ * 真相源 = `@aster-cloud/ui-messages` npm 包（aster-lang-locales 发布）。cloud 不再
+ * 手维护 `messages/*`：单一真相源，与后端 aster-api 同源（ADR 0018）。
  */
 
 type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
