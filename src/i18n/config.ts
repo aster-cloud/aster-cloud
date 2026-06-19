@@ -4,20 +4,14 @@ export const defaultLocale = 'en' as const;
 /**
  * Locales whose message catalog is only PARTIALLY translated (GitHub #98).
  *
- * `hi` ships ~7% of the `en` backbone keys; the deep-merge fallback in
- * src/i18n/request.ts silently falls back to English for the rest, so it does
- * NOT crash — users just see mostly-English UI under a Hindi label.
- *
- * This is metadata only: `hi` is intentionally still listed in `locales` above
- * so existing behavior (and the deep-merge fallback) is unchanged. There is no
- * UI mechanism today to surface a "beta/partial" badge or to gate a partial
- * locale out of the switcher, and adding one is a PRODUCT decision (do we hide
- * it, badge it, or finish the translation?). Until product decides, this array
- * documents the gap and can be consumed by a future UI badge or a coverage gate.
+ * 现在所有 locale（zh / de / hi）都已全量翻译（100% 覆盖 en backbone），
+ * 因此此数组为空。`check:locales:strict`（CI）对全部 COMPARE locale 强制 key 对齐；
+ * 部分翻译的 deep-merge fallback（src/i18n/request.ts）仍是兜底安全网，但不再有
+ * 已知缺口。若未来新增一个尚未译完的 locale，把它列在这里以驱动「beta/partial」徽章。
  *
  * Coverage is reported by `pnpm check:locale-coverage` (scripts/check-locale-coverage.mjs).
  */
-export const partialLocales: readonly Locale[] = ['hi'] as const;
+export const partialLocales: readonly Locale[] = [] as const;
 
 // Whether to auto-detect locale from browser's Accept-Language header
 // Set to true to automatically show the site in user's preferred language
