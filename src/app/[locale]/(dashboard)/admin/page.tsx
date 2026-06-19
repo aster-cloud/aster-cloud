@@ -231,19 +231,19 @@ export default async function AdminOverviewPage({ params }: Props) {
         </div>
       </section>
 
-      {/* Feature flags — admin-controlled platform toggles. Lives
-          between Admin Pulse and the Tools section so a SaaS admin
-          can flip a switch without scrolling past the day-to-day
-          control surfaces. */}
-      <section aria-labelledby="admin-flags-heading">
+      {/* Platform controls — admin-controlled platform toggles (feature
+          flags + language availability). Lives between Admin Pulse and the
+          Tools section so a SaaS admin can flip a switch without scrolling
+          past the day-to-day control surfaces. */}
+      <section aria-labelledby="admin-controls-heading">
         <h2
-          id="admin-flags-heading"
-          className="mb-3 text-sm font-semibold uppercase tracking-wider text-fg-muted sr-only"
+          id="admin-controls-heading"
+          className="mb-3 text-sm font-semibold uppercase tracking-wider text-fg-muted"
         >
-          Feature flags
+          {t('controlsHeading')}
         </h2>
-        <FeatureFlagsCard />
-        <div className="mt-4">
+        <div className="grid gap-4">
+          <FeatureFlagsCard />
           <PlatformLanguageCard />
         </div>
       </section>

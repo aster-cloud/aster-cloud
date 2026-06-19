@@ -1582,6 +1582,7 @@
     "overview": {
       "title": "Admin-Übersicht",
       "subtitle": "Übergreifende operative Steuerung der Plattform.",
+      "controlsHeading": "Plattformsteuerung",
       "cardsHeading": "Operative Werkzeuge",
       "aiBreakerCard": {
         "title": "KI-Schutzschalter",
@@ -2992,10 +2993,8 @@
     "description": "Wählen Sie, welche Sprachen plattformweit verfügbar sind — sowohl in der App als auch auf der Doku-Website (aster-lang.dev). Das Deaktivieren einer Sprache nimmt sie überall offline: ihre UI, ihr Lexikon und das Schreiben von Richtlinien in ihr. Team-Spracheinstellungen sind eine Teilmenge davon.",
     "enabledLabel": "Aktiviert",
     "disabledLabel": "Deaktiviert",
-    "defaultLocaleNote": "Die Standardsprache kann nicht deaktiviert werden.",
-    "saving": "Wird gespeichert…",
-    "saved": "Gespeichert",
-    "save": "Speichern",
-    "saveFailed": "Speichern fehlgeschlagen. Bitte erneut versuchen."
+    "defaultLocaleNote": "Standardsprache — immer verfügbar, kann nicht deaktiviert werden.",
+    "toggleAriaLabel": "Verfügbarkeit von {language} umschalten",
+    "saveFailed": "Aktualisierung fehlgeschlagen. Bitte erneut versuchen."
   }
 }
