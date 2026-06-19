@@ -25,3 +25,25 @@ export function backendAvailableLocales(lexicons: readonly LexiconInfo[]): Local
   const backend = new Set(lexicons.map((l) => lexiconIdToUiLocale(l.id)));
   return locales.filter((l) => backend.has(l));
 }
+
+/**
+ * UI 短码 → 后端 lexicon id（BCP-47）的**稳定**映射。
+ *
+ * 用于管理面板调 enable/disable：disable 某语种后其 id 会从 /api/v1/lexicons 消失，
+ * 所以**不能**只从 live 列表派生反查表（否则无法再 enable 一个已 disable 的语种）。
+ * 这四个是编译期固定语种，标签稳定，直接登记。
+ *
+ * 与 useAvailableLocales（dev/cloud）的 FULL_TO_SHORT 是同一组映射的反向；新增编译期
+ * 语种时两处都要补（已被 LOCALE_LEXICON_ID 的 satisfies 完整性约束在本仓兜住）。
+ */
+export const LOCALE_LEXICON_ID = {
+  en: 'en-US',
+  zh: 'zh-CN',
+  de: 'de-DE',
+  hi: 'hi-IN',
+} satisfies Record<Locale, string>;
+
+/** 反查：把 UI 短码映回后端 lexicon id（BCP-47）。 */
+export function uiLocaleToLexiconId(loc: Locale): string {
+  return LOCALE_LEXICON_ID[loc];
+}
