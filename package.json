@@ -87,7 +87,7 @@
     "ws": "8.21.0"
   },
   "devDependencies": {
-    "@aster-cloud/glossary": "^0.1.1",
+    "@aster-cloud/glossary": "^0.1.2",
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/react": "3.1.1",
     "@next/eslint-plugin-next": "16.2.9",
