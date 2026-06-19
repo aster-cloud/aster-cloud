@@ -15,7 +15,11 @@ const SCAN_DIRS = [
   path.join(ROOT, 'src/app/[locale]/(dashboard)/teams'),
   path.join(ROOT, 'src/components/teams'),
 ];
+// UI 文案真相源 = @aster-cloud/ui-messages npm 包（cloud 不再手维护 messages/*）。
+// 包内文件按全码 id 命名。
 const MESSAGE_LOCALES = ['en', 'zh', 'de'] as const;
+const LOCALE_IDS = { en: 'en-US', zh: 'zh-CN', de: 'de-DE' } as const;
+const UI_MESSAGES_DIR = path.join(ROOT, 'node_modules', '@aster-cloud', 'ui-messages');
 
 function walk(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -58,7 +62,7 @@ for (const dir of SCAN_DIRS) {
 
 const messages = Object.fromEntries(
   MESSAGE_LOCALES.map((loc) => {
-    const text = fs.readFileSync(path.join(ROOT, `messages/${loc}.json`), 'utf8');
+    const text = fs.readFileSync(path.join(UI_MESSAGES_DIR, `${LOCALE_IDS[loc]}.json`), 'utf8');
     return [loc, JSON.parse(text)];
   })
 ) as Record<(typeof MESSAGE_LOCALES)[number], Record<string, unknown>>;

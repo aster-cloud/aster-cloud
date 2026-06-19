@@ -37,13 +37,24 @@ const PROJECT_ROOT = join(__dirname, '..');
 const BACKBONE = 'en';
 const ALL_LOCALES = ['zh', 'de', 'hi'];
 
+// UI 文案真相源 = @aster-cloud/ui-messages(en/zh/de) + @aster-cloud/ui-messages-hi(hi)
+// npm 包。cloud 不再手维护 messages/*（单一真相源，ADR 0018）。短码 → 包 + 全码 id。
+const LOCALE_PACKAGE = {
+  en: { pkg: '@aster-cloud/ui-messages', id: 'en-US' },
+  zh: { pkg: '@aster-cloud/ui-messages', id: 'zh-CN' },
+  de: { pkg: '@aster-cloud/ui-messages', id: 'de-DE' },
+  hi: { pkg: '@aster-cloud/ui-messages-hi', id: 'hi-IN' },
+};
+
 function arg(name) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : undefined;
 }
 
 function load(code) {
-  const file = join(PROJECT_ROOT, 'messages', `${code}.json`);
+  const entry = LOCALE_PACKAGE[code];
+  if (!entry) throw new Error(`unknown locale: ${code}`);
+  const file = join(PROJECT_ROOT, 'node_modules', entry.pkg, `${entry.id}.json`);
   return JSON.parse(readFileSync(file, 'utf-8'));
 }
 

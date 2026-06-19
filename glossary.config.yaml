@@ -18,12 +18,17 @@ glossary-pin:
 surfaces:
   messages:
     type: json
+    # UI 文案真相源 = @aster-cloud/ui-messages npm 包（aster-lang-locales 发布）。
+    # cloud 不再手维护 messages/*（单一真相源，ADR 0018）。
     paths:
-      - messages/en.json
-      - messages/zh.json
-      - messages/de.json
+      - node_modules/@aster-cloud/ui-messages/en-US.json
+      - node_modules/@aster-cloud/ui-messages/zh-CN.json
+      - node_modules/@aster-cloud/ui-messages/de-DE.json
+      # hi-IN 暂不纳入：@aster-cloud/glossary 当前只注册 en/zh/de（38 term × 3 locale），
+      # 加 hi path 会产 "hi not registered" 警告而非真覆盖。待 glossary 包注册 hi-IN 术语
+      # 翻译后再加 node_modules/@aster-cloud/ui-messages-hi/hi-IN.json。
     backbone-locale: en-US
-    locale-from-filename: true     # messages/<locale>.json
+    locale-from-filename: true     # <locale-id>.json（en-US → en）
   docs-onprem:
     type: markdown
     paths: docs/on-prem/**/*.md

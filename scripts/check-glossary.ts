@@ -350,8 +350,11 @@ async function main(): Promise<void> {
     if (surface.type === 'json') {
       for (const f of files) {
         if (!surface['locale-from-filename']) continue;
-        const short = localeFromFilename(f);
-        if (!short) continue;
+        // 文件名可能是短码（en.json）或全码（en-US.json，npm 包 @aster-cloud/ui-messages）。
+        // 统一归一到短码再查 glossary.locales（其 key 是短码）。
+        const fromName = localeFromFilename(f);
+        if (!fromName) continue;
+        const short = shortLocale(fromName);
         const full = shortToFull.get(short);
         if (!full) {
           issues.push({
