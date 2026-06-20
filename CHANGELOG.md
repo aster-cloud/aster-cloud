@@ -289,6 +289,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -463,6 +464,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Show Hindi on landing — remove dead platform-locale gate (#111) *(i18n)*
 - Forward browser Origin to aster-api trial guard (#103) *(playground)*
 - Bump LSP compiler to 1.0.1, harden LSP WS gate, untrack wrangler state, locale coverage guard (#98) (#99) *(cloud)*
 - Always render current locale as a switcher option (hydration) (#96) *(i18n)*
