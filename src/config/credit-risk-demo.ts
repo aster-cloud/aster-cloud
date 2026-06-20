@@ -180,6 +180,21 @@ export const DEMO_APPLICANTS: Record<'approved' | 'refer' | 'declined', DemoAppl
   declined: { id: 'APP-10561', creditScore: 561, monthlyIncome: 4100, monthlyDebt: 1640, requestedAmount: 150000 },
 };
 
+/**
+ * 边界翻转对照对（knife-edge pair）：除 creditScore 差 1 分外**完全相同**的两份申请。
+ * 在默认阈值下（standardScore=660），660 满足标准档 → APPROVED；659 差 1 分 → 跌出标准档、
+ * 仅过最低分 → REFER。同一条规则、同样的输入，1 分翻转决策——精确性 + 可解释性 + 可回放性
+ * 的最强单例证据（trace 逐步展示"为什么这 1 分改变了结果"）。
+ *
+ * 决策已用 computeDecision 逻辑逐步核实（dti=0.40≤0.43、额度 200000≤cap 360000）：
+ *  - pass(660): 信用分 660≥660 ✓ + 负债比 0.40≤0.43 ✓ + 额度 ✓ → APPROVED(standard)
+ *  - fail(659): 信用分 659<660 ✗ → 跌出标准档；659≥minScore 600 → REFER
+ */
+export const BOUNDARY_PAIR: { pass: DemoApplicant; fail: DemoApplicant } = {
+  pass: { id: 'APP-10660', creditScore: 660, monthlyIncome: 6000, monthlyDebt: 2400, requestedAmount: 200000 },
+  fail: { id: 'APP-10659', creditScore: 659, monthlyIncome: 6000, monthlyDebt: 2400, requestedAmount: 200000 },
+};
+
 export type Outcome = 'approved' | 'refer' | 'declined';
 
 export interface AdverseReason {
@@ -316,6 +331,66 @@ export function toEvalContext(loc: DemoLocale, app: DemoApplicant): Record<strin
 /** 当前语言的规则函数名（供 evaluate 调用）。 */
 export function getRuleName(loc: DemoLocale): string {
   return IDS[loc].ruleName;
+}
+
+/** cloud 短码 → 后端 lexicon 全码（evaluate-source 的 locale 参数）。 */
+const DEMO_LOCALE_FULL_ID: Record<DemoLocale, string> = {
+  en: 'en-US',
+  zh: 'zh-CN',
+  de: 'de-DE',
+};
+
+/** 后端（Java/Truffle 引擎）执行结果。 */
+export interface JvmEngineResult {
+  /** 引擎产出的决策字符串（与 TS 浏览器引擎应逐字节相同）。 */
+  decision: string | null;
+  /** 是否成功拿到决策。 */
+  ok: boolean;
+  /** 失败时的简短原因（展示用，不抛）。 */
+  error?: string;
+}
+
+/**
+ * 调后端 `/api/v1/policies/evaluate-source`（经 cloud playground BFF，匿名 + HMAC 签名）
+ * 用 **Java/Truffle 引擎**执行同一条规则同一申请人，取其决策。
+ *
+ * 用途：与浏览器内 TS 引擎的决策**并排对比**，现场证明"两个独立引擎逐字节相同"——
+ * 这是双引擎确定性护城河最硬的可验证证据。
+ *
+ * fail-open：后端不可达 / 限流 / 解析失败都返回 `{ ok:false }`，UI 降级为"仅 TS 引擎"，
+ * 绝不阻断 demo（marketing 页不能因后端抖动白屏）。
+ */
+export async function evaluateOnJvmEngine(
+  loc: DemoLocale,
+  source: string,
+  app: DemoApplicant,
+): Promise<JvmEngineResult> {
+  try {
+    const res = await fetch('/api/playground/evaluate-source', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        source,
+        context: toEvalContext(loc, app),
+        locale: DEMO_LOCALE_FULL_ID[loc],
+        functionName: getRuleName(loc),
+      }),
+    });
+    if (!res.ok) {
+      return { decision: null, ok: false, error: `HTTP ${res.status}` };
+    }
+    // 后端 EvaluationResponse 形态：{ result, executionTimeMs, error, decisionTrace?, ... }。
+    const data = (await res.json()) as { result?: unknown; error?: string };
+    if (data.error) {
+      return { decision: null, ok: false, error: data.error };
+    }
+    if (data.result === undefined || data.result === null) {
+      return { decision: null, ok: false, error: 'empty_result' };
+    }
+    return { decision: String(data.result), ok: true };
+  } catch (e) {
+    return { decision: null, ok: false, error: e instanceof Error ? e.message : 'fetch_failed' };
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
