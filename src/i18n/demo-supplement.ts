@@ -1,15 +1,20 @@
 /**
  * @module i18n/demo-supplement
  *
- * 信贷 demo 的**本地补充文案**（边界翻转对照 + 双引擎对比）。
+ * cloud 特有 UI 的**本地补充文案**，经 `deepMergeMessages` 叠加在 `@aster-cloud/ui-messages`
+ * npm 包加载的 messages 之上（见 request.ts）。
  *
- * 为什么不放 `@aster-cloud/ui-messages` npm 包（demoPage 其余文案的来源）：
- * 这两组文案是 **cloud demo 页特有的 UI 文本**，不是与后端 aster-api 共享的语言包内容。
- * 放进共享 npm 包会无谓地胖化它、并引入跨仓发版耦合。故作为**本地补充层**，经
- * `deepMergeMessages` 叠加在加载到的 messages 之上（见 request.ts）。
+ * 为什么不放共享 npm 包：这些是 **cloud 前端特有的 UI 文本**（信贷 demo + 团队语言卡的
+ * toggle 文案），不是与后端 aster-api 共享的语言包内容。放进共享包会胖化它、引入跨仓发版
+ * 耦合。本地补充层让新增/微调 cloud UI 文案无需 npm republish。
  *
- * 结构与 demoPage 命名空间对齐（`boundary.*` / `dualEngine.*`），next-intl 用
- * `useTranslations('demoPage')` 即可取到。缺 locale 时由 request.ts 的 en 底座兜底。
+ * 当前补充：
+ * - `demoPage.*`（boundary 翻转对照 + dualEngine 双引擎对比）
+ * - `languageSettings.toggleAriaLabel` / `languageSettings.saveFailed`（团队语言卡改为
+ *   每行 Toggle 即点即生效后新增，与 platformLanguageSettings 同结构）
+ *
+ * deepMergeMessages 深合并：只新增上述 key，不覆盖包里已有的 demoPage/languageSettings
+ * 其余文案。缺 locale 的 key 由 request.ts 的 en 底座兜底。
  */
 
 import type { Locale } from './config';
@@ -22,6 +27,10 @@ type MessageTree = Record<string, unknown>;
  */
 export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
   en: {
+    languageSettings: {
+      toggleAriaLabel: 'Toggle {language} for this team',
+      saveFailed: 'Could not update — please try again',
+    },
     demoPage: {
       scenarios: {
         boundaryPass: { label: 'Boundary — score 660' },
@@ -49,6 +58,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   zh: {
+    languageSettings: {
+      toggleAriaLabel: '为本团队开关{language}',
+      saveFailed: '更新失败——请重试',
+    },
     demoPage: {
       scenarios: {
         boundaryPass: { label: '边界 — 信用分 660' },
@@ -76,6 +89,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   de: {
+    languageSettings: {
+      toggleAriaLabel: '{language} für dieses Team umschalten',
+      saveFailed: 'Aktualisierung fehlgeschlagen — bitte erneut versuchen',
+    },
     demoPage: {
       scenarios: {
         boundaryPass: { label: 'Grenzfall — Score 660' },
@@ -103,6 +120,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   hi: {
+    languageSettings: {
+      toggleAriaLabel: 'इस टीम के लिए {language} टॉगल करें',
+      saveFailed: 'अपडेट नहीं हो सका — कृपया पुनः प्रयास करें',
+    },
     demoPage: {
       scenarios: {
         boundaryPass: { label: 'सीमा — स्कोर 660' },
