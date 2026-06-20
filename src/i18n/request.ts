@@ -1,6 +1,7 @@
 import { getRequestConfig } from 'next-intl/server';
 import { defaultLocale, locales, type Locale } from './config';
 import { loadMessages } from './messages-loader';
+import { DEMO_SUPPLEMENT } from './demo-supplement';
 
 /**
  * Deep-merge `override` 树到 `base` 之上。
@@ -63,6 +64,14 @@ export default getRequestConfig(async ({ requestLocale }) => {
     ]);
     messages = deepMergeMessages(fallbackMessages, localeMessages);
   }
+
+  // 本地补充层（demo 页特有文案，不进共享语言包）：先叠 en 底座补充再叠当前 locale 补充，
+  // 保证缺译的补充 key 也落到 en。叠在最上层 → 本地文案优先于（不会被）后端语言包覆盖。
+  const activeLocale = locale as Locale;
+  if (activeLocale !== defaultLocale) {
+    messages = deepMergeMessages(messages, DEMO_SUPPLEMENT[defaultLocale]);
+  }
+  messages = deepMergeMessages(messages, DEMO_SUPPLEMENT[activeLocale]);
 
   return {
     locale,

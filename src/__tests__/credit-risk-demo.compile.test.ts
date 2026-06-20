@@ -21,6 +21,7 @@ import {
   computeDecision,
   DEFAULT_THRESHOLDS,
   DEMO_APPLICANTS,
+  BOUNDARY_PAIR,
   type DemoLocale,
   type Thresholds,
 } from '@/config/credit-risk-demo';
@@ -87,6 +88,38 @@ describe('credit-risk demo rules compile & run in every language', () => {
       const ev = evaluate(result.core!, getRuleName('en'), toEvalContext('en', DEMO_APPLICANTS.refer));
       expect(String(ev.value)).toBe(after.decision);
     });
+  });
+
+  describe('boundary pair flips on a single credit-score point (边界 1 分翻转)', () => {
+    // demo 的核心卖点：BOUNDARY_PAIR 两份申请仅 creditScore 差 1 分（660 vs 659），
+    // 在默认阈值下决策必须翻转（660 → standard approved；659 → refer）。这条测试把
+    // 该卖点钉死——以后改样例或默认阈值若意外抹掉翻转，CI 立刻失败。
+    it('pass(660) and fail(659) differ only by one credit-score point', () => {
+      const { pass, fail } = BOUNDARY_PAIR;
+      expect(pass.creditScore - fail.creditScore).toBe(1);
+      // 除 creditScore + id 外字段完全相同（同一申请、同一规则，只差 1 分）。
+      expect(fail).toEqual({ ...pass, id: fail.id, creditScore: fail.creditScore });
+    });
+
+    for (const loc of LOCALES) {
+      it(`${loc}: the real engine flips the decision at the 660 boundary`, () => {
+        const result = compile(buildRuleSource(loc, DEFAULT_THRESHOLDS), { lexicon: LEXICONS[loc] } as Parameters<typeof compile>[1]);
+        expect(result.core, `[${loc}] core`).toBeTruthy();
+
+        const evPass = evaluate(result.core!, getRuleName(loc), toEvalContext(loc, BOUNDARY_PAIR.pass));
+        const evFail = evaluate(result.core!, getRuleName(loc), toEvalContext(loc, BOUNDARY_PAIR.fail));
+        const mirrorPass = computeDecision(loc, BOUNDARY_PAIR.pass, DEFAULT_THRESHOLDS);
+        const mirrorFail = computeDecision(loc, BOUNDARY_PAIR.fail, DEFAULT_THRESHOLDS);
+
+        // 引擎与镜像一致。
+        expect(String(evPass.value), `[${loc}] pass`).toBe(mirrorPass.decision);
+        expect(String(evFail.value), `[${loc}] fail`).toBe(mirrorFail.decision);
+        // 真引擎确实翻转：660 批准、659 转人工，两决策不同。
+        expect(mirrorPass.outcome, `[${loc}] pass outcome`).toBe('approved');
+        expect(mirrorFail.outcome, `[${loc}] fail outcome`).toBe('refer');
+        expect(String(evPass.value)).not.toBe(String(evFail.value));
+      });
+    }
   });
 
   describe('requested amount is a live decision lever (申请额度生效)', () => {

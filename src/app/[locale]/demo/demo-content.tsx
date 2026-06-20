@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { compile, evaluate, EN_US, ZH_CN, DE_DE } from '@aster-cloud/aster-lang-ts/browser';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
@@ -11,8 +11,10 @@ import {
   getRuleName,
   computeDecision,
   buildExplanation,
+  evaluateOnJvmEngine,
   DEFAULT_THRESHOLDS,
   DEMO_APPLICANTS,
+  BOUNDARY_PAIR,
   type DemoLocale,
   type DemoApplicant,
   type Thresholds,
@@ -54,32 +56,46 @@ export function DemoContent({ locale }: DemoContentProps) {
   const [presetKey, setPresetKey] = useState<keyof typeof DEMO_APPLICANTS | null>('approved');
   const [thresholds, setThresholds] = useState<Thresholds>(DEFAULT_THRESHOLDS);
   const [run, setRun] = useState<RunResult | null>(null);
+  // 双引擎对比：JVM（服务器 Truffle）引擎的决策。'checking' = 调用中；null = 未跑/不可用。
+  const [jvm, setJvm] = useState<{ status: 'checking' | 'done' | 'unavailable'; decision: string | null }>(
+    { status: 'unavailable', decision: null },
+  );
+  // run 代际计数：每次 rerun/resetRun 递增。异步 JVM 请求只在代际仍匹配时落地，
+  // 防止旧请求晚返回覆盖新 run 的 jvm 状态（导致 TS 来自新 run、JVM 来自旧 run 的错配）。
+  const runGenRef = useRef(0);
 
   // 规则源码：随当前阈值实时重建（改阈值 → 规则文本立刻变），证明展示的就是要执行的。
   const ruleSource = useMemo(() => buildRuleSource(loc, thresholds), [loc, thresholds]);
 
+  function resetRun() {
+    runGenRef.current += 1; // 作废任何飞行中的 JVM 请求
+    setRun(null);
+    setJvm({ status: 'unavailable', decision: null });
+  }
+
   function pickPreset(key: keyof typeof DEMO_APPLICANTS) {
     setApplicant(DEMO_APPLICANTS[key]);
     setPresetKey(key);
-    setRun(null); // 换输入 → 旧结果作废，必须重跑
+    resetRun(); // 换输入 → 旧结果作废，必须重跑
   }
 
   function editApplicant(patch: Partial<DemoApplicant>) {
     setApplicant((a) => ({ ...a, ...patch }));
     setPresetKey(null); // 手改 → 脱离预设
-    setRun(null);
+    resetRun();
   }
 
   function editThreshold(patch: Partial<Thresholds>) {
     setThresholds((th) => ({ ...th, ...patch }));
-    setRun(null);
+    resetRun();
   }
 
   // 「重跑」：用真实浏览器引擎编译当前规则 + 执行当前申请人，决策以引擎为准。
+  // 同时异步在服务器 JVM 引擎上执行同一规则，拿回决策与 TS 引擎并排对比（双引擎确定性证据）。
   function rerun() {
     const result = compile(ruleSource, { lexicon: LEXICONS[loc] } as Parameters<typeof compile>[1]);
     if (!result.core) {
-      setRun(null);
+      resetRun();
       return;
     }
     const ev = evaluate(result.core, getRuleName(loc), toEvalContext(loc, applicant));
@@ -92,6 +108,21 @@ export function DemoContent({ locale }: DemoContentProps) {
       trace: { ...mirror.trace, executionTimeMs: ev.executionTimeMs ?? mirror.trace.executionTimeMs },
       explanation: buildExplanation(loc, applicant, thresholds),
     });
+
+    // 双引擎对比：调服务器 JVM 引擎执行同一规则。fail-open——不可达则降级"仅浏览器引擎"。
+    // 用 applicant 快照固定本次请求；用 run 代际 token 防旧请求晚返回覆盖新 run 的状态。
+    const snapshot = applicant;
+    runGenRef.current += 1;
+    const gen = runGenRef.current;
+    setJvm({ status: 'checking', decision: null });
+    evaluateOnJvmEngine(loc, ruleSource, snapshot)
+      .then((res) => {
+        if (runGenRef.current !== gen) return; // 已有更新的 run，丢弃本次结果
+        setJvm(res.ok ? { status: 'done', decision: res.decision } : { status: 'unavailable', decision: null });
+      })
+      .catch(() => {
+        if (runGenRef.current === gen) setJvm({ status: 'unavailable', decision: null });
+      });
   }
 
   return (
@@ -204,6 +235,27 @@ export function DemoContent({ locale }: DemoContentProps) {
         {!run && <p className="mt-3 text-sm text-fg-muted">{t('runHint')}</p>}
       </section>
 
+      {/* 双引擎对比：浏览器 TS 引擎 vs 服务器 JVM 引擎，逐字节相同 = 护城河最硬证据 */}
+      {run && (
+        <section className="mb-8">
+          <DualEnginePanel
+            tsDecision={run.decision}
+            jvm={jvm}
+            outcome={run.outcome}
+            labels={{
+              title: t('dualEngine.title'),
+              hint: t('dualEngine.hint'),
+              tsLabel: t('dualEngine.tsLabel'),
+              jvmLabel: t('dualEngine.jvmLabel'),
+              agree: t('dualEngine.agree'),
+              disagree: t('dualEngine.disagree'),
+              unavailable: t('dualEngine.jvmUnavailable'),
+              checking: t('dualEngine.checking'),
+            }}
+          />
+        </section>
+      )}
+
       {/* 步骤 5：回放（DecisionTracePanel）—— 杀手卖点 */}
       {run && (
         <section className="mb-8">
@@ -243,6 +295,25 @@ export function DemoContent({ locale }: DemoContentProps) {
           <DecisionTracePanel trace={run.trace} />
         </section>
       )}
+
+      {/* 边界翻转对照：1 分之差翻转决策 —— 精确性 + 可解释性 + 可回放性的最强单例 */}
+      <section className="mb-8">
+        <BoundaryFlipPanel
+          loc={loc}
+          thresholds={thresholds}
+          labels={{
+            title: t('boundary.title'),
+            hint: t('boundary.hint'),
+            passLabel: t('boundary.passLabel'),
+            failLabel: t('boundary.failLabel'),
+            identicalExcept: t('boundary.identicalExcept'),
+            scoreField: t('fields.creditScore'),
+            flipNote: (pass, fail, threshold) =>
+              t('boundary.flipNote', { pass, fail, threshold }),
+            noFlipNote: (pass) => t('boundary.noFlipNote', { pass }),
+          }}
+        />
+      </section>
 
       {/* CTA */}
       <div className="mt-12 rounded-xl border border-border bg-bg-subtle p-6 text-center">
@@ -296,4 +367,151 @@ function NumberField({
       </div>
     </label>
   );
+}
+
+/**
+ * 双引擎对比面板：浏览器内 TS 引擎决策 vs 服务器 JVM(Truffle) 引擎决策，并排展示。
+ * 两者逐字节相同 = 双引擎确定性护城河的当场可验证证据。JVM 不可达时 fail-open 降级。
+ */
+function DualEnginePanel({
+  tsDecision,
+  jvm,
+  outcome,
+  labels,
+}: {
+  tsDecision: string;
+  jvm: { status: 'checking' | 'done' | 'unavailable'; decision: string | null };
+  outcome: Outcome;
+  labels: {
+    title: string; hint: string; tsLabel: string; jvmLabel: string;
+    agree: string; disagree: string; unavailable: string; checking: string;
+  };
+}) {
+  const agree = jvm.status === 'done' && jvm.decision === tsDecision;
+  const disagree = jvm.status === 'done' && jvm.decision !== tsDecision;
+  return (
+    <div>
+      <StepHeadingPlain title={labels.title} />
+      <p className="mb-3 text-sm text-fg-muted">{labels.hint}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <EngineCard label={labels.tsLabel} decision={tsDecision} outcome={outcome} />
+        {jvm.status === 'checking' && (
+          <div className="flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-subtle p-4 text-sm text-fg-muted">
+            {labels.checking}
+          </div>
+        )}
+        {jvm.status === 'done' && (
+          <EngineCard label={labels.jvmLabel} decision={jvm.decision ?? ''} outcome={outcome} />
+        )}
+        {jvm.status === 'unavailable' && (
+          <div className="flex items-center justify-center rounded-lg border border-dashed border-border bg-bg-subtle p-4 text-center text-xs text-fg-subtle">
+            {labels.unavailable}
+          </div>
+        )}
+      </div>
+      {agree && (
+        <div className="mt-3 flex items-center gap-2 rounded-md bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200">
+          <svg className="size-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 011.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clipRule="evenodd" />
+          </svg>
+          {labels.agree}
+        </div>
+      )}
+      {disagree && (
+        <div className="mt-3 rounded-md bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 ring-1 ring-rose-200">
+          {labels.disagree}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EngineCard({ label, decision, outcome }: { label: string; decision: string; outcome: Outcome }) {
+  return (
+    <div className="rounded-lg border border-border bg-bg p-4">
+      <div className="text-xs font-medium uppercase tracking-wide text-fg-subtle">{label}</div>
+      <div className={cn('mt-2 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ring-1', OUTCOME_STYLES[outcome])}>
+        {decision}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 边界翻转对照面板：BOUNDARY_PAIR（信用分仅差 1 分）两份申请的决策并排展示，
+ * 高亮"1 分之差翻转结果"。决策由 computeDecision 实时算（随阈值变），始终与规则一致。
+ */
+function BoundaryFlipPanel({
+  loc,
+  thresholds,
+  labels,
+}: {
+  loc: DemoLocale;
+  thresholds: Thresholds;
+  labels: {
+    title: string; hint: string; passLabel: string; failLabel: string;
+    identicalExcept: string; scoreField: string;
+    flipNote: (pass: string, fail: string, threshold: number) => string;
+    noFlipNote: (pass: string) => string;
+  };
+}) {
+  const pass = computeDecision(loc, BOUNDARY_PAIR.pass, thresholds);
+  const fail = computeDecision(loc, BOUNDARY_PAIR.fail, thresholds);
+  // 阈值可调：若用户改阈值使两边决策相同（不再翻转），文案不能继续断言"翻转"——
+  // 切到中性说明，引导调回 660 看边界。默认阈值下二者不同 → 显示翻转文案。
+  const flipped = pass.decision !== fail.decision;
+  return (
+    <div>
+      <StepHeadingPlain title={labels.title} />
+      <p className="mb-3 text-sm text-fg-muted">{labels.hint}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <BoundaryCard
+          label={labels.passLabel}
+          score={BOUNDARY_PAIR.pass.creditScore}
+          scoreField={labels.scoreField}
+          decision={pass.decision}
+          outcome={pass.outcome}
+        />
+        <BoundaryCard
+          label={labels.failLabel}
+          score={BOUNDARY_PAIR.fail.creditScore}
+          scoreField={labels.scoreField}
+          decision={fail.decision}
+          outcome={fail.outcome}
+        />
+      </div>
+      <p className={cn(
+        'mt-3 rounded-md px-4 py-3 text-sm',
+        flipped ? 'bg-primary-subtle text-fg' : 'bg-bg-subtle text-fg-muted',
+      )}>
+        {flipped
+          ? labels.flipNote(pass.decision, fail.decision, thresholds.standardScore)
+          : labels.noFlipNote(pass.decision)}
+      </p>
+      <p className="mt-1.5 text-center text-xs text-fg-subtle">{labels.identicalExcept}</p>
+    </div>
+  );
+}
+
+function BoundaryCard({
+  label, score, scoreField, decision, outcome,
+}: {
+  label: string; score: number; scoreField: string; decision: string; outcome: Outcome;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-bg p-4">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-fg-subtle">{label}</span>
+        <span className="font-mono text-xs text-fg-subtle">{scoreField} {score}</span>
+      </div>
+      <div className={cn('mt-2 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ring-1', OUTCOME_STYLES[outcome])}>
+        {decision}
+      </div>
+    </div>
+  );
+}
+
+/** 无序号的小标题（双引擎/边界面板用，复用 StepHeading 视觉但不带序号圈）。 */
+function StepHeadingPlain({ title }: { title: string }) {
+  return <h2 className="mb-2 text-sm font-semibold text-fg">{title}</h2>;
 }
