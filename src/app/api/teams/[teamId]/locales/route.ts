@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { getTeamEnabledLocales, setTeamEnabledLocales } from '@/lib/team-locales';
-import { getPlatformEnabledLocales } from '@/lib/platform-settings';
 import { locales, defaultLocale, type Locale } from '@/i18n/config';
 
 type RouteParams = { params: Promise<{ teamId: string }> };
@@ -12,8 +11,8 @@ type RouteParams = { params: Promise<{ teamId: string }> };
  *
  * 返回：
  *  - `compiled`: 平台编译支持的全部 locale（i18n/config）
- *  - `selectable`: 团队**可勾选**的 locale = 平台允许集（团队是平台子集）。
- *    平台未配置（null）时等于 compiled 全集。
+ *  - `selectable`: 团队**可勾选**的 locale = 编译支持全集。
+ *    真实可用性由语言切换器的编译集 ∩ 后端 lexicon 注册表决定。
  *  - `enabled`: 当前团队白名单；`null` = 未配置 = 全部开放
  *  - `defaultLocale`: 不可关闭的默认语言
  */
@@ -31,13 +30,10 @@ export async function GET(_req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: permission.error }, { status: permission.status });
     }
 
-    const [enabled, platform] = await Promise.all([
-      getTeamEnabledLocales(teamId),
-      getPlatformEnabledLocales(),
-    ]);
+    const enabled = await getTeamEnabledLocales(teamId);
     return NextResponse.json({
       compiled: [...locales],
-      selectable: platform ?? [...locales],
+      selectable: [...locales],
       enabled,
       defaultLocale,
     });
