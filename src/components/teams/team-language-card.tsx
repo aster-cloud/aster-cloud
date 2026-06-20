@@ -9,7 +9,7 @@ import { backendAvailableLocales } from '@/lib/lexicon-locale';
 
 interface LocalesResponse {
   compiled: Locale[];
-  // 团队可勾选的 locale = 平台允许集（团队是平台子集）。
+  // 团队可勾选的 locale = 编译支持全集；后端 lexicon 决定真实可用性。
   selectable: Locale[];
   enabled: Locale[] | null;
   defaultLocale: Locale;
@@ -18,17 +18,17 @@ interface LocalesResponse {
 /**
  * 团队语言可用性卡片（ADR 0017）。
  *
- * 团队 owner/admin 勾选哪些 UI 语言开放给团队用户。**只列平台允许的语言**
- * （`selectable` = 平台层白名单）——团队不能开放平台已禁用的语言。默认语言
- * 始终启用且禁用其复选框。`enabled === null` 表示"全部开放"——初始全选。
+ * 团队 owner/admin 勾选哪些 UI 语言开放给团队用户。`selectable` 是编译支持
+ * 全集；后端 lexicon 注册表才是平台真相，切换器会与它求交。默认语言始终启用
+ * 且禁用其复选框。`enabled === null` 表示"全部开放"——初始全选。
  *
- * 保存调用 PUT /api/teams/[teamId]/locales；后端 clamp 到平台允许集 + normalize。
- * 语言切换器据此过滤（compiled ∩ backend ∩ platform-allowed ∩ team-allowed）。
+ * 保存调用 PUT /api/teams/[teamId]/locales；后端 normalize 后落库。
+ * 语言切换器据此过滤（compiled ∩ backend ∩ team-allowed）。
  */
 export function TeamLanguageCard({ teamId }: { teamId: string }) {
   const t = useTranslations('languageSettings');
   const [defaultLocale, setDefaultLocale] = useState<Locale>('en');
-  // 平台允许的可勾选集；默认全集（平台未配置时）。
+  // 团队可勾选集；默认编译支持全集。
   const [selectable, setSelectable] = useState<Locale[]>([...locales]);
   const [selected, setSelected] = useState<Set<Locale>>(new Set(locales));
   const [loading, setLoading] = useState(true);
@@ -51,7 +51,7 @@ export function TeamLanguageCard({ teamId }: { teamId: string }) {
       setDefaultLocale(data.defaultLocale);
       const sel = data.selectable ?? data.compiled;
       setSelectable(sel);
-      // enabled === null = 全部开放 → 选中所有平台允许的语言。
+      // enabled === null = 全部开放 → 选中所有可勾选语言。
       setSelected(new Set(data.enabled ?? sel));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed');

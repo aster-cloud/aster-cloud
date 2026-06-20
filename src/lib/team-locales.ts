@@ -5,11 +5,7 @@
  *
  * 团队 owner/admin 可设置哪些语言开放给该团队的用户。语言切换器的可用集 =
  * 编译支持（i18n/config 的 locales）∩ 后端可用（/api/v1/lexicons）
- * ∩ 平台允许（系统全局管理员，最高优先级）∩ 此团队白名单。
- *
- * **层级关系**：平台层 > 团队层。团队白名单是平台白名单的**子集**——团队不能
- * 开放平台已禁用的语言。写入时 normalizeEnabledLocales 与平台允许集求交；
- * 读取/解析时也再交一次（防平台事后收紧导致团队留存了已禁语言）。
+ * ∩ 此团队白名单。
  *
  * 数据存于 `Team.enabledLocales`（jsonb 数组）。**null = 未配置 = 全部开放**
  * （默认，不破坏既有团队）。空数组不允许——见 normalizeEnabledLocales，
@@ -19,7 +15,6 @@
 import { db, teams, teamMembers } from '@/lib/prisma';
 import { eq, inArray } from 'drizzle-orm';
 import { locales, defaultLocale, type Locale } from '@/i18n/config';
-import { getPlatformEnabledLocales } from '@/lib/platform-settings';
 
 /**
  * 读取团队的语言白名单。
@@ -64,11 +59,7 @@ export function normalizeEnabledLocales(input: readonly string[]): Locale[] | nu
  * @param input 期望开放的 locale 列表；经 normalizeEnabledLocales 处理后落库。
  */
 export async function setTeamEnabledLocales(teamId: string, input: readonly string[]): Promise<void> {
-  // 团队是平台的子集：先把请求 clamp 到平台允许集（团队不能开平台禁的语言）。
-  // platform=null（不限制）则不裁剪。
-  const platform = await getPlatformEnabledLocales();
-  const clamped = platform ? input.filter((l) => platform.includes(l as Locale)) : input;
-  const normalized = normalizeEnabledLocales(clamped);
+  const normalized = normalizeEnabledLocales(input);
   await db
     .update(teams)
     .set({ enabledLocales: normalized, updatedAt: new Date() })
@@ -93,15 +84,12 @@ export async function resolveUserAllowedLocales(userId: string): Promise<Locale[
   // （null），绝不能抛出——否则整个 dashboard 渲染崩溃。语言门是非关键增强，
   // 出错时回退到"全部语言可用"的既有行为是安全且符合最小意外原则的。
   try {
-    // 平台层（最高优先级）先取。null = 平台不限制。
-    const platform = await getPlatformEnabledLocales();
-
     const memberships = await db.query.teamMembers.findMany({
       where: eq(teamMembers.userId, userId),
       columns: { teamId: true },
     });
 
-    // 团队层：各团队白名单的并集。任一团队"全部开放"(null)=团队层不限制。
+    // 团队层：各团队白名单的并集。任一团队"全部开放"(null)=不限制。
     let team: Locale[] | null = null;
     if (memberships.length > 0) {
       const teamIds = memberships.map((m) => m.teamId);
@@ -124,9 +112,7 @@ export async function resolveUserAllowedLocales(userId: string): Promise<Locale[
       }
     }
 
-    // 合成：平台 ∩ 团队。任一层 null（不限制）则取另一层；都 null 则整体不限制。
-    const effective = intersectAllowlists(platform, team);
-    return effective;
+    return team;
   } catch (err) {
     console.error('[team-locales] resolveUserAllowedLocales failed; falling back to unrestricted', err);
     return null;
@@ -134,7 +120,7 @@ export async function resolveUserAllowedLocales(userId: string): Promise<Locale[
 }
 
 /**
- * 两个白名单求交（null = 不限制）。两层语言门（平台 ∩ 团队）的合成逻辑。
+ * 两个白名单求交（null = 不限制）。保留为纯函数工具，生产路径不再有平台层。
  * - 都 null → null（整体不限制）
  * - 一方 null → 另一方（该层不限制，只受另一层约束）
  * - 都非 null → 交集（保证含 defaultLocale，交集空时兜底 [defaultLocale]）

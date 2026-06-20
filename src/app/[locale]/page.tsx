@@ -39,7 +39,6 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
-import { getPlatformEnabledLocales } from '@/lib/platform-settings';
 import { SkipToContent } from '@/components/skip-to-content';
 import { locales, localeNames, type Locale } from '@/i18n/config';
 import {
@@ -67,17 +66,13 @@ type Props = {
 export default async function Home({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  // 匿名访客也受平台级语言白名单约束（系统全局管理员设定）。fail-open=null。
-  const platformLocales = await getPlatformEnabledLocales().catch(() => null);
-  return <HomeContent locale={locale} allowedLocales={platformLocales} />;
+  return <HomeContent locale={locale} />;
 }
 
 function HomeContent({
   locale,
-  allowedLocales,
 }: {
   locale: string;
-  allowedLocales: Locale[] | null;
 }) {
   const t = useTranslations();
   const currency = getCurrencyForLocale(locale);
@@ -86,7 +81,7 @@ function HomeContent({
   return (
     <div className="flex min-h-screen flex-col bg-bg text-fg">
       <SkipToContent targetId="main" />
-      <Nav t={t} allowedLocales={allowedLocales} />
+      <Nav t={t} />
       <main id="main" className="flex flex-col">
         <Hero t={t} locale={locale} />
         <TrustBand t={t} />
@@ -114,10 +109,8 @@ function HomeContent({
 
 function Nav({
   t,
-  allowedLocales,
 }: {
   t: ReturnType<typeof useTranslations>;
-  allowedLocales: Locale[] | null;
 }) {
   // Public landing nav — evaluator-grade. Three rows of links exist
   // in the IA proposal (Product, Pricing, Docs, Blog, Sign in,
@@ -188,7 +181,8 @@ function Nav({
               </Link>
             </Stack>
             <Stack direction="row" gap={4} align="center">
-              <LanguageSwitcher allowedLocales={allowedLocales} />
+              {/* 公开 landing 无团队上下文；平台真相来自编译集 ∩ 后端 lexicon 注册表。 */}
+              <LanguageSwitcher allowedLocales={null} />
               <Link
                 href="/login"
                 className="text-sm font-medium text-fg-muted transition-colors hover:text-fg"
