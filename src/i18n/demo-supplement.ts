@@ -27,6 +27,33 @@ type MessageTree = Record<string, unknown>;
  */
 export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
   en: {
+    demosIndex: {
+      seo: {
+        title: 'Demos — Aster Lang',
+        description: 'Interactive demos: replay a credit decision, write rules in industry vocabulary, and a playful cat-mood engine.',
+      },
+      eyebrow: 'Demos',
+      title: 'See Aster in action',
+      subtitle: 'Three live demos — each runs the real engine in your browser, no signup.',
+      enter: 'Open demo',
+      cards: {
+        credit: {
+          title: 'Replay a credit decision',
+          description: 'A real loan-approval rule decides an application — then replay exactly how, the answer you give a regulator. With a byte-for-byte two-engine check and a tamper-checkable decision hash.',
+        },
+        vocab: {
+          title: 'Domain vocabulary',
+          description: 'Write the same rule in the words your industry actually uses — across three domains — and watch it compile and run unchanged.',
+        },
+        kitten: {
+          title: 'Cat mood engine 🐱',
+          description: 'A playful one: a poetic cat-vocabulary rule drives a little hand-drawn cat animation. Proof that Aster rules read like plain language.',
+        },
+      },
+    },
+    footer: {
+      demos: 'Demos',
+    },
     languageSettings: {
       toggleAriaLabel: 'Toggle {language} for this team',
       saveFailed: 'Could not update — please try again',
@@ -66,6 +93,33 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   zh: {
+    demosIndex: {
+      seo: {
+        title: 'Demo 演示 — Aster Lang',
+        description: '交互式演示：回放一笔信贷决策、用行业词汇编写规则、以及一个有趣的猫咪心情引擎。',
+      },
+      eyebrow: 'Demo 演示',
+      title: '看 Aster 跑起来',
+      subtitle: '三个在线演示——每个都在你浏览器里跑真引擎，无需注册。',
+      enter: '打开演示',
+      cards: {
+        credit: {
+          title: '回放一笔信贷决策',
+          description: '一条真实的贷款准入规则对申请作出决策——然后逐步回放它是怎么得出的，正是你交给监管的答案。含双引擎逐字节核对与可核验的决策哈希。',
+        },
+        vocab: {
+          title: '领域词汇',
+          description: '用你所在行业真正在用的词写同一条规则——跨三个领域——看它原样编译并执行。',
+        },
+        kitten: {
+          title: '猫咪心情引擎 🐱',
+          description: '一个有趣的演示：一条富有诗意的猫咪词汇规则驱动一只手绘小猫动画。证明 Aster 规则读起来就像平常说话。',
+        },
+      },
+    },
+    footer: {
+      demos: 'Demo 演示',
+    },
     languageSettings: {
       toggleAriaLabel: '为本团队开关{language}',
       saveFailed: '更新失败——请重试',
@@ -105,6 +159,33 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   de: {
+    demosIndex: {
+      seo: {
+        title: 'Demos — Aster Lang',
+        description: 'Interaktive Demos: eine Kreditentscheidung wiedergeben, Regeln in Branchenvokabular schreiben und eine verspielte Katzenstimmungs-Engine.',
+      },
+      eyebrow: 'Demos',
+      title: 'Aster in Aktion erleben',
+      subtitle: 'Drei Live-Demos — jede führt die echte Engine in Ihrem Browser aus, ohne Anmeldung.',
+      enter: 'Demo öffnen',
+      cards: {
+        credit: {
+          title: 'Eine Kreditentscheidung wiedergeben',
+          description: 'Eine echte Kreditvergaberegel entscheidet über einen Antrag — und Sie spielen genau nach, wie, die Antwort für eine Prüfbehörde. Mit Byte-für-Byte-Zwei-Engine-Abgleich und prüfbarem Entscheidungs-Hash.',
+        },
+        vocab: {
+          title: 'Fachvokabular',
+          description: 'Schreiben Sie dieselbe Regel in den Worten, die Ihre Branche tatsächlich verwendet — über drei Domänen hinweg — und sehen Sie, wie sie unverändert kompiliert und läuft.',
+        },
+        kitten: {
+          title: 'Katzenstimmungs-Engine 🐱',
+          description: 'Eine verspielte: Eine poetische Katzen-Vokabular-Regel steuert eine kleine handgezeichnete Katzen-Animation. Beweis, dass Aster-Regeln wie normale Sprache lesbar sind.',
+        },
+      },
+    },
+    footer: {
+      demos: 'Demos',
+    },
     languageSettings: {
       toggleAriaLabel: '{language} für dieses Team umschalten',
       saveFailed: 'Aktualisierung fehlgeschlagen — bitte erneut versuchen',
@@ -144,6 +225,33 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   hi: {
+    demosIndex: {
+      seo: {
+        title: 'डेमो — Aster Lang',
+        description: 'इंटरैक्टिव डेमो: एक क्रेडिट निर्णय को फिर से चलाएँ, उद्योग शब्दावली में नियम लिखें, और एक मज़ेदार कैट-मूड इंजन।',
+      },
+      eyebrow: 'डेमो',
+      title: 'Aster को क्रिया में देखें',
+      subtitle: 'तीन लाइव डेमो — हर एक आपके ब्राउज़र में असली इंजन चलाता है, बिना साइनअप।',
+      enter: 'डेमो खोलें',
+      cards: {
+        credit: {
+          title: 'एक क्रेडिट निर्णय फिर से चलाएँ',
+          description: 'एक वास्तविक ऋण-स्वीकृति नियम एक आवेदन पर निर्णय लेता है — फिर ठीक से फिर से चलाएँ कि कैसे, वह उत्तर जो आप नियामक को देते हैं। बाइट-दर-बाइट दो-इंजन जाँच और सत्यापन-योग्य निर्णय हैश के साथ।',
+        },
+        vocab: {
+          title: 'डोमेन शब्दावली',
+          description: 'वही नियम उन शब्दों में लिखें जो आपका उद्योग वास्तव में उपयोग करता है — तीन डोमेन में — और देखें कि यह अपरिवर्तित कंपाइल और चलता है।',
+        },
+        kitten: {
+          title: 'कैट-मूड इंजन 🐱',
+          description: 'एक मज़ेदार: एक काव्यात्मक बिल्ली-शब्दावली नियम एक छोटे हाथ से बनाए बिल्ली एनिमेशन को चलाता है। प्रमाण कि Aster नियम सामान्य भाषा की तरह पढ़े जाते हैं।',
+        },
+      },
+    },
+    footer: {
+      demos: 'डेमो',
+    },
     languageSettings: {
       toggleAriaLabel: 'इस टीम के लिए {language} टॉगल करें',
       saveFailed: 'अपडेट नहीं हो सका — कृपया पुनः प्रयास करें',

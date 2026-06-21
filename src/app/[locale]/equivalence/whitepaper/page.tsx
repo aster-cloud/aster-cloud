@@ -2,7 +2,7 @@
  * 双引擎等价白皮书专用页（/equivalence/whitepaper）。
  *
  * 面向风控/合规的可读长文 + 「下载 PDF」按钮（浏览器 window.print() + print CSS）。
- * 内容三语本地化（en/zh/de），与 /demo 的三语一致性原则统一。SEO 标题/描述取
+ * 内容三语本地化（en/zh/de），与 /demos/credit 的三语一致性原则统一。SEO 标题/描述取
  * whitepaper.meta，canonical 指向本路由。
  */
 import type { Metadata } from 'next';

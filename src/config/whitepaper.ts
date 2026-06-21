@@ -1,7 +1,7 @@
 // 双引擎等价白皮书内容（en/zh/de），供 /equivalence/whitepaper 页面渲染 + 浏览器打印 PDF。
 //
 // 内容来源：docs/dual-engine-equivalence-whitepaper.md（英文权威版），此处结构化为
-// 可渲染段落并完整本地化为中文、德文，与 /demo 的三语一致性原则保持统一。
+// 可渲染段落并完整本地化为中文、德文，与 /demos/credit 的三语一致性原则保持统一。
 // 图表/实时数字仍以 /equivalence 为准；本白皮书引用 v1.0.0 测量快照 + 指向实时页。
 
 export type WhitepaperLocale = 'en' | 'zh' | 'de';
@@ -56,7 +56,7 @@ export interface WhitepaperContent {
   example: {
     heading: string;
     intro: string;
-    ruleCode: string; // 规则代码块（按语言本地化标识符/关键词，与 /demo 一致）
+    ruleCode: string; // 规则代码块（按语言本地化标识符/关键词，与 /demos/credit 一致）
     declinedLead: string;
     steps: string[];
     closing: string;
@@ -68,7 +68,7 @@ export interface WhitepaperContent {
   footer: string;
 }
 
-// 规则代码块——复用 /demo 的三语本地化形态（标识符也本地化）。
+// 规则代码块——复用 /demos/credit 的三语本地化形态（标识符也本地化）。
 const RULE_EN = `Rule decide given applicant as Applicant, produce Text:
   Let dtiRatio be applicant.monthlyDebt divided by applicant.monthlyIncome.
   If applicant.creditScore at least 740 and dtiRatio at most 0.35:
@@ -170,7 +170,7 @@ export const WHITEPAPER: Record<WhitepaperLocale, WhitepaperContent> = {
         'Return “Declined — credit score below threshold”',
       ],
       closing: 'This is recomputed from the exact rule version and inputs in force at decision time, and the result is verified identical across both engines. You are not showing the auditor a guess or a log line — you are showing them the decision being made again, deterministically, in front of them.',
-      tryAt: 'You can run this exact scenario at aster-lang.cloud/demo.',
+      tryAt: 'You can run this exact scenario at aster-lang.cloud/demos/credit.',
     },
     buys: {
       heading: '5. What this buys you',
@@ -258,7 +258,7 @@ export const WHITEPAPER: Record<WhitepaperLocale, WhitepaperContent> = {
         '返回「拒绝 — 信用分低于门槛」',
       ],
       closing: '这是从决策当时生效的确切规则版本与输入重新算出的，且结果经两套引擎核对一致。你给审计员看的不是猜测、不是一行日志——而是这笔决策在他们面前被确定性地再做一遍。',
-      tryAt: '你可以在 aster-lang.cloud/demo 跑这个完全一样的场景。',
+      tryAt: '你可以在 aster-lang.cloud/demos/credit 跑这个完全一样的场景。',
     },
     buys: {
       heading: '5. 它给你带来什么',
@@ -346,7 +346,7 @@ export const WHITEPAPER: Record<WhitepaperLocale, WhitepaperContent> = {
         'gib zurück „Abgelehnt — Bonität unter Schwellenwert“',
       ],
       closing: 'Dies wird aus der exakten Regelversion und den zum Entscheidungszeitpunkt geltenden Eingaben neu berechnet, und das Ergebnis ist über beide Engines hinweg als identisch verifiziert. Sie zeigen dem Prüfer keine Vermutung und keine Log-Zeile — Sie zeigen ihm, wie die Entscheidung vor seinen Augen deterministisch erneut getroffen wird.',
-      tryAt: 'Genau dieses Szenario können Sie auf aster-lang.cloud/demo ausführen.',
+      tryAt: 'Genau dieses Szenario können Sie auf aster-lang.cloud/demos/credit ausführen.',
     },
     buys: {
       heading: '5. Was Ihnen das bringt',

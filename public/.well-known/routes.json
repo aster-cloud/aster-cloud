@@ -43,26 +43,34 @@
       "notes": "Dual-engine equivalence white paper (readable + print-to-PDF), for risk & compliance"
     },
     {
-      "path": "/demo",
+      "path": "/demos",
       "status": "canonical-here",
       "owner": "marketing",
-      "source": "src/app/[locale]/demo/page.tsx",
+      "source": "src/app/[locale]/demos/page.tsx",
+      "locales": "all",
+      "notes": "Demos index — card grid aggregating the three demos (credit / vocab / kitten)"
+    },
+    {
+      "path": "/demos/credit",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/demos/credit/page.tsx",
       "locales": "all",
       "notes": "Interactive credit-risk decision-replay demo (sales)"
     },
     {
-      "path": "/vocab-demo",
+      "path": "/demos/vocab",
       "status": "canonical-here",
       "owner": "marketing",
-      "source": "src/app/[locale]/vocab-demo/page.tsx",
+      "source": "src/app/[locale]/demos/vocab/page.tsx",
       "locales": "all",
       "notes": "Domain-vocabulary demo — write rules in industry terms across 3 domains (sales)"
     },
     {
-      "path": "/cat-mood",
+      "path": "/demos/kitten",
       "status": "canonical-here",
       "owner": "marketing",
-      "source": "src/app/[locale]/cat-mood/page.tsx",
+      "source": "src/app/[locale]/demos/kitten/page.tsx",
       "locales": "all",
       "notes": "Fun demo — Cat Mood Engine, poetic cat-vocabulary rule drives a 5s sketch animation"
     },
