@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Badge, Card, CardBody, Stack, Toggle } from '@/components/ui';
 import { locales, localeNames, type Locale } from '@/i18n/config';
@@ -35,6 +36,11 @@ interface LocalesResponse {
  */
 export function TeamLanguageCard({ teamId }: { teamId: string }) {
   const t = useTranslations('languageSettings');
+  // 右上角语言切换器的 allowedLocales 由 dashboard layout 的 server component
+  // （resolveUserAllowedLocales）一次性渲染。团队白名单改动是客户端 PUT 到团队 DB，
+  // 不经 SSE → 切换器的 allowedLocales 会停在页面加载时的旧值。保存成功后 router.refresh()
+  // 重跑 server component 拉取最新团队白名单，让切换器即时反映新启用的语言（无需手动刷新）。
+  const router = useRouter();
   const [defaultLocale, setDefaultLocale] = useState<Locale>('en');
   // 团队当前白名单（enabled === null 时初始为可勾选全集）。
   const [selected, setSelected] = useState<Set<Locale>>(new Set(locales));
@@ -120,6 +126,9 @@ export function TeamLanguageCard({ teamId }: { teamId: string }) {
       // 收敛到后端权威值（enabled === null = 全部开放 → 标记 allOpen）。
       setAllOpen(data.enabled === null);
       setSelected(new Set(data.enabled ?? selectable));
+      // 重跑 dashboard layout 的 server component → 切换器 allowedLocales 即时反映本次改动
+      // （否则新启用的语言要手动刷新页面才出现在右上角下拉）。
+      router.refresh();
     } catch (err) {
       // 失败回滚到提交前状态。
       setSelected(prevSelected);
