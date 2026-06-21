@@ -333,6 +333,94 @@ export function getRuleName(loc: DemoLocale): string {
   return IDS[loc].ruleName;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// 决策哈希（PoC 杀手卖点：可独立重演 + 不可篡改）。
+//
+// 把"规则源 + locale + 输入 + 决策 + 逐步 trace"规范化成确定性字节序列，取 SHA-256。
+// 同一条规则、同一输入、同一决策 → 永远同一哈希；任何一处被篡改 → 哈希改变。合规人
+// 可拿哈希独立重算核对："这次决策确实来自这条规则、这些输入、产出了这个结果"。
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * 稳定 JSON 序列化：对象键按字典序排序，保证同一逻辑值产出同一字节序列。
+ * 数组顺序保留（trace.steps 有序，顺序是事实的一部分）。
+ *
+ * 显式拒绝非标准 JSON 值（undefined / function / symbol / NaN / Infinity）——它们经
+ * JSON.stringify 会产出 `undefined`(数组里被 join 成空) 或 `null`，造成碰撞/不稳定，
+ * 污染哈希的确定性。决策记录本就只含 string/number/boolean/null/object/array，遇到
+ * 非法值是构造 bug，宁可抛错暴露也不静默产生不可靠哈希。
+ */
+function stableStringify(value: unknown): string {
+  if (value === null) return 'null';
+  const tpe = typeof value;
+  if (tpe === 'string' || tpe === 'boolean') return JSON.stringify(value);
+  if (tpe === 'number') {
+    if (!Number.isFinite(value as number)) {
+      throw new Error(`stableStringify: non-finite number is not hashable: ${String(value)}`);
+    }
+    return JSON.stringify(value);
+  }
+  if (tpe === 'undefined' || tpe === 'function' || tpe === 'symbol' || tpe === 'bigint') {
+    throw new Error(`stableStringify: unsupported value type for hashing: ${tpe}`);
+  }
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  const entries = Object.keys(obj)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`);
+  return `{${entries.join(',')}}`;
+}
+
+/** 本次决策的规范化记录（哈希的原像）——构成"可回放的决策事实"。 */
+export interface DecisionRecord {
+  /** 执行的规则源码（含当前阈值，随规则文本变）。 */
+  rule: string;
+  /** 规则语言。 */
+  locale: DemoLocale;
+  /** 规则入口函数名。 */
+  entry: string;
+  /** 申请人输入（eval context，字段名本地化）。 */
+  input: Record<string, unknown>;
+  /** 引擎产出的决策。 */
+  decision: string;
+  /** 逐步执行轨迹（表达式 + 结果 + 是否命中）。 */
+  trace: DecisionTrace;
+}
+
+/** 组装规范化决策记录。 */
+export function buildDecisionRecord(
+  loc: DemoLocale,
+  rule: string,
+  app: DemoApplicant,
+  decision: string,
+  trace: DecisionTrace,
+): DecisionRecord {
+  return {
+    rule,
+    locale: loc,
+    entry: getRuleName(loc),
+    input: toEvalContext(loc, app),
+    decision,
+    // **剥离 executionTimeMs**：执行耗时每次都不同，若入哈希则"独立重跑同规则同输入"
+    // 会得到不同哈希——破坏"可确定性重算"的语义。哈希只锚定**逻辑事实**（规则/输入/
+    // 决策/逐步推理），不锚定 volatile 的执行计时。计时仍在 UI 展示，只是不入哈希。
+    trace: { ...trace, executionTimeMs: 0 },
+  };
+}
+
+/**
+ * 决策记录的 SHA-256 十六进制摘要。浏览器/Workers 用 `crypto.subtle`（同源）。
+ * 确定性：同一 DecisionRecord 永远产出同一哈希——可被任何一方独立重算核对。
+ */
+export async function digestDecision(record: DecisionRecord): Promise<string> {
+  const canonical = stableStringify(record);
+  const bytes = new TextEncoder().encode(canonical);
+  const buf = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 /** cloud 短码 → 后端 lexicon 全码（evaluate-source 的 locale 参数）。 */
 const DEMO_LOCALE_FULL_ID: Record<DemoLocale, string> = {
   en: 'en-US',

@@ -19,6 +19,8 @@ import {
   toEvalContext,
   getRuleName,
   computeDecision,
+  buildDecisionRecord,
+  digestDecision,
   DEFAULT_THRESHOLDS,
   DEMO_APPLICANTS,
   BOUNDARY_PAIR,
@@ -148,5 +150,59 @@ describe('credit-risk demo rules compile & run in every language', () => {
         expect(evWithin.value).not.toBe(evOver.value);
       });
     }
+  });
+});
+
+describe('decision hash (PoC：可独立重演 + 不可篡改)', () => {
+  const trace = {
+    moduleName: 'credit.approval',
+    functionName: 'decide',
+    steps: [{ sequence: 1, expression: 'score >= 740', result: 'true', matched: true }],
+    finalResult: 'APPROVED',
+    executionTimeMs: 0.4,
+  };
+  const app = DEMO_APPLICANTS.approved;
+
+  it('确定性：同一决策记录 → 同一 SHA-256（64 hex）', async () => {
+    const src = buildRuleSource('en', DEFAULT_THRESHOLDS);
+    const rec1 = buildDecisionRecord('en', src, app, 'APPROVED', trace);
+    const rec2 = buildDecisionRecord('en', src, app, 'APPROVED', trace);
+    const h1 = await digestDecision(rec1);
+    const h2 = await digestDecision(rec2);
+    expect(h1).toBe(h2);
+    expect(h1).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('篡改敏感：改决策 / 改输入 / 改规则 → 哈希都变', async () => {
+    const src = buildRuleSource('en', DEFAULT_THRESHOLDS);
+    const base = await digestDecision(buildDecisionRecord('en', src, app, 'APPROVED', trace));
+    // 改决策
+    const decisionChanged = await digestDecision(buildDecisionRecord('en', src, app, 'DECLINED', trace));
+    // 改输入（信用分降 1）
+    const inputChanged = await digestDecision(
+      buildDecisionRecord('en', src, { ...app, creditScore: app.creditScore - 1 }, 'APPROVED', trace),
+    );
+    // 改规则（阈值变 → 规则文本变）
+    const ruleChanged = await digestDecision(
+      buildDecisionRecord('en', buildRuleSource('en', { ...DEFAULT_THRESHOLDS, premiumScore: 999 }), app, 'APPROVED', trace),
+    );
+    expect(decisionChanged).not.toBe(base);
+    expect(inputChanged).not.toBe(base);
+    expect(ruleChanged).not.toBe(base);
+  });
+
+  it('键序无关：record 字段顺序不影响哈希（稳定序列化）', async () => {
+    const src = buildRuleSource('en', DEFAULT_THRESHOLDS);
+    // buildDecisionRecord 固定字段顺序；stableStringify 内部再按键排序，故等价记录哈希相同。
+    const a = await digestDecision(buildDecisionRecord('en', src, app, 'APPROVED', trace));
+    const b = await digestDecision(buildDecisionRecord('en', src, { ...app }, 'APPROVED', { ...trace }));
+    expect(a).toBe(b);
+  });
+
+  it('executionTimeMs 不入哈希：耗时不同但同规则/输入/决策 → 同哈希（可独立重跑核对）', async () => {
+    const src = buildRuleSource('en', DEFAULT_THRESHOLDS);
+    const fast = await digestDecision(buildDecisionRecord('en', src, app, 'APPROVED', { ...trace, executionTimeMs: 0.4 }));
+    const slow = await digestDecision(buildDecisionRecord('en', src, app, 'APPROVED', { ...trace, executionTimeMs: 99.9 }));
+    expect(fast).toBe(slow); // 否则"独立重跑会匹配"是假的
   });
 });

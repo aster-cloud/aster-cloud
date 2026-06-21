@@ -12,6 +12,8 @@ import {
   computeDecision,
   buildExplanation,
   evaluateOnJvmEngine,
+  buildDecisionRecord,
+  digestDecision,
   DEFAULT_THRESHOLDS,
   DEMO_APPLICANTS,
   BOUNDARY_PAIR,
@@ -45,6 +47,9 @@ interface RunResult {
   trace: DecisionTrace;
   /** 确定性解释模型（值已代入，不经 LLM）。 */
   explanation: CreditExplanationModel;
+  /** 决策记录的 SHA-256 哈希（可确定性重算的凭据）。'computing' = 异步计算中；
+   *  'unavailable' = crypto.subtle 不可用（极罕见，如非安全上下文）；否则是 64-hex 哈希。 */
+  hash: string | 'computing' | 'unavailable';
 }
 
 export function DemoContent({ locale }: DemoContentProps) {
@@ -101,12 +106,14 @@ export function DemoContent({ locale }: DemoContentProps) {
     const ev = evaluate(result.core, getRuleName(loc), toEvalContext(loc, applicant));
     const mirror = computeDecision(loc, applicant, thresholds);
     const engineDecision = ev.success ? String(ev.value) : mirror.decision;
+    const trace = { ...mirror.trace, executionTimeMs: ev.executionTimeMs ?? mirror.trace.executionTimeMs };
     setRun({
       decision: engineDecision,
       outcome: mirror.outcome,
       adverseReason: mirror.adverseReason,
-      trace: { ...mirror.trace, executionTimeMs: ev.executionTimeMs ?? mirror.trace.executionTimeMs },
+      trace,
       explanation: buildExplanation(loc, applicant, thresholds),
+      hash: 'computing', // 异步计算，下方 digest 完成后填充
     });
 
     // 双引擎对比：调服务器 JVM 引擎执行同一规则。fail-open——不可达则降级"仅浏览器引擎"。
@@ -114,6 +121,20 @@ export function DemoContent({ locale }: DemoContentProps) {
     const snapshot = applicant;
     runGenRef.current += 1;
     const gen = runGenRef.current;
+
+    // 决策哈希：把规范化决策记录（规则源+输入+决策+trace）取 SHA-256。代际守卫防旧 run 覆盖。
+    const record = buildDecisionRecord(loc, ruleSource, snapshot, engineDecision, trace);
+    digestDecision(record)
+      .then((hash) => {
+        if (runGenRef.current !== gen) return;
+        setRun((r) => (r ? { ...r, hash } : r));
+      })
+      .catch(() => {
+        // crypto.subtle 不可用（极罕见，如非安全上下文）→ 标记 unavailable，UI 显示提示。
+        if (runGenRef.current !== gen) return;
+        setRun((r) => (r ? { ...r, hash: 'unavailable' as const } : r));
+      });
+
     setJvm({ status: 'checking', decision: null });
     evaluateOnJvmEngine(loc, ruleSource, snapshot)
       .then((res) => {
@@ -293,6 +314,19 @@ export function DemoContent({ locale }: DemoContentProps) {
 
           {/* 原始执行轨迹（事实已在上方确定性给出，这里是逐步的执行佐证）。 */}
           <DecisionTracePanel trace={run.trace} />
+
+          {/* 决策哈希（可独立重演 + 不可篡改）—— 回放的封顶凭据。 */}
+          <DecisionHashPanel
+            hash={run.hash}
+            labels={{
+              heading: t('hash.heading'),
+              sub: t('hash.sub'),
+              computing: t('hash.computing'),
+              unavailable: t('hash.unavailable'),
+              copy: t('hash.copy'),
+              copied: t('hash.copied'),
+            }}
+          />
         </section>
       )}
 
@@ -514,4 +548,61 @@ function BoundaryCard({
 /** 无序号的小标题（双引擎/边界面板用，复用 StepHeading 视觉但不带序号圈）。 */
 function StepHeadingPlain({ title }: { title: string }) {
   return <h2 className="mb-2 text-sm font-semibold text-fg">{title}</h2>;
+}
+
+/**
+ * 决策哈希面板：展示本次决策记录的 SHA-256（规则源+输入+决策+trace 的确定性摘要）。
+ * 这是回放的封顶凭据——合规人可拿这串哈希独立重算核对，证明"决策可被重演且不可篡改"。
+ */
+function DecisionHashPanel({
+  hash,
+  labels,
+}: {
+  hash: string | 'computing' | 'unavailable';
+  labels: {
+    heading: string; sub: string; computing: string;
+    unavailable: string; copy: string; copied: string;
+  };
+}) {
+  const [copied, setCopied] = useState(false);
+  const isHash = hash !== 'computing' && hash !== 'unavailable';
+
+  const onCopy = async () => {
+    if (!isHash) return;
+    try {
+      await navigator.clipboard.writeText(hash);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* 剪贴板不可用（权限/非安全上下文）→ 静默忽略，哈希仍可手动选取 */
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <h3 className="mb-1 text-sm font-semibold text-fg">{labels.heading}</h3>
+      <p className="mb-3 text-xs text-fg-muted">{labels.sub}</p>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-zinc-900 px-4 py-3">
+        <svg className="size-4 flex-shrink-0 text-emerald-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+        </svg>
+        {isHash ? (
+          <>
+            <code className="min-w-0 flex-1 break-all font-mono text-xs text-zinc-100">{hash}</code>
+            <button
+              type="button"
+              onClick={onCopy}
+              className="flex-shrink-0 rounded-md border border-zinc-600 px-3 py-1 text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-800"
+            >
+              {copied ? labels.copied : labels.copy}
+            </button>
+          </>
+        ) : (
+          <span className="text-xs text-zinc-400">
+            {hash === 'unavailable' ? labels.unavailable : labels.computing}
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
