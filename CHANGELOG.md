@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Decision hash — deterministically reproducible, independently checkable (#115) *(demo)*
 - Per-row language toggle + platform-subset (no save button) (#113) *(teams)*
 - Boundary-flip pair + dual-engine comparison for credit demo (#112) *(demo)*
 - Redesign platform language availability as per-row toggles (#108) *(admin)*
@@ -239,6 +240,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
