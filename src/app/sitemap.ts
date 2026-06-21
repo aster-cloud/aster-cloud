@@ -81,6 +81,9 @@ const PUBLIC_MARKETING_SLUGS = [
   '/terms',
   '/equivalence',
   '/demos',
+  '/demos/credit',
+  '/demos/vocab',
+  '/demos/kitten',
 ];
 
 /**
