@@ -25,7 +25,7 @@ jobs:
   nuclei:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Nuclei scan (aster-lang.cloud)
         continue-on-error: true
@@ -102,7 +102,7 @@ jobs:
   zap-baseline-cloud:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: ZAP baseline (aster-lang.cloud)
         uses: zaproxy/action-baseline@v0.15.0
         with:
@@ -114,7 +114,7 @@ jobs:
   zap-baseline-api:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: ZAP baseline (policy.aster-lang.dev)
         uses: zaproxy/action-baseline@v0.15.0
         with:
@@ -163,7 +163,7 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: steps.gate.outputs.skip != 'true'
       - name: ZAP authenticated scan (aster-lang.cloud)
         if: steps.gate.outputs.skip != 'true'
