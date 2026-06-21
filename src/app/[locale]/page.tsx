@@ -324,7 +324,7 @@ function Hero({
               above shows the rule; the demo lets you replay a real
               decision (the killer story for the credit-risk beachhead). */}
           <Link
-            href="/demo"
+            href="/demos/credit"
             className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-hover"
           >
             {t('hero.tryDemo')}
@@ -655,9 +655,7 @@ function Footer({ t }: { t: ReturnType<typeof useTranslations> }) {
             <Stack direction="row" gap={6} wrap>
               <FooterLink href="/privacy">{t('footer.privacy')}</FooterLink>
               <FooterLink href="/terms">{t('footer.terms')}</FooterLink>
-              <FooterLink href="/demo">{t('footer.demo')}</FooterLink>
-              <FooterLink href="/vocab-demo">{t('footer.vocabDemo')}</FooterLink>
-              <FooterLink href="/cat-mood">{t('footer.catMood')}</FooterLink>
+              <FooterLink href="/demos">{t('footer.demos')}</FooterLink>
               <FooterLink href="/equivalence">{t('footer.equivalence')}</FooterLink>
               <FooterLink href="/equivalence/whitepaper">{t('footer.whitepaper')}</FooterLink>
               <FooterLink href="https://aster-lang.dev/" external>

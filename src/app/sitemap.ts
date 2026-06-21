@@ -80,6 +80,7 @@ const PUBLIC_MARKETING_SLUGS = [
   '/privacy',
   '/terms',
   '/equivalence',
+  '/demos',
 ];
 
 /**

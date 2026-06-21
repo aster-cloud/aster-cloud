@@ -112,7 +112,7 @@ the result is verified identical across both engines. You are not showing the au
 or a log line — you are showing them the decision being made again, deterministically, in
 front of them.
 
-(You can run this exact scenario at **aster-lang.cloud/demo**.)
+(You can run this exact scenario at **aster-lang.cloud/demos/credit**.)
 
 ---
 

@@ -29,7 +29,7 @@ describe('whitepaper worked-example rule compiles & declines APP-10561', () => {
     it(`${loc}`, () => {
       const source = WHITEPAPER[loc].example.ruleCode;
       // 白皮书代码块只含 Rule（无 Module/Define 头）——补一个最小可编译外壳前缀，
-      // 用与 /demo 相同的本地化模块/类型声明，保证 Rule 体本身能编译执行。
+      // 用与 /demos/credit 相同的本地化模块/类型声明，保证 Rule 体本身能编译执行。
       const s = SHAPE[loc];
       const header =
         loc === 'zh'
