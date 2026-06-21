@@ -219,6 +219,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- 三个 demo 统一到 /demos/ 前缀 + 新建索引落地页 (#116) *(demos)*
 - Single source of truth — consume @aster-cloud/ui-messages npm, drop messages/* (#109) *(i18n)*
 - Drop dead STARTER_PLAN code path *(vocab)*
 - Derive primitive types from lang-ts lexicon (D12) *(monaco)*
@@ -240,6 +241,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
