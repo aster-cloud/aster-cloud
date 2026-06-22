@@ -111,7 +111,7 @@ export function PolicyDetailContent({
   }, [isDeleting]);
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 详情页（deep）：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot），
           替代原来手抄的返回箭头链接，用作上一级导航。 */}
       <PageHeader

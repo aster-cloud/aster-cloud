@@ -103,7 +103,7 @@ export function VocabularyAdminContent({
   ];
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 顶层页：sidebar 已高亮 + PageHeader h1 显页名 → 删 Breadcrumbs（去三重重复）。 */}
       <PageHeader
         title={t('title')}

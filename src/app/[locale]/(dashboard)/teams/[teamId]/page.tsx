@@ -102,7 +102,7 @@ export default function TeamDashboardPage() {
 
   if (isLoading) {
     return (
-      <Container size="wide" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -112,7 +112,7 @@ export default function TeamDashboardPage() {
 
   if (error) {
     return (
-      <Container size="wide" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="text-center py-12">
           <div className="rounded-md bg-red-50 p-4 max-w-md mx-auto">
             <p className="text-sm text-red-700">{error}</p>
@@ -134,7 +134,7 @@ export default function TeamDashboardPage() {
   if (!team) return null;
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 深层页：保留面包屑（Teams → 当前团队），放进 PageHeader 的 breadcrumbs slot。 */}
       <PageHeader
         title={team.name}

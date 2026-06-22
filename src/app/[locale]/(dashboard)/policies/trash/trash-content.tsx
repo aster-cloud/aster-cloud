@@ -182,7 +182,7 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
   };
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
       <PageHeader
         title={t.trash.title}

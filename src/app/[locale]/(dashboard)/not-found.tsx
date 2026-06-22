@@ -8,7 +8,7 @@ import { Container, Stack, buttonVariants } from '@/components/ui';
 export default async function DashboardNotFound() {
   const t = await getTranslations('common');
   return (
-    <Container size="base" className="py-16">
+    <Container size="xl" className="py-16">
       <Stack gap={4} align="center" className="text-center">
         <p className="text-sm font-semibold uppercase tracking-widest text-primary">
           404

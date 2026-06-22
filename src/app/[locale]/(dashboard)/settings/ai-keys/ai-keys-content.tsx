@@ -126,7 +126,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   };
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* deep 页：保留 Breadcrumbs（settings → AI keys），放进 PageHeader 的 breadcrumbs 槽。 */}
       <PageHeader
         title={t('title')}

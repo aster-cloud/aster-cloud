@@ -33,7 +33,7 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <Container size="base" className="py-12">
+    <Container size="xl" className="py-12">
       <Stack gap={4}>
         <h1 className="font-display text-2xl font-semibold text-fg">
           {t('admin.errorBoundary.title')}

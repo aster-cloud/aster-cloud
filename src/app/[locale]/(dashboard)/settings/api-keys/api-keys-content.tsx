@@ -187,7 +187,7 @@ export function ApiKeysContent({
   };
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <Stack gap={6}>
         {/* 详情页：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot）。 */}
         <PageHeader

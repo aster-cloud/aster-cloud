@@ -72,7 +72,7 @@ export default function AcceptInvitePage() {
 
   if (!token) {
     return (
-      <Container size="narrow" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="max-w-md mx-auto">
           <div className="bg-bg shadow rounded-lg p-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
@@ -111,7 +111,7 @@ export default function AcceptInvitePage() {
   }
 
   return (
-    <Container size="narrow" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <div className="max-w-md mx-auto">
         <div className="bg-bg shadow rounded-lg p-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-subtle">

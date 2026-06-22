@@ -84,7 +84,7 @@ export default function TeamPoliciesPage() {
 
   if (isLoading) {
     return (
-      <Container size="wide" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -94,7 +94,7 @@ export default function TeamPoliciesPage() {
 
   if (!team) {
     return (
-      <Container size="wide" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="text-center py-12">
           <p className="text-red-600">{error || t('teamNotFound')}</p>
           <Link href="/teams" className="mt-4 text-primary hover:text-primary-hover">
@@ -106,7 +106,7 @@ export default function TeamPoliciesPage() {
   }
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* deep 页：保留 Breadcrumbs（团队名→当前 Policies），放进 PageHeader breadcrumbs slot。
           原顶部 "返回团队" 链接由面包屑父级条目承担。 */}
       <PageHeader

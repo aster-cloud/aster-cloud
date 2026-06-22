@@ -88,7 +88,7 @@ export function DataContent() {
   };
 
   return (
-    <Container size="base" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <Stack gap={6}>
         <PageHeader
           breadcrumbs={

@@ -486,7 +486,7 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   };
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* Deep 页：保留 Breadcrumbs（Policies → 策略名 → 当前执行页）。
           原手抄的返回箭头 <Link> 由 breadcrumb 第二项（指向策略详情）替代。 */}
       <PageHeader

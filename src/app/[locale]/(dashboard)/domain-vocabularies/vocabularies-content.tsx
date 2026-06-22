@@ -295,7 +295,7 @@ export function VocabulariesContent({
   // suddenly gated. Trial→free is the common case worth narrating.
   if (!quota.allowed) {
     return (
-      <Container size="wide" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <Breadcrumbs
           className="mb-4"
           items={[
@@ -419,7 +419,7 @@ export function VocabulariesContent({
   const localeOptions = upsert(localeOptionsFromRows, initialFilters.locale);
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <DowngradeBanner
         trialExpired={quota.downgraded}
         trialEndsAt={quota.trialEndsAt}

@@ -70,7 +70,7 @@ export default async function SettingsPage({ params }: PageProps) {
   const profilePlan = (session.user as { plan?: string }).plan || 'Free';
 
   return (
-    <Container size="base" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <PageHeader title={t('title')} subtitle={t('subtitle')} className="mb-6" />
       <Stack gap={6}>
         {/* API Keys */}
