@@ -29,7 +29,7 @@ export function SsoConfigContent({ introspection }: Props) {
   const { config, health, missingFields } = introspection;
 
   return (
-    <Container size="base" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <PageHeader
         title={t('title')}
         subtitle={t('subtitle')}

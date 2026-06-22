@@ -224,7 +224,7 @@ export function VersionsContent({
   })();
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <Stack gap={6}>
         <PageHeader
           breadcrumbs={

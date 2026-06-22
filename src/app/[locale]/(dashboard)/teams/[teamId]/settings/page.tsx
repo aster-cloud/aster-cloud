@@ -166,7 +166,7 @@ export default function TeamSettingsPage() {
 
   if (isLoading) {
     return (
-      <Container size="base" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -176,7 +176,7 @@ export default function TeamSettingsPage() {
 
   if (!team) {
     return (
-      <Container size="base" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="text-center py-12">
           <p className="text-red-600">{error || t('teamNotFound')}</p>
           <Link href="/teams" className="mt-4 text-primary hover:text-primary-hover">
@@ -189,7 +189,7 @@ export default function TeamSettingsPage() {
 
   if (!canEdit) {
     return (
-      <Container size="base" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="text-center py-12">
           <p className="text-fg-muted">{t('settings.noPermission')}</p>
           <Link
@@ -204,7 +204,7 @@ export default function TeamSettingsPage() {
   }
 
   return (
-    <Container size="base" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 设置页（deep）：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot），
           替代原来手抄的返回箭头链接，用作上一级导航回到团队详情。 */}
       <PageHeader

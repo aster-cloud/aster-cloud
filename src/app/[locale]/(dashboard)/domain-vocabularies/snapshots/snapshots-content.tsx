@@ -276,7 +276,7 @@ export function SnapshotsContent({
   ];
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <PageHeader
         title={t('title')}
         subtitle={t('subtitle')}

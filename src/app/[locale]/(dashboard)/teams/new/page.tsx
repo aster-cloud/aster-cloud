@@ -81,7 +81,7 @@ export default function NewTeamPage() {
   };
 
   return (
-    <Container size="narrow" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
       <PageHeader
         title={t('createTeam.title')}

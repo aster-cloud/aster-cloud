@@ -13,7 +13,7 @@ export default async function SecurityPage() {
   const t = await getTranslations('security');
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <PageHeader
         title={t('title')}
         subtitle={t('description')}

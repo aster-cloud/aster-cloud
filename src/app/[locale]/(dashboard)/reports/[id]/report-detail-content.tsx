@@ -155,7 +155,7 @@ export function ReportDetailContent({
 
   if (!report) {
     return (
-      <Container size="wide" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="text-center py-12">
           <p className="text-red-600">{t.detail.reportNotFound}</p>
           <Link href="/reports" className="mt-4 text-primary hover:underline">
@@ -167,7 +167,7 @@ export function ReportDetailContent({
   }
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       <PageHeader
         title={report.title}
         subtitle={

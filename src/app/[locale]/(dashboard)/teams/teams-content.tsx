@@ -60,9 +60,9 @@ export function TeamsContent({
   if (needsUpgrade) {
     // 升级闸门同样要套 Container：dashboard <main> 现为全宽透传，缺了
     // Container 会让升级提示横铺整个视口（满宽贴边）。与正常返回一致用
-    // size="wide"，宽度+水平内边距统一由设计系统宽度权威负责。
+    // size="xl"，宽度+水平内边距统一由设计系统宽度权威负责。
     return (
-      <Container size="wide" className="py-6 sm:py-10">
+      <Container size="xl" className="py-6 sm:py-10">
         <div className="text-center py-12">
           <svg
             className="mx-auto h-12 w-12 text-fg-subtle"
@@ -100,7 +100,7 @@ export function TeamsContent({
   }
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
       <PageHeader
         title={t('title')}

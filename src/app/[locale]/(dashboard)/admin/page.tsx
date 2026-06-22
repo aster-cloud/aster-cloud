@@ -180,7 +180,7 @@ export default async function AdminOverviewPage({ params }: Props) {
   const pulse = await loadPulse();
 
   return (
-    <Container size="wide" className="py-6 sm:py-10">
+    <Container size="xl" className="py-6 sm:py-10">
       {/* 顶层页：sidebar 已高亮 "Admin" + PageHeader h1 显页名 → 不再放 Breadcrumbs（去三重重复）。 */}
       <PageHeader title={t('title')} subtitle={t('subtitle')} className="mb-6" />
 

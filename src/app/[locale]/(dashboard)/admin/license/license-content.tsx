@@ -52,7 +52,7 @@ export function LicenseStatusContent({
   const t = useTranslations('admin.license');
 
   return (
-    <Container size="base" className="space-y-6 py-6 sm:py-10">
+    <Container size="xl" className="space-y-6 py-6 sm:py-10">
       {/* 顶层页：sidebar 已高亮 "License" + PageHeader h1 显页名 → 不放 Breadcrumbs（去三重重复）。 */}
       <PageHeader title={t('title')} subtitle={t('subtitle')} />
 
