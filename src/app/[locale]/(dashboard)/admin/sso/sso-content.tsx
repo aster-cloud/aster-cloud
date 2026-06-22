@@ -13,6 +13,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Breadcrumbs, Container, PageHeader } from '@/components/ui';
 import type {
   SsoIntrospection,
   SsoSamlConfig,
@@ -28,20 +29,24 @@ export function SsoConfigContent({ introspection }: Props) {
   const { config, health, missingFields } = introspection;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-fg">{t('title')}</h1>
-        <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
-      </header>
+    <Container size="base" className="py-6 sm:py-10">
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        breadcrumbs={<Breadcrumbs items={[{ label: t('title') }]} />}
+        className="mb-6"
+      />
 
-      {health === 'incomplete' && (
-        <IncompleteBanner missingFields={missingFields} />
-      )}
+      <div className="space-y-6">
+        {health === 'incomplete' && (
+          <IncompleteBanner missingFields={missingFields} />
+        )}
 
-      {config.provider === 'none' && <NoneStatePanel />}
-      {config.provider === 'saml' && <SamlPanel config={config} />}
-      {config.provider === 'oidc' && <OidcPanel config={config} />}
-    </div>
+        {config.provider === 'none' && <NoneStatePanel />}
+        {config.provider === 'saml' && <SamlPanel config={config} />}
+        {config.provider === 'oidc' && <OidcPanel config={config} />}
+      </div>
+    </Container>
   );
 }
 

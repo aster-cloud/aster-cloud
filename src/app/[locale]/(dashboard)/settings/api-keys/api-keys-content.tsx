@@ -13,6 +13,7 @@ import {
   CardBody,
   Container,
   Input,
+  PageHeader,
   Stack,
   cn,
 } from '@/components/ui';
@@ -188,18 +189,19 @@ export function ApiKeysContent({
   return (
     <Container size="wide" className="py-6 sm:py-10">
       <Stack gap={6}>
-        <Stack gap={2}>
-          <Breadcrumbs
-            items={[
-              { label: t.nav.settings, href: '/settings' },
-              { label: t.breadcrumb },
-            ]}
-          />
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-            {t.title}
-          </h1>
-          <p className="text-sm text-fg-muted">{t.subtitle}</p>
-        </Stack>
+        {/* 详情页：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot）。 */}
+        <PageHeader
+          title={t.title}
+          subtitle={t.subtitle}
+          breadcrumbs={
+            <Breadcrumbs
+              items={[
+                { label: t.nav.settings, href: '/settings' },
+                { label: t.breadcrumb },
+              ]}
+            />
+          }
+        />
 
         {/* "Key created" — show the secret once, never again */}
         {newKeyValue && (

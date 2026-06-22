@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ConfirmDialog } from '@/components/ui';
+import { ConfirmDialog, Container, PageHeader, Breadcrumbs } from '@/components/ui';
 import { PolicyVersionsTab } from '@/components/policy/policy-versions-tab';
 import { ShareWithTeamsCard } from '@/components/policy/share-with-teams-card';
 
@@ -111,71 +111,72 @@ export function PolicyDetailContent({
   }, [isDeleting]);
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* 详情页（deep）：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot），
+          替代原来手抄的返回箭头链接，用作上一级导航。 */}
+      <PageHeader
+        title={policy.name}
+        subtitle={policy.description ?? undefined}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: t.detail.backToPolicies, href: '/policies' },
+              { label: policy.name },
+            ]}
+          />
+        }
+        action={
+          <div className="flex space-x-3">
+            {/* 冻结策略只读：Execute/Edit 渲染为禁用态（与列表页一致）；
+                Delete 仍允许——删除是用户解除冻结（降到限额内）的途径。 */}
+            {policy.isFrozen ? (
+              <span
+                className="inline-flex items-center rounded-md bg-bg-muted px-3 py-2 text-sm font-semibold text-fg-subtle cursor-not-allowed select-none"
+                aria-disabled="true"
+                title={t.freeze.cannotExecute}
+              >
+                {t.executeAction}
+              </span>
+            ) : (
+              <Link
+                href={`/${locale}/policies/${policy.id}/execute`}
+                className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+              >
+                {t.executeAction}
+              </Link>
+            )}
+            {policy.isFrozen ? (
+              <span
+                className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg-subtle shadow-sm ring-1 ring-inset ring-gray-300 cursor-not-allowed select-none"
+                aria-disabled="true"
+                title={t.freeze.cannotEdit}
+              >
+                {t.edit}
+              </span>
+            ) : (
+              <Link
+                href={`/${locale}/policies/${policy.id}/edit`}
+                className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-bg-subtle"
+              >
+                {t.edit}
+              </Link>
+            )}
+            <button
+              onClick={handleDeleteClick}
+              className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
+            >
+              {t.delete}
+            </button>
+          </div>
+        }
+        className="mb-6"
+      />
+
       {error && (
         <div className="mb-4 rounded-md bg-red-50 p-4">
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
-
-      {/* Header */}
-      <div className="md:flex md:items-center md:justify-between mb-6">
-        <div>
-          <div className="flex items-center">
-            <Link href={`/${locale}/policies`} className="text-fg-subtle hover:text-fg-muted mr-2">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-              </svg>
-            </Link>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{policy.name}</h1>
-          </div>
-          {policy.description && (
-            <p className="mt-1 text-sm text-fg-muted">{policy.description}</p>
-          )}
-        </div>
-        <div className="mt-4 md:mt-0 flex space-x-3">
-          {/* 冻结策略只读：Execute/Edit 渲染为禁用态（与列表页一致）；
-              Delete 仍允许——删除是用户解除冻结（降到限额内）的途径。 */}
-          {policy.isFrozen ? (
-            <span
-              className="inline-flex items-center rounded-md bg-bg-muted px-3 py-2 text-sm font-semibold text-fg-subtle cursor-not-allowed select-none"
-              aria-disabled="true"
-              title={t.freeze.cannotExecute}
-            >
-              {t.executeAction}
-            </span>
-          ) : (
-            <Link
-              href={`/${locale}/policies/${policy.id}/execute`}
-              className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
-            >
-              {t.executeAction}
-            </Link>
-          )}
-          {policy.isFrozen ? (
-            <span
-              className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg-subtle shadow-sm ring-1 ring-inset ring-gray-300 cursor-not-allowed select-none"
-              aria-disabled="true"
-              title={t.freeze.cannotEdit}
-            >
-              {t.edit}
-            </span>
-          ) : (
-            <Link
-              href={`/${locale}/policies/${policy.id}/edit`}
-              className="inline-flex items-center rounded-md bg-bg px-3 py-2 text-sm font-semibold text-fg shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-bg-subtle"
-            >
-              {t.edit}
-            </Link>
-          )}
-          <button
-            onClick={handleDeleteClick}
-            className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
-          >
-            {t.delete}
-          </button>
-        </div>
-      </div>
 
       {/* 冻结横幅：套餐降级超限后该策略只读，引导升级 */}
       {policy.isFrozen && (
@@ -299,6 +300,6 @@ export function PolicyDetailContent({
         variant="danger"
         isLoading={isDeleting}
       />
-    </div>
+    </Container>
   );
 }

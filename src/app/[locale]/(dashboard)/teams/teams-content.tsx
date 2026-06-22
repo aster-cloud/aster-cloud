@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { Breadcrumbs, ListSearchInput } from '@/components/ui';
+import { Container, PageHeader, ListSearchInput } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { PendingInvitationsCard } from '@/components/teams/pending-invitations-card';
 
@@ -28,7 +28,6 @@ export function TeamsContent({
 }: TeamsContentProps) {
   // i18n via useTranslations directly — drops the prerender prop pattern.
   const t = useTranslations('teams');
-  const tNav = useTranslations('dashboardNav');
   const tCommon = useTranslations('common');
 
   const [teams] = useState<Team[]>(initialTeams);
@@ -59,57 +58,55 @@ export function TeamsContent({
   const getRoleLabel = (role: string) => t(`roles.${role}` as 'roles.owner');
 
   if (needsUpgrade) {
+    // 升级闸门同样要套 Container：dashboard <main> 现为全宽透传，缺了
+    // Container 会让升级提示横铺整个视口（满宽贴边）。与正常返回一致用
+    // size="wide"，宽度+水平内边距统一由设计系统宽度权威负责。
     return (
-      <div className="text-center py-12">
-        <svg
-          className="mx-auto h-12 w-12 text-fg-subtle"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-          />
-        </svg>
-        <h2 className="mt-4 text-xl font-semibold text-fg">{t('upgradeRequired.title')}</h2>
-        <p className="mt-2 text-fg-muted">{t('upgradeRequired.description')}</p>
-        <div className="mt-6">
-          {CLIENT_CAPABILITIES.billing ? (
-            <Link
-              href="/billing"
-              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
-            >
-              {t('upgradeRequired.upgradeButton')}
-            </Link>
-          ) : (
-            // On-prem: 团队功能由 license 决定，不走 SaaS 升级流程
-            <span className="inline-flex items-center rounded-md bg-bg-subtle px-4 py-2 text-sm font-medium text-fg-muted">
-              {t('upgradeRequired.contactAdmin')}
-            </span>
-          )}
+      <Container size="wide" className="py-6 sm:py-10">
+        <div className="text-center py-12">
+          <svg
+            className="mx-auto h-12 w-12 text-fg-subtle"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+          <h2 className="mt-4 text-xl font-semibold text-fg">{t('upgradeRequired.title')}</h2>
+          <p className="mt-2 text-fg-muted">{t('upgradeRequired.description')}</p>
+          <div className="mt-6">
+            {CLIENT_CAPABILITIES.billing ? (
+              <Link
+                href="/billing"
+                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+              >
+                {t('upgradeRequired.upgradeButton')}
+              </Link>
+            ) : (
+              // On-prem: 团队功能由 license 决定，不走 SaaS 升级流程
+              <span className="inline-flex items-center rounded-md bg-bg-subtle px-4 py-2 text-sm font-medium text-fg-muted">
+                {t('upgradeRequired.contactAdmin')}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      </Container>
     );
   }
 
   return (
-    <div>
-      <Breadcrumbs
-        className="mb-4"
-        items={[
-          { label: tNav('dashboard'), href: '/dashboard' },
-          { label: tNav('teams') },
-        ]}
-      />
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('title')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
-        </div>
-        <div className="mt-4 sm:mt-0">
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        className="mb-6"
+        action={
           <Link
             href="/teams/new"
             className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
@@ -119,8 +116,8 @@ export function TeamsContent({
             </svg>
             {t('newTeam')}
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* In-app inbox: invitations addressed to the current user's
           email. Self-hides when empty, so users with nothing pending
@@ -211,6 +208,6 @@ export function TeamsContent({
           ))}
         </div>
       )}
-    </div>
+    </Container>
   );
 }

@@ -247,11 +247,16 @@ export default async function DashboardLayout({
           </div>
         </header>
 
-        <main
-          id="dashboard-main"
-          tabIndex={-1}
-          className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"
-        >
+        {/*
+          Full-width passthrough — width + horizontal padding + vertical
+          rhythm are owned by each page's <Container> (the design-system
+          width authority). The previous `mx-auto max-w-7xl px-* py-*` here
+          double-constrained pages that already used <Container>, producing
+          the inconsistent widths + double padding the dashboard audit found.
+          Keep only semantics (id for skip-link, tabIndex for focus) + min-w-0
+          so flex/grid children can shrink.
+        */}
+        <main id="dashboard-main" tabIndex={-1} className="min-w-0 focus:outline-none">
           {children}
         </main>
       </div>

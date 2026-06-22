@@ -24,6 +24,7 @@ import { isAdminFromSession } from '@/lib/admin-auth';
 import { IS_SAAS } from '@/lib/deployment-mode';
 import { db, issuedLicenses, licenseTelemetry } from '@/lib/prisma';
 import { appendAccessAudit } from '@/lib/telemetry/access-audit';
+import { Breadcrumbs, Container, PageHeader } from '@/components/ui';
 import { IssuedLicensesTable } from './components/issued-licenses-table';
 
 export const runtime = 'nodejs';
@@ -98,13 +99,17 @@ export default async function IssuedLicensesPage({ params, searchParams }: Props
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-fg">{t('title')}</h1>
-        <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
-      </header>
+    <Container size="xl" className="py-6 sm:py-10">
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        breadcrumbs={
+          <Breadcrumbs items={[{ label: 'Admin' }, { label: t('title') }]} />
+        }
+        className="mb-6"
+      />
       <IssuedLicensesTable rows={enriched} searchQuery={q ?? ''} />
-    </div>
+    </Container>
   );
 }
 

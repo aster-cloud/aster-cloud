@@ -109,6 +109,12 @@ export function EditPolicyContent({
     [policy.id, t.form.failedToUpdate],
   );
 
+  // 宽度/居中/纵向节奏不在本薄包装层处理：本页只渲染共享的 <PolicyForm>，
+  // 而 PolicyForm 自身已用设计系统 <Container size="xl"> 作为结构根
+  //（width authority + py 纵向节奏 + data-policy-form-root 焦点语义）。
+  // new / edit 两个包装层因此保持对称的「只传 props」形态——若在此再套
+  // 一层 Container 会与 PolicyForm 内层 Container 嵌套，造成双重宽度约束与
+  // 双重纵向内边距。满宽贴边问题由 PolicyForm 内的 Container 统一修复。
   return (
     <PolicyForm
       mode="edit"

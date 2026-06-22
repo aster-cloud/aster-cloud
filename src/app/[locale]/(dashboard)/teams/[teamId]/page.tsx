@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
+import { Breadcrumbs, Container, PageHeader } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Team {
@@ -101,55 +102,50 @@ export default function TeamDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <Container size="wide" className="py-6 sm:py-10">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="rounded-md bg-red-50 p-4 max-w-md mx-auto">
-          <p className="text-sm text-red-700">{error}</p>
+      <Container size="wide" className="py-6 sm:py-10">
+        <div className="text-center py-12">
+          <div className="rounded-md bg-red-50 p-4 max-w-md mx-auto">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+          <Link
+            href="/teams"
+            className="mt-4 inline-flex items-center text-sm text-primary hover:text-primary-hover"
+          >
+            <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            {t('backToTeams')}
+          </Link>
         </div>
-        <Link
-          href="/teams"
-          className="mt-4 inline-flex items-center text-sm text-primary hover:text-primary-hover"
-        >
-          <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t('backToTeams')}
-        </Link>
-      </div>
+      </Container>
     );
   }
 
   if (!team) return null;
 
   return (
-    <div>
-      {/* 页头 */}
-      <div className="mb-6">
-        <Link
-          href="/teams"
-          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
-        >
-          <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t('backToTeams')}
-        </Link>
-      </div>
-
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{team.name}</h1>
-          <p className="mt-1 text-sm text-fg-muted">/{team.slug}</p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
-          {canManageSettings && (
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* 深层页：保留面包屑（Teams → 当前团队），放进 PageHeader 的 breadcrumbs slot。 */}
+      <PageHeader
+        title={team.name}
+        subtitle={`/${team.slug}`}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[{ label: t('title'), href: '/teams' }, { label: team.name }]}
+          />
+        }
+        action={
+          canManageSettings ? (
             <Link
               href={`/teams/${teamId}/settings`}
               className="inline-flex items-center rounded-md border border-border-strong bg-bg px-3 py-2 text-sm font-medium text-fg shadow-sm hover:bg-bg-subtle"
@@ -169,9 +165,10 @@ export default function TeamDashboardPage() {
               */}
               {t('dashboard.settings')}
             </Link>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+        className="mb-6"
+      />
 
       {/* 快速导航卡片 */}
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -310,6 +307,6 @@ export default function TeamDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+    </Container>
   );
 }

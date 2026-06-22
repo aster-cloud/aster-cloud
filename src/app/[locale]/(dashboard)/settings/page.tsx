@@ -27,6 +27,7 @@ import {
   Card,
   CardBody,
   Container,
+  PageHeader,
   Stack,
   cn,
 } from '@/components/ui';
@@ -70,14 +71,8 @@ export default async function SettingsPage({ params }: PageProps) {
 
   return (
     <Container size="base" className="py-6 sm:py-10">
+      <PageHeader title={t('title')} subtitle={t('subtitle')} className="mb-6" />
       <Stack gap={6}>
-        <Stack gap={2}>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-            {t('title')}
-          </h1>
-          <p className="text-sm text-fg-muted">{t('subtitle')}</p>
-        </Stack>
-
         {/* API Keys */}
         <SettingCard
           title={t('apiKeys.title')}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { Breadcrumbs, Input, Label } from '@/components/ui';
+import { Container, PageHeader, Input, Label } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
@@ -81,22 +81,15 @@ export default function NewTeamPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <Breadcrumbs
-          items={[
-            { label: t('backToTeams'), href: '/teams' },
-            { label: t('createTeam.title') },
-          ]}
-        />
-      </div>
+    <Container size="narrow" className="py-6 sm:py-10">
+      {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
+      <PageHeader
+        title={t('createTeam.title')}
+        subtitle={t('createTeam.subtitle')}
+        className="mb-6"
+      />
 
       <div className="rounded-lg border border-border bg-bg shadow-sm">
-        <div className="px-6 py-4 border-b border-border">
-          <h1 className="font-display text-xl font-semibold tracking-tight text-fg">{t('createTeam.title')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{t('createTeam.subtitle')}</p>
-        </div>
-
         <form onSubmit={handleSubmit} className="px-6 py-4 space-y-6">
           {error && (
             <div className="rounded-md bg-red-50 p-4">
@@ -181,6 +174,6 @@ export default function NewTeamPage() {
           </div>
         </form>
       </div>
-    </div>
+    </Container>
   );
 }

@@ -60,17 +60,20 @@ import type { editor } from 'monaco-editor';
 // on prefetch.
 import Link from 'next/link';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
-import { Breadcrumbs, buttonVariants, cn } from '@/components/ui';
+import {
+  Breadcrumbs,
+  Container,
+  PageHeader,
+  buttonVariants,
+  cn,
+} from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui';
 import { normalizeLocale } from '@/data/policy-examples';
 
 import { MetaSection } from './meta-section';
 import { SidePanel, type SidePanelTab } from './side-panel';
 import { StatusBar } from './status-bar';
-import {
-  usePolicyDraft,
-  type PolicyDraftFields,
-} from './use-policy-draft';
+import { usePolicyDraft, type PolicyDraftFields } from './use-policy-draft';
 import { useUnsavedWarning } from './use-unsaved-warning';
 import { usePolicyShortcuts } from './use-policy-shortcuts';
 import { useCompile } from './use-compile';
@@ -78,10 +81,7 @@ import { useMonacoMarkers } from './use-monaco-markers';
 import { useIsMobile } from './use-is-mobile';
 import { EditorPalette } from './editor-palette';
 import { CNLSyntaxConverterDialog } from '@/components/policy/cnl-syntax-converter-dialog';
-import {
-  type PolicyExample,
-  getExampleSource,
-} from '@/data/policy-examples';
+import { type PolicyExample, getExampleSource } from '@/data/policy-examples';
 
 const MonacoPolicyEditor = dynamic(
   () =>
@@ -132,7 +132,9 @@ export interface PolicyFormProps {
   title: string;
   subtitle: string;
   /** Persist the policy. Must throw / return error on failure. */
-  onSave: (fields: PolicyDraftFields) => Promise<PolicySaveResult | PolicySaveError>;
+  onSave: (
+    fields: PolicyDraftFields,
+  ) => Promise<PolicySaveResult | PolicySaveError>;
   /** Where to navigate on Cancel. */
   cancelHref: string;
   /** Detail-page href builder for "save and view" navigation. */
@@ -311,12 +313,7 @@ export function PolicyForm({
       // If the user navigates away before responding, dismiss the toast.
       toast.dismiss(id);
     };
-  }, [
-    pendingDraft,
-    t,
-    acceptPendingDraft,
-    discardPendingDraft,
-  ]);
+  }, [pendingDraft, t, acceptPendingDraft, discardPendingDraft]);
 
   // ---------------------------------------------------------------
   // Save handlers
@@ -426,79 +423,82 @@ export function PolicyForm({
   };
 
   return (
-    <div
-      data-policy-form-root
-      // Natural-flow layout (NOT a forced 100vh shell) so the
-      // surrounding dashboard <main> can scroll normally. The editor
-      // panel takes a fixed-ish height (clamp between 500 and 720 px
-      // based on viewport) instead of trying to stretch into a flex
-      // parent — that kept growing without bound when main had no
-      // height ceiling, producing the "endless page" symptom.
-      className="flex flex-col gap-3"
-    >
-      {/* ----- Top bar ----- */}
-      <header className="flex flex-wrap items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="min-w-0">
-          <Breadcrumbs className="mb-1" items={breadcrumbs} />
-          <h1 className="truncate font-display text-xl font-semibold tracking-tight text-fg sm:text-2xl">
-            {title}
-          </h1>
-          <p className="mt-0.5 truncate text-xs text-fg-muted sm:text-sm">
-            {subtitle}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={cancelHref}
-            onClick={handleCancelClick}
-            className={buttonVariants({ variant: 'secondary', size: 'md' })}
-          >
-            {tCommon('cancel')}
-          </Link>
-          {/* Mobile is read-only — hide Save so users don't think
-              their typing (which can't happen) is being persisted. */}
-          {!isMobile && (
-            <button
-              type="button"
-              onClick={onSaveOnly}
-              disabled={isSaving}
-              className={cn(
-                buttonVariants({ variant: 'primary', size: 'md' }),
-                'gap-2',
+    // 设计系统宽度权威：dashboard <main> 现为全宽透传，宽度+水平内边距+垂直
+    // 节奏由本页 <Container> 负责。编辑器是「编辑器+schema」的全高 flex 布局，
+    // 故用 xl(1280px) 给足工作区。水平内边距由 Container 统一提供，内部各分区
+    // 不再各自 px-4 sm:px-6（避免双重内边距）。
+    //
+    // data-policy-form-root 是承载语义：usePolicyShortcuts 的
+    // isPaletteContextActive 通过 closest('[data-policy-form-root]') 判定焦点
+    // 是否落在本表单内，从而决定是否接管 ⌘K。必须保留在结构根上。
+    <Container size="xl" data-policy-form-root className="py-6 sm:py-10">
+      <div
+        // Natural-flow layout (NOT a forced 100vh shell) so the
+        // surrounding dashboard <main> can scroll normally. The editor
+        // panel takes a fixed-ish height (clamp between 500 and 720 px
+        // based on viewport) instead of trying to stretch into a flex
+        // parent — that kept growing without bound when main had no
+        // height ceiling, producing the "endless page" symptom.
+        className="flex flex-col gap-3"
+      >
+        {/* ----- Top bar ----- */}
+        <PageHeader
+          title={title}
+          subtitle={subtitle}
+          breadcrumbs={<Breadcrumbs items={breadcrumbs} />}
+          action={
+            <div className="flex items-center gap-2">
+              <Link
+                href={cancelHref}
+                onClick={handleCancelClick}
+                className={buttonVariants({ variant: 'secondary', size: 'md' })}
+              >
+                {tCommon('cancel')}
+              </Link>
+              {/* Mobile is read-only — hide Save so users don't think
+                  their typing (which can't happen) is being persisted. */}
+              {!isMobile && (
+                <button
+                  type="button"
+                  onClick={onSaveOnly}
+                  disabled={isSaving}
+                  className={cn(
+                    buttonVariants({ variant: 'primary', size: 'md' }),
+                    'gap-2',
+                  )}
+                >
+                  {isSaving
+                    ? mode === 'create'
+                      ? t('creating')
+                      : t('saving')
+                    : mode === 'create'
+                      ? t('create')
+                      : t('save')}
+                </button>
               )}
-            >
-              {isSaving
-                ? mode === 'create'
-                  ? t('creating')
-                  : t('saving')
-                : mode === 'create'
-                  ? t('create')
-                  : t('save')}
-            </button>
-          )}
-        </div>
-      </header>
+            </div>
+          }
+        />
 
-      {/* ----- Server error banner ----- */}
-      {serverError && (
-        <div
-          role="alert"
-          className="border-b border-danger/30 bg-danger/10 px-4 py-2 text-sm text-danger sm:px-6"
-        >
-          {serverError.message}
-          {serverError.upgrade && CLIENT_CAPABILITIES.billing && (
-            <Link
-              href={`/${uiLocale}/billing`}
-              className="ml-3 underline hover:no-underline"
-            >
-              {t('viewPlans')}
-            </Link>
-          )}
-        </div>
-      )}
+        {/* ----- Server error banner ----- */}
+        {serverError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-2 text-sm text-danger"
+          >
+            {serverError.message}
+            {serverError.upgrade && CLIENT_CAPABILITIES.billing && (
+              <Link
+                href={`/${uiLocale}/billing`}
+                className="ml-3 underline hover:no-underline"
+              >
+                {t('viewPlans')}
+              </Link>
+            )}
+          </div>
+        )}
 
-      {/* ----- Meta section ----- */}
-      <div className="px-4 sm:px-6">
+        {/* ----- Meta section ----- */}
         <MetaSection
           name={name}
           description={description}
@@ -516,148 +516,148 @@ export function PolicyForm({
           onIsPublicChange={setIsPublic}
           nameError={nameError}
         />
-      </div>
 
-      {/* ----- Editor + Side panel ----- */}
-      <div
-        className="flex gap-3 px-4 sm:px-6"
-        // Clamp the editor row to a usable working height. Below this,
-        // the page just gains a natural scrollbar — no broken flex.
-        style={{ height: 'clamp(500px, calc(100vh - 16rem), 720px)' }}
-      >
-        <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-border bg-bg shadow-sm overflow-hidden">
-          {isMobile ? (
-            // Read-only viewer for phones. Pre-formatted text with the
-            // same monospace stack Monaco uses, so syntax highlighting's
-            // absence is the only visible difference. The empty-state
-            // placeholder mirrors the editor's contentPlaceholder text
-            // so a brand-new policy doesn't surprise the user with a
-            // blank gray box.
-            <pre
-              className="m-0 h-full overflow-auto p-4 font-mono text-sm text-fg whitespace-pre-wrap break-words"
-              aria-label={t('content')}
-            >
-              {content || t('contentPlaceholder')}
-            </pre>
-          ) : (
-            <MonacoPolicyEditor
-              value={content}
-              onChange={setContent}
-              locale={cnlLocale}
-              height="100%"
-              placeholder={t('contentPlaceholder')}
-              onEditorReady={(ed) => {
-                editorInstanceRef.current = ed;
-                // Trigger one re-render so marker / palette hooks
-                // depending on the editor instance can pick it up.
-                setEditorReady(true);
-              }}
-              enableAICompletion
-              onToggleAIPanel={() => {
-                setRequestedTab('ai');
-                setSidePanelOpen(true);
-              }}
-            />
+        {/* ----- Editor + Side panel ----- */}
+        <div
+          className="flex gap-3"
+          // Clamp the editor row to a usable working height. Below this,
+          // the page just gains a natural scrollbar — no broken flex.
+          style={{ height: 'clamp(500px, calc(100vh - 16rem), 720px)' }}
+        >
+          <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-border bg-bg shadow-sm overflow-hidden">
+            {isMobile ? (
+              // Read-only viewer for phones. Pre-formatted text with the
+              // same monospace stack Monaco uses, so syntax highlighting's
+              // absence is the only visible difference. The empty-state
+              // placeholder mirrors the editor's contentPlaceholder text
+              // so a brand-new policy doesn't surprise the user with a
+              // blank gray box.
+              <pre
+                className="m-0 h-full overflow-auto p-4 font-mono text-sm text-fg whitespace-pre-wrap break-words"
+                aria-label={t('content')}
+              >
+                {content || t('contentPlaceholder')}
+              </pre>
+            ) : (
+              <MonacoPolicyEditor
+                value={content}
+                onChange={setContent}
+                locale={cnlLocale}
+                height="100%"
+                placeholder={t('contentPlaceholder')}
+                onEditorReady={(ed) => {
+                  editorInstanceRef.current = ed;
+                  // Trigger one re-render so marker / palette hooks
+                  // depending on the editor instance can pick it up.
+                  setEditorReady(true);
+                }}
+                enableAICompletion
+                onToggleAIPanel={() => {
+                  setRequestedTab('ai');
+                  setSidePanelOpen(true);
+                }}
+              />
+            )}
+          </div>
+          {sidePanelOpen && (
+            <div className="hidden w-[28rem] lg:flex">
+              <SidePanel
+                editor={editorInstanceRef.current}
+                cnlLocale={cnlLocale}
+                uiLocale={uiLocale}
+                onApplyContent={(body) => setContent(body)}
+                onApplyTemplate={(tpl) => {
+                  // PR-3: insert at cursor position rather than wiping
+                  // whatever the user already typed. Preserves the form
+                  // body and just adds the template snippet inline.
+                  insertTemplateAtCursor(tpl);
+                }}
+                onClose={() => setSidePanelOpen(false)}
+                compileState={compile.state}
+                compileDiagnostics={compile.diagnostics}
+                compileModule={compile.module}
+                onJumpToLine={(line, column) => {
+                  const ed = editorInstanceRef.current;
+                  if (!ed) return;
+                  ed.revealLineInCenter(line);
+                  ed.setPosition({ lineNumber: line, column });
+                  ed.focus();
+                }}
+                initialTab={requestedTab}
+              />
+            </div>
           )}
         </div>
-        {sidePanelOpen && (
-          <div className="hidden w-[28rem] lg:flex">
-            <SidePanel
-              editor={editorInstanceRef.current}
-              cnlLocale={cnlLocale}
-              uiLocale={uiLocale}
-              onApplyContent={(body) => setContent(body)}
-              onApplyTemplate={(tpl) => {
-                // PR-3: insert at cursor position rather than wiping
-                // whatever the user already typed. Preserves the form
-                // body and just adds the template snippet inline.
-                insertTemplateAtCursor(tpl);
-              }}
-              onClose={() => setSidePanelOpen(false)}
-              compileState={compile.state}
-              compileDiagnostics={compile.diagnostics}
-              compileModule={compile.module}
-              onJumpToLine={(line, column) => {
-                const ed = editorInstanceRef.current;
-                if (!ed) return;
-                ed.revealLineInCenter(line);
-                ed.setPosition({ lineNumber: line, column });
-                ed.focus();
-              }}
-              initialTab={requestedTab}
-            />
-          </div>
-        )}
+
+        {/* ----- Status bar ----- */}
+        <StatusBar
+          content={content}
+          cnlLocale={cnlLocale}
+          isDirty={isDirty}
+          lastSavedAt={lastSavedAt}
+          compileState={compile.state}
+          compileDiagnostics={compile.diagnostics}
+          compileTransportError={compile.transportError}
+          onCompileChipClick={() => {
+            setRequestedTab('decision');
+            setSidePanelOpen(true);
+          }}
+        />
+
+        {/* ----- Editor command palette ----- */}
+        <EditorPalette
+          isOpen={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          uiLocale={uiLocale}
+          onAskAI={() => {
+            setRequestedTab('ai');
+            setSidePanelOpen(true);
+          }}
+          onInsertTemplate={insertTemplateAtCursor}
+          onConvertLocale={() => setConverterOpen(true)}
+          onFormat={formatDocument}
+          onSave={onSaveOnly}
+          onSaveAndView={onSaveAndView}
+          onTogglePanel={() => setSidePanelOpen((v) => !v)}
+          onShowSyntax={() => {
+            setRequestedTab('syntax');
+            setSidePanelOpen(true);
+          }}
+          onShowDecision={() => {
+            setRequestedTab('decision');
+            setSidePanelOpen(true);
+          }}
+        />
+
+        {/* ----- CNL locale converter dialog ----- */}
+        <CNLSyntaxConverterDialog
+          isOpen={converterOpen}
+          onClose={() => setConverterOpen(false)}
+          content={content}
+          currentLocale={cnlLocale}
+          uiLocale={uiLocale}
+          onApply={(converted) => {
+            setContent(converted);
+          }}
+        />
+
+        {/* ----- Cancel confirmation ----- */}
+        <ConfirmDialog
+          isOpen={cancelConfirmOpen}
+          title={t('unsavedLeaveWarning')}
+          description=""
+          confirmLabel={tCommon('cancel')}
+          cancelLabel={uiLocale.startsWith('zh') ? '继续编辑' : 'Keep editing'}
+          variant="warning"
+          onCancel={() => setCancelConfirmOpen(false)}
+          onConfirm={() => {
+            // Wipe draft so we don't re-offer to restore what the
+            // user explicitly chose to discard.
+            clearDraft();
+            router.push(cancelHref);
+          }}
+        />
       </div>
-
-      {/* ----- Status bar ----- */}
-      <StatusBar
-        content={content}
-        cnlLocale={cnlLocale}
-        isDirty={isDirty}
-        lastSavedAt={lastSavedAt}
-        compileState={compile.state}
-        compileDiagnostics={compile.diagnostics}
-        compileTransportError={compile.transportError}
-        onCompileChipClick={() => {
-          setRequestedTab('decision');
-          setSidePanelOpen(true);
-        }}
-      />
-
-      {/* ----- Editor command palette ----- */}
-      <EditorPalette
-        isOpen={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        uiLocale={uiLocale}
-        onAskAI={() => {
-          setRequestedTab('ai');
-          setSidePanelOpen(true);
-        }}
-        onInsertTemplate={insertTemplateAtCursor}
-        onConvertLocale={() => setConverterOpen(true)}
-        onFormat={formatDocument}
-        onSave={onSaveOnly}
-        onSaveAndView={onSaveAndView}
-        onTogglePanel={() => setSidePanelOpen((v) => !v)}
-        onShowSyntax={() => {
-          setRequestedTab('syntax');
-          setSidePanelOpen(true);
-        }}
-        onShowDecision={() => {
-          setRequestedTab('decision');
-          setSidePanelOpen(true);
-        }}
-      />
-
-      {/* ----- CNL locale converter dialog ----- */}
-      <CNLSyntaxConverterDialog
-        isOpen={converterOpen}
-        onClose={() => setConverterOpen(false)}
-        content={content}
-        currentLocale={cnlLocale}
-        uiLocale={uiLocale}
-        onApply={(converted) => {
-          setContent(converted);
-        }}
-      />
-
-      {/* ----- Cancel confirmation ----- */}
-      <ConfirmDialog
-        isOpen={cancelConfirmOpen}
-        title={t('unsavedLeaveWarning')}
-        description=""
-        confirmLabel={tCommon('cancel')}
-        cancelLabel={uiLocale.startsWith('zh') ? '继续编辑' : 'Keep editing'}
-        variant="warning"
-        onCancel={() => setCancelConfirmOpen(false)}
-        onConfirm={() => {
-          // Wipe draft so we don't re-offer to restore what the
-          // user explicitly chose to discard.
-          clearDraft();
-          router.push(cancelHref);
-        }}
-      />
-    </div>
+    </Container>
   );
 }

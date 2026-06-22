@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
-import { ConfirmDialog, Input, Label, Select } from '@/components/ui';
+import { ConfirmDialog, Container, PageHeader, Breadcrumbs, Input, Label, Select } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Member {
@@ -322,45 +322,44 @@ export default function TeamMembersPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <Container size="narrow" className="py-6 sm:py-10">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Container>
     );
   }
 
   if (!team) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error || t('teamNotFound')}</p>
-        <Link href={`/${locale}/teams`} className="mt-4 text-primary hover:text-primary-hover">
-          {t('backToTeams')}
-        </Link>
-      </div>
+      <Container size="narrow" className="py-6 sm:py-10">
+        <div className="text-center py-12">
+          <p className="text-red-600">{error || t('teamNotFound')}</p>
+          <Link href={`/${locale}/teams`} className="mt-4 text-primary hover:text-primary-hover">
+            {t('backToTeams')}
+          </Link>
+        </div>
+      </Container>
     );
   }
 
   return (
-    <div>
-      {/* 页头 */}
-      <div className="mb-6">
-        <Link
-          href={`/${locale}/teams/${teamId}`}
-          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
-        >
-          <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t('backToTeam')}
-        </Link>
-      </div>
-
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('members.title')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{team.name}</p>
-        </div>
-        {canInvite && (
-          <div className="mt-4 sm:mt-0">
+    <Container size="narrow" className="py-6 sm:py-10">
+      {/* 成员页（deep）：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot），
+          替代原来手抄的返回箭头链接，用作上一级（团队详情页）导航。 */}
+      <PageHeader
+        title={t('members.title')}
+        subtitle={team.name}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: t('backToTeam'), href: `/teams/${teamId}` },
+              { label: t('members.title') },
+            ]}
+          />
+        }
+        action={
+          canInvite ? (
             <button
               onClick={() => setShowInviteForm(true)}
               className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
@@ -370,9 +369,10 @@ export default function TeamMembersPage() {
               </svg>
               {t('members.inviteMember')}
             </button>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+        className="mb-6"
+      />
 
       {error && (
         <div className="mt-4 rounded-md bg-red-50 p-4">
@@ -578,6 +578,6 @@ export default function TeamMembersPage() {
         onConfirm={runPendingAction}
         onCancel={() => !isActioning && setPendingAction(null)}
       />
-    </div>
+    </Container>
   );
 }

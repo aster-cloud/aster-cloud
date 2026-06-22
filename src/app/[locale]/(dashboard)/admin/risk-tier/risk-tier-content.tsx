@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Breadcrumbs } from '@/components/ui';
+import { Container, PageHeader, Breadcrumbs } from '@/components/ui';
 
 interface RiskRow {
   id: string;
@@ -91,18 +91,22 @@ export function RiskTierAdminContent() {
   for (const r of rows) distribution[r.riskTier] = (distribution[r.riskTier] ?? 0) + 1;
 
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-6">
-        <Breadcrumbs
-          className="mb-2"
-          items={[
-            { label: 'Admin' },
-            { label: t('title') },
-          ]}
-        />
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('title')}</h1>
-        <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
-      </header>
+    <Container size="xl" className="py-6 sm:py-10">
+      {/* deep 页：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot）。
+          xl 宽：本页含 5 个统计卡 + 8 列表格，数据密集。 */}
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: 'Admin' },
+              { label: t('title') },
+            ]}
+          />
+        }
+        className="mb-6"
+      />
 
       <section className="mb-6 grid gap-3 grid-cols-2 sm:grid-cols-5">
         {[1, 2, 3, 4].map((tier) => (
@@ -251,7 +255,7 @@ export function RiskTierAdminContent() {
           }}
         />
       )}
-    </div>
+    </Container>
   );
 }
 

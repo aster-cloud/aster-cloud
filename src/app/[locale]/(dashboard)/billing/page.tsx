@@ -34,6 +34,7 @@ import {
   Card,
   CardBody,
   Container,
+  PageHeader,
   Stack,
   cn,
 } from '@/components/ui';
@@ -112,12 +113,11 @@ export default async function BillingOverviewPage() {
   return (
     <Container size="xl" className="py-6 sm:py-10">
       <Stack gap={8}>
-        <Stack gap={2}>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-            {tOv('overviewTitle')}
-          </h1>
-          <p className="text-sm text-fg-muted">{tOv('overviewSubtitle')}</p>
-        </Stack>
+        {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
+        <PageHeader
+          title={tOv('overviewTitle')}
+          subtitle={tOv('overviewSubtitle')}
+        />
 
         {/* Row 1: Plan / Trial / Next invoice */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

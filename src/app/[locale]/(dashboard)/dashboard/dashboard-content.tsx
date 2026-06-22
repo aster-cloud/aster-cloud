@@ -51,6 +51,7 @@ import {
   Card,
   CardBody,
   Container,
+  PageHeader,
   Stack,
   cn,
 } from '@/components/ui';
@@ -198,19 +199,20 @@ export function DashboardContent({
           />
         )}
 
-        {/* Welcome row + primary CTA */}
-        <Stack direction="row" gap={4} justify="between" align="center" wrap>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
-            {t.welcomeBack}
-          </h1>
-          <Link
-            href="/policies/new"
-            className={buttonVariants({ variant: 'primary', size: 'md' })}
-          >
-            <Plus className="size-4" aria-hidden />
-            {t.newPolicy}
-          </Link>
-        </Stack>
+        {/* Welcome row + primary CTA — 顶层页：sidebar 已高亮 "Dashboard"
+            + PageHeader h1 显页名 → 不放 Breadcrumbs（去三重重复）。 */}
+        <PageHeader
+          title={t.welcomeBack}
+          action={
+            <Link
+              href="/policies/new"
+              className={buttonVariants({ variant: 'primary', size: 'md' })}
+            >
+              <Plus className="size-4" aria-hidden />
+              {t.newPolicy}
+            </Link>
+          }
+        />
 
         {/* Admin setup launchpad — first viewport for SaaS admins on a
             fresh tenant. The component self-hides when all five signals

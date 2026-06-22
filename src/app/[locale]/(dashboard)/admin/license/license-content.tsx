@@ -10,6 +10,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { Container, PageHeader } from '@/components/ui';
 import type { LicenseResult } from '@/lib/license';
 import { LicenseStatusSummary } from './components/license-status-summary';
 import { StatusAdvisories } from './components/status-advisories';
@@ -51,11 +52,9 @@ export function LicenseStatusContent({
   const t = useTranslations('admin.license');
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-fg">{t('title')}</h1>
-        <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
-      </header>
+    <Container size="base" className="space-y-6 py-6 sm:py-10">
+      {/* 顶层页：sidebar 已高亮 "License" + PageHeader h1 显页名 → 不放 Breadcrumbs（去三重重复）。 */}
+      <PageHeader title={t('title')} subtitle={t('subtitle')} />
 
       <LicenseStatusSummary result={result} cacheMeta={cacheMeta} />
       <StatusAdvisories result={result} cacheMeta={cacheMeta} />
@@ -77,6 +76,6 @@ export function LicenseStatusContent({
         lastUpload={(lastTelemetryUpload as TelemetryUploadRecord | null) ?? null}
       />
       <SupportDiagnostics result={result} />
-    </div>
+    </Container>
   );
 }
