@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+import * as React from 'react';
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -12,6 +13,32 @@ vi.mock('next/navigation', () => ({
     get: vi.fn(),
   }),
   usePathname: () => '',
+}));
+
+// Mock the locale-aware navigation wrapper globally.
+//
+// `@/i18n/navigation` calls next-intl's `createNavigation()` at module load,
+// which transitively `import`s `next/navigation` from inside the next-intl
+// package — a path vitest can't always resolve in pnpm's nested layout. Since
+// the dashboard now widely imports design-system primitives from
+// `@/components/ui` (the barrel re-exports `Breadcrumbs`, which pulls in this
+// navigation module), any component test that touches `@/components/ui` would
+// otherwise crash with "Cannot find module next/navigation". Mocking the
+// wrapper here short-circuits before next-intl runs, matching the per-test
+// pattern previously copy-pasted across individual suites.
+vi.mock('@/i18n/navigation', () => ({
+  Link: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => React.createElement('a', { href, ...rest }, children),
+  redirect: vi.fn(),
+  usePathname: () => '',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  getPathname: ({ href }: { href: string }) => href,
 }));
 
 // Mock next-auth/react
