@@ -15,6 +15,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { desc, gte, sql } from 'drizzle-orm';
 import { db, users, auditLogs } from '@/lib/prisma';
 import { Link } from '@/i18n/navigation';
+import { Container, PageHeader } from '@/components/ui';
 import { FeatureFlagsCard } from '@/components/admin/feature-flags-card';
 import { PlatformLanguageCard } from '@/components/admin/platform-language-card';
 import {
@@ -179,12 +180,11 @@ export default async function AdminOverviewPage({ params }: Props) {
   const pulse = await loadPulse();
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <header>
-        <h1 className="text-2xl font-semibold text-fg">{t('title')}</h1>
-        <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
-      </header>
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* 顶层页：sidebar 已高亮 "Admin" + PageHeader h1 显页名 → 不再放 Breadcrumbs（去三重重复）。 */}
+      <PageHeader title={t('title')} subtitle={t('subtitle')} className="mb-6" />
 
+      <div className="space-y-8">
       {/* Admin Pulse — first viewport health signals. Each card is
           independent: if one fails to load, the others still render. */}
       <section aria-labelledby="admin-pulse-heading">
@@ -275,7 +275,8 @@ export default async function AdminOverviewPage({ params }: Props) {
           ))}
         </ul>
       </section>
-    </div>
+      </div>
+    </Container>
   );
 }
 

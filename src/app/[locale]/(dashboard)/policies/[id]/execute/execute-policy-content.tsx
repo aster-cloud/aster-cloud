@@ -23,6 +23,8 @@ const FUNCTION_LABEL: Record<string, string> = {
   'de-DE': 'Funktion',
 };
 import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
+import { Container, PageHeader } from '@/components/ui';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { DecisionTracePanel, type DecisionTrace } from '@/components/policy/decision-trace-panel';
 import { RuleSelector } from '@/components/policy/rule-selector';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
@@ -139,6 +141,9 @@ function initFormValuesWithSampleData(
 
 export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentProps) {
   const t = useTranslations('policies.execute');
+  // Breadcrumb 文案复用 policies 命名空间已有键（policies.title=列表页名、
+  // policies.executeAction=当前页短标签），避免新增 i18n 键。
+  const tPolicies = useTranslations('policies');
   const [input, setInput] = useState('');
   const [result, setResult] = useState<ExecutionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -481,23 +486,23 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center">
-          <Link href={`/${locale}/policies/${policyId}`} className="text-fg-subtle hover:text-fg-muted mr-2">
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-            </svg>
-          </Link>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-            {t('title', { name: policyName || 'Policy' })}
-          </h1>
-        </div>
-        <p className="mt-1 text-sm text-fg-muted">
-          {t('subtitle')}
-        </p>
-      </div>
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* Deep 页：保留 Breadcrumbs（Policies → 策略名 → 当前执行页）。
+          原手抄的返回箭头 <Link> 由 breadcrumb 第二项（指向策略详情）替代。 */}
+      <PageHeader
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: tPolicies('title'), href: '/policies' },
+              { label: policyName || 'Policy', href: `/policies/${policyId}` },
+              { label: tPolicies('executeAction') },
+            ]}
+          />
+        }
+        title={t('title', { name: policyName || 'Policy' })}
+        subtitle={t('subtitle')}
+        className="mb-6"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Panel */}
@@ -822,6 +827,6 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
           <DecisionTracePanel trace={result.decisionTrace} />
         )}
       </div>
-    </div>
+    </Container>
   );
 }

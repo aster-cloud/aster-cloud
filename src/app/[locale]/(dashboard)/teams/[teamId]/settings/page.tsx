@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { ConfirmDialog, Input, Label, Select, toast } from '@/components/ui';
+import { Breadcrumbs, ConfirmDialog, Container, Input, Label, PageHeader, Select, toast } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 import { TeamLanguageCard } from '@/components/teams/team-language-card';
 
@@ -166,53 +166,59 @@ export default function TeamSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <Container size="base" className="py-6 sm:py-10">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Container>
     );
   }
 
   if (!team) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error || t('teamNotFound')}</p>
-        <Link href="/teams" className="mt-4 text-primary hover:text-primary-hover">
-          {t('backToTeams')}
-        </Link>
-      </div>
+      <Container size="base" className="py-6 sm:py-10">
+        <div className="text-center py-12">
+          <p className="text-red-600">{error || t('teamNotFound')}</p>
+          <Link href="/teams" className="mt-4 text-primary hover:text-primary-hover">
+            {t('backToTeams')}
+          </Link>
+        </div>
+      </Container>
     );
   }
 
   if (!canEdit) {
     return (
-      <div className="text-center py-12">
-        <p className="text-fg-muted">{t('settings.noPermission')}</p>
-        <Link
-          href={`/teams/${teamId}`}
-          className="mt-4 inline-flex items-center text-primary hover:text-primary-hover"
-        >
-          {t('backToTeam')}
-        </Link>
-      </div>
+      <Container size="base" className="py-6 sm:py-10">
+        <div className="text-center py-12">
+          <p className="text-fg-muted">{t('settings.noPermission')}</p>
+          <Link
+            href={`/teams/${teamId}`}
+            className="mt-4 inline-flex items-center text-primary hover:text-primary-hover"
+          >
+            {t('backToTeam')}
+          </Link>
+        </div>
+      </Container>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* 页头 */}
-      <div className="mb-6">
-        <Link
-          href={`/teams/${teamId}`}
-          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
-        >
-          <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t('backToTeam')}
-        </Link>
-      </div>
-
-      <h1 className="text-2xl font-bold text-fg mb-8">{t('settings.title')}</h1>
+    <Container size="base" className="py-6 sm:py-10">
+      {/* 设置页（deep）：保留 Breadcrumbs（放进 PageHeader 的 breadcrumbs slot），
+          替代原来手抄的返回箭头链接，用作上一级导航回到团队详情。 */}
+      <PageHeader
+        title={t('settings.title')}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: t('backToTeam'), href: `/teams/${teamId}` },
+              { label: t('settings.title') },
+            ]}
+          />
+        }
+        className="mb-8"
+      />
 
       {/* 基本信息 */}
       <div className="bg-bg shadow rounded-lg mb-8">
@@ -461,6 +467,6 @@ export default function TeamSettingsPage() {
         onConfirm={handleTransfer}
         onCancel={() => !isTransferring && setTransferOpen(false)}
       />
-    </div>
+    </Container>
   );
 }

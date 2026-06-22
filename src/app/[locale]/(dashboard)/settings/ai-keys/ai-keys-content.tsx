@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Breadcrumbs, ConfirmDialog, Input, Label, Select } from '@/components/ui';
+import {
+  Breadcrumbs,
+  ConfirmDialog,
+  Container,
+  Input,
+  Label,
+  PageHeader,
+  Select,
+} from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface BYOKBinding {
@@ -118,27 +126,31 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <Breadcrumbs
-        className="mb-4"
-        items={[
-          { label: tSettings('title'), href: '/settings' },
-          { label: t('breadcrumb') },
-        ]}
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* deep 页：保留 Breadcrumbs（settings → AI keys），放进 PageHeader 的 breadcrumbs 槽。 */}
+      <PageHeader
+        title={t('title')}
+        subtitle={
+          <>
+            {t('subtitle')}{' '}
+            <Link
+              href={`/${locale}/dashboard`}
+              className="ml-2 text-primary hover:underline"
+            >
+              {t('viewUsage')}
+            </Link>
+          </>
+        }
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: tSettings('title'), href: '/settings' },
+              { label: t('breadcrumb') },
+            ]}
+          />
+        }
+        className="mb-6"
       />
-
-      <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-        {t('title')}
-      </h1>
-      <p className="mt-1 text-sm text-fg-muted">
-        {t('subtitle')}{' '}
-        <Link
-          href={`/${locale}/dashboard`}
-          className="ml-2 text-primary hover:underline"
-        >
-          {t('viewUsage')}
-        </Link>
-      </p>
 
       <section className="mt-6 rounded-lg border border-border bg-bg p-6">
         <h2 className="text-lg font-semibold text-fg">{t('addTitle')}</h2>
@@ -290,6 +302,6 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
         onConfirm={confirmRevoke}
         onCancel={() => !isRevoking && setRevokeProvider(null)}
       />
-    </div>
+    </Container>
   );
 }

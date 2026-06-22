@@ -9,6 +9,7 @@ import {
   Breadcrumbs,
   Button,
   ConfirmDialog,
+  Container,
   DataTable,
   EmptyState,
   ListSearchInput,
@@ -275,17 +276,20 @@ export function SnapshotsContent({
   ];
 
   return (
-    <div>
-      <Breadcrumbs
-        className="mb-4"
-        items={[
-          { label: tNav('dashboard'), href: '/dashboard' },
-          { label: tNav('domainVocabularies'), href: '/domain-vocabularies' },
-          { label: t('title') },
-        ]}
+    <Container size="wide" className="py-6 sm:py-10">
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: tNav('dashboard'), href: '/dashboard' },
+              { label: tNav('domainVocabularies'), href: '/domain-vocabularies' },
+              { label: t('title') },
+            ]}
+          />
+        }
       />
-
-      <PageHeader title={t('title')} subtitle={t('subtitle')} />
 
       {initialTotal > 0 ? (
         <div className="mt-6">
@@ -357,6 +361,6 @@ export function SnapshotsContent({
           if (!rollingBack) setRollbackTarget(null);
         }}
       />
-    </div>
+    </Container>
   );
 }

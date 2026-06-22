@@ -8,6 +8,7 @@ import {
   Breadcrumbs,
   Button,
   ConfirmDialog,
+  Container,
   DataTable,
   EmptyState,
   ListSearchInput,
@@ -294,7 +295,7 @@ export function VocabulariesContent({
   // suddenly gated. Trial→free is the common case worth narrating.
   if (!quota.allowed) {
     return (
-      <div>
+      <Container size="wide" className="py-6 sm:py-10">
         <Breadcrumbs
           className="mb-4"
           items={[
@@ -306,7 +307,7 @@ export function VocabulariesContent({
           trialExpired={quota.downgraded}
           trialEndsAt={quota.trialEndsAt}
         />
-      </div>
+      </Container>
     );
   }
 
@@ -418,15 +419,7 @@ export function VocabulariesContent({
   const localeOptions = upsert(localeOptionsFromRows, initialFilters.locale);
 
   return (
-    <div>
-      <Breadcrumbs
-        className="mb-4"
-        items={[
-          { label: tNav('dashboard'), href: '/dashboard' },
-          { label: tNav('domainVocabularies') },
-        ]}
-      />
-
+    <Container size="wide" className="py-6 sm:py-10">
       <DowngradeBanner
         trialExpired={quota.downgraded}
         trialEndsAt={quota.trialEndsAt}
@@ -435,6 +428,14 @@ export function VocabulariesContent({
       <PageHeader
         title={t('title')}
         subtitle={t('subtitle')}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: tNav('dashboard'), href: '/dashboard' },
+              { label: tNav('domainVocabularies') },
+            ]}
+          />
+        }
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -625,7 +626,7 @@ export function VocabulariesContent({
           if (!busy) setDeleting(null);
         }}
       />
-    </div>
+    </Container>
   );
 }
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { Breadcrumbs, ListSearchInput } from '@/components/ui';
+import { Container, PageHeader, ListSearchInput } from '@/components/ui';
 import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
 import { PendingInvitationsCard } from '@/components/teams/pending-invitations-card';
 
@@ -28,7 +28,6 @@ export function TeamsContent({
 }: TeamsContentProps) {
   // i18n via useTranslations directly — drops the prerender prop pattern.
   const t = useTranslations('teams');
-  const tNav = useTranslations('dashboardNav');
   const tCommon = useTranslations('common');
 
   const [teams] = useState<Team[]>(initialTeams);
@@ -96,20 +95,13 @@ export function TeamsContent({
   }
 
   return (
-    <div>
-      <Breadcrumbs
-        className="mb-4"
-        items={[
-          { label: tNav('dashboard'), href: '/dashboard' },
-          { label: tNav('teams') },
-        ]}
-      />
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('title')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{t('subtitle')}</p>
-        </div>
-        <div className="mt-4 sm:mt-0">
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        className="mb-6"
+        action={
           <Link
             href="/teams/new"
             className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
@@ -119,8 +111,8 @@ export function TeamsContent({
             </svg>
             {t('newTeam')}
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* In-app inbox: invitations addressed to the current user's
           email. Self-hides when empty, so users with nothing pending
@@ -211,6 +203,6 @@ export function TeamsContent({
           ))}
         </div>
       )}
-    </div>
+    </Container>
   );
 }

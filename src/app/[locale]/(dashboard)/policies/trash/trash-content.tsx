@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { formatDate } from '@/lib/format';
-import { Breadcrumbs } from '@/components/ui';
+import { Container, PageHeader } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui';
 
 interface TrashItem {
@@ -182,30 +182,24 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Breadcrumbs + page heading */}
-      <div className="md:flex md:items-center md:justify-between mb-6">
-        <div>
-          <Breadcrumbs
-            className="mb-2"
-            items={[
-              { label: t.trash.backToPolicies, href: '/policies' },
-              { label: t.trash.title },
-            ]}
-          />
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t.trash.title}</h1>
-          <p className="text-sm text-fg-muted">{t.trash.description}</p>
-        </div>
-        {items.length > 0 && (
-          <button
-            onClick={handleEmptyTrashClick}
-            disabled={actionLoading === 'empty'}
-            className="mt-4 md:mt-0 inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
-          >
-            {actionLoading === 'empty' ? '...' : t.trash.emptyTrash}
-          </button>
-        )}
-      </div>
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* 顶层页：去 Breadcrumbs（sidebar 高亮 + PageHeader h1 已显页名）。 */}
+      <PageHeader
+        title={t.trash.title}
+        subtitle={t.trash.description}
+        className="mb-6"
+        action={
+          items.length > 0 ? (
+            <button
+              onClick={handleEmptyTrashClick}
+              disabled={actionLoading === 'empty'}
+              className="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+            >
+              {actionLoading === 'empty' ? '...' : t.trash.emptyTrash}
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Stats */}
       {stats && stats.total > 0 && (
@@ -338,6 +332,6 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
         onConfirm={handleConfirmAction}
         onCancel={() => setConfirmDialog(null)}
       />
-    </div>
+    </Container>
   );
 }

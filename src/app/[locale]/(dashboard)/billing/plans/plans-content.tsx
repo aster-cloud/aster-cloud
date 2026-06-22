@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDate } from '@/lib/format';
-import { Breadcrumbs } from '@/components/ui';
+import { Container, PageHeader } from '@/components/ui';
 import {
   BillingInterval,
   CurrencyCode,
@@ -177,22 +177,9 @@ function BillingContentInner({
   };
 
   return (
-    <div>
-      <Breadcrumbs
-        className="mb-4"
-        items={[
-          { label: t.nav.dashboard, href: '/dashboard' },
-          { label: t.nav.billing },
-        ]}
-      />
-      <div className="md:flex md:items-center md:justify-between mb-8">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t.title}</h1>
-          <p className="mt-1 text-sm text-fg-muted">
-            {t.subtitle}
-          </p>
-        </div>
-      </div>
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* 顶层页：sidebar 已高亮 "Billing" + PageHeader h1 显页名 → 不再放 Breadcrumbs（去三重重复）。 */}
+      <PageHeader title={t.title} subtitle={t.subtitle} className="mb-6" />
 
       {message && (
         <div
@@ -441,7 +428,7 @@ function BillingContentInner({
 
       {/* FAQ */}
       <FAQSection t={tFn} />
-    </div>
+    </Container>
   );
 }
 

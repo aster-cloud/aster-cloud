@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
 import { SharedWithTeamSection } from '@/components/policy/shared-with-team-section';
+import { Breadcrumbs, Container, PageHeader } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Policy {
@@ -83,49 +84,48 @@ export default function TeamPoliciesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <Container size="wide" className="py-6 sm:py-10">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Container>
     );
   }
 
   if (!team) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error || t('teamNotFound')}</p>
-        <Link href="/teams" className="mt-4 text-primary hover:text-primary-hover">
-          {t('backToTeams')}
-        </Link>
-      </div>
+      <Container size="wide" className="py-6 sm:py-10">
+        <div className="text-center py-12">
+          <p className="text-red-600">{error || t('teamNotFound')}</p>
+          <Link href="/teams" className="mt-4 text-primary hover:text-primary-hover">
+            {t('backToTeams')}
+          </Link>
+        </div>
+      </Container>
     );
   }
 
   return (
-    <div>
-      {/* 页头 */}
-      <div className="mb-6">
-        <Link
-          href={`/teams/${teamId}`}
-          className="inline-flex items-center text-sm text-fg-muted hover:text-fg"
-        >
-          <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {t('backToTeam')}
-        </Link>
-      </div>
-
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t('policies.title')}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{team.name}</p>
-        </div>
-        {canCreatePolicy && (
-          <div className="mt-4 sm:mt-0">
-            {/* Routes through the shared /policies/new editor — see
-                page.tsx comment at the top. teamId in the query string
-                is read by NewPolicyContent and forwarded into the
-                POST /api/policies body. */}
+    <Container size="wide" className="py-6 sm:py-10">
+      {/* deep 页：保留 Breadcrumbs（团队名→当前 Policies），放进 PageHeader breadcrumbs slot。
+          原顶部 "返回团队" 链接由面包屑父级条目承担。 */}
+      <PageHeader
+        title={t('policies.title')}
+        subtitle={team.name}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: team.name, href: `/teams/${teamId}` },
+              { label: t('policies.title') },
+            ]}
+          />
+        }
+        action={
+          canCreatePolicy ? (
+            // Routes through the shared /policies/new editor — see
+            // page.tsx comment at the top. teamId in the query string
+            // is read by NewPolicyContent and forwarded into the
+            // POST /api/policies body.
             <Link
               href={`/policies/new?teamId=${teamId}`}
               className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
@@ -135,9 +135,10 @@ export default function TeamPoliciesPage() {
               </svg>
               {t('policies.newPolicy')}
             </Link>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+        className="mb-6"
+      />
 
       {error && (
         <div className="mt-4 rounded-md bg-red-50 p-4">
@@ -250,6 +251,6 @@ export default function TeamPoliciesPage() {
       {/* Policies shared *with* this team. Self-gates: returns nothing
           when sharing is off or no shares exist. */}
       <SharedWithTeamSection teamId={teamId} locale={locale} />
-    </div>
+    </Container>
   );
 }

@@ -2,7 +2,7 @@
 
 import { Link } from '@/i18n/navigation';
 import { formatDate } from '@/lib/format';
-import { Breadcrumbs } from '@/components/ui';
+import { Breadcrumbs, Container, PageHeader } from '@/components/ui';
 
 interface ComplianceReport {
   id: string;
@@ -155,29 +155,23 @@ export function ReportDetailContent({
 
   if (!report) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{t.detail.reportNotFound}</p>
-        <Link href="/reports" className="mt-4 text-primary hover:underline">
-          {t.detail.backToReports}
-        </Link>
-      </div>
+      <Container size="wide" className="py-6 sm:py-10">
+        <div className="text-center py-12">
+          <p className="text-red-600">{t.detail.reportNotFound}</p>
+          <Link href="/reports" className="mt-4 text-primary hover:underline">
+            {t.detail.backToReports}
+          </Link>
+        </div>
+      </Container>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="md:flex md:items-center md:justify-between mb-6">
-        <div>
-          <Breadcrumbs
-            className="mb-2"
-            items={[
-              { label: t.detail.backToReports, href: '/reports' },
-              { label: report.title },
-            ]}
-          />
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{report.title}</h1>
-          <div className="mt-2 flex items-center space-x-3">
+    <Container size="wide" className="py-6 sm:py-10">
+      <PageHeader
+        title={report.title}
+        subtitle={
+          <span className="flex items-center space-x-3">
             {getStatusBadge(report.status)}
             <span className="text-sm text-fg-muted">
               {formatTemplate(t.typeTemplate, { type: report.type.toUpperCase() })}
@@ -185,9 +179,18 @@ export function ReportDetailContent({
             <span className="text-sm text-fg-muted">
               {formatTemplate(t.createdTemplate, { date: formatDate(report.createdAt, locale) })}
             </span>
-          </div>
-        </div>
-      </div>
+          </span>
+        }
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: t.detail.backToReports, href: '/reports' },
+              { label: report.title },
+            ]}
+          />
+        }
+        className="mb-6"
+      />
 
       {report.status === 'generating' && (
         <div className="mb-6 rounded-md bg-blue-50 p-4">
@@ -349,6 +352,6 @@ export function ReportDetailContent({
           )}
         </>
       )}
-    </div>
+    </Container>
   );
 }

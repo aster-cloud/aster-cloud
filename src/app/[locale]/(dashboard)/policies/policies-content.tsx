@@ -29,6 +29,7 @@ import {
   AlertTitle,
   Badge,
   ListSearchInput,
+  PageHeader,
   buttonVariants,
   cn,
 } from '@/components/ui';
@@ -795,7 +796,9 @@ export function PoliciesContent({
 
   if (!mounted) {
     // SSR / 首次渲染：不渲染 DndContext，避免 aria live region hydration mismatch
-    return <div className="flex h-[calc(100vh-8rem)]" />;
+    // 高度只减顶栏 h-16（4rem）：dashboard 的 <main> 已是全宽 passthrough，
+    // 不再有 py-6 纵向内边距，故无需再减 main padding。
+    return <div className="flex h-[calc(100vh-4rem)]" />;
   }
 
   return (
@@ -805,7 +808,10 @@ export function PoliciesContent({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-[calc(100vh-8rem)]">
+      {/* 工作台外层不套普通 Container：保持全宽 split-pane（左树 + 右列表）。
+          高度只减顶栏 h-16（4rem）——dashboard 的 <main> 已无 py-6 纵向内边距，
+          故偏移从 8rem 调整为 4rem，否则页面会比可用区短一截。 */}
+      <div className="flex h-[calc(100vh-4rem)]">
         {/* 左侧分组树 */}
         <PolicyGroupTree
           groups={groups}
@@ -828,55 +834,54 @@ export function PoliciesContent({
           }}
         />
 
-      {/* 右侧策略列表 */}
+      {/* 右侧策略列表 — workspace split-pane：宽度由外层 flex 控，
+          只把手抄的 h1+副标题+操作行换成 PageHeader 原语（顶层页不放 Breadcrumbs）。 */}
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="sm:flex sm:items-center sm:justify-between">
-          <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-              {t.title}
-            </h1>
-            <p className="mt-1 text-sm text-fg-muted">{t.subtitle}</p>
-          </div>
-          <div className="mt-4 flex space-x-3 sm:mt-0">
-            {/* 多选 / 单选切换按钮 */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsMultiSelectMode((prev) => !prev);
-                if (isMultiSelectMode) {
-                  clearSelection();
-                }
-              }}
-              className={buttonVariants({ variant: 'secondary', size: 'md' })}
-            >
-              {isMultiSelectMode ? (
-                <>
-                  <Circle className="size-4" aria-hidden />
-                  {tForm('selectionSingle')}
-                </>
-              ) : (
-                <>
-                  <ListChecks className="size-4" aria-hidden />
-                  {tForm('selectionMulti')}
-                </>
-              )}
-            </button>
-            <Link
-              href={`/${locale}/policies/trash`}
-              className={buttonVariants({ variant: 'secondary', size: 'md' })}
-            >
-              <Trash2 className="size-4" aria-hidden />
-              {t.trash}
-            </Link>
-            <Link
-              href={`/${locale}/policies/new`}
-              className={buttonVariants({ variant: 'primary', size: 'md' })}
-            >
-              <Plus className="size-4" aria-hidden />
-              {t.newPolicy}
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          title={t.title}
+          subtitle={t.subtitle}
+          action={
+            <div className="flex space-x-3">
+              {/* 多选 / 单选切换按钮 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMultiSelectMode((prev) => !prev);
+                  if (isMultiSelectMode) {
+                    clearSelection();
+                  }
+                }}
+                className={buttonVariants({ variant: 'secondary', size: 'md' })}
+              >
+                {isMultiSelectMode ? (
+                  <>
+                    <Circle className="size-4" aria-hidden />
+                    {tForm('selectionSingle')}
+                  </>
+                ) : (
+                  <>
+                    <ListChecks className="size-4" aria-hidden />
+                    {tForm('selectionMulti')}
+                  </>
+                )}
+              </button>
+              <Link
+                href={`/${locale}/policies/trash`}
+                className={buttonVariants({ variant: 'secondary', size: 'md' })}
+              >
+                <Trash2 className="size-4" aria-hidden />
+                {t.trash}
+              </Link>
+              <Link
+                href={`/${locale}/policies/new`}
+                className={buttonVariants({ variant: 'primary', size: 'md' })}
+              >
+                <Plus className="size-4" aria-hidden />
+                {t.newPolicy}
+              </Link>
+            </div>
+          }
+        />
 
         {error && (
           <ErrorState error={error} onRetry={() => setError('')} className="mt-4" />

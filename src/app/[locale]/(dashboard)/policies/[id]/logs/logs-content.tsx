@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { formatDate } from '@/lib/format';
+import { Breadcrumbs, Container, PageHeader } from '@/components/ui';
 
 type ExecutionSource = 'WEB' | 'API' | 'CLI' | 'dashboard' | 'api' | 'playground';
 
@@ -159,6 +160,9 @@ export function LogsContent({
   initialStats,
   initialTotalPages,
 }: LogsContentProps) {
+  // 面包屑根级 "Policies" 标签复用 policies 命名空间（与 versions 页一致）
+  const tPolicies = useTranslations('policies');
+
   // 使用服务端提供的初始数据，避免客户端首次加载时的空白
   const [logs, setLogs] = useState<ExecutionLog[]>(initialLogs);
   const [stats, setStats] = useState<Stats | null>(initialStats);
@@ -275,28 +279,21 @@ export function LogsContent({
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="md:flex md:items-center md:justify-between mb-8">
-        <div className="flex items-center">
-          <Link
-            href={`/${locale}/policies/${policyId}`}
-            className="flex items-center justify-center w-10 h-10 rounded-lg bg-bg-muted text-fg-muted hover:bg-bg-muted hover:text-fg transition-colors mr-4"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </Link>
-          <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">{t.logs.title}</h1>
-            <p className="mt-1 text-sm text-fg-muted">{policyName}</p>
-          </div>
-        </div>
-      </div>
+    <Container size="xl" className="py-6 sm:py-10">
+      {/* deep 页：保留面包屑（Policies > 策略名 > Logs），原返回箭头由面包屑导航取代。 */}
+      <PageHeader
+        title={t.logs.title}
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: tPolicies('title'), href: '/policies' },
+              { label: policyName, href: `/policies/${policyId}` },
+              { label: t.logs.title },
+            ]}
+          />
+        }
+        className="mb-6"
+      />
 
       {/* Stats Cards */}
       {stats && (
@@ -682,6 +679,6 @@ export function LogsContent({
           </div>
         )}
       </div>
-    </div>
+    </Container>
   );
 }
