@@ -142,7 +142,9 @@ function SidebarLink({
       {item.onSelect ? (
         <button
           type="button"
-          onClick={item.onSelect}
+          // 包一层箭头函数：直接 onClick={item.onSelect} 会把 MouseEvent 当
+          // openDocs(next) 的参数传进去 → slug 变成事件对象 → /docs/[object Object] 404。
+          onClick={() => item.onSelect?.()}
           aria-label={collapsed ? item.label : undefined}
           title={collapsed ? item.label : undefined}
           className={className}
