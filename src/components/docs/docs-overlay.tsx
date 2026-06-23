@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname } from '@/i18n/navigation';
 import { docsSidebar } from '@/lib/docs/sidebar';
 import { useDocsOverlay } from './docs-overlay-context';
 import { useDocContent } from './use-doc-content';
@@ -27,9 +28,20 @@ export function DocsOverlay() {
   const [query, setQuery] = useState('');
   const { results } = useDocSearch(query);
   const searching = query.trim().length > 0;
+  const pathname = usePathname();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const articleRef = useRef<HTMLDivElement>(null);
+
+  // dashboard 路由变化时关闭 overlay。overlay 盖在内容区上但左侧 sidebar 仍可点——
+  // 点 sidebar 的 API keys / Teams 等导航项会切换底下的 dashboard 路由，此时 overlay
+  // 应让位（否则盖着新页面看不见）。overlay 内部切文档走 navigate(slug)（client state，
+  // 不改路由），不会触发本 effect，所以「点目录切文档」不会误关。
+  useEffect(() => {
+    if (open) close();
+    // 仅依赖 pathname：open/close 变化不应触发关闭。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   // 选中某文档（目录项或搜索结果）→ 切内容 + 清空搜索回到目录视图
   function selectDoc(next: string) {
