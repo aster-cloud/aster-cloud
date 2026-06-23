@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- In-dashboard docs overlay (no full-page navigation) (#129) *(dashboard)*
 - 三个 demo 子页加入 sitemap 收录 (#117) *(sitemap)*
 - Decision hash — deterministically reproducible, independently checkable (#115) *(demo)*
 - Per-row language toggle + platform-subset (no save button) (#113) *(teams)*
@@ -242,6 +243,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
