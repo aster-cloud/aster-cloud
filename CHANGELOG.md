@@ -307,6 +307,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -481,6 +482,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Make 0024 ADD COLUMN idempotent (fix prod migrate Job failure) (#131) *(migrate)*
 - Uniform xl (1280px) width across all dashboard pages (#128) *(dashboard)*
 - Unify page width + dedup nav/title via Container/PageHeader (#127) *(dashboard)*
 - Refresh language switcher after team language toggle (#114) *(teams)*
