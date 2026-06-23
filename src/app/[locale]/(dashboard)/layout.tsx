@@ -11,6 +11,8 @@ import { buildDocsSeeds } from '@/lib/docs/dashboard-docs-seeds';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
 import { DocsSessionSignal } from '@/components/docs/DocsSessionSignal';
+import { DocsOverlayProvider } from '@/components/docs/docs-overlay-context';
+import { DocsOverlay } from '@/components/docs/docs-overlay';
 import { NotificationsBell } from '@/components/notifications/notifications-bell';
 import { SkipToContent } from '@/components/skip-to-content';
 import { getSession } from '@/lib/auth';
@@ -112,6 +114,7 @@ export default async function DashboardLayout({
   const showBilling = canAccess(role, 'admin') && CAN_BILLING;
 
   return (
+    <DocsOverlayProvider>
     <div className="min-h-screen bg-bg-subtle text-fg">
       <SkipToContent targetId="dashboard-main" />
       {/* Fire a cross-tab "session-refresh" signal so any open /docs
@@ -260,6 +263,10 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
+      {/* 登录后「文档」overlay：覆盖在 dashboard 上的三栏阅读面板（不跳转）。
+          由 sidebar 的「文档」入口经 DocsOverlayProvider 打开。 */}
+      <DocsOverlay />
     </div>
+    </DocsOverlayProvider>
   );
 }

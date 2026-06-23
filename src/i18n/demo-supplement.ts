@@ -27,6 +27,14 @@ type MessageTree = Record<string, unknown>;
  */
 export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
   en: {
+    docs: {
+      overlay: {
+        openFull: 'Open full docs',
+        close: 'Close docs',
+        contents: 'Contents',
+        loadError: 'Could not load this page.',
+      },
+    },
     demosIndex: {
       seo: {
         title: 'Demos — Aster Lang',
@@ -93,6 +101,14 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   zh: {
+    docs: {
+      overlay: {
+        openFull: '打开完整文档',
+        close: '关闭文档',
+        contents: '目录',
+        loadError: '无法加载此页面。',
+      },
+    },
     demosIndex: {
       seo: {
         title: 'Demo 演示 — Aster Lang',
@@ -159,6 +175,14 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   de: {
+    docs: {
+      overlay: {
+        openFull: 'Vollständige Doku öffnen',
+        close: 'Doku schließen',
+        contents: 'Inhalt',
+        loadError: 'Diese Seite konnte nicht geladen werden.',
+      },
+    },
     demosIndex: {
       seo: {
         title: 'Demos — Aster Lang',
@@ -225,6 +249,14 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   hi: {
+    docs: {
+      overlay: {
+        openFull: 'पूरा दस्तावेज़ खोलें',
+        close: 'दस्तावेज़ बंद करें',
+        contents: 'विषय-सूची',
+        loadError: 'यह पृष्ठ लोड नहीं हो सका।',
+      },
+    },
     demosIndex: {
       seo: {
         title: 'डेमो — Aster Lang',
