@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
+import { getPathname } from '@/i18n/navigation';
+import type { Locale } from '@/i18n/config';
 
 export type TocItem = { id: string; text: string; level: 2 | 3 };
 
@@ -36,17 +38,29 @@ export function useDocContent(slug: string, active: boolean): DocContent {
     let cancelled = false;
     setState((s) => ({ ...s, loading: true, error: false }));
 
-    const url = `/${locale}/docs/${slug}`;
-    fetch(url, { headers: { 'X-Docs-Overlay': '1' } })
+    // ★用 getPathname 构造 URL（尊重 localePrefix:'as-needed'）★：默认 locale en
+    // 的规范路径**不带** /en 前缀（/docs/...），非默认 locale 带（/zh/docs/...）。
+    // 此前硬编码 `/${locale}/docs/...` 对 en 产出 /en/docs/... 会触发到规范路径的
+    // 重定向，浏览器 fetch 经中间件时表现不一致 → 中间区「Could not load」。
+    //
+    // 不加自定义请求头：会让同源 fetch 变「非简单请求」可能触发 preflight 或被边缘拦。
+    // credentials:same-origin 带会话 cookie（force-dynamic docs + 中间件 CSP nonce）。
+    const url = getPathname({ href: `/docs/${slug}`, locale: locale as Locale });
+    fetch(url, { credentials: 'same-origin', redirect: 'follow' })
       .then((res) => {
-        if (!res.ok) throw new Error(`docs fetch ${res.status}`);
+        if (!res.ok) throw new Error(`docs fetch ${res.status} for ${url}`);
         return res.text();
       })
       .then((raw) => {
         if (cancelled) return;
         const doc = new DOMParser().parseFromString(raw, 'text/html');
         const article = doc.querySelector('.docs-article');
-        if (!article) throw new Error('no .docs-article in fetched doc');
+        if (!article) {
+          // 诊断：拿到了 HTML 但没 .docs-article（被重定向到 login？locale 前缀错？）
+          throw new Error(
+            `no .docs-article in ${url} (len=${raw.length}, title=${doc.title})`,
+          );
+        }
 
         // 纵深防御：去脚本/样式/内联事件（同源构建产物，正常不含，但不信任）
         // 纵深防御（内容是同源构建期 MDX，非用户输入，风险本就低，但不信任注入的 HTML）：
@@ -88,8 +102,10 @@ export function useDocContent(slug: string, active: boolean): DocContent {
 
         setState({ html: article.innerHTML, toc, loading: false, error: false });
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return;
+        // 打印真实失败原因到 console（诊断 overlay 中间「Could not load」）。
+        console.error('[docs-overlay] failed to load', url, err);
         setState({ html: '', toc: [], loading: false, error: true });
       });
 
