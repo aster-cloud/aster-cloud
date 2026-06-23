@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Hero language list follows backend-available locales (#130) *(landing)*
 - In-dashboard docs overlay (no full-page navigation) (#129) *(dashboard)*
 - 三个 demo 子页加入 sitemap 收录 (#117) *(sitemap)*
 - Decision hash — deterministically reproducible, independently checkable (#115) *(demo)*
@@ -243,6 +244,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
