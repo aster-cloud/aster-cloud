@@ -76,22 +76,25 @@ export function DocsOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-50"
+      className="fixed inset-y-0 right-0 z-20 transition-[left] duration-200 ease-out"
+      style={{ left: 'var(--aster-shell-pad-left, 0px)' }}
       role="dialog"
       aria-modal="true"
       aria-label={t('dashboardNav.docs')}
     >
-      {/* 蒙层：点击关闭 */}
+      {/* 只覆盖内容区（dashboard-main 范围）——left 偏移跟随 sidebar 宽度
+          （--aster-shell-pad-left），桌面左侧 sidebar 仍可见可用。z-20 低于
+          sidebar(md:z-30) 与移动端汉堡/抽屉(z-40/z-50)，确保它们始终在 overlay 之上。 */}
       <div
         className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in"
         onClick={close}
         aria-hidden="true"
       />
 
-      {/* 面板：居中，几乎全屏但留出蒙层边 */}
+      {/* 面板：填满内容区，留出小边给蒙层 */}
       <div
         ref={panelRef}
-        className="absolute inset-2 sm:inset-4 lg:inset-6 flex flex-col overflow-hidden rounded-xl border border-border bg-bg shadow-2xl motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95"
+        className="absolute inset-2 sm:inset-4 flex flex-col overflow-hidden rounded-xl border border-border bg-bg shadow-2xl motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95"
       >
         {/* 顶栏：标题 + 在 /docs 打开 + 关闭 */}
         <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
