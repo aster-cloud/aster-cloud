@@ -33,6 +33,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         close: 'Close docs',
         contents: 'Contents',
         loadError: 'Could not load this page.',
+        searchPlaceholder: 'Search docs…',
+        noResults: 'No results',
       },
     },
     demosIndex: {
@@ -107,6 +109,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         close: '关闭文档',
         contents: '目录',
         loadError: '无法加载此页面。',
+        searchPlaceholder: '搜索文档…',
+        noResults: '无结果',
       },
     },
     demosIndex: {
@@ -181,6 +185,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         close: 'Doku schließen',
         contents: 'Inhalt',
         loadError: 'Diese Seite konnte nicht geladen werden.',
+        searchPlaceholder: 'Doku durchsuchen…',
+        noResults: 'Keine Treffer',
       },
     },
     demosIndex: {
@@ -255,6 +261,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         close: 'दस्तावेज़ बंद करें',
         contents: 'विषय-सूची',
         loadError: 'यह पृष्ठ लोड नहीं हो सका।',
+        searchPlaceholder: 'दस्तावेज़ खोजें…',
+        noResults: 'कोई परिणाम नहीं',
       },
     },
     demosIndex: {

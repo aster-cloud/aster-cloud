@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { docsSidebar } from '@/lib/docs/sidebar';
 import { useDocsOverlay } from './docs-overlay-context';
 import { useDocContent } from './use-doc-content';
-import { X, ExternalLink, BookText } from 'lucide-react';
+import { useDocSearch } from './use-doc-search';
+import { X, ExternalLink, BookText, Search } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 
 /**
@@ -23,9 +24,18 @@ export function DocsOverlay() {
   const t = useTranslations();
   const { open, slug, navigate, close } = useDocsOverlay();
   const { html, toc, loading, error } = useDocContent(slug, open);
+  const [query, setQuery] = useState('');
+  const { results } = useDocSearch(query);
+  const searching = query.trim().length > 0;
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const articleRef = useRef<HTMLDivElement>(null);
+
+  // 选中某文档（目录项或搜索结果）→ 切内容 + 清空搜索回到目录视图
+  function selectDoc(next: string) {
+    navigate(next);
+    setQuery('');
+  }
 
   // body 滚动锁 + Esc 关 + 焦点进关闭按钮 + Tab focus-trap（限制在面板内）
   useEffect(() => {
@@ -126,12 +136,49 @@ export function DocsOverlay() {
 
         {/* 三栏主体 */}
         <div className="flex min-h-0 flex-1">
-          {/* 左：目录 */}
+          {/* 左：搜索 + 目录（搜索时用结果替换目录树） */}
           <nav
             aria-label={t('docs.overlay.contents')}
-            className="hidden w-60 shrink-0 overflow-y-auto border-r border-border p-4 md:block"
+            className="hidden w-60 shrink-0 flex-col overflow-hidden border-r border-border md:flex"
           >
-            {docsSidebar.map((section) => (
+            {/* 搜索框 */}
+            <div className="shrink-0 border-b border-border p-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t('docs.overlay.searchPlaceholder')}
+                  aria-label={t('docs.overlay.searchPlaceholder')}
+                  className="w-full rounded-md border border-border bg-bg-soft py-1.5 pl-8 pr-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {searching ? (
+              /* 搜索结果列表（点结果在 overlay 内切页） */
+              results.length > 0 ? (
+                <ul className="space-y-0.5">
+                  {results.map((hit) => (
+                    <li key={hit.entry.slug}>
+                      <button
+                        type="button"
+                        onClick={() => selectDoc(hit.entry.slug)}
+                        className="block w-full rounded-md px-3 py-2 text-left text-sm text-fg-muted transition-colors hover:bg-bg-soft hover:text-fg"
+                      >
+                        <span className="block truncate font-medium text-fg">{hit.entry.title}</span>
+                        <span className="block truncate text-xs text-fg-muted">{hit.entry.slug}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-3 py-2 text-sm text-fg-muted">{t('docs.overlay.noResults')}</p>
+              )
+            ) : (
+              docsSidebar.map((section) => (
               <div key={section.titleKey} className="mb-6">
                 <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-fg-muted">
                   {t(section.titleKey)}
@@ -159,7 +206,9 @@ export function DocsOverlay() {
                   })}
                 </ul>
               </div>
-            ))}
+              ))
+            )}
+            </div>
           </nav>
 
           {/* 中：正文（注入 + 淡入） */}
