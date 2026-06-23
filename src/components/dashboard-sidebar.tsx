@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/components/ui';
+import { useDocsOverlay } from '@/components/docs/docs-overlay-context';
 
 /*
  * Dashboard sidebar — primary navigation for the post-login shell.
@@ -62,6 +63,12 @@ export interface SidebarItem {
   icon: LucideIcon;
   /** Match strategy for active state. Defaults to 'prefix'. */
   match?: 'exact' | 'prefix';
+  /**
+   * When set, the item renders as a <button> that calls onSelect instead of
+   * navigating — used by the Docs entry to open the in-dashboard docs overlay
+   * (no route change, so the user keeps their current page underneath).
+   */
+  onSelect?: () => void;
 }
 
 export interface SidebarGroup {
@@ -116,25 +123,45 @@ function SidebarLink({
 }) {
   const active = isActive(pathname, item.href, item.match);
   const Icon = item.icon;
+  const className = cn(
+    'group flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+    'focus-visible:outline-none focus-visible:shadow-ring',
+    collapsed && 'justify-center px-2',
+    active
+      ? 'bg-primary-subtle text-primary'
+      : 'text-fg-muted hover:bg-bg-subtle hover:text-fg',
+  );
+  const inner = (
+    <>
+      <Icon className="size-4 shrink-0" aria-hidden />
+      {!collapsed && <span className="truncate">{item.label}</span>}
+    </>
+  );
   return (
     <li>
-      <Link
-        href={item.href}
-        aria-current={active ? 'page' : undefined}
-        aria-label={collapsed ? item.label : undefined}
-        title={collapsed ? item.label : undefined}
-        className={cn(
-          'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-          'focus-visible:outline-none focus-visible:shadow-ring',
-          collapsed && 'justify-center px-2',
-          active
-            ? 'bg-primary-subtle text-primary'
-            : 'text-fg-muted hover:bg-bg-subtle hover:text-fg',
-        )}
-      >
-        <Icon className="size-4 shrink-0" aria-hidden />
-        {!collapsed && <span className="truncate">{item.label}</span>}
-      </Link>
+      {item.onSelect ? (
+        <button
+          type="button"
+          // 包一层箭头函数：直接 onClick={item.onSelect} 会把 MouseEvent 当
+          // openDocs(next) 的参数传进去 → slug 变成事件对象 → /docs/[object Object] 404。
+          onClick={() => item.onSelect?.()}
+          aria-label={collapsed ? item.label : undefined}
+          title={collapsed ? item.label : undefined}
+          className={className}
+        >
+          {inner}
+        </button>
+      ) : (
+        <Link
+          href={item.href}
+          aria-current={active ? 'page' : undefined}
+          aria-label={collapsed ? item.label : undefined}
+          title={collapsed ? item.label : undefined}
+          className={className}
+        >
+          {inner}
+        </Link>
+      )}
     </li>
   );
 }
@@ -303,6 +330,9 @@ export function DashboardSidebar({
   labels,
   adminCapabilities,
 }: DashboardSidebarProps) {
+  // Docs overlay opener — the Docs entry opens an in-dashboard reading
+  // panel instead of navigating to /docs (so the user keeps their page).
+  const { openDocs } = useDocsOverlay();
   // Desktop collapse state — persisted to localStorage so a user who
   // chose the rail layout keeps it across reloads. SSR returns the
   // expanded state; the client may collapse on hydrate.
@@ -372,11 +402,11 @@ export function DashboardSidebar({
     { href: '/security',  label: labels.security,  icon: Shield },
     { href: '/settings/api-keys', label: labels.apiKeys, icon: KeyRound },
     { href: '/settings/ai-keys',  label: labels.aiKeys,  icon: Sparkles },
-    // Docs entry — keeps the documentation one click away from every
-    // dashboard surface. Sits at the bottom of Workspace so the
-    // policy/reports/teams cluster (daily-use surfaces) stays at the
-    // top of the rail.
-    { href: '/docs',      label: labels.docs,      icon: BookText },
+    // Docs entry — opens the in-dashboard docs overlay (onSelect) instead
+    // of navigating to /docs, so the user keeps their current page
+    // underneath and can close the overlay to return to it. Sits at the
+    // bottom of Workspace so the daily-use surfaces stay at the top.
+    { href: '/docs',      label: labels.docs,      icon: BookText, onSelect: openDocs },
   ];
 
   const adminItems: SidebarItem[] = isAdmin
