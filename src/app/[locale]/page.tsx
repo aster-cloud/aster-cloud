@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { HeroLocalesLine } from '@/components/landing/hero-locales-line';
 import { SkipToContent } from '@/components/skip-to-content';
 import { locales, localeNames, type Locale } from '@/i18n/config';
 import {
@@ -281,13 +282,15 @@ function Hero({
                 main title weight clean and lets the gradient highlight
                 read as a separate "available languages" stamp under it.
                 Inherits the fluid font-size from the parent so the two
-                lines stay in proportion. `whitespace-nowrap` is OK on
-                this span too: the locale list is short (e.g.
-                "English / 中文 / Deutsch") and fits inside the same
-                width budget as the title. */}
-            <span className="block bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              {t('hero.titleHighlight', { locales: localesLabel })}
-            </span>
+                lines stay in proportion.
+
+                ★动态化★：这行原本硬编码成 compiled 全集，管理员在后端禁用
+                某语言后不会变。改为 <HeroLocalesLine>（client 子组件）按
+                compiled∩backend 实时收敛——与 landing 语言切换器同口径。
+                hero.titleHighlight 的值就是占位符 {locales}，所以服务端算好的
+                localesLabel（compiled 全集）正是首屏 / 无 JS 的标签，hydrate
+                后再按后端可用性收敛。fail-open：后端探测失败时退回全集。 */}
+            <HeroLocalesLine serverLabel={localesLabel} locale={locale} />
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-fg-muted sm:text-xl">
             {t('hero.description')}
