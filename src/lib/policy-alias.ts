@@ -41,22 +41,52 @@ export interface AliasValidationResult {
   readonly errors: readonly string[];
 }
 
-/** 归一：trim + 折叠空白为单个 ASCII 空格 + 小写（与 Java normalize 对齐）。 */
+/**
+ * 归一：trim + 折叠空白为单个 ASCII 空格 + 小写（与 Java normalize **逐字符对齐**）。
+ *
+ * <p>⚠ 与 Java 对齐的关键：Java `String.trim()` 只裁 ≤ U+0020 的字符，Java regex `\s`
+ * （无 UNICODE_CHARACTER_CLASS）= ASCII `[ \t\n\x0B\f\r]`。JS 的 `trim()`/`\s` 会含 NBSP 等
+ * **Unicode 空白**——若用 JS 默认会与 Java 行为分歧（NBSP 在 JS 被裁/折叠，在 Java 不会）。
+ * 故这里显式用 ASCII 空白类，不用 JS 的 `trim()`/`\s`，保证两侧 canonical/envelope 字节一致。
+ */
+const ASCII_WS = '[ \\t\\n\\x0B\\f\\r]';
 function normalize(s: string): string {
-  return s.trim().replace(/\s+/g, ' ').toLowerCase();
+  // 与 Java String.trim() 对齐：裁掉首尾 ≤ U+0020 的字符（含 ASCII 空白与控制符）。
+  let t = s.replace(new RegExp(`^[\\u0000-\\u0020]+`), '').replace(new RegExp(`[\\u0000-\\u0020]+$`), '');
+  // 折叠 ASCII 空白为单空格（不折叠 NBSP 等 Unicode 空白——与 Java \s+ 一致）。
+  t = t.replace(new RegExp(`${ASCII_WS}+`, 'g'), ' ');
+  return t.toLowerCase();
+}
+
+export interface ReservedSets {
+  /** 基础 lexicon 全部规范拼写（归一小写）。从 ts 引擎 lexicon.keywords 取。 */
+  readonly canonicalKeywordsLower: ReadonlySet<string>;
+  /** 基础 lexicon 已有别名（归一小写）。从 ts 引擎 lexicon.aliases 取，缺省空。 */
+  readonly baseAliasesLower?: ReadonlySet<string>;
+  /** 领域词汇本地化术语（归一小写）。用于别名↔标识符碰撞校验，缺省空。 */
+  readonly vocabularyTermsLower?: ReadonlySet<string>;
 }
 
 /**
- * 校验用户 aliasSet（白名单/多词/不遮蔽）。
+ * 校验用户 aliasSet（白名单/多词/不遮蔽规范拼写+base别名/不撞领域词汇）。
  *
- * @param aliasSet        kind → 别名列表
- * @param canonicalKeywordsLower 基础 lexicon 全部规范拼写（小写）—— 用于不遮蔽校验。
- *                        调用方从 aster-lang-ts 的 lexicon.keywords 取值传入。
+ * <p>与 Java UserAliasValidator 对齐：reserved 集 = base 规范拼写 + base 别名；另查领域词汇
+ * 碰撞（关键词翻译先于标识符翻译 → 别名会抢赢用户字段名，Java 用 IdentifierIndex.hasMapping）。
+ *
+ * @param reserved 占用集（见 {@link ReservedSets}）。可传 ReadonlySet（仅规范拼写）向后兼容。
  */
 export function validateUserAliases(
   aliasSet: Readonly<Record<string, readonly string[]>> | null | undefined,
-  canonicalKeywordsLower: ReadonlySet<string>,
+  reserved: ReservedSets | ReadonlySet<string>,
 ): AliasValidationResult {
+  // 兼容旧签名：直接传规范拼写 Set。
+  const sets: ReservedSets = reserved instanceof Set
+    ? { canonicalKeywordsLower: reserved as ReadonlySet<string> }
+    : (reserved as ReservedSets);
+  const canonicalKeywordsLower = sets.canonicalKeywordsLower;
+  const baseAliasesLower = sets.baseAliasesLower ?? new Set<string>();
+  const vocabularyTermsLower = sets.vocabularyTermsLower ?? new Set<string>();
+
   if (!aliasSet || Object.keys(aliasSet).length === 0) {
     return { valid: true, errors: [] };
   }
@@ -88,9 +118,15 @@ export function validateUserAliases(
           `别名 '${alias}'（${kind}）必须是多词短语；单词别名会占用标识符命名空间，破坏用户空间`,
         );
       }
-      // 不遮蔽规范拼写
+      // 不遮蔽规范拼写 / base 已有别名
       if (canonicalKeywordsLower.has(norm)) {
         errors.push(`别名 '${alias}'（${kind}）与某规范关键词同形，禁止遮蔽`);
+      } else if (baseAliasesLower.has(norm)) {
+        errors.push(`别名 '${alias}'（${kind}）与某已有官方别名同形，禁止遮蔽`);
+      }
+      // 不撞领域词汇标识符（关键词翻译先于标识符翻译 → 别名会抢赢用户字段名）
+      if (vocabularyTermsLower.has(norm)) {
+        errors.push(`别名 '${alias}'（${kind}）与领域词汇标识符同形，会让关键词抢赢用户标识符，禁止`);
       }
       // 跨 kind 不重复
       if (seen.has(norm)) {

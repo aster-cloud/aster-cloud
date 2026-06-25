@@ -36,6 +36,26 @@ describe('policy-alias — Java↔TS envelope parity', () => {
     );
   });
 
+  it('ENV_CJK: 多字节 UTF-8（中文 content + 中文别名）与 Java 一致', () => {
+    // 防 parity 盲区：纯 ASCII 下两侧绿不代表多字节也绿（字节长 vs 字符长、JSON 非ASCII转义）
+    expect(
+      computeSourceEnvelope('模块 定价。规则 计算 给定 金额。', '{"TIMES":["乘以三遍"]}', 'zh-CN', 'tc'),
+    ).toBe('a905a68730345126058d162fb82d3938ed31f0166c59aa5046dafddb4330d294');
+  });
+
+  it('ENV_EMOJI: 4 字节 UTF-8（emoji）与 Java 一致', () => {
+    expect(computeSourceEnvelope('x 🎯 y', '{"PLUS":["加 上"]}', 'en-US', 't')).toBe(
+      'dbf5cc6d1b50f402267f65bfb58651f48c178d5c97463a8a1a3c4cebac6aef53',
+    );
+  });
+
+  it('独立锚点：帧 "1:a|0:|0:|0:|" 的 SHA-256（openssl 验证，非 Java 生成）', () => {
+    // 防"Java/TS 一起错"：此值由 openssl 独立算出（printf '1:a|0:|0:|0:|' | openssl dgst -sha256）
+    expect(computeSourceEnvelope('a', null, '', '')).toBe(
+      '68fbcc50d3fabae237194d8c0f3e0795308e3f317e6244252ac5609be49620a9',
+    );
+  });
+
   it('null≡空串字段，别名变则 envelope 变', () => {
     expect(computeSourceEnvelope('c', null, 'en-US', 't')).toBe(
       computeSourceEnvelope('c', '', 'en-US', 't'),
@@ -88,5 +108,23 @@ describe('policy-alias — validateUserAliases (H3)', () => {
   it('null/空 → 合法', () => {
     expect(validateUserAliases(null, canon).valid).toBe(true);
     expect(validateUserAliases({}, canon).valid).toBe(true);
+  });
+
+  it('遮蔽 base 已有官方别名拒绝（对齐 Java reserved 含 base aliases）', () => {
+    const r = validateUserAliases(
+      { TIMES: ['scaled by'] },
+      { canonicalKeywordsLower: canon, baseAliasesLower: new Set(['scaled by']) },
+    );
+    expect(r.valid).toBe(false);
+    expect(r.errors.some((e) => e.includes('官方别名'))).toBe(true);
+  });
+
+  it('撞领域词汇标识符拒绝（H3 标识符碰撞）', () => {
+    const r = validateUserAliases(
+      { TIMES: ['monthly fee'] },
+      { canonicalKeywordsLower: canon, vocabularyTermsLower: new Set(['monthly fee']) },
+    );
+    expect(r.valid).toBe(false);
+    expect(r.errors.some((e) => e.includes('领域词汇'))).toBe(true);
   });
 });

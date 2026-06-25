@@ -17,6 +17,13 @@ import { computeChainedHash, computeSourceHash } from '../security/policy-securi
 import { logSecurityEvent } from '../security/security-event-service';
 import { recordAhaMomentIfFirst } from '@/lib/metrics/aha-detection';
 import { snapshotOnPolicyApprove } from '@/lib/domain-vocabulary-snapshot';
+import {
+  canonicalAliasJson,
+  computeSourceEnvelope,
+  validateUserAliases,
+  USER_ALIAS_VALIDATOR_VERSION,
+  type ReservedSets,
+} from '@/lib/policy-alias';
 
 type PolicyVersion = InferSelectModel<typeof policyVersions>;
 type PolicyVersionStatus = PolicyVersion['status'];
@@ -26,12 +33,30 @@ export interface CreateVersionParams {
   source: string;
   createdBy: string;
   releaseNote?: string;
+  /** 编译 locale（进 source envelope）。缺省 'en-US'。 */
+  locale?: string;
+  /**
+   * 用户自定义关键词别名（ADR 0022 方案 D），kind→[别名,...]。缺省=无别名。
+   * 提供时经 validate → canonicalJson 冻结，并算 source envelope 一并落库。
+   */
+  aliasSet?: Readonly<Record<string, readonly string[]>> | null;
+  /** 别名校验占用集（规范拼写/base别名/领域词汇）。提供 aliasSet 时应一并提供。 */
+  aliasReserved?: ReservedSets;
+  /** 工具链身份串（进 envelope）。缺省由 env ASTER_RUNTIME_BUILD 拼。 */
+  toolchainId?: string;
 }
 
 export interface CreateVersionResult {
   id: string;
   version: number;
   sourceHash: string;
+  sourceEnvelopeSha256: string;
+}
+
+/** 工具链身份（与 Java toolchainIdentity 同格式；core/abi 由 ts 引擎版本，build 由 env）。 */
+function defaultToolchainId(): string {
+  const build = process.env.ASTER_RUNTIME_BUILD ?? 'dev';
+  return `abi=1.0;core=ts;validator=${USER_ALIAS_VALIDATOR_VERSION};build=${build}`;
 }
 
 /**
@@ -43,6 +68,21 @@ export async function createVersion(
   params: CreateVersionParams
 ): Promise<CreateVersionResult> {
   const { policyId, source, createdBy, releaseNote } = params;
+  const locale = params.locale ?? 'en-US';
+
+  // ADR 0022 方案 D：校验 + 冻结别名 + 算 source envelope（防替换篡改）。
+  let aliasSetJson: string | null = null;
+  if (params.aliasSet && Object.keys(params.aliasSet).length > 0) {
+    const reserved: ReservedSets = params.aliasReserved
+      ?? { canonicalKeywordsLower: new Set<string>() };
+    const vr = validateUserAliases(params.aliasSet, reserved);
+    if (!vr.valid) {
+      throw new Error(`用户自定义别名校验失败: ${vr.errors.join('; ')}`);
+    }
+    aliasSetJson = canonicalAliasJson(params.aliasSet);
+  }
+  const toolchainId = params.toolchainId ?? defaultToolchainId();
+  const sourceEnvelopeSha256 = computeSourceEnvelope(source, aliasSetJson, locale, toolchainId);
 
   // 获取最新版本号和哈希
   const latestVersion = await db.query.policyVersions.findFirst({
@@ -66,6 +106,9 @@ export async function createVersion(
     createdBy,
     releaseNote,
     status: 'DRAFT',
+    aliasSet: aliasSetJson,
+    sourceEnvelopeSha256,
+    sourceToolchainId: toolchainId,
   }).returning();
 
   await logSecurityEvent({
@@ -73,13 +116,14 @@ export async function createVersion(
     severity: 'INFO',
     policyId,
     userId: createdBy,
-    details: { version: newVersionNumber, sourceHash },
+    details: { version: newVersionNumber, sourceHash, hasAliases: aliasSetJson != null },
   });
 
   return {
     id: created.id,
     version: newVersionNumber,
     sourceHash,
+    sourceEnvelopeSha256,
   };
 }
 
