@@ -36,6 +36,16 @@ const ALLOWED_KINDS: ReadonlySet<string> = new Set([
 /** 校验器版本（进 toolchain identity；与 Java UserAliasValidator.VERSION 对齐）。 */
 export const USER_ALIAS_VALIDATOR_VERSION = '1';
 
+/**
+ * 工具链身份串（单一来源，进 source envelope）。两条创建路径（POST /api/policies 与
+ * version-manager.createVersion）必须用同一拼法，否则同内容在两路径算出不同 envelope。
+ * 格式与 Java toolchainIdentity 对齐：abi/core/validator/build。build 由 env 注入（部署 sha）。
+ */
+export function cloudToolchainId(): string {
+  const build = process.env.ASTER_RUNTIME_BUILD ?? 'dev';
+  return `abi=1.0;core=ts;validator=${USER_ALIAS_VALIDATOR_VERSION};build=${build}`;
+}
+
 export interface AliasValidationResult {
   readonly valid: boolean;
   readonly errors: readonly string[];

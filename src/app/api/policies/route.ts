@@ -6,7 +6,7 @@ import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
 import { detectPII } from '@/services/pii/detector';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
-import { computeSourceEnvelope, USER_ALIAS_VALIDATOR_VERSION } from '@/lib/policy-alias';
+import { cloudToolchainId, computeSourceEnvelope } from '@/lib/policy-alias';
 import { eq, isNull, desc, sql, and, inArray } from 'drizzle-orm';
 
 // GET /api/policies - List user's policies
@@ -255,7 +255,7 @@ export async function POST(req: Request) {
     // aliasSet 恒为 null；但仍冻结 source envelope（覆盖 content+locale+工具链）使该版本进入
     // 可审计/防篡改体系，与 version-manager 一致。带别名的创建走 version-manager（fail-closed）。
     try {
-      const toolchainId = `abi=1.0;core=ts;validator=${USER_ALIAS_VALIDATOR_VERSION};build=${process.env.ASTER_RUNTIME_BUILD ?? 'dev'}`;
+      const toolchainId = cloudToolchainId();
       const sourceEnvelopeSha256 = computeSourceEnvelope(content, null, 'en-US', toolchainId);
       await db.insert(policyVersions).values({
         id: globalThis.crypto.randomUUID(),

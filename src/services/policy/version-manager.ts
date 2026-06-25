@@ -19,9 +19,9 @@ import { recordAhaMomentIfFirst } from '@/lib/metrics/aha-detection';
 import { snapshotOnPolicyApprove } from '@/lib/domain-vocabulary-snapshot';
 import {
   canonicalAliasJson,
+  cloudToolchainId,
   computeSourceEnvelope,
   validateUserAliases,
-  USER_ALIAS_VALIDATOR_VERSION,
   type ReservedSets,
 } from '@/lib/policy-alias';
 
@@ -53,12 +53,6 @@ export interface CreateVersionResult {
   sourceEnvelopeSha256: string;
 }
 
-/** 工具链身份（与 Java toolchainIdentity 同格式；core/abi 由 ts 引擎版本，build 由 env）。 */
-function defaultToolchainId(): string {
-  const build = process.env.ASTER_RUNTIME_BUILD ?? 'dev';
-  return `abi=1.0;core=ts;validator=${USER_ALIAS_VALIDATOR_VERSION};build=${build}`;
-}
-
 /**
  * 创建新版本
  *
@@ -87,7 +81,7 @@ export async function createVersion(
     }
     aliasSetJson = canonicalAliasJson(params.aliasSet);
   }
-  const toolchainId = params.toolchainId ?? defaultToolchainId();
+  const toolchainId = params.toolchainId ?? cloudToolchainId();
   const sourceEnvelopeSha256 = computeSourceEnvelope(source, aliasSetJson, locale, toolchainId);
 
   // 获取最新版本号和链接哈希。
