@@ -185,6 +185,9 @@ function mockPolicyVersion(overrides: Record<string, unknown> = {}) {
     archivedAt: null,
     archivedBy: null,
     vocabularySnapshotIds: [],
+    aliasSet: null,
+    sourceEnvelopeSha256: null,
+    sourceToolchainId: null,
     createdAt: new Date(),
     ...overrides,
   };

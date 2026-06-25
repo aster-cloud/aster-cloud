@@ -169,6 +169,13 @@
       "when": 1779200000000,
       "tag": "0024_team_enabled_locales",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779200000001,
+      "tag": "0025_plan_d_alias_columns",
+      "breakpoints": true
     }
   ]
 }
