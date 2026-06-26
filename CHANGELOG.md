@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Plan-D cloud alias foundation + ts 1.0.4 (ADR 0022) (#132) *(policy)*
 - Hero language list follows backend-available locales (#130) *(landing)*
 - In-dashboard docs overlay (no full-page navigation) (#129) *(dashboard)*
 - 三个 demo 子页加入 sitemap 收录 (#117) *(sitemap)*
@@ -244,6 +245,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
