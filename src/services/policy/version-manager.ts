@@ -17,6 +17,13 @@ import { computeChainedHash, computeSourceHash } from '../security/policy-securi
 import { logSecurityEvent } from '../security/security-event-service';
 import { recordAhaMomentIfFirst } from '@/lib/metrics/aha-detection';
 import { snapshotOnPolicyApprove } from '@/lib/domain-vocabulary-snapshot';
+import {
+  canonicalAliasJson,
+  cloudToolchainId,
+  computeSourceEnvelope,
+  validateUserAliases,
+  type ReservedSets,
+} from '@/lib/policy-alias';
 
 type PolicyVersion = InferSelectModel<typeof policyVersions>;
 type PolicyVersionStatus = PolicyVersion['status'];
@@ -26,12 +33,24 @@ export interface CreateVersionParams {
   source: string;
   createdBy: string;
   releaseNote?: string;
+  /** 编译 locale（进 source envelope）。缺省 'en-US'。 */
+  locale?: string;
+  /**
+   * 用户自定义关键词别名（ADR 0022 方案 D），kind→[别名,...]。缺省=无别名。
+   * 提供时经 validate → canonicalJson 冻结，并算 source envelope 一并落库。
+   */
+  aliasSet?: Readonly<Record<string, readonly string[]>> | null;
+  /** 别名校验占用集（规范拼写/base别名/领域词汇）。提供 aliasSet 时应一并提供。 */
+  aliasReserved?: ReservedSets;
+  /** 工具链身份串（进 envelope）。缺省由 env ASTER_RUNTIME_BUILD 拼。 */
+  toolchainId?: string;
 }
 
 export interface CreateVersionResult {
   id: string;
   version: number;
   sourceHash: string;
+  sourceEnvelopeSha256: string;
 }
 
 /**
@@ -43,16 +62,41 @@ export async function createVersion(
   params: CreateVersionParams
 ): Promise<CreateVersionResult> {
   const { policyId, source, createdBy, releaseNote } = params;
+  const locale = params.locale ?? 'en-US';
 
-  // 获取最新版本号和哈希
+  // ADR 0022 方案 D：校验 + 冻结别名 + 算 source envelope（防替换篡改）。
+  let aliasSetJson: string | null = null;
+  if (params.aliasSet && Object.keys(params.aliasSet).length > 0) {
+    // fail-closed（Codex 复核）：有别名但没给占用集 → 拒绝。空 reserved 会跳过遮蔽/领域词
+    // 碰撞校验（退回 H3/遮蔽风险）。调用方必须从 ts 引擎 lexicon 构造完整 ReservedSets。
+    if (!params.aliasReserved) {
+      throw new Error(
+        'aliasSet 非空但未提供 aliasReserved（规范拼写/base别名/领域词汇占用集）——拒绝创建，' +
+          '防跳过遮蔽/碰撞校验',
+      );
+    }
+    const vr = validateUserAliases(params.aliasSet, params.aliasReserved);
+    if (!vr.valid) {
+      throw new Error(`用户自定义别名校验失败: ${vr.errors.join('; ')}`);
+    }
+    aliasSetJson = canonicalAliasJson(params.aliasSet);
+  }
+  const toolchainId = params.toolchainId ?? cloudToolchainId();
+  const sourceEnvelopeSha256 = computeSourceEnvelope(source, aliasSetJson, locale, toolchainId);
+
+  // 获取最新版本号和链接哈希。
+  // 链接 = envelope（存在时）否则 sourceHash —— 与 Java chainLink 对齐（ADR 0022 §11.5 C1-a）：
+  // 让 alias_set 篡改对版本链可见（前序版本带别名时其 envelope 进链，改 alias_set 即断链）。
   const latestVersion = await db.query.policyVersions.findFirst({
     where: eq(policyVersions.policyId, policyId),
     orderBy: [desc(policyVersions.version)],
-    columns: { version: true, sourceHash: true },
+    columns: { version: true, sourceHash: true, sourceEnvelopeSha256: true },
   });
 
   const newVersionNumber = (latestVersion?.version ?? 0) + 1;
-  const prevHash = latestVersion?.sourceHash ?? null;
+  const prevHash = latestVersion
+    ? (latestVersion.sourceEnvelopeSha256 ?? latestVersion.sourceHash)
+    : null;
   const sourceHash = computeChainedHash(source, prevHash);
 
   const [created] = await db.insert(policyVersions).values({
@@ -66,6 +110,9 @@ export async function createVersion(
     createdBy,
     releaseNote,
     status: 'DRAFT',
+    aliasSet: aliasSetJson,
+    sourceEnvelopeSha256,
+    sourceToolchainId: toolchainId,
   }).returning();
 
   await logSecurityEvent({
@@ -73,13 +120,14 @@ export async function createVersion(
     severity: 'INFO',
     policyId,
     userId: createdBy,
-    details: { version: newVersionNumber, sourceHash },
+    details: { version: newVersionNumber, sourceHash, hasAliases: aliasSetJson != null },
   });
 
   return {
     id: created.id,
     version: newVersionNumber,
     sourceHash,
+    sourceEnvelopeSha256,
   };
 }
 

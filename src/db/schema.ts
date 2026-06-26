@@ -412,6 +412,13 @@ export const policyVersions = pgTable(
       .$type<Array<{ snapshotId: string; domain: string; locale: string }>>()
       .default([])
       .notNull(),
+    // ADR 0022 方案 D：用户自定义关键词别名的版本固化（camelCase 对齐本库 PolicyVersion 命名约定）。
+    // aliasSet：该版本编译时冻结的规范别名 JSON（kind→[别名,...]），NULL=无别名。不可变。
+    aliasSet: text('aliasSet'),
+    // sourceEnvelopeSha256：覆盖完整编译输入（content+aliasSet+locale+工具链）的哈希，防别名替换篡改。
+    sourceEnvelopeSha256: text('sourceEnvelopeSha256'),
+    // sourceToolchainId：envelope 计算所用工具链身份，供 tip-anchor verifier 重算验证。
+    sourceToolchainId: text('sourceToolchainId'),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => [

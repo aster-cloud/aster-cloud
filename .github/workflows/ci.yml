@@ -220,8 +220,15 @@ jobs:
       - name: Glossary contract (Stage 1 — report-only)
         run: pnpm run check:glossary || true
         continue-on-error: true
+      # report-only 诊断制品：上传仅供查阅，绝不应阻塞构建。
+      # actions/upload-artifact 在组织级存储配额耗尽时会硬失败
+      # （"Artifact storage quota has been hit"），该失败会传播并挂掉
+      # build job——但 glossary findings 是 Stage 1 报告，不是质量门。
+      # continue-on-error 把配额/基础设施抖动降级为非致命，门禁仍由
+      # tsc/lint/test/on-prem-build 把守。
       - name: Upload glossary findings artifact
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: glossary-findings
@@ -267,6 +274,7 @@ jobs:
 
       - name: Upload test results
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: aster-cloud-test-results
@@ -345,6 +353,7 @@ jobs:
 
       - name: Upload server log on failure
         if: failure()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: e2e-server-log
@@ -403,6 +412,7 @@ jobs:
 
       - name: Upload on-prem build artifacts on failure
         if: failure()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: on-prem-build-failed

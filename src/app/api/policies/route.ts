@@ -6,6 +6,7 @@ import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
 import { detectPII } from '@/services/pii/detector';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
+import { cloudToolchainId, computeSourceEnvelope } from '@/lib/policy-alias';
 import { eq, isNull, desc, sql, and, inArray } from 'drizzle-orm';
 
 // GET /api/policies - List user's policies
@@ -249,14 +250,22 @@ export async function POST(req: Request) {
       throw insertErr;
     }
 
-    // Create initial version
+    // Create initial version.
+    // ADR 0022 方案 D：本端点尚不接受用户自定义别名（gated on ts 引擎发版后才开放），故
+    // aliasSet 恒为 null；但仍冻结 source envelope（覆盖 content+locale+工具链）使该版本进入
+    // 可审计/防篡改体系，与 version-manager 一致。带别名的创建走 version-manager（fail-closed）。
     try {
+      const toolchainId = cloudToolchainId();
+      const sourceEnvelopeSha256 = computeSourceEnvelope(content, null, 'en-US', toolchainId);
       await db.insert(policyVersions).values({
         id: globalThis.crypto.randomUUID(),
         policyId: policy.id,
         version: 1,
         content,
         comment: 'Initial version',
+        aliasSet: null,
+        sourceEnvelopeSha256,
+        sourceToolchainId: toolchainId,
         createdAt: new Date(),
       });
       console.log('PolicyVersion insert succeeded');
