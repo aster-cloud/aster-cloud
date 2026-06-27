@@ -27,6 +27,21 @@ const MIXPANEL_DOMAINS = [
   'https://api.mixpanel.com',
 ];
 
+// Cloudflare Turnstile（登录页 CAPTCHA，src/components/turnstile.tsx）。客户端
+// 动态注入 challenges.cloudflare.com/turnstile/v0/api.js 脚本，widget 渲染在
+// 该域的 iframe 里（Codex 审查 #133 时发现的既有缺口，#100）。
+//   - frame-src：**必需** —— 父页面加载 Turnstile iframe，原 frame-src 缺该域
+//     直接挡死 widget。
+//   - script-src：CSP2 / 无 strict-dynamic 浏览器的**兼容 fallback** —— 本策略
+//     script-src 含 'strict-dynamic'，CSP3 浏览器会忽略 host allowlist，由 nonce'd
+//     Next.js chunk 经传播信任加载注入的 api.js；列白此域只为旧浏览器兜底，也对齐
+//     Cloudflare 官方 CSP 配置示例。
+// siteverify（src/lib/turnstile.ts）是服务端调用，不经浏览器，故不需 connect-src
+//（connect-src 仅 pre-clearance 模式要求含 'self'，本策略已有）。
+const TURNSTILE_DOMAINS = [
+  'https://challenges.cloudflare.com',
+];
+
 // aster-api 直连域名（AI generate/explain/complete SSE + lexicons stream
 // 走客户端 fetch，不经 Next.js server proxy，所以必须在 connect-src 列白）。
 //
@@ -118,6 +133,7 @@ const ALL_TRUSTED_SCRIPT_SRC = [
   ...STRIPE_DOMAINS,
   ...MIXPANEL_DOMAINS,
   ...MONACO_CDN_DOMAINS,
+  ...TURNSTILE_DOMAINS,
 ];
 const ALL_TRUSTED_CONNECT_SRC = [
   ...STRIPE_DOMAINS,
@@ -173,7 +189,7 @@ export function buildCspHeader(nonce: string): string {
       ...ALL_TRUSTED_CONNECT_SRC,
       ...(isDev ? ['ws:', 'http://localhost:*'] : []),
     ],
-    'frame-src': ["'self'", ...STRIPE_DOMAINS],
+    'frame-src': ["'self'", ...STRIPE_DOMAINS, ...TURNSTILE_DOMAINS],
     'frame-ancestors': ["'none'"],
     'form-action': ["'self'"],
     'base-uri': ["'self'"],

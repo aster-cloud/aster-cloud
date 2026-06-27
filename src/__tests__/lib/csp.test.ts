@@ -53,6 +53,23 @@ describe('buildCspHeader', () => {
     expect(csp).toContain('https://api-js.mixpanel.com');
   });
 
+  it('allowlists Cloudflare Turnstile in script-src and frame-src (#100)', () => {
+    const csp = buildCspHeader(NONCE);
+    // frame-src 必需（widget iframe）；script-src host 是无 strict-dynamic 浏览器的
+    // 兼容 fallback（CSP3 下经 nonce 传播信任加载 api.js）。两处都列白以兜底 + 对齐
+    // Cloudflare 官方 CSP 示例。
+    const scriptSrc = csp
+      .split(';')
+      .map((d) => d.trim())
+      .find((d) => d.startsWith('script-src '));
+    const frameSrc = csp
+      .split(';')
+      .map((d) => d.trim())
+      .find((d) => d.startsWith('frame-src '));
+    expect(scriptSrc).toContain('https://challenges.cloudflare.com');
+    expect(frameSrc).toContain('https://challenges.cloudflare.com');
+  });
+
   it("includes 'unsafe-eval' in dev (HMR) but not prod", () => {
     env.NODE_ENV = 'development';
     const dev = buildCspHeader(NONCE);
