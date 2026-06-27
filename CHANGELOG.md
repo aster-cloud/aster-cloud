@@ -310,6 +310,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -484,6 +485,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Tighten CSP img-src from wildcard https: to allowlist (#98) (#133) *(security)*
 - Make 0024 ADD COLUMN idempotent (fix prod migrate Job failure) (#131) *(migrate)*
 - Uniform xl (1280px) width across all dashboard pages (#128) *(dashboard)*
 - Unify page width + dedup nav/title via Container/PageHeader (#127) *(dashboard)*
