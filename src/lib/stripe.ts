@@ -67,7 +67,8 @@ export async function getStripe(): Promise<Stripe> {
   const StripeCtor = await loadStripeCtor();
   _stripeInstance = new StripeCtor(key, {
     // 随 stripe SDK 22.x 升级对齐其 pinned API 版本（clover→dahlia）。
-    apiVersion: '2026-05-27.dahlia',
+    // 22.3.0 把 pinned 版本推到 2026-06-24.dahlia，类型层强制对齐。
+    apiVersion: '2026-06-24.dahlia',
     typescript: true,
   });
   return _stripeInstance;
