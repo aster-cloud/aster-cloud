@@ -96,6 +96,9 @@ export interface PolicyExecutionResult {
     executionTime?: number;
     policyVersion?: string;
     engineError?: boolean;
+    /** 仅当结果无 allow/deny 语义（成功执行但非决策，如返回纯文本/计算值）时为
+     * 'indeterminate'：allowed=false（fail-closed）但 deniedReasons 为空。 */
+    decision?: 'indeterminate';
     /** 简单规则引擎的规则详情 */
     rules?: Array<{
       name: string;
@@ -273,13 +276,40 @@ export function isCnlTruthy(val: unknown): boolean {
  * 从 CNL 结果中解析批准状态
  *
  * CNL 函数可能返回：
- * 1. 对象格式：{ approved: boolean, reason?: string }
+ * 1. 对象格式：{ approved: boolean, reason?: string } —— 明确的决策形态
  * 2. 字符串格式："批准，优惠利率" / "Approved with premium rate" / "Genehmigt..."
  *
- * 对于字符串格式，通过关键字匹配判断批准状态
+ * **mode 区分两类调用路径**（合规安全边界）：
+ * - `'decision'`（默认，policy execute / 准入决策路径）——**裸字符串永不 approve**：
+ *   自然语言批准措辞无法被关键字法可靠识别（前置否定 not approved / 未批准、后置
+ *   否定 "Approved: no" / 批准：否、撤销 previously approved now revoked 都会让
+ *   「含批准词根 ⇒ 批准」fail-open）。故裸字符串只做两件事：①命中**显式拒绝/转人工**
+ *   关键字 → deny（保住真实拒绝原因链）；②其余一律 **indeterminate**（approved:false，
+ *   fail-closed，不伪造拒绝也绝不放行）。要在 decision 路径表达「批准」，策略必须返回
+ *   **结构化决策**（boolean 或 { approved/allowed/isEligible: true, ... } 对象，走下面
+ *   的对象分支）。indeterminate 在 buildCNLResult 里 allowed:false 但**不计入
+ *   deniedReasons**（无真实拒绝理由，避免把计算输出伪造成拒绝）。
+ * - `'value'`（preview / 计算输出路径，如 greet → "Hello, John Smith!"）：裸字符串
+ *   直接视为成功的计算结果（approved=true），与 number / value 对象 / _type 对象一致
+ *   ——这类路径本就不是 allow/deny 决策。
+ *
+ * 结构化形态（boolean / 含批准字段对象 / value 对象 / _type 对象）在两种 mode 下
+ * 行为一致——它们语义明确，不受 mode 影响。
  */
+export type ApprovalParseMode = 'decision' | 'value';
+
+export interface ApprovalParseResult {
+  approved: boolean;
+  message: string;
+  /** 仅 decision 模式：结果无 allow/deny 语义，无法判定（非批准亦非真实拒绝）。 */
+  indeterminate?: boolean;
+}
+
 // Bug-4 修复：导出供单测验证 isEligible 等字段被正确识别
-export function parseApprovalFromResult(result: unknown): { approved: boolean; message: string } {
+export function parseApprovalFromResult(
+  result: unknown,
+  mode: ApprovalParseMode = 'decision',
+): ApprovalParseResult {
   // 布尔值：直接使用
   if (typeof result === 'boolean') {
     return { approved: result, message: result ? 'Approved' : 'Denied' };
@@ -334,26 +364,42 @@ export function parseApprovalFromResult(result: unknown): { approved: boolean; m
     }
   }
 
-  // 字符串格式：通过关键字判断
+  // 字符串格式（见函数头部 mode 说明）。
+  //
+  // **合规硬安全（decision 模式）**：裸字符串**绝不**经关键字启发式判 approve。
+  // 自然语言批准措辞无法被关键字法可靠识别——前置否定（not approved / 未批准）、
+  // 后置否定（"Approved: no" / "批准：否"）、撤销（previously approved, now revoked）
+  // 都会让「含批准词根 ⇒ 批准」fail-open。故 decision 模式只做两件事：
+  //   1. 命中**显式拒绝**关键字 → deny（保住真实拒绝/转人工的原因链，方向安全）；
+  //   2. 其余一律 indeterminate（fail-closed，不伪造拒绝也绝不 fail-open 批准）。
+  // 要在 decision 路径表达「批准」，策略必须返回**结构化决策**（boolean 或
+  // { approved/allowed/isEligible: true, ... } 对象，走上面的分支），而非裸文本。
+  //
+  // value 模式（preview / 计算输出，如 greet → "Hello, John Smith!"）不是 allow/deny
+  // 决策，裸字符串直接视为成功的计算结果。
   if (typeof result === 'string') {
-    const resultStr = result.toLowerCase();
-    // 批准关键字（中/英/德）
-    const approvalKeywords = ['批准', 'approved', 'genehmigt', '通过', 'accept'];
-    // 拒绝/待定关键字
-    const denialKeywords = ['拒绝', 'denied', 'reject', 'abgelehnt', '需要人工', 'requires', 'manual', 'erfordert'];
-
-    const isApproved = approvalKeywords.some((kw) => resultStr.includes(kw));
-    const isDenied = denialKeywords.some((kw) => resultStr.includes(kw));
-
-    // 如果同时包含批准和待定/拒绝关键字，以拒绝为准（保守原则）
-    if (isApproved && !isDenied) {
+    if (mode === 'value') {
       return { approved: true, message: result };
     }
-    return { approved: false, message: result };
+    // decision 模式：仅识别显式拒绝/转人工（中/英/德），其余 indeterminate。
+    const resultStr = result.toLowerCase();
+    const denialKeywords = [
+      '拒绝', '拒赔', '需要人工', '转人工', '人工审核', '转定损员', '未批准', '不批准', '未通过', '不通过',
+      'denied', 'deny', 'reject', 'decline', 'refer', 'underwriting', 'adjuster',
+      'ineligible', 'unacceptable', 'disapprove', 'unapproved', 'not approved', 'not accepted',
+      'abgelehnt', 'einzelfallprüfung', 'einzelfallpruefung', 'schadenregulierung', 'nicht genehmigt',
+    ];
+    if (denialKeywords.some((kw) => resultStr.includes(kw))) {
+      return { approved: false, message: result };
+    }
+    return { approved: false, indeterminate: true, message: result };
   }
 
-  // 其他类型：无法解析，视为拒绝
-  return { approved: false, message: 'Unknown result format' };
+  // 其他类型（非 string/number/object/boolean）：真正无法解释的形态。
+  // decision 模式 fail-closed 拒绝；value 模式 indeterminate（无可用输出语义）。
+  return mode === 'value'
+    ? { approved: false, indeterminate: true, message: 'Unknown result format' }
+    : { approved: false, message: 'Unknown result format' };
 }
 
 /**
@@ -368,11 +414,16 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
   // 如果有 result，尝试解析（即使 success=false）
   // 某些情况下 API 可能返回 success=false 但仍有有效结果
   if (apiResponse.result !== undefined && apiResponse.result !== null) {
-    const { approved, message } = parseApprovalFromResult(apiResponse.result);
+    // execute 是准入决策路径 → decision 模式（裸文本无决策语义 → indeterminate，
+    // 既不伪造拒绝也不 fail-open；见 parseApprovalFromResult mode 说明）。
+    const { approved, message, indeterminate } = parseApprovalFromResult(apiResponse.result, 'decision');
 
-    // 构建结果
+    // indeterminate（成功执行但无 allow/deny 语义，如 greet 返回纯文本）：
+    // fail-closed 不批准，但**不计入 deniedReasons**——没有真正的拒绝理由，
+    // 避免把计算输出伪造成拒绝（顶层 error 取 deniedReasons[0]，故此处不进则
+    // error 为空，success=allowed=false 但 result 原样回传，诚实表达「无决策」）。
     const deniedReasons: string[] = [];
-    if (!approved) {
+    if (!approved && !indeterminate) {
       deniedReasons.push(message);
     }
 
@@ -387,9 +438,10 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
         policyName: policy.name,
         ruleCount: 1,
         matchedRuleCount: approved ? 1 : 0,
-        denyCount: approved ? 0 : 1,
+        denyCount: approved || indeterminate ? 0 : 1,
         engine: 'aster-cnl',
         executionTime: apiResponse.executionTimeMs,
+        ...(indeterminate ? { decision: 'indeterminate' as const } : {}),
       },
       result: apiResponse.result,
       executedFunction: apiResponse.executedFunction,
