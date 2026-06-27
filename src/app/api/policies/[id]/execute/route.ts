@@ -231,10 +231,15 @@ export async function POST(req: Request, { params }: RouteParams) {
     // 旧实现把此检查放在 if(!isOwner) 内，导致所有者可执行自己的冻结策略（越权点）。
     // 冻结是「策略状态」级拦截，须先于用量配额检查——避免对一个根本不可运行的
     // 冻结策略报「配额超限(429)」误导用户，正确语义是「策略已冻结(403)」。
-    const ownerData = await db.query.users.findFirst({
-      where: eq(users.id, policy.userId),
-      columns: { plan: true, trialEndsAt: true },
-    });
+    // 性能：调用者即所有者时，统一查询已取到本人 plan/trialEndsAt（= 所有者的），
+    // 无需再发一次 users.findFirst（热路径上少一次串行 DB 往返）。仅非所有者执行
+    // 他人策略时才补查所有者套餐。
+    const ownerData = isOwner
+      ? { plan: userData?.plan ?? null, trialEndsAt: userData?.trialEndsAt ?? null }
+      : await db.query.users.findFirst({
+          where: eq(users.id, policy.userId),
+          columns: { plan: true, trialEndsAt: true },
+        });
     if (ownerData) {
       const ownerPlan: PlanType = (ownerData.plan && ownerData.plan in PLANS ? ownerData.plan : 'free') as PlanType;
       const ownerTrialExpired = ownerPlan === 'trial' && ownerData.trialEndsAt && ownerData.trialEndsAt < new Date();
