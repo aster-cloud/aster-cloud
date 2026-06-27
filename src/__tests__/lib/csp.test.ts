@@ -86,6 +86,31 @@ describe('buildCspHeader', () => {
     expect(csp).toContain('wss://lsp.aster-lang.dev');
     expect(csp).toContain('wss://policy.aster-lang.dev');
   });
+
+  // 从 CSP 串里取出某条 directive 的完整 token 行（去掉 directive 名）。
+  // 用它把断言锁死在 img-src 上，防止某个 host 漂到别的 directive 还被全局
+  // toContain 误判通过（Codex 审查 #98 建议）。
+  const getDirective = (csp: string, name: string): string => {
+    const found = csp
+      .split(';')
+      .map((d) => d.trim())
+      .find((d) => d.startsWith(`${name} `) || d === name);
+    expect(found, `directive ${name} present`).toBeDefined();
+    return found!;
+  };
+
+  it('img-src is the exact tightened allowlist — no wildcard https: (#98)', () => {
+    env.NODE_ENV = 'production';
+    const csp = buildCspHeader(NONCE);
+    const imgSrc = getDirective(csp, 'img-src');
+    // 精确锁定整条 directive：self + data: + blob: + 两个 OAuth 头像 origin。
+    // 任何新通配（https:）或 host 漂移都会让这条断言失败。
+    expect(imgSrc).toBe(
+      "img-src 'self' data: blob: https://avatars.githubusercontent.com https://lh3.googleusercontent.com",
+    );
+    // 显式：裸 https: 通配不得出现在 img-src token 里。
+    expect(imgSrc.split(/\s+/)).not.toContain('https:');
+  });
 });
 
 describe('securityHeadersOnly', () => {

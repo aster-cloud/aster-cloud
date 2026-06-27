@@ -60,6 +60,18 @@ const MONACO_CDN_DOMAINS = [
   'https://cdn.jsdelivr.net',
 ];
 
+// img-src 的远程图源允许清单（#98）。全站实际渲染的图片只有自托管 SVG
+// （/public/*.svg、/app/*.svg，由 'self' 覆盖）。唯一的远程图源是 OAuth
+// 头像 URL：GitHub/Google 登录回调把头像写进 users.image（src/auth.ts、
+// src/db/adapter.ts），经 session.user.image 与 team-members API
+// （route.ts:70）流转。当前 UI 尚未用 <img> 渲染它们，但 profile / 团队
+// 成员列表迟早会渲染——预先列白让该特性上线时无需再改 CSP，且不放开整个
+// https: 通配。Gravatar / 营销 CDN / docs 截图等均未使用，故不列入。
+const AVATAR_IMAGE_DOMAINS = [
+  'https://avatars.githubusercontent.com', // GitHub OAuth 头像
+  'https://lh3.googleusercontent.com',     // Google OAuth 头像
+];
+
 // WebSocket origins the app legitimately connects to (connect-src). Previously
 // connect-src allowed bare `wss:` — i.e. ANY wss host — which defeats the point
 // of the allowlist (exfil to attacker-controlled WS). Scope to:
@@ -151,12 +163,10 @@ export function buildCspHeader(nonce: string): string {
       ...MONACO_CDN_DOMAINS,
     ],
     'style-src-attr': ["'unsafe-inline'"],
-    // TODO(#98): `https:` here allows images from ANY https host. Tightening to a
-    // known allowlist (avatar/CDN/docs image sources) needs an inventory of every
-    // legitimate <img> origin first — user-uploaded avatars, Gravatar, docs
-    // screenshots, Stripe/marketing assets, OG images — so it's left broad for now
-    // to avoid breaking prod image loads. Narrow once the source inventory exists.
-    'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+    // #98: 从通配 `https:`（允许任意 https 主机）收紧到允许清单。源清单见
+    // AVATAR_IMAGE_DOMAINS 注释：全站渲染的图片仅自托管 SVG（'self' 覆盖）+
+    // OAuth 头像两个主机；data:/blob: 防御性保留（base64 图标 / canvas 导出）。
+    'img-src': ["'self'", 'data:', 'blob:', ...AVATAR_IMAGE_DOMAINS],
     'font-src': ["'self'", 'data:'],
     'connect-src': [
       "'self'",
