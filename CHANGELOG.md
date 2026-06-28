@@ -316,6 +316,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -794,6 +795,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Performance
 
+- Cut per-call DB round-trips + lengthen policy cache TTL (#138) *(execute)*
 - Parallelize en-base + locale message loads (ADR 0020 优化 2) (#105) *(i18n)*
 - Configure Smart Placement for Melbourne region
 - Add location hint for Oceania region
