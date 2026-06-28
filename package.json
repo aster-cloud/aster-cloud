@@ -93,7 +93,7 @@
     "@next/eslint-plugin-next": "16.2.9",
     "@next/mdx": "16.2.9",
     "@opennextjs/cloudflare": "^1.19.11",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.1",
     "@tailwindcss/typography": "^0.5.20",
     "@testing-library/jest-dom": "^6.9.1",
