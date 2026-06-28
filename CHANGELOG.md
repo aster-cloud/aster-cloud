@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Texas Hold'em showdown engine demo (/demos/poker) (#139) *(demos)*
 - Plan-D cloud alias foundation + ts 1.0.4 (ADR 0022) (#132) *(policy)*
 - Hero language list follows backend-available locales (#130) *(landing)*
 - In-dashboard docs overlay (no full-page navigation) (#129) *(dashboard)*
@@ -245,6 +246,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
