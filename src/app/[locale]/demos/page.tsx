@@ -24,11 +24,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/** 三个 demo 的卡片元数据：href 指向子路由，文案走 i18n（demosIndex.cards.<key>）。 */
+/** demo 卡片元数据：href 指向子路由，文案走 i18n（demosIndex.cards.<key>）。 */
 const DEMO_CARDS = [
   { key: 'credit', href: '/demos/credit', emoji: '📊' },
   { key: 'vocab', href: '/demos/vocab', emoji: '🏷️' },
   { key: 'kitten', href: '/demos/kitten', emoji: '🐱' },
+  { key: 'poker', href: '/demos/poker', emoji: '🃏' },
 ] as const;
 
 export default async function DemosIndexPage({ params }: Props) {
