@@ -315,6 +315,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -489,6 +490,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Bare-string CNL result no longer fabricates a denial (decision hard-safe) (#137) *(policy)*
 - Allowlist Cloudflare Turnstile in CSP script-src/frame-src (#100) (#136) *(security)*
 - Patch 7 transitive Dependabot vulnerabilities (#134) *(deps)*
 - Tighten CSP img-src from wildcard https: to allowlist (#98) (#133) *(security)*
