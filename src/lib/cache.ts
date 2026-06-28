@@ -28,11 +28,16 @@ const CACHE_PREFIX = {
 } as const;
 
 // 默认 TTL（秒）
+// POLICY / POLICY_CONTENT 用较长 TTL：策略元数据/内容很少变，且更新/删除时
+// invalidatePolicyCache 会**显式删除**缓存（见 policies/[id]/route.ts），TTL 只是
+// 兜底过期。短 TTL（旧 5/10 分钟）会让同一策略每隔几分钟就 cache-miss 回落全量
+// DB 路径（owner 冻结检查等额外串行查询）→ 用户感知「预热后偶尔又变慢」。拉长到
+// 1 小时让预热持久，过期/变更两条失效路径都健全，无陈旧风险。
 const DEFAULT_TTL = {
-  POLICY: 300,        // 5 分钟
-  POLICY_CONTENT: 600, // 10 分钟
-  USER: 300,          // 5 分钟
-  SESSION: 3600,      // 1 小时
+  POLICY: 3600,         // 1 小时（变更走显式失效，非靠过期）
+  POLICY_CONTENT: 3600, // 1 小时
+  USER: 300,            // 5 分钟（用量/套餐变动更频繁，保持短）
+  SESSION: 3600,        // 1 小时
 } as const;
 
 /**
