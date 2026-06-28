@@ -67,7 +67,7 @@ routes:
     owner: marketing
     source: src/app/[locale]/demos/page.tsx
     locales: all
-    notes: Demos index — card grid aggregating the three demos (credit / vocab / kitten)
+    notes: Demos index — card grid aggregating the four demos (credit / vocab / kitten / poker)
 
   - path: /demos/credit
     status: canonical-here
@@ -89,6 +89,13 @@ routes:
     source: src/app/[locale]/demos/kitten/page.tsx
     locales: all
     notes: Fun demo — Cat Mood Engine, poetic cat-vocabulary rule drives a 5s sketch animation
+
+  - path: /demos/poker
+    status: canonical-here
+    owner: marketing
+    source: src/app/[locale]/demos/poker/page.tsx
+    locales: all
+    notes: Fun demo — Texas Hold'em showdown engine, poker-vocabulary rule decides the winner on a self-dealing animated table
 
   - path: /privacy
     status: canonical-here

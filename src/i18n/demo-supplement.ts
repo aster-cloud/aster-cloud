@@ -44,7 +44,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'Demos',
       title: 'See Aster in action',
-      subtitle: 'Three live demos — each runs the real engine in your browser, no signup.',
+      subtitle: 'Four live demos — each runs the real engine in your browser, no signup.',
       enter: 'Open demo',
       cards: {
         credit: {
@@ -58,6 +58,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         kitten: {
           title: 'Cat mood engine 🐱',
           description: 'A playful one: a poetic cat-vocabulary rule drives a little hand-drawn cat animation. Proof that Aster rules read like plain language.',
+        },
+        poker: {
+          title: 'Poker showdown 🃏',
+          description: 'A poker-vocabulary rule decides the winning hand at a self-dealing table — and awards the trophy. Same provable engine, just dealt in cards.',
         },
       },
     },
@@ -101,6 +105,47 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         copied: 'Copied',
       },
     },
+    pokerPage: {
+      seo: {
+        title: 'Poker showdown — Aster Lang',
+        description: 'A poker-vocabulary rule decides the winning hand at a self-dealing table. The real engine runs in your browser; the winner gets the trophy.',
+      },
+      eyebrow: 'Fun demo',
+      title: 'Poker showdown engine 🃏',
+      subtitle: 'A rule written in poker words decides who wins — the same provable engine as the credit demo, just dealt in cards. The table deals itself, on a loop.',
+      player1: 'Player 1',
+      player2: 'Player 2',
+      phases: {
+        shuffling: 'Shuffling…',
+        dealing: 'Dealing 9 cards…',
+        revealing: 'Cards on the table',
+        judging: 'Engine deciding the winner…',
+        winner: '{player} wins the pot 🏆',
+        tie: 'Split pot — a tie',
+      },
+      controls: {
+        pause: 'Pause',
+        resume: 'Resume',
+        deal: 'Deal next',
+      },
+      ruleTitle: 'The rule that decides the winner',
+      legendTerm: 'highlighted',
+      legend: 'words are poker domain vocabulary, injected into the engine and compiled like any other rule.',
+      handsTitle: 'Hand ranking (weakest → strongest)',
+      handsHint: 'Each player makes their best five-card hand from their two cards plus the five on the table. The stronger hand wins.',
+      hands: {
+        high: 'High card',
+        pair: 'Pair',
+        twoPair: 'Two pair',
+        trips: 'Three of a kind',
+        straight: 'Straight',
+        flush: 'Flush',
+        fullHouse: 'Full house',
+        quads: 'Four of a kind',
+        straightFlush: 'Straight flush',
+      },
+      footer: 'Domain vocabulary can be anything — credit, claims, or a hand of poker. The engine that deals this table is the same one that decides a loan.',
+    },
   },
   zh: {
     docs: {
@@ -120,7 +165,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'Demo 演示',
       title: '看 Aster 跑起来',
-      subtitle: '三个在线演示——每个都在你浏览器里跑真引擎，无需注册。',
+      subtitle: '四个在线演示——每个都在你浏览器里跑真引擎，无需注册。',
       enter: '打开演示',
       cards: {
         credit: {
@@ -134,6 +179,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         kitten: {
           title: '猫咪心情引擎 🐱',
           description: '一个有趣的演示：一条富有诗意的猫咪词汇规则驱动一只手绘小猫动画。证明 Aster 规则读起来就像平常说话。',
+        },
+        poker: {
+          title: '德州扑克摊牌 🃏',
+          description: '一条扑克词汇规则在自动发牌的牌桌上判定赢家——并颁出奖杯。和信贷 demo 同一套可证明引擎，只是换成了纸牌。',
         },
       },
     },
@@ -177,6 +226,47 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         copied: '已复制',
       },
     },
+    pokerPage: {
+      seo: {
+        title: '德州扑克摊牌 — Aster Lang',
+        description: '一条扑克词汇规则在自动发牌的牌桌上判定赢家。真引擎在你浏览器里运行；赢家获得奖杯。',
+      },
+      eyebrow: '趣味 demo',
+      title: '德州扑克摊牌引擎 🃏',
+      subtitle: '一条用扑克词写成的规则判定谁赢——和信贷 demo 同一套可证明引擎，只是换成了纸牌。牌桌自动循环发牌。',
+      player1: '玩家 1',
+      player2: '玩家 2',
+      phases: {
+        shuffling: '洗牌中…',
+        dealing: '发 9 张牌…',
+        revealing: '牌已摊开',
+        judging: '引擎正在判定赢家…',
+        winner: '{player} 赢得彩池 🏆',
+        tie: '平分彩池——平局',
+      },
+      controls: {
+        pause: '暂停',
+        resume: '继续',
+        deal: '发下一手',
+      },
+      ruleTitle: '判定赢家的规则',
+      legendTerm: '高亮',
+      legend: '的词是扑克领域词汇，注入引擎后与任何其它规则一样被编译。',
+      handsTitle: '牌型强弱（从弱到强）',
+      handsHint: '每位玩家用自己的 2 张手牌加桌面 5 张公共牌组出最佳的五张牌，牌型强者赢。',
+      hands: {
+        high: '高牌',
+        pair: '一对',
+        twoPair: '两对',
+        trips: '三条',
+        straight: '顺子',
+        flush: '同花',
+        fullHouse: '葫芦',
+        quads: '四条',
+        straightFlush: '同花顺',
+      },
+      footer: '领域词汇可以是任何领域——信贷、理赔，或一手扑克。发这张牌桌的引擎，和判定一笔贷款的，是同一个。',
+    },
   },
   de: {
     docs: {
@@ -196,7 +286,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'Demos',
       title: 'Aster in Aktion erleben',
-      subtitle: 'Drei Live-Demos — jede führt die echte Engine in Ihrem Browser aus, ohne Anmeldung.',
+      subtitle: 'Vier Live-Demos — jede führt die echte Engine in Ihrem Browser aus, ohne Anmeldung.',
       enter: 'Demo öffnen',
       cards: {
         credit: {
@@ -210,6 +300,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         kitten: {
           title: 'Katzenstimmungs-Engine 🐱',
           description: 'Eine verspielte: Eine poetische Katzen-Vokabular-Regel steuert eine kleine handgezeichnete Katzen-Animation. Beweis, dass Aster-Regeln wie normale Sprache lesbar sind.',
+        },
+        poker: {
+          title: 'Poker-Showdown 🃏',
+          description: 'Eine Poker-Vokabular-Regel entscheidet am selbst gebenden Tisch über das Siegerblatt — und vergibt den Pokal. Dieselbe beweisbare Engine wie beim Kredit-Demo, nur in Karten.',
         },
       },
     },
@@ -253,6 +347,47 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         copied: 'Kopiert',
       },
     },
+    pokerPage: {
+      seo: {
+        title: 'Poker-Showdown — Aster Lang',
+        description: 'Eine Poker-Vokabular-Regel entscheidet am selbst gebenden Tisch über das Siegerblatt. Die echte Engine läuft in deinem Browser; der Gewinner erhält den Pokal.',
+      },
+      eyebrow: 'Spaß-Demo',
+      title: 'Poker-Showdown-Engine 🃏',
+      subtitle: 'Eine in Poker-Wörtern geschriebene Regel entscheidet, wer gewinnt — dieselbe beweisbare Engine wie beim Kredit-Demo, nur in Karten. Der Tisch gibt sich selbst, in Schleife.',
+      player1: 'Spieler 1',
+      player2: 'Spieler 2',
+      phases: {
+        shuffling: 'Mischen…',
+        dealing: 'Gebe 9 Karten…',
+        revealing: 'Karten auf dem Tisch',
+        judging: 'Engine entscheidet den Gewinner…',
+        winner: '{player} gewinnt den Pott 🏆',
+        tie: 'Geteilter Pott — unentschieden',
+      },
+      controls: {
+        pause: 'Pause',
+        resume: 'Weiter',
+        deal: 'Nächste geben',
+      },
+      ruleTitle: 'Die Regel, die den Gewinner entscheidet',
+      legendTerm: 'hervorgehobene',
+      legend: 'Wörter sind Poker-Fachvokabular, in die Engine injiziert und wie jede andere Regel kompiliert.',
+      handsTitle: 'Blatt-Rangfolge (schwach → stark)',
+      handsHint: 'Jeder Spieler bildet sein bestes Fünf-Karten-Blatt aus seinen zwei Karten plus den fünf auf dem Tisch. Das stärkere Blatt gewinnt.',
+      hands: {
+        high: 'Höchste Karte',
+        pair: 'Paar',
+        twoPair: 'Zwei Paare',
+        trips: 'Drilling',
+        straight: 'Straße',
+        flush: 'Flush',
+        fullHouse: 'Full House',
+        quads: 'Vierling',
+        straightFlush: 'Straight Flush',
+      },
+      footer: 'Fachvokabular kann alles sein — Kredit, Schäden oder eine Pokerhand. Die Engine, die diesen Tisch gibt, ist dieselbe, die einen Kredit entscheidet.',
+    },
   },
   hi: {
     docs: {
@@ -272,7 +407,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'डेमो',
       title: 'Aster को क्रिया में देखें',
-      subtitle: 'तीन लाइव डेमो — हर एक आपके ब्राउज़र में असली इंजन चलाता है, बिना साइनअप।',
+      subtitle: 'चार लाइव डेमो — हर एक आपके ब्राउज़र में असली इंजन चलाता है, बिना साइनअप।',
       enter: 'डेमो खोलें',
       cards: {
         credit: {
@@ -286,6 +421,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         kitten: {
           title: 'कैट-मूड इंजन 🐱',
           description: 'एक मज़ेदार: एक काव्यात्मक बिल्ली-शब्दावली नियम एक छोटे हाथ से बनाए बिल्ली एनिमेशन को चलाता है। प्रमाण कि Aster नियम सामान्य भाषा की तरह पढ़े जाते हैं।',
+        },
+        poker: {
+          title: 'पोकर शोडाउन 🃏',
+          description: 'एक पोकर-शब्दावली नियम स्वयं-वितरित मेज़ पर विजयी हाथ तय करता है — और ट्रॉफी देता है। क्रेडिट डेमो जैसा ही प्रमाणयोग्य इंजन, बस पत्तों में।',
         },
       },
     },
@@ -328,6 +467,47 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         copy: 'कॉपी करें',
         copied: 'कॉपी किया गया',
       },
+    },
+    pokerPage: {
+      seo: {
+        title: 'पोकर शोडाउन — Aster Lang',
+        description: 'एक पोकर-शब्दावली नियम स्वयं-वितरित मेज़ पर विजयी हाथ तय करता है। असली इंजन आपके ब्राउज़र में चलता है; विजेता को ट्रॉफी मिलती है।',
+      },
+      eyebrow: 'मज़ेदार डेमो',
+      title: 'पोकर शोडाउन इंजन 🃏',
+      subtitle: 'पोकर शब्दों में लिखा एक नियम तय करता है कौन जीता — क्रेडिट डेमो जैसा ही प्रमाणयोग्य इंजन, बस पत्तों में। मेज़ स्वयं पत्ते बाँटती है, लूप में।',
+      player1: 'खिलाड़ी 1',
+      player2: 'खिलाड़ी 2',
+      phases: {
+        shuffling: 'फेंटा जा रहा है…',
+        dealing: '9 पत्ते बाँटे जा रहे हैं…',
+        revealing: 'पत्ते मेज़ पर',
+        judging: 'इंजन विजेता तय कर रहा है…',
+        winner: '{player} ने पॉट जीता 🏆',
+        tie: 'बँटा पॉट — टाई',
+      },
+      controls: {
+        pause: 'रोकें',
+        resume: 'जारी रखें',
+        deal: 'अगला बाँटें',
+      },
+      ruleTitle: 'विजेता तय करने वाला नियम',
+      legendTerm: 'हाइलाइट किए',
+      legend: 'शब्द पोकर डोमेन शब्दावली हैं, जो इंजन में डाले जाते हैं और किसी भी अन्य नियम की तरह कंपाइल होते हैं।',
+      handsTitle: 'हाथ क्रम (कमज़ोर → मज़बूत)',
+      handsHint: 'हर खिलाड़ी अपने 2 पत्तों और मेज़ के 5 पत्तों से अपना सर्वश्रेष्ठ पाँच-पत्ता हाथ बनाता है। मज़बूत हाथ जीतता है।',
+      hands: {
+        high: 'हाई कार्ड',
+        pair: 'जोड़ा',
+        twoPair: 'दो जोड़े',
+        trips: 'तीन एक तरह के',
+        straight: 'स्ट्रेट',
+        flush: 'फ्लश',
+        fullHouse: 'फुल हाउस',
+        quads: 'चार एक तरह के',
+        straightFlush: 'स्ट्रेट फ्लश',
+      },
+      footer: 'डोमेन शब्दावली कुछ भी हो सकती है — क्रेडिट, क्लेम, या पोकर का एक हाथ। जो इंजन यह मेज़ बाँटता है, वही एक ऋण तय करता है।',
     },
   },
 };
