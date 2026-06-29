@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Credit-risk amounts as Decimal (ADR 0025 M3) (#150) *(demo)*
 - Pure-CNL hand evaluation (best-5-of-7 in CNL, ADR 0024) (#147) *(poker)*
 - Texas Hold'em showdown engine demo (/demos/poker) (#139) *(demos)*
 - Plan-D cloud alias foundation + ts 1.0.4 (ADR 0022) (#132) *(policy)*
@@ -248,6 +249,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
