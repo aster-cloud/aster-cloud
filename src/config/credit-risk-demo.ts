@@ -98,16 +98,16 @@ export function buildRuleSource(loc: DemoLocale, th: Thresholds): string {
 
 定义 ${id.typeName} 包含
   ${id.fScore} 作为 整数，
-  ${id.fIncome} 作为 小数，
-  ${id.fDebt} 作为 小数，
-  ${id.fAmount} 作为 小数。
+  ${id.fIncome} 作为 Decimal，
+  ${id.fDebt} 作为 Decimal，
+  ${id.fAmount} 作为 Decimal。
 
 规则 ${id.ruleName} 给定 ${id.param} 作为 ${id.typeName} 产出 文本：
-  令 ${id.vDti} 定义为 ${id.param}.${id.fDebt} 除以 ${id.param}.${id.fIncome}。
+  令 ${id.vDti} 定义为 Decimal.divide(${id.param}.${id.fDebt}, ${id.param}.${id.fIncome}, 4, "HALF_EVEN")。
   令 ${id.vAfford} 定义为 ${id.param}.${id.fIncome} 乘以 12 乘以 ${th.maxLti}。
-  如果 ${id.param}.${id.fScore} 至少 ${th.premiumScore} 并且 ${id.vDti} 至多 ${th.premiumDti} 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
+  如果 ${id.param}.${id.fScore} 至少 ${th.premiumScore} 并且 ${id.vDti} 至多 ${th.premiumDti}m 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
     返回 "${dec.premium}"。
-  如果 ${id.param}.${id.fScore} 至少 ${th.standardScore} 并且 ${id.vDti} 至多 ${th.standardDti} 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
+  如果 ${id.param}.${id.fScore} 至少 ${th.standardScore} 并且 ${id.vDti} 至多 ${th.standardDti}m 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
     返回 "${dec.standard}"。
   如果 ${id.param}.${id.fScore} 至少 ${th.minScore}：
     返回 "${dec.refer}"。
@@ -119,16 +119,16 @@ export function buildRuleSource(loc: DemoLocale, th: Thresholds): string {
 
 Definiere ${id.typeName} hat
   ${id.fScore} als Ganzzahl,
-  ${id.fIncome} als Dezimal,
-  ${id.fDebt} als Dezimal,
-  ${id.fAmount} als Dezimal.
+  ${id.fIncome} als Decimal,
+  ${id.fDebt} als Decimal,
+  ${id.fAmount} als Decimal.
 
 Regel ${id.ruleName} gegeben ${id.param} als ${id.typeName} liefert Text:
-  sei ${id.vDti} gleich ${id.param}.${id.fDebt} geteilt durch ${id.param}.${id.fIncome}.
+  sei ${id.vDti} gleich Decimal.divide(${id.param}.${id.fDebt}, ${id.param}.${id.fIncome}, 4, "HALF_EVEN").
   sei ${id.vAfford} gleich ${id.param}.${id.fIncome} mal 12 mal ${th.maxLti}.
-  wenn ${id.param}.${id.fScore} mindestens ${th.premiumScore} und ${id.vDti} höchstens ${th.premiumDti} und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
+  wenn ${id.param}.${id.fScore} mindestens ${th.premiumScore} und ${id.vDti} höchstens ${th.premiumDti}m und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
     gib zurück "${dec.premium}".
-  wenn ${id.param}.${id.fScore} mindestens ${th.standardScore} und ${id.vDti} höchstens ${th.standardDti} und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
+  wenn ${id.param}.${id.fScore} mindestens ${th.standardScore} und ${id.vDti} höchstens ${th.standardDti}m und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
     gib zurück "${dec.standard}".
   wenn ${id.param}.${id.fScore} mindestens ${th.minScore}:
     gib zurück "${dec.refer}".
@@ -139,16 +139,16 @@ Regel ${id.ruleName} gegeben ${id.param} als ${id.typeName} liefert Text:
 
 Define ${id.typeName} has
   ${id.fScore} as Int,
-  ${id.fIncome} as Float,
-  ${id.fDebt} as Float,
-  ${id.fAmount} as Float.
+  ${id.fIncome} as Decimal,
+  ${id.fDebt} as Decimal,
+  ${id.fAmount} as Decimal.
 
 Rule ${id.ruleName} given ${id.param} as ${id.typeName}, produce Text:
-  Let ${id.vDti} be ${id.param}.${id.fDebt} divided by ${id.param}.${id.fIncome}.
+  Let ${id.vDti} be Decimal.divide(${id.param}.${id.fDebt}, ${id.param}.${id.fIncome}, 4, "HALF_EVEN").
   Let ${id.vAfford} be ${id.param}.${id.fIncome} times 12 times ${th.maxLti}.
-  If ${id.param}.${id.fScore} at least ${th.premiumScore} and ${id.vDti} at most ${th.premiumDti} and ${id.param}.${id.fAmount} at most ${id.vAfford}:
+  If ${id.param}.${id.fScore} at least ${th.premiumScore} and ${id.vDti} at most ${th.premiumDti}m and ${id.param}.${id.fAmount} at most ${id.vAfford}:
     Return "${dec.premium}".
-  If ${id.param}.${id.fScore} at least ${th.standardScore} and ${id.vDti} at most ${th.standardDti} and ${id.param}.${id.fAmount} at most ${id.vAfford}:
+  If ${id.param}.${id.fScore} at least ${th.standardScore} and ${id.vDti} at most ${th.standardDti}m and ${id.param}.${id.fAmount} at most ${id.vAfford}:
     Return "${dec.standard}".
   If ${id.param}.${id.fScore} at least ${th.minScore}:
     Return "${dec.refer}".
@@ -247,10 +247,28 @@ const TR: Record<DemoLocale, {
  * 「申请额度」通过可负担上限（月收入 × 12 × maxLti）参与决策：额度超上限时，
  * 即便信用分/负债比达标也无法自动批准 → 转人工复核（超额贷款需人工评估）。
  */
+/**
+ * Scale-4 银行家舍入（HALF_EVEN），镜像引擎 Decimal.divide(…, 4, "HALF_EVEN")。
+ * 用整数缩放 + 半值向偶判定，避免 toFixed 的 HALF_UP/浮点偏差。demo 取值（整数收入/负债）
+ * 下结果精确；仅作引擎一致性镜像，非通用十进制实现。
+ */
+function roundHalfEven4(x: number): number {
+  const scaled = x * 1e4;
+  const floor = Math.floor(scaled);
+  const frac = scaled - floor;
+  let rounded: number;
+  if (frac < 0.5) rounded = floor;
+  else if (frac > 0.5) rounded = floor + 1;
+  else rounded = floor % 2 === 0 ? floor : floor + 1; // 恰好半值 → 向偶
+  return rounded / 1e4;
+}
+
 export function computeDecision(loc: DemoLocale, app: DemoApplicant, th: Thresholds): DemoResult {
   const dec = DECISIONS[loc];
   const tr = TR[loc];
-  const dti = app.monthlyDebt / app.monthlyIncome;
+  // DTI 现由引擎用 Decimal.divide(debt, income, 4, "HALF_EVEN") 计算（M3，金额字段=Decimal）。
+  // 镜像必须用同样的 scale-4 银行家舍入，否则边界处可能与引擎决策脱节（engine==mirror 契约）。
+  const dti = roundHalfEven4(app.monthlyDebt / app.monthlyIncome);
   const dtiStr = dti.toFixed(2);
   const affordCap = app.monthlyIncome * 12 * th.maxLti;
   const amountOk = app.requestedAmount <= affordCap;
@@ -632,15 +650,16 @@ export function buildExplanation(loc: DemoLocale, app: DemoApplicant, th: Thresh
   const id = IDS[loc];
   const s = EXPLAIN[loc];
   const result = computeDecision(loc, app, th);
-  const dti = app.monthlyDebt / app.monthlyIncome;
+  const dti = roundHalfEven4(app.monthlyDebt / app.monthlyIncome);
   const dtiStr = dti.toFixed(2);
   const affordCap = app.monthlyIncome * 12 * th.maxLti;
 
+  // 金额字段（收入/负债/额度）M3 起为 Decimal（精确十进制），不再是二进制浮点 Float。
   const fields: ExplainedField[] = [
     { name: id.fScore, type: s.fieldTypes.int, value: String(app.creditScore), purpose: s.purposes.score },
-    { name: id.fIncome, type: s.fieldTypes.float, value: String(app.monthlyIncome), purpose: s.purposes.income },
-    { name: id.fDebt, type: s.fieldTypes.float, value: String(app.monthlyDebt), purpose: s.purposes.debt },
-    { name: id.fAmount, type: s.fieldTypes.float, value: String(app.requestedAmount), purpose: s.purposes.amount },
+    { name: id.fIncome, type: 'Decimal', value: String(app.monthlyIncome), purpose: s.purposes.income },
+    { name: id.fDebt, type: 'Decimal', value: String(app.monthlyDebt), purpose: s.purposes.debt },
+    { name: id.fAmount, type: 'Decimal', value: String(app.requestedAmount), purpose: s.purposes.amount },
   ];
 
   const metrics: ExplainedMetric[] = [
