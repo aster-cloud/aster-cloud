@@ -706,3 +706,25 @@ R15 之后才是真正的 GA-ready: 三层契约 (源码 AST + tarball 内容 + 
 + 三个独立 CI 阻断 (middleware-no-process / tarball SLA / verify-browser-entry)
 共同保证未来 PR 任何 transitive Node 依赖都会被 PR-time 抓住。
 
+
+## Round 19 — vendor tarball 退役（2026-06-29）
+
+§"迁移路径"（R12 时代）的三条件已全部满足并执行：
+1. ✅ `@aster-cloud/aster-lang-ts` npm publish 成功（**1.0.6** 含 PII 跨运行时守卫全部符号 +
+   typecheck-pii.js 走纯 leaf alias.js，实测确认）。
+2. ✅ `aster-cloud/package.json` 改 `file:vendor/...` → npm 精确 pin `"1.0.6"`；pnpm-lock 零 vendor 引用。
+3. ✅ 测试绿（lint/typecheck/e2e）。
+
+**变更**：
+- 删除 `vendor/aster-cloud-aster-lang-ts-0.2.2.tgz` + `vendor/README.md`（应急 file:vendor 方案彻底退役）。
+- 删除 ci.yml「Vendor tarball SLA enforcement」step（其两段都 existence-gated，删 tarball 后全 no-op）。
+- **不丢消费侧 artifact 合同**：把原 tarball 内容契约（PII 守卫符号 + call-site + E404 catch 路径 +
+  typecheck-pii alias edge-safe）**retarget 到安装的 npm 包**，与原 consumer 闭包扫描（browser entry
+  无 node:* builtin）**合并成单脚本** `scripts/verify-aster-lang-browser-artifact.mjs`。
+- 旧 `scripts/verify-vendor-browser-entry.mjs` 删除。
+
+**为何保留消费侧检查（不只信 aster-lang-ts CI）**：信任边界不同——lang-ts CI 证明「发布源构建
+当时合格」，消费侧证明「aster-cloud 实际装进 node_modules 的包合格」。精确 pin + lockfile 防无意
+漂移，但挡不住 PR 把依赖改/回退到不含 ADR-0009 修复的旧版本——消费侧 fail-closed 挡这一类
+（Codex round 19 复核：删 tarball 但保留 retargeted 合同 = 清债不牺牲供应链防御）。三层契约不变：
+源码 AST 层（lang-ts）+ 发布前 dist 扫描（lang-ts pre-pack）+ 消费侧安装 artifact 合同（本脚本）。
