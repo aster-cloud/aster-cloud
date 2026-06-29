@@ -5,25 +5,20 @@
 // 一段牌桌动画——给赢家颁奖杯。证明「领域词汇」可以是任何领域，底层和信贷 demo 同一套
 // 可证明引擎。纯客户端、无网络、无 WASM、CSP 友好。
 //
-// 设计要点：
-//  1. **手牌强度评估在 JS**（dealRandomBoard / evaluateBest5）：9 张牌（2 玩家各 2 +
-//     公共 5），各取最佳 5 张算一个**整数强度分** rank（越大越强）。把组合学留给 JS，
-//     让 CNL 规则只做「比两个分数」——稳落在已验证的 CNL 特性内（If / at least /
-//     Return，与 cat-mood 一致），不碰引擎不支持的复杂逻辑。
-//  2. 规则用扑克术语（localized）+ 对应语言 CNL 关键词；compile({lexicon,domain,
-//     tenantId}) 经 registerCustom 注入翻译成 canonical IR。
-//  3. eval 输入用 **canonical 字段名**（p1strength/p2strength）。
-//  4. 避 or/或/oder（域翻译下落空）→ 嵌套 If；德文标识符避 ue/ae/oe。
+// 设计要点（ADR 0024 纯 CNL 重写）：
+//  1. **手牌强度评估全在 CNL**：decide 规则收两玩家各 7 张牌，用 List.combinations 枚举
+//     C(7,5)=21 个 5 张子集 → 各 classifyScore5 算单调整数 score → List.max 取最佳 5 张。
+//     组合学不再留给 JS。底层只调受控、双引擎对等、确定性的集合 builtin。
+//  2. 三语 CNL（POKER_RULES）：各语言关键词 + 本地化 helper/字段名；无域词汇注入
+//     （用 canonical List.* + 本地化卡牌字段名 直接取，cardsForRule 按 loc 构造）。
+//  3. eval 输入=两玩家各 7 张牌的本地化 record 列表（{点数,花色} 等）。
+//  4. 客户端 eval 21×classify 步数大 → evaluate 传 {maxSteps} 上调（有界计算非死循环）。
+//  5. 德文标识符避 ue/ae/oe（canonicalizer 转 ü/ä/ö 毁 eval 键）。
 
 import {
-  vocabularyRegistry,
   EN_US, ZH_CN, DE_DE,
   type Lexicon,
 } from '@/lib/aster-lexicon';
-import {
-  assembleDomainVocabularyFromLinks,
-  type TermLikeRow,
-} from '@/lib/domain-vocabulary-assemble';
 
 export type DemoLocale = 'en' | 'zh' | 'de';
 
@@ -35,10 +30,8 @@ export function toDemoLocale(locale: string): DemoLocale {
 }
 
 const LEXICONS: Record<DemoLocale, Lexicon> = { en: EN_US, zh: ZH_CN, de: DE_DE };
-const LOCALE_TAGS: Record<DemoLocale, string> = { en: 'en-US', zh: 'zh-CN', de: 'de-DE' };
 
 export const POKER_DEMO_TENANT = 'poker-showdown-anon';
-export const POKER_DOMAIN = 'poker.showdown';
 
 /* ── 牌型 / 发牌（纯 JS） ─────────────────────────────────────────── */
 
@@ -178,120 +171,339 @@ export function evaluateBoard(board: PokerBoard): PokerOutcome {
   return { board, p1, p2, winner };
 }
 
-/* ── 扑克领域词汇 + CNL 规则 ─────────────────────────────────────── */
-
-interface PokerTerm {
-  kind: 'struct' | 'field';
-  canonical: string;
-  parent?: string;
-  localized: Record<DemoLocale, string>;
-}
-
-// de localized 避 ue/ae/oe（canonicalizer 转 ü/ä/ö 毁 eval 键）。
-export const POKER_TERMS: PokerTerm[] = [
-  { kind: 'struct', canonical: 'Showdown', localized: { en: 'Showdown', zh: '摊牌', de: 'Showdown' } },
-  { kind: 'field', canonical: 'p1strength', parent: 'Showdown', localized: { en: 'playerOneStrength', zh: '一号玩家牌力', de: 'spielerEinsKraft' } },
-  { kind: 'field', canonical: 'p2strength', parent: 'Showdown', localized: { en: 'playerTwoStrength', zh: '二号玩家牌力', de: 'spielerZweiKraft' } },
-];
-
-export interface PokerRule {
-  source: string;
-  ruleName: string;
-  paramName: string;
-}
+/* ── 纯 CNL 牌型判定规则 ─────────────────────────────────────────── */
+//
+// 重写要点（ADR 0024 受控 stdlib）：手牌强度评估**全在 CNL**——不再把组合学留 JS。
+// `decide` 规则收两玩家各 7 张牌（2 手+5 公共），用 List.combinations 枚举 C(7,5)=21 个
+// 5 张子集，各 classify 算单调整数 score（牌型类别<<高位 + 5 张关键牌字典序 tiebreak），
+// 取最大分=该玩家牌力，再比两玩家。证明「算法级决策逻辑」可完全表达在可读、可证明、
+// 双引擎一致的 CNL 里——不靠 JS 黑盒。底层只调受控、确定性、双引擎对等的集合 builtin
+// （List.combinations/map/groupBy/distinct/sort/sortBy/max/min/reduce + Map.values + 算术）。
+//
+// 每语言：CNL 源用该语言关键词；helper/规则名/参数名/字段名是该语言的标识符（不得与
+// 关键词或域术语同形）。**卡牌字段名也本地化**（en rank/suit、zh 点数/花色、de wert/farbe）：
+// JS 端按 loc 构造对应字段名的卡牌 record 喂给规则，CNL 里 `牌.点数` 直接取（无需域词汇映射）。
 
 /** 决策结果（canonical 字符串，跨语言不变；动画/文案据此分支）。 */
 export type PokerVerdict = 'player1' | 'player2' | 'tie';
 
+export interface PokerRule {
+  /** 该语言的完整纯 CNL 源（含 helper 规则链 + 顶层 decide）。 */
+  source: string;
+  /** 顶层判定规则名（evaluate 调用名）。 */
+  ruleName: string;
+  /** 顶层规则参数名（台面/桌）。 */
+  tableParam: string;
+  /** 台面 record 里两玩家牌列表的字段名。 */
+  p1Field: string;
+  p2Field: string;
+  /** 卡牌 record 的点数/花色字段名（本地化）。 */
+  rankField: string;
+  suitField: string;
+}
+
+/**
+ * 纯 CNL 牌型判定规则（三语）。源经本地 TS 引擎实测：9 类牌型严格递减序 + tiebreak
+ * （KK>QQ、kicker）+ wheel(A2345) 特判 + 7 牌 best-5-of-7（List.combinations），
+ * en/zh/de 三语对同一手牌判定一致，<6ms。helper 规则名/参数/字段名均为该语言标识符，
+ * 不与关键词/域术语同形。卡牌字段名本地化（en rank/suit、zh 点数/花色、de wert/farbe）。
+ */
 export const POKER_RULES: Record<DemoLocale, PokerRule> = {
-  // 注意：规则名/参数名**不得**与域 struct 术语（Showdown/摊牌）同形，否则
-  // canonicalizer 会把它当词汇 token 消费 → "Expected identifier" 解析失败
-  // （cat-mood 同理：struct Kitty、rule mood、param moggy 全不相交）。故 rule=decide。
   en: {
-    ruleName: 'decide', paramName: 'felt',
-    source: `Module poker.table.
+    ruleName: 'decide', tableParam: 'table', p1Field: 'p1cards', p2Field: 'p2cards',
+    rankField: 'rank', suitField: 'suit',
+    source: `Module poker.showdown.
 
-Define Showdown has
-  playerOneStrength as Int,
-  playerTwoStrength as Int.
+Rule cardRank given card, produce:
+  Return card.rank.
 
-Rule decide given felt as Showdown, produce Text:
-  If felt.playerOneStrength greater than felt.playerTwoStrength:
+Rule cardSuit given card, produce:
+  Return card.suit.
+
+Rule identity given x, produce:
+  Return x.
+
+Rule groupLen given g, produce:
+  Return List.length(g).
+
+Rule groupOrderKey given g, produce:
+  Return 0 minus List.length(g) times 16 plus List.get(g, 0).
+
+Rule concatLists given acc, g, produce:
+  Return List.concat(acc, g).
+
+Rule pushNibble given acc, rank, produce:
+  Return acc times 16 plus rank.
+
+Rule first5 given xs, produce:
+  Return [List.get(xs, 0), List.get(xs, 1), List.get(xs, 2), List.get(xs, 3), List.get(xs, 4)].
+
+Rule pad5 given xs, produce:
+  Return first5(List.concat(xs, [0, 0, 0, 0, 0])).
+
+Rule encodeScore given category, kickers, produce:
+  Return List.reduce(pad5(kickers), category, pushNibble).
+
+Rule tiebreakRanks given ranks, produce:
+  Let groups be Map.values(List.groupBy(ranks, identity)).
+  Let ordered be List.sortBy(groups, groupOrderKey).
+  Return List.reduce(ordered, [], concatLists).
+
+Rule classifyScore5 given cards, produce:
+  Let ranks be List.map(cards, cardRank).
+  Let suits be List.map(cards, cardSuit).
+  Let distinctSuits be List.length(List.distinct(suits)).
+  Let sortedDistinct be List.sort(List.distinct(ranks)).
+  Let distinctRanks be List.length(sortedDistinct).
+  Let maxGroup be List.max(List.map(Map.values(List.groupBy(ranks, identity)), groupLen)).
+  Let span be List.max(ranks) minus List.min(ranks).
+  Let kickers be tiebreakRanks(ranks).
+  Let straightHigh be List.get(sortedDistinct, 4).
+  Let isFlush be distinctSuits equals to 1.
+  Let isWheel be distinctRanks equals to 5 and List.get(sortedDistinct, 4) equals to 14 and List.get(sortedDistinct, 3) equals to 5.
+  Let isStraight be distinctRanks equals to 5 and span equals to 4.
+  If isWheel and isFlush:
+    Return encodeScore(8, [5]).
+  If isStraight and isFlush:
+    Return encodeScore(8, [straightHigh]).
+  If maxGroup equals to 4:
+    Return encodeScore(7, kickers).
+  If maxGroup equals to 3 and distinctRanks equals to 2:
+    Return encodeScore(6, kickers).
+  If isFlush:
+    Return encodeScore(5, kickers).
+  If isWheel:
+    Return encodeScore(4, [5]).
+  If isStraight:
+    Return encodeScore(4, [straightHigh]).
+  If maxGroup equals to 3:
+    Return encodeScore(3, kickers).
+  If maxGroup equals to 2 and distinctRanks equals to 3:
+    Return encodeScore(2, kickers).
+  If maxGroup equals to 2:
+    Return encodeScore(1, kickers).
+  Return encodeScore(0, kickers).
+
+Rule bestScore given cards, produce:
+  Let fives be List.combinations(cards, 5).
+  Let scores be List.map(fives, classifyScore5).
+  Return List.max(scores).
+
+Rule decide given table, produce Text:
+  Let s1 be bestScore(table.p1cards).
+  Let s2 be bestScore(table.p2cards).
+  If s1 greater than s2:
     Return "player1".
-  Otherwise:
-    If felt.playerTwoStrength greater than felt.playerOneStrength:
-      Return "player2".
-    Otherwise:
-      Return "tie".
+  If s2 greater than s1:
+    Return "player2".
+  Return "tie".
 `,
   },
   zh: {
-    ruleName: '裁决', paramName: '台面',
-    source: `模块 扑克.牌桌。
+    ruleName: '裁决', tableParam: '台面', p1Field: '一号牌', p2Field: '二号牌',
+    rankField: '点数', suitField: '花色',
+    source: `模块 扑克.摊牌。
 
-定义 摊牌 包含
-  一号玩家牌力 作为 整数，
-  二号玩家牌力 作为 整数。
+规则 取点数 给定 牌 产出：
+  返回 牌.点数。
 
-规则 裁决 给定 台面 作为 摊牌 产出 文本：
-  如果 台面.一号玩家牌力 大于 台面.二号玩家牌力：
+规则 取花色 给定 牌 产出：
+  返回 牌.花色。
+
+规则 本身 给定 元素 产出：
+  返回 元素。
+
+规则 组长度 给定 组 产出：
+  返回 List.length(组)。
+
+规则 组排序键 给定 组 产出：
+  返回 0 减去 List.length(组) 乘以 16 加上 List.get(组, 0)。
+
+规则 拼接 给定 累计, 组 产出：
+  返回 List.concat(累计, 组)。
+
+规则 压入 给定 累计, 点数 产出：
+  返回 累计 乘以 16 加上 点数。
+
+规则 前五 给定 序列 产出：
+  返回 [List.get(序列, 0), List.get(序列, 1), List.get(序列, 2), List.get(序列, 3), List.get(序列, 4)]。
+
+规则 补足五 给定 序列 产出：
+  返回 前五(List.concat(序列, [0, 0, 0, 0, 0]))。
+
+规则 编码分 给定 类别, 关键牌 产出：
+  返回 List.reduce(补足五(关键牌), 类别, 压入)。
+
+规则 关键牌序 给定 点数表 产出：
+  令 分组 定义为 Map.values(List.groupBy(点数表, 本身))。
+  令 排序后 定义为 List.sortBy(分组, 组排序键)。
+  返回 List.reduce(排序后, [], 拼接)。
+
+规则 牌型分 给定 手牌 产出：
+  令 点数表 定义为 List.map(手牌, 取点数)。
+  令 花色表 定义为 List.map(手牌, 取花色)。
+  令 不同花色 定义为 List.length(List.distinct(花色表))。
+  令 排序点数 定义为 List.sort(List.distinct(点数表))。
+  令 不同点数 定义为 List.length(排序点数)。
+  令 最大组 定义为 List.max(List.map(Map.values(List.groupBy(点数表, 本身)), 组长度))。
+  令 跨度 定义为 List.max(点数表) 减去 List.min(点数表)。
+  令 关键牌 定义为 关键牌序(点数表)。
+  令 顺子高 定义为 List.get(排序点数, 4)。
+  令 是同花 定义为 不同花色 等于 1。
+  令 是轮子 定义为 不同点数 等于 5 并且 List.get(排序点数, 4) 等于 14 并且 List.get(排序点数, 3) 等于 5。
+  令 是顺子 定义为 不同点数 等于 5 并且 跨度 等于 4。
+  如果 是轮子 并且 是同花：
+    返回 编码分(8, [5])。
+  如果 是顺子 并且 是同花：
+    返回 编码分(8, [顺子高])。
+  如果 最大组 等于 4：
+    返回 编码分(7, 关键牌)。
+  如果 最大组 等于 3 并且 不同点数 等于 2：
+    返回 编码分(6, 关键牌)。
+  如果 是同花：
+    返回 编码分(5, 关键牌)。
+  如果 是轮子：
+    返回 编码分(4, [5])。
+  如果 是顺子：
+    返回 编码分(4, [顺子高])。
+  如果 最大组 等于 3：
+    返回 编码分(3, 关键牌)。
+  如果 最大组 等于 2 并且 不同点数 等于 3：
+    返回 编码分(2, 关键牌)。
+  如果 最大组 等于 2：
+    返回 编码分(1, 关键牌)。
+  返回 编码分(0, 关键牌)。
+
+规则 最佳分 给定 手牌 产出：
+  令 五张组 定义为 List.combinations(手牌, 5)。
+  令 各分 定义为 List.map(五张组, 牌型分)。
+  返回 List.max(各分)。
+
+规则 裁决 给定 台面 产出 文本：
+  令 一号分 定义为 最佳分(台面.一号牌)。
+  令 二号分 定义为 最佳分(台面.二号牌)。
+  如果 一号分 大于 二号分：
     返回 "player1"。
-  否则：
-    如果 台面.二号玩家牌力 大于 台面.一号玩家牌力：
-      返回 "player2"。
-    否则：
-      返回 "tie"。
+  如果 二号分 大于 一号分：
+    返回 "player2"。
+  返回 "tie"。
 `,
   },
   de: {
-    ruleName: 'entscheide', paramName: 'filz',
-    source: `Modul poker.tisch.
+    ruleName: 'entscheide', tableParam: 'tisch', p1Field: 'einsKarten', p2Field: 'zweiKarten',
+    rankField: 'wert', suitField: 'farbe',
+    source: `Modul poker.showdown.
 
-Definiere Showdown hat
-  spielerEinsKraft als Ganzzahl,
-  spielerZweiKraft als Ganzzahl.
+Regel kartenWert gegeben karte liefert:
+  gib zurueck karte.wert.
 
-Regel entscheide gegeben filz als Showdown liefert Text:
-  wenn filz.spielerEinsKraft größer als filz.spielerZweiKraft:
-    gib zurück "player1".
-  sonst:
-    wenn filz.spielerZweiKraft größer als filz.spielerEinsKraft:
-      gib zurück "player2".
-    sonst:
-      gib zurück "tie".
+Regel kartenFarbe gegeben karte liefert:
+  gib zurueck karte.farbe.
+
+Regel selbst gegeben element liefert:
+  gib zurueck element.
+
+Regel gruppenLaenge gegeben gruppe liefert:
+  gib zurueck List.length(gruppe).
+
+Regel gruppenSchluessel gegeben gruppe liefert:
+  gib zurueck 0 minus List.length(gruppe) mal 16 plus List.get(gruppe, 0).
+
+Regel verbinde gegeben summe, gruppe liefert:
+  gib zurueck List.concat(summe, gruppe).
+
+Regel schiebe gegeben summe, wert liefert:
+  gib zurueck summe mal 16 plus wert.
+
+Regel ersteFuenf gegeben folge liefert:
+  gib zurueck [List.get(folge, 0), List.get(folge, 1), List.get(folge, 2), List.get(folge, 3), List.get(folge, 4)].
+
+Regel fuelleFuenf gegeben folge liefert:
+  gib zurueck ersteFuenf(List.concat(folge, [0, 0, 0, 0, 0])).
+
+Regel kodierePunkte gegeben klasse, schluessel liefert:
+  gib zurueck List.reduce(fuelleFuenf(schluessel), klasse, schiebe).
+
+Regel schluesselWerte gegeben werte liefert:
+  sei gruppen gleich Map.values(List.groupBy(werte, selbst)).
+  sei sortiert gleich List.sortBy(gruppen, gruppenSchluessel).
+  gib zurueck List.reduce(sortiert, [], verbinde).
+
+Regel handWert gegeben hand liefert:
+  sei werte gleich List.map(hand, kartenWert).
+  sei farben gleich List.map(hand, kartenFarbe).
+  sei andersFarben gleich List.length(List.distinct(farben)).
+  sei sortierteWerte gleich List.sort(List.distinct(werte)).
+  sei andersWerte gleich List.length(sortierteWerte).
+  sei groessteGruppe gleich List.max(List.map(Map.values(List.groupBy(werte, selbst)), gruppenLaenge)).
+  sei spanne gleich List.max(werte) minus List.min(werte).
+  sei schluessel gleich schluesselWerte(werte).
+  sei reiheHoch gleich List.get(sortierteWerte, 4).
+  sei istFarbe gleich andersFarben entspricht 1.
+  sei istRad gleich andersWerte entspricht 5 und List.get(sortierteWerte, 4) entspricht 14 und List.get(sortierteWerte, 3) entspricht 5.
+  sei istReihe gleich andersWerte entspricht 5 und spanne entspricht 4.
+  wenn istRad und istFarbe:
+    gib zurueck kodierePunkte(8, [5]).
+  wenn istReihe und istFarbe:
+    gib zurueck kodierePunkte(8, [reiheHoch]).
+  wenn groessteGruppe entspricht 4:
+    gib zurueck kodierePunkte(7, schluessel).
+  wenn groessteGruppe entspricht 3 und andersWerte entspricht 2:
+    gib zurueck kodierePunkte(6, schluessel).
+  wenn istFarbe:
+    gib zurueck kodierePunkte(5, schluessel).
+  wenn istRad:
+    gib zurueck kodierePunkte(4, [5]).
+  wenn istReihe:
+    gib zurueck kodierePunkte(4, [reiheHoch]).
+  wenn groessteGruppe entspricht 3:
+    gib zurueck kodierePunkte(3, schluessel).
+  wenn groessteGruppe entspricht 2 und andersWerte entspricht 3:
+    gib zurueck kodierePunkte(2, schluessel).
+  wenn groessteGruppe entspricht 2:
+    gib zurueck kodierePunkte(1, schluessel).
+  gib zurueck kodierePunkte(0, schluessel).
+
+Regel besteWertung gegeben hand liefert:
+  sei fuenfer gleich List.combinations(hand, 5).
+  sei wertungen gleich List.map(fuenfer, handWert).
+  gib zurueck List.max(wertungen).
+
+Regel entscheide gegeben tisch liefert Text:
+  sei einsWert gleich besteWertung(tisch.einsKarten).
+  sei zweiWert gleich besteWertung(tisch.zweiKarten).
+  wenn einsWert groesser als zweiWert:
+    gib zurueck "player1".
+  wenn zweiWert groesser als einsWert:
+    gib zurueck "player2".
+  gib zurueck "tie".
 `,
   },
 };
-
-/** 注入扑克词汇到引擎，返回当前语言的 registry domain key。 */
-export function registerPokerVocab(loc: DemoLocale): string {
-  const localeTag = LOCALE_TAGS[loc];
-  const key = `${POKER_DOMAIN}-${loc}`;
-  const rows: TermLikeRow[] = POKER_TERMS.map((t, i) => ({
-    domainTermId: `${key}-${i}`,
-    domain: key,
-    locale: localeTag,
-    kind: t.kind,
-    canonical: t.canonical,
-    localized: t.localized[loc],
-    parentCanonical: t.parent ?? null,
-  }));
-  vocabularyRegistry.registerCustom(POKER_DEMO_TENANT, assembleDomainVocabularyFromLinks(rows, { domain: key, locale: localeTag, name: key }));
-  return key;
-}
 
 export function pokerLexiconFor(loc: DemoLocale): Lexicon {
   return LEXICONS[loc];
 }
 
-/** 当前语言规则里的领域术语（高亮用）。 */
-export function pokerVocabTerms(loc: DemoLocale): string[] {
-  return POKER_TERMS.map((t) => t.localized[loc]);
+/** 规则源里值得高亮的本地化领域标识符（卡牌字段名 + 顶层判定规则名）——纯 CNL 无域词汇，
+ * 高亮这几个让读者一眼看到「牌/点数/花色/裁决」等扑克语义锚点。 */
+export function pokerHighlightTerms(loc: DemoLocale): string[] {
+  const r = POKER_RULES[loc];
+  return [r.rankField, r.suitField, r.ruleName, r.tableParam];
+}
+
+/**
+ * 把一手牌（Card[]）转成 CNL 规则期望的本地化字段名 record 列表。
+ * en {rank,suit} / zh {点数,花色} / de {wert,farbe}——与各语言 CNL 里 `牌.点数` 取字段对齐。
+ */
+export function cardsForRule(loc: DemoLocale, cards: Card[]): Array<Record<string, number | string>> {
+  const { rankField, suitField } = POKER_RULES[loc];
+  return cards.map((c) => ({ [rankField]: c.rank, [suitField]: c.suit }));
 }
 
 /** 确定性镜像：按牌力分判赢家（与引擎一致性参照 / 兜底）。 */
-export function pokerVerdictOf(p1strength: number, p2strength: number): PokerVerdict {
-  if (p1strength > p2strength) return 'player1';
-  if (p2strength > p1strength) return 'player2';
+export function pokerVerdictOf(p1score: number, p2score: number): PokerVerdict {
+  if (p1score > p2score) return 'player1';
+  if (p2score > p1score) return 'player2';
   return 'tie';
 }

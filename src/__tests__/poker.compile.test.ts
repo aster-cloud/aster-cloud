@@ -1,13 +1,14 @@
-// 🃏 德州扑克摊牌引擎：规则真编译 + 真执行的契约测试（姊妹篇=cat-mood.compile.test.ts）。
+// 🃏 德州扑克摊牌引擎：纯 CNL 牌型判定的契约测试（姊妹篇=cat-mood.compile.test.ts）。
 //
-// 证明扑克领域词汇注入后，三语规则都能 compile 到 Core IR 且 evaluate 出正确赢家；
-// 同时校验 JS 手牌评估器（evaluateBest5）的手型判定与引擎判赢一致。
+// 证明三语**纯 CNL** 规则都能 compile 到 Core IR 且 evaluate 出正确赢家——手牌强度评估
+// 全在 CNL（best-5-of-7 via List.combinations），不靠 JS 算分。同时保留 JS 评估器
+// （evaluateBest5）作动画/兜底参照的手型判定测试。
 
 import { describe, it, expect } from 'vitest';
 import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
 import {
-  POKER_RULES, POKER_DEMO_TENANT,
-  registerPokerVocab, pokerLexiconFor, pokerVerdictOf,
+  POKER_RULES,
+  pokerLexiconFor, cardsForRule,
   evaluateBest5,
   type Card, type DemoLocale,
 } from '@/config/poker';
@@ -15,30 +16,38 @@ import {
 // 小工具：构造牌。
 const C = (rank: number, suit: 's' | 'h' | 'd' | 'c'): Card => ({ rank, suit });
 
-describe('poker showdown engine compiles & runs in every language', () => {
+const POKER_MAX_STEPS = 200_000;
+
+describe('poker showdown engine compiles & decides in pure CNL (every language)', () => {
+  // 真实手牌场景（7 张 = 2 手 + 5 公共），引擎内部 best-5-of-7 classify 比牌力。
+  const flushComm = [C(2, 's'), C(7, 's'), C(13, 's'), C(9, 'h'), C(11, 'd')];
+  const pairComm = [C(13, 's'), C(12, 'h'), C(2, 'd'), C(5, 'c'), C(8, 's')];
+  const cases: Array<{ name: string; p1: Card[]; p2: Card[]; expect: string }> = [
+    // P1 凑同花（5 黑桃）vs P2 高牌
+    { name: 'flush>high', p1: [C(5, 's'), C(10, 's'), ...flushComm], p2: [C(3, 'h'), C(4, 'd'), ...flushComm], expect: 'player1' },
+    // 对 K vs 对 Q（tiebreak：pair 点数，KK>QQ）
+    { name: 'KK>QQ', p1: [C(13, 'h'), C(3, 'c'), ...pairComm], p2: [C(12, 'd'), C(4, 's'), ...pairComm], expect: 'player1' },
+    // 同手 → 平局
+    { name: 'tie', p1: [C(6, 'h'), C(7, 'd'), ...pairComm], p2: [C(6, 'h'), C(7, 'd'), ...pairComm], expect: 'tie' },
+  ];
+
   (['en', 'zh', 'de'] as DemoLocale[]).forEach((loc) => {
-    it(`${loc}: showdown rule compiles + decides winner by strength`, () => {
-      const domainKey = registerPokerVocab(loc);
+    it(`${loc}: pure-CNL classify compiles + decides best-5-of-7`, () => {
       const rule = POKER_RULES[loc];
-      const r = compile(rule.source, {
-        lexicon: pokerLexiconFor(loc), domain: domainKey, tenantId: POKER_DEMO_TENANT,
-      } as Parameters<typeof compile>[1]);
+      const r = compile(rule.source, { lexicon: pokerLexiconFor(loc) } as Parameters<typeof compile>[1]);
       const errs = ((r as { diagnostics?: { severity?: string }[] }).diagnostics ?? []).filter((d) => d.severity === 'error');
       expect(r.core, `[${loc}] core; diags=${JSON.stringify(errs)}`).toBeTruthy();
       expect(errs.length, `[${loc}] ${JSON.stringify(errs)}`).toBe(0);
 
-      const cases: Array<{ p1: number; p2: number; expect: string }> = [
-        { p1: 5000, p2: 1200, expect: 'player1' },
-        { p1: 800, p2: 4200, expect: 'player2' },
-        { p1: 3333, p2: 3333, expect: 'tie' },
-      ];
       for (const c of cases) {
         const ev = evaluate(r.core!, rule.ruleName, {
-          [rule.paramName]: { p1strength: c.p1, p2strength: c.p2 },
-        });
-        expect(ev.success, `[${loc}] ${c.expect}: ${ev.error ?? ''}`).toBe(true);
-        expect(String(ev.value), `[${loc}] engine`).toBe(c.expect);
-        expect(pokerVerdictOf(c.p1, c.p2), `[${loc}] mirror`).toBe(c.expect);
+          [rule.tableParam]: {
+            [rule.p1Field]: cardsForRule(loc, c.p1),
+            [rule.p2Field]: cardsForRule(loc, c.p2),
+          },
+        }, { maxSteps: POKER_MAX_STEPS });
+        expect(ev.success, `[${loc}] ${c.name}: ${ev.error ?? ''}`).toBe(true);
+        expect(String(ev.value), `[${loc}] ${c.name}`).toBe(c.expect);
       }
     });
   });

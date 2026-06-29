@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  POKER_RULES, toDemoLocale, pokerVocabTerms,
+  POKER_RULES, toDemoLocale, pokerHighlightTerms,
   type HandCategory,
 } from '@/config/poker';
 import { usePokerLoop } from './use-poker-loop';
@@ -127,16 +127,21 @@ export function PokerContent({ locale }: { locale: string }) {
         </div>
       </div>
 
-      {/* 规则（扑克领域词高亮） */}
+      {/* 规则（纯 CNL 牌型判定，默认折叠——源较长，best-5-of-7 全在 CNL） */}
       <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-fg">{t('ruleTitle')}</h2>
-        <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm leading-relaxed text-zinc-100">
-          {highlightVocab(rule.source, pokerVocabTerms(loc))}
-        </pre>
-        <p className="mt-2 text-xs text-fg-subtle">
-          <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{t('legendTerm')}</span>
-          {' '}{t('legend')}
-        </p>
+        <details className="group">
+          <summary className="mb-2 flex cursor-pointer items-center gap-2 text-sm font-semibold text-fg">
+            <span className="text-fg-subtle transition-transform group-open:rotate-90">▶</span>
+            {t('ruleTitle')}
+          </summary>
+          <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-4 text-xs leading-relaxed text-zinc-100">
+            {highlightVocab(rule.source, pokerHighlightTerms(loc))}
+          </pre>
+          <p className="mt-2 text-xs text-fg-subtle">
+            <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{t('legendTerm')}</span>
+            {' '}{t('legend')}
+          </p>
+        </details>
       </section>
 
       {/* 牌型强弱表（图例） */}

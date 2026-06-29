@@ -3,11 +3,15 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
 import {
-  POKER_RULES, POKER_DEMO_TENANT,
-  registerPokerVocab, pokerLexiconFor, pokerVerdictOf,
+  POKER_RULES,
+  pokerLexiconFor, pokerVerdictOf, cardsForRule,
   dealRandomBoard, evaluateBoard,
   type DemoLocale, type PokerBoard, type HandValue, type PokerVerdict,
 } from '@/config/poker';
+
+// 客户端 eval 步数上限：纯 CNL best-5-of-7 = 21 组合×classify ~数万步（<6ms，有界）。
+// 默认 10000 不够；上调到 200000（仅本 demo 受信场景，引擎默认闸门不变）。
+const POKER_MAX_STEPS = 200_000;
 
 /**
  * 德州扑克摊牌牌桌的自动往复循环。
@@ -64,12 +68,12 @@ export function usePokerLoop(loc: DemoLocale): {
   const pausedRef = useRef(false);
   const handIdRef = useRef(0);
 
-  // 编译规则一次（注入扑克词汇）；loc 变化时重编。
+  // 编译纯 CNL 牌型判定规则一次（无域词汇注入——CNL 用 canonical List.* + 本地化字段名）；
+  // loc 变化时重编。
   const coreRef = useRef<ReturnType<typeof compile>['core'] | null>(null);
   useEffect(() => {
-    const domainKey = registerPokerVocab(loc);
     const r = compile(POKER_RULES[loc].source, {
-      lexicon: pokerLexiconFor(loc), domain: domainKey, tenantId: POKER_DEMO_TENANT,
+      lexicon: pokerLexiconFor(loc),
     } as Parameters<typeof compile>[1]);
     coreRef.current = r.core ?? null;
   }, [loc]);
@@ -82,17 +86,23 @@ export function usePokerLoop(loc: DemoLocale): {
     timers.current = [];
   }, []);
 
-  // 用引擎判赢家；失败兜底 JS 镜像。
-  const judge = useCallback((p1s: number, p2s: number): 1 | 2 | 0 => {
+  // 用引擎判赢家：把两玩家各 7 张牌（2 手 + 5 公共）喂给纯 CNL decide 规则，引擎内部
+  // best-5-of-7 classify 算牌力比大小。失败兜底 JS 镜像（按 evaluateBoard 的 score）。
+  const judge = useCallback((board: PokerBoard, p1Score: number, p2Score: number): 1 | 2 | 0 => {
     const core = coreRef.current;
     const rule = POKER_RULES[loc];
     if (core) {
+      const p1seven = [...board.player1, ...board.community];
+      const p2seven = [...board.player2, ...board.community];
       const ev = evaluate(core, rule.ruleName, {
-        [rule.paramName]: { p1strength: p1s, p2strength: p2s },
-      });
+        [rule.tableParam]: {
+          [rule.p1Field]: cardsForRule(loc, p1seven),
+          [rule.p2Field]: cardsForRule(loc, p2seven),
+        },
+      }, { maxSteps: POKER_MAX_STEPS });
       if (ev.success) return verdictToWinner(String(ev.value) as PokerVerdict);
     }
-    return verdictToWinner(pokerVerdictOf(p1s, p2s));
+    return verdictToWinner(pokerVerdictOf(p1Score, p2Score));
   }, [loc]);
 
   // 跑一手：deal → reveal(逐张) → judge → award → 下一手。
@@ -120,7 +130,7 @@ export function usePokerLoop(loc: DemoLocale): {
           // judge：引擎判定
           after(JUDGE_MS, () => {
             if (pausedRef.current) return;
-            const winner = judge(outcome.p1.score, outcome.p2.score);
+            const winner = judge(board, outcome.p1.score, outcome.p2.score);
             setHand((h) => h && { ...h, phase: 'judge', winner });
             // award：颁奖杯
             after(260, () => {
