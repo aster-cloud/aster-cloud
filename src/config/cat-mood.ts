@@ -94,17 +94,13 @@ Define Kitty has
 Rule mood given moggy as Kitty, produce Text:
   If moggy.highGroundUrge at least 1:
     Return "perch".
-  Otherwise:
-    If moggy.intruderCount at least 1:
-      Return "floof".
-    Otherwise:
-      If moggy.sunPatchWarmth at least 7:
-        Return "loaf".
-      Otherwise:
-        If moggy.tummyFullness at least 8:
-          Return "purr".
-        Otherwise:
-          Return "judge".
+  If moggy.intruderCount at least 1:
+    Return "floof".
+  If moggy.sunPatchWarmth at least 7:
+    Return "loaf".
+  If moggy.tummyFullness at least 8:
+    Return "purr".
+  Return "judge".
 `,
   },
   zh: {
@@ -120,17 +116,13 @@ Rule mood given moggy as Kitty, produce Text:
 规则 心情 给定 喵主子 作为 主子 产出 文本：
   如果 喵主子.登高欲 至少 1：
     返回 "perch"。
-  否则：
-    如果 喵主子.陌生人数 至少 1：
-      返回 "floof"。
-    否则：
-      如果 喵主子.阳光斑温度 至少 7：
-        返回 "loaf"。
-      否则：
-        如果 喵主子.肚皮饱度 至少 8：
-          返回 "purr"。
-        否则：
-          返回 "judge"。
+  如果 喵主子.陌生人数 至少 1：
+    返回 "floof"。
+  如果 喵主子.阳光斑温度 至少 7：
+    返回 "loaf"。
+  如果 喵主子.肚皮饱度 至少 8：
+    返回 "purr"。
+  返回 "judge"。
 `,
   },
   de: {
@@ -146,17 +138,13 @@ Definiere Mieze hat
 Regel stimmung gegeben kater als Mieze liefert Text:
   wenn kater.kletterLust mindestens 1:
     gib zurück "perch".
-  sonst:
-    wenn kater.eindringlinge mindestens 1:
-      gib zurück "floof".
-    sonst:
-      wenn kater.sonnenWarme mindestens 7:
-        gib zurück "loaf".
-      sonst:
-        wenn kater.bauchFulle mindestens 8:
-          gib zurück "purr".
-        sonst:
-          gib zurück "judge".
+  wenn kater.eindringlinge mindestens 1:
+    gib zurück "floof".
+  wenn kater.sonnenWarme mindestens 7:
+    gib zurück "loaf".
+  wenn kater.bauchFulle mindestens 8:
+    gib zurück "purr".
+  gib zurück "judge".
 `,
   },
 };

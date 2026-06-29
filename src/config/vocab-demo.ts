@@ -122,14 +122,11 @@ Define PatientCase has
 Rule triage given visit as PatientCase, produce Text:
   If visit.sysBP at least 180:
     Return "Emergency — immediate review".
-  Otherwise:
-    If visit.sysBP at least 140:
-      Return "Refer to specialist".
-    Otherwise:
-      If visit.pulseBpm at least 110:
-        Return "Refer to specialist".
-      Otherwise:
-        Return "Routine follow-up".
+  If visit.sysBP at least 140:
+    Return "Refer to specialist".
+  If visit.pulseBpm at least 110:
+    Return "Refer to specialist".
+  Return "Routine follow-up".
 `,
     },
     zh: {
@@ -144,14 +141,11 @@ Rule triage given visit as PatientCase, produce Text:
 规则 分诊 给定 本次 作为 就诊病例 产出 文本：
   如果 本次.收缩压 至少 180：
     返回 "急诊 — 立即处理"。
-  否则：
-    如果 本次.收缩压 至少 140：
-      返回 "转专科"。
-    否则：
-      如果 本次.心率 至少 110：
-        返回 "转专科"。
-      否则：
-        返回 "常规随访"。
+  如果 本次.收缩压 至少 140：
+    返回 "转专科"。
+  如果 本次.心率 至少 110：
+    返回 "转专科"。
+  返回 "常规随访"。
 `,
     },
     de: {
@@ -166,14 +160,11 @@ Definiere Fallakte hat
 Regel triage gegeben fall als Fallakte liefert Text:
   wenn fall.sysDruck mindestens 180:
     gib zurück "Notfall — sofortige Prüfung".
-  sonst:
-    wenn fall.sysDruck mindestens 140:
-      gib zurück "Zur Fachabteilung".
-    sonst:
-      wenn fall.pulsRate mindestens 110:
-        gib zurück "Zur Fachabteilung".
-      sonst:
-        gib zurück "Routinekontrolle".
+  wenn fall.sysDruck mindestens 140:
+    gib zurück "Zur Fachabteilung".
+  wenn fall.pulsRate mindestens 110:
+    gib zurück "Zur Fachabteilung".
+  gib zurück "Routinekontrolle".
 `,
     },
   },
@@ -214,14 +205,11 @@ Define ClaimFile has
 Rule assess given filing as ClaimFile, produce Text:
   If filing.payoutAsk at most filing.excess:
     Return "Declined — below deductible".
-  Otherwise:
-    If filing.payoutAsk at least 50000:
-      Return "Refer to adjuster".
-    Otherwise:
-      If filing.historyCount at least 3:
-        Return "Refer to adjuster".
-      Otherwise:
-        Return "Auto-approve".
+  If filing.payoutAsk at least 50000:
+    Return "Refer to adjuster".
+  If filing.historyCount at least 3:
+    Return "Refer to adjuster".
+  Return "Auto-approve".
 `,
     },
     zh: {
@@ -236,14 +224,11 @@ Rule assess given filing as ClaimFile, produce Text:
 规则 评估 给定 本案 作为 理赔案件 产出 文本：
   如果 本案.索赔金额 至多 本案.免赔额：
     返回 "拒赔 — 低于免赔额"。
-  否则：
-    如果 本案.索赔金额 至少 50000：
-      返回 "转定损员"。
-    否则：
-      如果 本案.历史出险 至少 3：
-        返回 "转定损员"。
-      否则：
-        返回 "自动核准"。
+  如果 本案.索赔金额 至少 50000：
+    返回 "转定损员"。
+  如果 本案.历史出险 至少 3：
+    返回 "转定损员"。
+  返回 "自动核准"。
 `,
     },
     de: {
@@ -258,14 +243,11 @@ Definiere Schadenakte hat
 Regel bewerten gegeben vorgang als Schadenakte liefert Text:
   wenn vorgang.forderung höchstens vorgang.selbstbehalt:
     gib zurück "Abgelehnt — unter Selbstbehalt".
-  sonst:
-    wenn vorgang.forderung mindestens 50000:
-      gib zurück "Zur Schadenregulierung".
-    sonst:
-      wenn vorgang.vorschadenZahl mindestens 3:
-        gib zurück "Zur Schadenregulierung".
-      sonst:
-        gib zurück "Automatisch genehmigt".
+  wenn vorgang.forderung mindestens 50000:
+    gib zurück "Zur Schadenregulierung".
+  wenn vorgang.vorschadenZahl mindestens 3:
+    gib zurück "Zur Schadenregulierung".
+  gib zurück "Automatisch genehmigt".
 `,
     },
   },
@@ -306,14 +288,11 @@ Define Parcel has
 Rule route given item as Parcel, produce Text:
   If item.slaTier at least 3:
     Return "Air express".
-  Otherwise:
-    If item.grossKg at least 30:
-      Return "Line haul freight".
-    Otherwise:
-      If item.legKm at least 800:
-        Return "Line haul freight".
-      Otherwise:
-        Return "Local courier".
+  If item.grossKg at least 30:
+    Return "Line haul freight".
+  If item.legKm at least 800:
+    Return "Line haul freight".
+  Return "Local courier".
 `,
     },
     zh: {
@@ -328,14 +307,11 @@ Rule route given item as Parcel, produce Text:
 规则 路由 给定 此件 作为 货件 产出 文本：
   如果 此件.时效等级 至少 3：
     返回 "航空急件"。
-  否则：
-    如果 此件.毛重 至少 30：
-      返回 "干线货运"。
-    否则：
-      如果 此件.运距 至少 800：
-        返回 "干线货运"。
-      否则：
-        返回 "本地快递"。
+  如果 此件.毛重 至少 30：
+    返回 "干线货运"。
+  如果 此件.运距 至少 800：
+    返回 "干线货运"。
+  返回 "本地快递"。
 `,
     },
     de: {
@@ -350,14 +326,11 @@ Definiere Sendung hat
 Regel leiten gegeben paket als Sendung liefert Text:
   wenn paket.slaStufe mindestens 3:
     gib zurück "Luftexpress".
-  sonst:
-    wenn paket.bruttoKg mindestens 30:
-      gib zurück "Hauptlauf-Fracht".
-    sonst:
-      wenn paket.streckeKm mindestens 800:
-        gib zurück "Hauptlauf-Fracht".
-      sonst:
-        gib zurück "Lokaler Kurier".
+  wenn paket.bruttoKg mindestens 30:
+    gib zurück "Hauptlauf-Fracht".
+  wenn paket.streckeKm mindestens 800:
+    gib zurück "Hauptlauf-Fracht".
+  gib zurück "Lokaler Kurier".
 `,
     },
   },
