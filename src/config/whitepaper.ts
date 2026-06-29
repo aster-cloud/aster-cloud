@@ -73,40 +73,31 @@ const RULE_EN = `Rule decide given applicant as Applicant, produce Text:
   Let dtiRatio be applicant.monthlyDebt divided by applicant.monthlyIncome.
   If applicant.creditScore at least 740 and dtiRatio at most 0.35:
     Return "Approved — premium rate".
-  Otherwise:
-    If applicant.creditScore at least 660 and dtiRatio at most 0.43:
-      Return "Approved — standard rate".
-    Otherwise:
-      If applicant.creditScore at least 600:
-        Return "Refer to manual underwriting".
-      Otherwise:
-        Return "Declined — credit score below threshold".`;
+  If applicant.creditScore at least 660 and dtiRatio at most 0.43:
+    Return "Approved — standard rate".
+  If applicant.creditScore at least 600:
+    Return "Refer to manual underwriting".
+  Return "Declined — credit score below threshold".`;
 
 const RULE_ZH = `规则 评估 给定 申请人 作为 申请人 产出 文本：
   令 负债比 定义为 申请人.月负债 除以 申请人.月收入。
   如果 申请人.信用分 至少 740 并且 负债比 至多 0.35：
     返回 "批准 — 优惠利率"。
-  否则：
-    如果 申请人.信用分 至少 660 并且 负债比 至多 0.43：
-      返回 "批准 — 标准利率"。
-    否则：
-      如果 申请人.信用分 至少 600：
-        返回 "转人工审核"。
-      否则：
-        返回 "拒绝 — 信用分低于门槛"。`;
+  如果 申请人.信用分 至少 660 并且 负债比 至多 0.43：
+    返回 "批准 — 标准利率"。
+  如果 申请人.信用分 至少 600：
+    返回 "转人工审核"。
+  返回 "拒绝 — 信用分低于门槛"。`;
 
 const RULE_DE = `Regel entscheiden gegeben antrag als Antragsteller liefert Text:
   sei quote gleich antrag.schulden geteilt durch antrag.einkommen.
   wenn antrag.score mindestens 740 und quote höchstens 0.35:
     gib zurück "Genehmigt — Vorzugszins".
-  sonst:
-    wenn antrag.score mindestens 660 und quote höchstens 0.43:
-      gib zurück "Genehmigt — Standardzins".
-    sonst:
-      wenn antrag.score mindestens 600:
-        gib zurück "Zur Einzelfallprüfung".
-      sonst:
-        gib zurück "Abgelehnt — Bonität unter Schwellenwert".`;
+  wenn antrag.score mindestens 660 und quote höchstens 0.43:
+    gib zurück "Genehmigt — Standardzins".
+  wenn antrag.score mindestens 600:
+    gib zurück "Zur Einzelfallprüfung".
+  gib zurück "Abgelehnt — Bonität unter Schwellenwert".`;
 
 export const WHITEPAPER: Record<WhitepaperLocale, WhitepaperContent> = {
   en: {

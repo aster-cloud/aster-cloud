@@ -107,14 +107,11 @@ export function buildRuleSource(loc: DemoLocale, th: Thresholds): string {
   令 ${id.vAfford} 定义为 ${id.param}.${id.fIncome} 乘以 12 乘以 ${th.maxLti}。
   如果 ${id.param}.${id.fScore} 至少 ${th.premiumScore} 并且 ${id.vDti} 至多 ${th.premiumDti} 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
     返回 "${dec.premium}"。
-  否则：
-    如果 ${id.param}.${id.fScore} 至少 ${th.standardScore} 并且 ${id.vDti} 至多 ${th.standardDti} 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
-      返回 "${dec.standard}"。
-    否则：
-      如果 ${id.param}.${id.fScore} 至少 ${th.minScore}：
-        返回 "${dec.refer}"。
-      否则：
-        返回 "${dec.declined}"。
+  如果 ${id.param}.${id.fScore} 至少 ${th.standardScore} 并且 ${id.vDti} 至多 ${th.standardDti} 并且 ${id.param}.${id.fAmount} 至多 ${id.vAfford}：
+    返回 "${dec.standard}"。
+  如果 ${id.param}.${id.fScore} 至少 ${th.minScore}：
+    返回 "${dec.refer}"。
+  返回 "${dec.declined}"。
 `;
   }
   if (loc === 'de') {
@@ -131,14 +128,11 @@ Regel ${id.ruleName} gegeben ${id.param} als ${id.typeName} liefert Text:
   sei ${id.vAfford} gleich ${id.param}.${id.fIncome} mal 12 mal ${th.maxLti}.
   wenn ${id.param}.${id.fScore} mindestens ${th.premiumScore} und ${id.vDti} höchstens ${th.premiumDti} und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
     gib zurück "${dec.premium}".
-  sonst:
-    wenn ${id.param}.${id.fScore} mindestens ${th.standardScore} und ${id.vDti} höchstens ${th.standardDti} und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
-      gib zurück "${dec.standard}".
-    sonst:
-      wenn ${id.param}.${id.fScore} mindestens ${th.minScore}:
-        gib zurück "${dec.refer}".
-      sonst:
-        gib zurück "${dec.declined}".
+  wenn ${id.param}.${id.fScore} mindestens ${th.standardScore} und ${id.vDti} höchstens ${th.standardDti} und ${id.param}.${id.fAmount} höchstens ${id.vAfford}:
+    gib zurück "${dec.standard}".
+  wenn ${id.param}.${id.fScore} mindestens ${th.minScore}:
+    gib zurück "${dec.refer}".
+  gib zurück "${dec.declined}".
 `;
   }
   return `Module ${id.module}.
@@ -154,14 +148,11 @@ Rule ${id.ruleName} given ${id.param} as ${id.typeName}, produce Text:
   Let ${id.vAfford} be ${id.param}.${id.fIncome} times 12 times ${th.maxLti}.
   If ${id.param}.${id.fScore} at least ${th.premiumScore} and ${id.vDti} at most ${th.premiumDti} and ${id.param}.${id.fAmount} at most ${id.vAfford}:
     Return "${dec.premium}".
-  Otherwise:
-    If ${id.param}.${id.fScore} at least ${th.standardScore} and ${id.vDti} at most ${th.standardDti} and ${id.param}.${id.fAmount} at most ${id.vAfford}:
-      Return "${dec.standard}".
-    Otherwise:
-      If ${id.param}.${id.fScore} at least ${th.minScore}:
-        Return "${dec.refer}".
-      Otherwise:
-        Return "${dec.declined}".
+  If ${id.param}.${id.fScore} at least ${th.standardScore} and ${id.vDti} at most ${th.standardDti} and ${id.param}.${id.fAmount} at most ${id.vAfford}:
+    Return "${dec.standard}".
+  If ${id.param}.${id.fScore} at least ${th.minScore}:
+    Return "${dec.refer}".
+  Return "${dec.declined}".
 `;
 }
 
