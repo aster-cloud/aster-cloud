@@ -153,26 +153,26 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     poemDemoPage: {
       seo: {
         title: 'The source is a poem — Aster Lang',
-        description: 'A night poem whose every line IS Aster code — no string literals. Running it does not print verse; it executes the lines and computes a value. Available in 中文 / Deutsch / हिन्दी.',
+        description: 'A connected moon poem where each stanza is half verse, half real computation — Match picks the scene, List sums drive the imagery, a paren-free call weaves the verses. Shown in 中文 / Deutsch / हिन्दी.',
       },
       eyebrow: 'Fun demo',
       title: 'The source is a poem 📜',
-      subtitle: 'Not a poem stored as text — a poem that IS code. Every line is a real rule (a variable, an arithmetic, a call); there are no string literals. Running it does not print pre-written verse — it executes each line and computes a value. (Shown in 中文 / Deutsch / हिन्दी — switch the site language.)',
+      subtitle: 'A connected moon poem where each stanza is half verse, half real computation: a Match chooses the scene by the hour, a List sum (1, 3, 6 …) drives the starlight imagery, and a paren-free call weaves the verses into one poem. It reads as a single poem — yet every number, branch and sum is genuinely evaluated. (Shown in 中文 / Deutsch / हिन्दी — switch the site language.)',
       source: {
         title: 'Read the source as a poem',
-        hint: 'Every line reads as verse — and every line is a real computation. The nouns are variables, the verbs are operators (aliased keywords). No quotes, no string data.',
+        hint: 'Each stanza is half verse, half computation: the upper line is the image, the lower line is a real Match / List.sum / call. No template — the engine evaluates it.',
         showCanonical: 'Show the same program in plain keywords ↓',
         hideCanonical: 'Hide the plain-keyword version ↑',
-        canonicalNote: 'Identical Core IR — the poem is just an alias of this (Module / Rule / Return / × / − / + / apply …).',
+        canonicalNote: 'Identical Core IR — the poem is just an alias of this (Module / Rule / Match / Return / List.range / List.sum / apply …).',
       },
       run: {
-        title: 'And it runs — each line actually computes',
-        hint: 'Substitute {n} and watch every verse line evaluate to a real number.',
-        button: 'Run the poem with {n} ▶',
+        title: 'And it runs — computation weaves the poem',
+        hint: 'Pick how deep the night is. The list sum and the Match decide which verse appears, and the call weaves the whole poem.',
+        button: 'At hour {n} ▶',
       },
       result: {
-        title: 'Each line, evaluated with {n}',
-        note: 'Each verse line ran in your browser on the same TypeScript engine that powers the credit and poker demos — these are computed values, not printed strings.',
+        title: 'The poem woven at hour {n}',
+        note: 'This ran in your browser on the same TypeScript engine that powers the credit and poker demos — which verse appears is driven by a real List sum (1, 3, 6 …), not pre-rendered.',
       },
       cta: {
         title: 'Aster is a real compiler, not a template.',
@@ -307,26 +307,26 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     poemDemoPage: {
       seo: {
         title: '源码即诗 — Aster Lang',
-        description: '一首夜诗，每一行都是 Aster 代码——没有任何字符串。运行它不是打印诗句，而是执行这些语句、算出值。诗句即代码。',
+        description: '一首连贯的望月诗，每段上半是诗句、下半是真计算——Match 按更次选景，List 求和驱动星辉意象，无括号调用织成整首。读下来是诗，但每个数、每次分支都是真求值。中文 / Deutsch / हिन्दी。',
       },
       eyebrow: '趣味 Demo',
       title: '源码即诗 📜',
-      subtitle: '不是把诗存成文字，而是一首本身就是代码的诗。每一行都是真规则（变量、运算、调用），没有任何字符串字面量。运行它不会打印预写诗句——而是执行每一句、算出一个值。',
+      subtitle: '一首连贯的望月诗，每段上半是诗句、下半是真计算：Match 按更次选月相，List 求和（1、3、6…）驱动星辉意象，无括号调用把各段织成整首。读下来是一首完整的诗——但每个数、每次分支、每次求和都是引擎真求值。',
       source: {
         title: '把源码当诗读',
-        hint: '每一行都读作诗句——而每一行都是真计算。名词是变量，动词是运算符（被别名的关键词）。无引号，无字符串数据。',
+        hint: '每段上半是诗句、下半是真计算：上行是意象，下行是真的 Match / List.sum / 调用。不是模板，是引擎真求值。',
         showCanonical: '看同一程序的规范关键词版 ↓',
         hideCanonical: '收起规范关键词版 ↑',
-        canonicalNote: '完全相同的 Core IR——这首诗只是它的别名（模块 / 规则 / 返回 / 乘以 / 减去 / 加上 / 应用 …）。',
+        canonicalNote: '完全相同的 Core IR——这首诗只是它的别名（模块 / 规则 / 匹配于 / 返回 / List.range / List.sum / 应用 …）。',
       },
       run: {
-        title: '它真的算——逐行跑出求值迹',
-        hint: '代入 {n}，看每一句诗求值成一个真实的数。',
-        button: '代入 {n} 运行这首诗 ▶',
+        title: '它真的算——计算织出整首诗',
+        hint: '选夜深几许。List 求和与 Match 决定浮现哪句诗，调用把整首诗织起。',
+        button: '第 {n} 更 ▶',
       },
       result: {
-        title: '代入 {n}，逐句求值',
-        note: '每一句诗都在你的浏览器里、用驱动信贷与扑克 demo 的同一套 TypeScript 引擎跑出——这些是算出来的值，不是打印的字符串。',
+        title: '第 {n} 更织出的诗',
+        note: '这运行在你的浏览器里、用驱动信贷与扑克 demo 的同一套 TypeScript 引擎——浮现哪句诗由真的 List 求和（1、3、6…）驱动分支，不是预先渲染好的整首诗。',
       },
       cta: {
         title: 'Aster 是真编译器，不是模板。',
@@ -461,26 +461,26 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     poemDemoPage: {
       seo: {
         title: 'Der Quelltext ist ein Gedicht — Aster Lang',
-        description: 'Ein Nachtgedicht, dessen jede Zeile Aster-Code IST — keine Zeichenketten. Es läuft nicht, um Verse auszugeben, sondern führt die Zeilen aus und berechnet einen Wert. Verse sind Code.',
+        description: 'Ein zusammenhängendes Mondgedicht, in dem jede Strophe halb Vers, halb echte Rechnung ist — ein Match wählt das Bild, List-Summen treiben die Sternenbild-Metapher, ein klammerfreier Aufruf verwebt die Verse. In 中文 / Deutsch / हिन्दी.',
       },
       eyebrow: 'Spaß-Demo',
       title: 'Der Quelltext ist ein Gedicht 📜',
-      subtitle: 'Kein als Text gespeichertes Gedicht — ein Gedicht, das Code IST. Jede Zeile ist eine echte Regel (eine Variable, eine Rechnung, ein Aufruf); es gibt keine Zeichenketten-Literale. Es läuft nicht, um vorgefertigte Verse auszugeben — es führt jede Zeile aus und berechnet einen Wert.',
+      subtitle: 'Ein zusammenhängendes Mondgedicht, in dem jede Strophe halb Vers, halb echte Rechnung ist: ein Match wählt das Bild nach der Stunde, eine List-Summe (1, 3, 6 …) treibt das Sternenlicht, und ein klammerfreier Aufruf verwebt die Verse zu einem Gedicht. Es liest sich als ein einziges Gedicht — doch jede Zahl, jeder Zweig und jede Summe wird wirklich ausgewertet.',
       source: {
         title: 'Lies den Quelltext als Gedicht',
-        hint: 'Jede Zeile liest sich als Vers — und jede Zeile ist eine echte Rechnung. Die Substantive sind Variablen, die Verben sind Operatoren (aliasierte Schlüsselwörter). Keine Anführungszeichen, keine Zeichenketten.',
+        hint: 'Jede Strophe ist halb Vers, halb Rechnung: die obere Zeile ist das Bild, die untere ein echtes Match / List.sum / Aufruf. Keine Vorlage — die Engine wertet es aus.',
         showCanonical: 'Dasselbe Programm in einfachen Schlüsselwörtern zeigen ↓',
         hideCanonical: 'Schlüsselwort-Version ausblenden ↑',
-        canonicalNote: 'Identische Core-IR — das Gedicht ist nur ein Alias davon (Modul / Regel / gib zurück / × / − / + / wende an …).',
+        canonicalNote: 'Identische Core-IR — das Gedicht ist nur ein Alias davon (Modul / Regel / pruefe / gib zurück / List.range / List.sum / wende an …).',
       },
       run: {
-        title: 'Und es läuft — jede Zeile rechnet wirklich',
-        hint: 'Setze {n} ein und sieh jede Verszeile zu einer echten Zahl auswerten.',
-        button: 'Das Gedicht mit {n} ausführen ▶',
+        title: 'Und es läuft — die Rechnung verwebt das Gedicht',
+        hint: 'Wähle, wie tief die Nacht ist. Die List-Summe und das Match entscheiden, welcher Vers erscheint, und der Aufruf verwebt das ganze Gedicht.',
+        button: 'Zur Stunde {n} ▶',
       },
       result: {
-        title: 'Jede Zeile, ausgewertet mit {n}',
-        note: 'Jede Verszeile lief in deinem Browser auf derselben TypeScript-Engine wie die Kredit- und Poker-Demos — das sind berechnete Werte, keine ausgegebenen Zeichenketten.',
+        title: 'Das Gedicht, verwebt zur Stunde {n}',
+        note: 'Dies lief in deinem Browser auf derselben TypeScript-Engine wie die Kredit- und Poker-Demos — welcher Vers erscheint, treibt eine echte List-Summe (1, 3, 6 …), nichts Vorgerendertes.',
       },
       cta: {
         title: 'Aster ist ein echter Compiler, keine Vorlage.',
@@ -615,26 +615,26 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     poemDemoPage: {
       seo: {
         title: 'स्रोत ही एक कविता है — Aster Lang',
-        description: 'एक रात-कविता जिसकी हर पंक्ति Aster कोड है — कोई स्ट्रिंग नहीं। इसे चलाना पंक्तियाँ छापना नहीं, बल्कि उन्हें निष्पादित कर एक मान गणना करना है। पंक्तियाँ ही कोड हैं।',
+        description: 'एक सुसंगत चंद्र-कविता जिसकी हर कड़ी आधी पद्य, आधी असली गणना है — Match दृश्य चुनता है, List योग तारों का बिंब रचते हैं, बिना-कोष्ठक कॉल कड़ियाँ बुनता है। 中文 / Deutsch / हिन्दी में।',
       },
       eyebrow: 'मज़ेदार डेमो',
       title: 'स्रोत ही एक कविता है 📜',
-      subtitle: 'पाठ के रूप में रखी कविता नहीं — एक कविता जो स्वयं कोड है। हर पंक्ति एक असली नियम है (चर, गणना, कॉल); कोई स्ट्रिंग शाब्दिक नहीं। इसे चलाना पहले से लिखी पंक्तियाँ नहीं छापता — यह हर पंक्ति को निष्पादित करता है और एक मान गणना करता है।',
+      subtitle: 'एक सुसंगत चंद्र-कविता जिसकी हर कड़ी आधी पद्य, आधी असली गणना है: Match पहर के अनुसार दृश्य चुनता है, List योग (1, 3, 6 …) तारों का बिंब रचता है, और बिना-कोष्ठक कॉल कड़ियों को एक कविता में बुनता है। यह एक पूरी कविता की तरह पढ़ी जाती है — पर हर संख्या, हर शाखा और हर योग सचमुच मूल्यांकित होता है।',
       source: {
         title: 'स्रोत को कविता की तरह पढ़ें',
-        hint: 'हर पंक्ति पद्य की तरह पढ़ी जाती है — और हर पंक्ति एक असली गणना है। संज्ञाएँ चर हैं, क्रियाएँ ऑपरेटर (उपनामित कीवर्ड)। कोई उद्धरण नहीं, कोई स्ट्रिंग डेटा नहीं।',
+        hint: 'हर कड़ी आधी पद्य, आधी गणना है: ऊपरी पंक्ति बिंब है, निचली एक असली Match / List.sum / कॉल। कोई टेम्पलेट नहीं — इंजन इसका मूल्यांकन करता है।',
         showCanonical: 'वही प्रोग्राम सादे कीवर्ड में दिखाएँ ↓',
         hideCanonical: 'सादे-कीवर्ड संस्करण छिपाएँ ↑',
-        canonicalNote: 'समान Core IR — यह कविता उसी का उपनाम है (मॉड्यूल / नियम / लौटाएं / × / − / + / लागू करें …)।',
+        canonicalNote: 'समान Core IR — यह कविता उसी का उपनाम है (मॉड्यूल / नियम / मिलान / लौटाएं / List.range / List.sum / लागू करें …)।',
       },
       run: {
-        title: 'और यह चलता है — हर पंक्ति सचमुच गणना करती है',
-        hint: '{n} रखें और देखें हर पंक्ति एक असली संख्या में मूल्यांकित होती है।',
-        button: '{n} के साथ कविता चलाएँ ▶',
+        title: 'और यह चलता है — गणना कविता बुनती है',
+        hint: 'चुनें रात कितनी गहरी है। List योग और Match तय करते हैं कौन-सी पंक्ति उभरे, और कॉल पूरी कविता बुनता है।',
+        button: 'पहर {n} पर ▶',
       },
       result: {
-        title: '{n} के साथ, हर पंक्ति का मूल्यांकन',
-        note: 'हर पंक्ति आपके ब्राउज़र में उसी TypeScript इंजन पर चली जो क्रेडिट और पोकर डेमो चलाता है — ये गणना किए गए मान हैं, छापी गई स्ट्रिंग नहीं।',
+        title: 'पहर {n} पर बुनी कविता',
+        note: 'यह आपके ब्राउज़र में उसी TypeScript इंजन पर चली जो क्रेडिट और पोकर डेमो चलाता है — कौन-सी पंक्ति उभरे यह एक असली List योग (1, 3, 6 …) चलाता है, कुछ पहले से रेंडर किया हुआ नहीं।',
       },
       cta: {
         title: 'Aster एक असली कंपाइलर है, टेम्पलेट नहीं।',
