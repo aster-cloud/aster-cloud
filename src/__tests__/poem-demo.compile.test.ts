@@ -1,22 +1,29 @@
 /**
- * 「源码即诗」demo 的**生产可验证性**契约（四语：en/de/zh/hi）。
+ * 「源码即诗」demo 的**生产可验证性**契约（三语：zh/de/hi）。
  *
- * /demos/poem 展示一首该界面语言的名诗，源码读起来就是那首诗，由生产同款
- * `@aster-cloud/aster-lang-ts/browser` 引擎真编译、递归真执行。每种语言钉死三条不变式，
- * 任一失败 = CI 硬失败（演示当场翻车）：
- *   1. 诗体源码用该语言诗词别名词典编译成功（无诊断错误）。
- *   2. 入口 rule 从 start 行递归执行，吟诵结果与 expect 逐字一致。
- *   3. 诗体方言版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——证明别名只在表层，
- *      「源码是诗」与「源码是程序」是同一个东西（ADR 0022 别名 + ADR 0027 无括号 apply）。
+ * /demos/poem 展示一首夜/月主题小诗，**诗句本身就是 Aster 代码**（无字符串字面量）：每行诗
+ * 是一个真规则，运行 = 执行这些语句、产出计算值。每种语言钉死三条不变式，任一失败 = CI 硬失败：
+ *   1. 诗体源码用诗词别名词典编译成功（无诊断错误）。
+ *   2. 每一行（规则）代入 sample 跑出的值与预期计算一致（月光=星², 霜=月光−星, 思=霜+月光）。
+ *   3. 诗体方言版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——证明别名只在表层
+ *      （ADR 0022 别名 + ADR 0027 无括号 apply），「源码是诗」与「源码是程序」是同一个东西。
  */
 import { describe, it, expect } from 'vitest';
-import { compile, evaluate, EN_US, ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
-import { POEMS, reciteLines, type PoemLocale } from '@/config/poem-demo';
+import { compile, evaluate, ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
+import { POEMS, type PoemLocale } from '@/config/poem-demo';
 
-const BASE: Record<PoemLocale, typeof EN_US> = { en: EN_US, zh: ZH_CN, de: DE_DE, hi: HI_IN };
-const LOCALES: PoemLocale[] = ['en', 'zh', 'de', 'hi'];
+const BASE: Record<PoemLocale, typeof ZH_CN> = { zh: ZH_CN, de: DE_DE, hi: HI_IN };
+const LOCALES: PoemLocale[] = ['zh', 'de', 'hi'];
 
-/** 剥离 origin/span（位置元数据，因别名长度不同而偏移；结构比较口径）。 */
+/** 期望计算：月光=n², 霜=月光−n, 思=霜+月光 = 2n²−n。代入 sample 求三行预期值。 */
+function expectedValues(n: number): number[] {
+  const moonlight = n * n;
+  const shadow = moonlight - n;
+  const longing = shadow + moonlight;
+  return [moonlight, shadow, longing];
+}
+
+/** 剥离 origin/span（位置元数据；结构比较口径）。 */
 function stripOrigin(o: unknown): unknown {
   if (Array.isArray(o)) return o.map(stripOrigin);
   if (o && typeof o === 'object') {
@@ -30,43 +37,46 @@ function stripOrigin(o: unknown): unknown {
   return o;
 }
 
-describe('poem demo: every UI language has a famous poem that compiles and runs', () => {
+describe('poem demo: each verse line IS code — no strings, every line computes', () => {
   for (const loc of LOCALES) {
     const poem = POEMS[loc];
 
     it(`${loc} (${poem.title}): 诗体源码编译成功（无诊断错误）`, () => {
       const r = compile(poem.source, { lexicon: poem.lexicon });
-      const errs = ((r as { parseErrors?: { message?: string }[] }).parseErrors ?? []);
+      const errs = (r as { parseErrors?: { message?: string }[] }).parseErrors ?? [];
       expect(r.core, `[${loc}] core; diags=${JSON.stringify(errs.map((e) => e.message))}`).toBeTruthy();
       expect(errs.length, JSON.stringify(errs.map((e) => e.message))).toBe(0);
     });
 
-    it(`${loc} (${poem.title}): 递归吟诵结果与预期逐字一致`, () => {
+    it(`${loc} (${poem.title}): 每行诗（规则）代入 sample 跑出的计算值正确`, () => {
       const r = compile(poem.source, { lexicon: poem.lexicon });
       expect(r.core).toBeTruthy();
-      const ev = evaluate(r.core!, poem.entry, { [poem.param]: poem.start });
-      expect(ev.success, `[${loc}] eval: ${ev.error ?? ''}`).toBe(true);
-      expect(String(ev.value), `[${loc}]`).toBe(poem.expect);
+      const expected = expectedValues(poem.sample);
+      poem.lines.forEach((line, i) => {
+        const ev = evaluate(r.core!, line.rule, { [poem.param]: poem.sample });
+        expect(ev.success, `[${loc}] ${line.rule} eval: ${ev.error ?? ''}`).toBe(true);
+        expect(Number(ev.value), `[${loc}] ${line.rule}`).toBe(expected[i]);
+      });
     });
 
     it(`${loc} (${poem.title}): 别名不变式 — 诗体版 ≡ 规范关键词版（结构一致 Core IR）`, () => {
       const poemR = compile(poem.source, { lexicon: poem.lexicon });
       const canonR = compile(poem.canonical, { lexicon: BASE[loc] });
-      // 两侧都须真编译成功（不只 core truthy），否则不变式无意义。
       const poemErrs = (poemR as { parseErrors?: unknown[] }).parseErrors ?? [];
       const canonErrs = (canonR as { parseErrors?: unknown[] }).parseErrors ?? [];
-      expect(poemR.success && poemErrs.length === 0, `[${loc}] poem compiles: ${JSON.stringify(poemErrs)}`).toBe(true);
-      expect(canonR.success && canonErrs.length === 0, `[${loc}] canonical compiles: ${JSON.stringify(canonErrs)}`).toBe(true);
+      expect(poemR.success && poemErrs.length === 0, `[${loc}] poem: ${JSON.stringify(poemErrs)}`).toBe(true);
+      expect(canonR.success && canonErrs.length === 0, `[${loc}] canonical: ${JSON.stringify(canonErrs)}`).toBe(true);
       expect(stripOrigin(poemR.core)).toEqual(stripOrigin(canonR.core));
     });
 
-    it(`${loc} (${poem.title}): reciteLines 精确切回每一诗行（UI 展示）`, () => {
-      const r = compile(poem.source, { lexicon: poem.lexicon });
-      const ev = evaluate(r.core!, poem.entry, { [poem.param]: poem.start });
-      const lines = reciteLines(poem, String(ev.value));
-      // 多于一行（确实切开了），且无空白拼回 == 完整吟诵（不丢字、不错位）。
-      expect(lines.length, `[${loc}] line count`).toBeGreaterThan(1);
-      expect(lines.join('').replace(/\s/g, ''), `[${loc}] rejoined`).toBe(poem.expect.replace(/\s/g, ''));
+    it(`${loc} (${poem.title}): 无字符串字面量（诗句是代码，不是数据）`, () => {
+      // 源码里不应出现该词典的任何字符串起止符——诗句必须是表达式，不是字符串。
+      // 取词典自身的引号集合（zh 用「」/ de·hi 用 "），词典换引号也不漏。
+      const q = (poem.lexicon as { punctuation?: { stringQuotes?: { open?: string; close?: string } } })
+        .punctuation?.stringQuotes;
+      for (const mark of [q?.open, q?.close, '"', '「', '」'].filter(Boolean) as string[]) {
+        expect(poem.source.includes(mark), `[${loc}] contains quote ${mark}`).toBe(false);
+      }
     });
   }
 });
