@@ -3,39 +3,27 @@
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
-import {
-  NIGHTFALL_EN,
-  NIGHTFALL_SOURCE,
-  NIGHTFALL_CANONICAL,
-  NIGHTFALL_ENTRY,
-  NIGHTFALL_PARAM,
-  NIGHTFALL_CASES,
-  reciteLines,
-} from '@/config/poem-demo';
+import { POEMS, reciteLines, toPoemLocale } from '@/config/poem-demo';
 import { cn } from '@/components/ui';
 
-interface RunResult {
-  stars: number;
-  lines: string[];
-  ok: boolean;
-}
-
-export function PoemDemoContent({ locale: _locale }: { locale: string }) {
+export function PoemDemoContent({ locale }: { locale: string }) {
   const t = useTranslations('poemDemoPage');
-  const [run, setRun] = useState<RunResult | null>(null);
+  const poem = POEMS[toPoemLocale(locale)];
+  // 吟诵结果连同其所属诗一起存：诗变了（切语言）旧结果即失效（render 期守卫，避免 set-state-in-effect）。
+  const [run, setRun] = useState<{ poemId: string; lines: string[] } | null>(null);
+  const lines = run && run.poemId === poem.lexicon.id ? run.lines : null;
   const [showCanonical, setShowCanonical] = useState(false);
 
-  // 编译诗体源码（注入 NIGHTFALL 别名词典）→ canonicalize 归一回规范关键词 → 同款引擎编译。
+  // 编译诗体源码（注入该诗的诗词别名词典）→ canonicalize 归一回规范关键词 → 同款引擎编译。
   const core = useMemo(() => {
-    const r = compile(NIGHTFALL_SOURCE, { lexicon: NIGHTFALL_EN });
+    const r = compile(poem.source, { lexicon: poem.lexicon });
     return r.core ?? null;
-  }, []);
+  }, [poem]);
 
-  function reciteStars(stars: number) {
+  function recite() {
     if (!core) return;
-    const ev = evaluate(core, NIGHTFALL_ENTRY, { [NIGHTFALL_PARAM]: stars });
-    const value = ev.success ? String(ev.value) : '';
-    setRun({ stars, lines: ev.success ? reciteLines(value) : [], ok: ev.success });
+    const ev = evaluate(core, poem.entry, { [poem.param]: poem.start });
+    setRun(ev.success ? { poemId: poem.lexicon.id, lines: reciteLines(poem, String(ev.value)) } : null);
   }
 
   return (
@@ -49,12 +37,16 @@ export function PoemDemoContent({ locale: _locale }: { locale: string }) {
         <p className="mx-auto mt-3 max-w-2xl text-lg text-fg-muted">{t('subtitle')}</p>
       </div>
 
-      {/* 诗体源码 —— 逐行读是一首诗 */}
+      {/* 诗体源码 —— 逐行读是一首（本语言的）名诗 */}
       <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-fg">{t('source.title')}</h2>
-        <p className="mb-3 text-sm text-fg-muted">{t('source.hint')}</p>
+        <h2 className="mb-1 text-sm font-semibold text-fg">{t('source.title')}</h2>
+        <p className="mb-1 text-sm text-fg-muted">{t('source.hint')}</p>
+        <p className="mb-3 text-xs text-fg-subtle">
+          <span className="font-display italic text-fg">{poem.title}</span>
+          <span> · {poem.attribution}</span>
+        </p>
         <pre className="overflow-x-auto rounded-xl border border-border bg-bg-subtle p-5 font-mono text-sm leading-relaxed text-fg">
-          {NIGHTFALL_SOURCE}
+          {poem.source}
         </pre>
         <button
           onClick={() => setShowCanonical((v) => !v)}
@@ -66,51 +58,40 @@ export function PoemDemoContent({ locale: _locale }: { locale: string }) {
           <div className="mt-3">
             <p className="mb-2 text-xs text-fg-subtle">{t('source.canonicalNote')}</p>
             <pre className="overflow-x-auto rounded-xl border border-border bg-bg p-5 font-mono text-sm leading-relaxed text-fg-muted">
-              {NIGHTFALL_CANONICAL}
+              {poem.canonical}
             </pre>
           </div>
         )}
       </section>
 
-      {/* 运行 —— 它真的跑，递归把星光一句句聚拢 */}
+      {/* 运行 —— 它真的跑，递归把诗一句句吟出 */}
       <section className="mb-8">
         <h2 className="mb-2 text-sm font-semibold text-fg">{t('run.title')}</h2>
         <p className="mb-3 text-sm text-fg-muted">{t('run.hint')}</p>
-        <div className="flex flex-wrap gap-3">
-          {NIGHTFALL_CASES.map((c) => (
-            <button
-              key={c.stars}
-              onClick={() => reciteStars(c.stars)}
-              disabled={!core}
-              className={cn(
-                'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
-                run?.stars === c.stars
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
-                !core && 'cursor-not-allowed opacity-50',
-              )}
-            >
-              {t('run.starsLabel', { count: c.stars })}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={recite}
+          disabled={!core}
+          className={cn(
+            'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
+            lines
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
+            !core && 'cursor-not-allowed opacity-50',
+          )}
+        >
+          {t('run.button')}
+        </button>
       </section>
 
       {/* 吟诵结果 */}
-      {run && (
+      {lines && (
         <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
-          <p className="mb-3 text-sm font-semibold text-fg">
-            {t('result.title', { count: run.stars })}
-          </p>
-          {run.ok ? (
-            <div className="space-y-2 font-display text-lg italic leading-relaxed text-fg">
-              {run.lines.map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-danger">{t('result.error')}</p>
-          )}
+          <p className="mb-3 text-sm font-semibold text-fg">{t('result.title')}</p>
+          <div className="space-y-2 font-display text-lg italic leading-relaxed text-fg">
+            {lines.map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>
           <p className="mt-4 text-sm text-fg-muted">{t('result.note')}</p>
         </section>
       )}
