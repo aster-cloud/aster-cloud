@@ -44,7 +44,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'Demos',
       title: 'See Aster in action',
-      subtitle: 'Four live demos — each runs the real engine in your browser, no signup.',
+      subtitle: 'Five live demos — each runs the real engine in your browser, no signup.',
       enter: 'Open demo',
       cards: {
         credit: {
@@ -62,6 +62,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         poker: {
           title: 'Poker showdown 🃏',
           description: 'A poker-vocabulary rule decides the winning hand at a self-dealing table — and awards the trophy. Same provable engine, just dealt in cards.',
+        },
+        poem: {
+          title: 'The source is a poem 📜',
+          description: 'A ballad whose source code reads as verse — and still compiles and recursively runs on the same engine. Keyword aliases + paren-free calls hide every trace of "code".',
         },
       },
     },
@@ -146,6 +150,36 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       footer: 'Domain vocabulary can be anything — credit, claims, or a hand of poker. The engine that deals this table is the same one that decides a loan.',
     },
+    poemDemoPage: {
+      seo: {
+        title: 'The source is a poem — Aster Lang',
+        description: 'A ballad whose source code reads as verse and still compiles and runs, recursively, on the same engine. Keyword aliases + paren-free calls hide every trace of code.',
+      },
+      eyebrow: 'Fun demo',
+      title: 'The source is a poem 📜',
+      subtitle: 'Read it top to bottom — it is a poem. It is also a working program: keyword aliases rename the structure words, and a paren-free call hides the last bracket. The same engine that decides a loan recites it.',
+      source: {
+        title: 'Read the source as a poem',
+        hint: 'Every line scans as verse. Yet each word is a real keyword (aliased) — the engine compiles it like any rule.',
+        showCanonical: 'Show the same program in plain keywords ↓',
+        hideCanonical: 'Hide the plain-keyword version ↑',
+        canonicalNote: 'Identical Core IR — the poem is an alias of this. (Module / Rule / If / Return / Let / apply …)',
+      },
+      run: {
+        title: 'And it runs — recursively gathering the lights',
+        hint: 'Pick a number of stars. The rule recurses, one light at a time, building the verse.',
+        starsLabel: '{count, plural, one {# star} other {# stars}}',
+      },
+      result: {
+        title: 'Reciting {count, plural, one {# star} other {# stars}}',
+        error: 'The poem could not be recited.',
+        note: 'This ran in your browser on the same TypeScript engine that powers the credit and poker demos — no template, a real recursive compile + evaluate.',
+      },
+      cta: {
+        title: 'Aster is a real compiler, not a template.',
+        subtitle: 'If a poem can compile and run, your rules — in your own words — certainly can.',
+      },
+    },
   },
   zh: {
     docs: {
@@ -165,7 +199,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'Demo 演示',
       title: '看 Aster 跑起来',
-      subtitle: '四个在线演示——每个都在你浏览器里跑真引擎，无需注册。',
+      subtitle: '五个在线演示——每个都在你浏览器里跑真引擎，无需注册。',
       enter: '打开演示',
       cards: {
         credit: {
@@ -183,6 +217,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         poker: {
           title: '德州扑克摊牌 🃏',
           description: '一条扑克词汇规则在自动发牌的牌桌上判定赢家——并颁出奖杯。和信贷 demo 同一套可证明引擎，只是换成了纸牌。',
+        },
+        poem: {
+          title: '源码即诗 📜',
+          description: '一首谣曲，源码读起来就是诗——却仍由同一套引擎编译、递归执行。关键词别名 + 无括号调用，藏起一切「代码」痕迹。',
         },
       },
     },
@@ -267,6 +305,36 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       footer: '领域词汇可以是任何领域——信贷、理赔，或一手扑克。发这张牌桌的引擎，和判定一笔贷款的，是同一个。',
     },
+    poemDemoPage: {
+      seo: {
+        title: '源码即诗 — Aster Lang',
+        description: '一首谣曲，源码读起来就是诗，却仍由同一套引擎编译、递归执行。关键词别名 + 无括号调用，藏起一切代码痕迹。',
+      },
+      eyebrow: '趣味 Demo',
+      title: '源码即诗 📜',
+      subtitle: '从上往下读——它是一首诗。它也是一个能跑的程序：关键词别名改写了结构词，无括号调用藏起了最后一个括号。判定一笔贷款的同一套引擎，在吟诵它。',
+      source: {
+        title: '把源码当诗读',
+        hint: '每一行都读作诗句。但每个词都是真关键词（被别名）——引擎像编译任何规则一样编译它。',
+        showCanonical: '看同一程序的规范关键词版 ↓',
+        hideCanonical: '收起规范关键词版 ↑',
+        canonicalNote: '完全相同的 Core IR——这首诗只是它的别名。（Module / Rule / If / Return / Let / apply …）',
+      },
+      run: {
+        title: '它真的跑——递归把星光一句句聚拢',
+        hint: '选一个星星数。规则递归执行，一次一束光，逐句构成诗篇。',
+        starsLabel: '{count, plural, other {# 颗星}}',
+      },
+      result: {
+        title: '吟诵 {count, plural, other {# 颗星}}',
+        error: '无法吟诵这首诗。',
+        note: '这运行在你的浏览器里，用的是驱动信贷与扑克 demo 的同一套 TypeScript 引擎——不是模板，是真正的递归编译 + 执行。',
+      },
+      cta: {
+        title: 'Aster 是真编译器，不是模板。',
+        subtitle: '如果一首诗都能编译执行，你用自己行业的话写的规则，当然也能。',
+      },
+    },
   },
   de: {
     docs: {
@@ -286,7 +354,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'Demos',
       title: 'Aster in Aktion erleben',
-      subtitle: 'Vier Live-Demos — jede führt die echte Engine in Ihrem Browser aus, ohne Anmeldung.',
+      subtitle: 'Fünf Live-Demos — jede führt die echte Engine in Ihrem Browser aus, ohne Anmeldung.',
       enter: 'Demo öffnen',
       cards: {
         credit: {
@@ -304,6 +372,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         poker: {
           title: 'Poker-Showdown 🃏',
           description: 'Eine Poker-Vokabular-Regel entscheidet am selbst gebenden Tisch über das Siegerblatt — und vergibt den Pokal. Dieselbe beweisbare Engine wie beim Kredit-Demo, nur in Karten.',
+        },
+        poem: {
+          title: 'Der Quelltext ist ein Gedicht 📜',
+          description: 'Eine Ballade, deren Quelltext sich wie ein Gedicht liest — und doch auf derselben Engine kompiliert und rekursiv läuft. Schlüsselwort-Aliase + klammerfreie Aufrufe verbergen jede Spur von „Code".',
         },
       },
     },
@@ -388,6 +460,36 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       footer: 'Fachvokabular kann alles sein — Kredit, Schäden oder eine Pokerhand. Die Engine, die diesen Tisch gibt, ist dieselbe, die einen Kredit entscheidet.',
     },
+    poemDemoPage: {
+      seo: {
+        title: 'Der Quelltext ist ein Gedicht — Aster Lang',
+        description: 'Eine Ballade, deren Quelltext sich wie ein Gedicht liest und doch auf derselben Engine kompiliert und rekursiv läuft. Schlüsselwort-Aliase + klammerfreie Aufrufe verbergen jede Spur von Code.',
+      },
+      eyebrow: 'Spaß-Demo',
+      title: 'Der Quelltext ist ein Gedicht 📜',
+      subtitle: 'Von oben nach unten gelesen ist es ein Gedicht. Es ist auch ein laufendes Programm: Schlüsselwort-Aliase benennen die Strukturwörter um, ein klammerfreier Aufruf verbirgt die letzte Klammer. Dieselbe Engine, die einen Kredit entscheidet, trägt es vor.',
+      source: {
+        title: 'Lies den Quelltext als Gedicht',
+        hint: 'Jede Zeile liest sich als Vers. Doch jedes Wort ist ein echtes (aliasiertes) Schlüsselwort — die Engine kompiliert es wie jede Regel.',
+        showCanonical: 'Dasselbe Programm in einfachen Schlüsselwörtern zeigen ↓',
+        hideCanonical: 'Schlüsselwort-Version ausblenden ↑',
+        canonicalNote: 'Identische Core-IR — das Gedicht ist ein Alias davon. (Module / Rule / If / Return / Let / apply …)',
+      },
+      run: {
+        title: 'Und es läuft — sammelt die Lichter rekursiv',
+        hint: 'Wähle eine Anzahl Sterne. Die Regel rekursiert, ein Licht nach dem anderen, und baut den Vers.',
+        starsLabel: '{count, plural, one {# Stern} other {# Sterne}}',
+      },
+      result: {
+        title: 'Vortrag von {count, plural, one {# Stern} other {# Sternen}}',
+        error: 'Das Gedicht konnte nicht vorgetragen werden.',
+        note: 'Dies lief in deinem Browser auf derselben TypeScript-Engine wie die Kredit- und Poker-Demos — keine Vorlage, ein echtes rekursives Kompilieren + Auswerten.',
+      },
+      cta: {
+        title: 'Aster ist ein echter Compiler, keine Vorlage.',
+        subtitle: 'Wenn ein Gedicht kompilieren und laufen kann, können es deine Regeln — in deinen eigenen Worten — erst recht.',
+      },
+    },
   },
   hi: {
     docs: {
@@ -407,7 +509,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
       eyebrow: 'डेमो',
       title: 'Aster को क्रिया में देखें',
-      subtitle: 'चार लाइव डेमो — हर एक आपके ब्राउज़र में असली इंजन चलाता है, बिना साइनअप।',
+      subtitle: 'पाँच लाइव डेमो — हर एक आपके ब्राउज़र में असली इंजन चलाता है, बिना साइनअप।',
       enter: 'डेमो खोलें',
       cards: {
         credit: {
@@ -425,6 +527,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         poker: {
           title: 'पोकर शोडाउन 🃏',
           description: 'एक पोकर-शब्दावली नियम स्वयं-वितरित मेज़ पर विजयी हाथ तय करता है — और ट्रॉफी देता है। क्रेडिट डेमो जैसा ही प्रमाणयोग्य इंजन, बस पत्तों में।',
+        },
+        poem: {
+          title: 'स्रोत ही एक कविता है 📜',
+          description: 'एक गाथा जिसका स्रोत कोड कविता की तरह पढ़ा जाता है — फिर भी उसी इंजन पर कंपाइल होकर पुनरावर्ती रूप से चलता है। कीवर्ड उपनाम + बिना-कोष्ठक कॉल हर "कोड" का निशान छिपा देते हैं।',
         },
       },
     },
@@ -508,6 +614,36 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         straightFlush: 'स्ट्रेट फ्लश',
       },
       footer: 'डोमेन शब्दावली कुछ भी हो सकती है — क्रेडिट, क्लेम, या पोकर का एक हाथ। जो इंजन यह मेज़ बाँटता है, वही एक ऋण तय करता है।',
+    },
+    poemDemoPage: {
+      seo: {
+        title: 'स्रोत ही एक कविता है — Aster Lang',
+        description: 'एक गाथा जिसका स्रोत कोड कविता की तरह पढ़ा जाता है और फिर भी उसी इंजन पर कंपाइल होकर पुनरावर्ती रूप से चलता है। कीवर्ड उपनाम + बिना-कोष्ठक कॉल हर कोड का निशान छिपाते हैं।',
+      },
+      eyebrow: 'मज़ेदार डेमो',
+      title: 'स्रोत ही एक कविता है 📜',
+      subtitle: 'इसे ऊपर से नीचे पढ़ें — यह एक कविता है। यह एक चलता हुआ प्रोग्राम भी है: कीवर्ड उपनाम संरचना-शब्दों का नाम बदलते हैं, और एक बिना-कोष्ठक कॉल आखिरी कोष्ठक छिपाता है। जो इंजन एक ऋण तय करता है, वही इसे सुनाता है।',
+      source: {
+        title: 'स्रोत को कविता की तरह पढ़ें',
+        hint: 'हर पंक्ति पद्य की तरह पढ़ी जाती है। फिर भी हर शब्द एक असली (उपनामित) कीवर्ड है — इंजन इसे किसी भी नियम की तरह कंपाइल करता है।',
+        showCanonical: 'वही प्रोग्राम सादे कीवर्ड में दिखाएँ ↓',
+        hideCanonical: 'सादे-कीवर्ड संस्करण छिपाएँ ↑',
+        canonicalNote: 'समान Core IR — यह कविता उसी का उपनाम है। (Module / Rule / If / Return / Let / apply …)',
+      },
+      run: {
+        title: 'और यह चलता है — पुनरावर्ती रूप से प्रकाश बटोरते हुए',
+        hint: 'तारों की संख्या चुनें। नियम पुनरावर्ती होता है, एक बार में एक प्रकाश, पद्य रचते हुए।',
+        starsLabel: '{count, plural, one {# तारा} other {# तारे}}',
+      },
+      result: {
+        title: '{count, plural, one {# तारा} other {# तारे}} सुनाते हुए',
+        error: 'कविता सुनाई नहीं जा सकी।',
+        note: 'यह आपके ब्राउज़र में उसी TypeScript इंजन पर चला जो क्रेडिट और पोकर डेमो चलाता है — कोई टेम्पलेट नहीं, एक असली पुनरावर्ती कंपाइल + मूल्यांकन।',
+      },
+      cta: {
+        title: 'Aster एक असली कंपाइलर है, टेम्पलेट नहीं।',
+        subtitle: 'अगर एक कविता कंपाइल होकर चल सकती है, तो आपके अपने शब्दों में लिखे नियम ज़रूर चल सकते हैं।',
+      },
     },
   },
 };
