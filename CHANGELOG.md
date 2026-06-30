@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Poem demo follows UI language — a famous poem per locale (#152) *(demos)*
 - "the source is a poem" — runnable alias ballad (ADR 0022 + 0027) (#151) *(demos)*
 - Credit-risk amounts as Decimal (ADR 0025 M3) (#150) *(demo)*
 - Pure-CNL hand evaluation (best-5-of-7 in CNL, ADR 0024) (#147) *(poker)*
@@ -250,6 +251,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
