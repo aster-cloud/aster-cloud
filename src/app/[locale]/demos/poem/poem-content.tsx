@@ -6,18 +6,19 @@ import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
 import { POEMS, toPoemLocale } from '@/config/poem-demo';
 import { cn } from '@/components/ui';
 
-interface LineTrace {
-  verse: string;
-  meaning: string;
-  value: string;
+interface RunResult {
+  poemId: string;
+  input: number;
+  woven: string;
+  computed: string;
 }
 
 export function PoemDemoContent({ locale }: { locale: string }) {
   const t = useTranslations('poemDemoPage');
   const poem = POEMS[toPoemLocale(locale)];
-  // 求值迹连同其所属诗一起存：诗变了（切语言）旧结果即失效（render 期守卫，避免 set-state-in-effect）。
-  const [run, setRun] = useState<{ poemId: string; trace: LineTrace[] } | null>(null);
-  const trace = run && run.poemId === poem.lexicon.id ? run.trace : null;
+  // 结果连同其所属诗一起存：诗变了（切语言）旧结果即失效（render 期守卫，避免 set-state-in-effect）。
+  const [run, setRun] = useState<RunResult | null>(null);
+  const result = run && run.poemId === poem.lexicon.id ? run : null;
   const [showCanonical, setShowCanonical] = useState(false);
 
   // 编译诗体源码（注入诗词别名词典）→ canonicalize 归一回规范关键词 → 同款引擎编译。
@@ -26,14 +27,17 @@ export function PoemDemoContent({ locale }: { locale: string }) {
     return r.core ?? null;
   }, [poem]);
 
-  // 逐行（逐规则）求值：每句诗代入 sample 跑出它真正算出的值。
-  function runPoem() {
+  // 代入某个「夜深」跑整首诗：Match 选景 + List 真求和 + apply 织段，输出计算交织的诗。
+  function runAt(input: number) {
     if (!core) return;
-    const trace: LineTrace[] = poem.lines.map((line) => {
-      const ev = evaluate(core, line.rule, { [poem.param]: poem.sample });
-      return { verse: line.verse, meaning: line.meaning, value: ev.success ? String(ev.value) : '—' };
+    const sample = poem.samples.find((s) => s.input === input);
+    const ev = evaluate(core, poem.entry, { [poem.param]: input });
+    setRun({
+      poemId: poem.lexicon.id,
+      input,
+      woven: ev.success ? String(ev.value) : '—',
+      computed: sample?.computed ?? '',
     });
-    setRun({ poemId: poem.lexicon.id, trace });
   }
 
   return (
@@ -47,7 +51,7 @@ export function PoemDemoContent({ locale }: { locale: string }) {
         <p className="mx-auto mt-3 max-w-2xl text-lg text-fg-muted">{t('subtitle')}</p>
       </div>
 
-      {/* 诗体源码 —— 每行是真代码，不是字符串 */}
+      {/* 诗体源码 —— 上半诗句，下半真计算 */}
       <section className="mb-8">
         <h2 className="mb-1 text-sm font-semibold text-fg">{t('source.title')}</h2>
         <p className="mb-1 text-sm text-fg-muted">{t('source.hint')}</p>
@@ -74,40 +78,40 @@ export function PoemDemoContent({ locale }: { locale: string }) {
         )}
       </section>
 
-      {/* 运行 —— 它真的算，逐行出求值迹 */}
+      {/* 运行 —— 代入某个「夜深」，计算驱动出整首诗 */}
       <section className="mb-8">
         <h2 className="mb-2 text-sm font-semibold text-fg">{t('run.title')}</h2>
-        <p className="mb-3 text-sm text-fg-muted">{t('run.hint', { n: poem.sample })}</p>
-        <button
-          onClick={runPoem}
-          disabled={!core}
-          className={cn(
-            'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
-            trace
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
-            !core && 'cursor-not-allowed opacity-50',
-          )}
-        >
-          {t('run.button', { n: poem.sample })}
-        </button>
+        <p className="mb-3 text-sm text-fg-muted">{t('run.hint')}</p>
+        <div className="flex flex-wrap gap-3">
+          {poem.samples.map((s) => (
+            <button
+              key={s.input}
+              onClick={() => runAt(s.input)}
+              disabled={!core}
+              className={cn(
+                'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
+                result?.input === s.input
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
+                !core && 'cursor-not-allowed opacity-50',
+              )}
+            >
+              {t('run.button', { n: s.input })}
+            </button>
+          ))}
+        </div>
       </section>
 
-      {/* 逐行求值迹 —— 每句诗算出什么 */}
-      {trace && (
+      {/* 结果 —— 算出的整首诗 + 这一遍背后的计算 */}
+      {result && (
         <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
-          <p className="mb-4 text-sm font-semibold text-fg">{t('result.title', { n: poem.sample })}</p>
-          <ol className="space-y-4">
-            {trace.map((line, i) => (
-              <li key={i} className="border-l-2 border-primary/40 pl-4">
-                <code className="block font-mono text-sm text-fg">{line.verse}</code>
-                <p className="mt-1 text-xs text-fg-subtle">{line.meaning}</p>
-                <p className="mt-1 font-display text-lg text-primary">
-                  = <span className="font-semibold">{line.value}</span>
-                </p>
-              </li>
-            ))}
-          </ol>
+          <p className="mb-3 text-sm font-semibold text-fg">{t('result.title', { n: result.input })}</p>
+          <p className="font-display text-xl leading-relaxed text-fg">{result.woven}</p>
+          {result.computed && (
+            <p className="mt-4 border-l-2 border-primary/40 pl-3 font-mono text-xs text-fg-subtle">
+              {result.computed}
+            </p>
+          )}
           <p className="mt-4 text-sm text-fg-muted">{t('result.note')}</p>
         </section>
       )}

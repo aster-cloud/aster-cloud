@@ -1,12 +1,14 @@
 /**
  * 「源码即诗」demo 的**生产可验证性**契约（三语：zh/de/hi）。
  *
- * /demos/poem 展示一首夜/月主题小诗，**诗句本身就是 Aster 代码**（无字符串字面量）：每行诗
- * 是一个真规则，运行 = 执行这些语句、产出计算值。每种语言钉死三条不变式，任一失败 = CI 硬失败：
+ * /demos/poem 展示一首连贯的望月诗：每段诗**上半是诗句、下半是真计算**（Match 选景 +
+ * List.range/List.sum 真求和 + 无括号 apply 织段）。诗读下来连贯，但每个数、每次分支、
+ * 每次求和都是引擎真求值。每种语言钉死四条不变式，任一失败 = CI 硬失败：
  *   1. 诗体源码用诗词别名词典编译成功（无诊断错误）。
- *   2. 每一行（规则）代入 sample 跑出的值与预期计算一致（月光=星², 霜=月光−星, 思=霜+月光）。
+ *   2. 入口 rule 代入每个样本 input 跑出的整首诗与预期逐字一致（计算交织的诗）。
  *   3. 诗体方言版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——证明别名只在表层
- *      （ADR 0022 别名 + ADR 0027 无括号 apply），「源码是诗」与「源码是程序」是同一个东西。
+ *      （ADR 0022 别名 + ADR 0027 无括号 apply）。
+ *   4. 诗句仍是代码：源码里有 List 求和 + Match 等真计算结构（不是纯字符串表）。
  */
 import { describe, it, expect } from 'vitest';
 import { compile, evaluate, ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
@@ -14,14 +16,6 @@ import { POEMS, type PoemLocale } from '@/config/poem-demo';
 
 const BASE: Record<PoemLocale, typeof ZH_CN> = { zh: ZH_CN, de: DE_DE, hi: HI_IN };
 const LOCALES: PoemLocale[] = ['zh', 'de', 'hi'];
-
-/** 期望计算：月光=n², 霜=月光−n, 思=霜+月光 = 2n²−n。代入 sample 求三行预期值。 */
-function expectedValues(n: number): number[] {
-  const moonlight = n * n;
-  const shadow = moonlight - n;
-  const longing = shadow + moonlight;
-  return [moonlight, shadow, longing];
-}
 
 /** 剥离 origin/span（位置元数据；结构比较口径）。 */
 function stripOrigin(o: unknown): unknown {
@@ -37,7 +31,7 @@ function stripOrigin(o: unknown): unknown {
   return o;
 }
 
-describe('poem demo: each verse line IS code — no strings, every line computes', () => {
+describe('poem demo: a connected poem whose lines compute (Match + List + apply)', () => {
   for (const loc of LOCALES) {
     const poem = POEMS[loc];
 
@@ -48,15 +42,14 @@ describe('poem demo: each verse line IS code — no strings, every line computes
       expect(errs.length, JSON.stringify(errs.map((e) => e.message))).toBe(0);
     });
 
-    it(`${loc} (${poem.title}): 每行诗（规则）代入 sample 跑出的计算值正确`, () => {
+    it(`${loc} (${poem.title}): 每个样本代入后织出的整首诗逐字一致（计算驱动）`, () => {
       const r = compile(poem.source, { lexicon: poem.lexicon });
       expect(r.core).toBeTruthy();
-      const expected = expectedValues(poem.sample);
-      poem.lines.forEach((line, i) => {
-        const ev = evaluate(r.core!, line.rule, { [poem.param]: poem.sample });
-        expect(ev.success, `[${loc}] ${line.rule} eval: ${ev.error ?? ''}`).toBe(true);
-        expect(Number(ev.value), `[${loc}] ${line.rule}`).toBe(expected[i]);
-      });
+      for (const s of poem.samples) {
+        const ev = evaluate(r.core!, poem.entry, { [poem.param]: s.input });
+        expect(ev.success, `[${loc}] ${poem.entry}(${s.input}) eval: ${ev.error ?? ''}`).toBe(true);
+        expect(String(ev.value), `[${loc}] ${poem.entry}(${s.input})`).toBe(s.woven);
+      }
     });
 
     it(`${loc} (${poem.title}): 别名不变式 — 诗体版 ≡ 规范关键词版（结构一致 Core IR）`, () => {
@@ -69,14 +62,10 @@ describe('poem demo: each verse line IS code — no strings, every line computes
       expect(stripOrigin(poemR.core)).toEqual(stripOrigin(canonR.core));
     });
 
-    it(`${loc} (${poem.title}): 无字符串字面量（诗句是代码，不是数据）`, () => {
-      // 源码里不应出现该词典的任何字符串起止符——诗句必须是表达式，不是字符串。
-      // 取词典自身的引号集合（zh 用「」/ de·hi 用 "），词典换引号也不漏。
-      const q = (poem.lexicon as { punctuation?: { stringQuotes?: { open?: string; close?: string } } })
-        .punctuation?.stringQuotes;
-      for (const mark of [q?.open, q?.close, '"', '「', '」'].filter(Boolean) as string[]) {
-        expect(poem.source.includes(mark), `[${loc}] contains quote ${mark}`).toBe(false);
-      }
+    it(`${loc} (${poem.title}): 诗句仍是代码（含 List 求和等真计算，非纯字符串表）`, () => {
+      // 源码必须含真计算结构：List.range + List.sum（不是只有 Match 的字符串查表）。
+      expect(poem.source.includes('List.range'), `[${loc}] has List.range`).toBe(true);
+      expect(poem.source.includes('List.sum'), `[${loc}] has List.sum`).toBe(true);
     });
   }
 });
