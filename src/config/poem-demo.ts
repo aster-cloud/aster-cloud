@@ -10,17 +10,18 @@
  * 规范关键词 → 诗体版 ≡ 规范版（结构一致 Core IR）。客户端浏览器内 TS 引擎，即时可验。
  * 三首均为原创望月短诗（公有领域）。
  */
-import { ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
+import { EN_US, ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
 import type { Lexicon } from '@aster-cloud/aster-lang-ts/browser';
 
-export type PoemLocale = 'zh' | 'de' | 'hi';
+export type PoemLocale = 'en' | 'zh' | 'de' | 'hi';
 
-/** 把 next-intl 的 locale 收敛到本 demo 支持的三语（未知回退 zh）。 */
+/** 把 next-intl 的 locale 收敛到本 demo 支持的四语（未知回退 en）。 */
 export function toPoemLocale(locale: string): PoemLocale {
   const l = locale.toLowerCase();
+  if (l.startsWith('zh')) return 'zh';
   if (l.startsWith('de')) return 'de';
   if (l.startsWith('hi')) return 'hi';
-  return 'zh';
+  return 'en';
 }
 
 /** SemanticTokenKind 字面量（避免运行时依赖内部枚举；值与 token-kind.ts 对齐）。 */
@@ -28,12 +29,15 @@ const K = {
   MODULE_DECL: 'MODULE_DECL',
   FUNC_TO: 'FUNC_TO',
   FUNC_GIVEN: 'FUNC_GIVEN',
+  IF: 'IF',
   LET: 'LET',
   BE: 'BE',
   RETURN: 'RETURN',
   MATCH: 'MATCH',
   WHEN: 'WHEN',
   PLUS: 'PLUS',
+  MINUS_WORD: 'MINUS_WORD',
+  AT_MOST: 'AT_MOST',
   APPLY: 'APPLY',
 } as const;
 
@@ -66,6 +70,42 @@ export interface PoemConfig {
   /** 三个样本（夜深 1/2/3），每个：入参 + 算出的整首诗 + 计算说明。 */
   samples: PoemSample[];
 }
+
+// ── EN — Nightfall（原「源码即诗」递归谣曲，与 examples/alias-poem-story 同源）──────
+// 不同于 zh/de/hi 的 Match+List 连贯诗：Nightfall 是一首**递归**谣曲——`gather(stars)` 用无括号
+// apply 递归把 n 颗星的光一句一句聚拢，整段源码逐行读是一首诗。诗句是字符串，但递归结构本身
+// 就是诗意（夜里一盏盏点灯），输出长短随入参（星数）增长。
+const EN_LAST = 'and one last light to keep the dark from me';
+const EN_MORE = ' and one more light to set the evening free';
+const POEM_EN: PoemConfig = {
+  title: 'Nightfall',
+  attribution: 'A recursive night-song · the source itself is the poem',
+  lexicon: { ...EN_US, id: 'nightfall-en', name: 'Nightfall (English)', aliases: {
+    [K.MODULE_DECL]: ['Nightfall'], [K.FUNC_TO]: ['I'], [K.FUNC_GIVEN]: ['count'],
+    [K.IF]: ['while'], [K.RETURN]: ['sing'], [K.LET]: ['let'], [K.BE]: ['be'],
+    [K.PLUS]: ['with'], [K.MINUS_WORD]: ['less'], [K.AT_MOST]: ['but'], [K.APPLY]: ['echoing'],
+  } } as Lexicon,
+  source: `Nightfall comes.
+
+I gather count stars:
+  while stars but 1
+    sing "${EN_LAST}".
+  let earlier be echoing gather to stars less 1.
+  sing earlier with "${EN_MORE}".`,
+  canonical: `Module comes.
+
+Rule gather given stars:
+  If stars at most 1
+    Return "${EN_LAST}".
+  Let earlier be apply gather to stars minus 1.
+  Return earlier + "${EN_MORE}".`,
+  entry: 'gather', param: 'stars',
+  samples: [
+    { input: 1, woven: EN_LAST, computed: 'gather(1): base case (stars at most 1) → one last light' },
+    { input: 2, woven: EN_LAST + EN_MORE, computed: 'gather(2): light + echoing gather to 1 → one more light' },
+    { input: 3, woven: EN_LAST + EN_MORE + EN_MORE, computed: 'gather(3): light + echoing gather to 2 → two more lights, gathered one by one' },
+  ],
+};
 
 // ── ZH — 望月（原创连贯诗，公有领域）─────────────────────────────────────────
 const POEM_ZH: PoemConfig = {
@@ -227,6 +267,7 @@ const POEM_HI: PoemConfig = {
 };
 
 export const POEMS: Record<PoemLocale, PoemConfig> = {
+  en: POEM_EN,
   zh: POEM_ZH,
   de: POEM_DE,
   hi: POEM_HI,
