@@ -30,6 +30,7 @@ const DEMO_CARDS = [
   { key: 'vocab', href: '/demos/vocab', emoji: '🏷️' },
   { key: 'kitten', href: '/demos/kitten', emoji: '🐱' },
   { key: 'poker', href: '/demos/poker', emoji: '🃏' },
+  { key: 'poem', href: '/demos/poem', emoji: '📜' },
 ] as const;
 
 export default async function DemosIndexPage({ params }: Props) {
