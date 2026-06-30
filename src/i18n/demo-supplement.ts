@@ -65,7 +65,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         },
         poem: {
           title: 'The source is a poem 📜',
-          description: 'A night poem whose every line IS Aster code — no strings. Running it does not print verse; it executes each line and computes a value. In 中文 / Deutsch / हिन्दी.',
+          description: 'A poem whose source code reads as verse — and still compiles and runs on the same engine. Keyword aliases + a paren-free call hide every trace of code. (A different poem per site language.)',
         },
       },
     },
@@ -153,26 +153,26 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     poemDemoPage: {
       seo: {
         title: 'The source is a poem — Aster Lang',
-        description: 'A connected moon poem where each stanza is half verse, half real computation — Match picks the scene, List sums drive the imagery, a paren-free call weaves the verses. Shown in 中文 / Deutsch / हिन्दी.',
+        description: 'Nightfall: a ballad whose source code reads as verse and still compiles and recursively runs on the same engine. Keyword aliases + a paren-free call hide every trace of code.',
       },
       eyebrow: 'Fun demo',
       title: 'The source is a poem 📜',
-      subtitle: 'A connected moon poem where each stanza is half verse, half real computation: a Match chooses the scene by the hour, a List sum (1, 3, 6 …) drives the starlight imagery, and a paren-free call weaves the verses into one poem. It reads as a single poem — yet every number, branch and sum is genuinely evaluated. (Shown in 中文 / Deutsch / हिन्दी — switch the site language.)',
+      subtitle: 'Read it top to bottom — it is a poem. It is also a working program: keyword aliases rename the structure words, and a paren-free call (echoing gather to stars less 1) hides the last bracket. The recursion gathers the lights one by one. (Other site languages show a different poem — switch the language to compare.)',
       source: {
         title: 'Read the source as a poem',
-        hint: 'Each stanza is half verse, half computation: the upper line is the image, the lower line is a real Match / List.sum / call. No template — the engine evaluates it.',
+        hint: 'Every line reads as verse. Yet each word is a real keyword (aliased) — the engine compiles it like any rule, and runs the recursion for real.',
         showCanonical: 'Show the same program in plain keywords ↓',
         hideCanonical: 'Hide the plain-keyword version ↑',
-        canonicalNote: 'Identical Core IR — the poem is just an alias of this (Module / Rule / Match / Return / List.range / List.sum / apply …).',
+        canonicalNote: 'Identical Core IR — the poem is just an alias of this (Module / Rule / If / Return / Let / apply …).',
       },
       run: {
-        title: 'And it runs — computation weaves the poem',
-        hint: 'Pick how deep the night is. The list sum and the Match decide which verse appears, and the call weaves the whole poem.',
-        button: 'At hour {n} ▶',
+        title: 'And it runs — recursively gathering the lights',
+        hint: 'Pick a number of stars. The rule recurses, one light at a time, building the verse.',
+        button: 'With {n, plural, one {# star} other {# stars}} ▶',
       },
       result: {
-        title: 'The poem woven at hour {n}',
-        note: 'This ran in your browser on the same TypeScript engine that powers the credit and poker demos — which verse appears is driven by a real List sum (1, 3, 6 …), not pre-rendered.',
+        title: 'Reciting with {n, plural, one {# star} other {# stars}}',
+        note: 'This ran in your browser on the same TypeScript engine that powers the credit and poker demos — a real recursive compile + evaluate, not a template.',
       },
       cta: {
         title: 'Aster is a real compiler, not a template.',

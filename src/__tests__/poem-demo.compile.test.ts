@@ -11,11 +11,11 @@
  *   4. 诗句仍是代码：源码里有 List 求和 + Match 等真计算结构（不是纯字符串表）。
  */
 import { describe, it, expect } from 'vitest';
-import { compile, evaluate, ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
+import { compile, evaluate, EN_US, ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
 import { POEMS, type PoemLocale } from '@/config/poem-demo';
 
-const BASE: Record<PoemLocale, typeof ZH_CN> = { zh: ZH_CN, de: DE_DE, hi: HI_IN };
-const LOCALES: PoemLocale[] = ['zh', 'de', 'hi'];
+const BASE: Record<PoemLocale, typeof ZH_CN> = { en: EN_US, zh: ZH_CN, de: DE_DE, hi: HI_IN };
+const LOCALES: PoemLocale[] = ['en', 'zh', 'de', 'hi'];
 
 /** 剥离 origin/span（位置元数据；结构比较口径）。 */
 function stripOrigin(o: unknown): unknown {
@@ -62,10 +62,15 @@ describe('poem demo: a connected poem whose lines compute (Match + List + apply)
       expect(stripOrigin(poemR.core)).toEqual(stripOrigin(canonR.core));
     });
 
-    it(`${loc} (${poem.title}): 诗句仍是代码（含 List 求和等真计算，非纯字符串表）`, () => {
-      // 源码必须含真计算结构：List.range + List.sum（不是只有 Match 的字符串查表）。
-      expect(poem.source.includes('List.range'), `[${loc}] has List.range`).toBe(true);
-      expect(poem.source.includes('List.sum'), `[${loc}] has List.sum`).toBe(true);
+    it(`${loc} (${poem.title}): 诗句由真计算驱动（非按输入预渲染查表）`, () => {
+      // 三个样本的输出互不相同——证明结果随入参由计算决定，不是固定整首诗。
+      const wovens = new Set(poem.samples.map((s) => s.woven));
+      expect(wovens.size, `[${loc}] distinct woven per input`).toBe(poem.samples.length);
+      // 源码含真计算结构：List 求和（zh/de/hi 计算驱动选句）或无括号递归调用（en Nightfall 逐句聚拢）。
+      const hasListSum = poem.source.includes('List.range') && poem.source.includes('List.sum');
+      const aliasApply = (poem.lexicon as { aliases?: Record<string, string[]> }).aliases?.['APPLY']?.[0] ?? '';
+      const hasRecursiveCall = aliasApply.length > 0 && poem.source.includes(aliasApply);
+      expect(hasListSum || hasRecursiveCall, `[${loc}] has List sum or paren-free recursive call`).toBe(true);
     });
   }
 });
