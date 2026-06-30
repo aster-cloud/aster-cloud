@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Poem demo — connected verse, half poem half computation (zh/de/hi) (#154) *(demos)*
 - Poem demo — the verse lines ARE the code (no strings), zh/de/hi only (#153) *(demos)*
 - Poem demo follows UI language — a famous poem per locale (#152) *(demos)*
 - "the source is a poem" — runnable alias ballad (ADR 0022 + 0027) (#151) *(demos)*
@@ -252,6 +253,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
