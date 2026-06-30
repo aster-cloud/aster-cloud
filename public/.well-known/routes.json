@@ -48,7 +48,7 @@
       "owner": "marketing",
       "source": "src/app/[locale]/demos/page.tsx",
       "locales": "all",
-      "notes": "Demos index — card grid aggregating the four demos (credit / vocab / kitten / poker)"
+      "notes": "Demos index — card grid aggregating the five demos (credit / vocab / kitten / poker / poem)"
     },
     {
       "path": "/demos/credit",
@@ -81,6 +81,14 @@
       "source": "src/app/[locale]/demos/poker/page.tsx",
       "locales": "all",
       "notes": "Fun demo — Texas Hold'em showdown engine, poker-vocabulary rule decides the winner on a self-dealing animated table"
+    },
+    {
+      "path": "/demos/poem",
+      "status": "canonical-here",
+      "owner": "marketing",
+      "source": "src/app/[locale]/demos/poem/page.tsx",
+      "locales": "all",
+      "notes": "Fun demo — \"the source is a poem\", an alias ballad (ADR 0022 + paren-free apply ADR 0027) that compiles and recursively runs in-browser"
     },
     {
       "path": "/privacy",
