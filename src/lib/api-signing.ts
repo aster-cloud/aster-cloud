@@ -75,32 +75,54 @@ export async function signRequest(
 export interface InternalCallerHeaders {
   'X-Internal-Caller': string;
   'X-Aster-Timestamp': string;
+  'X-Aster-Nonce': string;
   'X-Internal-Signature': string;
 }
 
 /**
- * 为调用 aster-api 的"内部专用"路径生成签名头（如 /evaluate-source）
+ * 为调用 aster-api 的"内部专用"路径生成签名头（如 /evaluate-source、/api/v1/ai/*）
  *
- * 协议：HMAC-SHA256(`POST\n${path}\n${unixSeconds}`)，密钥 = ASTER_PLAN_GATE_HMAC_KEY
- * （与 PlanCacheResource / ApiKeyCacheResource 同一套）
+ * 红队 P0-C 加固：canonical 从原来的 `method\npath\nts`（只签方法+路径+时间戳，
+ * 5min 窗口内可改 body/tenant/role + 可重放）扩展为 **7 行**：
+ * <pre>
+ *   method \n path \n ts(秒) \n nonce \n bodySha256(hex) \n tenant \n role
+ * </pre>
+ * 与 aster-api {@code InternalCallerFilter} 的 canonical 逐字节一致。密钥同 plan-gate
+ * （ASTER_PLAN_GATE_HMAC_KEY = 后端 aster.plan-gate.hmac-key）。timestamp 用 unix **秒**。
+ * nonce 每次唯一（后端 UsedNonce 原子去重，重放即拒）。
  *
- * 注意：与 signRequest 不同——不带 body hash / nonce，是更轻量的"内部 caller 标识"，
- * 由 InternalCallerFilter 在 aster-api 端校验。
+ * @param method   HTTP 方法（须与实际请求一致）
+ * @param path     归一化路径（须与后端 PathNormalizer 结果一致）
+ * @param body     请求体字符串（GET/无 body 传 undefined/''，两端都按空字节 sha256）
+ * @param tenantId 随请求发送的 X-Tenant-Id（不发则传 ''，两端一致）
+ * @param role     随请求发送的 X-User-Role（内部调用通常不发，传 ''）
  */
 export async function signInternalCallerHeaders(
   method: string,
-  path: string
+  path: string,
+  body?: string,
+  tenantId?: string,
+  role?: string
 ): Promise<InternalCallerHeaders> {
   const secret = process.env.ASTER_PLAN_GATE_HMAC_KEY;
   if (!secret) {
     throw new Error('ASTER_PLAN_GATE_HMAC_KEY not configured');
   }
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const message = `${method}\n${path}\n${timestamp}`;
-  const signature = await hmacSha256(secret, message);
+  const nonce = generateNonce();
+
+  const encoder = new TextEncoder();
+  const bodyBytes = body ? encoder.encode(body) : new Uint8Array(0);
+  const bodyHash = await sha256Hex(bodyBytes.buffer as ArrayBuffer);
+  const tenant = tenantId ?? '';
+  const roleStr = role ?? '';
+
+  const canonical = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodyHash}\n${tenant}\n${roleStr}`;
+  const signature = await hmacSha256(secret, canonical);
   return {
     'X-Internal-Caller': 'cloud-bff',
     'X-Aster-Timestamp': timestamp,
+    'X-Aster-Nonce': nonce,
     'X-Internal-Signature': signature,
   };
 }

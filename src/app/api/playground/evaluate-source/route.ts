@@ -191,9 +191,16 @@ export async function POST(req: NextRequest) {
   // 5) Sign + forward. signInternalCallerHeaders throws when the HMAC
   // key isn't configured — surface that as 503 so the caller knows it's
   // a deploy-side issue, not their input.
+  // 红队 P0-C：body/tenant/role 现在都进签名，故必须**先读 body 再签名**，
+  // 且签名参数与下方 fetch 实际发送的 X-Tenant-Id/X-User-Role 逐字一致。
+  const body = await req.text();
+  const trialTenant = 'trial-playground';
+  const trialRole = 'MEMBER';
   let signedHeaders: Awaited<ReturnType<typeof signInternalCallerHeaders>>;
   try {
-    signedHeaders = await signInternalCallerHeaders('POST', UPSTREAM_PATH);
+    signedHeaders = await signInternalCallerHeaders(
+      'POST', UPSTREAM_PATH, body, trialTenant, trialRole,
+    );
   } catch {
     recordTrialOutcome('upstream_misconfigured');
     return NextResponse.json(
@@ -205,7 +212,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.text();
   const t0 = Date.now();
   let upstream: Response;
   try {
@@ -225,8 +231,8 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Tenant-Id': 'trial-playground',
-        'X-User-Role': 'MEMBER',
+        'X-Tenant-Id': trialTenant,
+        'X-User-Role': trialRole,
         // Forward the (already-allowlist-validated) browser Origin so aster-api's
         // TrialEndpointGuard Origin check passes. The server→server fetch otherwise
         // sends no Origin → guard returns origin_not_allowed once the trial guard is

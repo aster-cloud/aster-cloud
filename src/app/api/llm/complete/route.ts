@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
 
   let signedHeaders: Awaited<ReturnType<typeof signInternalCallerHeaders>>;
   try {
-    signedHeaders = await signInternalCallerHeaders('POST', UPSTREAM_PATH);
+    // 红队 P0-C：绑定 body + tenant 进签名（防换 LLM model 烧预算 / 改租户）。
+    signedHeaders = await signInternalCallerHeaders('POST', UPSTREAM_PATH, body, tenantId, '');
   } catch {
     // ASTER_PLAN_GATE_HMAC_KEY 未配置 —— 生产应当配齐
     return NextResponse.json(
