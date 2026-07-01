@@ -46,7 +46,8 @@ export async function proxyLlmSse(
 
   let signedHeaders: Awaited<ReturnType<typeof signInternalCallerHeaders>>;
   try {
-    signedHeaders = await signInternalCallerHeaders('POST', upstreamPath);
+    // 红队 P0-C：绑定 body + tenant 进签名。
+    signedHeaders = await signInternalCallerHeaders('POST', upstreamPath, body, tenantId, '');
   } catch {
     return NextResponse.json(
       {

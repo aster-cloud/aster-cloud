@@ -242,8 +242,11 @@ export class PolicyApiClient {
 
       // /evaluate-source 受 InternalCallerFilter 保护：必须带 X-Internal-Caller + HMAC 签名
       // 防止外部客户绕过审核流提交未批准源码（详见 AKA-9）
+      // 红队 P0-C：签名绑定 body + tenant + role，参数须与 headers 里实际发送的一致。
       if (path === API_ENDPOINTS.evaluateSource && process.env.ASTER_PLAN_GATE_HMAC_KEY) {
-        const internalHeaders = await signInternalCallerHeaders(method, path);
+        const internalHeaders = await signInternalCallerHeaders(
+          method, path, bodyStr, this.tenantId, this.userRole,
+        );
         Object.assign(headers, internalHeaders);
       }
 
