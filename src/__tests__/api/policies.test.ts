@@ -13,6 +13,9 @@ const {
   mockWhereDelete: _mockWhereDelete,
   mockDelete,
   mockSelectExec,
+  mockCreateVersion,
+  mockGetStructuralAliasGrant,
+  mockBuildAliasReservedForUser,
 } = vi.hoisted(() => {
   const mockReturningInsert = vi.fn();
   const mockValuesInsert = vi.fn().mockReturnValue({ returning: mockReturningInsert });
@@ -27,6 +30,18 @@ const {
   const mockDelete = vi.fn().mockReturnValue({ where: mockWhereDelete });
 
   const mockSelectExec = vi.fn();
+  const mockCreateVersion = vi.fn().mockResolvedValue({
+    id: 'v1',
+    version: 1,
+    sourceHash: 'hash',
+    sourceEnvelopeSha256: 'envelope',
+  });
+  const mockGetStructuralAliasGrant = vi.fn().mockResolvedValue(false);
+  const mockBuildAliasReservedForUser = vi.fn().mockResolvedValue({
+    canonicalKeywordsLower: new Set<string>(),
+    baseAliasesLower: new Set<string>(),
+    vocabularyTermsLower: new Set<string>(),
+  });
 
   return {
     mockReturningInsert,
@@ -39,6 +54,9 @@ const {
     mockWhereDelete,
     mockDelete,
     mockSelectExec,
+    mockCreateVersion,
+    mockGetStructuralAliasGrant,
+    mockBuildAliasReservedForUser,
   };
 });
 
@@ -63,6 +81,15 @@ vi.mock('@/services/pii/detector', () => ({
   detectPII: vi.fn().mockReturnValue({ detectedTypes: [] }),
 }));
 
+vi.mock('@/services/policy/version-manager', () => ({
+  createVersion: mockCreateVersion,
+}));
+
+vi.mock('@/lib/structural-alias-grants', () => ({
+  getStructuralAliasGrant: mockGetStructuralAliasGrant,
+  buildAliasReservedForUser: mockBuildAliasReservedForUser,
+}));
+
 vi.mock('@/lib/usage', () => ({
   checkUsageLimit: vi.fn().mockResolvedValue({ allowed: true }),
   recordUsage: vi.fn().mockResolvedValue(undefined),
@@ -77,6 +104,7 @@ vi.mock('@/lib/prisma', () => ({
       },
       policyVersions: {
         findMany: vi.fn(),
+        findFirst: vi.fn(),
       },
       policyGroups: {
         findFirst: vi.fn(),
@@ -84,11 +112,20 @@ vi.mock('@/lib/prisma', () => ({
       users: {
         findFirst: vi.fn(),
       },
+      structuralAliasGrants: {
+        findFirst: vi.fn(),
+      },
     },
     insert: mockInsert,
     update: mockUpdate,
     delete: mockDelete,
     select: mockSelectExec,
+    transaction: vi.fn(async (fn) => fn({
+      query: {
+        policyVersions: { findFirst: vi.fn().mockResolvedValue(null) },
+      },
+      insert: mockInsert,
+    })),
     execute: vi.fn().mockResolvedValue([{ test: 1 }]),
   },
   policies: { id: {}, userId: {}, deletedAt: {}, isPublic: {}, groupId: {} },
@@ -96,6 +133,7 @@ vi.mock('@/lib/prisma', () => ({
   policyGroups: { id: {}, userId: {} },
   executions: { policyId: {} },
   users: { id: {}, plan: {}, trialEndsAt: {} },
+  structuralAliasGrants: { userId: {}, revokedAt: {} },
 }));
 
 import { GET, POST } from '@/app/api/policies/route';
@@ -209,6 +247,19 @@ describe('Policies API - Drizzle Migration', () => {
       activePoliciesLimit: 25,
       totalPolicies: 1,
       frozenCount: 0,
+    });
+    vi.mocked(db.query.structuralAliasGrants.findFirst).mockResolvedValue(undefined);
+    mockGetStructuralAliasGrant.mockResolvedValue(false);
+    mockBuildAliasReservedForUser.mockResolvedValue({
+      canonicalKeywordsLower: new Set<string>(),
+      baseAliasesLower: new Set<string>(),
+      vocabularyTermsLower: new Set<string>(),
+    });
+    mockCreateVersion.mockResolvedValue({
+      id: 'v1',
+      version: 1,
+      sourceHash: 'hash',
+      sourceEnvelopeSha256: 'envelope',
     });
     // Default select: returns empty execution counts
     setupGroupBySelect([]);
@@ -373,6 +424,39 @@ describe('Policies API - Drizzle Migration', () => {
       const response = await POST(makeRequest('http://localhost/api/policies', 'POST', validBody));
 
       expect(response.status).toBe(201);
+    });
+
+    it('should pass aliasSet into createVersion with server-built reserved sets', async () => {
+      const aliasSet = { TIMES: ['multiplied by'] };
+      const response = await POST(makeRequest('http://localhost/api/policies', 'POST', {
+        ...validBody,
+        aliasSet,
+        locale: 'en-US',
+      }));
+
+      expect(response.status).toBe(201);
+      expect(mockBuildAliasReservedForUser).toHaveBeenCalledWith('user-1', 'en-US');
+      expect(mockCreateVersion).toHaveBeenCalledWith(expect.objectContaining({
+        aliasSet,
+        aliasReserved: expect.any(Object),
+        allowStructuralAliases: false,
+      }));
+    });
+
+    it('should use the server structural grant for createVersion', async () => {
+      mockGetStructuralAliasGrant.mockResolvedValue(true);
+      const aliasSet = { RETURN: ['the answer is'] };
+      const response = await POST(makeRequest('http://localhost/api/policies', 'POST', {
+        ...validBody,
+        aliasSet,
+        allowStructural: false,
+      }));
+
+      expect(response.status).toBe(201);
+      expect(mockCreateVersion).toHaveBeenCalledWith(expect.objectContaining({
+        aliasSet,
+        allowStructuralAliases: true,
+      }));
     });
   });
 

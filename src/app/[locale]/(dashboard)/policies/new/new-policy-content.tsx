@@ -26,6 +26,7 @@ import { getSnippetTemplate } from '@/lib/playground/snippet-templates';
 
 interface NewPolicyContentProps {
   locale: string;
+  allowStructuralAliases: boolean;
 }
 
 const EMPTY: PolicyDraftFields = {
@@ -34,9 +35,13 @@ const EMPTY: PolicyDraftFields = {
   content: '',
   isPublic: false,
   groupId: null,
+  aliasSet: null,
 };
 
-export function NewPolicyContent({ locale }: NewPolicyContentProps) {
+export function NewPolicyContent({
+  locale,
+  allowStructuralAliases,
+}: NewPolicyContentProps) {
   const t = useTranslations('policies');
   const searchParams = useSearchParams();
   const teamId = searchParams.get('teamId') || undefined;
@@ -58,7 +63,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       const res = await fetch('/api/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...fields, teamId }),
+        body: JSON.stringify({ ...fields, teamId, locale }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -69,7 +74,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       }
       return { id: data.id as string };
     },
-    [t, teamId],
+    [t, teamId, locale],
   );
 
   return (
@@ -81,6 +86,7 @@ export function NewPolicyContent({ locale }: NewPolicyContentProps) {
       title={t('form.createTitle')}
       subtitle={t('form.createSubtitle')}
       onSave={handleSave}
+      allowStructuralAliases={allowStructuralAliases}
       cancelHref={`/${locale}/policies`}
       detailHrefFor={(id) => `/${locale}/policies/${id}`}
       breadcrumbs={[

@@ -1,16 +1,15 @@
 /**
  * 关键词别名 UI 的 kind 元数据（ADR 0022，Phase A）。
  *
- * <p>只列 server 白名单允许用户自定义的 11 个**低风险运算符/比较词**（与
- * policy-alias-shared.ALLOWED_KINDS 对齐）。结构词（Module/Rule/If/Return）被红队 H3 故意禁止
- * 用户别名（防误导审批），不在此列。
+ * <p>列 server 白名单允许用户自定义的 11 个**低风险运算符/比较词**，以及需授权的
+ * 7 个结构词（Module/Rule/If/Otherwise/Match/When/Return）。
  *
  * <p>面板按「算术」「比较」两组展示，每 kind 显示其在当前 lexicon 的规范拼写 + 用户多词别名输入。
  */
 import type { SemanticTokenKind } from '@aster-cloud/aster-lang-ts/token-kind';
 
 /** 别名 kind 分组。 */
-export type AliasKindGroup = 'arithmetic' | 'comparison';
+export type AliasKindGroup = 'arithmetic' | 'comparison' | 'structural';
 
 export interface AliasKindMeta {
   /** SemanticTokenKind 名（进 aliasSet 的 key，与 server ALLOWED_KINDS 一致）。 */
@@ -40,6 +39,23 @@ export const USER_ALIAS_KINDS: readonly AliasKindMeta[] = [
   { kind: 'AT_MOST', group: 'comparison', symbol: '≤', labelKey: 'atMost' },
 ] as const;
 
+/** 需 per-user 授权后才可自定义的结构词 kind（顺序即 UI 展示顺序）。 */
+export const STRUCTURAL_ALIAS_KINDS: readonly AliasKindMeta[] = [
+  { kind: 'MODULE_DECL', group: 'structural', symbol: 'Module', labelKey: 'module' },
+  { kind: 'FUNC_TO', group: 'structural', symbol: 'Rule', labelKey: 'rule' },
+  { kind: 'IF', group: 'structural', symbol: 'If', labelKey: 'if' },
+  { kind: 'OTHERWISE', group: 'structural', symbol: 'Otherwise', labelKey: 'otherwise' },
+  { kind: 'MATCH', group: 'structural', symbol: 'Match', labelKey: 'match' },
+  { kind: 'WHEN', group: 'structural', symbol: 'When', labelKey: 'when' },
+  { kind: 'RETURN', group: 'structural', symbol: 'Return', labelKey: 'return' },
+] as const;
+
+/** 所有 UI 可展示 kind；结构词是否可编辑由 allowStructural 单独控制。 */
+export const ALL_ALIAS_KINDS: readonly AliasKindMeta[] = [
+  ...USER_ALIAS_KINDS,
+  ...STRUCTURAL_ALIAS_KINDS,
+] as const;
+
 /** kind → SemanticTokenKind（用于从 lexicon.keywords 取该 kind 的规范拼写）。 */
 export function kindToSemanticToken(kind: string): SemanticTokenKind {
   return kind as unknown as SemanticTokenKind;
@@ -49,4 +65,5 @@ export function kindToSemanticToken(kind: string): SemanticTokenKind {
 export const ALIAS_KIND_GROUPS: readonly { group: AliasKindGroup; labelKey: string }[] = [
   { group: 'arithmetic', labelKey: 'groupArithmetic' },
   { group: 'comparison', labelKey: 'groupComparison' },
+  { group: 'structural', labelKey: 'groupStructural' },
 ];

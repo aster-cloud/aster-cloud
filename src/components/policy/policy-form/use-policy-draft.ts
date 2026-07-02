@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  * pages have independent slots so opening /new doesn't blow away
  * an in-progress edit of an existing policy.
  *
- * Schema-versioned (`v: 1`) so future shape changes can deliberately
+ * Schema-versioned (`v: 2`) so future shape changes can deliberately
  * invalidate older drafts instead of mis-parsing them.
  */
 
@@ -25,14 +25,15 @@ export interface PolicyDraftFields {
   content: string;
   isPublic: boolean;
   groupId: string | null;
+  aliasSet: Record<string, string[]> | null;
 }
 
 interface StoredDraft extends PolicyDraftFields {
-  v: 1;
+  v: 1 | 2;
   savedAt: number; // epoch ms
 }
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const STORAGE_PREFIX = 'aster:policy-draft:';
 // Drafts older than this are treated as stale and not surfaced to the
 // user — they're more likely to be confusing than helpful (e.g. an
@@ -49,9 +50,9 @@ function safeRead(key: string): StoredDraft | null {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredDraft;
-    if (parsed.v !== SCHEMA_VERSION) return null;
+    if (parsed.v !== 1 && parsed.v !== SCHEMA_VERSION) return null;
     if (Date.now() - parsed.savedAt > STALE_AFTER_MS) return null;
-    return parsed;
+    return parsed.v === 1 ? { ...parsed, v: SCHEMA_VERSION, aliasSet: null } : parsed;
   } catch {
     return null;
   }
@@ -113,7 +114,8 @@ function draftEquals(a: PolicyDraftFields, b: PolicyDraftFields): boolean {
     a.description === b.description &&
     a.content === b.content &&
     a.isPublic === b.isPublic &&
-    a.groupId === b.groupId
+    a.groupId === b.groupId &&
+    JSON.stringify(a.aliasSet ?? null) === JSON.stringify(b.aliasSet ?? null)
   );
 }
 
@@ -146,6 +148,7 @@ export function usePolicyDraft({
       content: stored.content,
       isPublic: stored.isPublic,
       groupId: stored.groupId,
+      aliasSet: stored.aliasSet ?? null,
     };
     if (!draftEquals(candidate, baseline)) {
       setPendingDraft(candidate);

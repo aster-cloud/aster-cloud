@@ -41,6 +41,8 @@ interface MonacoPolicyEditorProps {
   locale?: string;
   /** 领域标识符（如 'insurance.auto'），启用领域术语补全和高亮 */
   domain?: string;
+  /** 用户策略层关键词别名，kind → 多词别名。 */
+  aliasSet?: Readonly<Record<string, readonly string[]>>;
   height?: string;
   readOnly?: boolean;
   placeholder?: string;
@@ -390,6 +392,7 @@ export function MonacoPolicyEditor({
   onChange,
   locale = 'en',
   domain,
+  aliasSet,
   height = '400px',
   readOnly = false,
   placeholder,
@@ -413,7 +416,17 @@ export function MonacoPolicyEditor({
   const [showProblems, setShowProblems] = useState(false);
 
   const isDark = resolvedTheme === 'dark';
-  const lexicon = getLexicon(locale);
+  const baseLexicon = getLexicon(locale);
+  const lexicon = useMemo<Lexicon>(() => {
+    if (!aliasSet || Object.keys(aliasSet).length === 0) return baseLexicon;
+    return {
+      ...baseLexicon,
+      aliases: {
+        ...((baseLexicon as { aliases?: Record<string, readonly string[]> }).aliases ?? {}),
+        ...aliasSet,
+      },
+    } as Lexicon;
+  }, [baseLexicon, aliasSet]);
 
   // Map locale string to CNLLocale type for compiler
   // Handle both short ('zh', 'de') and full ('zh-CN', 'de-DE') locale formats
@@ -496,9 +509,10 @@ export function MonacoPolicyEditor({
     locale: compilerLocale,
     domain,
     tenantId,
+    userAliasSet: aliasSet,
     // 用户词异步注册成功后 epoch 递增，触发重新校验（否则 diagnostics 会
     // 停留在「未识别用户词」的旧结果直到用户再次输入）。
-    externalInvalidationKey: userVocabEpoch,
+    externalInvalidationKey: `${userVocabEpoch}:${JSON.stringify(aliasSet ?? {})}`,
     debounceDelay,
     enableValidation: true,
   });

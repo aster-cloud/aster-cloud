@@ -5,6 +5,7 @@ import { db, policies } from '@/lib/prisma';
 import { eq, and } from 'drizzle-orm';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { EditPolicyContent } from './edit-policy-content';
+import { getStructuralAliasGrant } from '@/lib/structural-alias-grants';
 
 interface PageProps {
   params: Promise<{ id: string; locale: string }>;
@@ -41,6 +42,7 @@ export default async function EditPolicyPage({ params }: PageProps) {
   if (freeze.isFrozen) {
     redirect(`/${locale}/policies/${id}?frozen=1`);
   }
+  const allowStructuralAliases = await getStructuralAliasGrant(session.user.id);
 
   // 序列化策略数据
   const policy = {
@@ -72,5 +74,12 @@ export default async function EditPolicyPage({ params }: PageProps) {
     },
   };
 
-  return <EditPolicyContent policy={policy} translations={translations} locale={locale} />;
+  return (
+    <EditPolicyContent
+      policy={policy}
+      translations={translations}
+      locale={locale}
+      allowStructuralAliases={allowStructuralAliases}
+    />
+  );
 }

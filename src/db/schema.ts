@@ -302,6 +302,27 @@ export const users = pgTable(
   ]
 );
 
+export const structuralAliasGrants = pgTable(
+  'StructuralAliasGrant',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    grantedBy: text('grantedBy')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    grantedAt: timestamp('grantedAt', { mode: 'date' }).defaultNow().notNull(),
+    revokedAt: timestamp('revokedAt', { mode: 'date' }),
+  },
+  (table) => [
+    index('StructuralAliasGrant_userId_idx').on(table.userId),
+    index('StructuralAliasGrant_active_idx')
+      .on(table.userId)
+      .where(sql`${table.revokedAt} IS NULL`),
+  ],
+);
+
 // ============================================
 // API Keys
 // ============================================
@@ -1325,6 +1346,25 @@ export const usersRelations = relations(users, ({ many }) => ({
   teamMembers: many(teamMembers),
   ownedTeams: many(teams),
   userDomainTerms: many(userDomainTerms),
+  structuralAliasGrants: many(structuralAliasGrants, {
+    relationName: 'StructuralAliasGrantUser',
+  }),
+  grantedStructuralAliasGrants: many(structuralAliasGrants, {
+    relationName: 'StructuralAliasGrantAdmin',
+  }),
+}));
+
+export const structuralAliasGrantRelations = relations(structuralAliasGrants, ({ one }) => ({
+  user: one(users, {
+    fields: [structuralAliasGrants.userId],
+    references: [users.id],
+    relationName: 'StructuralAliasGrantUser',
+  }),
+  grantor: one(users, {
+    fields: [structuralAliasGrants.grantedBy],
+    references: [users.id],
+    relationName: 'StructuralAliasGrantAdmin',
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({

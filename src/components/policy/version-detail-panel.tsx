@@ -23,6 +23,7 @@ interface VersionDetail {
   status: PolicyVersionStatus;
   isDefault: boolean;
   releaseNote: string | null;
+  aliasSet: string | null;
   createdBy: string;
   createdAt: string;
   deprecatedAt: string | null;
@@ -161,6 +162,11 @@ export function VersionDetailPanel({
             <pre className="bg-bg-inverse text-fg-inverse p-4 rounded-lg overflow-x-auto text-sm font-mono max-h-[500px] overflow-y-auto dark:bg-zinc-900 dark:text-zinc-100">
               {sourceCode}
             </pre>
+            {detail.aliasSet && (
+              <div className="rounded-lg border border-amber-300/40 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-100">
+                此版本使用了关键词别名。审批时请对照规范关键词版确认实际结构；冻结的别名集见元数据。
+              </div>
+            )}
           </div>
         )}
 
@@ -172,6 +178,7 @@ export function VersionDetailPanel({
             <MetadataItem label="是否默认" value={detail.isDefault ? '是' : '否'} />
             <MetadataItem label="源码哈希" value={detail.sourceHash || '无'} mono />
             <MetadataItem label="前一版本哈希" value={detail.prevHash || '无'} mono />
+            <MetadataItem label="关键词别名" value={detail.aliasSet || '无'} mono />
             <MetadataItem label="创建者" value={detail.createdBy} />
             <MetadataItem
               label="创建时间"

@@ -39,12 +39,14 @@ interface EditPolicyContentProps {
   policy: Policy;
   translations: Translations;
   locale: string;
+  allowStructuralAliases: boolean;
 }
 
 export function EditPolicyContent({
   policy,
   translations: t,
   locale,
+  allowStructuralAliases,
 }: EditPolicyContentProps) {
   const tPolicies = useTranslations('policies');
 
@@ -126,10 +128,12 @@ export function EditPolicyContent({
         content: policy.content,
         isPublic: policy.isPublic,
         groupId: policy.groupId,
+        aliasSet: null,
       }}
       title={t.form.editTitle}
       subtitle={t.form.editSubtitle}
       onSave={handleSave}
+      allowStructuralAliases={allowStructuralAliases}
       cancelHref={`/${locale}/policies/${policy.id}`}
       detailHrefFor={(id) => `/${locale}/policies/${id}`}
       breadcrumbs={[

@@ -18,6 +18,7 @@ import { Link } from '@/i18n/navigation';
 import { Container, PageHeader } from '@/components/ui';
 import { FeatureFlagsCard } from '@/components/admin/feature-flags-card';
 import { PlatformLanguageCard } from '@/components/admin/platform-language-card';
+import { StructuralAliasGrantsCard } from '@/components/admin/structural-alias-grants-card';
 import {
   CAN_RISKTIER,
   CAN_LICENSE,
@@ -245,6 +246,7 @@ export default async function AdminOverviewPage({ params }: Props) {
         <div className="grid gap-4">
           <FeatureFlagsCard />
           <PlatformLanguageCard />
+          <StructuralAliasGrantsCard />
         </div>
       </section>
 
