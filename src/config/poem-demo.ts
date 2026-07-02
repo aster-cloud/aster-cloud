@@ -1,17 +1,20 @@
 /**
- * 「源码即诗」demo 配置（公开，三语：zh/de/hi）
+ * 「源码即诗」demo 配置（公开，四语：en/zh/de/hi），两种范式：
  *
- * 一首**连贯**的望月诗（承 examples 的 tides 谣曲范式）：每段诗**上半是诗句、下半是真计算**——
- * `Match` 按更次/夜深选景，`List.range`/`List.sum` 真求和驱动「星辉」意象，无括号 `apply` 把
- * 各段织成整首诗。诗读下来是连贯的（夜深 → 望月 → 星河照归），但每个数、每次分支、每次求和
- * 都是引擎真求值——不是预写诗句的打印，而是计算与诗交织。
+ * **computed**（en/de/hi）——一首**连贯**诗，每段**上半诗句、下半真计算**：`Match` 选景、
+ *   `List.range`/`List.sum` 真求和、无括号 `apply` 织段（en 为递归谣曲）。诗读连贯，但每个数、
+ *   每次分支、每次求和都是引擎真求值——不是预写诗句的打印，而是计算与诗交织。
  *
- * 关键词别名成诗词（ADR 0022），无括号单参调用用 apply 形（ADR 0027）。canonicalize 归一回
- * 规范关键词 → 诗体版 ≡ 规范版（结构一致 Core IR）。客户端浏览器内 TS 引擎，即时可验。
- * 三首均为原创望月短诗（公有领域）。
+ * **alias-literal**（zh《静夜思》，李白，公有领域）——整首诗按**原词序**即源码：关键词别名把
+ *   诗句领字变结构关键词（床前→Module / 疑是→Rule / 举头→produce / 低头→Return），**字面量宏**
+ *   （IdentifierKind.LITERAL）把末词展开成字符串字面量（思故乡→"静夜思"），运行输出诗名。
+ *
+ * 两种范式都靠 canonicalize 归一：关键词别名（ADR 0022）+ 无括号 apply（ADR 0027）+ 字面量宏
+ * 只在表层，Lexer/Parser/Core IR 不知其存在 → 诗体版 ≡ 规范版（结构一致 Core IR）。客户端浏览器
+ * 内 TS 引擎，即时可验。
  */
-import { EN_US, ZH_CN, DE_DE, HI_IN } from '@aster-cloud/aster-lang-ts/browser';
-import type { Lexicon } from '@aster-cloud/aster-lang-ts/browser';
+import { EN_US, ZH_CN, DE_DE, HI_IN, IdentifierKind } from '@aster-cloud/aster-lang-ts/browser';
+import type { Lexicon, DomainVocabulary } from '@aster-cloud/aster-lang-ts/browser';
 
 export type PoemLocale = 'en' | 'zh' | 'de' | 'hi';
 
@@ -29,6 +32,7 @@ const K = {
   MODULE_DECL: 'MODULE_DECL',
   FUNC_TO: 'FUNC_TO',
   FUNC_GIVEN: 'FUNC_GIVEN',
+  FUNC_PRODUCE: 'FUNC_PRODUCE',
   IF: 'IF',
   LET: 'LET',
   BE: 'BE',
@@ -41,17 +45,29 @@ const K = {
   APPLY: 'APPLY',
 } as const;
 
-/** 「夜深→整首诗」的一个样本：入参值 + 算出的完整诗 + 那一段背后的计算说明。 */
+/** 一次运行的样本：入参值 + 运行输出 + 这一遍背后「在做什么」的说明。 */
 export interface PoemSample {
-  /** 入参值（第几更 / 夜深几许）。 */
+  /** 入口 rule 的入参值（computed 范式=计算驱动的量；alias-literal 范式=第几遍吟诵）。 */
   input: number;
-  /** 该夜深算出的整首诗（引擎真求值结果，逐字一致，CI 锁定）。 */
+  /**
+   * 运行输出（引擎真求值结果，逐字一致，CI 锁定）。computed 范式=该入参算出的整首诗；
+   * alias-literal 范式=诗名（恒定，宏展开与入参无关）。
+   */
   woven: string;
-  /** 这一遍背后「在算什么」的本地化短说明（trace 展示用，非诗本身）。 */
+  /** 这一遍背后「在算什么 / 展开了什么」的本地化短说明（trace 展示用，非诗本身）。 */
   computed: string;
 }
 
-/** 一首「诗即代码」的完整 demo 配置。 */
+/**
+ * 一首「诗即代码」的完整 demo 配置。
+ *
+ * 两种范式：
+ *  - `computed`（en/de/hi）：诗句上半是诗、下半是真计算（Match+List+apply），
+ *    每个 input 算出不同的整首诗（计算驱动）。
+ *  - `alias-literal`（zh《静夜思》）：整首诗按**原词序**即源码，关键词别名把诗句领字
+ *    变结构关键词，**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串字面量
+ *    （思故乡→"静夜思"）；运行任意 input 都输出诗名「静夜思」。
+ */
 export interface PoemConfig {
   /** 诗名（展示用）。 */
   title: string;
@@ -59,6 +75,17 @@ export interface PoemConfig {
   attribution: string;
   /** 叠加诗词别名的 Lexicon。 */
   lexicon: Lexicon;
+  /**
+   * 范式：'computed'（计算驱动，每 input 不同）或 'alias-literal'（源码即诗 + 字面量宏，
+   * 运行恒输出诗名）。缺省 'computed'（向后兼容既有三语）。
+   */
+  paradigm?: 'computed' | 'alias-literal';
+  /**
+   * 可选：字面量宏词汇表（IdentifierKind.LITERAL）。存在时 compile 前 registerCustom，
+   * 并以 `domain`（= vocab.id）+ `tenantId`（= vocab.id）触发字面量宏展开。
+   * 注：aster-lang-ts 的 compile 用 lexicon.id 作 locale 查词汇，故 vocab.locale 须 = lexicon.id。
+   */
+  vocab?: DomainVocabulary;
   /** 诗体源码（连贯一首，Match + List + apply，诗句即代码）。 */
   source: string;
   /** 规范关键词版（证明诗体版 ≡ 规范版，结构一致 Core IR）。 */
@@ -107,56 +134,37 @@ Rule gather given stars:
   ],
 };
 
-// ── ZH — 望月（原创连贯诗，公有领域）─────────────────────────────────────────
+// ── ZH — 静夜思（李白，公有领域）· 源码即诗 + 字面量宏 ────────────────────────
+// 整首诗按**原词序**即源码：关键词别名把诗句领字变结构关键词（床前→Module / 疑是→Rule /
+// 举头→produce / 低头→Return），**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串
+// 字面量（思故乡→"静夜思"）。运行入口 rule「地上霜」输出诗名「静夜思」。
+// 别名 + 字面量宏都只在 canonicalize 表层，Lexer/Parser/Core IR 不知其存在 → 诗体版 ≡ 规范版。
+const JYS_DOMAIN = 'jingyesi-zh';
 const POEM_ZH: PoemConfig = {
-  title: '望月',
-  attribution: '一首会计算的望月诗 · 上句是诗，下句是算',
-  lexicon: { ...ZH_CN, id: 'wangyue-zh', name: '望月（中文）', aliases: {
-    [K.MODULE_DECL]: ['夜'], [K.FUNC_TO]: ['吟'], [K.FUNC_GIVEN]: ['更'],
-    [K.LET]: ['拾'], [K.BE]: ['为'], [K.RETURN]: ['诵'],
-    [K.MATCH]: ['观'], [K.WHEN]: ['逢'], [K.PLUS]: ['添'], [K.APPLY]: ['续'],
+  title: '静夜思',
+  attribution: '李白 · 整首诗即源码，运行输出诗名「静夜思」',
+  paradigm: 'alias-literal',
+  lexicon: { ...ZH_CN, id: JYS_DOMAIN, name: '静夜思（中文）', aliases: {
+    [K.MODULE_DECL]: ['床前'], [K.FUNC_TO]: ['疑是'], [K.FUNC_PRODUCE]: ['举头'],
+    [K.RETURN]: ['低头'],
   } } as Lexicon,
-  source: `夜 深。
-
-吟 月相 更 时：
-  观 时：
-    逢 1，诵 「新月隐，海上潮声黑，」。
-    逢 2，诵 「半轮斜，浅水梦初回，」。
-    逢 3，诵 「满月升，浪卷欲腾飞，」。
-
-吟 怀 更 时：
-  拾 星 为 List.range(1, 时 添 1)。
-  拾 辉 为 List.sum(星)。
-  观 辉：
-    逢 1，诵 「举头一点光相随。」。
-    逢 3，诵 「举头三星共月辉。」。
-    逢 6，诵 「满天星河照人归。」。
-
-吟 望月 更 时：
-  诵 月相(时) 添 续 怀 设为 时。`,
-  canonical: `模块 深。
-
-规则 月相 给定 时：
-  匹配于 时：
-    当 1，返回 「新月隐，海上潮声黑，」。
-    当 2，返回 「半轮斜，浅水梦初回，」。
-    当 3，返回 「满月升，浪卷欲腾飞，」。
-
-规则 怀 给定 时：
-  令 星 定义为 List.range(1, 时 加上 1)。
-  令 辉 定义为 List.sum(星)。
-  匹配于 辉：
-    当 1，返回 「举头一点光相随。」。
-    当 3，返回 「举头三星共月辉。」。
-    当 6，返回 「满天星河照人归。」。
-
-规则 望月 给定 时：
-  返回 月相(时) 加上 应用 怀 设为 时。`,
-  entry: '望月', param: '时',
+  // 字面量宏：思故乡 → 内容「静夜思」。vocab.locale 须 = lexicon.id（compile 用 lexicon.id 查词汇）。
+  vocab: {
+    id: JYS_DOMAIN, name: '静夜思', locale: JYS_DOMAIN, version: '1.0.0',
+    structs: [], fields: [], functions: [], enumValues: [],
+    literals: [{ localized: '思故乡', canonical: '静夜思', kind: IdentifierKind.LITERAL }],
+  },
+  source: `床前 明月光。
+疑是 地上霜，举头 望明月：
+  低头 思故乡。`,
+  canonical: `模块 明月光。
+规则 地上霜 产出 望明月：
+  返回 「静夜思」。`,
+  entry: '地上霜', param: '时',
   samples: [
-    { input: 1, woven: '新月隐，海上潮声黑，举头一点光相随。', computed: '怀(1)：List.sum(List.range(1,2)) = 1 → 「举头一点光相随」' },
-    { input: 2, woven: '半轮斜，浅水梦初回，举头三星共月辉。', computed: '怀(2)：List.sum(List.range(1,3)) = 1+2 = 3 → 「举头三星共月辉」' },
-    { input: 3, woven: '满月升，浪卷欲腾飞，满天星河照人归。', computed: '怀(3)：List.sum(List.range(1,4)) = 1+2+3 = 6 → 「满天星河照人归」' },
+    { input: 1, woven: '静夜思', computed: '床前 明月光 → 模块「明月光」；疑是 地上霜 → 规则「地上霜」' },
+    { input: 2, woven: '静夜思', computed: '举头 望明月 → produce 望明月；低头 → Return' },
+    { input: 3, woven: '静夜思', computed: '字面量宏：思故乡 → "静夜思"（canonicalize 表层展开）' },
   ],
 };
 
