@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- 中文「源码即诗」demo 换成李白《静夜思》(alias-literal 范式) (#158) *(poem-demo)*
 - Restore the English poem to Nightfall (recursive source-is-the-poem) (#155) *(demos)*
 - Poem demo — connected verse, half poem half computation (zh/de/hi) (#154) *(demos)*
 - Poem demo — the verse lines ARE the code (no strings), zh/de/hi only (#153) *(demos)*
@@ -254,6 +255,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
