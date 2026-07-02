@@ -2,17 +2,16 @@
  * 「源码即诗」demo 的**生产可验证性**契约（四语：en/zh/de/hi），三种范式，每种钉死不变式，
  * 任一失败 = CI 硬失败：
  *
- * **computed 范式**（en/hi）——一首连贯诗，每段**上半诗句、下半真计算**（Match 选景 +
- *   List.range/List.sum 真求和 + 无括号 apply 织段）。诗读连贯，但每个数、每次分支、每次
- *   求和都是引擎真求值：
+ * **computed 范式**（en）——一首连贯递归谣曲，无括号 apply 递归织段。诗读连贯，但每次调用、
+ *   每次拼接都是引擎真求值：
  *   1. 诗体源码用诗词别名词典编译成功（无诊断错误）。
  *   2. 入口 rule 代入每个样本 input 跑出的整首诗逐字一致（计算交织的诗）。
  *   3. 诗体方言版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——证明别名只在表层。
  *   4. 诗句仍是代码：源码含 List 求和或无括号递归调用（en）等真计算结构。
  *
- * **alias-literal 范式**（zh《静夜思》）——李白整首诗按**原词序**即源码：关键词别名把领字
- *   变结构关键词，**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串字面量：
- *   2. 入口 rule 每个样本 input 输出恒为诗名（宏展开，与入参无关）。
+ * **alias-literal 范式**（zh《静夜思》李白 / hi《गीतांजलि #35》泰戈尔）——整首诗按**原词序**即
+ *   源码：关键词别名把领字变结构关键词，**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串：
+ *   2. 入口 rule 每个样本 input 输出恒为名句（宏展开，与入参无关；入口 rule 可无 given 参数）。
  *   4. 字面量宏真实生效：源码含触发词但不含展开内容，规范版含展开内容，运行输出=字面量内容。
  *
  * **decision 范式**（de《Du bist mein, ich bin dein》）——中世纪情诗即一条裁决规则：四个布尔
@@ -115,9 +114,14 @@ describe('poem demo: source-as-poem across three paradigms', () => {
       it(`${loc} (${poem.title}): 每个样本代入后的输出逐字一致`, () => {
         const r = compilePoem(poem);
         expect(r.core).toBeTruthy();
-        expect(poem.param, `[${loc}] has a param`).toBeTruthy();
+        // computed 范式必须有 param（按 input 计算）；alias-literal 范式入口 rule 可无参
+        // （输出与入参无关，页面 runOnce 传 {}），此时用空参对象逐样本验证恒定输出。
+        if (poem.paradigm !== 'alias-literal') {
+          expect(poem.param, `[${loc}] computed poem has a param`).toBeTruthy();
+        }
         for (const s of poem.samples ?? []) {
-          const ev = evaluate(r.core!, poem.entry, { [poem.param!]: s.input });
+          const args = poem.param ? { [poem.param]: s.input } : {};
+          const ev = evaluate(r.core!, poem.entry, args);
           expect(ev.success, `[${loc}] ${poem.entry}(${s.input}) eval: ${ev.error ?? ''}`).toBe(true);
           expect(String(ev.value), `[${loc}] ${poem.entry}(${s.input})`).toBe(s.woven);
         }
@@ -141,7 +145,8 @@ describe('poem demo: source-as-poem across three paradigms', () => {
           expect(poem.canonical.includes(literal!.canonical), `[${loc}] canonical contains expanded literal`).toBe(true);
           const r = compilePoem(poem);
           expect(r.core, `[${loc}] compiles`).toBeTruthy();
-          const ev = evaluate(r.core!, poem.entry, { [poem.param!]: samples[0]!.input });
+          const args = poem.param ? { [poem.param]: samples[0]!.input } : {};
+          const ev = evaluate(r.core!, poem.entry, args);
           expect(ev.success && String(ev.value) === literal!.canonical, `[${loc}] macro expands to the literal content at runtime`).toBe(true);
         } else {
           // computed 范式：三个样本输出互不相同——结果随入参由计算决定，不是固定整首诗。
