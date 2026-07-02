@@ -20,6 +20,8 @@ import { USER_ALIAS_VALIDATOR_VERSION } from './policy-alias-shared';
 // re-export client-safe 核心（向后兼容既有 `import { validateUserAliases, ... } from './policy-alias'`）。
 export {
   ALLOWED_KINDS,
+  OPERATOR_KINDS,
+  STRUCTURAL_KINDS,
   USER_ALIAS_VALIDATOR_VERSION,
   normalizeAliasToken,
   validateUserAliases,
@@ -29,6 +31,7 @@ export {
 export type {
   AliasSet,
   AliasValidationResult,
+  AliasValidationOptions,
   ReservedSets,
 } from './policy-alias-shared';
 

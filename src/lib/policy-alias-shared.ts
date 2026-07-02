@@ -27,8 +27,36 @@ export const ALLOWED_KINDS: ReadonlySet<string> = new Set([
   'AT_MOST',
 ]);
 
+/** 恒允许自定义别名的**运算符/比较** kind（= 原 ALLOWED_KINDS，任何人可用）。 */
+export const OPERATOR_KINDS: ReadonlySet<string> = ALLOWED_KINDS;
+
+/**
+ * **结构词** kind：声明 + 控制流 + 返回。**仅当调用方获授权（allowStructural=true）时可自定义别名**。
+ *
+ * <p>红队 H3 默认排除结构词（别名滥用会误导审批人）。放开需满足三重护栏：①别名必多词（铁律2）
+ * ②审批 UI 显 canonicalize 后规范结构 ③审计留痕。授权由管理员**按用户**授予，服务端权威判定。
+ *
+ * <p>**仍禁（不在此集，任何授权都不放开）**：IMPORT*、效果(IO/CPU/AWAIT/WORKFLOW/STEP)、
+ * 逻辑(AND/OR/NOT)、布尔/类型字面量——这些别名能改变语义/藏副作用，护栏兜不住，风险高于误导。
+ */
+export const STRUCTURAL_KINDS: ReadonlySet<string> = new Set([
+  'MODULE_DECL',
+  'FUNC_TO',      // Rule
+  'IF',
+  'OTHERWISE',
+  'MATCH',
+  'WHEN',
+  'RETURN',
+]);
+
 /** 校验器版本（进 toolchain identity；与 Java UserAliasValidator.VERSION 对齐）。 */
 export const USER_ALIAS_VALIDATOR_VERSION = '1';
+
+/** 校验选项。allowStructural=true 时额外放开 STRUCTURAL_KINDS（需管理员授权，服务端权威传入）。 */
+export interface AliasValidationOptions {
+  /** 是否允许结构词别名（默认 false）。true 由服务端依 per-user entitlement 传入，不信前端。 */
+  readonly allowStructural?: boolean;
+}
 
 /** 别名集：kind → 别名短语数组。 */
 export type AliasSet = Readonly<Record<string, readonly string[]>>;
@@ -71,10 +99,15 @@ export function normalizeAliasToken(s: string): string {
  * 校验用户 aliasSet（白名单/多词/不遮蔽规范拼写+base别名/不撞领域词汇）。
  *
  * <p>与 Java UserAliasValidator 对齐。reserved 可传 ReadonlySet（仅规范拼写）向后兼容。
+ *
+ * <p>白名单两档（deny-by-default）：OPERATOR_KINDS 恒允许；STRUCTURAL_KINDS 仅当
+ * {@link AliasValidationOptions.allowStructural}=true（管理员按用户授权，服务端权威传入）时允许。
+ * 其余 kind（高危：IMPORT/effects/逻辑/布尔）任何授权都拒。
  */
 export function validateUserAliases(
   aliasSet: AliasSet | null | undefined,
   reserved: ReservedSets | ReadonlySet<string>,
+  options?: AliasValidationOptions,
 ): AliasValidationResult {
   // 兼容旧签名：直接传规范拼写 Set。
   const sets: ReservedSets = reserved instanceof Set
@@ -83,6 +116,7 @@ export function validateUserAliases(
   const canonicalKeywordsLower = sets.canonicalKeywordsLower;
   const baseAliasesLower = sets.baseAliasesLower ?? new Set<string>();
   const vocabularyTermsLower = sets.vocabularyTermsLower ?? new Set<string>();
+  const allowStructural = options?.allowStructural ?? false;
 
   if (!aliasSet || Object.keys(aliasSet).length === 0) {
     return { valid: true, errors: [] };
@@ -90,10 +124,19 @@ export function validateUserAliases(
   const errors: string[] = [];
   const seen = new Set<string>();
   for (const [kind, aliases] of Object.entries(aliasSet)) {
-    if (!ALLOWED_KINDS.has(kind)) {
-      errors.push(
-        `不允许为 ${kind} 自定义别名（仅低风险运算符/比较类可自定义，防止误导审批的语义滥用）`,
-      );
+    // 白名单两档：运算符恒允；结构词需授权；其余高危 kind 恒拒。
+    const isOperator = OPERATOR_KINDS.has(kind);
+    const isStructural = STRUCTURAL_KINDS.has(kind);
+    if (!isOperator && !(isStructural && allowStructural)) {
+      if (isStructural) {
+        errors.push(
+          `不允许为结构词 ${kind} 自定义别名（需管理员授予结构词别名权限；审批时会显示规范化真实结构并留痕）`,
+        );
+      } else {
+        errors.push(
+          `不允许为 ${kind} 自定义别名（仅运算符/比较类，或经授权的结构词可自定义，防止误导审批的语义滥用）`,
+        );
+      }
       continue;
     }
     for (const alias of aliases ?? []) {
