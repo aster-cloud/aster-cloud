@@ -2,20 +2,30 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { compile, evaluate, vocabularyRegistry, initBuiltinVocabularies } from '@aster-cloud/aster-lang-ts/browser';
+import { compile, evaluate, canonicalize, vocabularyRegistry, initBuiltinVocabularies } from '@aster-cloud/aster-lang-ts/browser';
 import { POEMS, toPoemLocale } from '@/config/poem-demo';
 import { cn } from '@/components/ui';
 
 interface RunResult {
   poemId: string;
+  /** computed 范式：所选样本 input；alias-literal 范式：0（单次运行，无意义入参）。 */
   input: number;
+  /** 运行输出：computed=算出的整首诗；alias-literal=诗名。 */
   woven: string;
+  /** computed 范式的「这一遍在算什么」说明；alias-literal 范式为空。 */
   computed: string;
+  /**
+   * alias-literal 范式专属：诗体源码经 `canonicalize()` 得到的**真实引擎输出**（非 config 手写
+   * poem.canonical）。这一步只展开**字面量宏**（思故乡 → 「静夜思」），可直接看到宏在表层生效；
+   * 关键词别名（床前/疑是/…）由下一步 token translation 解析，不在此产物里。computed 范式为空。
+   */
+  canonical?: string;
 }
 
 export function PoemDemoContent({ locale }: { locale: string }) {
   const t = useTranslations('poemDemoPage');
   const poem = POEMS[toPoemLocale(locale)];
+  const isAliasLiteral = poem.paradigm === 'alias-literal';
   // 结果连同其所属诗一起存：诗变了（切语言）旧结果即失效（render 期守卫，避免 set-state-in-effect）。
   const [run, setRun] = useState<RunResult | null>(null);
   const result = run && run.poemId === poem.lexicon.id ? run : null;
@@ -38,7 +48,7 @@ export function PoemDemoContent({ locale }: { locale: string }) {
     return r.core ?? null;
   }, [poem]);
 
-  // 运行入口 rule：computed 范式按 input 算出整首诗；alias-literal 范式恒输出诗名。
+  // computed 范式：代入 input 算出整首诗。
   function runAt(input: number) {
     if (!core) return;
     const sample = poem.samples.find((s) => s.input === input);
@@ -48,6 +58,27 @@ export function PoemDemoContent({ locale }: { locale: string }) {
       input,
       woven: ev.success ? String(ev.value) : '—',
       computed: sample?.computed ?? '',
+    });
+  }
+
+  // alias-literal 范式：单次运行。展示引擎实况——① 诗体源码经 canonicalize 的真实输出（字面量宏
+  // 把领字就地展开成字符串字面量的**引擎产物**，非 config 手写）② evaluate 入口 rule 的真实返回。
+  // 入口 rule 无 given 参数，故传空参对象。
+  function runOnce() {
+    if (!core || !poem.vocab) return;
+    const canonical = canonicalize(poem.source, {
+      lexicon: poem.lexicon,
+      domain: poem.vocab.id,
+      locale: poem.lexicon.id,
+      tenantId: poem.vocab.id,
+    });
+    const ev = evaluate(core, poem.entry, {});
+    setRun({
+      poemId: poem.lexicon.id,
+      input: 0,
+      woven: ev.success ? String(ev.value) : '—',
+      computed: '',
+      canonical,
     });
   }
 
@@ -89,32 +120,65 @@ export function PoemDemoContent({ locale }: { locale: string }) {
         )}
       </section>
 
-      {/* 运行 —— 代入一个 input：computed 范式计算织出整首诗，alias-literal 范式恒输出诗名 */}
+      {/* 运行 —— alias-literal 单次运行看引擎实况；computed 三样本按 input 算出整首诗 */}
       <section className="mb-8">
         <h2 className="mb-2 text-sm font-semibold text-fg">{t('run.title')}</h2>
         <p className="mb-3 text-sm text-fg-muted">{t('run.hint')}</p>
-        <div className="flex flex-wrap gap-3">
-          {poem.samples.map((s) => (
-            <button
-              key={s.input}
-              onClick={() => runAt(s.input)}
-              disabled={!core}
-              className={cn(
-                'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
-                result?.input === s.input
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
-                !core && 'cursor-not-allowed opacity-50',
-              )}
-            >
-              {t('run.button', { n: s.input })}
-            </button>
-          ))}
-        </div>
+        {isAliasLiteral ? (
+          <button
+            onClick={runOnce}
+            disabled={!core}
+            className={cn(
+              'rounded-lg border px-6 py-3 text-sm font-medium transition-colors',
+              result
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
+              !core && 'cursor-not-allowed opacity-50',
+            )}
+          >
+            {t('run.button')}
+          </button>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {poem.samples.map((s) => (
+              <button
+                key={s.input}
+                onClick={() => runAt(s.input)}
+                disabled={!core}
+                className={cn(
+                  'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
+                  result?.input === s.input
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
+                  !core && 'cursor-not-allowed opacity-50',
+                )}
+              >
+                {t('run.button', { n: s.input })}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* 结果 —— 算出的整首诗 + 这一遍背后的计算 */}
-      {result && (
+      {/* 结果 —— alias-literal 展示编译+求值实况；computed 展示算出的整首诗 + 计算说明 */}
+      {result && isAliasLiteral && (
+        <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
+          <p className="mb-4 text-sm font-semibold text-fg">{t('result.title')}</p>
+
+          {/* ① canonicalize 真实展开出的规范源码（引擎产物） */}
+          <p className="mb-2 text-xs font-semibold text-fg-subtle">{t('result.canonicalizeLabel')}</p>
+          <pre className="overflow-x-auto rounded-lg border border-border bg-bg p-4 font-mono text-xs leading-relaxed text-fg-muted">
+            {result.canonical}
+          </pre>
+
+          {/* ② evaluate 入口 rule 的真实返回 */}
+          <p className="mt-5 mb-2 text-xs font-semibold text-fg-subtle">{t('result.evaluateLabel')}</p>
+          <p className="font-display text-3xl leading-relaxed text-fg">{result.woven}</p>
+
+          <p className="mt-5 text-sm text-fg-muted">{t('result.note')}</p>
+        </section>
+      )}
+      {result && !isAliasLiteral && (
         <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
           <p className="mb-3 text-sm font-semibold text-fg">{t('result.title', { n: result.input })}</p>
           <p className="font-display text-xl leading-relaxed text-fg">{result.woven}</p>
