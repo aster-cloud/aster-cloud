@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Hi「源码即诗」换成泰戈尔《गीतांजलि #35》· 源码即诗（alias-literal） (#161) *(poem-demo)*
 - De「源码即诗」换成《Du bist mein》· 诗即裁决规则（decision 范式） (#160) *(poem-demo)*
 - 《静夜思》改单次运行 + 展示引擎实况（不再吟 3 遍） (#159) *(poem-demo)*
 - 中文「源码即诗」demo 换成李白《静夜思》(alias-literal 范式) (#158) *(poem-demo)*
@@ -257,6 +258,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
