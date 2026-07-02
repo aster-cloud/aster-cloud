@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
+import { compile, evaluate, vocabularyRegistry, initBuiltinVocabularies } from '@aster-cloud/aster-lang-ts/browser';
 import { POEMS, toPoemLocale } from '@/config/poem-demo';
 import { cn } from '@/components/ui';
 
@@ -22,12 +22,23 @@ export function PoemDemoContent({ locale }: { locale: string }) {
   const [showCanonical, setShowCanonical] = useState(false);
 
   // 编译诗体源码（注入诗词别名词典）→ canonicalize 归一回规范关键词 → 同款引擎编译。
+  // alias-literal 范式（《静夜思》）还需先注册字面量宏词汇表，并以 domain/tenantId 触发展开。
   const core = useMemo(() => {
+    if (poem.vocab) {
+      initBuiltinVocabularies();
+      vocabularyRegistry.registerCustom(poem.vocab.id, poem.vocab);
+      const r = compile(poem.source, {
+        lexicon: poem.lexicon,
+        domain: poem.vocab.id,
+        tenantId: poem.vocab.id,
+      });
+      return r.core ?? null;
+    }
     const r = compile(poem.source, { lexicon: poem.lexicon });
     return r.core ?? null;
   }, [poem]);
 
-  // 代入某个「夜深」跑整首诗：Match 选景 + List 真求和 + apply 织段，输出计算交织的诗。
+  // 运行入口 rule：computed 范式按 input 算出整首诗；alias-literal 范式恒输出诗名。
   function runAt(input: number) {
     if (!core) return;
     const sample = poem.samples.find((s) => s.input === input);
@@ -78,7 +89,7 @@ export function PoemDemoContent({ locale }: { locale: string }) {
         )}
       </section>
 
-      {/* 运行 —— 代入某个「夜深」，计算驱动出整首诗 */}
+      {/* 运行 —— 代入一个 input：computed 范式计算织出整首诗，alias-literal 范式恒输出诗名 */}
       <section className="mb-8">
         <h2 className="mb-2 text-sm font-semibold text-fg">{t('run.title')}</h2>
         <p className="mb-3 text-sm text-fg-muted">{t('run.hint')}</p>
