@@ -26,6 +26,7 @@ export function PoemDemoContent({ locale }: { locale: string }) {
   const t = useTranslations('poemDemoPage');
   const poem = POEMS[toPoemLocale(locale)];
   const isAliasLiteral = poem.paradigm === 'alias-literal';
+  const isDecision = poem.paradigm === 'decision';
   // 结果连同其所属诗一起存：诗变了（切语言）旧结果即失效（render 期守卫，避免 set-state-in-effect）。
   const [run, setRun] = useState<RunResult | null>(null);
   const result = run && run.poemId === poem.lexicon.id ? run : null;
@@ -50,8 +51,8 @@ export function PoemDemoContent({ locale }: { locale: string }) {
 
   // computed 范式：代入 input 算出整首诗。
   function runAt(input: number) {
-    if (!core) return;
-    const sample = poem.samples.find((s) => s.input === input);
+    if (!core || !poem.param) return;
+    const sample = poem.samples?.find((s) => s.input === input);
     const ev = evaluate(core, poem.entry, { [poem.param]: input });
     setRun({
       poemId: poem.lexicon.id,
@@ -120,75 +121,82 @@ export function PoemDemoContent({ locale }: { locale: string }) {
         )}
       </section>
 
-      {/* 运行 —— alias-literal 单次运行看引擎实况；computed 三样本按 input 算出整首诗 */}
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-fg">{t('run.title')}</h2>
-        <p className="mb-3 text-sm text-fg-muted">{t('run.hint')}</p>
-        {isAliasLiteral ? (
-          <button
-            onClick={runOnce}
-            disabled={!core}
-            className={cn(
-              'rounded-lg border px-6 py-3 text-sm font-medium transition-colors',
-              result
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
-              !core && 'cursor-not-allowed opacity-50',
-            )}
-          >
-            {t('run.button')}
-          </button>
-        ) : (
-          <div className="flex flex-wrap gap-3">
-            {poem.samples.map((s) => (
+      {/* decision 范式（《Du bist mein》）：拨动前提 → 引擎实时推导裁决 */}
+      {isDecision && poem.decision ? (
+        <DecisionRunner poem={poem} core={core} t={t} />
+      ) : (
+        <>
+          {/* 运行 —— alias-literal 单次运行看引擎实况；computed 三样本按 input 算出整首诗 */}
+          <section className="mb-8">
+            <h2 className="mb-2 text-sm font-semibold text-fg">{t('run.title')}</h2>
+            <p className="mb-3 text-sm text-fg-muted">{t('run.hint')}</p>
+            {isAliasLiteral ? (
               <button
-                key={s.input}
-                onClick={() => runAt(s.input)}
+                onClick={runOnce}
                 disabled={!core}
                 className={cn(
-                  'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
-                  result?.input === s.input
+                  'rounded-lg border px-6 py-3 text-sm font-medium transition-colors',
+                  result
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
                   !core && 'cursor-not-allowed opacity-50',
                 )}
               >
-                {t('run.button', { n: s.input })}
+                {t('run.button')}
               </button>
-            ))}
-          </div>
-        )}
-      </section>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {(poem.samples ?? []).map((s) => (
+                  <button
+                    key={s.input}
+                    onClick={() => runAt(s.input)}
+                    disabled={!core}
+                    className={cn(
+                      'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
+                      result?.input === s.input
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-bg-subtle text-fg hover:border-primary/50',
+                      !core && 'cursor-not-allowed opacity-50',
+                    )}
+                  >
+                    {t('run.button', { n: s.input })}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
 
-      {/* 结果 —— alias-literal 展示编译+求值实况；computed 展示算出的整首诗 + 计算说明 */}
-      {result && isAliasLiteral && (
-        <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
-          <p className="mb-4 text-sm font-semibold text-fg">{t('result.title')}</p>
+          {/* 结果 —— alias-literal 展示编译+求值实况；computed 展示算出的整首诗 + 计算说明 */}
+          {result && isAliasLiteral && (
+            <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
+              <p className="mb-4 text-sm font-semibold text-fg">{t('result.title')}</p>
 
-          {/* ① canonicalize 真实展开出的规范源码（引擎产物） */}
-          <p className="mb-2 text-xs font-semibold text-fg-subtle">{t('result.canonicalizeLabel')}</p>
-          <pre className="overflow-x-auto rounded-lg border border-border bg-bg p-4 font-mono text-xs leading-relaxed text-fg-muted">
-            {result.canonical}
-          </pre>
+              {/* ① canonicalize 真实展开出的规范源码（引擎产物） */}
+              <p className="mb-2 text-xs font-semibold text-fg-subtle">{t('result.canonicalizeLabel')}</p>
+              <pre className="overflow-x-auto rounded-lg border border-border bg-bg p-4 font-mono text-xs leading-relaxed text-fg-muted">
+                {result.canonical}
+              </pre>
 
-          {/* ② evaluate 入口 rule 的真实返回 */}
-          <p className="mt-5 mb-2 text-xs font-semibold text-fg-subtle">{t('result.evaluateLabel')}</p>
-          <p className="font-display text-3xl leading-relaxed text-fg">{result.woven}</p>
+              {/* ② evaluate 入口 rule 的真实返回 */}
+              <p className="mt-5 mb-2 text-xs font-semibold text-fg-subtle">{t('result.evaluateLabel')}</p>
+              <p className="font-display text-3xl leading-relaxed text-fg">{result.woven}</p>
 
-          <p className="mt-5 text-sm text-fg-muted">{t('result.note')}</p>
-        </section>
-      )}
-      {result && !isAliasLiteral && (
-        <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
-          <p className="mb-3 text-sm font-semibold text-fg">{t('result.title', { n: result.input })}</p>
-          <p className="font-display text-xl leading-relaxed text-fg">{result.woven}</p>
-          {result.computed && (
-            <p className="mt-4 border-l-2 border-primary/40 pl-3 font-mono text-xs text-fg-subtle">
-              {result.computed}
-            </p>
+              <p className="mt-5 text-sm text-fg-muted">{t('result.note')}</p>
+            </section>
           )}
-          <p className="mt-4 text-sm text-fg-muted">{t('result.note')}</p>
-        </section>
+          {result && !isAliasLiteral && (
+            <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
+              <p className="mb-3 text-sm font-semibold text-fg">{t('result.title', { n: result.input })}</p>
+              <p className="font-display text-xl leading-relaxed text-fg">{result.woven}</p>
+              {result.computed && (
+                <p className="mt-4 border-l-2 border-primary/40 pl-3 font-mono text-xs text-fg-subtle">
+                  {result.computed}
+                </p>
+              )}
+              <p className="mt-4 text-sm text-fg-muted">{t('result.note')}</p>
+            </section>
+          )}
+        </>
       )}
 
       {/* CTA */}
@@ -197,5 +205,113 @@ export function PoemDemoContent({ locale }: { locale: string }) {
         <p className="mt-1 text-sm text-fg-muted">{t('cta.subtitle')}</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * decision 范式子组件（《Du bist mein, ich bin dein》）：用户拨动诗的四个布尔前提，引擎**实时
+ * 重求值**入口裁决规则并显示裁决。翻任一前提裁决即变——真判定，非查表。
+ *
+ * 边界说明（诚实性）：**裁决**（verdict）由 `evaluate` 给出——前端只把 toggle 布尔传进去，
+ * 不实现裁决逻辑。而**中间值展示**（gehoert/verschlossen）是前端按 `decision.derived.from`
+ * 镜像规范源码的 let 绑定（AND 复算）得到的，仅供解释推导链，非 evaluate 的输出。
+ */
+function DecisionRunner({
+  poem,
+  core,
+  t,
+}: {
+  poem: (typeof POEMS)[keyof typeof POEMS];
+  core: ReturnType<typeof compile>['core'] | null;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const spec = poem.decision!;
+  // 每个前提一个布尔，初值全真（„für immer" 情形）。
+  const [values, setValues] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(spec.toggles.map((tg) => [tg.name, true])),
+  );
+
+  // 引擎实时裁决：把当前前提布尔传进 evaluate，拿真实返回。前端不实现裁决逻辑。
+  const verdict = useMemo(() => {
+    if (!core) return null;
+    const ev = evaluate(core, poem.entry, values);
+    return ev.success ? String(ev.value) : '—';
+  }, [core, poem.entry, values]);
+
+  // 中间值展示：前端按规范源码的 let 绑定**镜像复算**（其 from 前提全为真时该中间值为真）。
+  // 这仅供展示推导链，**不是** evaluate 的输出——真裁决由上面的 evaluate 决定。
+  const derivedTrue = (from: string[]) => from.every((n) => values[n]);
+  const allTrue = spec.toggles.every((tg) => values[tg.name]);
+
+  return (
+    <>
+      {/* 拨动前提 */}
+      <section className="mb-8">
+        <h2 className="mb-2 text-sm font-semibold text-fg">{t('run.title')}</h2>
+        <p className="mb-4 text-sm text-fg-muted">{t('run.hint')}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {spec.toggles.map((tg) => (
+            <button
+              key={tg.name}
+              type="button"
+              role="switch"
+              aria-checked={values[tg.name]}
+              onClick={() => setValues((v) => ({ ...v, [tg.name]: !v[tg.name] }))}
+              disabled={!core}
+              className={cn(
+                'flex items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors',
+                values[tg.name]
+                  ? 'border-primary bg-primary/10 text-fg'
+                  : 'border-border bg-bg-subtle text-fg-muted hover:border-primary/50',
+                !core && 'cursor-not-allowed opacity-50',
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs',
+                  values[tg.name] ? 'border-primary bg-primary text-white' : 'border-border',
+                )}
+                aria-hidden
+              >
+                {values[tg.name] ? '✓' : ''}
+              </span>
+              <span className="font-display italic">{tg.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* 引擎推导 + 裁决 */}
+      <section className="mb-8 rounded-xl border border-border bg-bg-subtle p-6">
+        <p className="mb-4 text-sm font-semibold text-fg">{t('result.title')}</p>
+
+        {/* 引擎推导的中间值（let 绑定） */}
+        <p className="mb-2 text-xs font-semibold text-fg-subtle">{t('result.derivedLabel')}</p>
+        <div className="space-y-1 font-mono text-xs text-fg-muted">
+          {spec.derived.map((d) => (
+            <p key={d.name}>
+              <span className="text-fg">{d.label}</span>
+              {' → '}
+              <span className={derivedTrue(d.from) ? 'text-primary' : 'text-fg-subtle'}>
+                {derivedTrue(d.from) ? t('result.true') : t('result.false')}
+              </span>
+            </p>
+          ))}
+        </div>
+
+        {/* 裁决（引擎真返回） */}
+        <p className="mt-5 mb-2 text-xs font-semibold text-fg-subtle">{t('result.verdictLabel')}</p>
+        <p
+          className={cn(
+            'font-display text-3xl leading-relaxed',
+            allTrue ? 'text-primary' : 'text-fg',
+          )}
+        >
+          {verdict}
+        </p>
+
+        <p className="mt-5 text-sm text-fg-muted">{t('result.note')}</p>
+      </section>
+    </>
   );
 }

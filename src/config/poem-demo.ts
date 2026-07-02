@@ -1,7 +1,7 @@
 /**
- * 「源码即诗」demo 配置（公开，四语：en/zh/de/hi），两种范式：
+ * 「源码即诗」demo 配置（公开，四语：en/zh/de/hi），三种范式：
  *
- * **computed**（en/de/hi）——一首**连贯**诗，每段**上半诗句、下半真计算**：`Match` 选景、
+ * **computed**（en/hi）——一首**连贯**诗，每段**上半诗句、下半真计算**：`Match` 选景、
  *   `List.range`/`List.sum` 真求和、无括号 `apply` 织段（en 为递归谣曲）。诗读连贯，但每个数、
  *   每次分支、每次求和都是引擎真求值——不是预写诗句的打印，而是计算与诗交织。
  *
@@ -9,7 +9,11 @@
  *   诗句领字变结构关键词（床前→Module / 疑是→Rule / 举头→produce / 低头→Return），**字面量宏**
  *   （IdentifierKind.LITERAL）把末词展开成字符串字面量（思故乡→"静夜思"），运行输出诗名。
  *
- * 两种范式都靠 canonicalize 归一：关键词别名（ADR 0022）+ 无括号 apply（ADR 0027）+ 字面量宏
+ * **decision**（de《Du bist mein, ich bin dein》，中世纪情诗，公有领域）——整首诗即一条**裁决
+ *   规则**：诗的四个前提当布尔输入，关键词别名把领字变结构关键词，引擎 let 绑定推导中间值再
+ *   wenn/sonst 真判定，输出「für immer」或「nicht auf ewig」。翻任一前提裁决即变（真计算）。
+ *
+ * 三种范式都靠 canonicalize 归一：关键词别名（ADR 0022）+ 无括号 apply（ADR 0027）+ 字面量宏
  * 只在表层，Lexer/Parser/Core IR 不知其存在 → 诗体版 ≡ 规范版（结构一致 Core IR）。客户端浏览器
  * 内 TS 引擎，即时可验。
  */
@@ -58,15 +62,48 @@ export interface PoemSample {
   computed: string;
 }
 
+/** decision 范式的一个可拨动布尔前提（诗句的一个条件）。 */
+export interface DecisionToggle {
+  /** 规范入参名（传给 evaluate，如 'mein'）。 */
+  name: string;
+  /** 展示给用户的诗句短语（如 'Du bist mein'）。 */
+  label: string;
+}
+
+/** decision 范式的一个引擎推导中间值（let 绑定的结果，供展示）。 */
+export interface DecisionDerived {
+  /** 中间值名（规范，如 'gehoert'）。 */
+  name: string;
+  /** 展示标签（如 'gehoert = mein und dein'）。 */
+  label: string;
+  /** 由哪些 toggle 名以 AND 组合得出（用于前端复算展示，非引擎真值——真值仍由 evaluate 给）。 */
+  from: string[];
+}
+
+/** decision 范式：诗的前提当布尔输入，引擎真推导出裁决。 */
+export interface DecisionSpec {
+  /** 可拨动的布尔前提（诗句条件）。 */
+  toggles: DecisionToggle[];
+  /** 引擎推导的中间值（展示 let 绑定过程）。 */
+  derived: DecisionDerived[];
+  /** 全部前提为真时的裁决文本（= evaluate 结果，CI 锁定）。 */
+  verdictAll: string;
+  /** 任一前提为假时的裁决文本（= evaluate 结果，CI 锁定）。 */
+  verdictElse: string;
+}
+
 /**
  * 一首「诗即代码」的完整 demo 配置。
  *
- * 两种范式：
- *  - `computed`（en/de/hi）：诗句上半是诗、下半是真计算（Match+List+apply），
- *    每个 input 算出不同的整首诗（计算驱动）。
- *  - `alias-literal`（zh《静夜思》）：整首诗按**原词序**即源码，关键词别名把诗句领字
- *    变结构关键词，**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串字面量
- *    （思故乡→"静夜思"）；运行任意 input 都输出诗名「静夜思」。
+ * 三种范式：
+ *  - `computed`（en/hi）：诗句上半是诗、下半是真计算（Match+List+apply），每个 input 算出
+ *    不同的整首诗（计算驱动）。
+ *  - `alias-literal`（zh《静夜思》）：整首诗按**原词序**即源码，关键词别名把诗句领字变结构
+ *    关键词，**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串字面量（思故乡→"静夜思"）；
+ *    运行输出诗名「静夜思」。
+ *  - `decision`（de《Du bist mein》）：中世纪情诗即一条**裁决规则**——诗的四个前提（mein/dein/
+ *    im Herzen/Schlüssel verloren）当布尔输入，引擎 let 绑定推导（gehoert/verschlossen）再 if/else
+ *    真判定，输出「für immer」或「nicht auf ewig」。翻任一前提裁决即变——真计算，非回声。
  */
 export interface PoemConfig {
   /** 诗名（展示用）。 */
@@ -76,26 +113,28 @@ export interface PoemConfig {
   /** 叠加诗词别名的 Lexicon。 */
   lexicon: Lexicon;
   /**
-   * 范式：'computed'（计算驱动，每 input 不同）或 'alias-literal'（源码即诗 + 字面量宏，
-   * 运行恒输出诗名）。缺省 'computed'（向后兼容既有三语）。
+   * 范式：'computed'（计算驱动，每 input 不同）/ 'alias-literal'（源码即诗 + 字面量宏，运行输出
+   * 诗名）/ 'decision'（前提当布尔输入，引擎真推导裁决）。缺省 'computed'（向后兼容）。
    */
-  paradigm?: 'computed' | 'alias-literal';
+  paradigm?: 'computed' | 'alias-literal' | 'decision';
   /**
    * 可选：字面量宏词汇表（IdentifierKind.LITERAL）。存在时 compile 前 registerCustom，
    * 并以 `domain`（= vocab.id）+ `tenantId`（= vocab.id）触发字面量宏展开。
    * 注：aster-lang-ts 的 compile 用 lexicon.id 作 locale 查词汇，故 vocab.locale 须 = lexicon.id。
    */
   vocab?: DomainVocabulary;
+  /** decision 范式专属：可拨动前提 + 推导中间值 + 两种裁决文本。 */
+  decision?: DecisionSpec;
   /** 诗体源码（连贯一首，Match + List + apply，诗句即代码）。 */
   source: string;
   /** 规范关键词版（证明诗体版 ≡ 规范版，结构一致 Core IR）。 */
   canonical: string;
-  /** 入口 rule 名（织成整首诗的入口，规范名）。 */
+  /** 入口 rule 名（规范名；三范式共用）。 */
   entry: string;
-  /** 入参名（本地化）。 */
-  param: string;
-  /** 三个样本（夜深 1/2/3），每个：入参 + 算出的整首诗 + 计算说明。 */
-  samples: PoemSample[];
+  /** 入参名（本地化）。computed / alias-literal 用；decision 范式不用（入参见 decision.toggles）。 */
+  param?: string;
+  /** computed / alias-literal 的样本（decision 范式不用；其输入见 decision.toggles）。 */
+  samples?: PoemSample[];
 }
 
 // ── EN — Nightfall（原「源码即诗」递归谣曲，与 examples/alias-poem-story 同源）──────
@@ -171,57 +210,59 @@ const POEM_ZH: PoemConfig = {
   ],
 };
 
-// ── DE — Mondschau（原创连贯诗，公有领域）────────────────────────────────────
+// ── DE — Du bist mein, ich bin dein（中世纪情诗，约 12 世纪，公有领域）· 诗即裁决规则 ──
+// 整首诗按**原词序**即源码，映射成一条**裁决规则**：诗的四个前提（Du bist mein / ich bin dein /
+// im Herzen / Schlüssel verloren）当布尔输入，关键词别名把领字变结构关键词，引擎 let 绑定推导
+// （gehoert = mein und dein；verschlossen = im Herzen und Schlüssel verloren），再 wenn/sonst
+// 真判定输出裁决。翻任一前提裁决即变——这是引擎**真推导**的结论，不是回声。
+// 别名只在 canonicalize 表层 → 诗体版 ≡ 规范版 Core IR。
+// 注：德语无空格分词故用多词别名吸收领字；变音 ü/ö/ä/ß→ue/oe/ae/ss（德语通行 ASCII 写法），
+// 行内逗号（结构符）省去。裁决文本含真变音（在字符串字面量内，安全）。
+const LIEBE_DE = 'liebeslied-de';
 const POEM_DE: PoemConfig = {
-  title: 'Mondschau',
-  attribution: 'Ein rechnendes Mondgedicht · oben Vers, unten Rechnung',
-  lexicon: { ...DE_DE, id: 'mondschau-de', name: 'Mondschau (Deutsch)', aliases: {
-    [K.MODULE_DECL]: ['Nacht'], [K.FUNC_TO]: ['Vers'], [K.FUNC_GIVEN]: ['je'],
-    [K.LET]: ['fasse'], [K.BE]: ['wird'], [K.RETURN]: ['sing'],
-    [K.MATCH]: ['schau'], [K.WHEN]: ['zur'], [K.PLUS]: ['eint'], [K.APPLY]: ['ruf'],
+  title: 'Du bist mein, ich bin dein',
+  attribution: 'Mittelalterliches Liebeslied (um 1180, gemeinfrei) · das Gedicht ist eine Entscheidungsregel',
+  paradigm: 'decision',
+  lexicon: { ...DE_DE, id: LIEBE_DE, name: 'Liebeslied (Deutsch)', aliases: {
+    [K.MODULE_DECL]: ['du bist mein ich bin'], // „Du bist mein, ich bin dein." → Modul dein
+    [K.FUNC_TO]: ['dessen'],                    // „Dessen ... sein." → Regel
+    [K.FUNC_GIVEN]: ['sollst du'],              // → gegeben（前提参数表）
+    [K.FUNC_PRODUCE]: ['gewiss sein'],          // „... gewiss sein:" → produce（块起始）
+    [K.LET]: ['du bist', 'verloren ist das'],   // „Du bist eingeschlossen" / „verloren ist das ..." → sei
+    [K.BE]: ['in meinem'],                      // „in meinem Herzen" → be（绑定运算符）
+    [K.IF]: ['du musst auch fuer immer darin'], // „Du musst ... darin bleiben" → wenn <cond>
   } } as Lexicon,
-  source: `Nacht beginnt.
-
-Vers mondbild je stunde:
-  schau stunde:
-    zur 1, sing "Der Neumond birgt das schwarze Meer, ".
-    zur 2, sing "der Halbmond neigt sich still und schwer, ".
-    zur 3, sing "der Vollmond steigt, die Welle hehr, ".
-
-Vers sehnen je stunde:
-  fasse funken wird List.range(1, stunde eint 1).
-  fasse schein wird List.sum(funken).
-  schau schein:
-    zur 1, sing "ein einzig Licht begleitet mich.".
-    zur 3, sing "drei Sterne und der Mond zugleich.".
-    zur 6, sing "ein Sternenmeer führt heim mich.".
-
-Vers mondschau je stunde:
-  sing mondbild(stunde) eint ruf sehnen auf stunde.`,
-  canonical: `Modul beginnt.
-
-Regel mondbild gegeben stunde:
-  pruefe stunde:
-    bei 1, gib zurueck "Der Neumond birgt das schwarze Meer, ".
-    bei 2, gib zurueck "der Halbmond neigt sich still und schwer, ".
-    bei 3, gib zurueck "der Vollmond steigt, die Welle hehr, ".
-
-Regel sehnen gegeben stunde:
-  sei funken gleich List.range(1, stunde plus 1).
-  sei schein gleich List.sum(funken).
-  pruefe schein:
-    bei 1, gib zurueck "ein einzig Licht begleitet mich.".
-    bei 3, gib zurueck "drei Sterne und der Mond zugleich.".
-    bei 6, gib zurueck "ein Sternenmeer führt heim mich.".
-
-Regel mondschau gegeben stunde:
-  gib zurueck mondbild(stunde) plus wende an sehnen auf stunde.`,
-  entry: 'mondschau', param: 'stunde',
-  samples: [
-    { input: 1, woven: 'Der Neumond birgt das schwarze Meer, ein einzig Licht begleitet mich.', computed: 'sehnen(1): List.sum(List.range(1,2)) = 1 → „ein einzig Licht…"' },
-    { input: 2, woven: 'der Halbmond neigt sich still und schwer, drei Sterne und der Mond zugleich.', computed: 'sehnen(2): List.sum(List.range(1,3)) = 1+2 = 3 → „drei Sterne…"' },
-    { input: 3, woven: 'der Vollmond steigt, die Welle hehr, ein Sternenmeer führt heim mich.', computed: 'sehnen(3): List.sum(List.range(1,4)) = 1+2+3 = 6 → „ein Sternenmeer…"' },
-  ],
+  source: `Du bist mein ich bin dein.
+Dessen bindung sollst du mein als Boolesch, dein als Boolesch, herz als Boolesch, schluessel als Boolesch, gewiss sein:
+  Du bist gehoert in meinem mein und dein.
+  verloren ist das verschlossen in meinem herz und schluessel.
+  Du musst auch fuer immer darin gehoert und verschlossen:
+    gib zurueck "fuer immer".
+  sonst:
+    gib zurueck "nicht auf ewig".`,
+  canonical: `Modul dein.
+Regel bindung gegeben mein als Boolesch, dein als Boolesch, herz als Boolesch, schluessel als Boolesch:
+  sei gehoert gleich mein und dein.
+  sei verschlossen gleich herz und schluessel.
+  wenn gehoert und verschlossen:
+    gib zurueck "fuer immer".
+  sonst:
+    gib zurueck "nicht auf ewig".`,
+  entry: 'bindung',
+  decision: {
+    toggles: [
+      { name: 'mein', label: 'Du bist mein' },
+      { name: 'dein', label: 'ich bin dein' },
+      { name: 'herz', label: 'eingeschlossen in meinem Herzen' },
+      { name: 'schluessel', label: 'verloren ist das Schlüssellein' },
+    ],
+    derived: [
+      { name: 'gehoert', label: 'gehoert = mein und dein', from: ['mein', 'dein'] },
+      { name: 'verschlossen', label: 'verschlossen = im Herzen und Schlüssel verloren', from: ['herz', 'schluessel'] },
+    ],
+    verdictAll: 'für immer',
+    verdictElse: 'nicht auf ewig',
+  },
 };
 
 // ── HI — चंद्रदर्शन（原创连贯诗，公有领域）─────────────────────────────────────
