@@ -50,7 +50,7 @@
     "test:e2e:browser:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@aster-cloud/aster-lang-ts": "1.0.12",
+    "@aster-cloud/aster-lang-ts": "1.0.13",
     "@aster-cloud/tokens": "^0.2.0",
     "@aster-cloud/ui": "^0.3.0",
     "@aster-cloud/ui-messages": "1.0.6",

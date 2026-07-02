@@ -16,8 +16,9 @@ interface RunResult {
   computed: string;
   /**
    * alias-literal 范式专属：诗体源码经 `canonicalize()` 得到的**真实引擎输出**（非 config 手写
-   * poem.canonical）。这一步只展开**字面量宏**（思故乡 → 「静夜思」），可直接看到宏在表层生效；
-   * 关键词别名（床前/疑是/…）由下一步 token translation 解析，不在此产物里。computed 范式为空。
+   * poem.canonical）。这一步只展开**字面量宏**（末词 → 目标字符串，如 思故乡→「静夜思」、
+   * जागे→英文结句），可直接看到宏在表层生效；关键词别名由下一步 token translation 解析，
+   * 不在此产物里。computed 范式为空。
    */
   canonical?: string;
 }

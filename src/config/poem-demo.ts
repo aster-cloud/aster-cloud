@@ -1,13 +1,12 @@
 /**
  * 「源码即诗」demo 配置（公开，四语：en/zh/de/hi），三种范式：
  *
- * **computed**（en/hi）——一首**连贯**诗，每段**上半诗句、下半真计算**：`Match` 选景、
- *   `List.range`/`List.sum` 真求和、无括号 `apply` 织段（en 为递归谣曲）。诗读连贯，但每个数、
- *   每次分支、每次求和都是引擎真求值——不是预写诗句的打印，而是计算与诗交织。
+ * **computed**（en）——一首**连贯**递归谣曲，每段**上半诗句、下半真计算**：无括号 `apply`
+ *   递归织段。诗读连贯，但每次调用、每次拼接都是引擎真求值——不是预写诗句的打印。
  *
- * **alias-literal**（zh《静夜思》，李白，公有领域）——整首诗按**原词序**即源码：关键词别名把
- *   诗句领字变结构关键词（床前→Module / 疑是→Rule / 举头→produce / 低头→Return），**字面量宏**
- *   （IdentifierKind.LITERAL）把末词展开成字符串字面量（思故乡→"静夜思"），运行输出诗名。
+ * **alias-literal**（zh《静夜思》李白 / hi《गीतांजलि #35》泰戈尔，均公有领域）——整首诗按
+ *   **原词序**即源码：关键词别名把诗句领字变结构关键词，**字面量宏**（IdentifierKind.LITERAL）
+ *   把末词展开成字符串字面量（思故乡→"静夜思"；जागे→英文结句），运行输出名句。
  *
  * **decision**（de《Du bist mein, ich bin dein》，中世纪情诗，公有领域）——整首诗即一条**裁决
  *   规则**：诗的四个前提当布尔输入，关键词别名把领字变结构关键词，引擎 let 绑定推导中间值再
@@ -96,11 +95,10 @@ export interface DecisionSpec {
  * 一首「诗即代码」的完整 demo 配置。
  *
  * 三种范式：
- *  - `computed`（en/hi）：诗句上半是诗、下半是真计算（Match+List+apply），每个 input 算出
- *    不同的整首诗（计算驱动）。
- *  - `alias-literal`（zh《静夜思》）：整首诗按**原词序**即源码，关键词别名把诗句领字变结构
- *    关键词，**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串字面量（思故乡→"静夜思"）；
- *    运行输出诗名「静夜思」。
+ *  - `computed`（en）：诗句上半是诗、下半是真计算（递归 apply），每个 input 算出不同整首诗。
+ *  - `alias-literal`（zh《静夜思》/ hi《गीतांजलि #35》）：整首诗按**原词序**即源码，关键词别名把
+ *    诗句领字变结构关键词，**字面量宏**（IdentifierKind.LITERAL）把末词展开成字符串字面量
+ *    （思故乡→"静夜思"；जागे→英文结句）；运行输出名句。
  *  - `decision`（de《Du bist mein》）：中世纪情诗即一条**裁决规则**——诗的四个前提（mein/dein/
  *    im Herzen/Schlüssel verloren）当布尔输入，引擎 let 绑定推导（gehoert/verschlossen）再 if/else
  *    真判定，输出「für immer」或「nicht auf ewig」。翻任一前提裁决即变——真计算，非回声。
@@ -265,56 +263,48 @@ Regel bindung gegeben mein als Boolesch, dein als Boolesch, herz als Boolesch, s
   },
 };
 
-// ── HI — चंद्रदर्शन（原创连贯诗，公有领域）─────────────────────────────────────
+// ── HI — गीतांजलि #35（泰戈尔，1910，公有领域）· 源码即诗 + 字面量宏 ─────────────
+// 泰戈尔《吉檀迦利》#35「心中无惧」（Where the mind is without fear）的印地语呈现按原词序即
+// 源码：关键词别名把每句领字（चित्त जहाँ→Module / मस्तक जहाँ→Rule / ज्ञान जहाँ→Let /
+// उस स्वर्ग→Return）变结构关键词，**字面量宏**（IdentifierKind.LITERAL）把末词 जागे 展开成该诗
+// 英文结句 "Into that heaven of freedom, let my country awake"。运行入口 rule「उन्नत」输出结句。
+// 别名 + 字面量宏都只在 canonicalize 表层 → 诗体版 ≡ 规范版 Core IR。
+// 注：天城文关键词别名限 ≤3 词（引擎 ≥4 词天城文短语匹配另有缺陷，本 demo 规避）；जागे 含元音
+// 符号(matra)能作字面量宏触发词依赖 aster-lang-ts 1.0.13 的天城文 identifier 修复。
+const GITANJALI_HI = 'gitanjali-hi';
 const POEM_HI: PoemConfig = {
-  title: 'चंद्रदर्शन',
-  attribution: 'एक गणना करती चंद्र-कविता · ऊपर पद्य, नीचे गणना',
-  lexicon: { ...HI_IN, id: 'chandra-hi', name: 'चंद्रदर्शन (हिन्दी)', aliases: {
-    [K.MODULE_DECL]: ['रात'], [K.FUNC_TO]: ['छंद'], [K.FUNC_GIVEN]: ['पहर'],
-    [K.LET]: ['धरें'], [K.BE]: ['बने'], [K.RETURN]: ['गा'],
-    [K.MATCH]: ['देखें'], [K.WHEN]: ['पल'], [K.PLUS]: ['संग'], [K.APPLY]: ['पुकारें'],
+  title: 'गीतांजलि #35',
+  attribution: 'रवीन्द्रनाथ टैगोर (1910, सार्वजनिक डोमेन) · स्रोत ही कविता है, चलाने पर काव्य-पंक्ति देता है',
+  paradigm: 'alias-literal',
+  lexicon: { ...HI_IN, id: GITANJALI_HI, name: 'गीतांजलि (हिन्दी)', aliases: {
+    [K.MODULE_DECL]: ['चित्त जहाँ'], [K.FUNC_TO]: ['मस्तक जहाँ'],
+    [K.LET]: ['ज्ञान जहाँ'], [K.BE]: ['बहे'], [K.RETURN]: ['उस स्वर्ग'],
   } } as Lexicon,
-  source: `रात आरंभ।
-
-छंद चंद्रबिंब पहर समय:
-  देखें समय:
-    पल 1, गा "नवचंद्र छिपा, सागर श्याम, "।
-    पल 2, गा "अर्धचंद्र झुका, जल विश्राम, "।
-    पल 3, गा "पूर्णचंद्र उगा, लहर ललाम, "।
-
-छंद विरह पहर समय:
-  धरें कण बने List.range(1, समय संग 1)।
-  धरें आभा बने List.sum(कण)।
-  देखें आभा:
-    पल 1, गा "एक दीप संग मेरे आज।"।
-    पल 3, गा "तीन तारे चंद्र के साथ।"।
-    पल 6, गा "नक्षत्र-सिंधु लौटाए पास।"।
-
-छंद चंद्रदर्शन पहर समय:
-  गा चंद्रबिंब(समय) संग पुकारें विरह को समय।`,
-  canonical: `मॉड्यूल आरंभ।
-
-नियम चंद्रबिंब दिया गया समय:
-  मिलान समय:
-    जब 1, लौटाएं "नवचंद्र छिपा, सागर श्याम, "।
-    जब 2, लौटाएं "अर्धचंद्र झुका, जल विश्राम, "।
-    जब 3, लौटाएं "पूर्णचंद्र उगा, लहर ललाम, "।
-
-नियम विरह दिया गया समय:
-  मानें कण हो List.range(1, समय जोड़ 1)।
-  मानें आभा हो List.sum(कण)।
-  मिलान आभा:
-    जब 1, लौटाएं "एक दीप संग मेरे आज।"।
-    जब 3, लौटाएं "तीन तारे चंद्र के साथ।"।
-    जब 6, लौटाएं "नक्षत्र-सिंधु लौटाए पास।"।
-
-नियम चंद्रदर्शन दिया गया समय:
-  लौटाएं चंद्रबिंब(समय) जोड़ लागू करें विरह को समय।`,
-  entry: 'चंद्रदर्शन', param: 'समय',
+  // 字面量宏：जागे → 该诗英文结句。vocab.locale 须 = lexicon.id（compile 用 lexicon.id 查词汇）。
+  vocab: {
+    id: GITANJALI_HI, name: 'गीतांजलि', locale: GITANJALI_HI, version: '1.0.0',
+    structs: [], fields: [], functions: [], enumValues: [],
+    literals: [{
+      localized: 'जागे',
+      canonical: 'Into that heaven of freedom, let my country awake',
+      kind: IdentifierKind.LITERAL,
+    }],
+  },
+  source: `चित्त जहाँ निर्भय।
+मस्तक जहाँ उन्नत:
+  ज्ञान जहाँ मुक्त बहे सत्य।
+  उस स्वर्ग जागे।`,
+  canonical: `मॉड्यूल निर्भय।
+नियम उन्नत:
+  मानें मुक्त हो सत्य।
+  लौटाएं "Into that heaven of freedom, let my country awake"।`,
+  entry: 'उन्नत',
+  // alias-literal 范式页面只跑一次（runOnce），不用 samples；保留三个不同 input 仅作测试夹具：
+  // 证明字面量宏与入参无关——恒输出英文结句（compile 测试第 4 条 wovens.size===1）。
   samples: [
-    { input: 1, woven: 'नवचंद्र छिपा, सागर श्याम, एक दीप संग मेरे आज।', computed: 'विरह(1): List.sum(List.range(1,2)) = 1 → „एक दीप…"' },
-    { input: 2, woven: 'अर्धचंद्र झुका, जल विश्राम, तीन तारे चंद्र के साथ।', computed: 'विरह(2): List.sum(List.range(1,3)) = 1+2 = 3 → „तीन तारे…"' },
-    { input: 3, woven: 'पूर्णचंद्र उगा, लहर ललाम, नक्षत्र-सिंधु लौटाए पास।', computed: 'विरह(3): List.sum(List.range(1,4)) = 1+2+3 = 6 → „नक्षत्र-सिंधु…"' },
+    { input: 1, woven: 'Into that heaven of freedom, let my country awake', computed: '' },
+    { input: 2, woven: 'Into that heaven of freedom, let my country awake', computed: '' },
+    { input: 3, woven: 'Into that heaven of freedom, let my country awake', computed: '' },
   ],
 };
 
