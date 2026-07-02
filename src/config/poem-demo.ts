@@ -161,10 +161,13 @@ const POEM_ZH: PoemConfig = {
 规则 地上霜 产出 望明月：
   返回 「静夜思」。`,
   entry: '地上霜', param: '时',
+  // alias-literal 范式页面只跑一次（runOnce），不用 samples。这里保留三个**不同** input 仅作
+  // 测试夹具：证明字面量宏与入参无关——三个 input 输出恒为诗名「静夜思」（见 compile 测试第 4 条
+  // 不变式 wovens.size===1）。computed 字段本范式不在页面渲染。
   samples: [
-    { input: 1, woven: '静夜思', computed: '床前 明月光 → 模块「明月光」；疑是 地上霜 → 规则「地上霜」' },
-    { input: 2, woven: '静夜思', computed: '举头 望明月 → produce 望明月；低头 → Return' },
-    { input: 3, woven: '静夜思', computed: '字面量宏：思故乡 → "静夜思"（canonicalize 表层展开）' },
+    { input: 1, woven: '静夜思', computed: '' },
+    { input: 2, woven: '静夜思', computed: '' },
+    { input: 3, woven: '静夜思', computed: '' },
   ],
 };
 
