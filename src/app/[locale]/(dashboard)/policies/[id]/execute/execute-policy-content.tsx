@@ -182,15 +182,33 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   const ambiguousEntryDiagnostic = executionDiagnostics.find((diag) => diag.code === 'ENTRY_AMBIGUOUS');
 
 
-  // 获取策略参数模式（本地编译，无需 API 调用）
-  const fetchSchema = useCallback((content: string, detectedLocale: PolicyLocale) => {
+  // 获取策略参数模式（本地编译，无需 API 调用）。
+  // ★aliasSet：活跃版本冻结的关键词/运算符别名（kind→短语）。必须合并进 lexicon.aliases
+  // 后再编译——否则含别名的源码（如 "+ => followed by" 写成 "Hello " followed by name）在
+  // schema 提取阶段解析失败（Expected '.'），"生成示例" 不可用。与 useAsterCompiler / 执行端
+  // 同口径（都靠 lexicon.aliases 归一）。
+  const fetchSchema = useCallback((
+    content: string,
+    detectedLocale: PolicyLocale,
+    aliasSet?: Record<string, readonly string[]> | null,
+  ) => {
     if (!content) return;
 
     setSchemaLoading(true);
     setSchemaError(null);
     try {
-      // 使用本地编译提取 schema
-      const lexicon = LEXICON_MAP[detectedLocale];
+      // 使用本地编译提取 schema，把别名合并进 lexicon（有别名时）。
+      const baseLexicon = LEXICON_MAP[detectedLocale];
+      const lexicon: Lexicon =
+        aliasSet && Object.keys(aliasSet).length > 0
+          ? {
+              ...baseLexicon,
+              aliases: {
+                ...((baseLexicon as { aliases?: Record<string, readonly string[]> }).aliases ?? {}),
+                ...aliasSet,
+              },
+            }
+          : baseLexicon;
       const data = extractSchema(content, { lexicon });
 
       if (data.success && data.parameters && data.parameters.length > 0) {
@@ -242,8 +260,33 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
           locale.startsWith('zh') ? 'zh-CN' : locale.startsWith('de') ? 'de-DE' : 'en-US';
         const detectedLocale = detectPolicyLocale(data.content || '', pageLocaleFallback);
         setPolicyLocale(detectedLocale);
+        // 活跃版本冻结的 aliasSet（canonical JSON），合并进 lexicon 供 schema 提取。
+        // 由后端精确返回 activeAliasSet（GET 已按 version===Policy.version 查），不从
+        // 分页 versions 推断——rollback/set-default 可能让活跃版本不在最新 10 条内。
+        // 损坏/缺失/形态异常视为无别名（不阻塞）。
+        let aliasSet: Record<string, readonly string[]> | null = null;
+        if (typeof data.activeAliasSet === 'string' && data.activeAliasSet) {
+          try {
+            const parsed = JSON.parse(data.activeAliasSet);
+            // 防御性形态校验：必须是对象（非数组）且每个 value 是字符串数组（kind→短语[]）。
+            // 任一项不符即整体视为无别名（不阻塞；aliasSet 来自服务端冻结 canonical JSON，
+            // 此校验只兜异常/篡改）。
+            if (
+              parsed &&
+              typeof parsed === 'object' &&
+              !Array.isArray(parsed) &&
+              Object.values(parsed).every(
+                (v) => Array.isArray(v) && v.every((s) => typeof s === 'string'),
+              )
+            ) {
+              aliasSet = parsed as Record<string, readonly string[]>;
+            }
+          } catch {
+            aliasSet = null;
+          }
+        }
         if (data.content) {
-          fetchSchema(data.content, detectedLocale);
+          fetchSchema(data.content, detectedLocale, aliasSet);
         } else {
           // 策略内容为空（合法的边界情况）—— 显式提示而非静默
           setInput('{}');

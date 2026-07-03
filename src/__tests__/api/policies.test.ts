@@ -543,6 +543,21 @@ describe('Policies API - Drizzle Migration', () => {
       expect(body._count.executions).toBe(3);
     });
 
+    it('返回活跃版本冻结的 activeAliasSet（供执行页 schema 提取合并 lexicon）', async () => {
+      vi.mocked(db.query.policies.findFirst).mockResolvedValue(mockPolicy({ team: null }));
+      vi.mocked(db.query.policyVersions.findMany).mockResolvedValue([mockPolicyVersion()]);
+      // 活跃版本精确查（version===Policy.version）返回冻结别名。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+        { aliasSet: JSON.stringify({ PLUS: ['followed by'] }) } as never,
+      );
+
+      const response = await GET_ID(makeRequest('http://localhost/api/policies/p1'), mockParams);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.activeAliasSet).toBe(JSON.stringify({ PLUS: ['followed by'] }));
+    });
+
     it('should include freeze info for own policies', async () => {
       vi.mocked(db.query.policies.findFirst).mockResolvedValue(mockPolicy());
       mockIsPolicyFrozen.mockResolvedValue({

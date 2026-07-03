@@ -89,6 +89,15 @@ export async function GET(req: Request, { params }: RouteParams) {
       limit: 10,
     });
 
+    // 活跃版本（version === Policy.version，与 content 同源）冻结的 aliasSet（canonical JSON）。
+    // 精确查一次而非让客户端从上面的 latest-10 versions 里推断——rollback/set-default 可能把
+    // 活跃版本切到旧版本（不在前 10 内），客户端推断会漏。执行页据此合并 lexicon 提取 schema
+    // （否则含关键词/运算符别名的源码在「生成示例」阶段解析失败）。口径同执行路径（C1 SQL JOIN）。
+    const activeVersion = await db.query.policyVersions.findFirst({
+      where: and(eq(policyVersions.policyId, id), eq(policyVersions.version, policy.version)),
+      columns: { aliasSet: true },
+    });
+
     // 获取执行次数
     const [{ count: executionCount }] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -104,6 +113,8 @@ export async function GET(req: Request, { params }: RouteParams) {
     return NextResponse.json({
       ...policy,
       versions,
+      // 活跃版本冻结别名（canonical JSON 字符串或 null）。前端合并进 lexicon 供 schema 提取。
+      activeAliasSet: activeVersion?.aliasSet ?? null,
       _count: { executions: executionCount },
       isFrozen: freezeInfo?.isFrozen ?? false,
       freezeInfo: freezeInfo
