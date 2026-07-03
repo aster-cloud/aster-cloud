@@ -217,10 +217,19 @@ export function useAsterCompiler({
    */
   const validate = useCallback((): TypecheckDiagnostic[] => {
     const source = getSource();
-    if (!source) return [];
+    if (!source) {
+      // 空源码：清空实时编译结果 + 诊断（否则 module 摘要/Problems 会停留在上一次旧值）。
+      setCompileResult(null);
+      setDiagnostics([]);
+      setErrors([]);
+      return [];
+    }
 
     try {
       const result = compileAndTypecheck(source, { lexicon, domain, tenantId });
+      // 实时校验也保存 compileResult，使消费方（如上抛给父层的 module 摘要）能拿到
+      // 最新 Core IR，而不必单独调 compileSource()。二者本质是同一 compileAndTypecheck 调用。
+      setCompileResult(result);
 
       // Collect all diagnostics
       const allDiagnostics: TypecheckDiagnostic[] = [];
@@ -266,6 +275,7 @@ export function useAsterCompiler({
       };
       setDiagnostics([errorDiag]);
       setErrors([errorDiag.message]);
+      setCompileResult(null); // 解析崩溃 → 无有效 module
       return [errorDiag];
     }
   }, [getSource, lexicon, domain, tenantId]);

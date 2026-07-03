@@ -56,6 +56,35 @@ interface MonacoPolicyEditorProps {
   onToggleAIPanel?: () => void;
   /** AI 解释选中代码回调（Ctrl+Shift+E 触发） */
   onExplainSelection?: (selectedText: string) => void;
+  /**
+   * 编译状态变化回调。把编辑器内部 useAsterCompiler（完整 parse+typecheck，别名感知）的
+   * 结果上抛给父层，让 StatusBar/SidePanel 复用同一份诊断——避免父层再跑一遍 parse-only 编译
+   * （消除每次按键的双重解析、双份 Problems 面板、双份红波浪线，并根除两条管线的别名不同步）。
+   */
+  onCompileChange?: (result: EditorCompileState) => void;
+}
+
+/** 上抛给父层的编译状态（形状对齐 policy-form 的 StatusBar/SidePanel 消费口径）。 */
+export interface EditorCompileState {
+  state: 'idle' | 'pending' | 'ok' | 'error';
+  diagnostics: EditorCompileDiagnostic[];
+  module?: EditorCompileModuleSummary;
+}
+
+export interface EditorCompileDiagnostic {
+  severity: 'error' | 'warning' | 'info' | 'hint';
+  message: string;
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+  code?: string;
+}
+
+export interface EditorCompileModuleSummary {
+  name: string;
+  functions: string[];
+  types: string[];
 }
 
 // R23-Critical-2: AI complete 直连 aster-api 已停用。改走 server-side proxy
@@ -401,6 +430,7 @@ export function MonacoPolicyEditor({
   enableAICompletion = false,
   onToggleAIPanel,
   onExplainSelection,
+  onCompileChange,
 }: MonacoPolicyEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
@@ -503,7 +533,7 @@ export function MonacoPolicyEditor({
   );
 
   // Local compiler for real-time validation with accurate error positions
-  const { diagnostics } = useAsterCompiler({
+  const { diagnostics, compileResult } = useAsterCompiler({
     editor: isEditorReady ? editorRef.current : null,
     monaco: isEditorReady ? monacoRef.current : null,
     locale: compilerLocale,
@@ -516,6 +546,47 @@ export function MonacoPolicyEditor({
     debounceDelay,
     enableValidation: true,
   });
+
+  // 把编译结果上抛父层（StatusBar/SidePanel 复用，取代父层冗余 useCompile）。
+  // 映射 TypecheckDiagnostic → 父层 CompileDiagnostic。★Aster span 的 line/col 均为 **1-based**
+  // （与 Monaco 一致，见 useAsterCompiler.applyDiagnostics 直接透传不 +1）——故这里也不 +1，
+  // 只 clamp≥1，保证父层 SidePanel 的列号与编辑器内部 Problems/marker 完全对齐（无 off-by-one）。
+  useEffect(() => {
+    if (!onCompileChange) return;
+    const mapped: EditorCompileDiagnostic[] = diagnostics.map((d) => ({
+      severity: d.severity,
+      message: d.message,
+      startLine: Math.max(1, d.span?.start.line ?? 1),
+      startColumn: Math.max(1, d.span?.start.col ?? 1),
+      endLine: Math.max(1, d.span?.end.line ?? d.span?.start.line ?? 1),
+      endColumn: Math.max(1, d.span?.end.col ?? d.span?.start.col ?? 1),
+      code: typeof d.code === 'string' ? d.code : d.code != null ? String(d.code) : undefined,
+    }));
+    // module 摘要：仅当编译成功产出 Core IR 时可得（父层 Decision 面板据此渲染）。
+    // Core Module = { kind:'Module', name, decls:[{kind:'Func'|'Data'|'Enum'|'Import', name}] }。
+    let moduleSummary: EditorCompileModuleSummary | undefined;
+    const core = compileResult?.core as
+      | { name?: string | null; decls?: ReadonlyArray<{ kind?: string; name?: string }> }
+      | undefined;
+    if (compileResult?.success && core?.name) {
+      const decls = core.decls ?? [];
+      moduleSummary = {
+        name: core.name,
+        functions: decls.filter((d) => d.kind === 'Func').map((d) => d.name ?? '').filter(Boolean),
+        types: decls
+          .filter((d) => d.kind === 'Data' || d.kind === 'Enum')
+          .map((d) => d.name ?? '')
+          .filter(Boolean),
+      };
+    }
+    // state：空源码 idle，否则 ok。不用 'pending'——实时 validate() 是同步 debounce，
+    // compiling 标志仅 compileSource()（手动全量编译）用，realtime 路径不置位，硬套会造成
+    // 假 pending + 短暂 stale 诊断。'error' 态（parser crash）也归 ok：错误已作为 diagnostic
+    // 呈现，StatusBar 的 error 态专用于 transportError（网络编译，此本地路径无）。
+    const state: EditorCompileState['state'] =
+      value.trim().length === 0 ? 'idle' : 'ok';
+    onCompileChange({ state, diagnostics: mapped, module: moduleSummary });
+  }, [diagnostics, compileResult, value, onCompileChange]);
 
   const { errorCount, warningCount } = useMemo(() => {
     let errors = 0;
@@ -834,11 +905,11 @@ export function MonacoPolicyEditor({
       });
 
       setIsEditorReady(true);
-      // Expose the monaco namespace on globalThis so sibling client
-      // hooks (e.g. useMonacoMarkers in policy-form/) can call
-      // monaco.editor.setModelMarkers without each remounting their
-      // own loader. Safe — there's a single monaco instance per
-      // window in the @monaco-editor/react integration.
+      // Expose the monaco namespace on globalThis so sibling client code
+      // can reach the single window-scoped monaco instance without each
+      // remounting their own loader (@monaco-editor/react keeps one
+      // instance per window). Diagnostics markers themselves are painted
+      // by this editor's own useAsterCompiler.applyDiagnostics.
       (globalThis as { monaco?: typeof import('monaco-editor') }).monaco = monaco;
       onEditorReady?.(editor);
     },
