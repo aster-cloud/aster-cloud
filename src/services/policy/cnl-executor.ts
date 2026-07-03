@@ -515,3 +515,19 @@ function buildCNLErrorResult(policy: Policy, error: unknown): PolicyExecutionRes
 export function getPrimaryError(result: PolicyExecutionResult): string | undefined {
   return result.deniedReasons[0];
 }
+
+/** executions.decision 列的取值（与 executionDecisionEnum 对齐）。 */
+export type ExecutionDecision = 'approved' | 'denied' | 'indeterminate' | 'error';
+
+/**
+ * 从执行结果**服务端派生**审计决策（绝不信客户端输入）。四态互斥、按优先级判定：
+ *   - engineError → 'error'（执行报错，如编译/运行失败）
+ *   - decision==='indeterminate' → 'indeterminate'（执行成功但无 allow/deny 语义，如值输出）
+ *   - allowed → 'approved'
+ *   - 其余 → 'denied'（真实拒绝）
+ */
+export function deriveExecutionDecision(result: PolicyExecutionResult): ExecutionDecision {
+  if (result.metadata.engineError) return 'error';
+  if (result.metadata.decision === 'indeterminate') return 'indeterminate';
+  return result.allowed ? 'approved' : 'denied';
+}

@@ -52,6 +52,18 @@ vi.mock('@/lib/team-permissions', () => ({
 vi.mock('@/services/policy/cnl-executor', () => ({
   executePolicyUnified: vi.fn(),
   getPrimaryError: vi.fn(),
+  // 审计决策派生（execute route 写 executions.decision 用）。测试里从执行结果派生。
+  deriveExecutionDecision: vi.fn((r: {
+    allowed?: boolean;
+    metadata?: { engineError?: boolean; decision?: string };
+  }) =>
+    r?.metadata?.engineError
+      ? 'error'
+      : r?.metadata?.decision === 'indeterminate'
+        ? 'indeterminate'
+        : r?.allowed
+          ? 'approved'
+          : 'denied'),
 }));
 
 // Mock opennextjs cloudflare to avoid dynamic import issues
