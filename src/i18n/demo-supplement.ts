@@ -88,6 +88,11 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      execute: {
+        // 值/计算输出策略（如 greet 返回文本）：执行成功但无 allow/deny 语义。
+        computed: 'Computed',
+        noDecision: 'No decision (value output)',
+      },
       form: {
         aliases: {
           title: 'Keyword aliases',
@@ -289,6 +294,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      execute: {
+        computed: '已计算',
+        noDecision: '无决策（值输出）',
+      },
       form: {
         aliases: {
           title: '关键词别名',
@@ -492,6 +501,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      execute: {
+        computed: 'Berechnet',
+        noDecision: 'Keine Entscheidung (Wertausgabe)',
+      },
       form: {
         aliases: {
           title: 'Keyword-Aliase',
@@ -696,6 +709,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      execute: {
+        computed: 'परिकलित',
+        noDecision: 'कोई निर्णय नहीं (मान आउटपुट)',
+      },
       form: {
         aliases: {
           title: 'कीवर्ड उपनाम',

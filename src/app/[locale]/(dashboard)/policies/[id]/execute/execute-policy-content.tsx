@@ -53,6 +53,12 @@ interface ExecutionResult {
     matchedRules: string[];
     actions: string[];
     approved: boolean;
+    /** 计算/值输出（如 greet → "Hello, John Smith!"）；决策策略可无。 */
+    result?: unknown;
+    metadata?: {
+      /** 'indeterminate'：执行成功但无 allow/deny 语义（如返回纯文本值），既非批准亦非真实拒绝。 */
+      decision?: 'indeterminate';
+    };
   };
   decisionTrace?: DecisionTrace;
   error?: string;
@@ -720,12 +726,17 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
 
             {result && (
               <div className="space-y-4">
-                {/* Status */}
+                {/* Status —— indeterminate（值/计算输出策略，执行成功但无 allow/deny 语义）
+                    显示中性「已计算」而非红色「失败」，避免把正常运行的值输出策略误标为失败。 */}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-fg-muted">{t('status')}</span>
                   {result.success ? (
                     <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
                       {t('success')}
+                    </span>
+                  ) : result.output?.metadata?.decision === 'indeterminate' ? (
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800">
+                      {t('computed')}
                     </span>
                   ) : (
                     <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800">
@@ -747,11 +758,16 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                   </div>
                 )}
 
-                {/* Decision */}
+                {/* Decision —— indeterminate 显示中性「无决策（值输出）」而非红色「拒绝」：
+                    值/计算输出策略没有 allow/deny 语义，标红拒绝会误导。 */}
                 {result.output && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-fg-muted">{t('decision')}</span>
-                    {result.output.approved ? (
+                    {result.output.metadata?.decision === 'indeterminate' ? (
+                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-sm font-medium text-blue-800">
+                        {t('noDecision')}
+                      </span>
+                    ) : result.output.approved ? (
                       <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
                         {t('approved')}
                       </span>
@@ -762,6 +778,21 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
                     )}
                   </div>
                 )}
+
+                {/* 计算值输出（indeterminate=值/计算策略）：突出展示 result，
+                    让 greet → "Hello, John Smith!" 这类结果可见，而非只在 raw output 里。 */}
+                {result.output?.metadata?.decision === 'indeterminate' &&
+                  result.output?.result !== undefined &&
+                  result.output?.result !== null && (
+                    <div>
+                      <span className="text-sm font-medium text-fg">{t('result')}</span>
+                      <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-bg-subtle px-3 py-2 text-sm text-fg">
+                        {typeof result.output.result === 'string'
+                          ? result.output.result
+                          : JSON.stringify(result.output.result, null, 2)}
+                      </pre>
+                    </div>
+                  )}
 
                 {/* Matched Rules */}
                 {result.output?.matchedRules && result.output.matchedRules.length > 0 && (
