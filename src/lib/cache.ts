@@ -107,6 +107,11 @@ export interface CachedPolicyMeta {
   teamId: string | null;
   isPublic: boolean;
   content: string;
+  /**
+   * 活跃版本冻结的用户关键词别名（ADR 0022，canonical JSON 字符串，NULL=无别名）。
+   * 执行时透传给 evaluate-source 使别名源码能编译（C1）。与 content 同源（同一活跃版本）。
+   */
+  aliasSet?: string | null;
 }
 
 export async function cachePolicyMeta(

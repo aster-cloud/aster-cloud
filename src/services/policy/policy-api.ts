@@ -345,8 +345,15 @@ export class PolicyApiClient {
        * 携带其快照领域词汇，使执行端规范化阶段能翻译用户自定义术语。
        */
       vocabulary?: Record<string, unknown>;
+      /**
+       * 用户自定义关键词别名（ADR 0022，kind → 多词短语数组）。已发布版本冻结的 aliasSet
+       * 快照，执行端归一阶段据此把别名归回规范关键词。冻结版本 = 已在创建时经授权+校验+进
+       * envelope，故执行端按 allowStructural=true 信任应用（见 aster-api evaluate-source）。
+       */
+      aliasSet?: Record<string, string[]> | null;
     }
   ): Promise<PolicyEvaluateResponse> {
+    const hasAliases = options?.aliasSet != null && Object.keys(options.aliasSet).length > 0;
     return this.request<PolicyEvaluateResponse>('POST', API_ENDPOINTS.evaluateSource, {
       source,
       context,
@@ -354,6 +361,8 @@ export class PolicyApiClient {
       ...(options?.functionName ? { functionName: options.functionName } : {}),
       // 仅在有词汇时携带，避免空字段无谓增大请求体。
       ...(options?.vocabulary ? { vocabulary: options.vocabulary } : {}),
+      // 仅在有别名时携带；已发布版本冻结的别名快照。
+      ...(hasAliases ? { aliasSet: options!.aliasSet } : {}),
     });
   }
 
