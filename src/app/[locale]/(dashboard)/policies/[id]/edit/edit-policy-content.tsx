@@ -25,6 +25,8 @@ interface Policy {
   content: string;
   isPublic: boolean;
   groupId: string | null;
+  /** 活跃版本冻结的关键词别名（ADR 0022），编辑器预填用。 */
+  aliasSet?: Record<string, string[]> | null;
 }
 
 interface Translations {
@@ -128,7 +130,7 @@ export function EditPolicyContent({
         content: policy.content,
         isPublic: policy.isPublic,
         groupId: policy.groupId,
-        aliasSet: null,
+        aliasSet: policy.aliasSet ?? null,
       }}
       title={t.form.editTitle}
       subtitle={t.form.editSubtitle}

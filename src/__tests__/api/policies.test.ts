@@ -125,6 +125,8 @@ vi.mock('@/lib/prisma', () => ({
         policyVersions: { findFirst: vi.fn().mockResolvedValue(null) },
       },
       insert: mockInsert,
+      // C2：PUT 编辑路径现在事务内也 update（回填 Policy.version）+ createVersion。
+      update: mockUpdate,
     })),
     execute: vi.fn().mockResolvedValue([{ test: 1 }]),
   },

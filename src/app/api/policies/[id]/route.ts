@@ -3,6 +3,8 @@ import { getSession } from '@/lib/auth';
 import { db, policies, policyVersions, executions } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
+import { createVersion } from '@/services/policy/version-manager';
+import { getStructuralAliasGrant, buildAliasReservedForUser } from '@/lib/structural-alias-grants';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { softDeletePolicy } from '@/lib/policy-lifecycle';
 import { invalidatePolicyCache } from '@/lib/cache';
@@ -127,7 +129,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const { name, content, description, isPublic, groupId } = await req.json();
+    const { name, content, description, isPublic, groupId, aliasSet, locale } = await req.json();
 
     // Check ownership (exclude deleted policies)
     const existingPolicy = await db.query.policies.findFirst({
@@ -169,24 +171,50 @@ export async function PUT(req: Request, { params }: RouteParams) {
     if (groupId !== undefined) updateData.groupId = groupId || null;
 
     if (newVersion) {
-      updateData.version = existingPolicy.version + 1;
       updateData.piiFields = piiResult?.detectedTypes;
     }
 
-    const [policy] = await db
-      .update(policies)
-      .set(updateData)
-      .where(eq(policies.id, id))
-      .returning();
+    // C2：新版本必须走 version-manager（校验别名 + canonical + envelope 冻结 + 审计），
+    // 不能裸插 policyVersions（此前编辑路径丢弃 aliasSet、无 envelope/审计/事务）。
+    // aliasSet 从 body 取；allowStructural 从服务端 per-user entitlement 权威取（不信前端）；
+    // 事务包 update + createVersion 防不一致。null/空 aliasSet 行为不变。
+    // ★Policy.version 由 createVersion 计算的版本号回填，保证 Policy.version ==
+    //   PolicyVersion.version（执行路径 C1 靠此 JOIN 取活跃版本的冻结 aliasSet）。
+    const aliasSetInput =
+      aliasSet &&
+      typeof aliasSet === 'object' &&
+      !Array.isArray(aliasSet) &&
+      Object.keys(aliasSet as Record<string, unknown>).length > 0
+        ? (aliasSet as Record<string, string[]>)
+        : null;
+    const compileLocale = typeof locale === 'string' && locale.trim() ? locale : 'en-US';
 
-    if (newVersion) {
-      await db.insert(policyVersions).values({
-        id: globalThis.crypto.randomUUID(),
-        policyId: id,
-        version: policy.version,
-        content,
-      });
-    }
+    const policy = await db.transaction(async (tx) => {
+      if (newVersion) {
+        const allowStructural = await getStructuralAliasGrant(session.user.id);
+        const aliasReserved = aliasSetInput
+          ? await buildAliasReservedForUser(session.user.id, compileLocale)
+          : undefined;
+        const createdVersion = await createVersion({
+          policyId: id,
+          source: content,
+          createdBy: session.user.id,
+          releaseNote: 'Edited version',
+          locale: compileLocale,
+          aliasSet: aliasSetInput,
+          aliasReserved,
+          allowStructuralAliases: allowStructural,
+          dbClient: tx,
+        });
+        updateData.version = createdVersion.version; // 回填，保持 Policy.version ↔ PolicyVersion.version 一致
+      }
+      const [updated] = await tx
+        .update(policies)
+        .set(updateData)
+        .where(eq(policies.id, id))
+        .returning();
+      return updated;
+    });
 
     // 失效策略缓存（异步，不阻塞响应）
     invalidatePolicyCache(id).catch(err =>
