@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Executions 加 decision 列 — 区分准入四态，值输出不再误计入失败 (#164) *(audit)*
 - 关键词别名 UI（ADR 0022 Phase A）— policy 层面板 + 结构词 per-user 授权 + 三护栏 (#162) *(alias)*
 - Hi「源码即诗」换成泰戈尔《गीतांजलि #35》· 源码即诗（alias-literal） (#161) *(poem-demo)*
 - De「源码即诗」换成《Du bist mein》· 诗即裁决规则（decision 范式） (#160) *(poem-demo)*
@@ -259,6 +260,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
