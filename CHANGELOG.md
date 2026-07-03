@@ -354,6 +354,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -528,6 +529,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- 收敛双编译管线为单一真相源 — 修别名误报 + 去每键双解析 (#167) *(editor)*
 - 别名策略「生成示例」不再解析失败 — schema 提取合并 aliasSet (#166) *(execute)*
 - 0028 用 jsonb_typeof + statement-breakpoint（修部署失败） (#165) *(migration)*
 - 值/计算输出策略执行页不再误标「失败/拒绝」 (#163) *(execute)*
