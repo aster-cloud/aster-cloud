@@ -38,6 +38,13 @@ export async function GET(req: Request, { params }: RouteParams) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = Math.min(parseInt(searchParams.get('pageSize') || '20', 10), 100);
     const success = searchParams.get('success');
+    // 按准入决策过滤（可选）：approved/denied/indeterminate/error。非法值忽略。
+    const decisionParam = searchParams.get('decision');
+    const decision =
+      decisionParam === 'approved' || decisionParam === 'denied' ||
+      decisionParam === 'indeterminate' || decisionParam === 'error'
+        ? decisionParam
+        : undefined;
     const source = searchParams.get('source') as ExecutionSource | null;
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -61,6 +68,7 @@ export async function GET(req: Request, { params }: RouteParams) {
       userId: session.user.id,
       policyId: id,
       success: success ? success === 'true' : undefined,
+      decision,
       source: source || undefined,
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,

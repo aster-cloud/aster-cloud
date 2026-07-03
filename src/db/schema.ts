@@ -80,6 +80,17 @@ export const executionSourceEnum = pgEnum('ExecutionSource', [
   'playground',
 ]);
 
+// 执行决策结果（ADR 0022 后续）。与 boolean success（=allowed，准入通过）正交、更细：
+// approved(放行)/denied(真实拒绝)/indeterminate(执行成功但无 allow/deny 语义，如 greet
+// 返回文本值)/error(执行报错)。审计/统计据此正确分类，避免把值输出策略误计入失败。
+// **由服务端从执行结果派生，绝不信客户端输入**。
+export const executionDecisionEnum = pgEnum('ExecutionDecision', [
+  'approved',
+  'denied',
+  'indeterminate',
+  'error',
+]);
+
 export const usageTypeEnum = pgEnum('UsageType', [
   'execution',
   'pii_scan',
@@ -622,7 +633,13 @@ export const executions = pgTable(
     output: json('output'),
     error: text('error'),
     durationMs: integer('durationMs').notNull(),
+    // success：沿用旧语义 = 准入通过（allowed）。真实拒绝/无决策/错误均 success=false。
+    // 保持不变以兼容历史行、响应体、日志 UI、统计口径。
     success: boolean('success').notNull(),
+    // decision：准入四态语义（approved/denied/indeterminate/error，见 executionDecisionEnum），
+    // 与 success 正交、更细。indeterminate（值/计算输出，如 greet 返回文本）靠它与真实 deny 区分，
+    // 避免审计/统计把值输出误当失败。可空以兼容历史行（迁移前无此列）。服务端从执行结果派生。
+    decision: executionDecisionEnum('decision'),
     policyVersion: integer('policyVersion'),
     source: executionSourceEnum('source').default('dashboard').notNull(),
     apiKeyId: text('apiKeyId'),
@@ -634,6 +651,7 @@ export const executions = pgTable(
     index('Execution_policyId_idx').on(table.policyId),
     index('Execution_createdAt_idx').on(table.createdAt),
     index('Execution_success_idx').on(table.success),
+    index('Execution_decision_idx').on(table.decision),
   ]
 );
 

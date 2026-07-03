@@ -93,6 +93,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         computed: 'Computed',
         noDecision: 'No decision (value output)',
       },
+      logs: {
+        // 执行日志里 indeterminate（值输出）行的中性状态标签。
+        computed: 'Computed',
+      },
       form: {
         aliases: {
           title: 'Keyword aliases',
@@ -297,6 +301,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       execute: {
         computed: '已计算',
         noDecision: '无决策（值输出）',
+      },
+      logs: {
+        computed: '已计算',
       },
       form: {
         aliases: {
@@ -505,6 +512,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         computed: 'Berechnet',
         noDecision: 'Keine Entscheidung (Wertausgabe)',
       },
+      logs: {
+        computed: 'Berechnet',
+      },
       form: {
         aliases: {
           title: 'Keyword-Aliase',
@@ -712,6 +722,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       execute: {
         computed: 'परिकलित',
         noDecision: 'कोई निर्णय नहीं (मान आउटपुट)',
+      },
+      logs: {
+        computed: 'परिकलित',
       },
       form: {
         aliases: {

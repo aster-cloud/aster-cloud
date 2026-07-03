@@ -53,6 +53,7 @@ export default async function PolicyLogsPage({
   const initialLogs = logsResult.items.map((item) => ({
     id: item.id,
     success: item.success,
+    decision: item.decision,
     input: item.input,
     output: item.output,
     error: item.error,
@@ -83,6 +84,7 @@ export default async function PolicyLogsPage({
       all: t('logs.all'),
       success: t('logs.success'),
       failed: t('logs.failed'),
+      computed: t('logs.computed'),
       source: t('logs.source'),
       web: t('logs.web'),
       api: t('logs.api'),

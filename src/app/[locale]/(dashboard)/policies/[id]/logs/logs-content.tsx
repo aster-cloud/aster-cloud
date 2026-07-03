@@ -10,6 +10,8 @@ type ExecutionSource = 'WEB' | 'API' | 'CLI' | 'dashboard' | 'api' | 'playground
 interface ExecutionLog {
   id: string;
   success: boolean;
+  /** 准入决策语义（approved/denied/indeterminate/error）。历史行可能为 null。 */
+  decision: 'approved' | 'denied' | 'indeterminate' | 'error' | null;
   input: unknown;
   output: unknown;
   error: string | null;
@@ -23,6 +25,8 @@ interface Stats {
   totalExecutions: number;
   successCount: number;
   failureCount: number;
+  /** 无决策（值/计算输出）执行数——不计入失败。可选（后端新增字段）。 */
+  indeterminateCount?: number;
   avgDurationMs: number;
   successRate: number;
   bySource: Array<{
@@ -45,6 +49,8 @@ interface Translations {
     all: string;
     success: string;
     failed: string;
+    /** 值/计算输出（indeterminate）中性状态标签。 */
+    computed: string;
     source: string;
     web: string;
     api: string;
@@ -496,15 +502,22 @@ export function LogsContent({
                 <div className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {/* Status Icon */}
+                      {/* Status Icon —— indeterminate（值/计算输出，如 greet 返回文本）显示中性蓝色
+                          「已计算」而非红色「失败」；success(=allowed) 绿、真实拒绝/错误红。 */}
                       <div
                         className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                          log.success
-                            ? 'bg-emerald-100 text-emerald-600'
-                            : 'bg-red-100 text-red-600'
+                          log.decision === 'indeterminate'
+                            ? 'bg-blue-100 text-blue-600'
+                            : log.success
+                              ? 'bg-emerald-100 text-emerald-600'
+                              : 'bg-red-100 text-red-600'
                         }`}
                       >
-                        {log.success ? (
+                        {log.decision === 'indeterminate' ? (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m-6 4h6m-6 4h4M5 5a2 2 0 012-2h10a2 2 0 012 2v14l-4-2-3 2-3-2-3 2V5z" />
+                          </svg>
+                        ) : log.success ? (
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
@@ -518,12 +531,18 @@ export function LogsContent({
                       {/* Status Badge */}
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-                          log.success
-                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
-                            : 'bg-red-50 text-red-700 ring-red-600/20'
+                          log.decision === 'indeterminate'
+                            ? 'bg-blue-50 text-blue-700 ring-blue-600/20'
+                            : log.success
+                              ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                              : 'bg-red-50 text-red-700 ring-red-600/20'
                         }`}
                       >
-                        {log.success ? t.logs.success : t.logs.failed}
+                        {log.decision === 'indeterminate'
+                          ? t.logs.computed
+                          : log.success
+                            ? t.logs.success
+                            : t.logs.failed}
                       </span>
 
                       {/* Source Badge */}

@@ -5,7 +5,7 @@ import { eq, sql, desc, asc } from 'drizzle-orm';
 import { PLANS, PlanType } from '@/lib/plans';
 import { upgradeResponse } from '@/lib/plan-quota';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
-import { executePolicyUnified, getPrimaryError } from '@/services/policy/cnl-executor';
+import { executePolicyUnified, getPrimaryError, deriveExecutionDecision } from '@/services/policy/cnl-executor';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -244,7 +244,9 @@ export async function POST(req: Request, { params }: RouteParams) {
         output: executionResult as object,
         error: primaryError,
         durationMs,
+        // success 保持 = allowed（旧语义不变）；准入四态由新增 decision 列表达（服务端派生）。
         success: executionResult.allowed ?? false,
+        decision: deriveExecutionDecision(executionResult),
         source: 'api',
         apiKeyId: apiKeyId || null,
       }),

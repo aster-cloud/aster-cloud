@@ -6,6 +6,7 @@ import { eq, and, gte, lte, desc, lt, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 
 type ExecutionSource = InferSelectModel<typeof executions>['source'];
+type ExecutionDecision = InferSelectModel<typeof executions>['decision'];
 
 export interface ExecutionLogItem {
   id: string;
@@ -16,6 +17,8 @@ export interface ExecutionLogItem {
   output: unknown;
   error: string | null;
   success: boolean;
+  /** 准入决策语义（approved/denied/indeterminate/error）。历史行为 null。 */
+  decision: ExecutionDecision;
   durationMs: number;
   source: ExecutionSource;
   metadata: unknown;
@@ -26,6 +29,8 @@ export interface ExecutionLogQuery {
   userId: string;
   policyId?: string;
   success?: boolean;
+  /** 按准入决策过滤（可选）。 */
+  decision?: ExecutionDecision;
   source?: ExecutionSource;
   startDate?: Date;
   endDate?: Date;
@@ -45,6 +50,8 @@ export interface ExecutionStats {
   totalExecutions: number;
   successCount: number;
   failureCount: number;
+  /** 无决策（值/计算输出，如 greet 返回文本）的执行数——不计入失败。 */
+  indeterminateCount: number;
   successRate: number;
   avgDurationMs: number;
   bySource: {
@@ -62,12 +69,13 @@ export interface ExecutionStats {
  * 查询执行日志（分页）
  */
 export async function queryExecutionLogs(query: ExecutionLogQuery): Promise<ExecutionLogResult> {
-  const { userId, policyId, success, source, startDate, endDate, page = 1, pageSize = 20 } = query;
+  const { userId, policyId, success, decision, source, startDate, endDate, page = 1, pageSize = 20 } = query;
 
   // Build where conditions
   const conditions = [eq(executions.userId, userId)];
   if (policyId) conditions.push(eq(executions.policyId, policyId));
   if (success !== undefined) conditions.push(eq(executions.success, success));
+  if (decision) conditions.push(eq(executions.decision, decision));
   if (source) conditions.push(eq(executions.source, source));
   if (startDate) conditions.push(gte(executions.createdAt, startDate));
   if (endDate) conditions.push(lte(executions.createdAt, endDate));
@@ -109,6 +117,7 @@ export async function queryExecutionLogs(query: ExecutionLogQuery): Promise<Exec
       output: item.output,
       error: item.error,
       success: item.success,
+      decision: item.decision,
       durationMs: item.durationMs,
       source: item.source,
       metadata: item.metadata,
@@ -153,6 +162,7 @@ export async function getExecutionLogDetail(
     output: item.output,
     error: item.error,
     success: item.success,
+    decision: item.decision,
     durationMs: item.durationMs,
     source: item.source,
     metadata: item.metadata,
@@ -180,19 +190,25 @@ export async function getExecutionStats(
 
   const whereClause = and(...conditions);
   const whereWithSuccess = and(...conditions, eq(executions.success, true));
+  // indeterminate（值/计算输出）：执行成功但无 allow/deny 语义，**不应计入失败**。
+  const whereIndeterminate = and(...conditions, eq(executions.decision, 'indeterminate'));
 
   // 基础统计
-  const [totalResult, successResult, executionsList] = await Promise.all([
+  const [totalResult, successResult, indeterminateResult, executionsList] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` })
       .from(executions)
       .where(whereClause),
     db.select({ count: sql<number>`count(*)::int` })
       .from(executions)
       .where(whereWithSuccess),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(executions)
+      .where(whereIndeterminate),
     db.query.executions.findMany({
       where: whereClause,
       columns: {
         success: true,
+        decision: true,
         durationMs: true,
         source: true,
         createdAt: true,
@@ -209,11 +225,16 @@ export async function getExecutionStats(
 
   const totalExecutions = totalResult[0]?.count || 0;
   const successCount = successResult[0]?.count || 0;
+  const indeterminateCount = indeterminateResult[0]?.count || 0;
   // Filter out executions with deleted policies
   const executionData = executionsList.filter(e => !e.policy.deletedAt);
 
-  const failureCount = totalExecutions - successCount;
-  const successRate = totalExecutions > 0 ? (successCount / totalExecutions) * 100 : 0;
+  // 失败 = 总数 - 通过(approved) - 无决策(indeterminate 值输出)。修复：此前 total-approved
+  // 把值输出策略误计入失败。真实拒绝/错误才算失败。successRate 分母排除 indeterminate
+  // （值输出不参与"准入通过率"，否则会稀释真实决策的通过率）。
+  const failureCount = Math.max(0, totalExecutions - successCount - indeterminateCount);
+  const decisionTotal = totalExecutions - indeterminateCount;
+  const successRate = decisionTotal > 0 ? (successCount / decisionTotal) * 100 : 0;
   const avgDurationMs =
     executionData.length > 0
       ? executionData.reduce((sum, e) => sum + e.durationMs, 0) / executionData.length
@@ -246,7 +267,8 @@ export async function getExecutionStats(
       const trend = trendMap.get(dateStr)!;
       if (exec.success) {
         trend.successCount++;
-      } else {
+      } else if (exec.decision !== 'indeterminate') {
+        // 无决策（值输出）不计入失败趋势；真实拒绝/错误才算失败。
         trend.failureCount++;
       }
     }
@@ -263,6 +285,7 @@ export async function getExecutionStats(
     totalExecutions,
     successCount,
     failureCount,
+    indeterminateCount,
     successRate: Math.round(successRate * 100) / 100,
     avgDurationMs: Math.round(avgDurationMs),
     bySource,
@@ -303,6 +326,7 @@ export async function getRecentExecutions(
     output: item.output,
     error: item.error,
     success: item.success,
+    decision: item.decision,
     durationMs: item.durationMs,
     source: item.source,
     metadata: item.metadata,
