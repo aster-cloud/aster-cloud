@@ -349,6 +349,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -523,6 +524,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- 值/计算输出策略执行页不再误标「失败/拒绝」 (#163) *(execute)*
 - Red-team hardening — bind body/tenant/role/nonce into internal HMAC (#157) *(api-signing)*
 - Bare-string CNL result no longer fabricates a denial (decision hard-safe) (#137) *(policy)*
 - Allowlist Cloudflare Turnstile in CSP script-src/frame-src (#100) (#136) *(security)*
