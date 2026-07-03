@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, policies, executions, policyGroups, users, policyVersions } from '@/lib/prisma';
+import { db, policies, executions, policyGroups, users } from '@/lib/prisma';
 import { getPlanLimit, isUnlimited, PlanType, PLANS } from '@/lib/plans';
 import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
 import { detectPII } from '@/services/pii/detector';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
-import { cloudToolchainId, computeSourceEnvelope } from '@/lib/policy-alias';
+import { createVersion } from '@/services/policy/version-manager';
+import {
+  buildAliasReservedForUser,
+  getStructuralAliasGrant,
+} from '@/lib/structural-alias-grants';
+import { errorEnvelope } from '@/lib/api/error-envelope';
 import { eq, isNull, desc, sql, and, inArray } from 'drizzle-orm';
 
 // GET /api/policies - List user's policies
@@ -84,7 +89,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, content, description, isPublic, groupId, teamId } =
+    const { name, content, description, isPublic, groupId, teamId, aliasSet, locale } =
       await req.json();
 
     if (!name || !content) {
@@ -237,70 +242,78 @@ export async function POST(req: Request) {
       throw new Error(`Database connection failed: ${connErr instanceof Error ? connErr.message : String(connErr)}`);
     }
 
-    let policy;
-    try {
-      const result = await db
+    const aliasSetInput =
+      aliasSet &&
+      typeof aliasSet === 'object' &&
+      !Array.isArray(aliasSet) &&
+      Object.keys(aliasSet as Record<string, unknown>).length > 0
+        ? (aliasSet as Record<string, string[]>)
+        : null;
+    const compileLocale = typeof locale === 'string' && locale.trim()
+      ? locale
+      : 'en-US';
+    const allowStructural = await getStructuralAliasGrant(session.user.id);
+    const aliasReserved = aliasSetInput
+      ? await buildAliasReservedForUser(session.user.id, compileLocale)
+      : undefined;
+
+    const policy = await db.transaction(async (tx) => {
+      const result = await tx
         .insert(policies)
         .values(insertValues)
         .returning();
-      policy = result[0];
-      console.log('Policy insert succeeded:', policy?.id);
-    } catch (insertErr) {
-      console.error('Policy insert failed:', JSON.stringify(insertErr, Object.getOwnPropertyNames(insertErr as object)));
-      throw insertErr;
-    }
-
-    // Create initial version.
-    // ADR 0022 方案 D：本端点尚不接受用户自定义别名（gated on ts 引擎发版后才开放），故
-    // aliasSet 恒为 null；但仍冻结 source envelope（覆盖 content+locale+工具链）使该版本进入
-    // 可审计/防篡改体系，与 version-manager 一致。带别名的创建走 version-manager（fail-closed）。
-    try {
-      const toolchainId = cloudToolchainId();
-      const sourceEnvelopeSha256 = computeSourceEnvelope(content, null, 'en-US', toolchainId);
-      await db.insert(policyVersions).values({
-        id: globalThis.crypto.randomUUID(),
-        policyId: policy.id,
-        version: 1,
-        content,
-        comment: 'Initial version',
-        aliasSet: null,
-        sourceEnvelopeSha256,
-        sourceToolchainId: toolchainId,
-        createdAt: new Date(),
+      const createdPolicy = result[0];
+      console.log('Policy insert succeeded:', createdPolicy.id);
+      await createVersion({
+        policyId: createdPolicy.id,
+        source: content,
+        createdBy: session.user.id,
+        releaseNote: 'Initial version',
+        locale: compileLocale,
+        aliasSet: aliasSetInput,
+        aliasReserved,
+        allowStructuralAliases: allowStructural,
+        dbClient: tx,
       });
       console.log('PolicyVersion insert succeeded');
-    } catch (versionErr) {
-      console.error('PolicyVersion insert failed:', versionErr);
-      throw versionErr;
-    }
+      return createdPolicy;
+    });
 
     return NextResponse.json(policy, { status: 201 });
   } catch (error: unknown) {
-    console.error('Error creating policy:', error);
-    // Return detailed error info for debugging
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    // Try to extract postgres-specific error details (postgres.js uses different error structure)
+    // aliasSet 校验失败是用户可修正的输入错误（4xx）——回显校验信息本就是给用户看的，
+    // 不含内部实现细节，保留 400 分支。
+    if (
+      error instanceof Error &&
+      (error.message.includes('用户自定义别名校验失败') ||
+        error.message.includes('aliasSet 非空'))
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid aliasSet', message: error.message },
+        { status: 400 },
+      );
+    }
+    // H2 信息泄露修复：此前 500 把 error.stack + postgres 的 detail/hint/constraint/
+    // table/column + 全部 error keys 直接回给客户端（schema/约束/内部路径外泄）。
+    // 改为：完整细节只进服务端日志并以 requestId 关联，响应仅含稳定 code + requestId
+    // （用户报障时给 requestId 即可定位）。用统一 errorEnvelope，与全站 4xx/5xx 契约一致。
+    const requestId = crypto.randomUUID();
     const err = error as Record<string, unknown>;
-    return NextResponse.json({
-      error: 'Internal server error',
-      debug: {
-        message: errorMessage,
-        stack: errorStack,
-        name: error instanceof Error ? error.name : typeof error,
-        // postgres.js error fields
-        code: err?.code,
-        severity: err?.severity,
-        detail: err?.detail,
-        hint: err?.hint,
-        position: err?.position,
-        constraint: err?.constraint,
-        table: err?.table,
-        column: err?.column,
-        dataType: err?.dataType,
-        // Full error keys for debugging
-        errorKeys: Object.keys(err || {}),
-      }
-    }, { status: 500 });
+    console.error(`[policies:create] requestId=${requestId}`, {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined,
+      pgCode: err?.code,
+      constraint: err?.constraint,
+      table: err?.table,
+      column: err?.column,
+      detail: err?.detail,
+    });
+    return errorEnvelope({
+      status: 500,
+      code: 'internal_error',
+      message: 'Failed to create policy. Provide this request id when reporting the issue.',
+      requestId,
+    });
   }
 }

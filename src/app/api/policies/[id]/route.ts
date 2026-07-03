@@ -3,6 +3,9 @@ import { getSession } from '@/lib/auth';
 import { db, policies, policyVersions, executions } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
+import { createVersion } from '@/services/policy/version-manager';
+import { getStructuralAliasGrant, buildAliasReservedForUser } from '@/lib/structural-alias-grants';
+import { canonicalAliasJson } from '@/lib/policy-alias';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { softDeletePolicy } from '@/lib/policy-lifecycle';
 import { invalidatePolicyCache } from '@/lib/cache';
@@ -127,7 +130,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const { name, content, description, isPublic, groupId } = await req.json();
+    const { name, content, description, isPublic, groupId, aliasSet, locale } = await req.json();
 
     // Check ownership (exclude deleted policies)
     const existingPolicy = await db.query.policies.findFirst({
@@ -155,10 +158,61 @@ export async function PUT(req: Request, { params }: RouteParams) {
       );
     }
 
-    // Update policy and create new version if content changed
-    const newVersion = content !== undefined && content !== existingPolicy.content;
+    // C2：新版本必须走 version-manager（校验别名 + canonical + envelope 冻结 + 审计），
+    // 不能裸插 policyVersions（此前编辑路径丢弃 aliasSet、无 envelope/审计/事务）。
+    // aliasSet 从 body 取；allowStructural 从服务端 per-user entitlement 权威取（不信前端）；
+    // 事务包 update + createVersion 防不一致。null/空 aliasSet 行为不变。
+    // ★Policy.version 由 createVersion 计算的版本号回填，保证 Policy.version ==
+    //   PolicyVersion.version（执行路径 C1 靠此 JOIN 取活跃版本的冻结 aliasSet）。
+    // 提交的别名字段。★区分三态（High 修复：省略字段不得清空已有别名）：
+    //   - 字段缺省(undefined) → 保留活跃版本的现有别名（不改）
+    //   - null / {} / 数组 → 显式清空
+    //   - 非空对象 → 采用之
+    const requestHasAliasField = aliasSet !== undefined;
+    const submittedAliasSet =
+      aliasSet &&
+      typeof aliasSet === 'object' &&
+      !Array.isArray(aliasSet) &&
+      Object.keys(aliasSet as Record<string, unknown>).length > 0
+        ? (aliasSet as Record<string, string[]>)
+        : null;
+    const compileLocale = typeof locale === 'string' && locale.trim() ? locale : 'en-US';
 
-    const piiResult = newVersion ? detectPII(content) : null;
+    // 取活跃版本冻结的别名（canonical JSON）：字段缺省时作保留值 + content-only 变更时
+    // 沿用它进新版本 + 判断 aliasChanged 的对照基线。仅在有版本编译输入变动时才需要，
+    // 但 content 变或字段存在都可能触发，故统一先取一次。
+    const activeVersion = await db.query.policyVersions.findFirst({
+      where: and(
+        eq(policyVersions.policyId, id),
+        eq(policyVersions.version, existingPolicy.version),
+      ),
+      columns: { aliasSet: true },
+    });
+    const existingCanonical = activeVersion?.aliasSet ?? null;
+    let existingAliasSet: Record<string, string[]> | null = null;
+    if (existingCanonical) {
+      try {
+        existingAliasSet = JSON.parse(existingCanonical) as Record<string, string[]>;
+      } catch {
+        existingAliasSet = null;
+      }
+    }
+
+    // effective 别名：字段存在用提交值（含显式清空），否则保留现有。
+    const aliasSetInput = requestHasAliasField ? submittedAliasSet : existingAliasSet;
+
+    // 是否需要建新版本：content 变 **或** aliasSet 变（二者都是版本编译输入并进 envelope，
+    // 任一变则旧版本快照失真）。aliasSet 变化用 canonical JSON 比较（对齐 envelope 冻结口径，
+    // 键序/别名序等表面差异不误触发）。审计缺口修复：此前只看 content，别名单独变会被静默丢弃。
+    const contentChanged = content !== undefined && content !== existingPolicy.content;
+    // 只有字段存在时别名才可能变；缺省=保留现有，恒不算变。
+    const aliasChanged =
+      requestHasAliasField && existingCanonical !== canonicalAliasJson(submittedAliasSet);
+    const newVersion = contentChanged || aliasChanged;
+    // 新版本的源码：content 提交则用之，否则沿用现有 content（alias-only 变更不改源码）。
+    const versionSource = content !== undefined ? content : existingPolicy.content;
+
+    const piiResult = newVersion ? detectPII(versionSource) : null;
 
     // Build update data
     const updateData: Record<string, unknown> = {};
@@ -169,24 +223,42 @@ export async function PUT(req: Request, { params }: RouteParams) {
     if (groupId !== undefined) updateData.groupId = groupId || null;
 
     if (newVersion) {
-      updateData.version = existingPolicy.version + 1;
       updateData.piiFields = piiResult?.detectedTypes;
     }
 
-    const [policy] = await db
-      .update(policies)
-      .set(updateData)
-      .where(eq(policies.id, id))
-      .returning();
-
-    if (newVersion) {
-      await db.insert(policyVersions).values({
-        id: globalThis.crypto.randomUUID(),
-        policyId: id,
-        version: policy.version,
-        content,
-      });
-    }
+    const policy = await db.transaction(async (tx) => {
+      if (newVersion) {
+        // allowStructural 来源：
+        //   - 别名有变（aliasChanged）→ 按当前 per-user 授权权威判定（新引入的别名须现授权）。
+        //   - 别名沿用活跃版本（!aliasChanged，如 content-only 编辑）→ 视为已授权：这些别名在
+        //     原版本创建时已授权+校验+冻结，授权撤销不得阻断对已有策略的后续（非别名）编辑，
+        //     与执行端「冻结即信任」同口径。避免撤销授权后合法用户改不了源码。
+        const allowStructural = aliasChanged
+          ? await getStructuralAliasGrant(session.user.id)
+          : true;
+        const aliasReserved = aliasSetInput
+          ? await buildAliasReservedForUser(session.user.id, compileLocale)
+          : undefined;
+        const createdVersion = await createVersion({
+          policyId: id,
+          source: versionSource,
+          createdBy: session.user.id,
+          releaseNote: 'Edited version',
+          locale: compileLocale,
+          aliasSet: aliasSetInput,
+          aliasReserved,
+          allowStructuralAliases: allowStructural,
+          dbClient: tx,
+        });
+        updateData.version = createdVersion.version; // 回填，保持 Policy.version ↔ PolicyVersion.version 一致
+      }
+      const [updated] = await tx
+        .update(policies)
+        .set(updateData)
+        .where(eq(policies.id, id))
+        .returning();
+      return updated;
+    });
 
     // 失效策略缓存（异步，不阻塞响应）
     invalidatePolicyCache(id).catch(err =>

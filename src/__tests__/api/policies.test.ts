@@ -13,6 +13,9 @@ const {
   mockWhereDelete: _mockWhereDelete,
   mockDelete,
   mockSelectExec,
+  mockCreateVersion,
+  mockGetStructuralAliasGrant,
+  mockBuildAliasReservedForUser,
 } = vi.hoisted(() => {
   const mockReturningInsert = vi.fn();
   const mockValuesInsert = vi.fn().mockReturnValue({ returning: mockReturningInsert });
@@ -27,6 +30,18 @@ const {
   const mockDelete = vi.fn().mockReturnValue({ where: mockWhereDelete });
 
   const mockSelectExec = vi.fn();
+  const mockCreateVersion = vi.fn().mockResolvedValue({
+    id: 'v1',
+    version: 1,
+    sourceHash: 'hash',
+    sourceEnvelopeSha256: 'envelope',
+  });
+  const mockGetStructuralAliasGrant = vi.fn().mockResolvedValue(false);
+  const mockBuildAliasReservedForUser = vi.fn().mockResolvedValue({
+    canonicalKeywordsLower: new Set<string>(),
+    baseAliasesLower: new Set<string>(),
+    vocabularyTermsLower: new Set<string>(),
+  });
 
   return {
     mockReturningInsert,
@@ -39,6 +54,9 @@ const {
     mockWhereDelete,
     mockDelete,
     mockSelectExec,
+    mockCreateVersion,
+    mockGetStructuralAliasGrant,
+    mockBuildAliasReservedForUser,
   };
 });
 
@@ -63,6 +81,15 @@ vi.mock('@/services/pii/detector', () => ({
   detectPII: vi.fn().mockReturnValue({ detectedTypes: [] }),
 }));
 
+vi.mock('@/services/policy/version-manager', () => ({
+  createVersion: mockCreateVersion,
+}));
+
+vi.mock('@/lib/structural-alias-grants', () => ({
+  getStructuralAliasGrant: mockGetStructuralAliasGrant,
+  buildAliasReservedForUser: mockBuildAliasReservedForUser,
+}));
+
 vi.mock('@/lib/usage', () => ({
   checkUsageLimit: vi.fn().mockResolvedValue({ allowed: true }),
   recordUsage: vi.fn().mockResolvedValue(undefined),
@@ -77,6 +104,7 @@ vi.mock('@/lib/prisma', () => ({
       },
       policyVersions: {
         findMany: vi.fn(),
+        findFirst: vi.fn(),
       },
       policyGroups: {
         findFirst: vi.fn(),
@@ -84,11 +112,22 @@ vi.mock('@/lib/prisma', () => ({
       users: {
         findFirst: vi.fn(),
       },
+      structuralAliasGrants: {
+        findFirst: vi.fn(),
+      },
     },
     insert: mockInsert,
     update: mockUpdate,
     delete: mockDelete,
     select: mockSelectExec,
+    transaction: vi.fn(async (fn) => fn({
+      query: {
+        policyVersions: { findFirst: vi.fn().mockResolvedValue(null) },
+      },
+      insert: mockInsert,
+      // C2：PUT 编辑路径现在事务内也 update（回填 Policy.version）+ createVersion。
+      update: mockUpdate,
+    })),
     execute: vi.fn().mockResolvedValue([{ test: 1 }]),
   },
   policies: { id: {}, userId: {}, deletedAt: {}, isPublic: {}, groupId: {} },
@@ -96,6 +135,7 @@ vi.mock('@/lib/prisma', () => ({
   policyGroups: { id: {}, userId: {} },
   executions: { policyId: {} },
   users: { id: {}, plan: {}, trialEndsAt: {} },
+  structuralAliasGrants: { userId: {}, revokedAt: {} },
 }));
 
 import { GET, POST } from '@/app/api/policies/route';
@@ -209,6 +249,19 @@ describe('Policies API - Drizzle Migration', () => {
       activePoliciesLimit: 25,
       totalPolicies: 1,
       frozenCount: 0,
+    });
+    vi.mocked(db.query.structuralAliasGrants.findFirst).mockResolvedValue(undefined);
+    mockGetStructuralAliasGrant.mockResolvedValue(false);
+    mockBuildAliasReservedForUser.mockResolvedValue({
+      canonicalKeywordsLower: new Set<string>(),
+      baseAliasesLower: new Set<string>(),
+      vocabularyTermsLower: new Set<string>(),
+    });
+    mockCreateVersion.mockResolvedValue({
+      id: 'v1',
+      version: 1,
+      sourceHash: 'hash',
+      sourceEnvelopeSha256: 'envelope',
     });
     // Default select: returns empty execution counts
     setupGroupBySelect([]);
@@ -374,6 +427,75 @@ describe('Policies API - Drizzle Migration', () => {
 
       expect(response.status).toBe(201);
     });
+
+    it('should pass aliasSet into createVersion with server-built reserved sets', async () => {
+      const aliasSet = { TIMES: ['multiplied by'] };
+      const response = await POST(makeRequest('http://localhost/api/policies', 'POST', {
+        ...validBody,
+        aliasSet,
+        locale: 'en-US',
+      }));
+
+      expect(response.status).toBe(201);
+      expect(mockBuildAliasReservedForUser).toHaveBeenCalledWith('user-1', 'en-US');
+      expect(mockCreateVersion).toHaveBeenCalledWith(expect.objectContaining({
+        aliasSet,
+        aliasReserved: expect.any(Object),
+        allowStructuralAliases: false,
+      }));
+    });
+
+    it('should use the server structural grant for createVersion', async () => {
+      mockGetStructuralAliasGrant.mockResolvedValue(true);
+      const aliasSet = { RETURN: ['the answer is'] };
+      const response = await POST(makeRequest('http://localhost/api/policies', 'POST', {
+        ...validBody,
+        aliasSet,
+        allowStructural: false,
+      }));
+
+      expect(response.status).toBe(201);
+      expect(mockCreateVersion).toHaveBeenCalledWith(expect.objectContaining({
+        aliasSet,
+        allowStructuralAliases: true,
+      }));
+    });
+
+    it('H2：500 不泄露 stack / DB schema 细节，仅回 requestId', async () => {
+      // 构造一个带 postgres 泄露字段的错误——修复前这些会原样回给客户端。
+      const leaky = Object.assign(new Error('duplicate key value violates unique constraint'), {
+        stack: 'Error: at /app/src/services/policy/version-manager.ts:123:45\n  secret path',
+        code: '23505',
+        detail: 'Key (userId, name)=(user-1, X) already exists.',
+        constraint: 'PolicyVersion_pkey',
+        table: 'PolicyVersion',
+        column: 'sourceEnvelopeSha256',
+        hint: 'internal hint leak',
+      });
+      mockCreateVersion.mockRejectedValueOnce(leaky);
+
+      const response = await POST(
+        makeRequest('http://localhost/api/policies', 'POST', validBody),
+      );
+      const body = await response.json();
+      const raw = JSON.stringify(body);
+
+      expect(response.status).toBe(500);
+      // 统一 envelope 契约：{ error: { code, message, requestId } } + x-request-id 头
+      expect(body.error.code).toBe('internal_error');
+      expect(typeof body.error.requestId).toBe('string');
+      expect(body.error.requestId.length).toBeGreaterThan(0);
+      expect(response.headers.get('x-request-id')).toBe(body.error.requestId);
+      // ★不泄露：stack / 约束 / 表 / 列 / detail / hint / pg code 一律不得出现在响应体
+      expect(body.debug).toBeUndefined();
+      expect(raw).not.toContain('version-manager.ts');
+      expect(raw).not.toContain('PolicyVersion_pkey');
+      expect(raw).not.toContain('PolicyVersion');
+      expect(raw).not.toContain('sourceEnvelopeSha256');
+      expect(raw).not.toContain('23505');
+      expect(raw).not.toContain('already exists');
+      expect(raw).not.toContain('internal hint leak');
+    });
   });
 
   describe('GET /api/policies/[id]', () => {
@@ -509,6 +631,94 @@ describe('Policies API - Drizzle Migration', () => {
       );
 
       expect(response.status).toBe(200);
+    });
+
+    it('审计 High：仅改 aliasSet（content 不变）也创建新版本走 createVersion', async () => {
+      // 修复前 newVersion 只看 content 变化 → 别名单独变会被静默丢弃（无 envelope/审计）。
+      // 现应：活跃版本无别名(null) vs 提交非空别名 → aliasChanged=true → createVersion。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue({ aliasSet: null } as never);
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          content: 'Module X.', // 与 existingPolicy.content 相同（内容不变）
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      // 关键：content 未变但 aliasSet 变 → 仍调 createVersion，source 沿用现有 content。
+      expect(mockCreateVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'Module X.',
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+      );
+    });
+
+    it('审计 High：改 content 但省略 aliasSet 字段 → 保留活跃版本已有别名（不清空）', async () => {
+      // 修复前：aliasSet 字段缺省 → aliasSetInput=null → 新版本 aliasSet 被写 null，
+      // 静默清空已有别名。现应：字段缺省=保留，新版本沿用活跃版本冻结的别名。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+        { aliasSet: JSON.stringify({ TIMES: ['multiplied by'] }) } as never,
+      );
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          content: 'Module Changed.', // content 变，但不带 aliasSet 字段
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      // 关键：createVersion 收到保留的现有别名，而非 null。
+      expect(mockCreateVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'Module Changed.',
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+      );
+    });
+
+    it('审计 High：显式传 aliasSet: null → 清空别名（与省略字段区分）', async () => {
+      // 显式 null/{}=清空（三态语义：undefined 保留 / null 清空 / 非空对象采用）。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+        { aliasSet: JSON.stringify({ TIMES: ['multiplied by'] }) } as never,
+      );
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          content: 'Module X.', // content 不变
+          aliasSet: null, // 显式清空
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      // 别名从非空变 null → aliasChanged=true → 建版本，aliasSet 传 null（清空）。
+      expect(mockCreateVersion).toHaveBeenCalledWith(
+        expect.objectContaining({ aliasSet: null }),
+      );
+    });
+
+    it('审计 High：content 与 aliasSet 都不变时不创建新版本', async () => {
+      // 活跃版本已冻结相同别名（canonical JSON）→ 提交相同别名 → aliasChanged=false，
+      // content 也不变 → 不建版本（避免每次保存刷版本）。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+        { aliasSet: JSON.stringify({ TIMES: ['multiplied by'] }) } as never,
+      );
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          name: 'Renamed only',
+          content: 'Module X.',
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockCreateVersion).not.toHaveBeenCalled();
     });
 
     it('should return 500 on database error', async () => {

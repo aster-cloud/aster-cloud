@@ -132,6 +132,12 @@ export interface ExecutePolicyOptions {
   tenantId?: string;
   /** 指定 CNL Rule/function 名称 */
   functionName?: string;
+  /**
+   * 已发布版本冻结的用户关键词别名（ADR 0022，kind → 多词短语数组）。执行端归一阶段据此把
+   * 别名归回规范关键词，使别名写的源码能编译。由调用方（execute route）从活跃 PolicyVersion
+   * 的 aliasSet 快照加载传入。冻结版本已在创建时经授权+校验+进 envelope，执行端信任应用。
+   */
+  aliasSet?: Record<string, string[]> | null;
 }
 
 /**
@@ -144,12 +150,12 @@ export interface ExecutePolicyOptions {
 export async function executePolicyUnified(
   options: ExecutePolicyOptions
 ): Promise<PolicyExecutionResult> {
-  const { policy, input, userId, tenantId, functionName } = options;
+  const { policy, input, userId, tenantId, functionName, aliasSet } = options;
   const policyContent = policy.content || '';
   const useAsterEngine = isAsterCNL(policyContent);
 
   if (useAsterEngine) {
-    return executeWithAsterEngine(policy, policyContent, input, userId, tenantId, functionName);
+    return executeWithAsterEngine(policy, policyContent, input, userId, tenantId, functionName, aliasSet);
   } else {
     return executeWithSimpleEngine(policy, policyContent, input, userId);
   }
@@ -167,14 +173,16 @@ async function executeWithAsterEngine(
   input: Record<string, unknown>,
   userId: string,
   tenantId?: string,
-  functionName?: string
+  functionName?: string,
+  aliasSet?: Record<string, string[]> | null
 ): Promise<PolicyExecutionResult> {
   const locale = detectCNLLocale(policyContent) as CNLLocale;
   const effectiveTenantId = tenantId || policy.teamId || policy.userId;
   const apiClient = createPolicyApiClient(effectiveTenantId, userId);
 
   try {
-    const response = await apiClient.evaluateSource(policyContent, input, { locale, functionName });
+    // aliasSet：已发布版本冻结的别名快照，透传给执行端使别名源码能编译（C1）。
+    const response = await apiClient.evaluateSource(policyContent, input, { locale, functionName, aliasSet });
     return buildCNLResult(policy, response);
   } catch (error) {
     return buildCNLErrorResult(policy, error);

@@ -302,6 +302,30 @@ export const users = pgTable(
   ]
 );
 
+export const structuralAliasGrants = pgTable(
+  'StructuralAliasGrant',
+  {
+    id: text('id').primaryKey().notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    grantedBy: text('grantedBy')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    grantedAt: timestamp('grantedAt', { mode: 'date' }).defaultNow().notNull(),
+    revokedAt: timestamp('revokedAt', { mode: 'date' }),
+  },
+  (table) => [
+    index('StructuralAliasGrant_userId_idx').on(table.userId),
+    // W3：同一用户最多一条「活跃」授权。partial UNIQUE 从 DB 层杜绝 admin POST
+    // 的 check-then-insert TOCTOU 竞态产生重复活跃行（重复 → revoke 只撤一条留悬挂授权）。
+    // 撤销后 revokedAt 非 NULL 即退出唯一约束，可再次授予。
+    uniqueIndex('StructuralAliasGrant_active_unique')
+      .on(table.userId)
+      .where(sql`${table.revokedAt} IS NULL`),
+  ],
+);
+
 // ============================================
 // API Keys
 // ============================================
@@ -1325,6 +1349,25 @@ export const usersRelations = relations(users, ({ many }) => ({
   teamMembers: many(teamMembers),
   ownedTeams: many(teams),
   userDomainTerms: many(userDomainTerms),
+  structuralAliasGrants: many(structuralAliasGrants, {
+    relationName: 'StructuralAliasGrantUser',
+  }),
+  grantedStructuralAliasGrants: many(structuralAliasGrants, {
+    relationName: 'StructuralAliasGrantAdmin',
+  }),
+}));
+
+export const structuralAliasGrantRelations = relations(structuralAliasGrants, ({ one }) => ({
+  user: one(users, {
+    fields: [structuralAliasGrants.userId],
+    references: [users.id],
+    relationName: 'StructuralAliasGrantUser',
+  }),
+  grantor: one(users, {
+    fields: [structuralAliasGrants.grantedBy],
+    references: [users.id],
+    relationName: 'StructuralAliasGrantAdmin',
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({

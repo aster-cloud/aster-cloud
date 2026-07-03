@@ -81,7 +81,10 @@ import { useMonacoMarkers } from './use-monaco-markers';
 import { useIsMobile } from './use-is-mobile';
 import { EditorPalette } from './editor-palette';
 import { CNLSyntaxConverterDialog } from '@/components/policy/cnl-syntax-converter-dialog';
+import { PolicyAliasPanel } from '@/components/policy/policy-alias-panel';
 import { type PolicyExample, getExampleSource } from '@/data/policy-examples';
+import { extractReservedAliasSets, getLexicon } from '@/lib/aster-lexicon';
+import { validateUserAliases } from '@/lib/policy-alias-shared';
 
 const MonacoPolicyEditor = dynamic(
   () =>
@@ -141,6 +144,8 @@ export interface PolicyFormProps {
   detailHrefFor: (id: string) => string;
   /** Breadcrumb trail for the top bar. */
   breadcrumbs: Array<{ label: string; href?: string }>;
+  /** Whether this user may configure structural keyword aliases. */
+  allowStructuralAliases?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -158,6 +163,7 @@ export function PolicyForm({
   cancelHref,
   detailHrefFor,
   breadcrumbs,
+  allowStructuralAliases = false,
 }: PolicyFormProps) {
   const router = useRouter();
   const t = useTranslations('policies.form');
@@ -177,15 +183,26 @@ export function PolicyForm({
   const [content, setContent] = useState(initial.content);
   const [isPublic, setIsPublic] = useState(initial.isPublic);
   const [groupId, setGroupId] = useState<string | null>(initial.groupId);
+  const [aliasSet, setAliasSet] = useState<Record<string, string[]>>(
+    initial.aliasSet ?? {},
+  );
   const fields: PolicyDraftFields = useMemo(
-    () => ({ name, description, content, isPublic, groupId }),
-    [name, description, content, isPublic, groupId],
+    () => ({
+      name,
+      description,
+      content,
+      isPublic,
+      groupId,
+      aliasSet: Object.keys(aliasSet).length > 0 ? aliasSet : null,
+    }),
+    [name, description, content, isPublic, groupId, aliasSet],
   );
 
   // ---------------------------------------------------------------
   // UI state
   // ---------------------------------------------------------------
   const [metaExpanded, setMetaExpanded] = useState(mode === 'create');
+  const [aliasesExpanded, setAliasesExpanded] = useState(false);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [requestedTab, setRequestedTab] = useState<SidePanelTab | undefined>();
   const [isSaving, setIsSaving] = useState(false);
@@ -208,6 +225,10 @@ export function PolicyForm({
   // Compile-on-type
   // ---------------------------------------------------------------
   const compile = useCompile({ source: content, locale: cnlLocale });
+  const reservedSets = useMemo(
+    () => extractReservedAliasSets(getLexicon(cnlLocale)),
+    [cnlLocale],
+  );
 
   // Bind diagnostics onto Monaco as inline markers.
   useMonacoMarkers(editorForHooks, compile.diagnostics);
@@ -299,6 +320,7 @@ export function PolicyForm({
           setContent(pendingDraft.content);
           setIsPublic(pendingDraft.isPublic);
           setGroupId(pendingDraft.groupId);
+          setAliasSet(pendingDraft.aliasSet ?? {});
           acceptPendingDraft();
         },
       },
@@ -329,8 +351,15 @@ export function PolicyForm({
       return false;
     }
     setNameError(null);
+    const aliasValidation = validateUserAliases(aliasSet, reservedSets, {
+      allowStructural: allowStructuralAliases,
+    });
+    if (!aliasValidation.valid) {
+      setAliasesExpanded(true);
+      return false;
+    }
     return true;
-  }, [name, uiLocale]);
+  }, [name, uiLocale, aliasSet, reservedSets, allowStructuralAliases]);
 
   /** Submit. Optional callback to fire on success (e.g. navigate). */
   const handleSubmit = useCallback(
@@ -517,6 +546,16 @@ export function PolicyForm({
           nameError={nameError}
         />
 
+        <PolicyAliasPanel
+          aliasSet={aliasSet}
+          locale={cnlLocale}
+          reservedSets={reservedSets}
+          allowStructural={allowStructuralAliases}
+          onChange={setAliasSet}
+          expanded={aliasesExpanded}
+          onExpandedChange={setAliasesExpanded}
+        />
+
         {/* ----- Editor + Side panel ----- */}
         <div
           className="flex gap-3"
@@ -545,6 +584,7 @@ export function PolicyForm({
                 locale={cnlLocale}
                 height="100%"
                 placeholder={t('contentPlaceholder')}
+                aliasSet={fields.aliasSet ?? undefined}
                 onEditorReady={(ed) => {
                   editorInstanceRef.current = ed;
                   // Trigger one re-render so marker / palette hooks

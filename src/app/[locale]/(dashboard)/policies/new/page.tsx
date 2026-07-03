@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { NewPolicyContent } from './new-policy-content';
+import { getStructuralAliasGrant } from '@/lib/structural-alias-grants';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -19,5 +20,12 @@ export default async function NewPolicyPage({ params, searchParams }: PageProps)
     redirect(`/${locale}/login?callbackUrl=${encodeURIComponent(callback)}`);
   }
 
-  return <NewPolicyContent locale={locale} />;
+  const allowStructuralAliases = await getStructuralAliasGrant(session.user.id);
+
+  return (
+    <NewPolicyContent
+      locale={locale}
+      allowStructuralAliases={allowStructuralAliases}
+    />
+  );
 }

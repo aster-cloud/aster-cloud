@@ -431,6 +431,54 @@ describe('V1 Policies API - Drizzle Migration', () => {
       expect(body.meta.durationMs).toBeTypeOf('number');
     });
 
+    it('C1(v1)：把活跃版本冻结的 aliasSet 透传给执行端', async () => {
+      // 修复前 v1 执行入口只取 p.content 不 JOIN PolicyVersion.aliasSet → 别名策略在 v1
+      // API key 路径按无别名解析，编译失败/结果错。现应 JOIN 冻结值并解析后透传。
+      setupExecuteRow({
+        policy_alias_set: JSON.stringify({ TIMES: ['multiplied by'] }),
+      });
+      mockExecutePolicyUnified.mockResolvedValue(mockExecutionResult({ allowed: true }));
+
+      const response = await POST(
+        makeRequest('http://localhost/api/v1/policies/p1/execute', 'POST', validBody),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockExecutePolicyUnified).toHaveBeenCalledWith(
+        expect.objectContaining({ aliasSet: { TIMES: ['multiplied by'] } }),
+      );
+    });
+
+    it('C1(v1)：无别名（policy_alias_set=null）时 aliasSet 传 null', async () => {
+      setupExecuteRow({ policy_alias_set: null });
+      mockExecutePolicyUnified.mockResolvedValue(mockExecutionResult({ allowed: true }));
+
+      await POST(
+        makeRequest('http://localhost/api/v1/policies/p1/execute', 'POST', validBody),
+        mockParams,
+      );
+
+      expect(mockExecutePolicyUnified).toHaveBeenCalledWith(
+        expect.objectContaining({ aliasSet: null }),
+      );
+    });
+
+    it('C1(v1)：损坏的 aliasSet JSON 视为无别名，不阻塞执行', async () => {
+      setupExecuteRow({ policy_alias_set: '{not valid json' });
+      mockExecutePolicyUnified.mockResolvedValue(mockExecutionResult({ allowed: true }));
+
+      const response = await POST(
+        makeRequest('http://localhost/api/v1/policies/p1/execute', 'POST', validBody),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockExecutePolicyUnified).toHaveBeenCalledWith(
+        expect.objectContaining({ aliasSet: null }),
+      );
+    });
+
     it('should return allowed=false with error for failed execution', async () => {
       mockExecutePolicyUnified.mockResolvedValue(mockExecutionResult({ allowed: false, approved: false, deniedReasons: ['Rule failed'] }));
       mockGetPrimaryError.mockReturnValue('Rule failed');

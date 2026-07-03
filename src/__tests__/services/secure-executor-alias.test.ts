@@ -1,0 +1,139 @@
+// secure-execute（签名执行路径）关键词别名透传 + 哈希口径测试（ADR 0022 C1）。
+//
+// 修复前：executeSecurely 只把 locale/vocabulary 传执行端，丢弃 targetVersion.aliasSet
+// → 别名策略经签名执行按无别名解析、编译失败；且哈希校验只用 sourceHash（不覆盖 aliasSet）。
+// 本测试钉住：①冻结别名解析后透传 evaluateSource ②envelope 哈希接受 ③sourceHash 兼容接受
+// ④损坏别名 JSON 安全降级。
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('@/lib/prisma', () => ({
+  db: { query: { policyVersions: { findFirst: vi.fn() } } },
+  policies: {},
+  policyVersions: { policyId: {}, version: {}, status: {}, isDefault: {} },
+}));
+vi.mock('@/services/security/policy-security', () => ({
+  verifySignature: vi.fn(() => true),
+  validateTimestamp: vi.fn(() => true),
+}));
+vi.mock('@/services/security/nonce-service', () => ({
+  checkAndRecordNonce: vi.fn(async () => ({ valid: true })),
+}));
+vi.mock('@/services/security/security-event-service', () => ({
+  logSecurityEvent: vi.fn(async () => {}),
+}));
+vi.mock('@/lib/domain-vocabulary-snapshot', () => ({
+  loadVocabularyForExecution: vi.fn(async () => null),
+}));
+const mockEvaluateSource = vi.fn(
+  async (
+    _source: string,
+    _input: Record<string, unknown>,
+    _opts?: Record<string, unknown>,
+  ): Promise<{ result: unknown; error: string | undefined }> => ({
+    result: { allowed: true },
+    error: undefined,
+  }),
+);
+vi.mock('@/services/policy/policy-api', () => ({
+  createPolicyApiClient: vi.fn(() => ({ evaluateSource: mockEvaluateSource })),
+}));
+
+import { executeSecurely } from '@/services/security/secure-executor';
+import { db } from '@/lib/prisma';
+
+function version(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'v1',
+    policyId: 'p1',
+    version: 3,
+    source: 'Module X. Rule r given x as Int, produce Int: Return x multiplied by 2.',
+    content: null,
+    status: 'APPROVED',
+    isDefault: true,
+    sourceHash: 'HASH_SRC',
+    sourceEnvelopeSha256: 'HASH_ENV',
+    aliasSet: JSON.stringify({ TIMES: ['multiplied by'] }),
+    vocabularySnapshotIds: null,
+    policy: { id: 'p1', userId: 'user-1' },
+    ...overrides,
+  };
+}
+
+function opts(hash: string) {
+  return {
+    request: {
+      policyId: 'p1',
+      hash,
+      input: { x: 5 },
+      timestamp: 1_700_000_000_000,
+      nonce: 'n1',
+      signature: 'sig',
+      version: 3,
+    },
+    userId: 'user-1',
+    tenantId: 'user-1',
+  } as Parameters<typeof executeSecurely>[0];
+}
+
+describe('executeSecurely — 别名透传 + 哈希口径（C1 secure-execute）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockEvaluateSource.mockResolvedValue({ result: { allowed: true }, error: undefined });
+  });
+
+  it('冻结别名解析后透传 evaluateSource（envelope 哈希匹配）', async () => {
+    vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(version() as never);
+
+    const r = await executeSecurely(opts('HASH_ENV'));
+
+    expect(r.success).toBe(true);
+    expect(mockEvaluateSource).toHaveBeenCalledWith(
+      expect.any(String),
+      { x: 5 },
+      expect.objectContaining({ aliasSet: { TIMES: ['multiplied by'] } }),
+    );
+  });
+
+  it('兼容旧客户端：sourceHash 仍被接受', async () => {
+    vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(version() as never);
+
+    const r = await executeSecurely(opts('HASH_SRC'));
+
+    expect(r.success).toBe(true);
+    expect(mockEvaluateSource).toHaveBeenCalled();
+  });
+
+  it('哈希两者都不匹配 → HASH_MISMATCH', async () => {
+    vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(version() as never);
+
+    const r = await executeSecurely(opts('WRONG'));
+
+    expect(r.success).toBe(false);
+    expect(r.errorCode).toBe('HASH_MISMATCH');
+    expect(mockEvaluateSource).not.toHaveBeenCalled();
+  });
+
+  it('无别名版本（aliasSet=null）→ 不传 aliasSet', async () => {
+    vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+      version({ aliasSet: null }) as never,
+    );
+
+    await executeSecurely(opts('HASH_ENV'));
+
+    const passedOpts = mockEvaluateSource.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(passedOpts.aliasSet).toBeUndefined();
+  });
+
+  it('损坏别名 JSON → 安全降级为无别名，不阻断执行', async () => {
+    vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+      version({ aliasSet: '{broken' }) as never,
+    );
+
+    const r = await executeSecurely(opts('HASH_ENV'));
+
+    expect(r.success).toBe(true);
+    const passedOpts = mockEvaluateSource.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(passedOpts.aliasSet).toBeUndefined();
+  });
+});

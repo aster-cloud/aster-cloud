@@ -1,10 +1,11 @@
 import { getTranslations } from 'next-intl/server';
 import { redirect, notFound } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import { db, policies } from '@/lib/prisma';
+import { db, policies, policyVersions } from '@/lib/prisma';
 import { eq, and } from 'drizzle-orm';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { EditPolicyContent } from './edit-policy-content';
+import { getStructuralAliasGrant } from '@/lib/structural-alias-grants';
 
 interface PageProps {
   params: Promise<{ id: string; locale: string }>;
@@ -28,11 +29,27 @@ export default async function EditPolicyPage({ params }: PageProps) {
       content: true,
       isPublic: true,
       groupId: true,
+      version: true,
     },
   });
 
   if (!policyData) {
     notFound();
+  }
+
+  // C2：加载活跃版本冻结的 aliasSet（canonical JSON），使编辑器预填现有别名。
+  // 版本号 = Policy.version（与 content 同源的活跃版本）。解析失败/无别名 → null。
+  const activeVersion = await db.query.policyVersions.findFirst({
+    where: and(eq(policyVersions.policyId, id), eq(policyVersions.version, policyData.version)),
+    columns: { aliasSet: true },
+  });
+  let initialAliasSet: Record<string, string[]> | null = null;
+  if (activeVersion?.aliasSet) {
+    try {
+      initialAliasSet = JSON.parse(activeVersion.aliasSet) as Record<string, string[]>;
+    } catch {
+      initialAliasSet = null;
+    }
   }
 
   // 冻结策略只读：套餐降级超限后该策略被冻结，不可编辑。
@@ -41,6 +58,7 @@ export default async function EditPolicyPage({ params }: PageProps) {
   if (freeze.isFrozen) {
     redirect(`/${locale}/policies/${id}?frozen=1`);
   }
+  const allowStructuralAliases = await getStructuralAliasGrant(session.user.id);
 
   // 序列化策略数据
   const policy = {
@@ -50,6 +68,7 @@ export default async function EditPolicyPage({ params }: PageProps) {
     content: policyData.content,
     isPublic: policyData.isPublic,
     groupId: policyData.groupId,
+    aliasSet: initialAliasSet,
   };
 
   // 预渲染所有翻译字符串
@@ -72,5 +91,12 @@ export default async function EditPolicyPage({ params }: PageProps) {
     },
   };
 
-  return <EditPolicyContent policy={policy} translations={translations} locale={locale} />;
+  return (
+    <EditPolicyContent
+      policy={policy}
+      translations={translations}
+      locale={locale}
+      allowStructuralAliases={allowStructuralAliases}
+    />
+  );
 }

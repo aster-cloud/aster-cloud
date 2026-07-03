@@ -25,6 +25,8 @@ interface Policy {
   content: string;
   isPublic: boolean;
   groupId: string | null;
+  /** 活跃版本冻结的关键词别名（ADR 0022），编辑器预填用。 */
+  aliasSet?: Record<string, string[]> | null;
 }
 
 interface Translations {
@@ -39,12 +41,14 @@ interface EditPolicyContentProps {
   policy: Policy;
   translations: Translations;
   locale: string;
+  allowStructuralAliases: boolean;
 }
 
 export function EditPolicyContent({
   policy,
   translations: t,
   locale,
+  allowStructuralAliases,
 }: EditPolicyContentProps) {
   const tPolicies = useTranslations('policies');
 
@@ -126,10 +130,12 @@ export function EditPolicyContent({
         content: policy.content,
         isPublic: policy.isPublic,
         groupId: policy.groupId,
+        aliasSet: policy.aliasSet ?? null,
       }}
       title={t.form.editTitle}
       subtitle={t.form.editSubtitle}
       onSave={handleSave}
+      allowStructuralAliases={allowStructuralAliases}
       cancelHref={`/${locale}/policies/${policy.id}`}
       detailHrefFor={(id) => `/${locale}/policies/${id}`}
       breadcrumbs={[

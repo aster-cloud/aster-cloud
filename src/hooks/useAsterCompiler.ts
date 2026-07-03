@@ -16,7 +16,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import {
   compileAndTypecheck,
@@ -55,6 +55,8 @@ export interface UseAsterCompilerOptions {
    * 未命中再回退到内置词汇。
    */
   tenantId?: string;
+  /** 用户策略层关键词别名，kind → 多词别名。 */
+  userAliasSet?: Readonly<Record<string, readonly string[]>> | null;
   /**
    * 外部失效键。当其值变化时强制重新校验当前源码。用于「用户自定义词汇
    * 异步注册完成」这类不改源码但需重编译的场景：注册 hook 每次注册成功递增
@@ -111,6 +113,7 @@ export function useAsterCompiler({
   locale = 'en-US',
   domain,
   tenantId,
+  userAliasSet,
   externalInvalidationKey,
   debounceDelay = 300,
   enableValidation = true,
@@ -126,7 +129,19 @@ export function useAsterCompiler({
   const monacoRef = useRef(monaco);
   monacoRef.current = monaco;
 
-  const lexicon = LEXICON_MAP[locale];
+  const baseLexicon = LEXICON_MAP[locale];
+  const lexicon = useMemo(
+    () => userAliasSet && Object.keys(userAliasSet).length > 0
+      ? {
+          ...baseLexicon,
+          aliases: {
+            ...((baseLexicon as { aliases?: Record<string, readonly string[]> }).aliases ?? {}),
+            ...userAliasSet,
+          },
+        }
+      : baseLexicon,
+    [baseLexicon, userAliasSet],
+  );
 
   /**
    * Get the current source code from the editor

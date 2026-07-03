@@ -24,6 +24,7 @@ type UnifiedQueryResult = {
   policy_id: string | null;
   policy_name: string | null;
   policy_content: string | null;
+  policy_alias_set: string | null;
   policy_user_id: string | null;
   policy_team_id: string | null;
   policy_is_public: boolean | null;
@@ -90,6 +91,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         NULL::text AS policy_id,
         NULL::text AS policy_name,
         NULL::text AS policy_content,
+        NULL::text AS policy_alias_set,
         NULL::text AS policy_user_id,
         NULL::text AS policy_team_id,
         NULL::boolean AS policy_is_public,
@@ -110,6 +112,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         p.id AS policy_id,
         p.name AS policy_name,
         p.content AS policy_content,
+        pv."aliasSet" AS policy_alias_set,
         p."userId" AS policy_user_id,
         p."teamId" AS policy_team_id,
         p."isPublic" AS policy_is_public,
@@ -119,6 +122,8 @@ export async function POST(req: Request, { params }: RouteParams) {
         CASE WHEN tm.id IS NOT NULL THEN true ELSE false END AS is_team_member
       FROM "Policy" p
       CROSS JOIN "User" u
+      -- 活跃版本的冻结 aliasSet（版本号 = Policy.version；与 content 同源）。C1：执行时透传别名。
+      LEFT JOIN "PolicyVersion" pv ON pv."policyId" = p.id AND pv.version = p.version
       LEFT JOIN "UsageRecord" ur ON ur."userId" = ${userId}
         AND ur.type = 'execution'
         AND ur.period = ${period}
@@ -145,6 +150,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         userId: row.policy_user_id!,
         teamId: row.policy_team_id,
         isPublic: row.policy_is_public ?? false,
+        aliasSet: row.policy_alias_set ?? null,
       };
       // 保存缓存写入 Promise，稍后通过 waitUntil 执行
       cacheWritePromise = cachePolicyMeta(id, policy).catch(err =>
@@ -286,12 +292,23 @@ export async function POST(req: Request, { params }: RouteParams) {
     // 旧实现「乐观执行」在门检查之前就调后端 evaluateSource，导致即使返回
     // 403/429，策略已在后端执行一次（耗资源/可能审计）——冻结策略必须零执行。
     const t3 = Date.now();
+    // C1：解析活跃版本冻结的 aliasSet（canonical JSON）透传给执行端，使别名源码能编译。
+    // 冻结版本已在创建时经授权+校验+进 envelope，执行端信任应用（allowStructural=true）。
+    let parsedAliasSet: Record<string, string[]> | null = null;
+    if (policy.aliasSet) {
+      try {
+        parsedAliasSet = JSON.parse(policy.aliasSet) as Record<string, string[]>;
+      } catch {
+        parsedAliasSet = null; // 损坏的 aliasSet 视为无别名，不阻塞执行（envelope 另有防篡改）
+      }
+    }
     const executionResult = await executePolicyUnified({
       policy: policy as Parameters<typeof executePolicyUnified>[0]['policy'],
       input: validatedInput,
       userId,
       tenantId: policy.teamId || policy.userId,
       functionName: functionName || undefined,
+      aliasSet: parsedAliasSet,
     });
     timings.executionWait = Date.now() - t3;
     timings.executionTotal = Date.now() - t3;

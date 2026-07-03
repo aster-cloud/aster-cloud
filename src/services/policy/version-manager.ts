@@ -21,12 +21,14 @@ import {
   canonicalAliasJson,
   cloudToolchainId,
   computeSourceEnvelope,
+  STRUCTURAL_KINDS,
   validateUserAliases,
   type ReservedSets,
 } from '@/lib/policy-alias';
 
 type PolicyVersion = InferSelectModel<typeof policyVersions>;
 type PolicyVersionStatus = PolicyVersion['status'];
+type VersionDbClient = Pick<typeof db, 'query' | 'insert'>;
 
 export interface CreateVersionParams {
   policyId: string;
@@ -42,8 +44,12 @@ export interface CreateVersionParams {
   aliasSet?: Readonly<Record<string, readonly string[]>> | null;
   /** 别名校验占用集（规范拼写/base别名/领域词汇）。提供 aliasSet 时应一并提供。 */
   aliasReserved?: ReservedSets;
+  /** 是否允许结构词别名。必须由服务端 entitlement 传入。 */
+  allowStructuralAliases?: boolean;
   /** 工具链身份串（进 envelope）。缺省由 env ASTER_RUNTIME_BUILD 拼。 */
   toolchainId?: string;
+  /** 事务客户端；用于把 policy insert + version insert 包进同一事务。 */
+  dbClient?: VersionDbClient;
 }
 
 export interface CreateVersionResult {
@@ -62,6 +68,7 @@ export async function createVersion(
   params: CreateVersionParams
 ): Promise<CreateVersionResult> {
   const { policyId, source, createdBy, releaseNote } = params;
+  const client = params.dbClient ?? db;
   const locale = params.locale ?? 'en-US';
 
   // ADR 0022 方案 D：校验 + 冻结别名 + 算 source envelope（防替换篡改）。
@@ -75,7 +82,9 @@ export async function createVersion(
           '防跳过遮蔽/碰撞校验',
       );
     }
-    const vr = validateUserAliases(params.aliasSet, params.aliasReserved);
+    const vr = validateUserAliases(params.aliasSet, params.aliasReserved, {
+      allowStructural: params.allowStructuralAliases ?? false,
+    });
     if (!vr.valid) {
       throw new Error(`用户自定义别名校验失败: ${vr.errors.join('; ')}`);
     }
@@ -87,7 +96,7 @@ export async function createVersion(
   // 获取最新版本号和链接哈希。
   // 链接 = envelope（存在时）否则 sourceHash —— 与 Java chainLink 对齐（ADR 0022 §11.5 C1-a）：
   // 让 alias_set 篡改对版本链可见（前序版本带别名时其 envelope 进链，改 alias_set 即断链）。
-  const latestVersion = await db.query.policyVersions.findFirst({
+  const latestVersion = await client.query.policyVersions.findFirst({
     where: eq(policyVersions.policyId, policyId),
     orderBy: [desc(policyVersions.version)],
     columns: { version: true, sourceHash: true, sourceEnvelopeSha256: true },
@@ -99,7 +108,7 @@ export async function createVersion(
     : null;
   const sourceHash = computeChainedHash(source, prevHash);
 
-  const [created] = await db.insert(policyVersions).values({
+  const [created] = await client.insert(policyVersions).values({
     id: crypto.randomUUID(),
     policyId,
     version: newVersionNumber,
@@ -115,12 +124,24 @@ export async function createVersion(
     sourceToolchainId: toolchainId,
   }).returning();
 
+  const hasStructuralAliases = aliasSetJson
+    ? Object.keys(JSON.parse(aliasSetJson) as Record<string, string[]>)
+      .some((kind) => STRUCTURAL_KINDS.has(kind))
+    : false;
+
   await logSecurityEvent({
     eventType: 'VERSION_CREATED',
     severity: 'INFO',
     policyId,
     userId: createdBy,
-    details: { version: newVersionNumber, sourceHash, hasAliases: aliasSetJson != null },
+    details: {
+      version: newVersionNumber,
+      sourceHash,
+      hasAliases: aliasSetJson != null,
+      aliasSet: aliasSetJson,
+      hasStructuralAliases,
+      structuralAliasAuthorized: params.allowStructuralAliases === true,
+    },
   });
 
   return {

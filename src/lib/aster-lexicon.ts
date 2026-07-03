@@ -19,6 +19,7 @@ import {
   initBuiltinVocabularies,
 } from '@aster-cloud/aster-lang-ts/lexicons/identifiers/registry';
 import { buildIdentifierIndex } from '@aster-cloud/aster-lang-ts/lexicons/identifiers/types';
+import { normalizeAliasToken } from './policy-alias-shared';
 
 export type { Lexicon, DomainVocabulary, IdentifierIndex };
 export { EN_US, ZH_CN, DE_DE, HI_IN, SemanticTokenKind };
@@ -35,6 +36,35 @@ export function getLexicon(locale: string): Lexicon {
   if (locale === 'de' || locale === 'de-DE') return DE_DE;
   if (locale === 'hi' || locale === 'hi-IN') return HI_IN;
   return EN_US;
+}
+
+/**
+ * 从 lexicon 提取用户别名校验的**占用集**（ADR 0022 关键词别名）：
+ * - canonicalKeywordsLower：全部规范关键词拼写（归一小写）
+ * - baseAliasesLower：官方已有别名（归一小写）
+ *
+ * <p>用 shared 的 {@link normalizeAliasToken} 归一（与 validateUserAliases/Java 同口径），
+ * 不可随手 trim().toLowerCase()——否则占用集与校验值归一不一致（NBSP/大小写边界）。
+ * vocabularyTermsLower（第三集）由服务端 buildAliasReservedForUser 从用户词汇表补齐。
+ */
+export function extractReservedAliasSets(lexicon: Lexicon): {
+  canonicalKeywordsLower: Set<string>;
+  baseAliasesLower: Set<string>;
+} {
+  const canonicalKeywordsLower = new Set<string>();
+  for (const value of Object.values(lexicon.keywords)) {
+    if (value) canonicalKeywordsLower.add(normalizeAliasToken(String(value)));
+  }
+  const baseAliasesLower = new Set<string>();
+  const aliases = (lexicon as { aliases?: Partial<Record<string, readonly string[]>> }).aliases;
+  if (aliases) {
+    for (const list of Object.values(aliases)) {
+      for (const a of list ?? []) {
+        if (a) baseAliasesLower.add(normalizeAliasToken(String(a)));
+      }
+    }
+  }
+  return { canonicalKeywordsLower, baseAliasesLower };
 }
 
 /**
