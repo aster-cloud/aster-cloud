@@ -52,6 +52,17 @@ export const STRUCTURAL_KINDS: ReadonlySet<string> = new Set([
 /** 校验器版本（进 toolchain identity；与 Java UserAliasValidator.VERSION 对齐）。 */
 export const USER_ALIAS_VALIDATOR_VERSION = '1';
 
+/**
+ * W2 DoS 上界（与 Java UserAliasValidator 同名常量逐一对齐）。可别名 kind 上限 18
+ * （11 运算符 + 7 结构词），故这些界远宽于合法用途，只兜异常/恶意巨量输入——防止
+ * 单条别名达 MB 级把 canonicalize 正则/信封哈希拖垮，或几千个 kind/短语撑爆内存。
+ */
+export const MAX_ALIAS_KINDS = 32;
+/** 单个 kind 最多别名短语数。 */
+export const MAX_ALIASES_PER_KIND = 8;
+/** 单条别名短语最大长度（字符）。规范多词短语远短于此。 */
+export const MAX_ALIAS_LENGTH = 64;
+
 /** 校验选项。allowStructural=true 时额外放开 STRUCTURAL_KINDS（需管理员授权，服务端权威传入）。 */
 export interface AliasValidationOptions {
   /** 是否允许结构词别名（默认 false）。true 由服务端依 per-user entitlement 传入，不信前端。 */
@@ -123,6 +134,13 @@ export function validateUserAliases(
   }
   const errors: string[] = [];
   const seen = new Set<string>();
+  // W2：kind 总数上界（DoS 兜底），超限直接判失败不再逐条处理。
+  if (Object.keys(aliasSet).length > MAX_ALIAS_KINDS) {
+    return {
+      valid: false,
+      errors: [`别名集 kind 数量 ${Object.keys(aliasSet).length} 超过上限 ${MAX_ALIAS_KINDS}`],
+    };
+  }
   for (const [kind, aliases] of Object.entries(aliasSet)) {
     // 白名单两档：运算符恒允；结构词需授权；其余高危 kind 恒拒。
     const isOperator = OPERATOR_KINDS.has(kind);
@@ -139,9 +157,20 @@ export function validateUserAliases(
       }
       continue;
     }
-    for (const alias of aliases ?? []) {
+    const aliasList = aliases ?? [];
+    // W2：单 kind 别名数量上界（DoS 兜底）。
+    if (aliasList.length > MAX_ALIASES_PER_KIND) {
+      errors.push(`${kind} 的别名数量 ${aliasList.length} 超过上限 ${MAX_ALIASES_PER_KIND}`);
+      continue;
+    }
+    for (const alias of aliasList) {
       if (!alias || !alias.trim()) {
         errors.push(`${kind} 的别名不能为空`);
+        continue;
+      }
+      // W2：单条别名长度上界（DoS 兜底）。先于归一，避免对超长串做正则。
+      if (alias.length > MAX_ALIAS_LENGTH) {
+        errors.push(`${kind} 的别名长度 ${alias.length} 超过上限 ${MAX_ALIAS_LENGTH}`);
         continue;
       }
       const norm = normalizeAliasToken(alias);

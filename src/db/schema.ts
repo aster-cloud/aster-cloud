@@ -317,7 +317,10 @@ export const structuralAliasGrants = pgTable(
   },
   (table) => [
     index('StructuralAliasGrant_userId_idx').on(table.userId),
-    index('StructuralAliasGrant_active_idx')
+    // W3：同一用户最多一条「活跃」授权。partial UNIQUE 从 DB 层杜绝 admin POST
+    // 的 check-then-insert TOCTOU 竞态产生重复活跃行（重复 → revoke 只撤一条留悬挂授权）。
+    // 撤销后 revokedAt 非 NULL 即退出唯一约束，可再次授予。
+    uniqueIndex('StructuralAliasGrant_active_unique')
       .on(table.userId)
       .where(sql`${table.revokedAt} IS NULL`),
   ],

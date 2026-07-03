@@ -1,9 +1,111 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { PolicyVersionStatus } from '@/lib/prisma';
 import { VersionStatusBadge } from './version-status-badge';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
+import { ALL_ALIAS_KINDS } from './policy-alias-types';
+import { STRUCTURAL_KINDS } from '@/lib/policy-alias-shared';
+
+/** kind → 规范关键词拼写（如 FUNC_TO→'Rule', IF→'If'），审批用。 */
+const KIND_CANONICAL: Record<string, string> = Object.fromEntries(
+  ALL_ALIAS_KINDS.map((k) => [k.kind, k.symbol]),
+);
+
+export interface AliasCanonicalRow {
+  readonly kind: string;
+  readonly canonical: string;
+  readonly phrases: string[];
+  readonly structural: boolean;
+}
+
+/**
+ * H1 安全护栏②的纯逻辑：把冻结的 canonical JSON 别名集（kind→string[]）解析成
+ * 「别名短语 → 规范关键词」行，结构词排前。解析失败返回 null（外层回退纯文本告警）。
+ * 抽成纯函数便于单测钉住 kind→规范拼写映射与结构词判定这两项安全关键行为。
+ */
+export function buildAliasCanonicalRows(aliasSetJson: string): AliasCanonicalRow[] | null {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(aliasSetJson) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+  const out: AliasCanonicalRow[] = [];
+  for (const [kind, phrases] of Object.entries(parsed)) {
+    if (!Array.isArray(phrases)) continue;
+    out.push({
+      kind,
+      canonical: KIND_CANONICAL[kind] ?? kind,
+      phrases: phrases.filter((p): p is string => typeof p === 'string'),
+      structural: STRUCTURAL_KINDS.has(kind),
+    });
+  }
+  // 结构词排前（审批优先看高风险项）
+  out.sort((a, b) => Number(b.structural) - Number(a.structural));
+  return out;
+}
+
+/**
+ * H1 安全护栏②：审批时把冻结的别名集展成「别名短语 → 规范关键词」映射表，
+ * 结构词（Module/Rule/If…）行**高亮告警**——防止有人用无害措辞把结构词伪装成
+ * 普通运算符骗过审批。
+ *
+ * <p>展示真实结构而非直接跑 canonicalize（避免把整套编译器 + locale 判定塞进
+ * 详情面板 bundle）：每条别名旁标注它实际归一到的规范结构词，审批者一眼可辨。
+ */
+function AliasCanonicalMap({ aliasSetJson }: { aliasSetJson: string }) {
+  const rows = useMemo(() => buildAliasCanonicalRows(aliasSetJson), [aliasSetJson]);
+
+  if (!rows) return null;
+  const hasStructural = rows.some((r) => r.structural);
+
+  return (
+    <div className="rounded-lg border border-border dark:border-gray-700 overflow-hidden">
+      <div className="bg-bg-subtle dark:bg-gray-900 px-3 py-2 text-sm font-medium text-fg dark:text-gray-200">
+        规范化结构对照（审批依据）
+      </div>
+      {hasStructural && (
+        <div className="border-b border-border dark:border-gray-700 bg-red-50 px-3 py-2 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-200">
+          ⚠ 本版本对<strong>结构关键词</strong>使用了别名。请逐条确认下表右列的规范结构与源码意图一致后再批准。
+        </div>
+      )}
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border dark:border-gray-700 text-left text-xs text-fg-muted dark:text-fg-subtle">
+            <th className="px-3 py-2 font-medium">别名短语（源码中所见）</th>
+            <th className="px-3 py-2 font-medium">实际规范结构</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr
+              key={r.kind}
+              className={`border-b border-border last:border-0 dark:border-gray-700 ${
+                r.structural ? 'bg-red-50/60 dark:bg-red-950/20' : ''
+              }`}
+            >
+              <td className="px-3 py-2 font-mono text-fg dark:text-gray-200">
+                {r.phrases.map((p) => `"${p}"`).join('、')}
+              </td>
+              <td className="px-3 py-2">
+                <span className="font-mono font-medium text-fg dark:text-gray-100">{r.canonical}</span>
+                {r.structural && (
+                  <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/50 dark:text-red-200">
+                    结构词
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 interface ApprovalRecord {
   id: string;
@@ -163,9 +265,12 @@ export function VersionDetailPanel({
               {sourceCode}
             </pre>
             {detail.aliasSet && (
-              <div className="rounded-lg border border-amber-300/40 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-100">
-                此版本使用了关键词别名。审批时请对照规范关键词版确认实际结构；冻结的别名集见元数据。
-              </div>
+              <>
+                <div className="rounded-lg border border-amber-300/40 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-100">
+                  此版本使用了关键词别名。源码中的措辞经下表归一到真实结构后再编译执行——请对照确认。
+                </div>
+                <AliasCanonicalMap aliasSetJson={detail.aliasSet} />
+              </>
             )}
           </div>
         )}

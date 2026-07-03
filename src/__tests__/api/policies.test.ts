@@ -460,6 +460,42 @@ describe('Policies API - Drizzle Migration', () => {
         allowStructuralAliases: true,
       }));
     });
+
+    it('H2：500 不泄露 stack / DB schema 细节，仅回 requestId', async () => {
+      // 构造一个带 postgres 泄露字段的错误——修复前这些会原样回给客户端。
+      const leaky = Object.assign(new Error('duplicate key value violates unique constraint'), {
+        stack: 'Error: at /app/src/services/policy/version-manager.ts:123:45\n  secret path',
+        code: '23505',
+        detail: 'Key (userId, name)=(user-1, X) already exists.',
+        constraint: 'PolicyVersion_pkey',
+        table: 'PolicyVersion',
+        column: 'sourceEnvelopeSha256',
+        hint: 'internal hint leak',
+      });
+      mockCreateVersion.mockRejectedValueOnce(leaky);
+
+      const response = await POST(
+        makeRequest('http://localhost/api/policies', 'POST', validBody),
+      );
+      const body = await response.json();
+      const raw = JSON.stringify(body);
+
+      expect(response.status).toBe(500);
+      // 统一 envelope 契约：{ error: { code, message, requestId } } + x-request-id 头
+      expect(body.error.code).toBe('internal_error');
+      expect(typeof body.error.requestId).toBe('string');
+      expect(body.error.requestId.length).toBeGreaterThan(0);
+      expect(response.headers.get('x-request-id')).toBe(body.error.requestId);
+      // ★不泄露：stack / 约束 / 表 / 列 / detail / hint / pg code 一律不得出现在响应体
+      expect(body.debug).toBeUndefined();
+      expect(raw).not.toContain('version-manager.ts');
+      expect(raw).not.toContain('PolicyVersion_pkey');
+      expect(raw).not.toContain('PolicyVersion');
+      expect(raw).not.toContain('sourceEnvelopeSha256');
+      expect(raw).not.toContain('23505');
+      expect(raw).not.toContain('already exists');
+      expect(raw).not.toContain('internal hint leak');
+    });
   });
 
   describe('GET /api/policies/[id]', () => {

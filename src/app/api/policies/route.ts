@@ -11,6 +11,7 @@ import {
   buildAliasReservedForUser,
   getStructuralAliasGrant,
 } from '@/lib/structural-alias-grants';
+import { errorEnvelope } from '@/lib/api/error-envelope';
 import { eq, isNull, desc, sql, and, inArray } from 'drizzle-orm';
 
 // GET /api/policies - List user's policies
@@ -280,12 +281,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(policy, { status: 201 });
   } catch (error: unknown) {
-    console.error('Error creating policy:', error);
-    // Return detailed error info for debugging
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    // Try to extract postgres-specific error details (postgres.js uses different error structure)
-    const err = error as Record<string, unknown>;
+    // aliasSet 校验失败是用户可修正的输入错误（4xx）——回显校验信息本就是给用户看的，
+    // 不含内部实现细节，保留 400 分支。
     if (
       error instanceof Error &&
       (error.message.includes('用户自定义别名校验失败') ||
@@ -296,25 +293,27 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    return NextResponse.json({
-      error: 'Internal server error',
-      debug: {
-        message: errorMessage,
-        stack: errorStack,
-        name: error instanceof Error ? error.name : typeof error,
-        // postgres.js error fields
-        code: err?.code,
-        severity: err?.severity,
-        detail: err?.detail,
-        hint: err?.hint,
-        position: err?.position,
-        constraint: err?.constraint,
-        table: err?.table,
-        column: err?.column,
-        dataType: err?.dataType,
-        // Full error keys for debugging
-        errorKeys: Object.keys(err || {}),
-      }
-    }, { status: 500 });
+    // H2 信息泄露修复：此前 500 把 error.stack + postgres 的 detail/hint/constraint/
+    // table/column + 全部 error keys 直接回给客户端（schema/约束/内部路径外泄）。
+    // 改为：完整细节只进服务端日志并以 requestId 关联，响应仅含稳定 code + requestId
+    // （用户报障时给 requestId 即可定位）。用统一 errorEnvelope，与全站 4xx/5xx 契约一致。
+    const requestId = crypto.randomUUID();
+    const err = error as Record<string, unknown>;
+    console.error(`[policies:create] requestId=${requestId}`, {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined,
+      pgCode: err?.code,
+      constraint: err?.constraint,
+      table: err?.table,
+      column: err?.column,
+      detail: err?.detail,
+    });
+    return errorEnvelope({
+      status: 500,
+      code: 'internal_error',
+      message: 'Failed to create policy. Provide this request id when reporting the issue.',
+      requestId,
+    });
   }
 }
