@@ -633,6 +633,49 @@ describe('Policies API - Drizzle Migration', () => {
       expect(response.status).toBe(200);
     });
 
+    it('审计 High：仅改 aliasSet（content 不变）也创建新版本走 createVersion', async () => {
+      // 修复前 newVersion 只看 content 变化 → 别名单独变会被静默丢弃（无 envelope/审计）。
+      // 现应：活跃版本无别名(null) vs 提交非空别名 → aliasChanged=true → createVersion。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue({ aliasSet: null } as never);
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          content: 'Module X.', // 与 existingPolicy.content 相同（内容不变）
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      // 关键：content 未变但 aliasSet 变 → 仍调 createVersion，source 沿用现有 content。
+      expect(mockCreateVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'Module X.',
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+      );
+    });
+
+    it('审计 High：content 与 aliasSet 都不变时不创建新版本', async () => {
+      // 活跃版本已冻结相同别名（canonical JSON）→ 提交相同别名 → aliasChanged=false，
+      // content 也不变 → 不建版本（避免每次保存刷版本）。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+        { aliasSet: JSON.stringify({ TIMES: ['multiplied by'] }) } as never,
+      );
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          name: 'Renamed only',
+          content: 'Module X.',
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockCreateVersion).not.toHaveBeenCalled();
+    });
+
     it('should return 500 on database error', async () => {
       mockUpdate.mockImplementation(() => { throw new Error('DB error'); });
 

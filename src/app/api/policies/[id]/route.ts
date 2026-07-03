@@ -5,6 +5,7 @@ import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
 import { createVersion } from '@/services/policy/version-manager';
 import { getStructuralAliasGrant, buildAliasReservedForUser } from '@/lib/structural-alias-grants';
+import { canonicalAliasJson } from '@/lib/policy-alias';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
 import { softDeletePolicy } from '@/lib/policy-lifecycle';
 import { invalidatePolicyCache } from '@/lib/cache';
@@ -157,23 +158,6 @@ export async function PUT(req: Request, { params }: RouteParams) {
       );
     }
 
-    // Update policy and create new version if content changed
-    const newVersion = content !== undefined && content !== existingPolicy.content;
-
-    const piiResult = newVersion ? detectPII(content) : null;
-
-    // Build update data
-    const updateData: Record<string, unknown> = {};
-    if (name !== undefined) updateData.name = name;
-    if (content !== undefined) updateData.content = content;
-    if (description !== undefined) updateData.description = description;
-    if (isPublic !== undefined) updateData.isPublic = isPublic;
-    if (groupId !== undefined) updateData.groupId = groupId || null;
-
-    if (newVersion) {
-      updateData.piiFields = piiResult?.detectedTypes;
-    }
-
     // C2：新版本必须走 version-manager（校验别名 + canonical + envelope 冻结 + 审计），
     // 不能裸插 policyVersions（此前编辑路径丢弃 aliasSet、无 envelope/审计/事务）。
     // aliasSet 从 body 取；allowStructural 从服务端 per-user entitlement 权威取（不信前端）；
@@ -189,6 +173,44 @@ export async function PUT(req: Request, { params }: RouteParams) {
         : null;
     const compileLocale = typeof locale === 'string' && locale.trim() ? locale : 'en-US';
 
+    // 是否需要建新版本：content 变 **或** aliasSet 变（二者都是版本编译输入并进 envelope，
+    // 任一变则旧版本快照失真）。aliasSet 变化用 canonical JSON 比较（对齐 envelope 冻结口径，
+    // 键序/别名序等表面差异不误触发）。审计缺口修复：此前只看 content，别名单独变会被静默丢弃。
+    const contentChanged = content !== undefined && content !== existingPolicy.content;
+    const requestHasAliasField = aliasSet !== undefined;
+    let aliasChanged = false;
+    if (requestHasAliasField) {
+      const activeVersion = await db.query.policyVersions.findFirst({
+        where: and(
+          eq(policyVersions.policyId, id),
+          eq(policyVersions.version, existingPolicy.version),
+        ),
+        columns: { aliasSet: true },
+      });
+      // 双侧都归一到 canonical JSON（空/null → null）后比较，语义等价即视为未变。
+      // 存储侧 aliasSet 已是 createVersion 写入的 canonical JSON，故与新算的 canonical 可直接比。
+      const existingCanonical = activeVersion?.aliasSet ?? null;
+      const submittedCanonical = canonicalAliasJson(aliasSetInput);
+      aliasChanged = existingCanonical !== submittedCanonical;
+    }
+    const newVersion = contentChanged || aliasChanged;
+    // 新版本的源码：content 提交则用之，否则沿用现有 content（alias-only 变更不改源码）。
+    const versionSource = content !== undefined ? content : existingPolicy.content;
+
+    const piiResult = newVersion ? detectPII(versionSource) : null;
+
+    // Build update data
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (content !== undefined) updateData.content = content;
+    if (description !== undefined) updateData.description = description;
+    if (isPublic !== undefined) updateData.isPublic = isPublic;
+    if (groupId !== undefined) updateData.groupId = groupId || null;
+
+    if (newVersion) {
+      updateData.piiFields = piiResult?.detectedTypes;
+    }
+
     const policy = await db.transaction(async (tx) => {
       if (newVersion) {
         const allowStructural = await getStructuralAliasGrant(session.user.id);
@@ -197,7 +219,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
           : undefined;
         const createdVersion = await createVersion({
           policyId: id,
-          source: content,
+          source: versionSource,
           createdBy: session.user.id,
           releaseNote: 'Edited version',
           locale: compileLocale,

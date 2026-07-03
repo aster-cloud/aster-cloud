@@ -26,6 +26,8 @@ type UnifiedQueryResult = {
   policy_user_id: string | null;
   policy_team_id: string | null;
   policy_is_public: boolean | null;
+  // 活跃版本冻结的关键词别名（canonical JSON）。C1（v1）：执行时透传别名。
+  policy_alias_set: string | null;
   // User fields
   user_plan: string | null;
   user_trial_ends_at: Date | null;
@@ -75,12 +77,15 @@ export async function POST(req: Request, { params }: RouteParams) {
         p."userId" AS policy_user_id,
         p."teamId" AS policy_team_id,
         p."isPublic" AS policy_is_public,
+        pv."aliasSet" AS policy_alias_set,
         u.plan AS user_plan,
         u."trialEndsAt" AS user_trial_ends_at,
         api_ur.count AS api_usage_count,
         exec_ur.count AS exec_usage_count,
         CASE WHEN tm.id IS NOT NULL THEN true ELSE false END AS is_team_member
       FROM "Policy" p
+      -- 活跃版本的冻结 aliasSet（版本号 = Policy.version；与 content 同源）。C1（v1）。
+      LEFT JOIN "PolicyVersion" pv ON pv."policyId" = p.id AND pv.version = p.version
       CROSS JOIN "User" u
       LEFT JOIN "UsageRecord" api_ur ON api_ur."userId" = ${userId}
         AND api_ur.type = 'api_call'
@@ -108,6 +113,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       userId: row.policy_user_id!,
       teamId: row.policy_team_id,
       isPublic: row.policy_is_public ?? false,
+      aliasSet: row.policy_alias_set ?? null,
     } : null;
 
     const userData = row ? {
@@ -203,11 +209,26 @@ export async function POST(req: Request, { params }: RouteParams) {
     // 阶段3+4：所有门（权限/冻结/配额）通过后才真正执行策略。
     // 旧实现「乐观执行」在门检查之前就调后端 evaluateSource，导致即使返回
     // 403/429，策略已在后端执行一次——冻结策略必须零执行。
+    // C1（v1）：解析活跃版本冻结的 aliasSet（canonical JSON）透传给执行端，使别名源码能编译。
+    // 冻结即信任——执行时以 allowStructural=true 应用（授权在创建时已定），不重查 grant。
+    // 损坏的 aliasSet 视为无别名，不阻塞执行（envelope 另有防篡改）。
+    let parsedAliasSet: Record<string, string[]> | null = null;
+    if (policy.aliasSet) {
+      try {
+        parsedAliasSet = JSON.parse(policy.aliasSet) as Record<string, string[]>;
+      } catch {
+        parsedAliasSet = null;
+      }
+    }
+
     const executionResult = await executePolicyUnified({
-      policy: policy as Parameters<typeof executePolicyUnified>[0]['policy'],
+      // 部分 Policy 投影（执行端只读 .content）；新增的 aliasSet:string|null 与完整 Policy
+      // 行的字段类型不再充分重叠，按 TS 提示经 unknown 桥接（沿用本路径既有部分投影模式）。
+      policy: policy as unknown as Parameters<typeof executePolicyUnified>[0]['policy'],
       input: validatedInput,
       userId,
       tenantId: policy.teamId || policy.userId,
+      aliasSet: parsedAliasSet,
     });
     const primaryError = getPrimaryError(executionResult);
     const durationMs = Date.now() - startTime;
