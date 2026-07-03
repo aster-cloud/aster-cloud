@@ -656,6 +656,51 @@ describe('Policies API - Drizzle Migration', () => {
       );
     });
 
+    it('审计 High：改 content 但省略 aliasSet 字段 → 保留活跃版本已有别名（不清空）', async () => {
+      // 修复前：aliasSet 字段缺省 → aliasSetInput=null → 新版本 aliasSet 被写 null，
+      // 静默清空已有别名。现应：字段缺省=保留，新版本沿用活跃版本冻结的别名。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+        { aliasSet: JSON.stringify({ TIMES: ['multiplied by'] }) } as never,
+      );
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          content: 'Module Changed.', // content 变，但不带 aliasSet 字段
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      // 关键：createVersion 收到保留的现有别名，而非 null。
+      expect(mockCreateVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'Module Changed.',
+          aliasSet: { TIMES: ['multiplied by'] },
+        }),
+      );
+    });
+
+    it('审计 High：显式传 aliasSet: null → 清空别名（与省略字段区分）', async () => {
+      // 显式 null/{}=清空（三态语义：undefined 保留 / null 清空 / 非空对象采用）。
+      vi.mocked(db.query.policyVersions.findFirst).mockResolvedValue(
+        { aliasSet: JSON.stringify({ TIMES: ['multiplied by'] }) } as never,
+      );
+
+      const response = await PUT(
+        makeRequest('http://localhost/api/policies/p1', 'PUT', {
+          content: 'Module X.', // content 不变
+          aliasSet: null, // 显式清空
+        }),
+        mockParams,
+      );
+
+      expect(response.status).toBe(200);
+      // 别名从非空变 null → aliasChanged=true → 建版本，aliasSet 传 null（清空）。
+      expect(mockCreateVersion).toHaveBeenCalledWith(
+        expect.objectContaining({ aliasSet: null }),
+      );
+    });
+
     it('审计 High：content 与 aliasSet 都不变时不创建新版本', async () => {
       // 活跃版本已冻结相同别名（canonical JSON）→ 提交相同别名 → aliasChanged=false，
       // content 也不变 → 不建版本（避免每次保存刷版本）。

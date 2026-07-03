@@ -224,9 +224,20 @@ export async function executeSecurely(
     }
   }
 
-  // 5. 验证哈希匹配
-  const expectedHash = targetVersion.sourceHash;
-  if (request.hash !== expectedHash) {
+  // 5. 验证哈希匹配。
+  //   - 首选 envelope 哈希（sourceEnvelopeSha256）：覆盖 content+aliasSet+locale+工具链，
+  //     绑定完整编译输入，能区分「同 content 不同别名」的两个版本（否则别名替换/版本漂移
+  //     不被哈希察觉）。
+  //   - 兼容旧客户端：现有前端 computeHashInBrowser 只对 source 串算 SHA-256（=sourceHash），
+  //     故 envelope 或 sourceHash 任一匹配即通过（不硬切协议，避免滚动期全体 HASH_MISMATCH，
+  //     与 C-HMAC 双栈同思路）。老版本 sourceEnvelopeSha256 为 NULL 时天然回退 sourceHash。
+  const envelopeHash = targetVersion.sourceEnvelopeSha256;
+  const sourceHash = targetVersion.sourceHash;
+  const hashOk =
+    (envelopeHash != null && request.hash === envelopeHash) ||
+    (sourceHash != null && request.hash === sourceHash);
+  const expectedHash = envelopeHash ?? sourceHash;
+  if (!hashOk) {
     await logSecurityEvent({
       ...eventContext,
       eventType: 'HASH_MISMATCH',
@@ -275,6 +286,18 @@ export async function executeSecurely(
     // 该策略的 CNL 语言。非唯一或缺失时不指定（执行端默认 en-US），避免猜错。
     const snapshotLocale = resolveSnapshotLocale(targetVersion.vocabularySnapshotIds);
 
+    // C1（secure-execute）：把该版本冻结的关键词别名（canonical JSON）透传到执行端，使
+    // 别名源码能规范化编译。冻结即信任——版本创建时已授权+校验+进 envelope，执行不重查
+    // grant。损坏 JSON 视为无别名，不阻断执行（envelope 另有防篡改）。
+    let aliasSet: Record<string, string[]> | undefined;
+    if (targetVersion.aliasSet) {
+      try {
+        aliasSet = JSON.parse(targetVersion.aliasSet) as Record<string, string[]>;
+      } catch {
+        aliasSet = undefined;
+      }
+    }
+
     const apiClient = createPolicyApiClient(tenantId, userId);
     const response = await apiClient.evaluateSource(
       sourceCode, // 关键：使用数据库中的源码
@@ -282,6 +305,7 @@ export async function executeSecurely(
       {
         ...(snapshotLocale ? { locale: snapshotLocale } : {}),
         ...(vocabulary ? { vocabulary } : {}),
+        ...(aliasSet ? { aliasSet } : {}),
       }
     );
 
