@@ -16,6 +16,11 @@ vi.mock('@/lib/structural-alias-grants', () => ({
   getStructuralAliasGrant: vi.fn(),
   buildAliasReservedForUser: vi.fn(),
 }));
+vi.mock('@/lib/prisma', () => ({
+  db: { query: { policies: { findFirst: vi.fn() } } },
+  policies: { id: {}, userId: {}, deletedAt: {} },
+}));
+vi.mock('@/lib/policy-freeze', () => ({ isPolicyFrozen: vi.fn() }));
 
 import { POST } from '@/app/api/v1/policies/[id]/versions/route';
 import { auth } from '@/auth';
@@ -24,6 +29,8 @@ import {
   getStructuralAliasGrant,
   buildAliasReservedForUser,
 } from '@/lib/structural-alias-grants';
+import { db } from '@/lib/prisma';
+import { isPolicyFrozen } from '@/lib/policy-freeze';
 
 function req(body: unknown) {
   return new Request('http://localhost/api/v1/policies/p1/versions', {
@@ -38,6 +45,9 @@ describe('POST /api/v1/policies/[id]/versions — aliasSet 支持', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1' } } as never);
+    // 默认：调用者拥有该策略且未冻结（授权通过）。
+    vi.mocked(db.query.policies.findFirst).mockResolvedValue({ id: 'p1' } as never);
+    vi.mocked(isPolicyFrozen).mockResolvedValue({ isFrozen: false } as never);
     vi.mocked(createVersion).mockResolvedValue({
       id: 'v2', version: 2, sourceHash: 'h', sourceEnvelopeSha256: 'e',
     } as never);
@@ -92,6 +102,21 @@ describe('POST /api/v1/policies/[id]/versions — aliasSet 支持', () => {
   it('缺 source → 400', async () => {
     const r = await POST(req({ aliasSet: { TIMES: ['multiplied by'] } }), params);
     expect(r.status).toBe(400);
+    expect(createVersion).not.toHaveBeenCalled();
+  });
+
+  it('IDOR：非所有者对他人 policy 建版本 → 404，不建版本', async () => {
+    // 授权校验：findFirst 按 (id, userId=self, 未删) 查不到 → 404。
+    vi.mocked(db.query.policies.findFirst).mockResolvedValue(undefined as never);
+    const r = await POST(req({ source: 'Module X.', aliasSet: { TIMES: ['multiplied by'] } }), params);
+    expect(r.status).toBe(404);
+    expect(createVersion).not.toHaveBeenCalled();
+  });
+
+  it('冻结策略 → 403，不建版本', async () => {
+    vi.mocked(isPolicyFrozen).mockResolvedValue({ isFrozen: true } as never);
+    const r = await POST(req({ source: 'Module X.' }), params);
+    expect(r.status).toBe(403);
     expect(createVersion).not.toHaveBeenCalled();
   });
 });
