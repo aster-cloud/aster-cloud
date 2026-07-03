@@ -52,6 +52,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'userId is required' }, { status: 400 });
   }
 
+  // 幂等授予：先查活跃授权，无则插。check-then-insert 存在并发窗口——两个并发请求可能
+  // 都过 !existing 检查同时插入。W3 的 partial UNIQUE(userId) WHERE revokedAt IS NULL 会让
+  // 第二条 insert 抛唯一冲突（Postgres code 23505）；此处捕获并当作已授予（幂等），
+  // 而非冒泡成 500。授予是「至多一条活跃」语义，重复请求返回成功即正确。
   const existing = await db.query.structuralAliasGrants.findFirst({
     where: and(
       eq(structuralAliasGrants.userId, body.userId),
@@ -60,11 +64,17 @@ export async function POST(req: Request) {
     columns: { id: true },
   });
   if (!existing) {
-    await db.insert(structuralAliasGrants).values({
-      id: crypto.randomUUID(),
-      userId: body.userId,
-      grantedBy: check.userId,
-    });
+    try {
+      await db.insert(structuralAliasGrants).values({
+        id: crypto.randomUUID(),
+        userId: body.userId,
+        grantedBy: check.userId,
+      });
+    } catch (err) {
+      // 唯一冲突（并发另一个请求已插入活跃授权）→ 视为已授予，保持幂等。其余错误上抛。
+      const code = (err as { code?: string })?.code;
+      if (code !== '23505') throw err;
+    }
   }
 
   return NextResponse.json({ ok: true });
