@@ -76,8 +76,6 @@ import { StatusBar } from './status-bar';
 import { usePolicyDraft, type PolicyDraftFields } from './use-policy-draft';
 import { useUnsavedWarning } from './use-unsaved-warning';
 import { usePolicyShortcuts } from './use-policy-shortcuts';
-import { useCompile } from './use-compile';
-import { useMonacoMarkers } from './use-monaco-markers';
 import { useIsMobile } from './use-is-mobile';
 import { EditorPalette } from './editor-palette';
 import { CNLSyntaxConverterDialog } from '@/components/policy/cnl-syntax-converter-dialog';
@@ -85,6 +83,9 @@ import { PolicyAliasPanel } from '@/components/policy/policy-alias-panel';
 import { type PolicyExample, getExampleSource } from '@/data/policy-examples';
 import { extractReservedAliasSets, getLexicon } from '@/lib/aster-lexicon';
 import { validateUserAliases } from '@/lib/policy-alias-shared';
+
+// 类型-only 导入（不拉入 Monaco 重包；运行时组件仍走下方 dynamic）。
+import type { EditorCompileState } from '@/components/policy/monaco-policy-editor';
 
 const MonacoPolicyEditor = dynamic(
   () =>
@@ -216,22 +217,27 @@ export function PolicyForm({
   // boolean so child hooks (markers, jump-to-line) re-run after
   // monaco's async onMount — refs alone won't trigger a re-render.
   const editorInstanceRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const [editorReady, setEditorReady] = useState(false);
-  // Resolve the live instance only after onMount has fired so hook
-  // deps see a stable value.
-  const editorForHooks = editorReady ? editorInstanceRef.current : null;
+  // 保留 ready 布尔：onMount 是异步的，翻转它触发一次 re-render，让依赖 editor 实例的
+  // 子组件（SidePanel / palette）在挂载后拿到实例（ref 变化本身不触发 re-render）。
+  const [, setEditorReady] = useState(false);
 
   // ---------------------------------------------------------------
-  // Compile-on-type
+  // Compile-on-type —— 单一真相源
   // ---------------------------------------------------------------
-  const compile = useCompile({ source: content, locale: cnlLocale });
+  // 编译诊断由 MonacoPolicyEditor 内部的 useAsterCompiler（完整 parse+typecheck，别名感知，
+  // 且自己画 Monaco 红波浪线）统一产出并经 onCompileChange 上抛。父层不再跑第二遍 parse-only
+  // 编译（原 useCompile）——消除每次按键的双重解析、双份 Problems 面板、双份红波浪线，并根除
+  // 两条管线的 aliasSet 不同步（编辑器 footer 曾误报解析错误的根因）。StatusBar/SidePanel 直接
+  // 消费这份诊断；typecheck 覆盖比原 parse-only 更全（含类型/降级/PII 错误），且 module 摘要
+  // 现在能真正填充（原 useCompile 永远返回 undefined，Decision 面板的 module 块从不渲染）。
+  const [compile, setCompile] = useState<EditorCompileState & { transportError?: string }>({
+    state: 'idle',
+    diagnostics: [],
+  });
   const reservedSets = useMemo(
     () => extractReservedAliasSets(getLexicon(cnlLocale)),
     [cnlLocale],
   );
-
-  // Bind diagnostics onto Monaco as inline markers.
-  useMonacoMarkers(editorForHooks, compile.diagnostics);
 
   // ---------------------------------------------------------------
   // Editor command helpers
@@ -587,10 +593,11 @@ export function PolicyForm({
                 aliasSet={fields.aliasSet ?? undefined}
                 onEditorReady={(ed) => {
                   editorInstanceRef.current = ed;
-                  // Trigger one re-render so marker / palette hooks
+                  // Trigger one re-render so palette / side-panel hooks
                   // depending on the editor instance can pick it up.
                   setEditorReady(true);
                 }}
+                onCompileChange={setCompile}
                 enableAICompletion
                 onToggleAIPanel={() => {
                   setRequestedTab('ai');
