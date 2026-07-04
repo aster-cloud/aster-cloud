@@ -358,6 +358,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -532,6 +533,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- KV 支撑的分布式限流修 Workers per-isolate 绕过（审计 #168 最后一项） (#172) *(security)*
 - 集中式 CSRF 网关覆盖全部 cookie-auth 变更 API（审计 #168） (#171) *(security)*
 - Debug/admin-status 密钥改请求头 + 常量时间比较（审计 #168 deferred） (#170) *(security)*
 - Fail-closed internal routes + hash reset tokens (audit #168) (#169) *(cloud)*
