@@ -9,14 +9,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTurnstileToken, isTurnstileConfigured } from '@/lib/turnstile';
-import { checkRateLimit, RateLimitPresets, getClientIp, getRateLimitHeaders } from '@/lib/rate-limit';
+import { RateLimitPresets, getClientIp, getRateLimitHeaders } from '@/lib/rate-limit';
+import { checkRateLimitDistributed } from '@/lib/rate-limit-distributed';
 import { checkAccountLockout } from '@/lib/account-lockout';
 
 export async function POST(request: NextRequest) {
   const clientIp = getClientIp(request);
 
-  // 1. 速率限制检查
-  const rateLimitResult = checkRateLimit(`login:${clientIp}`, RateLimitPresets.LOGIN);
+  // 1. 速率限制检查（审计 #168：用 KV 支撑的分布式限流，避免 Workers per-isolate 计数被
+  //    跨 isolate 分散请求绕过；非 Cloudflare 环境自动回退内存限流）。
+  const rateLimitResult = await checkRateLimitDistributed(`login:${clientIp}`, RateLimitPresets.LOGIN);
   const rateLimitHeaders = getRateLimitHeaders(rateLimitResult, RateLimitPresets.LOGIN);
 
   if (!rateLimitResult.allowed) {

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, passwordResetTokens, users } from '@/lib/prisma';
 import { sendPasswordResetEmail } from '@/lib/resend';
 import { hashResetToken } from '@/lib/password-reset-tokens';
-import { checkRateLimit, RateLimitPresets, getClientIp } from '@/lib/rate-limit';
+import { RateLimitPresets, getClientIp } from '@/lib/rate-limit';
+import { checkRateLimitDistributed } from '@/lib/rate-limit-distributed';
 import { eq } from 'drizzle-orm';
 
 // Generate secure random bytes using Web Crypto API (works in both Node.js and Cloudflare Workers)
@@ -24,8 +25,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit by IP + email to blunt reset-email bombing / user enumeration.
+    // 审计 #168：分布式（KV）限流，避免 Workers per-isolate 计数被绕过；非 CF 环境回退内存。
     const clientIp = getClientIp(request);
-    const rl = checkRateLimit(
+    const rl = await checkRateLimitDistributed(
       `forgot-password:${clientIp}:${email.toLowerCase()}`,
       RateLimitPresets.PASSWORD_RESET,
     );
