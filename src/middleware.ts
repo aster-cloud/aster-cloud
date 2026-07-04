@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale, type Locale } from './i18n/config';
 import { buildCspHeader, securityHeadersOnly } from '@/lib/security/csp';
 import { fetchAvailable } from '@/lib/lexicon-availability';
+import { applyCsrfGate } from '@/lib/security/csrf-gate';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
 
@@ -38,6 +39,17 @@ function rand(n: number): string {
 
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ===== CSRF 网关（审计 #168）：/api 变更请求的集中防护 =====
+  // 放在最前面并**提前返回**——API 路由不需要下面的 i18n/CSP/locale 逻辑（matcher 原本排除
+  // /api，本次为跑此 gate 才纳入；纳入后必须在这里短路，避免 i18n 逻辑污染 API 响应）。
+  // 逻辑抽到 applyCsrfGate（可单测的纯函数，不拉 next-intl 链）。返回非 null 即拒绝。
+  if (pathname.startsWith('/api/')) {
+    const denied = applyCsrfGate(request);
+    if (denied) return denied;
+    // API 请求（放行）在此结束 middleware——不进入 i18n/CSP 流程。
+    return NextResponse.next();
+  }
 
   // ----- 严格 locale gate：路径里的 locale 段必须落在后端可用集合 -----
   // 仅检查显式带 locale 前缀的请求（例如 /zh/dashboard）。
@@ -198,6 +210,9 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Match all pathnames except for API routes, static files, etc.
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+  // 两条 matcher：
+  //   1) 页面路径（排除 api/_next/_vercel/静态文件）→ 走 i18n/CSP/locale 流程。
+  //   2) /api/**（审计 #168）→ 只为 CSRF 网关纳入；middleware 顶部对 /api 提前返回，
+  //      不进入 i18n 逻辑。两条互斥，页面流程仍完全不受 API 请求影响。
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)', '/api/:path*'],
 };
