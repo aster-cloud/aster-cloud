@@ -82,7 +82,10 @@ const ENV_CHECKS: readonly EnvCheck[] = [
   {
     key: 'NEXT_PUBLIC_APP_URL',
     required: 'production-only',
-    description: '部署 URL（webhook redirect / 邮件 CTA）',
+    description:
+      '部署 URL（webhook redirect / 邮件 CTA）。**同时是 CSRF 网关（审计 #168）的默认允许 Origin**——'
+      + 'production 缺失则所有非 Bearer 的 cookie-auth 变更 API 会被 checkCsrf fail-closed 拒（403）。'
+      + '多域名/preview/custom domain 部署须另配 CSRF_ALLOWED_ORIGINS（逗号分隔）。',
   },
   {
     key: 'ASTER_PLAN_GATE_HMAC_KEY',
