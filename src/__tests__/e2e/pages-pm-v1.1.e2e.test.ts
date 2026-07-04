@@ -79,29 +79,32 @@ function expectNotContains(html: string, needle: string, locale: string) {
 
 describe.skipIf(!serverReachable)('E2E PM v1.1 — pages render correct content', () => {
   describe('Hero — three locales', () => {
-    it('en hero shows "Policy as Code in native language" with native locale list', async () => {
+    // hero title 现由 i18n config 驱动（"决策回放"卖点）。原断言用的是更早的
+    // "Policy as Code in native language" 旧 slogan，已随文案迭代废弃——本次 CI 让 e2e
+    // 首次真实运行才暴露（此前 server 起不来→全 suite skip→假绿）。断言对齐当前真实文案。
+    it('en hero shows the "Replay any decision" headline with native locale list', async () => {
       const { status, html } = await fetchDoc('/');
       expect(status).toBe(200);
-      expectContains(html, 'Policy as Code in native language', 'en');
-      // Current locale leads; the rest are listed in config order.
+      expectContains(html, 'Replay any decision', 'en');
+      // Current locale leads; the rest are listed in config order（含 hi）。
       expectContains(html, 'English / 中文 / Deutsch', 'en');
       expectContains(html, 'No credit card required', 'en');
     });
 
-    it('zh hero shows "用母语写策略" with current-locale-first native list', async () => {
+    it('zh hero shows the "决策回放" headline with current-locale-first native list', async () => {
       const { status, html } = await fetchDoc('/zh');
       expect(status).toBe(200);
-      expectContains(html, '用母语写策略', 'zh');
+      expectContains(html, '决策回放', 'zh');
       expectContains(html, '中文 / English / Deutsch', 'zh');
       expectContains(html, '无需信用卡', 'zh');
     });
 
-    it('de hero shows "Policy as Code in der Muttersprache" with native locale list', async () => {
+    it('de hero shows the "Jede Entscheidung abspielen" headline with native locale list', async () => {
       const { status, html } = await fetchDoc('/de');
       expect(status).toBe(200);
-      expectContains(html, 'Policy as Code in der Muttersprache', 'de');
+      expectContains(html, 'Jede Entscheidung abspielen', 'de');
       expectContains(html, 'Deutsch / English / 中文', 'de');
-      expectContains(html, 'Keine Kreditkarte erforderlich', 'de');
+      expectContains(html, 'Keine Kreditkarte', 'de');
     });
   });
 
