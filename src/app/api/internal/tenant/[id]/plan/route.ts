@@ -30,7 +30,12 @@ export async function GET(
 
   // HMAC 验签：dev 可缺省 ASTER_PLAN_GATE_HMAC_KEY；生产强制
   const sharedKey = process.env.ASTER_PLAN_GATE_HMAC_KEY;
-  if (sharedKey) {
+  // Fail-closed: without the shared HMAC key we cannot authenticate the
+  // caller, so refuse to serve rather than leak data (audit #168).
+  if (!sharedKey) {
+    return NextResponse.json({ error: 'Internal verification unavailable' }, { status: 503 });
+  }
+  {
     const timestamp = req.headers.get('X-Aster-Timestamp');
     const signature = req.headers.get('X-Aster-Signature');
     if (!timestamp || !signature) {

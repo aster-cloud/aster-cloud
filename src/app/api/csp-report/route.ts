@@ -23,7 +23,8 @@ export async function POST(req: Request) {
       timestamp: new Date().toISOString(),
     }));
 
-    return NextResponse.json({ received: true }, { status: 204 });
+    // 204 No Content must not carry a body (undici rejects a 204 with a body).
+    return new NextResponse(null, { status: 204 });
   } catch {
     return NextResponse.json({ error: 'Invalid report' }, { status: 400 });
   }

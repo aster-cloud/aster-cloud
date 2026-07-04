@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createHmac } from 'node:crypto';
 
 /**
  * /api/internal/snapshot/full 路由级回归：
  *  - limit 参数边界校验（NaN/0/负数/超界 → 400，且不查 DB）
  *  - active key 过滤下推到 SQL（where 同时含 isNull(revokedAt) + inArray(userId)）
+ *  - fail-closed：HMAC 密钥未配置 → 503（audit #168）；坏签名 → 401
  *
- * HMAC 在 ASTER_PLAN_GATE_HMAC_KEY 未设置时跳过，便于隔离校验逻辑。
+ * 输入校验用例携带合法签名以隔离校验逻辑。
  */
 
 const { mockUsersFindMany, mockApiKeysFindMany } = vi.hoisted(() => ({
@@ -38,9 +40,19 @@ vi.mock('@/lib/plans', () => ({
 }));
 
 const originalKey = process.env.ASTER_PLAN_GATE_HMAC_KEY;
+const TEST_KEY = 'test-shared-hmac-key';
+const PATH = '/api/internal/snapshot/full';
 
-function makeReq(query: string): Request {
-  return new Request(`http://cloud.test/api/internal/snapshot/full${query}`);
+function signedHeaders(key: string): Record<string, string> {
+  const ts = String(Math.floor(Date.now() / 1000));
+  const sig = createHmac('sha256', key).update(`GET\n${PATH}\n${ts}`).digest('hex');
+  return { 'X-Aster-Timestamp': ts, 'X-Aster-Signature': sig };
+}
+
+function makeReq(query: string, headers?: Record<string, string>): Request {
+  return new Request(`http://cloud.test${PATH}${query}`, {
+    headers: headers ?? signedHeaders(TEST_KEY),
+  });
 }
 
 describe('GET /api/internal/snapshot/full — limit 校验', () => {
@@ -48,8 +60,7 @@ describe('GET /api/internal/snapshot/full — limit 校验', () => {
     vi.resetModules();
     mockUsersFindMany.mockReset().mockResolvedValue([]);
     mockApiKeysFindMany.mockReset().mockResolvedValue([]);
-    // 未设置 HMAC：跳过签名校验，直达 limit 校验逻辑。
-    delete process.env.ASTER_PLAN_GATE_HMAC_KEY;
+    process.env.ASTER_PLAN_GATE_HMAC_KEY = TEST_KEY;
   });
 
   afterEach(() => {
@@ -117,5 +128,35 @@ describe('GET /api/internal/snapshot/full — limit 校验', () => {
     const { GET } = await import('@/app/api/internal/snapshot/full/route');
     await GET(makeReq('?limit=1000'));
     expect(mockApiKeysFindMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/internal/snapshot/full — fail-closed HMAC (audit #168)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockUsersFindMany.mockReset().mockResolvedValue([]);
+    mockApiKeysFindMany.mockReset().mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    if (originalKey === undefined) delete process.env.ASTER_PLAN_GATE_HMAC_KEY;
+    else process.env.ASTER_PLAN_GATE_HMAC_KEY = originalKey;
+    vi.restoreAllMocks();
+  });
+
+  it('HMAC 密钥未配置 → 503，不查 DB', async () => {
+    delete process.env.ASTER_PLAN_GATE_HMAC_KEY;
+    const { GET } = await import('@/app/api/internal/snapshot/full/route');
+    const res = await GET(makeReq('?limit=1000', {}));
+    expect(res.status).toBe(503);
+    expect(mockUsersFindMany).not.toHaveBeenCalled();
+  });
+
+  it('坏签名 → 401，不查 DB', async () => {
+    process.env.ASTER_PLAN_GATE_HMAC_KEY = TEST_KEY;
+    const { GET } = await import('@/app/api/internal/snapshot/full/route');
+    const res = await GET(makeReq('?limit=1000', signedHeaders('wrong-key')));
+    expect(res.status).toBe(401);
+    expect(mockUsersFindMany).not.toHaveBeenCalled();
   });
 });

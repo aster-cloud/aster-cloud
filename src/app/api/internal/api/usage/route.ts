@@ -13,7 +13,11 @@ import { and, eq, sql } from 'drizzle-orm';
 
 function verifyHmac(req: Request, method: string): NextResponse | null {
   const sharedKey = process.env.ASTER_PLAN_GATE_HMAC_KEY;
-  if (!sharedKey) return null; // dev/test 跳过
+  // Fail-closed: without the shared HMAC key we cannot authenticate the
+  // caller, so refuse to serve rather than leak/mutate data (audit #168).
+  if (!sharedKey) {
+    return NextResponse.json({ error: 'Internal verification unavailable' }, { status: 503 });
+  }
   const timestamp = req.headers.get('X-Aster-Timestamp');
   const signature = req.headers.get('X-Aster-Signature');
   if (!timestamp || !signature) {

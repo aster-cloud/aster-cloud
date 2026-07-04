@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, passwordResetTokens, users } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
+import { hashResetToken } from '@/lib/password-reset-tokens';
+import { checkRateLimit, RateLimitPresets, getClientIp } from '@/lib/rate-limit';
 import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
@@ -21,9 +23,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the token
+    // Rate limit by IP + token to blunt brute-forcing of reset tokens.
+    const clientIp = getClientIp(request);
+    const rl = checkRateLimit(
+      `reset-password:${clientIp}:${hashResetToken(token)}`,
+      RateLimitPresets.PASSWORD_RESET,
+    );
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many password reset attempts. Please try again later.' },
+        { status: 429, headers: rl.retryAfterSeconds ? { 'Retry-After': String(rl.retryAfterSeconds) } : undefined },
+      );
+    }
+
+    // Look up by sha256(token): DB stores only the hash (audit #168).
     const resetToken = await db.query.passwordResetTokens.findFirst({
-      where: eq(passwordResetTokens.token, token),
+      where: eq(passwordResetTokens.token, hashResetToken(token)),
     });
 
     if (!resetToken) {
