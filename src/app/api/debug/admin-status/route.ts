@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
 import { getDb, users } from '@/lib/prisma';
 import { ensureAdminSeeded, ensureSchemaApplied } from '@/lib/db-bootstrap';
 import { verifyPassword } from '@/auth';
+
+/** 常量时间比较，避免按字节泄露密钥（长度不同直接 false）。 */
+function secretMatches(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 /**
  * Diagnostic endpoint to confirm admin provisioning + password
@@ -16,11 +26,10 @@ import { verifyPassword } from '@/auth';
  *     bcrypt-verifies against the stored hash (so we know if the
  *     credentials path is broken vs the user data is broken)
  *
- * Gated behind a request-time secret query string param so it
- * doesn't leak diagnostic data via accidental URL sharing. Delete
- * once admin login is working.
+ * 密钥经 **X-Debug-Secret 请求头**传递（不再走 query string——后者会泄露到访问日志/
+ * Referer/浏览器历史，审计 #168）。常量时间比较。admin login 修好后应删除本端点。
  *
- *   GET /api/debug/admin-status?secret=<DEBUG_SECRET>
+ *   GET /api/debug/admin-status   header: X-Debug-Secret: <DEBUG_SECRET>
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,8 +42,7 @@ export async function GET(req: Request) {
       { status: 503 },
     );
   }
-  const url = new URL(req.url);
-  if (url.searchParams.get('secret') !== secret) {
+  if (!secretMatches(req.headers.get('x-debug-secret'), secret)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
