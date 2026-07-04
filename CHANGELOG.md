@@ -356,6 +356,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -530,6 +531,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Debug/admin-status 密钥改请求头 + 常量时间比较（审计 #168 deferred） (#170) *(security)*
 - Fail-closed internal routes + hash reset tokens (audit #168) (#169) *(cloud)*
 - 收敛双编译管线为单一真相源 — 修别名误报 + 去每键双解析 (#167) *(editor)*
 - 别名策略「生成示例」不再解析失败 — schema 提取合并 aliasSet (#166) *(execute)*
