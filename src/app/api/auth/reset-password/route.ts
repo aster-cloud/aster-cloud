@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, passwordResetTokens, users } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { hashResetToken } from '@/lib/password-reset-tokens';
-import { checkRateLimit, RateLimitPresets, getClientIp } from '@/lib/rate-limit';
+import { RateLimitPresets, getClientIp } from '@/lib/rate-limit';
+import { checkRateLimitDistributed } from '@/lib/rate-limit-distributed';
 import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
@@ -24,8 +25,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit by IP + token to blunt brute-forcing of reset tokens.
+    // 审计 #168：分布式（KV）限流，避免 Workers per-isolate 计数被绕过；非 CF 环境回退内存。
     const clientIp = getClientIp(request);
-    const rl = checkRateLimit(
+    const rl = await checkRateLimitDistributed(
       `reset-password:${clientIp}:${hashResetToken(token)}`,
       RateLimitPresets.PASSWORD_RESET,
     );

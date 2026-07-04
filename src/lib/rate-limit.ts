@@ -5,7 +5,7 @@
  * 使用内存存储 + 惰性清理，兼容 Cloudflare Workers（无 setInterval）。
  */
 
-interface RateLimitConfig {
+export interface RateLimitConfig {
   windowMs: number;
   maxRequests: number;
 }
