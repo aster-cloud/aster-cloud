@@ -360,6 +360,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -847,6 +848,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Performance
 
+- Standalone artifact 用 zstd -1 替代 gzip（打包快 ~40%） (#174) *(ci)*
 - E2e 复用 build 产物免重复 build + PR-only concurrency (#173) *(ci)*
 - Cut per-call DB round-trips + lengthen policy cache TTL (#138) *(execute)*
 - Parallelize en-base + locale message loads (ADR 0020 优化 2) (#105) *(i18n)*
