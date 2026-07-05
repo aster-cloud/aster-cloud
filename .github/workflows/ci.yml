@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# 同一 ref 上新 push 到来时取消尚在跑的过时 CI（PR 连续 push 常见）——省算力/排队。
+# ★cancel-in-progress 只对 PR 生效（Codex 审 High）：main push 的 build-migrate-image job
+# 有副作用（推 migrate 镜像 + 触发 ArgoCD sync），若被后续 push 取消会导致迁移镜像丢失 /
+# app-migration 不一致窗口。故 main 上的 run 必须跑完，绝不取消。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -111,7 +119,60 @@ jobs:
       - name: Coverage (optional, saas project only)
         run: pnpm test:coverage --reporter=verbose || echo "::warning::Coverage skipped (install @vitest/coverage-v8 to enable)"
         continue-on-error: true
+
+      # Drizzle drift 检查独立于 next build，前移到 build:next **之前**（Codex 审 Medium）：
+      # 否则 drift 失败会在已产出/上传 standalone artifact 之后才 fail，白占存储。
+      - name: Check Drizzle schema drift
+        run: |
+          pnpm db:generate 2>/dev/null || true
+          if [ -n "$(git diff --name-only drizzle/)" ]; then
+            echo "::error::Drizzle schema drift detected. Run 'pnpm db:generate' and commit the migration files."
+            git diff drizzle/
+            exit 1
+          fi
+
       - run: pnpm run build:next
+
+      # 复用 build 产物给 e2e job（时长优化）：原来 e2e job `needs: build` 却抛弃产物
+      # 重新 `pnpm build:next`（~150s 重复）。改为这里把 standalone 产物打成单个 tar
+      # 上传，e2e 下载解包复用。
+      #
+      # ★为何用 tar 而非 upload-artifact 直传目录：Next standalone 的
+      # node_modules/next 等是 **symlink**（指向 standalone 内部的 .pnpm/）。
+      # upload-artifact 逐文件上传对 symlink 跨 artifact 还原行为不可靠，且数千小文件
+      # 上传/下载开销大。tar 原生保留 symlink 拓扑 + 单文件传输，既正确又更快。
+      # 预先把 static/public 组装进 standalone（e2e Start server 原本做的 cp），
+      # 打进同一 tar，e2e 端解包即用。
+      - name: Package standalone build for e2e reuse
+        run: |
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          [ -d public ] && cp -r public .next/standalone/public || true
+          # ★symlink invariant 检查（Codex 审 Low）：standalone 的依赖是 symlink（指向内部
+          # .pnpm/）。tar 只保拓扑，若未来 pnpm/Next tracing 变化产出**逃出 .next/standalone**
+          # 的 symlink（如指向仓库根 node_modules），解包到别的 job 就会缺依赖。打包前断言
+          # 所有 symlink 目标都落在 standalone 内，否则立即失败（宁可 CI 红，不发坏包）。
+          ROOT="$(cd .next/standalone && pwd)"
+          bad=0
+          while IFS= read -r link; do
+            tgt="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$link")"
+            case "$tgt" in
+              "$ROOT"/*) : ;;
+              *) echo "::error::standalone symlink 逃出打包根: $link -> $tgt"; bad=1 ;;
+            esac
+          done < <(find .next/standalone -type l)
+          [ "$bad" = "0" ] || { echo "::error::standalone 含逃逸 symlink，拒绝打包（避免 e2e 缺依赖）"; exit 1; }
+          test -e .next/standalone/node_modules/next || { echo "::error::standalone/node_modules/next 不可解析"; exit 1; }
+          tar -czf standalone.tar.gz -C .next standalone
+          echo "standalone.tar.gz size: $(du -h standalone.tar.gz | cut -f1)"
+
+      - name: Upload standalone tarball for e2e reuse
+        uses: actions/upload-artifact@v7
+        with:
+          name: next-standalone
+          path: standalone.tar.gz
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Upload coverage to Codecov
         # Codecov v5+ requires a token even on public repos via the GHA;
@@ -128,15 +189,6 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
-
-      - name: Check Drizzle schema drift
-        run: |
-          pnpm db:generate 2>/dev/null || true
-          if [ -n "$(git diff --name-only drizzle/)" ]; then
-            echo "::error::Drizzle schema drift detected. Run 'pnpm db:generate' and commit the migration files."
-            git diff drizzle/
-            exit 1
-          fi
 
       - name: Upload test results
         if: always()
@@ -155,13 +207,13 @@ jobs:
   #     in the May 2026 standalone deploy)
   #   - server-rendered i18n drift on landing / pricing / hero
   #   - authenticated-route gate (login redirect)
-  # Runs in parallel with `build` so failures here don't block the
-  # SaaS bundle artifact going through.
   #
-  # Uses `pnpm build:next && pnpm start` (not `pnpm dev`) so we test
-  # the production-shaped server, not the dev hot-reload bundle.
-  # Production shape catches issues like the standalone server.js
-  # NODE_ENV hardcode that dev mode never hits.
+  # 时长优化后 `needs: build`——**复用** build job 打包的 standalone 产物（不再原地重新
+  # build，省 ~150s）。因此 e2e 不再与 build 并行，而是串在其后；代价是 wall-clock 上
+  # e2e 等 build 完成，但省掉的整个重复 build 远大于此。
+  #
+  # 测的是 production-shaped standalone server（`node server.js`，非 dev hot-reload），
+  # 能抓 standalone server.js NODE_ENV hardcode 这类 dev 模式碰不到的问题。
   e2e:
     runs-on: ubuntu-latest
     needs: build
@@ -173,23 +225,34 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
 
+      # 仍需 install：e2e 用 vitest 跑测试（devDependency，standalone 产物不含）。
+      # 但**不再** build——复用 build job 打包的 standalone 产物（省 ~150s 重复 build）。
       - run: pnpm install --frozen-lockfile
 
-      - name: Build production bundle for e2e
-        # SaaS build path. We're not testing the on-prem variant here;
-        # the on-prem-build job already verifies that bundle doesn't
-        # bundle SaaS SDKs.
-        run: pnpm build:next
+      - name: Download + unpack standalone build from build job
+        uses: actions/download-artifact@v8
+        with:
+          name: next-standalone
+          path: .
+      - name: Unpack standalone tarball
+        run: |
+          # 解包还原 .next/standalone（含已组装的 .next/static + public + symlink 依赖）。
+          mkdir -p .next
+          tar -xzf standalone.tar.gz -C .next
+          test -f .next/standalone/server.js || { echo "::error::standalone/server.js 缺失，解包异常"; exit 1; }
 
       - name: Start production server
         run: |
-          # Standalone output goes to .next/standalone — copy static/
-          # + public/ next to it so the server can serve them.
-          mkdir -p .next/standalone/.next
-          cp -r .next/static .next/standalone/.next/static
-          [ -d public ] && cp -r public .next/standalone/public || true
+          # standalone 已由 build job 组装好 static/public（打进 tar），此处直接启动。
           # Start in background. Hostname 127.0.0.1 so it doesn't
           # try to bind to ::1 on dual-stack runners.
+          #
+          # ★注入全套 dummy SaaS env（Codex 审 High）：standalone server.js 保留外部
+          # NODE_ENV，runner 未设时落到 production → src/instrumentation.ts 调
+          # validateEnvOrThrow() 校验 SaaS 必填项（DATABASE/AUTH/CRON/APP_URL/HMAC +
+          # STRIPE_SECRET/WEBHOOK + 6 个 STRIPE PRICE_ID + MIXPANEL + RESEND）。缺任一即
+          # throw、instrumentation 崩、server 起不来。这些是编译期无关的 runtime 占位值，
+          # 只为让 production-shaped server 通过 env 闸门启动（不接真实 Stripe/Mixpanel）。
           (cd .next/standalone && PORT=3001 HOSTNAME=127.0.0.1 \
             DEPLOYMENT_MODE=saas \
             DATABASE_URL='postgresql://noop:noop@localhost:5432/noop' \
@@ -199,18 +262,41 @@ jobs:
             NEXT_PUBLIC_APP_URL='http://localhost:3001' \
             NEXTAUTH_URL='http://localhost:3001' \
             ASTER_PLAN_GATE_HMAC_KEY='ci-e2e-hmac' \
+            STRIPE_SECRET_KEY='sk_test_ci_e2e_placeholder' \
+            STRIPE_WEBHOOK_SECRET='whsec_ci_e2e_placeholder' \
+            NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID='price_ci_e2e_m_usd' \
+            NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID='price_ci_e2e_y_usd' \
+            NEXT_PUBLIC_STRIPE_PRO_MONTHLY_CNY_PRICE_ID='price_ci_e2e_m_cny' \
+            NEXT_PUBLIC_STRIPE_PRO_YEARLY_CNY_PRICE_ID='price_ci_e2e_y_cny' \
+            NEXT_PUBLIC_STRIPE_PRO_MONTHLY_EUR_PRICE_ID='price_ci_e2e_m_eur' \
+            NEXT_PUBLIC_STRIPE_PRO_YEARLY_EUR_PRICE_ID='price_ci_e2e_y_eur' \
+            NEXT_PUBLIC_MIXPANEL_TOKEN='ci_e2e_mixpanel_token' \
+            RESEND_API_KEY='re_ci_e2e_placeholder' \
             node server.js > /tmp/e2e-server.log 2>&1 &)
           # Wait up to 30s for the server to accept requests. Probe / —
           # next-intl rewrites it to /en internally and serves SSR
           # within ~3s on a cold-start GitHub runner.
+          # ★readiness 硬失败（Codex 审 High）：原版循环 30 次后即使 server 没起来也不
+          # exit 1，而 test:e2e 用 skipIf(!serverReachable) → server 起不来会静默 0-test
+          # 假绿，掩盖 artifact 复用坏包 / env throw / 端口问题。改为超时即打印 server log
+          # 并 exit 1，让 e2e 真正证明「复用的 standalone 产物能启动」。
+          ready=0
           for i in $(seq 1 30); do
             sleep 1
             code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/ || echo 000)
             if [ "$code" = "200" ] || [ "$code" = "307" ]; then
               echo "server ready (HTTP $code) after ${i}s"
+              ready=1
               break
             fi
           done
+          if [ "$ready" != "1" ]; then
+            echo "::error::e2e server 未在 30s 内就绪——复用的 standalone 产物可能启动失败。server log:"
+            echo "::group::/tmp/e2e-server.log"
+            cat /tmp/e2e-server.log || true
+            echo "::endgroup::"
+            exit 1
+          fi
 
       - name: Run e2e suite
         env:

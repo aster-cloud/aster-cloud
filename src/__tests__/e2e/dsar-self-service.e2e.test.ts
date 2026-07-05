@@ -64,46 +64,31 @@ describe.skipIf(!serverReachable)(
     // complexity once we hit a real regression that this lighter
     // suite missed.
 
-    describe('GET /api/v1/dsar — unauthenticated', () => {
-      it('rejects with 401 + structured envelope, not 5xx', async () => {
+    // /api/v1/dsar 只导出 POST（HMAC-signed 契约，同 /telemetry）。原测试探 GET 并期望
+    // 401，但 GET 无 handler → 天然 405，且 middleware 对 /api/v1/dsar 是 CSRF 豁免 + GET
+    // 是 safe method 直接放行、不做 cookie-auth——「GET 未认证→401」这个假设本就不成立。
+    // 本次 CI 让 e2e 首次真跑才暴露（此前全 suite skip 假绿）。改为诚实探测该 route 真实的
+    // 鉴权拒绝面：POST 缺 HMAC header → 400 {error:'rejected', reason:'missing-required-headers'}。
+    describe('POST /api/v1/dsar — missing HMAC headers', () => {
+      it('rejects with 400 rejected-envelope, not 5xx', async () => {
         const r = await fetch(`${BASE_URL}/api/v1/dsar`, {
-          headers: { Accept: 'application/json' },
+          method: 'POST',
+          headers: { Accept: 'application/json', 'content-type': 'application/json' },
+          body: '{}',
         });
-        expect(r.status).toBe(401);
-        const body = (await r.json()) as { error?: unknown };
-        // The envelope post-extractErrorMessage refactor: structured
-        // {code, message, requestId} OR legacy {error: "string"} are
-        // both acceptable. React error #31 (object as child) would
-        // mean we accidentally returned a plain object — assert NOT
-        // that.
+        expect(r.status).toBe(400);
+        const body = (await r.json()) as { error?: unknown; reason?: unknown };
         expect(body).toBeTruthy();
-        expect(body.error).toBeDefined();
+        expect(body.error).toBe('rejected');
+        expect(body.reason).toBe('missing-required-headers');
       });
 
-      it('emits x-request-id header for correlation', async () => {
+      it('GET is not a supported method (405, no 5xx)', async () => {
+        // 证实该 endpoint 只接受 POST——GET 返回 405 而非泄露 5xx / 意外 2xx。
         const r = await fetch(`${BASE_URL}/api/v1/dsar`, {
           headers: { Accept: 'application/json' },
         });
-        // x-request-id is the contract from errorEnvelope() — every
-        // 4xx/5xx from a route using it gets one. Missing the header
-        // means a route bypassed the envelope helper and is
-        // hand-rolling responses (regression).
-        const requestId = r.headers.get('x-request-id');
-        if (r.status === 401 && r.headers.get('content-type')?.includes('json')) {
-          // 401 might come from middleware (no envelope) or the
-          // route (with envelope). Accept either; if from the route,
-          // requestId should match the body's.
-          if (requestId) {
-            const body = (await r.json()) as { error?: { requestId?: string } };
-            const bodyRid =
-              body.error && typeof body.error === 'object'
-                ? (body.error as { requestId?: string }).requestId
-                : null;
-            if (bodyRid) {
-              expect(bodyRid).toBe(requestId);
-            }
-          }
-        }
+        expect(r.status).toBe(405);
       });
     });
 
