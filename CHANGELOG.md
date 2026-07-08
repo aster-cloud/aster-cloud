@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- 精确 token 计量 — requestId upsert 回填（#185, cloud 侧） (#189) *(ai-usage)*
 - BYOK 真接入推理 + lastUsedAt 回写 + 语义拆分（cloud, Phase 2-4） (#186) *(byok)*
 - Executions 加 decision 列 — 区分准入四态，值输出不再误计入失败 (#164) *(audit)*
 - 关键词别名 UI（ADR 0022 Phase A）— policy 层面板 + 结构词 per-user 授权 + 三护栏 (#162) *(alias)*
@@ -261,6 +262,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
