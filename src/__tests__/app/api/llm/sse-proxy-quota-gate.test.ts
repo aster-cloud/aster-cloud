@@ -8,11 +8,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
  * （驱动 checkAiQuota 的月配额/速率计数）。
  */
 
-const { mockAuth, mockCheckAiQuota, mockRecordAiUsage, mockSign } = vi.hoisted(() => ({
+const { mockAuth, mockCheckAiQuota, mockRecordAiUsage, mockSign, mockResolveByok, mockInjectByok } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
   mockCheckAiQuota: vi.fn(),
   mockRecordAiUsage: vi.fn(),
   mockSign: vi.fn(),
+  mockResolveByok: vi.fn(),
+  mockInjectByok: vi.fn(),
 }));
 
 vi.mock('@/auth', () => ({ auth: mockAuth }));
@@ -21,6 +23,10 @@ vi.mock('@/lib/ai-quota', () => ({
   recordAiUsage: mockRecordAiUsage,
 }));
 vi.mock('@/lib/api-signing', () => ({ signInternalCallerHeaders: mockSign }));
+vi.mock('@/lib/byok-envelope', () => ({
+  resolveByokEnvelope: mockResolveByok,
+  injectByokEnvelope: mockInjectByok,
+}));
 
 function req(): Request {
   return new Request('http://cloud.test/api/llm/generate', {
@@ -52,6 +58,8 @@ describe('proxyLlmSse — AI 配额门控 + 成功记账', () => {
     mockCheckAiQuota.mockReset();
     mockRecordAiUsage.mockReset().mockResolvedValue(undefined);
     mockSign.mockReset().mockResolvedValue({ 'X-Internal-Caller': 'cloud-bff' });
+    mockResolveByok.mockReset().mockResolvedValue(null);
+    mockInjectByok.mockReset().mockImplementation((raw: string) => ({ body: raw, injected: false }));
     globalThis.fetch = vi.fn().mockResolvedValue(sseStreamResponse());
   });
 
@@ -134,5 +142,23 @@ describe('proxyLlmSse — AI 配额门控 + 成功记账', () => {
     const res = await proxyLlmSse(req() as never, { upstreamPath: '/api/v1/ai/generate' });
     expect(res.status).toBe(502);
     expect(mockRecordAiUsage).not.toHaveBeenCalled();
+  });
+
+  it('BYOK 用户 → checkAiQuota 收 usedByok=true、body 注入 _byok、记账 usedByok=true', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockResolveByok.mockResolvedValue({ provider: 'anthropic', apiKey: 'sk-ant' });
+    mockInjectByok.mockImplementation((raw: string) => ({
+      body: JSON.stringify({ ...JSON.parse(raw), _byok: { provider: 'anthropic', apiKey: 'sk-ant' } }),
+      injected: true,
+    }));
+    mockCheckAiQuota.mockResolvedValue({ allowed: true, remaining: -1, limit: -1, usedByok: true });
+
+    const { proxyLlmSse } = await import('@/lib/llm-sse-proxy');
+    const res = await proxyLlmSse(req() as never, { upstreamPath: '/api/v1/ai/generate' });
+    expect(res.status).toBe(200);
+    expect(mockCheckAiQuota).toHaveBeenCalledWith('user-1', { usedByok: true });
+    const forwardedBody = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string;
+    expect(JSON.parse(forwardedBody)._byok).toEqual({ provider: 'anthropic', apiKey: 'sk-ant' });
+    expect(mockRecordAiUsage.mock.calls[0][0]).toMatchObject({ usedByok: true });
   });
 });

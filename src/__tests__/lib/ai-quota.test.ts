@@ -99,6 +99,30 @@ describe('checkAiQuota', () => {
         expect(result.reason).toBe('ai_quota_exhausted');
       }
     });
+
+    it('Phase 2：usedByok=true 跳过平台月配额（即使平台配额已满仍放行），但仍受速率约束', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUserBase({ plan: 'free' }));
+      // 月配额被跳过（不查 countSuccessfulCalls 作月配额判定）；速率 lastMinute 0 / lastHour 0 / final 0
+      setupSequentialCounts(0, 0, 0);
+
+      const result = await checkAiQuota('user-1', { usedByok: true });
+      expect(result.allowed).toBe(true);
+      if (result.allowed) {
+        expect(result.usedByok).toBe(true);
+        expect(result.limit).toBe(-1); // 月配额视为无限（用户自己的 key）
+      }
+    });
+
+    it('Phase 2：usedByok=true 仍受每分钟速率限制（防高频打爆）', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUserBase({ plan: 'free' }));
+      // 月配额跳过；lastMinute 超 free 上限 5
+      setupCountResult(99); // countCallsSince 返回 99 → 触发速率
+      const result = await checkAiQuota('user-1', { usedByok: true });
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toBe('ai_rate_limited');
+      }
+    });
   });
 
   describe('自动封禁', () => {
