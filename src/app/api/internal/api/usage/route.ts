@@ -8,8 +8,8 @@
  */
 import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
-import { db, apiCallRecords } from '@/lib/prisma';
-import { and, eq, sql } from 'drizzle-orm';
+import { db, apiCallRecords, apiKeys } from '@/lib/prisma';
+import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 
 function verifyHmac(req: Request, method: string): NextResponse | null {
   const sharedKey = process.env.ASTER_PLAN_GATE_HMAC_KEY;
@@ -85,6 +85,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
+  // insert 与 lastUsedAt 更新共用同一时刻，保证事实记录与派生展示字段一致。
+  const usedAt = new Date();
+
   await db.insert(apiCallRecords).values({
     id: randomUUID(),
     userId: body.userId,
@@ -94,8 +97,39 @@ export async function POST(req: Request) {
     endpointPath: body.endpointPath,
     status: body.status,
     latencyMs: body.latencyMs ?? 0,
-    createdAt: new Date(),
+    createdAt: usedAt,
   });
+
+  // 更新 API key 的"最后使用"时间戳。此前 apiKeys.lastUsedAt 仅由 cloud 侧
+  // validateApiKey 更新（key 打 aster-cloud BFF 时），而打 aster-api 后端
+  // （policy.aster-lang.dev）的调用只写 apiCallRecords、不碰 lastUsedAt →
+  // dashboard 对纯 API 后端用量的 key 永远显示"从未使用"。aster-api 已对每次
+  // 调用上报 cloud 的 apiKeys.id（经 /api/internal/apikey/verify 解析），故在此
+  // 补齐派生字段即可闭合该展示缺口，无需改动 aster-api。
+  //
+  // 语义：与 validateApiKey 一致，"最后使用"=最后一次以该 key 发起调用（不区分
+  // success / api_error / rate_limited / quota_exhausted），故不按 status 过滤。
+  // best-effort：lastUsedAt 是派生展示字段，更新失败不应回滚上面的 apiCallRecords
+  // 事实写入，也不影响响应。单调 where 守卫（lastUsedAt IS NULL OR < usedAt）避免
+  // 高并发下旧请求晚到把时间戳往回退。
+  if (body.apiKeyId) {
+    try {
+      await db
+        .update(apiKeys)
+        .set({ lastUsedAt: usedAt })
+        .where(
+          and(
+            eq(apiKeys.id, body.apiKeyId),
+            or(isNull(apiKeys.lastUsedAt), lt(apiKeys.lastUsedAt, usedAt))
+          )
+        );
+    } catch (e) {
+      console.warn(
+        `[usage] failed to update apiKeys.lastUsedAt for apiKeyId=${body.apiKeyId}:`,
+        e
+      );
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }
