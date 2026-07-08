@@ -410,18 +410,42 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trigger ArgoCD sync to pick up new migrate image
+      - name: Trigger ArgoCD sync to run DB migration (fail-loud)
         if: success()
         env:
           ARGOCD_SERVER: argocd.aster-lang.cloud
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
         run: |
+          # issue #187：此前 token 缺失就静默 `exit 0`，把"迁移从未应用"伪装成 CI 绿。
+          # 迁移镜像用浮动 `:latest`、git manifest 不变 → ArgoCD automated selfHeal 不会检测到
+          # drift、PostSync 迁移 hook 不会重跑，所以【必须】由本 step 主动触发一次 sync operation。
+          # 该 step 失败 = 迁移没应用 = 必须可见（fail-loud），而不是假绿掩盖数据库落后。
           if [ -z "$ARGOCD_AUTH_TOKEN" ]; then
-            echo "ARGOCD_AUTH_TOKEN not set; skipping auto-sync"
-            exit 0
+            echo "::error title=DB migration not applied::ARGOCD_AUTH_TOKEN 未配置。迁移镜像已推送但 ArgoCD sync 未触发，PostSync 迁移 hook 不会重跑 → 数据库停在旧版本。修复：配置仓库 secret ARGOCD_AUTH_TOKEN，或手动跑迁移 Job（k3s apps/aster-lang/cloud/migrate-job.yaml）。详见 issue #187。"
+            exit 1
           fi
-          # 重启 aster-cloud Application 让 PreSync hook 重新触发 Job
-          curl -fsSL -X POST \
-            -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
-            "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" \
-            -d '{"revision":"main"}' || echo "::warning::ArgoCD sync trigger failed; migration will run on next sync"
+          # 触发 sync（--fail 让非 2xx 直接失败）；PostSync 迁移 hook 随本次 sync operation 重跑。
+          if ! curl --fail --silent --show-error -X POST \
+              -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
+              "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" \
+              -d '{"revision":"main"}'; then
+            echo "::error title=ArgoCD sync failed::触发 ArgoCD sync 失败 → 迁移可能未应用。检查 ARGOCD_AUTH_TOKEN 有效性 / ArgoCD 可达性。详见 issue #187。"
+            exit 1
+          fi
+          echo "ArgoCD sync 已触发，等待 operation 完成（含 PostSync 迁移 hook）..."
+          # 轮询 operation 状态直到结束——CI 绿必须代表"迁移真的跑完成功"，而非只"sync 请求被接受"
+          # （Codex 审查）。最多等 ~5min。
+          for i in $(seq 1 30); do
+            phase="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
+              "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud" \
+              | python3 -c 'import sys,json; print(json.load(sys.stdin).get("status",{}).get("operationState",{}).get("phase",""))' 2>/dev/null || echo "")"
+            echo "  [$i] operation phase=${phase:-<none>}"
+            case "$phase" in
+              Succeeded) echo "✅ ArgoCD sync + 迁移 hook 成功"; exit 0 ;;
+              Failed|Error) echo "::error title=ArgoCD sync/migration failed::ArgoCD operation phase=$phase → 迁移未成功应用。查看 ArgoCD UI 的 migrate PostSync hook 日志。详见 issue #187。"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error title=ArgoCD sync timeout::等待 ArgoCD operation 完成超时 → 迁移状态未知，需人工确认。详见 issue #187。"
+          exit 1
