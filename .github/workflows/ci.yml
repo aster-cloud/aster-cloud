@@ -387,6 +387,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # cosign keyless 签名需要 OIDC token（Fulcio 证书 + Rekor 透明日志）。
+      id-token: write
     steps:
       - uses: actions/checkout@v7
 
@@ -397,7 +399,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # ★只推不可变 SHA tag，**不推 :latest**。理由（Codex 实现审查 High）：若在此就推
+      # :latest，而后续 verify 失败，:latest 已指向未验签 digest → 下次任何 aster-cloud app
+      # sync / 手动迁移仍会拉到它（k3s 仍按 :latest 跑）。故把 :latest 的提升挪到 verify 之后，
+      # 保证 :latest **永远只指向已验签 digest**（见下方 Promote 步骤）。
       - name: Build & push migrate image
+        id: migrate-build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -406,9 +413,50 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             docker.io/wontlost/aster-cloud-migrate:${{ github.sha }}
-            docker.io/wontlost/aster-cloud-migrate:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # 统一 digest pin 设计 Phase 0（#192）：对齐 aster-api 主镜像的 cosign keyless
+      # 签名，给迁移镜像补上产物真实性打底。sign/verify 均对 build-push-action 输出的
+      # **不可变 digest**（非浮动 tag），签名身份绑定本 workflow 的 OIDC。
+      # 顺序：push(SHA) → sign → verify → **promote :latest** → sync，保证 :latest 只指向
+      # 已验签 digest（verify 失败则 :latest 不动、sync 不触发）。
+      #
+      # ⚠️ 边界（如实标注，勿夸大）：本步只保证"迁移镜像被本仓 workflow 签过、:latest 只指向
+      # 已验签 digest"。集群目前**未强制 admission 校验**、**未做 GitOps digest pin**（仍按
+      # :latest 拉取，只是该 tag 现在保证已验签）——admission + by-digest GitOps 是统一设计的
+      # Phase 1-3（k3s image-lock + verify workflow + 分支保护），单独立项。不声称"部署链已闭合"。
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign migrate image digest (keyless)
+        env:
+          COSIGN_YES: "true"
+          DIGEST: ${{ steps.migrate-build.outputs.digest }}
+        run: |
+          test -n "${DIGEST}" || { echo "build 未输出 digest，中止"; exit 1; }
+          cosign sign "docker.io/wontlost/aster-cloud-migrate@${DIGEST}"
+          echo "signed digest=${DIGEST}"
+
+      # fail-closed：签名/身份不符 → verify 失败 → job 失败（:latest 不提升、迁移 sync 不触发）。
+      - name: Verify freshly-built migrate digest signature
+        env:
+          DIGEST: ${{ steps.migrate-build.outputs.digest }}
+        run: |
+          cosign verify "docker.io/wontlost/aster-cloud-migrate@${DIGEST}" \
+            --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/\.github/workflows/ci\.yml@refs/heads/main$" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      # 仅在 verify 通过后，把 :latest 提升到已验签 digest（imagetools 不重新构建，直接
+      # 让 :latest 指向同一 manifest list digest）。这样集群拉 :latest 必是已验签内容。
+      - name: Promote :latest to verified digest
+        env:
+          DIGEST: ${{ steps.migrate-build.outputs.digest }}
+        run: |
+          docker buildx imagetools create \
+            -t docker.io/wontlost/aster-cloud-migrate:latest \
+            "docker.io/wontlost/aster-cloud-migrate@${DIGEST}"
+          echo "promoted :latest → ${DIGEST}"
 
       - name: Trigger ArgoCD sync to run DB migration (fail-loud)
         if: success()
