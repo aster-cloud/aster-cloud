@@ -425,10 +425,16 @@ jobs:
             exit 1
           fi
           # 触发 sync（--fail 让非 2xx 直接失败）；PostSync 迁移 hook 随本次 sync operation 重跑。
+          # 【不传 revision】：sync 走 Application 自身声明的 targetRevision（当前 = main）。
+          # ci-migrate 账号只有 sync 无 override；ArgoCD 开启
+          # application.sync.requireOverridePrivilegeForRevisionSync 后，显式传与 targetRevision
+          # 不同的 revision 会被拒。空 body 既满足最小权限，又能在未来 targetRevision 改成 pin SHA
+          # 时保持正确（无需再改 CI）。
           if ! curl --fail --silent --show-error -X POST \
               -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
               "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" \
-              -d '{"revision":"main"}'; then
+              -H "Content-Type: application/json" \
+              -d '{}'; then
             echo "::error title=ArgoCD sync failed::触发 ArgoCD sync 失败 → 迁移可能未应用。检查 ARGOCD_AUTH_TOKEN 有效性 / ArgoCD 可达性。详见 issue #187。"
             exit 1
           fi
