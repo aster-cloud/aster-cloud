@@ -51,13 +51,20 @@ export type AiQuotaResult =
  * 检查用户当前是否可调 AI
  *
  * 顺序：
- *   1. 风险层 / 邮箱验证门（BYOK 不再豁免 —— 见 L0 注释，止血：BYOK 未接入真实推理前不特殊放行）
+ *   1. 风险层 / 邮箱验证门
  *   2. 用户是否被自动封禁
- *   3. 月度次数配额
- *   4. 每分钟速率
- *   5. 每小时速率
+ *   3. 月度次数配额（Phase 2：BYOK 用本次调用真的用了用户 key，跳过平台月配额）
+ *   4. 每分钟速率（BYOK 也受限，防高频打爆代理/上游）
+ *   5. 每小时速率（同上）
+ *
+ * @param opts.usedByok 本次是否用 BYOK（由 cloud 是否成功注入 `_byok` envelope 权威决定）。
+ *   true 时跳过平台月配额，但保留 ban / 风险层 / 邮箱验证 / 速率保护。
  */
-export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
+export async function checkAiQuota(
+  userId: string,
+  opts: { usedByok?: boolean } = {}
+): Promise<AiQuotaResult> {
+  const usedByok = opts.usedByok === true;
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: {
@@ -136,10 +143,14 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
   const plan = user.plan as PlanType;
 
   // L2: 月度次数配额（base × riskTier 乘子；tier 0 trusted = ×1，tier 1 = ×0.5 …）
+  // Phase 2：BYOK 本次用的是用户自己的 key，不消耗平台预算 → 跳过平台月配额（视为无限），
+  // 但上面的 ban/风险/邮箱与下面的速率保护仍生效。
   const baseLimit = AI_MONTHLY_QUOTA[plan as keyof typeof AI_MONTHLY_QUOTA] ?? 20;
-  const monthlyLimit = baseLimit === -1
+  const monthlyLimit = usedByok
     ? -1
-    : Math.max(1, Math.floor(baseLimit * riskPolicy.aiQuotaMultiplier));
+    : (baseLimit === -1
+        ? -1
+        : Math.max(1, Math.floor(baseLimit * riskPolicy.aiQuotaMultiplier)));
   if (monthlyLimit !== -1) {
     const period = currentPeriod();
     const monthlyCount = await countSuccessfulCalls(userId, period);
@@ -186,7 +197,7 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
     allowed: true,
     remaining: monthlyLimit === -1 ? -1 : Math.max(0, monthlyLimit - monthlyCount),
     limit: monthlyLimit,
-    usedByok: false,
+    usedByok,
   };
 }
 

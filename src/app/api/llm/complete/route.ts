@@ -20,6 +20,7 @@ import { auth } from '@/auth';
 import { signInternalCallerHeaders } from '@/lib/api-signing';
 import { checkAiQuota, recordAiUsage } from '@/lib/ai-quota';
 import { aiQuotaHttpStatus } from '@/lib/ai-quota-http';
+import { resolveByokEnvelope, injectByokEnvelope } from '@/lib/byok-envelope';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,9 +38,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const rawBody = await req.text();
+
+  // BYOK 推理接入（Phase 2）：解析用户 active BYOK 凭证并注入 `_byok` envelope。以【实际是否注入】
+  // 作为 usedByok 权威（body 非 JSON 时注入会失败，避免"以为用了 BYOK"的偏差，Codex 审查）。
+  // 解密失败=密钥系统/配置问题 → fail-closed 503（不静默回退平台，防偷烧平台预算）。
+  let byok;
+  try {
+    byok = await resolveByokEnvelope(session.user.id);
+  } catch (e) {
+    console.error(`[llm/complete] BYOK resolve failed for user=${session.user.id}:`, e);
+    return NextResponse.json(
+      { error: 'byok_unavailable', message: 'BYOK key decryption failed; try again later.' },
+      { status: 503 }
+    );
+  }
+  const { body, injected: usedByok } = injectByokEnvelope(rawBody, byok);
+
   // AI 配额前置门控（同 proxyLlmSse）：此前 complete 路径不检查配额，任何登录用户都能
-  // 无限烧平台 LLM 预算。拒绝时直接返回，不烧上游 token。
-  const quota = await checkAiQuota(session.user.id);
+  // 无限烧平台 LLM 预算。BYOK 用了用户 key → 跳过平台月配额，保留 ban/风险/邮箱/速率。
+  const quota = await checkAiQuota(session.user.id, { usedByok });
   if (!quota.allowed) {
     const { status, headers } = aiQuotaHttpStatus(quota);
     return NextResponse.json(
@@ -66,8 +84,7 @@ export async function POST(req: NextRequest) {
   // 那个字段不存在，会永远 undefined。
   const tenantId: string = session.user.id;
 
-  const body = await req.text();
-
+  // body 已在上方注入 envelope。必须在注入【之后】再签名——HMAC 覆盖含 envelope 的最终 body。
   let signedHeaders: Awaited<ReturnType<typeof signInternalCallerHeaders>>;
   try {
     // 红队 P0-C：绑定 body + tenant 进签名（防换 LLM model 烧预算 / 改租户）。
@@ -107,7 +124,9 @@ export async function POST(req: NextRequest) {
         model: 'unknown',
         promptTokens: 0,
         completionTokens: 0,
-        usedByok: false,
+        // Phase 2：本次是否用了 BYOK 由服务端是否注入 envelope 决定（权威）。usedByok=true 的
+        // 调用不计入平台月配额（checkAiQuota 侧后续按此放行），dashboard 也据此归类。
+        usedByok,
         status: 'success',
       });
     } catch (e) {
