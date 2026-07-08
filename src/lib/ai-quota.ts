@@ -1,8 +1,8 @@
 // AI 配额计算 + 异常检测
 // 详见 aster-deploy/docs/pm/07-ai-billing.md
 
-import { db, users, aiUsageRecords } from '@/lib/prisma';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { db, users, aiUsageRecords, aiKeyBindings } from '@/lib/prisma';
+import { and, eq, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 import { encryptForAudit } from '@/lib/ai-audit-vault';
 import { redactPii } from '@/lib/ai-pii-redactor';
@@ -51,13 +51,20 @@ export type AiQuotaResult =
  * 检查用户当前是否可调 AI
  *
  * 顺序：
- *   1. 风险层 / 邮箱验证门（BYOK 不再豁免 —— 见 L0 注释，止血：BYOK 未接入真实推理前不特殊放行）
+ *   1. 风险层 / 邮箱验证门
  *   2. 用户是否被自动封禁
- *   3. 月度次数配额
- *   4. 每分钟速率
- *   5. 每小时速率
+ *   3. 月度次数配额（Phase 2：BYOK 用本次调用真的用了用户 key，跳过平台月配额）
+ *   4. 每分钟速率（BYOK 也受限，防高频打爆代理/上游）
+ *   5. 每小时速率（同上）
+ *
+ * @param opts.usedByok 本次是否用 BYOK（由 cloud 是否成功注入 `_byok` envelope 权威决定）。
+ *   true 时跳过平台月配额，但保留 ban / 风险层 / 邮箱验证 / 速率保护。
  */
-export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
+export async function checkAiQuota(
+  userId: string,
+  opts: { usedByok?: boolean } = {}
+): Promise<AiQuotaResult> {
+  const usedByok = opts.usedByok === true;
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: {
@@ -136,10 +143,14 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
   const plan = user.plan as PlanType;
 
   // L2: 月度次数配额（base × riskTier 乘子；tier 0 trusted = ×1，tier 1 = ×0.5 …）
+  // Phase 2：BYOK 本次用的是用户自己的 key，不消耗平台预算 → 跳过平台月配额（视为无限），
+  // 但上面的 ban/风险/邮箱与下面的速率保护仍生效。
   const baseLimit = AI_MONTHLY_QUOTA[plan as keyof typeof AI_MONTHLY_QUOTA] ?? 20;
-  const monthlyLimit = baseLimit === -1
+  const monthlyLimit = usedByok
     ? -1
-    : Math.max(1, Math.floor(baseLimit * riskPolicy.aiQuotaMultiplier));
+    : (baseLimit === -1
+        ? -1
+        : Math.max(1, Math.floor(baseLimit * riskPolicy.aiQuotaMultiplier)));
   if (monthlyLimit !== -1) {
     const period = currentPeriod();
     const monthlyCount = await countSuccessfulCalls(userId, period);
@@ -186,7 +197,7 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
     allowed: true,
     remaining: monthlyLimit === -1 ? -1 : Math.max(0, monthlyLimit - monthlyCount),
     limit: monthlyLimit,
-    usedByok: false,
+    usedByok,
   };
 }
 
@@ -201,6 +212,8 @@ export async function recordAiUsage(params: {
   promptTokens: number;
   completionTokens: number;
   usedByok: boolean;
+  /** BYOK 绑定 id（Phase 3）：usedByok && status=success 时据此 stamp AiKeyBinding.lastUsedAt。 */
+  aiKeyBindingId?: string | null;
   status: 'success' | 'quota_exhausted' | 'rate_limited' | 'banned' | 'api_error' | 'blocked_unsafe';
   promptHash?: string | null;
   /** 调用审计：原始 prompt / completion，会被加密存 180 天 */
@@ -217,11 +230,12 @@ export async function recordAiUsage(params: {
   } | null;
 }): Promise<void> {
   const cost = estimateCostCents(params.model, params.promptTokens, params.completionTokens);
+  const usedAt = new Date(); // insert 与 lastUsedAt stamp 共用同一时刻
   await db.insert(aiUsageRecords).values({
     id: globalThis.crypto.randomUUID(),
     userId: params.userId,
     teamId: params.teamId ?? null,
-    periodMonth: currentPeriod(),
+    periodMonth: currentPeriod(usedAt),
     callKind: params.callKind,
     model: params.model,
     promptTokens: params.promptTokens,
@@ -236,17 +250,39 @@ export async function recordAiUsage(params: {
     redactedPrompt:
       params.redactedPrompt ?? (params.prompt ? redactPii(params.prompt) : null),
     safetyFlags: params.safetyFlags ?? null,
-    createdAt: new Date(),
+    createdAt: usedAt,
   });
+
+  // Phase 3：真实 BYOK 成功调用 → stamp AiKeyBinding.lastUsedAt，让 dashboard "最近使用"
+  // 反映真实推理用量（此前该字段只被 cron healthcheck 更新 → 打后端的 key 永远"从未使用"）。
+  // 与 apiKeys usage route 一致的单调守卫（防旧请求晚到把时间戳往回退）+ best-effort（更新失败
+  // 不影响已成功的 usage 记录与业务响应）。
+  if (params.usedByok && params.status === 'success' && params.aiKeyBindingId) {
+    try {
+      await db
+        .update(aiKeyBindings)
+        .set({ lastUsedAt: usedAt, lastErrorAt: null, lastError: null, updatedAt: usedAt })
+        .where(
+          and(
+            eq(aiKeyBindings.id, params.aiKeyBindingId),
+            // 纵深防御（Codex 审查）：绑定 userId + active，避免竞态下 stamp 到刚被停用/别人的 binding
+            eq(aiKeyBindings.userId, params.userId),
+            eq(aiKeyBindings.active, true),
+            or(isNull(aiKeyBindings.lastUsedAt), lt(aiKeyBindings.lastUsedAt, usedAt))
+          )
+        );
+    } catch (e) {
+      console.warn(`[ai-usage] stamp AiKeyBinding.lastUsedAt failed for binding=${params.aiKeyBindingId}:`, e);
+    }
+  }
 }
 
 // ============================================================================
 // 内部辅助
 // ============================================================================
 
-function currentPeriod(): string {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+function currentPeriod(at: Date = new Date()): string {
+  return `${at.getUTCFullYear()}-${String(at.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 async function countSuccessfulCalls(userId: string, periodMonth: string): Promise<number> {

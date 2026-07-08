@@ -20,6 +20,7 @@ import { auth } from '@/auth';
 import { signInternalCallerHeaders } from '@/lib/api-signing';
 import { checkAiQuota, recordAiUsage } from '@/lib/ai-quota';
 import { aiQuotaHttpStatus } from '@/lib/ai-quota-http';
+import { resolveByokEnvelope, injectByokEnvelope } from '@/lib/byok-envelope';
 
 const ASTER_API_BASE =
   process.env.ASTER_POLICY_API_INTERNAL_URL ||
@@ -44,10 +45,26 @@ export async function proxyLlmSse(
   // 详见 src/app/api/llm/complete/route.ts 顶部注释里的 schema 局限说明。
   const tenantId: string = session.user.id;
 
+  const rawBody = await req.text();
+
+  // BYOK 推理接入（Phase 2）：解析用户 active BYOK 凭证并注入 `_byok` envelope，以【实际是否注入】
+  // 作为 usedByok 权威。注入后再签名（HMAC 覆盖最终 body）。解密失败 → fail-closed 503。
+  let byok;
+  try {
+    byok = await resolveByokEnvelope(session.user.id);
+  } catch (e) {
+    console.error(`[llm-sse-proxy] BYOK resolve failed for user=${session.user.id}:`, e);
+    return NextResponse.json(
+      { error: 'byok_unavailable', message: 'BYOK key decryption failed; try again later.' },
+      { status: 503 }
+    );
+  }
+  const { body, injected: usedByok } = injectByokEnvelope(rawBody, byok);
+
   // AI 配额前置门控。此前 LLM 代理路径【完全不检查配额】—— checkAiQuota 是死代码
   // （只有 /api/internal/ai/quota route 调它，而无人 fetch 该 route），导致任何登录用户
-  // 都能无限烧平台 LLM 预算。在此转发 aster-api 前强制门控：拒绝时直接返回，不烧上游 token。
-  const quota = await checkAiQuota(session.user.id);
+  // 都能无限烧平台 LLM 预算。BYOK 用本次用了用户 key → 跳过平台月配额，保留 ban/风险/邮箱/速率。
+  const quota = await checkAiQuota(session.user.id, { usedByok });
   if (!quota.allowed) {
     const { status, headers } = aiQuotaHttpStatus(quota);
     return NextResponse.json(
@@ -55,8 +72,6 @@ export async function proxyLlmSse(
       { status, headers }
     );
   }
-
-  const body = await req.text();
 
   let signedHeaders: Awaited<ReturnType<typeof signInternalCallerHeaders>>;
   try {
@@ -117,7 +132,9 @@ export async function proxyLlmSse(
       model: 'unknown',
       promptTokens: 0,
       completionTokens: 0,
-      usedByok: false,
+      usedByok,
+      // Phase 3：usedByok 时带 bindingId → stamp AiKeyBinding.lastUsedAt（dashboard 真实用量）。
+      aiKeyBindingId: byok?.bindingId ?? null,
       status: 'success',
     });
   } catch (e) {

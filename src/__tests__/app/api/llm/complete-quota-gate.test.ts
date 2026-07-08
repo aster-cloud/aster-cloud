@@ -9,11 +9,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
  * quota 放行 → 才转发。
  */
 
-const { mockAuth, mockCheckAiQuota, mockRecordAiUsage, mockSign } = vi.hoisted(() => ({
+const { mockAuth, mockCheckAiQuota, mockRecordAiUsage, mockSign, mockResolveByok, mockInjectByok } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
   mockCheckAiQuota: vi.fn(),
   mockRecordAiUsage: vi.fn(),
   mockSign: vi.fn(),
+  mockResolveByok: vi.fn(),
+  mockInjectByok: vi.fn(),
 }));
 
 vi.mock('@/auth', () => ({ auth: mockAuth }));
@@ -22,6 +24,10 @@ vi.mock('@/lib/ai-quota', () => ({
   recordAiUsage: mockRecordAiUsage,
 }));
 vi.mock('@/lib/api-signing', () => ({ signInternalCallerHeaders: mockSign }));
+vi.mock('@/lib/byok-envelope', () => ({
+  resolveByokEnvelope: mockResolveByok,
+  injectByokEnvelope: mockInjectByok,
+}));
 
 function post(body: unknown = { prompt: 'x' }): Request {
   return new Request('http://cloud.test/api/llm/complete', {
@@ -40,6 +46,9 @@ describe('POST /api/llm/complete — AI 配额门控', () => {
     mockCheckAiQuota.mockReset();
     mockRecordAiUsage.mockReset().mockResolvedValue(undefined);
     mockSign.mockReset().mockResolvedValue({ 'X-Internal-Caller': 'cloud-bff' });
+    // 默认无 BYOK（平台路径）；inject 默认原样返回 body
+    mockResolveByok.mockReset().mockResolvedValue(null);
+    mockInjectByok.mockReset().mockImplementation((raw: string) => ({ body: raw, injected: false }));
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response('{"result":"ok"}', { status: 200, headers: { 'content-type': 'application/json' } })
     );
@@ -132,5 +141,27 @@ describe('POST /api/llm/complete — AI 配额门控', () => {
     const res = await POST(post() as never);
     expect(res.status).toBe(500);
     expect(mockRecordAiUsage).not.toHaveBeenCalled(); // 上游失败不记 success
+  });
+
+  it('BYOK 用户 → 注入 _byok、checkAiQuota 收 usedByok=true、记账 usedByok=true', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockResolveByok.mockResolvedValue({ provider: 'openai', apiKey: 'sk-user', bindingId: 'b1' });
+    mockInjectByok.mockImplementation((raw: string) => ({
+      body: JSON.stringify({ ...JSON.parse(raw), _byok: { provider: 'openai', apiKey: 'sk-user' } }),
+      injected: true,
+    }));
+    mockCheckAiQuota.mockResolvedValue({ allowed: true, remaining: -1, limit: -1, usedByok: true });
+
+    const { POST } = await import('@/app/api/llm/complete/route');
+    const res = await POST(post() as never);
+    expect(res.status).toBe(200);
+
+    // checkAiQuota 收到 usedByok=true（跳过平台月配额）
+    expect(mockCheckAiQuota).toHaveBeenCalledWith('user-1', { usedByok: true });
+    // 转发上游的 body 含注入的 _byok
+    const forwardedBody = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string;
+    expect(JSON.parse(forwardedBody)._byok).toEqual({ provider: 'openai', apiKey: 'sk-user' });
+    // 记账 usedByok=true
+    expect(mockRecordAiUsage.mock.calls[0][0]).toMatchObject({ usedByok: true });
   });
 });

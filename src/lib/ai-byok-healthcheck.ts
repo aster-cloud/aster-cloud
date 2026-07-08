@@ -43,10 +43,12 @@ export async function checkAllBYOKKeys(sendEmail: EmailSender): Promise<HealthCh
     const pingResult = await pingProvider(b.provider, apiKey);
 
     if (pingResult.ok) {
-      // 健康：清空错误状态
+      // 健康：更新 lastCheckedAt（healthcheck ping，非真实推理）+ 清空错误状态。
+      // 【不再写 lastUsedAt】——lastUsedAt 语义收敛为"最近真实推理使用"（Phase 4），只由
+      // recordAiUsage 在 BYOK 成功推理时 stamp，避免 cron ping 冒充"最近使用"误导 dashboard。
       await db
         .update(aiKeyBindings)
-        .set({ lastUsedAt: new Date(), lastErrorAt: null, lastError: null, updatedAt: new Date() })
+        .set({ lastCheckedAt: new Date(), lastErrorAt: null, lastError: null, updatedAt: new Date() })
         .where(eq(aiKeyBindings.id, b.id));
       results.push({ bindingId: b.id, userId: b.userId, provider: b.provider, status: 'healthy' });
       continue;
