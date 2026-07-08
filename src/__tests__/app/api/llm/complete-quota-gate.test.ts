@@ -1,0 +1,136 @@
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+
+/**
+ * /api/llm/complete AI 配额前置门控回归。
+ *
+ * 缺陷背景：LLM 代理路径此前【完全不检查 AI 配额】——checkAiQuota 是死代码（无人调
+ * /api/internal/ai/quota），任何登录用户都能无限烧平台 LLM 预算。本测试锁定门控：
+ * quota 拒绝 → 直接返回对应 HTTP 状态，绝不 fetch 上游 aster-api（不烧 token）；
+ * quota 放行 → 才转发。
+ */
+
+const { mockAuth, mockCheckAiQuota, mockRecordAiUsage, mockSign } = vi.hoisted(() => ({
+  mockAuth: vi.fn(),
+  mockCheckAiQuota: vi.fn(),
+  mockRecordAiUsage: vi.fn(),
+  mockSign: vi.fn(),
+}));
+
+vi.mock('@/auth', () => ({ auth: mockAuth }));
+vi.mock('@/lib/ai-quota', () => ({
+  checkAiQuota: mockCheckAiQuota,
+  recordAiUsage: mockRecordAiUsage,
+}));
+vi.mock('@/lib/api-signing', () => ({ signInternalCallerHeaders: mockSign }));
+
+function post(body: unknown = { prompt: 'x' }): Request {
+  return new Request('http://cloud.test/api/llm/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+describe('POST /api/llm/complete — AI 配额门控', () => {
+  const realFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.resetModules();
+    mockAuth.mockReset();
+    mockCheckAiQuota.mockReset();
+    mockRecordAiUsage.mockReset().mockResolvedValue(undefined);
+    mockSign.mockReset().mockResolvedValue({ 'X-Internal-Caller': 'cloud-bff' });
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('{"result":"ok"}', { status: 200, headers: { 'content-type': 'application/json' } })
+    );
+  });
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('未登录 → 401，不检查配额也不转发', async () => {
+    mockAuth.mockResolvedValue(null);
+    const { POST } = await import('@/app/api/llm/complete/route');
+    const res = await POST(post() as never);
+    expect(res.status).toBe(401);
+    expect(mockCheckAiQuota).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('配额用尽 → 402，不转发上游（不烧 token）', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockCheckAiQuota.mockResolvedValue({
+      allowed: false,
+      reason: 'ai_quota_exhausted',
+      message: '本月 AI 配额已用尽',
+    });
+    const { POST } = await import('@/app/api/llm/complete/route');
+    const res = await POST(post() as never);
+    expect(res.status).toBe(402);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(mockRecordAiUsage).not.toHaveBeenCalled(); // 拒绝不记账
+    const body = await res.json();
+    expect(body.error).toBe('ai_quota_exhausted');
+  });
+
+  it('速率超限 → 429 + Retry-After，不转发', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockCheckAiQuota.mockResolvedValue({
+      allowed: false,
+      reason: 'ai_rate_limited',
+      message: '请求太频繁',
+      retryAfterSec: 60,
+    });
+    const { POST } = await import('@/app/api/llm/complete/route');
+    const res = await POST(post() as never);
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('60');
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('风险封禁 → 403，不转发', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockCheckAiQuota.mockResolvedValue({
+      allowed: false,
+      reason: 'ai_banned',
+      message: 'AI 功能被禁用',
+    });
+    const { POST } = await import('@/app/api/llm/complete/route');
+    const res = await POST(post() as never);
+    expect(res.status).toBe(403);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('配额放行 → 转发上游、透传结果，并记一笔 success（驱动配额计数）', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockCheckAiQuota.mockResolvedValue({ allowed: true, remaining: 5, limit: 20, usedByok: false });
+    const { POST } = await import('@/app/api/llm/complete/route');
+    const res = await POST(post() as never);
+    expect(res.status).toBe(200);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    // 止血闭环：2xx 后记账，让月配额/速率计数真正递增
+    expect(mockRecordAiUsage).toHaveBeenCalledTimes(1);
+    expect(mockRecordAiUsage.mock.calls[0][0]).toMatchObject({
+      userId: 'user-1',
+      callKind: 'complete',
+      status: 'success',
+      usedByok: false,
+    });
+    const body = await res.json();
+    expect(body.result).toBe('ok');
+  });
+
+  it('上游返回非 2xx → 透传错误，不记 success', async () => {
+    mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+    mockCheckAiQuota.mockResolvedValue({ allowed: true, remaining: 5, limit: 20, usedByok: false });
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('{"error":"upstream"}', { status: 500, headers: { 'content-type': 'application/json' } })
+    );
+    const { POST } = await import('@/app/api/llm/complete/route');
+    const res = await POST(post() as never);
+    expect(res.status).toBe(500);
+    expect(mockRecordAiUsage).not.toHaveBeenCalled(); // 上游失败不记 success
+  });
+});

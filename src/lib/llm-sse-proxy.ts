@@ -18,6 +18,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { signInternalCallerHeaders } from '@/lib/api-signing';
+import { checkAiQuota, recordAiUsage } from '@/lib/ai-quota';
+import { aiQuotaHttpStatus } from '@/lib/ai-quota-http';
 
 const ASTER_API_BASE =
   process.env.ASTER_POLICY_API_INTERNAL_URL ||
@@ -41,6 +43,18 @@ export async function proxyLlmSse(
   // 同 /api/llm/complete：tenantId 强行从 session 派生，不读 body 也不读 header。
   // 详见 src/app/api/llm/complete/route.ts 顶部注释里的 schema 局限说明。
   const tenantId: string = session.user.id;
+
+  // AI 配额前置门控。此前 LLM 代理路径【完全不检查配额】—— checkAiQuota 是死代码
+  // （只有 /api/internal/ai/quota route 调它，而无人 fetch 该 route），导致任何登录用户
+  // 都能无限烧平台 LLM 预算。在此转发 aster-api 前强制门控：拒绝时直接返回，不烧上游 token。
+  const quota = await checkAiQuota(session.user.id);
+  if (!quota.allowed) {
+    const { status, headers } = aiQuotaHttpStatus(quota);
+    return NextResponse.json(
+      { error: quota.reason, message: quota.message },
+      { status, headers }
+    );
+  }
 
   const body = await req.text();
 
@@ -89,6 +103,25 @@ export async function proxyLlmSse(
       { error: 'upstream_no_body', message: 'Upstream returned 2xx but empty body' },
       { status: 502 }
     );
+  }
+
+  // 成功记账（止血闭环）：SSE 流被直接转发、无法在此 await 到完成，故在上游 2xx 派发成功后
+  // 乐观记一笔 success，驱动 checkAiQuota 的月配额与速率计数（否则计数永不递增、配额门虚设）。
+  // token 精确计量与"按真实完成计费"在 Phase 3（aster-api 成功路径上报）补全。callKind 从
+  // upstreamPath 末段派生（/api/v1/ai/generate → generate）。
+  const callKind = upstreamPath.endsWith('/suggest') ? 'suggest' : 'generate';
+  try {
+    await recordAiUsage({
+      userId: session.user.id,
+      callKind,
+      model: 'unknown',
+      promptTokens: 0,
+      completionTokens: 0,
+      usedByok: false,
+      status: 'success',
+    });
+  } catch (e) {
+    console.warn(`[llm-sse-proxy] recordAiUsage failed for user=${session.user.id}:`, e);
   }
 
   return new NextResponse(upstreamResp.body, {
