@@ -362,6 +362,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -536,6 +537,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- 止血 AI 配额未强制执行 + BYOK bypass 白嫖平台预算 (#183) *(ai-quota)*
 - Usage 上报同步更新 lastUsedAt（后端流量反映到 dashboard） (#182) *(api-keys)*
 - KV 支撑的分布式限流修 Workers per-isolate 绕过（审计 #168 最后一项） (#172) *(security)*
 - 集中式 CSRF 网关覆盖全部 cookie-auth 变更 API（审计 #168） (#171) *(security)*
