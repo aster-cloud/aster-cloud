@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Migrate 镜像 cosign keyless 签名 + :latest 只指向已验签 digest (#192 Phase 0) (#194) *(ci)*
 - 精确 token 计量 — requestId upsert 回填（#185, cloud 侧） (#189) *(ai-usage)*
 - BYOK 真接入推理 + lastUsedAt 回写 + 语义拆分（cloud, Phase 2-4） (#186) *(byok)*
 - Executions 加 decision 列 — 区分准入四态，值输出不再误计入失败 (#164) *(audit)*
@@ -262,6 +263,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
