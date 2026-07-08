@@ -68,23 +68,36 @@ describe('checkAiQuota', () => {
     vi.mocked(db.query.aiKeyBindings.findFirst).mockResolvedValue(undefined);
   });
 
-  describe('BYOK 优先级', () => {
-    it('用户绑定 BYOK 时直接放行，不查配额', async () => {
+  describe('BYOK 配额（止血：不再无条件 bypass）', () => {
+    // Phase 1 止血：BYOK 真实推理尚未接入（推理走平台 key），故绑定 BYOK 不再无条件放行
+    // unlimited，而是走与普通用户相同的平台配额路径，避免 BYOK 用户白嫖平台 LLM 预算。
+    // checkAiQuota 现在【完全不读 aiKeyBindings】——下面断言 findFirst 未被调用以锁定这一点。
+    it('绑定 BYOK 的 Free 用户仍走平台配额，未用满 → 放行且 usedByok=false（不读 binding）', async () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUserBase({ plan: 'free' }));
-      vi.mocked(db.query.aiKeyBindings.findFirst).mockResolvedValue({
-        id: 'k1',
-        provider: 'openai',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
+      // monthly 5 / lastMinute 0 / lastHour 0 / final monthly 5
+      setupSequentialCounts(5, 0, 0, 5);
 
       const result = await checkAiQuota('user-1');
       expect(result.allowed).toBe(true);
       if (result.allowed) {
-        expect(result.usedByok).toBe(true);
-        expect(result.limit).toBe(-1);
+        // 关键：BYOK 未接入推理前，usedByok 必须为 false（不能造假），且受平台配额约束
+        expect(result.usedByok).toBe(false);
+        expect(result.limit).toBe(20);
+        expect(result.remaining).toBe(15);
       }
-      // 没调用 select（因为 BYOK 跳过配额查询）
-      expect(mockSelect).not.toHaveBeenCalled();
+      // 止血后 checkAiQuota 不再查 BYOK 绑定（bypass 已删）
+      expect(db.query.aiKeyBindings.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('用满平台配额 → 拒绝（BYOK 绑定与否都不再 unlimited bypass）', async () => {
+      vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUserBase({ plan: 'free' }));
+      setupCountResult(20); // monthly 用满
+
+      const result = await checkAiQuota('user-1');
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toBe('ai_quota_exhausted');
+      }
     });
   });
 
@@ -247,20 +260,18 @@ describe('checkAiQuota', () => {
       expect(result.allowed).toBe(true);
     });
 
-    it('BYOK 用户即使未验证邮箱也可使用（自带 key）', async () => {
+    it('Free 未验证邮箱用户不再被 BYOK bypass 豁免邮箱验证（止血）', async () => {
+      // Phase 1 止血前：BYOK 在 L0 提前放行，顺带跳过了 L0.5 的 Free 邮箱验证门。
+      // 止血后 BYOK 不再 bypass → Free + 未验证邮箱走正常路径，被 L0.5 拦截。
+      // 这是有意的：BYOK 未接入真实推理前不应享受任何特殊豁免。
       vi.mocked(db.query.users.findFirst).mockResolvedValue(
         mockUserBase({ plan: 'free', emailVerified: null })
       );
-      vi.mocked(db.query.aiKeyBindings.findFirst).mockResolvedValue({
-        id: 'k1',
-        provider: 'openai',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
 
       const result = await checkAiQuota('user-1');
-      expect(result.allowed).toBe(true);
-      if (result.allowed) {
-        expect(result.usedByok).toBe(true);
+      expect(result.allowed).toBe(false);
+      if (!result.allowed) {
+        expect(result.reason).toBe('ai_email_unverified');
       }
     });
   });

@@ -38,31 +38,10 @@ export function AiUsageCard({ locale }: { locale: string }) {
   }
   if (!data) return null;
 
-  // BYOK 模式
-  if (data.byok.enabled) {
-    return (
-      <div className="rounded-lg border border-border p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-fg">{t('title')}</h3>
-          <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-            {t('byokActive')}
-          </span>
-        </div>
-        <div className="mt-2 text-xs text-fg-muted">
-          {data.byok.providers.map((p) => `${p.provider} ****${p.keyHint}`).join(' · ')}
-        </div>
-        <div className="mt-3 text-sm text-fg">
-          {t('byokUsage', { tokens: data.cost.tokens.toLocaleString() })}
-        </div>
-        <Link
-          href={`/${locale}/settings/ai-keys`}
-          className="mt-2 inline-block text-xs text-primary hover:underline"
-        >
-          {t('manageKeys')} →
-        </Link>
-      </div>
-    );
-  }
+  // 止血：不再把"绑定了 BYOK"当作"unlimited BYOK 模式"提前返回。BYOK 真实推理尚未接入
+  // （推理走平台 key），BYOK 用户实际受平台配额约束——若此处仍显示"BYOK active / 无限"，
+  // 会与真实的配额墙矛盾、误导用户。故 BYOK 用户也落到下面的正常配额进度条视图（其底部
+  // 已有 AI keys 管理入口，绑定信息不丢失）。BYOK 真接入推理后再恢复专属视图。
 
   // 邮箱未验证（Free 档强制）
   if (data.plan === 'free' && !data.emailVerified) {

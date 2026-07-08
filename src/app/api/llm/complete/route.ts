@@ -18,6 +18,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { signInternalCallerHeaders } from '@/lib/api-signing';
+import { checkAiQuota, recordAiUsage } from '@/lib/ai-quota';
+import { aiQuotaHttpStatus } from '@/lib/ai-quota-http';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,6 +35,17 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // AI 配额前置门控（同 proxyLlmSse）：此前 complete 路径不检查配额，任何登录用户都能
+  // 无限烧平台 LLM 预算。拒绝时直接返回，不烧上游 token。
+  const quota = await checkAiQuota(session.user.id);
+  if (!quota.allowed) {
+    const { status, headers } = aiQuotaHttpStatus(quota);
+    return NextResponse.json(
+      { error: quota.reason, message: quota.message },
+      { status, headers }
+    );
   }
 
   // R25-Major-2: 从 session 派生 tenantId —— caller-supplied X-Tenant-Id 不再被信任。
@@ -81,6 +94,27 @@ export async function POST(req: NextRequest) {
   });
 
   const text = await upstreamResp.text();
+
+  // 成功记账（止血闭环）：checkAiQuota 的月配额/速率计数依赖 AiUsageRecord。此前 aster-api
+  // 成功调用从不上报 cloud（只 SafetyEventReporter 报 blocked），导致计数永不递增、配额门形同
+  // 虚设。在此对 2xx 调用粗记一笔 success，让配额真正随使用消耗。token 精确计量在 Phase 3
+  // （aster-api 成功路径上报 usage）补全，这里先记 0/0 只驱动次数与速率门控。
+  if (upstreamResp.ok) {
+    try {
+      await recordAiUsage({
+        userId: session.user.id,
+        callKind: 'complete',
+        model: 'unknown',
+        promptTokens: 0,
+        completionTokens: 0,
+        usedByok: false,
+        status: 'success',
+      });
+    } catch (e) {
+      console.warn(`[llm/complete] recordAiUsage failed for user=${session.user.id}:`, e);
+    }
+  }
+
   return new NextResponse(text, {
     status: upstreamResp.status,
     headers: {

@@ -1,7 +1,7 @@
 // AI 配额计算 + 异常检测
 // 详见 aster-deploy/docs/pm/07-ai-billing.md
 
-import { db, users, aiUsageRecords, aiKeyBindings } from '@/lib/prisma';
+import { db, users, aiUsageRecords } from '@/lib/prisma';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 import { encryptForAudit } from '@/lib/ai-audit-vault';
@@ -51,7 +51,7 @@ export type AiQuotaResult =
  * 检查用户当前是否可调 AI
  *
  * 顺序：
- *   1. 用户是否有有效 BYOK → 直接放行（不计平台配额）
+ *   1. 风险层 / 邮箱验证门（BYOK 不再豁免 —— 见 L0 注释，止血：BYOK 未接入真实推理前不特殊放行）
  *   2. 用户是否被自动封禁
  *   3. 月度次数配额
  *   4. 每分钟速率
@@ -97,14 +97,20 @@ export async function checkAiQuota(userId: string): Promise<AiQuotaResult> {
     };
   }
 
-  // L0: BYOK 优先 — 用户绑定了自己 key 直接放行
-  const byok = await db.query.aiKeyBindings.findFirst({
-    where: and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.active, true)),
-    columns: { id: true, provider: true },
-  });
-  if (byok) {
-    return { allowed: true, remaining: -1, limit: -1, usedByok: true };
-  }
+  // L0: BYOK 配额 bypass —— 【暂时禁用，止血】。
+  //
+  // 历史行为：用户绑定了 active BYOK key 就无条件放行（unlimited）。但真实 LLM 推理
+  // 从不使用 BYOK key —— 所有 generate/suggest/complete 都走 aster-api 的平台 key
+  // （ConfigTenantLlmKeyProvider 取 Vault 平台 key；cloud 代理只转发 tenant + HMAC，
+  // 不传 BYOK key）。于是"无条件 bypass 平台配额"让 BYOK 用户用 Aster 的平台 LLM 预算
+  // 做无限 AI，而非消耗自己的 key —— 成本泄漏。
+  //
+  // 止血：BYOK 用户暂时也走下面的平台配额路径（不再无条件放行）。待 BYOK 真正接入推理
+  // （cloud 转发解密 key → aster-api per-request override → 用用户 key 真实调用）后，
+  // 再在"确认本次会用 BYOK 推理"的前提下恢复 bypass。届时 usedByok 才应为 true。
+  //
+  // 注意：不在此处 stamp AiKeyBinding.lastUsedAt —— 该字段语义是"最后一次真实使用"，
+  // BYOK 尚未用于推理，标记它会造假。lastUsedAt 的回写在 BYOK 推理接入后与真实调用同步。
 
   // L0.5: Free 档强制邮箱验证才解锁配额（trial / pro / team / enterprise 不受影响）
   // 详见 07-ai-billing.md "反多重注册"
