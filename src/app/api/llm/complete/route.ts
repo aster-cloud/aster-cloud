@@ -112,10 +112,10 @@ export async function POST(req: NextRequest) {
 
   const text = await upstreamResp.text();
 
-  // 成功记账（止血闭环）：checkAiQuota 的月配额/速率计数依赖 AiUsageRecord。此前 aster-api
-  // 成功调用从不上报 cloud（只 SafetyEventReporter 报 blocked），导致计数永不递增、配额门形同
-  // 虚设。在此对 2xx 调用粗记一笔 success，让配额真正随使用消耗。token 精确计量在 Phase 3
-  // （aster-api 成功路径上报 usage）补全，这里先记 0/0 只驱动次数与速率门控。
+  // 成功记账：checkAiQuota 的月配额/速率计数依赖 AiUsageRecord。对 2xx 调用记一笔 success，
+  // 让配额随使用消耗。token 精确计量（aster-api 上报）留后续；这里 0/0 只驱动次数/速率门控。
+  // Phase 3：usedByok 时带上 bindingId → recordAiUsage 内 stamp AiKeyBinding.lastUsedAt
+  // （dashboard "最近使用" 真实反映 BYOK 推理用量）。
   if (upstreamResp.ok) {
     try {
       await recordAiUsage({
@@ -124,9 +124,8 @@ export async function POST(req: NextRequest) {
         model: 'unknown',
         promptTokens: 0,
         completionTokens: 0,
-        // Phase 2：本次是否用了 BYOK 由服务端是否注入 envelope 决定（权威）。usedByok=true 的
-        // 调用不计入平台月配额（checkAiQuota 侧后续按此放行），dashboard 也据此归类。
         usedByok,
+        aiKeyBindingId: byok?.bindingId ?? null,
         status: 'success',
       });
     } catch (e) {

@@ -146,7 +146,7 @@ describe('proxyLlmSse — AI 配额门控 + 成功记账', () => {
 
   it('BYOK 用户 → checkAiQuota 收 usedByok=true、body 注入 _byok、记账 usedByok=true', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-    mockResolveByok.mockResolvedValue({ provider: 'anthropic', apiKey: 'sk-ant' });
+    mockResolveByok.mockResolvedValue({ provider: 'anthropic', apiKey: 'sk-ant', bindingId: 'b1' });
     mockInjectByok.mockImplementation((raw: string) => ({
       body: JSON.stringify({ ...JSON.parse(raw), _byok: { provider: 'anthropic', apiKey: 'sk-ant' } }),
       injected: true,

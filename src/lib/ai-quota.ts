@@ -1,8 +1,8 @@
 // AI 配额计算 + 异常检测
 // 详见 aster-deploy/docs/pm/07-ai-billing.md
 
-import { db, users, aiUsageRecords } from '@/lib/prisma';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { db, users, aiUsageRecords, aiKeyBindings } from '@/lib/prisma';
+import { and, eq, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 import { encryptForAudit } from '@/lib/ai-audit-vault';
 import { redactPii } from '@/lib/ai-pii-redactor';
@@ -212,6 +212,8 @@ export async function recordAiUsage(params: {
   promptTokens: number;
   completionTokens: number;
   usedByok: boolean;
+  /** BYOK 绑定 id（Phase 3）：usedByok && status=success 时据此 stamp AiKeyBinding.lastUsedAt。 */
+  aiKeyBindingId?: string | null;
   status: 'success' | 'quota_exhausted' | 'rate_limited' | 'banned' | 'api_error' | 'blocked_unsafe';
   promptHash?: string | null;
   /** 调用审计：原始 prompt / completion，会被加密存 180 天 */
@@ -228,11 +230,12 @@ export async function recordAiUsage(params: {
   } | null;
 }): Promise<void> {
   const cost = estimateCostCents(params.model, params.promptTokens, params.completionTokens);
+  const usedAt = new Date(); // insert 与 lastUsedAt stamp 共用同一时刻
   await db.insert(aiUsageRecords).values({
     id: globalThis.crypto.randomUUID(),
     userId: params.userId,
     teamId: params.teamId ?? null,
-    periodMonth: currentPeriod(),
+    periodMonth: currentPeriod(usedAt),
     callKind: params.callKind,
     model: params.model,
     promptTokens: params.promptTokens,
@@ -247,17 +250,39 @@ export async function recordAiUsage(params: {
     redactedPrompt:
       params.redactedPrompt ?? (params.prompt ? redactPii(params.prompt) : null),
     safetyFlags: params.safetyFlags ?? null,
-    createdAt: new Date(),
+    createdAt: usedAt,
   });
+
+  // Phase 3：真实 BYOK 成功调用 → stamp AiKeyBinding.lastUsedAt，让 dashboard "最近使用"
+  // 反映真实推理用量（此前该字段只被 cron healthcheck 更新 → 打后端的 key 永远"从未使用"）。
+  // 与 apiKeys usage route 一致的单调守卫（防旧请求晚到把时间戳往回退）+ best-effort（更新失败
+  // 不影响已成功的 usage 记录与业务响应）。
+  if (params.usedByok && params.status === 'success' && params.aiKeyBindingId) {
+    try {
+      await db
+        .update(aiKeyBindings)
+        .set({ lastUsedAt: usedAt, lastErrorAt: null, lastError: null, updatedAt: usedAt })
+        .where(
+          and(
+            eq(aiKeyBindings.id, params.aiKeyBindingId),
+            // 纵深防御（Codex 审查）：绑定 userId + active，避免竞态下 stamp 到刚被停用/别人的 binding
+            eq(aiKeyBindings.userId, params.userId),
+            eq(aiKeyBindings.active, true),
+            or(isNull(aiKeyBindings.lastUsedAt), lt(aiKeyBindings.lastUsedAt, usedAt))
+          )
+        );
+    } catch (e) {
+      console.warn(`[ai-usage] stamp AiKeyBinding.lastUsedAt failed for binding=${params.aiKeyBindingId}:`, e);
+    }
+  }
 }
 
 // ============================================================================
 // 内部辅助
 // ============================================================================
 
-function currentPeriod(): string {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+function currentPeriod(at: Date = new Date()): string {
+  return `${at.getUTCFullYear()}-${String(at.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 async function countSuccessfulCalls(userId: string, periodMonth: string): Promise<number> {

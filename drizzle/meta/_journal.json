@@ -197,6 +197,13 @@
       "when": 1779200000004,
       "tag": "0028_execution_decision",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779200001004,
+      "tag": "0029_ai_key_binding_last_checked_at",
+      "breakpoints": true
     }
   ]
 }

@@ -133,6 +133,8 @@ export async function proxyLlmSse(
       promptTokens: 0,
       completionTokens: 0,
       usedByok,
+      // Phase 3：usedByok 时带 bindingId → stamp AiKeyBinding.lastUsedAt（dashboard 真实用量）。
+      aiKeyBindingId: byok?.bindingId ?? null,
       status: 'success',
     });
   } catch (e) {
