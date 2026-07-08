@@ -20,6 +20,8 @@ const SUPPORTED_BYOK_PROVIDERS = new Set(['openai', 'anthropic']);
 export interface ByokEnvelope {
   provider: string;
   apiKey: string;
+  /** AiKeyBinding.id —— 用于 Phase 3 精确 stamp lastUsedAt / usage 归类。不注入转发 body。 */
+  bindingId: string;
 }
 
 /**
@@ -31,7 +33,7 @@ export interface ByokEnvelope {
 export async function resolveByokEnvelope(userId: string): Promise<ByokEnvelope | null> {
   const binding = await db.query.aiKeyBindings.findFirst({
     where: and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.active, true)),
-    columns: { provider: true },
+    columns: { id: true, provider: true },
   });
   if (!binding) return null;
 
@@ -46,7 +48,7 @@ export async function resolveByokEnvelope(userId: string): Promise<ByokEnvelope 
   const apiKey = await getDecryptedBYOKKey(userId, binding.provider);
   if (!apiKey) return null;
 
-  return { provider, apiKey };
+  return { provider, apiKey, bindingId: binding.id };
 }
 
 /**

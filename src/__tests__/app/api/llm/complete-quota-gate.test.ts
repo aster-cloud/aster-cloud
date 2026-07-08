@@ -145,7 +145,7 @@ describe('POST /api/llm/complete — AI 配额门控', () => {
 
   it('BYOK 用户 → 注入 _byok、checkAiQuota 收 usedByok=true、记账 usedByok=true', async () => {
     mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-    mockResolveByok.mockResolvedValue({ provider: 'openai', apiKey: 'sk-user' });
+    mockResolveByok.mockResolvedValue({ provider: 'openai', apiKey: 'sk-user', bindingId: 'b1' });
     mockInjectByok.mockImplementation((raw: string) => ({
       body: JSON.stringify({ ...JSON.parse(raw), _byok: { provider: 'openai', apiKey: 'sk-user' } }),
       injected: true,

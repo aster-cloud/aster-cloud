@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Hoisted mocks（与现有 usage.test.ts 模式一致）
-const { mockSelect, mockInsertValues, mockInsert } = vi.hoisted(() => {
+const { mockSelect, mockInsertValues, mockInsert, mockUpdateWhere, mockUpdateSet, mockUpdate } = vi.hoisted(() => {
   const mockInsertValues = vi.fn().mockResolvedValue(undefined);
   const mockInsert = vi.fn().mockReturnValue({ values: mockInsertValues });
   const mockSelect = vi.fn();
-  return { mockSelect, mockInsertValues, mockInsert };
+  const mockUpdateWhere = vi.fn().mockResolvedValue(undefined);
+  const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
+  const mockUpdate = vi.fn().mockReturnValue({ set: mockUpdateSet });
+  return { mockSelect, mockInsertValues, mockInsert, mockUpdateWhere, mockUpdateSet, mockUpdate };
 });
 
 vi.mock('@/lib/prisma', () => ({
@@ -16,10 +19,11 @@ vi.mock('@/lib/prisma', () => ({
     },
     select: mockSelect,
     insert: mockInsert,
+    update: mockUpdate,
   },
   users: { id: {}, plan: {} },
   aiUsageRecords: { id: {}, userId: {}, periodMonth: {}, status: {}, usedByok: {}, createdAt: {}, promptTokens: {}, completionTokens: {} },
-  aiKeyBindings: { id: {}, userId: {}, active: {} },
+  aiKeyBindings: { id: {}, userId: {}, active: {}, lastUsedAt: {}, lastErrorAt: {}, lastError: {}, updatedAt: {} },
 }));
 
 import { db } from '@/lib/prisma';
@@ -344,6 +348,55 @@ describe('recordAiUsage', () => {
 
     const values = mockInsertValues.mock.calls[0][0];
     expect(values.usedByok).toBe(true);
+  });
+
+  it('Phase 3：BYOK 成功 + bindingId → stamp AiKeyBinding.lastUsedAt（单调守卫）', async () => {
+    await recordAiUsage({
+      userId: 'user-1',
+      callKind: 'generate',
+      model: 'unknown',
+      promptTokens: 0,
+      completionTokens: 0,
+      usedByok: true,
+      aiKeyBindingId: 'binding-1',
+      status: 'success',
+    });
+
+    // insert usage + update lastUsedAt 各一次
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    const setArg = mockUpdateSet.mock.calls[0][0];
+    expect(setArg.lastUsedAt).toBeInstanceOf(Date);
+    // 与 usage 记录共用同一 usedAt
+    expect(setArg.lastUsedAt.getTime()).toBe(mockInsertValues.mock.calls[0][0].createdAt.getTime());
+    // 成功即清错误状态（与 healthcheck 语义一致）
+    expect(setArg.lastErrorAt).toBeNull();
+  });
+
+  it('Phase 3：usedByok 但无 bindingId → 只 insert，不 stamp', async () => {
+    await recordAiUsage({
+      userId: 'user-1', callKind: 'generate', model: 'x',
+      promptTokens: 0, completionTokens: 0, usedByok: true, status: 'success',
+    });
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('Phase 3：非 success（api_error）即使 usedByok+bindingId 也不 stamp', async () => {
+    await recordAiUsage({
+      userId: 'user-1', callKind: 'generate', model: 'x',
+      promptTokens: 0, completionTokens: 0, usedByok: true,
+      aiKeyBindingId: 'binding-1', status: 'api_error',
+    });
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('Phase 3：非 BYOK（usedByok=false）不 stamp（即使误传 bindingId）', async () => {
+    await recordAiUsage({
+      userId: 'user-1', callKind: 'generate', model: 'x',
+      promptTokens: 0, completionTokens: 0, usedByok: false,
+      aiKeyBindingId: 'binding-1', status: 'success',
+    });
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it('GPT-4 大调用成本估算正确', async () => {

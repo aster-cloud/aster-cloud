@@ -1095,8 +1095,11 @@ export const aiKeyBindings = pgTable(
     keyHint: text('keyHint').notNull(),
     /** 是否启用（用户可临时停用而不删除） */
     active: boolean('active').notNull().default(true),
-    /** 上次成功调用时间（健康检查） */
+    /** 上次真实推理使用时间（用户拿此 key 真的调了 LLM）。dashboard "最近使用" 读此字段。
+     *  只由 recordAiUsage 在 BYOK 成功推理时 stamp，不含 healthcheck ping。 */
     lastUsedAt: timestamp('lastUsedAt', { mode: 'date' }),
+    /** 上次健康检查成功 ping 时间（cron，非真实推理）。与 lastUsedAt 语义拆分，避免 ping 冒充使用。 */
+    lastCheckedAt: timestamp('lastCheckedAt', { mode: 'date' }),
     /** 上次失败原因（如 401 → 用户 key 已被 OpenAI 撤销） */
     lastErrorAt: timestamp('lastErrorAt', { mode: 'date' }),
     lastError: text('lastError'),
