@@ -1063,6 +1063,12 @@ export const aiUsageRecords = pgTable(
       toxic?: boolean;
       blocked_reason?: string;
     }>(),
+    /**
+     * 请求关联 id（issue #185）：cloud 转发 LLM 前生成，注入 `_usage` envelope 传给 aster-api，
+     * aster-api 成功后带同一 requestId 回填真实 token/cost。cloud recordAiUsage 用它 upsert 同一行
+     * （占位 0/0 + 精确回填 = 同一笔），避免双记账。nullable：老记录 / 无 requestId 的调用仍插新行。
+     */
+    requestId: text('requestId'),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => [
@@ -1071,6 +1077,10 @@ export const aiUsageRecords = pgTable(
     index('AiUsage_teamId_period_idx').on(table.teamId, table.periodMonth),
     index('AiUsage_promptHash_idx').on(table.promptHash, table.userId),
     index('AiUsage_createdAt_retention_idx').on(table.createdAt),
+    // requestId upsert 的唯一约束。普通（非部分）唯一索引：标准 Postgres 把多个 NULL 视为互不
+    // 相等 → 无 requestId 的老记录/调用仍可多行；且 ON CONFLICT ("requestId") 可直接用于 upsert
+    // （部分索引的 ON CONFLICT 需重复 WHERE 谓词，drizzle 支持不佳且易错）。
+    uniqueIndex('AiUsage_requestId_unique').on(table.requestId),
   ]
 );
 

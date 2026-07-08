@@ -1,14 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Hoisted mocks（与现有 usage.test.ts 模式一致）
-const { mockSelect, mockInsertValues, mockInsert, mockUpdateWhere, mockUpdateSet, mockUpdate } = vi.hoisted(() => {
-  const mockInsertValues = vi.fn().mockResolvedValue(undefined);
+const { mockSelect, mockInsertValues, mockInsert, mockOnConflict, mockUpdateWhere, mockUpdateSet, mockUpdate } = vi.hoisted(() => {
+  const mockOnConflict = vi.fn().mockResolvedValue(undefined);
+  // values() 既支持直接 await（普通 insert），又支持链 .onConflictDoUpdate（#185 upsert）。
+  const mockInsertValues = vi.fn().mockImplementation(() => {
+    const p: Promise<undefined> & { onConflictDoUpdate?: typeof mockOnConflict } = Promise.resolve(undefined);
+    p.onConflictDoUpdate = mockOnConflict;
+    return p;
+  });
   const mockInsert = vi.fn().mockReturnValue({ values: mockInsertValues });
   const mockSelect = vi.fn();
   const mockUpdateWhere = vi.fn().mockResolvedValue(undefined);
   const mockUpdateSet = vi.fn().mockReturnValue({ where: mockUpdateWhere });
   const mockUpdate = vi.fn().mockReturnValue({ set: mockUpdateSet });
-  return { mockSelect, mockInsertValues, mockInsert, mockUpdateWhere, mockUpdateSet, mockUpdate };
+  return { mockSelect, mockInsertValues, mockInsert, mockOnConflict, mockUpdateWhere, mockUpdateSet, mockUpdate };
 });
 
 vi.mock('@/lib/prisma', () => ({
@@ -333,6 +339,44 @@ describe('recordAiUsage', () => {
     // gpt-4o-mini 价格：(1000/1M)*$0.15 + (500/1M)*$0.60 = $0.00015 + $0.0003 = $0.00045
     // → 0.045 cents → ceil 1 cent
     expect(values.costCents).toBe(1);
+  });
+
+  describe('#185 requestId upsert（精确 token 回填不双记账）', () => {
+    it('无 requestId → 普通 insert（不走 upsert）', async () => {
+      await recordAiUsage({
+        userId: 'u1', callKind: 'complete', model: 'x',
+        promptTokens: 0, completionTokens: 0, usedByok: false, status: 'success',
+      });
+      expect(mockInsert).toHaveBeenCalledTimes(1);
+      expect(mockOnConflict).not.toHaveBeenCalled();
+      expect(mockInsertValues.mock.calls[0][0].requestId).toBeNull();
+    });
+
+    it('带 requestId → upsert（onConflictDoUpdate target=requestId）', async () => {
+      await recordAiUsage({
+        userId: 'u1', callKind: 'complete', model: 'gpt-4o',
+        promptTokens: 100, completionTokens: 50, usedByok: false,
+        requestId: 'req-1', status: 'success',
+      });
+      expect(mockOnConflict).toHaveBeenCalledTimes(1);
+      expect(mockInsertValues.mock.calls[0][0].requestId).toBe('req-1');
+      const conflict = mockOnConflict.mock.calls[0][0];
+      // 真实 token（hasTokens）→ set 覆盖 token/cost/model
+      expect(conflict.set.promptTokens).toBe(100);
+      expect(conflict.set.completionTokens).toBe(50);
+      expect(conflict.set.model).toBe('gpt-4o');
+    });
+
+    it('占位 0/0 带 requestId → upsert 但 set 里 token 用 self-ref（不覆盖已回填的真 token）', async () => {
+      await recordAiUsage({
+        userId: 'u1', callKind: 'complete', model: 'unknown',
+        promptTokens: 0, completionTokens: 0, usedByok: false,
+        requestId: 'req-2', status: 'success',
+      });
+      const conflict = mockOnConflict.mock.calls[0][0];
+      // hasTokens=false → set.promptTokens 不是数字 100 而是 sql self-ref（保留已有值）
+      expect(typeof conflict.set.promptTokens).not.toBe('number');
+    });
   });
 
   it('BYOK 调用 usedByok=true', async () => {

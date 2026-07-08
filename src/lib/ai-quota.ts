@@ -214,6 +214,12 @@ export async function recordAiUsage(params: {
   usedByok: boolean;
   /** BYOK 绑定 id（Phase 3）：usedByok && status=success 时据此 stamp AiKeyBinding.lastUsedAt。 */
   aiKeyBindingId?: string | null;
+  /**
+   * 请求关联 id（issue #185）：非空则按 requestId upsert 同一行——cloud 先记占位 0/0 驱动配额，
+   * aster-api 后带同一 requestId 回填真实 token。竞态安全：占位（0/0）不覆盖已有真实 token，
+   * 回填（非 0）覆盖占位；createdAt/status 保留首次值。null 则插新行（老行为）。
+   */
+  requestId?: string | null;
   status: 'success' | 'quota_exhausted' | 'rate_limited' | 'banned' | 'api_error' | 'blocked_unsafe';
   promptHash?: string | null;
   /** 调用审计：原始 prompt / completion，会被加密存 180 天 */
@@ -231,7 +237,8 @@ export async function recordAiUsage(params: {
 }): Promise<void> {
   const cost = estimateCostCents(params.model, params.promptTokens, params.completionTokens);
   const usedAt = new Date(); // insert 与 lastUsedAt stamp 共用同一时刻
-  await db.insert(aiUsageRecords).values({
+  const hasTokens = params.promptTokens > 0 || params.completionTokens > 0;
+  const values = {
     id: globalThis.crypto.randomUUID(),
     userId: params.userId,
     teamId: params.teamId ?? null,
@@ -250,8 +257,37 @@ export async function recordAiUsage(params: {
     redactedPrompt:
       params.redactedPrompt ?? (params.prompt ? redactPii(params.prompt) : null),
     safetyFlags: params.safetyFlags ?? null,
+    requestId: params.requestId ?? null,
     createdAt: usedAt,
-  });
+  };
+
+  if (params.requestId) {
+    // issue #185：按 requestId upsert 同一行（占位 + 回填 = 一笔，不双记账）。
+    // 竞态安全（Codex 审查）：
+    //   - 只有本次带真实 token（hasTokens）才覆盖 token/cost/model（回填晚到也能生效）；
+    //     否则保留 EXCLUDED 之外的已有值（占位晚到不会把已回填的真实 token 清 0）。
+    //   - createdAt / status / callKind / userId 保留首次值（COALESCE 到已有行，不被占位/回填改写）。
+    //   - 审计字段（prompt/completion/hash/safety）只在本次带值时补，不覆盖已有。
+    await db
+      .insert(aiUsageRecords)
+      .values(values)
+      .onConflictDoUpdate({
+        target: aiUsageRecords.requestId,
+        set: {
+          promptTokens: hasTokens ? values.promptTokens : sql`${aiUsageRecords.promptTokens}`,
+          completionTokens: hasTokens ? values.completionTokens : sql`${aiUsageRecords.completionTokens}`,
+          costCents: hasTokens ? values.costCents : sql`${aiUsageRecords.costCents}`,
+          model: hasTokens ? values.model : sql`${aiUsageRecords.model}`,
+          usedByok: sql`${aiUsageRecords.usedByok}`,
+          promptHash: sql`coalesce(${aiUsageRecords.promptHash}, ${values.promptHash})`,
+          encryptedPrompt: sql`coalesce(${aiUsageRecords.encryptedPrompt}, excluded."encryptedPrompt")`,
+          encryptedCompletion: sql`coalesce(${aiUsageRecords.encryptedCompletion}, excluded."encryptedCompletion")`,
+          redactedPrompt: sql`coalesce(${aiUsageRecords.redactedPrompt}, excluded."redactedPrompt")`,
+        },
+      });
+  } else {
+    await db.insert(aiUsageRecords).values(values);
+  }
 
   // Phase 3：真实 BYOK 成功调用 → stamp AiKeyBinding.lastUsedAt，让 dashboard "最近使用"
   // 反映真实推理用量（此前该字段只被 cron healthcheck 更新 → 打后端的 key 永远"从未使用"）。

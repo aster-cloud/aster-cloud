@@ -52,17 +52,20 @@ export async function resolveByokEnvelope(userId: string): Promise<ByokEnvelope 
 }
 
 /**
- * 把 BYOK envelope 注入请求 body（顶层 `_byok`）。先移除 caller 传入的任何 `_byok`（防浏览器
- * 注入），再写入服务端解析的凭证。返回 { body, injected }：body 是最终字符串（供签名 + 转发共用
- * 同一份），injected 表示是否真的注入了 BYOK envelope——调用方据此决定配额/记账（权威 usedByok），
- * 避免 body 非 JSON 导致"以为注入了实际没注入"的偏差（Codex Phase 2 审查）。
+ * 把服务端 envelope 注入请求 body 顶层：`_byok`（BYOK 凭证）+ `_usage`（issue #185 的
+ * requestId，供 aster-api 回填真实 token 关联同一笔 usage）。先移除 caller 传入的任何 `_byok`/
+ * `_usage`（防浏览器伪造），再写入服务端值。返回 { body, injected }：body 是最终字符串（供签名 +
+ * 转发共用同一份），injected 表示是否真的注入了 BYOK envelope——调用方据此决定配额/记账（权威
+ * usedByok），避免 body 非 JSON 导致"以为注入了实际没注入"的偏差（Codex 审查）。
  *
  * @param rawBody 原始请求 body 文本
  * @param envelope 服务端解析的 BYOK 凭证；null 则只剥离 caller 的 `_byok` 不注入
+ * @param requestId issue #185 的请求关联 id；非空则注入 `_usage.requestId`
  */
 export function injectByokEnvelope(
   rawBody: string,
-  envelope: ByokEnvelope | null
+  envelope: ByokEnvelope | null,
+  requestId?: string | null
 ): { body: string; injected: boolean } {
   let parsed: Record<string, unknown>;
   try {
@@ -71,11 +74,15 @@ export function injectByokEnvelope(
     // body 非 JSON：无法注入（aster-api 也解析不了 envelope），原样返回、injected=false
     return { body: rawBody, injected: false };
   }
-  // 红队：无论如何先删掉 caller 提交的 _byok（浏览器不可自带 BYOK）
+  // 红队：无论如何先删掉 caller 提交的 _byok / _usage（浏览器不可自带这些内部 envelope）
   delete parsed._byok;
+  delete parsed._usage;
   const injected = envelope != null;
   if (envelope) {
     parsed._byok = { provider: envelope.provider, apiKey: envelope.apiKey };
+  }
+  if (requestId) {
+    parsed._usage = { requestId };
   }
   return { body: JSON.stringify(parsed), injected };
 }

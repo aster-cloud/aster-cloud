@@ -59,7 +59,9 @@ export async function proxyLlmSse(
       { status: 503 }
     );
   }
-  const { body, injected: usedByok } = injectByokEnvelope(rawBody, byok);
+  // issue #185：生成 requestId 关联本次调用（SSE 也回填真实 token，含 repair 多 attempt 累加）。
+  const requestId = crypto.randomUUID();
+  const { body, injected: usedByok } = injectByokEnvelope(rawBody, byok, requestId);
 
   // AI 配额前置门控。此前 LLM 代理路径【完全不检查配额】—— checkAiQuota 是死代码
   // （只有 /api/internal/ai/quota route 调它，而无人 fetch 该 route），导致任何登录用户
@@ -135,6 +137,7 @@ export async function proxyLlmSse(
       usedByok,
       // Phase 3：usedByok 时带 bindingId → stamp AiKeyBinding.lastUsedAt（dashboard 真实用量）。
       aiKeyBindingId: byok?.bindingId ?? null,
+      requestId, // #185：占位一笔，aster-api SSE usage 回填真实 token 到同一 requestId
       status: 'success',
     });
   } catch (e) {
