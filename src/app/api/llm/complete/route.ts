@@ -53,7 +53,10 @@ export async function POST(req: NextRequest) {
       { status: 503 }
     );
   }
-  const { body, injected: usedByok } = injectByokEnvelope(rawBody, byok);
+  // issue #185：生成 requestId 关联本次调用——注入 `_usage` 传给 aster-api，aster-api 成功后
+  // 带同一 requestId 回填真实 token，cloud upsert 同一笔 usage（不双记账）。
+  const requestId = crypto.randomUUID();
+  const { body, injected: usedByok } = injectByokEnvelope(rawBody, byok, requestId);
 
   // AI 配额前置门控（同 proxyLlmSse）：此前 complete 路径不检查配额，任何登录用户都能
   // 无限烧平台 LLM 预算。BYOK 用了用户 key → 跳过平台月配额，保留 ban/风险/邮箱/速率。
@@ -126,6 +129,7 @@ export async function POST(req: NextRequest) {
         completionTokens: 0,
         usedByok,
         aiKeyBindingId: byok?.bindingId ?? null,
+        requestId, // #185：占位一笔，aster-api 回填真实 token 到同一 requestId
         status: 'success',
       });
     } catch (e) {

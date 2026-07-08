@@ -88,4 +88,35 @@ describe('injectByokEnvelope', () => {
     const out = injectByokEnvelope('not-json', { provider: 'openai', apiKey: 'sk', bindingId: 'b1' });
     expect(out).toEqual({ body: 'not-json', injected: false });
   });
+
+  it('#185：注入 _usage.requestId（供 aster-api 回填真实 token）', () => {
+    const out = injectByokEnvelope('{"goal":"x"}', null, 'req-123');
+    const parsed = JSON.parse(out.body);
+    expect(parsed._usage).toEqual({ requestId: 'req-123' });
+  });
+
+  it('#185：★剥离 caller 提交的 _usage（防浏览器伪造 requestId）', () => {
+    const out = injectByokEnvelope(
+      '{"goal":"x","_usage":{"requestId":"attacker-forged"}}',
+      null,
+      'server-req'
+    );
+    expect(JSON.parse(out.body)._usage).toEqual({ requestId: 'server-req' });
+  });
+
+  it('#185：无 requestId → 不注入 _usage（也剥离 caller 的）', () => {
+    const out = injectByokEnvelope('{"goal":"x","_usage":{"requestId":"caller"}}', null);
+    expect(JSON.parse(out.body)._usage).toBeUndefined();
+  });
+
+  it('#185：_byok + _usage 同时注入', () => {
+    const out = injectByokEnvelope(
+      '{"goal":"x"}',
+      { provider: 'openai', apiKey: 'sk', bindingId: 'b1' },
+      'req-9'
+    );
+    const parsed = JSON.parse(out.body);
+    expect(parsed._byok).toEqual({ provider: 'openai', apiKey: 'sk' });
+    expect(parsed._usage).toEqual({ requestId: 'req-9' });
+  });
 });
