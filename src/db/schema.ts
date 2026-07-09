@@ -1113,6 +1113,13 @@ export const aiKeyBindings = pgTable(
     /** 上次失败原因（如 401 → 用户 key 已被 OpenAI 撤销） */
     lastErrorAt: timestamp('lastErrorAt', { mode: 'date' }),
     lastError: text('lastError'),
+    /** 自定义 provider API base URL（如自建代理/OpenAI 兼容端点）。null=用 aster-api 内置默认。
+     *  ⚠️ enforcement 需 aster-api 后端配套（当前 byok-envelope 不带 baseUrl）——本列先存储/显示。 */
+    providerUrl: text('providerUrl'),
+    /** BYOK 月度 token 上限（prompt+completion）。null=无限（保持历史「BYOK unlimited」语义）。 */
+    tokenQuota: integer('tokenQuota'),
+    /** key 失效日期。过期后推理层拒用该 BYOK key。null=永不过期。 */
+    expiresAt: timestamp('expiresAt', { mode: 'date' }),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },

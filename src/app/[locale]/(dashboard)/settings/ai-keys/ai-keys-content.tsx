@@ -19,6 +19,10 @@ interface BYOKBinding {
   provider: string;
   keyHint: string;
   active: boolean;
+  providerUrl: string | null;
+  tokenQuota: number | null;
+  expiresAt: string | null;
+  usedTokensThisMonth: number;
   lastUsedAt: string | null;
   lastErrorAt: string | null;
   lastError: string | null;
@@ -53,6 +57,10 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
     'openai',
   );
   const [apiKey, setApiKey] = useState('');
+  // BYOK 增强：可选 providerUrl / token 额度 / 失效日期。空字符串 = 不设置。
+  const [providerUrl, setProviderUrl] = useState('');
+  const [tokenQuota, setTokenQuota] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,12 +83,29 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       setError(t('keyTooShort'));
       return;
     }
+    // 本地校验 tokenQuota（正整数）——服务端也校验,这里给即时反馈。
+    let quotaNum: number | null = null;
+    if (tokenQuota.trim() !== '') {
+      const n = Number(tokenQuota);
+      if (!Number.isInteger(n) || n <= 0) {
+        setError(t('quotaInvalid'));
+        return;
+      }
+      quotaNum = n;
+    }
     setSubmitting(true);
     try {
       const r = await fetch('/api/user/ai-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey }),
+        body: JSON.stringify({
+          provider,
+          apiKey,
+          providerUrl: providerUrl.trim() || null,
+          tokenQuota: quotaNum,
+          // date input 是 YYYY-MM-DD;转成当天 UTC 结束前的 ISO（未来时间）。
+          expiresAt: expiresAt ? new Date(expiresAt + 'T23:59:59Z').toISOString() : null,
+        }),
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
@@ -88,6 +113,9 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
         return;
       }
       setApiKey('');
+      setProviderUrl('');
+      setTokenQuota('');
+      setExpiresAt('');
       setSuccess(
         t('saved', { provider: PROVIDER_LABELS[provider] ?? provider }),
       );
@@ -190,6 +218,49 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
             <p className="text-xs text-fg-muted">{t('apiKeyHint')}</p>
           </div>
 
+          {/* BYOK 可选高级设置：自定义 Provider URL / token 额度 / 失效日期 */}
+          <div className="flex flex-col gap-4 rounded-md border border-border p-4">
+            <p className="text-sm font-medium text-fg-muted">{t('advancedTitle')}</p>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="ai-keys-url">{t('providerUrl')}</Label>
+              <Input
+                id="ai-keys-url"
+                type="url"
+                value={providerUrl}
+                onChange={(e) => setProviderUrl(e.target.value)}
+                autoComplete="off"
+                placeholder="https://api.openai.com/v1"
+              />
+              <p className="text-xs text-fg-muted">{t('providerUrlHint')}</p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="ai-keys-quota">{t('tokenQuota')}</Label>
+              <Input
+                id="ai-keys-quota"
+                type="number"
+                min="1"
+                step="1"
+                value={tokenQuota}
+                onChange={(e) => setTokenQuota(e.target.value)}
+                placeholder={t('tokenQuotaPlaceholder')}
+              />
+              <p className="text-xs text-fg-muted">{t('tokenQuotaHint')}</p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="ai-keys-expiry">{t('expiresAt')}</Label>
+              <Input
+                id="ai-keys-expiry"
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+              />
+              <p className="text-xs text-fg-muted">{t('expiresAtHint')}</p>
+            </div>
+          </div>
+
           {error && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
               {error}
@@ -223,6 +294,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                   <th className="pb-2 text-left">{t('thProvider')}</th>
                   <th className="pb-2 text-left">{t('thKeyHint')}</th>
                   <th className="pb-2 text-left">{t('thStatus')}</th>
+                  <th className="pb-2 text-left">{t('thQuota')}</th>
+                  <th className="pb-2 text-left">{t('thExpiry')}</th>
                   <th className="pb-2 text-left">{t('thLastUsed')}</th>
                   <th className="pb-2 text-left">{t('thCreated')}</th>
                   <th className="pb-2 text-left">{t('thActions')}</th>
@@ -255,6 +328,17 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                       )}
                     </td>
                     <td className="py-3 text-fg-muted">
+                      {b.tokenQuota == null
+                        ? t('quotaUnlimited')
+                        : t('quotaUsage', {
+                            used: b.usedTokensThisMonth.toLocaleString(),
+                            quota: b.tokenQuota.toLocaleString(),
+                          })}
+                    </td>
+                    <td className="py-3 text-fg-muted">
+                      {b.expiresAt ? formatDate(b.expiresAt) : t('noExpiry')}
+                    </td>
+                    <td className="py-3 text-fg-muted">
                       {formatDate(b.lastUsedAt)}
                     </td>
                     <td className="py-3 text-fg-muted">
@@ -265,7 +349,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                         onClick={() => handleRevoke(b.provider)}
                         className="text-xs text-red-600 hover:underline"
                       >
-                        {t('revoke')}
+                        {t('delete')}
                       </button>
                     </td>
                   </tr>
