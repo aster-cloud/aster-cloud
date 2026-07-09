@@ -507,6 +507,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Open/update image-pin PR to k3s
+        id: openpr
         if: ${{ steps.stalegate.outputs.skip != 'true' }}
         env:
           GH_TOKEN: ${{ steps.k3stoken.outputs.token }}
@@ -523,39 +524,46 @@ jobs:
       # → job 红。迁移「构建成功但未应用」不再静默（by-digest 下 selfHeal 会 sync，但显式 POST
       # 更快更确定；判定用 digest-contains 而非 merge-sha equality，抗并发）。
       - name: Wait for migration applied (fail-loud, #187)
-        if: ${{ steps.stalegate.outputs.skip != 'true' }}
+        # 仅在本次确有 migrate digest 变更 + 开/复用了 PR 时等待（脚本明确输出 wait_required,
+        # 不从历史 --state all 反推 PR — Codex 审查必修）。
+        if: ${{ steps.stalegate.outputs.skip != 'true' && steps.openpr.outputs.wait_required == 'true' }}
         env:
           K3S_TOKEN: ${{ steps.k3stoken.outputs.token }}    # 读 k3s content（跨 org）
           ARGOCD_SERVER: argocd.aster-lang.cloud
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
           DIGEST: ${{ needs.build-migrate-image.outputs.digest }}
-          BRANCH: image-pin/aster-cloud-migrate
+          PR: ${{ steps.openpr.outputs.pr_number }}
         run: |
           set -euo pipefail
           [ -n "$ARGOCD_AUTH_TOKEN" ] || { echo "::error title=migration not verified::ARGOCD_AUTH_TOKEN 未配置（Production env）→ 无法确认迁移已应用。详见 #187。"; exit 1; }
+          [ -n "$PR" ] || { echo "::error::wait_required=true 但 pr_number 空（脚本输出异常）"; exit 1; }
 
-          # 1) 定位本次 image-pin PR（固定分支，可能已合/开）。无 open 也无 merged=无变更,跳过等待。
-          pr="$(GH_TOKEN="$K3S_TOKEN" gh pr list -R wontlost-ltd/k3s --head "$BRANCH" --base main --state all \
-                --json number,state,mergedAt --jq 'sort_by(.number)|reverse|.[0].number // empty')"
-          if [ -z "$pr" ]; then echo "无 image-pin PR（migrate digest 未变）→ 无需等待迁移"; exit 0; fi
-
-          # 2) 等 PR 合并（auto-merge 依赖 k3s verify-image-pin 通过；不合=迁移未上线=必须红）。
+          # 1) 等**本次** PR 合并（按明确 pr_number,非历史反推）。auto-merge 依赖 verify-image-pin 过。
           for i in $(seq 1 80); do   # ~20min
-            state="$(GH_TOKEN="$K3S_TOKEN" gh pr view "$pr" -R wontlost-ltd/k3s --json state --jq .state)"
+            state="$(GH_TOKEN="$K3S_TOKEN" gh pr view "$PR" -R wontlost-ltd/k3s --json state --jq .state)"
             case "$state" in
-              MERGED) echo "PR #$pr 已合并"; break ;;
-              CLOSED) echo "::error title=migration not applied::image-pin PR #$pr 已关闭未合并 → 迁移未上线。"; exit 1 ;;
+              MERGED) echo "PR #$PR 已合并"; break ;;
+              CLOSED) echo "::error title=migration not applied::image-pin PR #$PR 已关闭未合并 → 迁移未上线。"; exit 1 ;;
             esac
-            [ "$i" = 80 ] && { echo "::error title=migration not applied::等 PR #$pr 合并超时（verify-image-pin 未过？）→ 迁移未上线。详见 #187。"; exit 1; }
+            [ "$i" = 80 ] && { echo "::error title=migration not applied::等 PR #$PR 合并超时（verify-image-pin 未过？）→ 迁移未上线。详见 #187。"; exit 1; }
             sleep 15
           done
 
-          # 3) 主动 POST ArgoCD sync（比 selfHeal 快且确定；ci-migrate 账号有 sync 权限,空 body）。
-          curl --fail --silent --show-error -X POST \
+          # 2) 主动 POST ArgoCD sync（比 selfHeal 快且确定；ci-migrate 有 sync 权限,空 body）。
+          #    ★容忍「operation already in progress」（selfHeal / aster-api PR 可能已在 sync）——
+          #      非致命,进入轮询即可（Codex 审查必修:409/in-progress 不该红）。
+          sync_out="$(curl --silent --show-error -w '\n%{http_code}' -X POST \
             -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" -H "Content-Type: application/json" \
-            "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" -d '{}' >/dev/null \
-            || { echo "::error title=ArgoCD sync failed::触发 sync 失败 → 迁移可能未应用。详见 #187。"; exit 1; }
-          echo "ArgoCD sync 已触发,轮询至 synced revision 的 migrate digest == ${DIGEST} + Healthy + Succeeded..."
+            "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" -d '{}' 2>&1 || true)"
+          code="$(printf '%s' "$sync_out" | tail -n1)"
+          if [ "$code" = "200" ]; then
+            echo "ArgoCD sync 已触发"
+          elif printf '%s' "$sync_out" | grep -qiE "another operation is already in progress|already in progress|409"; then
+            echo "::notice::ArgoCD 已有 operation 在进行（selfHeal/其它 PR）→ 跳过 POST,直接轮询"
+          else
+            echo "::error title=ArgoCD sync failed::触发 sync 失败 (code=${code}) → 迁移可能未应用。详见 #187。"; exit 1
+          fi
+          echo "轮询至 synced revision 的 migrate digest == ${DIGEST} + Healthy + Succeeded..."
 
           # 4) 轮询：ArgoCD 已 sync 到「包含本次 migrate digest」的 k3s revision + 健康 + 成功。
           for i in $(seq 1 40); do   # ~7min
@@ -567,7 +575,8 @@ jobs:
             rev="$(echo "$app" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",{}).get("sync",{}).get("revision",""))')"
             echo "  [$i] sync=$sync_status health=$health phase=$phase rev=${rev:0:8}"
             case "$phase" in Failed|Error) echo "::error title=migration failed::ArgoCD operation phase=$phase → 迁移未成功。查 PostSync hook 日志。详见 #187。"; exit 1 ;; esac
-            if [ "$sync_status" = "Synced" ] && [ "$health" = "Healthy" ] && [ -n "$rev" ]; then
+            # rev 形状校验（40-hex）——异常 revision 不进 GitHub contents API（Codex 建议）。
+            if [ "$sync_status" = "Synced" ] && [ "$health" = "Healthy" ] && [[ "$rev" =~ ^[0-9a-f]{40}$ ]]; then
               # 校验该 revision 的 kustomization migrate digest == 本次 digest（抗并发,非 merge-sha equality）。
               deployed="$(GH_TOKEN="$K3S_TOKEN" gh api \
                 "repos/wontlost-ltd/k3s/contents/apps/aster-lang/cloud/kustomization.yaml?ref=${rev}" \
