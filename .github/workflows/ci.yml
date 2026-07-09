@@ -450,62 +450,14 @@ jobs:
             --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/\.github/workflows/ci\.yml@refs/heads/main$" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 
-      # 仅在 verify 通过后，把 :latest 提升到已验签 digest（imagetools 不重新构建，直接
-      # 让 :latest 指向同一 manifest list digest）。这样集群拉 :latest 必是已验签内容。
-      - name: Promote :latest to verified digest
-        env:
-          DIGEST: ${{ steps.migrate-build.outputs.digest }}
-        run: |
-          docker buildx imagetools create \
-            -t docker.io/wontlost/aster-cloud-migrate:latest \
-            "docker.io/wontlost/aster-cloud-migrate@${DIGEST}"
-          echo "promoted :latest → ${DIGEST}"
-
-      - name: Trigger ArgoCD sync to run DB migration (fail-loud)
-        if: success()
-        env:
-          ARGOCD_SERVER: argocd.aster-lang.cloud
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
-        run: |
-          # issue #187：此前 token 缺失就静默 `exit 0`，把"迁移从未应用"伪装成 CI 绿。
-          # 迁移镜像用浮动 `:latest`、git manifest 不变 → ArgoCD automated selfHeal 不会检测到
-          # drift、PostSync 迁移 hook 不会重跑，所以【必须】由本 step 主动触发一次 sync operation。
-          # 该 step 失败 = 迁移没应用 = 必须可见（fail-loud），而不是假绿掩盖数据库落后。
-          if [ -z "$ARGOCD_AUTH_TOKEN" ]; then
-            echo "::error title=DB migration not applied::ARGOCD_AUTH_TOKEN 未配置。迁移镜像已推送但 ArgoCD sync 未触发，PostSync 迁移 hook 不会重跑 → 数据库停在旧版本。修复：配置仓库 secret ARGOCD_AUTH_TOKEN，或手动跑迁移 Job（k3s apps/aster-lang/cloud/migrate-job.yaml）。详见 issue #187。"
-            exit 1
-          fi
-          # 触发 sync（--fail 让非 2xx 直接失败）；PostSync 迁移 hook 随本次 sync operation 重跑。
-          # 【不传 revision】：sync 走 Application 自身声明的 targetRevision（当前 = main）。
-          # ci-migrate 账号只有 sync 无 override；ArgoCD 开启
-          # application.sync.requireOverridePrivilegeForRevisionSync 后，显式传与 targetRevision
-          # 不同的 revision 会被拒。空 body 既满足最小权限，又能在未来 targetRevision 改成 pin SHA
-          # 时保持正确（无需再改 CI）。
-          if ! curl --fail --silent --show-error -X POST \
-              -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
-              "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" \
-              -H "Content-Type: application/json" \
-              -d '{}'; then
-            echo "::error title=ArgoCD sync failed::触发 ArgoCD sync 失败 → 迁移可能未应用。检查 ARGOCD_AUTH_TOKEN 有效性 / ArgoCD 可达性。详见 issue #187。"
-            exit 1
-          fi
-          echo "ArgoCD sync 已触发，等待 operation 完成（含 PostSync 迁移 hook）..."
-          # 轮询 operation 状态直到结束——CI 绿必须代表"迁移真的跑完成功"，而非只"sync 请求被接受"
-          # （Codex 审查）。最多等 ~5min。
-          for i in $(seq 1 30); do
-            phase="$(curl --fail --silent --show-error \
-              -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
-              "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud" \
-              | python3 -c 'import sys,json; print(json.load(sys.stdin).get("status",{}).get("operationState",{}).get("phase",""))' 2>/dev/null || echo "")"
-            echo "  [$i] operation phase=${phase:-<none>}"
-            case "$phase" in
-              Succeeded) echo "✅ ArgoCD sync + 迁移 hook 成功"; exit 0 ;;
-              Failed|Error) echo "::error title=ArgoCD sync/migration failed::ArgoCD operation phase=$phase → 迁移未成功应用。查看 ArgoCD UI 的 migrate PostSync hook 日志。详见 issue #187。"; exit 1 ;;
-            esac
-            sleep 10
-          done
-          echo "::error title=ArgoCD sync timeout::等待 ArgoCD operation 完成超时 → 迁移状态未知，需人工确认。详见 issue #187。"
-          exit 1
+      # ── Phase 3 P3-2b：已移除 `Promote :latest` + `Trigger ArgoCD sync` 旧发布语义 ──
+      # P3-0 后 migrate 也走 GitOps by-digest：image-pin-pr job 开 PR 改 k3s migrate digest →
+      # verify-image-pin → auto-merge → ArgoCD sync → PostSync 迁移 hook 按新 digest 跑。
+      # 旧的 promote :latest（浮动 tag）+ 构建后立即 trigger-sync（此时 git digest 未更新,sync
+      # 的仍是旧 digest）在 by-digest 下已非有效发布通道,故删除。
+      # #187 的 fail-loud（CI 必须知道迁移是否真应用）由下方 image-pin-pr job 的
+      # 「Wait for migration applied」步骤继承（PR 合并后 POST sync + 轮询至 synced revision 的
+      # migrate digest == 本次 digest + Healthy + operation Succeeded）。
 
   # ── 统一 digest pin 设计 A′ Phase 2：CI 开 PR 到 k3s 改 migrate image-lock ──────
   # 见 wontlost-ltd/k3s#4、k3s .github/image-pin/。独立 job：fail-loud 但**不阻塞**上面的
@@ -519,6 +471,8 @@ jobs:
     needs: build-migrate-image
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.IMAGE_PIN_APP_ID != '' }}
     runs-on: ubuntu-latest
+    # Production environment：Wait-for-migration 步骤需 ARGOCD_AUTH_TOKEN（Production env secret）。
+    environment: production
     concurrency:
       group: image-pin-pr-aster-cloud-migrate     # per-image：不与 aster-api 的 job 互相取消
       cancel-in-progress: true
@@ -562,3 +516,67 @@ jobs:
         run: |
           bash scripts/ci/open-image-pin-pr.sh \
             docker.io/wontlost/aster-cloud-migrate image-pin/aster-cloud-migrate
+
+      # ── Phase 3 P3-2b：迁移 fail-loud（继承 #187，替代旧 trigger-sync）──
+      # image-pin PR 合并后主动 sync ArgoCD 并轮询至：synced revision 的 kustomization migrate
+      # digest == 本次 digest + health Healthy + operation Succeeded。任何超时/Degraded/Failed
+      # → job 红。迁移「构建成功但未应用」不再静默（by-digest 下 selfHeal 会 sync，但显式 POST
+      # 更快更确定；判定用 digest-contains 而非 merge-sha equality，抗并发）。
+      - name: Wait for migration applied (fail-loud, #187)
+        if: ${{ steps.stalegate.outputs.skip != 'true' }}
+        env:
+          K3S_TOKEN: ${{ steps.k3stoken.outputs.token }}    # 读 k3s content（跨 org）
+          ARGOCD_SERVER: argocd.aster-lang.cloud
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+          DIGEST: ${{ needs.build-migrate-image.outputs.digest }}
+          BRANCH: image-pin/aster-cloud-migrate
+        run: |
+          set -euo pipefail
+          [ -n "$ARGOCD_AUTH_TOKEN" ] || { echo "::error title=migration not verified::ARGOCD_AUTH_TOKEN 未配置（Production env）→ 无法确认迁移已应用。详见 #187。"; exit 1; }
+
+          # 1) 定位本次 image-pin PR（固定分支，可能已合/开）。无 open 也无 merged=无变更,跳过等待。
+          pr="$(GH_TOKEN="$K3S_TOKEN" gh pr list -R wontlost-ltd/k3s --head "$BRANCH" --base main --state all \
+                --json number,state,mergedAt --jq 'sort_by(.number)|reverse|.[0].number // empty')"
+          if [ -z "$pr" ]; then echo "无 image-pin PR（migrate digest 未变）→ 无需等待迁移"; exit 0; fi
+
+          # 2) 等 PR 合并（auto-merge 依赖 k3s verify-image-pin 通过；不合=迁移未上线=必须红）。
+          for i in $(seq 1 80); do   # ~20min
+            state="$(GH_TOKEN="$K3S_TOKEN" gh pr view "$pr" -R wontlost-ltd/k3s --json state --jq .state)"
+            case "$state" in
+              MERGED) echo "PR #$pr 已合并"; break ;;
+              CLOSED) echo "::error title=migration not applied::image-pin PR #$pr 已关闭未合并 → 迁移未上线。"; exit 1 ;;
+            esac
+            [ "$i" = 80 ] && { echo "::error title=migration not applied::等 PR #$pr 合并超时（verify-image-pin 未过？）→ 迁移未上线。详见 #187。"; exit 1; }
+            sleep 15
+          done
+
+          # 3) 主动 POST ArgoCD sync（比 selfHeal 快且确定；ci-migrate 账号有 sync 权限,空 body）。
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" -H "Content-Type: application/json" \
+            "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud/sync" -d '{}' >/dev/null \
+            || { echo "::error title=ArgoCD sync failed::触发 sync 失败 → 迁移可能未应用。详见 #187。"; exit 1; }
+          echo "ArgoCD sync 已触发,轮询至 synced revision 的 migrate digest == ${DIGEST} + Healthy + Succeeded..."
+
+          # 4) 轮询：ArgoCD 已 sync 到「包含本次 migrate digest」的 k3s revision + 健康 + 成功。
+          for i in $(seq 1 40); do   # ~7min
+            app="$(curl --fail --silent --show-error -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
+                   "https://$ARGOCD_SERVER/api/v1/applications/aster-cloud")"
+            sync_status="$(echo "$app" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",{}).get("sync",{}).get("status",""))')"
+            health="$(echo "$app" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",{}).get("health",{}).get("status",""))')"
+            phase="$(echo "$app" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",{}).get("operationState",{}).get("phase",""))')"
+            rev="$(echo "$app" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("status",{}).get("sync",{}).get("revision",""))')"
+            echo "  [$i] sync=$sync_status health=$health phase=$phase rev=${rev:0:8}"
+            case "$phase" in Failed|Error) echo "::error title=migration failed::ArgoCD operation phase=$phase → 迁移未成功。查 PostSync hook 日志。详见 #187。"; exit 1 ;; esac
+            if [ "$sync_status" = "Synced" ] && [ "$health" = "Healthy" ] && [ -n "$rev" ]; then
+              # 校验该 revision 的 kustomization migrate digest == 本次 digest（抗并发,非 merge-sha equality）。
+              deployed="$(GH_TOKEN="$K3S_TOKEN" gh api \
+                "repos/wontlost-ltd/k3s/contents/apps/aster-lang/cloud/kustomization.yaml?ref=${rev}" \
+                --jq '.content' | base64 -d \
+                | python3 -c 'import sys,yaml;d=yaml.safe_load(sys.stdin);print(next((i["digest"] for i in d.get("images",[]) if i.get("name")=="docker.io/wontlost/aster-cloud-migrate"),""))')"
+              if [ "$deployed" = "$DIGEST" ]; then echo "✅ 迁移已应用：ArgoCD synced rev=${rev:0:8} migrate digest==${DIGEST} Healthy"; exit 0; fi
+              echo "  (已 Synced/Healthy 但 rev 的 migrate digest=${deployed} != ${DIGEST}, 继续等更新 revision)"
+            fi
+            sleep 10
+          done
+          echo "::error title=migration not verified::等 ArgoCD sync 到含本次 migrate digest 的 revision 超时 → 迁移状态未知,需人工确认。详见 #187。"
+          exit 1
