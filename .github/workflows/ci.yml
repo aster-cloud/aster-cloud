@@ -389,6 +389,9 @@ jobs:
       contents: read
       # cosign keyless 签名需要 OIDC token（Fulcio 证书 + Rekor 透明日志）。
       id-token: write
+    # digest-pin Phase 2：把已验签 migrate digest 暴露给下游 image-pin-pr job。
+    outputs:
+      digest: ${{ steps.migrate-build.outputs.digest }}
     steps:
       - uses: actions/checkout@v7
 
@@ -503,3 +506,58 @@ jobs:
           done
           echo "::error title=ArgoCD sync timeout::等待 ArgoCD operation 完成超时 → 迁移状态未知，需人工确认。详见 issue #187。"
           exit 1
+
+  # ── 统一 digest pin 设计 A′ Phase 2：CI 开 PR 到 k3s 改 migrate image-lock ──────
+  # 见 wontlost-ltd/k3s#4、k3s .github/image-pin/。独立 job：fail-loud 但**不阻塞**上面的
+  # migrate 发布路径（Phase 2 期间 :latest promote + trigger sync 与 digest PR 并存）。
+  # ⚠️ 暂态：image-lock PR 合并触发 ArgoCD sync + 上面 trigger-sync ＝ PostSync 迁移可能多跑
+  # 一次；migrate Job 幂等（__drizzle_migrations + IF NOT EXISTS），重跑安全。Phase 3 收敛。
+  #
+  # 前置（人工，见 k3s SETUP.md）：本仓需配 vars.IMAGE_PIN_APP_ID +
+  # secrets.IMAGE_PIN_APP_PRIVATE_KEY（image-pin App id 4253193 私钥）。未配置则本 job skip。
+  image-pin-pr:
+    needs: build-migrate-image
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.IMAGE_PIN_APP_ID != '' }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: image-pin-pr-aster-cloud-migrate     # per-image：不与 aster-api 的 job 互相取消
+      cancel-in-progress: true
+    steps:
+      - name: Final stale gate (再确认 github.sha 仍是 origin/main tip)
+        id: stalegate
+        run: |
+          set -euo pipefail
+          tip="$(git ls-remote https://github.com/${{ github.repository }}.git refs/heads/main | cut -f1)"
+          echo "this run: ${GITHUB_SHA}  origin/main tip: ${tip}"
+          if [ "${GITHUB_SHA}" != "${tip}" ]; then
+            echo "::notice::main 已前进，本 run 过时 → 跳过 image-pin PR（下次 push 重建固定分支）"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mint k3s-scoped token (跨 org：App 装在 wontlost-ltd/k3s)
+        if: ${{ steps.stalegate.outputs.skip != 'true' }}
+        id: k3stoken
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.IMAGE_PIN_APP_ID }}
+          private-key: ${{ secrets.IMAGE_PIN_APP_PRIVATE_KEY }}
+          owner: wontlost-ltd
+          repositories: k3s
+          permission-contents: write
+          permission-pull-requests: write
+
+      # checkout 本仓以取用共享脚本（image-pin-pr 是独立 job，需自己 checkout）。
+      - name: Checkout (for shared script)
+        if: ${{ steps.stalegate.outputs.skip != 'true' }}
+        uses: actions/checkout@v7
+
+      - name: Open/update image-pin PR to k3s
+        if: ${{ steps.stalegate.outputs.skip != 'true' }}
+        env:
+          GH_TOKEN: ${{ steps.k3stoken.outputs.token }}
+          DIGEST: ${{ needs.build-migrate-image.outputs.digest }}
+          SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          bash scripts/ci/open-image-pin-pr.sh \
+            docker.io/wontlost/aster-cloud-migrate image-pin/aster-cloud-migrate
