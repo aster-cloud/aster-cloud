@@ -38,7 +38,22 @@ describe('resolveByokEnvelope', () => {
     expect(await resolveByokEnvelope('u1')).toEqual({
       provider: 'openai',
       apiKey: 'sk-user',
+      baseUrl: null,
       bindingId: 'binding-1',
+    });
+  });
+
+  // BYOK 自定义 Provider URL：providerUrl 非空 → 带进 envelope.baseUrl（aster-api 重新校验）。
+  it('★providerUrl 非空 → envelope 带 baseUrl（供 aster-api allowlist+SSRF 重校验）', async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 'b1', provider: 'openai', providerUrl: 'https://llm-gateway.example.com/v1',
+    });
+    mockGetDecrypted.mockResolvedValue('sk-user');
+    expect(await resolveByokEnvelope('u1')).toEqual({
+      provider: 'openai',
+      apiKey: 'sk-user',
+      baseUrl: 'https://llm-gateway.example.com/v1',
+      bindingId: 'b1',
     });
   });
 
@@ -68,6 +83,16 @@ describe('resolveByokEnvelope', () => {
     expect(mockGetDecrypted).not.toHaveBeenCalled(); // 过期即短路，不解密
   });
 
+  // ★锁短路顺序：过期优先于 baseUrl —— 即使配了 providerUrl，过期 key 也短路返回 null，不解密、不带 baseUrl。
+  it('★expiresAt 过期 + providerUrl 非空 → null（过期先短路，不到 baseUrl）', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000);
+    mockFindFirst.mockResolvedValue({
+      id: 'b1', provider: 'openai', expiresAt: yesterday, providerUrl: 'https://gw.example.com/v1',
+    });
+    expect(await resolveByokEnvelope('u1')).toBeNull();
+    expect(mockGetDecrypted).not.toHaveBeenCalled();
+  });
+
   it('expiresAt 未来 → 正常提供 envelope', async () => {
     const tomorrow = new Date(Date.now() + 86_400_000);
     mockFindFirst.mockResolvedValue({ id: 'b1', provider: 'openai', expiresAt: tomorrow });
@@ -75,6 +100,7 @@ describe('resolveByokEnvelope', () => {
     expect(await resolveByokEnvelope('u1')).toEqual({
       provider: 'openai',
       apiKey: 'sk-user',
+      baseUrl: null,
       bindingId: 'b1',
     });
   });
@@ -87,11 +113,22 @@ describe('resolveByokEnvelope', () => {
 });
 
 describe('injectByokEnvelope', () => {
-  it('注入服务端 envelope 到顶层 _byok（只含 provider+apiKey，★bindingId 不转发给 aster-api）', () => {
-    const out = injectByokEnvelope('{"goal":"x"}', { provider: 'openai', apiKey: 'sk', bindingId: 'b1' });
+  it('注入服务端 envelope 到顶层 _byok（含 provider+apiKey，★bindingId 不转发；baseUrl 为空不注入）', () => {
+    const out = injectByokEnvelope('{"goal":"x"}', { provider: 'openai', apiKey: 'sk', baseUrl: null, bindingId: 'b1' });
     expect(out.injected).toBe(true);
-    // bindingId 是 cloud 内部字段（用于 stamp lastUsedAt），绝不进转发 body
+    // bindingId 是 cloud 内部字段（用于 stamp lastUsedAt），绝不进转发 body；baseUrl 为空则不加字段
     expect(JSON.parse(out.body)).toEqual({ goal: 'x', _byok: { provider: 'openai', apiKey: 'sk' } });
+  });
+
+  // BYOK 自定义 Provider URL：baseUrl 非空 → 注入 _byok.baseUrl（aster-api 重新校验 allowlist+SSRF）。
+  it('★baseUrl 非空 → 注入 _byok.baseUrl 供 aster-api 重校验', () => {
+    const out = injectByokEnvelope('{"goal":"x"}', {
+      provider: 'openai', apiKey: 'sk', baseUrl: 'https://gw.example.com/v1', bindingId: 'b1',
+    });
+    expect(out.injected).toBe(true);
+    expect(JSON.parse(out.body)._byok).toEqual({
+      provider: 'openai', apiKey: 'sk', baseUrl: 'https://gw.example.com/v1',
+    });
   });
 
   it('★剥离 caller 提交的 _byok（防浏览器注入），无 envelope 时不重新注入，injected=false', () => {
@@ -103,14 +140,14 @@ describe('injectByokEnvelope', () => {
   it('★caller 带 _byok + 服务端有 envelope → 用服务端的覆盖 caller 的', () => {
     const out = injectByokEnvelope(
       '{"goal":"x","_byok":{"provider":"evil","apiKey":"attacker"}}',
-      { provider: 'openai', apiKey: 'real', bindingId: 'b1' }
+      { provider: 'openai', apiKey: 'real', baseUrl: null, bindingId: 'b1' }
     );
     expect(out.injected).toBe(true);
     expect(JSON.parse(out.body)._byok).toEqual({ provider: 'openai', apiKey: 'real' });
   });
 
   it('body 非 JSON → 原样返回、injected=false（避免"以为注入了"）', () => {
-    const out = injectByokEnvelope('not-json', { provider: 'openai', apiKey: 'sk', bindingId: 'b1' });
+    const out = injectByokEnvelope('not-json', { provider: 'openai', apiKey: 'sk', baseUrl: null, bindingId: 'b1' });
     expect(out).toEqual({ body: 'not-json', injected: false });
   });
 
@@ -137,7 +174,7 @@ describe('injectByokEnvelope', () => {
   it('#185：_byok + _usage 同时注入', () => {
     const out = injectByokEnvelope(
       '{"goal":"x"}',
-      { provider: 'openai', apiKey: 'sk', bindingId: 'b1' },
+      { provider: 'openai', apiKey: 'sk', baseUrl: null, bindingId: 'b1' },
       'req-9'
     );
     const parsed = JSON.parse(out.body);

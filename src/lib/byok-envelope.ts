@@ -4,8 +4,10 @@
  *
  * 设计（Codex 审查）：
  *   - 只在服务端（cloud BFF）解密 BYOK key；浏览器 body 里的任何 `_byok` 一律不可信、被覆盖。
- *   - envelope 只带 { provider, apiKey }，**不带 baseUrl**——baseUrl 由 aster-api 按 provider
- *     查固定 allowlist（防 SSRF）。
+ *   - envelope 带 { provider, apiKey, baseUrl? }。**baseUrl 可选**：用户配置了自定义 Provider URL
+ *     才注入；aster-api **每次重新校验**（管理员 allowlist + SsrfGuard，防 SSRF），不信 cloud 传入值。
+ *     baseUrl 为空则 aster-api 走官方硬编码端点（零行为变化）。cloud 侧不做 SSRF 判定（权威边界在
+ *     真正发出站请求的 aster-api）。
  *   - 仅支持 openai / anthropic（Vertex 非简单 API-key 模型，Phase 2 排除）。
  *   - 注入 envelope 必须在 body 里，且调用方必须在注入【之后】再签名（HMAC 覆盖含 envelope 的
  *     最终 body），否则 aster-api 验签失败（fail-closed）。
@@ -20,6 +22,12 @@ const SUPPORTED_BYOK_PROVIDERS = new Set(['openai', 'anthropic']);
 export interface ByokEnvelope {
   provider: string;
   apiKey: string;
+  /**
+   * 用户配置的自定义 Provider URL（AiKeyBinding.providerUrl）。可选：为空则 aster-api 用官方
+   * 硬编码端点。非空则注入转发 body 顶层 `_byok.baseUrl`，由 **aster-api 每次重新校验**（管理员
+   * allowlist + SsrfGuard，不信 cloud 传入值）。cloud 侧不做 SSRF 判定（存 key 时已校验 https）。
+   */
+  baseUrl: string | null;
   /** AiKeyBinding.id —— 用于 Phase 3 精确 stamp lastUsedAt / usage 归类。不注入转发 body。 */
   bindingId: string;
 }
@@ -33,7 +41,7 @@ export interface ByokEnvelope {
 export async function resolveByokEnvelope(userId: string): Promise<ByokEnvelope | null> {
   const binding = await db.query.aiKeyBindings.findFirst({
     where: and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.active, true)),
-    columns: { id: true, provider: true, expiresAt: true },
+    columns: { id: true, provider: true, expiresAt: true, providerUrl: true },
   });
   if (!binding) return null;
 
@@ -54,7 +62,7 @@ export async function resolveByokEnvelope(userId: string): Promise<ByokEnvelope 
   const apiKey = await getDecryptedBYOKKey(userId, binding.provider);
   if (!apiKey) return null;
 
-  return { provider, apiKey, bindingId: binding.id };
+  return { provider, apiKey, baseUrl: binding.providerUrl ?? null, bindingId: binding.id };
 }
 
 /**
@@ -85,7 +93,13 @@ export function injectByokEnvelope(
   delete parsed._usage;
   const injected = envelope != null;
   if (envelope) {
-    parsed._byok = { provider: envelope.provider, apiKey: envelope.apiKey };
+    // baseUrl 仅在用户配置了自定义 Provider URL 时注入；aster-api 会重新校验（allowlist+SSRF）。
+    // 为空则不加 baseUrl 字段，aster-api 走官方硬编码端点（零行为变化）。
+    const byok: Record<string, string> = { provider: envelope.provider, apiKey: envelope.apiKey };
+    if (envelope.baseUrl) {
+      byok.baseUrl = envelope.baseUrl;
+    }
+    parsed._byok = byok;
   }
   if (requestId) {
     parsed._usage = { requestId };
