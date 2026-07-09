@@ -1,16 +1,19 @@
 # Changelog generator.
 #
 # Trigger: push to main, AND release tag creation.
-#   - On push: refresh the [unreleased] section so reviewers can see
-#     what's accumulating toward the next release without waiting for
-#     a tag.
-#   - On tag: cut a versioned section with the timestamp.
+#   - On push to main: open/update a **changelog PR**（不再直推 main）。
+#   - On tag: cut a versioned section and commit直推（release 是刻意动作，且 tag 事件
+#     不驱动 image-pin 部署链）。
 #
-# Implementation: git-cliff parses commit messages (Conventional
-# Commits) and renders CHANGELOG.md per cliff.toml at the repo root.
-# Output is committed back to main by a bot (the github-actions
-# user). The commit message has [skip ci] so we don't recursively
-# re-trigger this workflow.
+# ★ 为什么 push 到 main 不再直推（wontlost-ltd/k3s#4 / digest-pin 全链上线实测）：
+#   此前每次 main push 后 bot 直推 `docs(changelog): update [skip ci]` 到 main。这把 main tip
+#   推成一个「无构建产物」的 [skip ci] commit → digest-pin 的 freshness 不变式
+#   （sourceSha == main HEAD）永远匹配不上（真实 commit 的 run 因 tip 变 changelog 而 stale
+#   跳过；changelog commit [skip ci] 不触发 CI）→ image-pin PR 永远开不出。
+#   Codex 审查确认根治=changelog 不污染 main tip（而非在 freshness 上加 [skip ci] 特例——
+#   那会让攻击者把真实变更藏进 [skip ci] commit 绕过 latest-only）。改为开 PR。
+#
+# Implementation: git-cliff parses commit messages (Conventional Commits) 渲染 CHANGELOG.md。
 
 name: changelog
 
@@ -19,11 +22,12 @@ on:
     branches: [main]
     tags: ["v*"]
     paths-ignore:
-      - "CHANGELOG.md"  # avoid infinite loop on the bot's own commit
+      - "CHANGELOG.md"  # avoid loop on the bot's own changelog change
   workflow_dispatch:
 
 permissions:
-  contents: write   # for the bot to push CHANGELOG.md back
+  contents: write        # tag 路径直推 CHANGELOG.md
+  pull-requests: write   # push-to-main 路径开/更新 changelog PR
 
 jobs:
   generate:
@@ -39,14 +43,42 @@ jobs:
           config: cliff.toml
           args: --output CHANGELOG.md
 
-      - name: Commit changelog if changed
+      - name: No change → done
+        id: diff
         run: |
           if [ -z "$(git status --porcelain CHANGELOG.md)" ]; then
-            echo "CHANGELOG.md unchanged — skipping commit"
-            exit 0
+            echo "CHANGELOG.md unchanged — nothing to do"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # ── tag 事件：直推（release 刻意动作；不驱动 image-pin 链）──
+      - name: Commit changelog on tag (direct)
+        if: ${{ steps.diff.outputs.changed == 'true' && startsWith(github.ref, 'refs/tags/') }}
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md
-          git commit -m "docs(changelog): update [skip ci]"
-          git push
+          git commit -m "docs(changelog): release ${GITHUB_REF_NAME} [skip ci]"
+          git push origin HEAD:main
+
+      # ── push-to-main 事件：开/更新 changelog PR（★不直推 main，避免污染 tip）──
+      - name: Open/update changelog PR (push to main)
+        if: ${{ steps.diff.outputs.changed == 'true' && github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: chore/changelog-unreleased
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): refresh unreleased [skip ci]"
+          git push --force-with-lease origin "$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "docs(changelog): refresh unreleased" \
+              --body "自动生成的 CHANGELOG.md 刷新（git-cliff）。合并可选——changelog 是派生物。不直推 main 以避免污染 digest-pin freshness 基线（见 workflow 注释）。"
+          fi
