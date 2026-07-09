@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- P3-2b 退 promote:latest+trigger-sync,迁移 fail-loud 后移到 by-digest (#201) *(migrate)*
 - Phase 2 — migrate CI 开 PR 到 k3s pin digest (k3s#4) (#196) *(image-pin)*
 - Migrate 镜像 cosign keyless 签名 + :latest 只指向已验签 digest (#192 Phase 0) (#194) *(ci)*
 - 精确 token 计量 — requestId upsert 回填（#185, cloud 侧） (#189) *(ai-usage)*
@@ -373,6 +374,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
+- Update [skip ci] *(changelog)*
 - Dual-engine equivalence white paper for risk & compliance (#53)
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -547,6 +549,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Label 非致命（先建 PR 再加 label） (#199) *(image-pin)*
+- Push-to-main 不再直推 main，改开 changelog PR (digest-pin freshness 根治) (#197) *(changelog)*
+- Git clone 用 basic auth 而非 bearer（修 CI 克隆 k3s 失败） (#198) *(image-pin)*
 - ArgoCD sync 不再传 revision，走 app 自身 targetRevision (#190) *(ci)*
 - 迁移触发 fail-loud + 轮询完成（#187 静默吞掉迁移） (#188) *(ci)*
 - 止血 AI 配额未强制执行 + BYOK bypass 白嫖平台预算 (#183) *(ai-quota)*
