@@ -59,6 +59,31 @@ describe('resolveByokEnvelope', () => {
     mockGetDecrypted.mockResolvedValue(null);
     expect(await resolveByokEnvelope('u1')).toBeNull();
   });
+
+  // BYOK 增强：失效日期 enforcement —— 过期 key 不提供给推理层（回退平台）。
+  it('★expiresAt 已过期 → null（不提供过期 key，回退平台配额）', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000);
+    mockFindFirst.mockResolvedValue({ id: 'b1', provider: 'openai', expiresAt: yesterday });
+    expect(await resolveByokEnvelope('u1')).toBeNull();
+    expect(mockGetDecrypted).not.toHaveBeenCalled(); // 过期即短路，不解密
+  });
+
+  it('expiresAt 未来 → 正常提供 envelope', async () => {
+    const tomorrow = new Date(Date.now() + 86_400_000);
+    mockFindFirst.mockResolvedValue({ id: 'b1', provider: 'openai', expiresAt: tomorrow });
+    mockGetDecrypted.mockResolvedValue('sk-user');
+    expect(await resolveByokEnvelope('u1')).toEqual({
+      provider: 'openai',
+      apiKey: 'sk-user',
+      bindingId: 'b1',
+    });
+  });
+
+  it('expiresAt 为 null → 永不过期，正常提供', async () => {
+    mockFindFirst.mockResolvedValue({ id: 'b1', provider: 'openai', expiresAt: null });
+    mockGetDecrypted.mockResolvedValue('sk-user');
+    expect((await resolveByokEnvelope('u1'))?.apiKey).toBe('sk-user');
+  });
 });
 
 describe('injectByokEnvelope', () => {

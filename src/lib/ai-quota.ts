@@ -321,6 +321,31 @@ function currentPeriod(at: Date = new Date()): string {
   return `${at.getUTCFullYear()}-${String(at.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+/**
+ * 本月（UTC）该用户经 **BYOK** key 成功调用消耗的总 token 数（prompt+completion）。
+ * ⚠️ aiUsageRecords 无 provider 列 → 这是**每用户跨所有 BYOK key 的总量**,非 per-provider。
+ * 供 UI 显示「剩余额度」+ checkAiQuota 对 BYOK tokenQuota enforcement。
+ */
+export async function byokTokensUsedThisMonth(
+  userId: string,
+  at: Date = new Date(),
+): Promise<number> {
+  const r = await db
+    .select({
+      t: sql<number>`COALESCE(SUM("promptTokens" + "completionTokens"), 0)::int`,
+    })
+    .from(aiUsageRecords)
+    .where(
+      and(
+        eq(aiUsageRecords.userId, userId),
+        eq(aiUsageRecords.periodMonth, currentPeriod(at)),
+        eq(aiUsageRecords.usedByok, true),
+        eq(aiUsageRecords.status, 'success'),
+      ),
+    );
+  return r[0]?.t ?? 0;
+}
+
 async function countSuccessfulCalls(userId: string, periodMonth: string): Promise<number> {
   const r = await db
     .select({ c: sql<number>`count(*)::int` })

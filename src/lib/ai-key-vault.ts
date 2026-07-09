@@ -30,9 +30,19 @@ export async function saveBYOKKey(params: {
   userId: string;
   provider: 'openai' | 'anthropic' | 'vertex';
   apiKey: string;
+  /** 自定义 provider API base URL（可选）。null/undefined = 用内置默认。 */
+  providerUrl?: string | null;
+  /** BYOK 月度 token 上限（可选）。null/undefined = 无限。 */
+  tokenQuota?: number | null;
+  /** 失效日期（可选）。null/undefined = 永不过期。 */
+  expiresAt?: Date | null;
 }): Promise<void> {
   const secret = encryptionSecret();
   const keyHint = params.apiKey.slice(-4);
+  // 显式 null 化 undefined，让 SQL 把「未提供」写成 NULL（覆盖旧值 → 用户清空即恢复默认）。
+  const providerUrl = params.providerUrl ?? null;
+  const tokenQuota = params.tokenQuota ?? null;
+  const expiresAt = params.expiresAt ? params.expiresAt.toISOString() : null;
 
   const existing = await db.query.aiKeyBindings.findFirst({
     where: and(
@@ -47,6 +57,9 @@ export async function saveBYOKKey(params: {
       SET "encryptedKey" = pgp_sym_encrypt(${params.apiKey}::text, ${secret}::text)::text,
           "keyHint" = ${keyHint},
           "active" = true,
+          "providerUrl" = ${providerUrl},
+          "tokenQuota" = ${tokenQuota},
+          "expiresAt" = ${expiresAt}::timestamp,
           "lastErrorAt" = NULL,
           "lastError" = NULL,
           "updatedAt" = NOW()
@@ -55,7 +68,8 @@ export async function saveBYOKKey(params: {
   } else {
     await db.execute(sql`
       INSERT INTO "AiKeyBinding"
-        ("id", "userId", "provider", "encryptedKey", "keyHint", "active", "createdAt", "updatedAt")
+        ("id", "userId", "provider", "encryptedKey", "keyHint", "active",
+         "providerUrl", "tokenQuota", "expiresAt", "createdAt", "updatedAt")
       VALUES (
         ${globalThis.crypto.randomUUID()},
         ${params.userId},
@@ -63,6 +77,9 @@ export async function saveBYOKKey(params: {
         pgp_sym_encrypt(${params.apiKey}::text, ${secret}::text)::text,
         ${keyHint},
         true,
+        ${providerUrl},
+        ${tokenQuota},
+        ${expiresAt}::timestamp,
         NOW(),
         NOW()
       )
@@ -85,10 +102,62 @@ export async function getDecryptedBYOKKey(userId: string, provider: string): Pro
   return rows[0]?.key ?? null;
 }
 
-/** 停用 BYOK（用户 UI 上的 Disable 按钮） */
+/**
+ * 解密 BYOK key 并**同时**返回 quota/expiresAt/providerUrl（推理层 enforcement 用）。
+ * 与 getDecryptedBYOKKey 分开，避免改动其现有调用点的返回契约。
+ */
+export interface DecryptedBYOK {
+  key: string;
+  providerUrl: string | null;
+  tokenQuota: number | null;
+  expiresAt: Date | null;
+}
+export async function getBYOKForInference(
+  userId: string,
+  provider: string,
+): Promise<DecryptedBYOK | null> {
+  const secret = encryptionSecret();
+  const result = await db.execute(sql`
+    SELECT pgp_sym_decrypt("encryptedKey"::bytea, ${secret}::text) AS key,
+           "providerUrl" AS provider_url,
+           "tokenQuota"  AS token_quota,
+           "expiresAt"   AS expires_at
+    FROM "AiKeyBinding"
+    WHERE "userId" = ${userId}
+      AND "provider" = ${provider}
+      AND "active" = true
+    LIMIT 1
+  `);
+  const rows = result as unknown as Array<{
+    key: string | null;
+    provider_url: string | null;
+    token_quota: number | null;
+    expires_at: string | Date | null;
+  }>;
+  const row = rows[0];
+  if (!row?.key) return null;
+  return {
+    key: row.key,
+    providerUrl: row.provider_url ?? null,
+    tokenQuota: row.token_quota ?? null,
+    expiresAt: row.expires_at ? new Date(row.expires_at) : null,
+  };
+}
+
+/** 停用 BYOK（临时禁用而不删除；保留供内部使用/未来 UI）。 */
 export async function deactivateBYOKKey(userId: string, provider: string): Promise<void> {
   await db
     .update(aiKeyBindings)
     .set({ active: false, updatedAt: new Date() })
+    .where(and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.provider, provider)));
+}
+
+/**
+ * 硬删除 BYOK key（用户 UI「撤销/删除」按钮）——物理删除整行,含加密 key + 历史。
+ * 撤销即删除（用户诉求 + 隐私：key 不再留存）。
+ */
+export async function deleteBYOKKey(userId: string, provider: string): Promise<void> {
+  await db
+    .delete(aiKeyBindings)
     .where(and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.provider, provider)));
 }

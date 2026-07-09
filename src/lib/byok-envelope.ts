@@ -33,9 +33,15 @@ export interface ByokEnvelope {
 export async function resolveByokEnvelope(userId: string): Promise<ByokEnvelope | null> {
   const binding = await db.query.aiKeyBindings.findFirst({
     where: and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.active, true)),
-    columns: { id: true, provider: true },
+    columns: { id: true, provider: true, expiresAt: true },
   });
   if (!binding) return null;
+
+  // 失效日期 enforcement：已过期的 BYOK key 不再提供给推理层（回退平台配额路径）。
+  // 这是当前**能干净生效**的一层（不依赖 BYOK 接入推理）——过期 key 直接不被解析/使用。
+  if (binding.expiresAt && binding.expiresAt.getTime() <= Date.now()) {
+    return null;
+  }
 
   const provider = binding.provider.trim().toLowerCase();
   if (!SUPPORTED_BYOK_PROVIDERS.has(provider)) {
