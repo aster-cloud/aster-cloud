@@ -98,4 +98,36 @@ describe('checkCsrf', () => {
     const r = req('POST', { origin: 'https://app2.example.com' });
     expect(checkCsrf(r).allowed).toBe(true);
   });
+
+  // apex↔www 配对：NEXT_PUBLIC_APP_URL 只配 apex,但用户经 www.<domain> 访问时不该 403。
+  // 复现生产 bug：DELETE /api/user/ai-keys 从 www.aster-lang.cloud → csrf_forbidden。
+  it('accepts www.<domain> when NEXT_PUBLIC_APP_URL is the apex', () => {
+    env.NODE_ENV = 'production';
+    delete env.CSRF_ALLOWED_ORIGINS;
+    env.NEXT_PUBLIC_APP_URL = 'https://aster-lang.cloud';
+    const r = req('POST', { origin: 'https://www.aster-lang.cloud' });
+    expect(checkCsrf(r).allowed).toBe(true);
+  });
+
+  it('accepts apex when NEXT_PUBLIC_APP_URL is the www.<domain> (symmetric)', () => {
+    env.NODE_ENV = 'production';
+    delete env.CSRF_ALLOWED_ORIGINS;
+    env.NEXT_PUBLIC_APP_URL = 'https://www.aster-lang.cloud';
+    const r = req('POST', { origin: 'https://aster-lang.cloud' });
+    expect(checkCsrf(r).allowed).toBe(true);
+  });
+
+  it('www pairing does NOT broaden to a different domain (security)', () => {
+    env.NODE_ENV = 'production';
+    delete env.CSRF_ALLOWED_ORIGINS;
+    env.NEXT_PUBLIC_APP_URL = 'https://aster-lang.cloud';
+    const r = req('POST', { origin: 'https://www.attacker.example' });
+    expect(checkCsrf(r).allowed).toBe(false);
+  });
+
+  it('www pairing applies to CSRF_ALLOWED_ORIGINS entries too', () => {
+    env.CSRF_ALLOWED_ORIGINS = 'https://aster-lang.cloud';
+    const r = req('POST', { origin: 'https://www.aster-lang.cloud' });
+    expect(checkCsrf(r).allowed).toBe(true);
+  });
 });

@@ -94,11 +94,16 @@ export function checkCsrf(
 function defaultAllowedOrigins(): string[] {
   const envValue = process.env.CSRF_ALLOWED_ORIGINS;
   if (envValue) {
-    return envValue.split(',').map((o) => o.trim()).filter(Boolean);
+    // 显式列表也补 www/apex 配对（见下），保持与 NEXT_PUBLIC_APP_URL 路径一致的行为。
+    return withWwwVariants(
+      envValue.split(',').map((o) => o.trim()).filter(Boolean),
+    );
   }
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (appUrl) {
-    return [appUrl.replace(/\/$/, '')];
+    // 同一站点的 apex 与 www 应互认——用户经 www.<domain> 访问时 Origin 是 www 版本,
+    // 但 NEXT_PUBLIC_APP_URL 只配了 apex → 会误判 CSRF 403。补上 www/apex 配对消除该误伤。
+    return withWwwVariants([appUrl.replace(/\/$/, '')]);
   }
   // Dev fallbacks (no prod side effect — see fail-closed path above)
   if (process.env.NODE_ENV !== 'production') {
@@ -109,4 +114,31 @@ function defaultAllowedOrigins(): string[] {
     ];
   }
   return [];
+}
+
+/**
+ * 对每个 origin 补齐 apex↔www 配对：
+ *   https://example.com      → + https://www.example.com
+ *   https://www.example.com  → + https://example.com
+ * 仅对形如 <scheme>://<host>[:port] 的合法 URL 生效;非法/localhost 原样保留。去重。
+ */
+function withWwwVariants(origins: string[]): string[] {
+  const out = new Set<string>();
+  for (const o of origins) {
+    out.add(o);
+    try {
+      const u = new URL(o);
+      const host = u.hostname;
+      // 只对含点的真实域名做配对（跳过 localhost 等单标签主机）。
+      if (!host.includes('.')) continue;
+      const paired = host.startsWith('www.')
+        ? host.slice(4)               // www.example.com → example.com
+        : `www.${host}`;              // example.com → www.example.com
+      const portPart = u.port ? `:${u.port}` : '';
+      out.add(`${u.protocol}//${paired}${portPart}`);
+    } catch {
+      // 非 URL 形式（不该发生,env 里都是完整 origin）——原样保留即可。
+    }
+  }
+  return [...out];
 }
