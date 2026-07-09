@@ -60,12 +60,45 @@
 
 import { sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { getDb } from '@/db';
+import { getDb, hasDbBinding } from '@/db';
 import { randomUUID } from 'node:crypto';
 
 /** Schema patch is immutable: once the column lands, no later request
  *  needs to retry. Safe to cache for the life of the isolate. */
 let schemaPatchDone: Promise<void> | null = null;
+
+/** One-time build-phase skip log guard: avoids repeating the same
+ *  "no DB binding" line for every prerendered route/locale. */
+let noBindingLogged = false;
+
+/**
+ * Build 期（`next build` / opennext 预渲染）没有 Hyperdrive binding、也没有
+ * DATABASE_URL——此时冷启动自愈被 layout 顺带触发只会逐条 DDL 抛
+ * "connection string not found" 刷屏（见 issue #191）。这里在入口安静短路：
+ * 没有 DB 来源就不是"失败"，只在首次打一条 debug 级说明，行为等价 no-op。
+ * 运行时（Workers 带 Hyperdrive）此判定为 true，自愈照常执行。
+ *
+ * 设计边界（如实标注，勿误解为更强语义）：
+ *   - 判据是"有无可用连接串"（与 getConnectionString 同源），**不是**"是否处于
+ *     build/prerender 阶段"。若某个 build 环境显式设了 DATABASE_URL（如部分集成
+ *     build），短路不生效、自愈仍会在预渲染期尝试执行——这符合 #191 的精确场景
+ *     （issue 明确前提是"build 期无连接串"），但不承诺"预渲染永不触碰 DB"。
+ *   - 若 Worker 里存在坏配置的 Hyperdrive binding（有 HYPERDRIVE 但 connectionString
+ *     为空），hasDbBinding 返回 false → 此处会跳过自愈。这是合理降级（坏绑定本就
+ *     连不上），代价是掩盖坏配置；坏绑定会在真实业务 DB 访问处暴露，不由自愈负责报警。
+ */
+function dbUnavailableForBootstrap(): boolean {
+  if (hasDbBinding()) {
+    return false;
+  }
+  if (!noBindingLogged) {
+    noBindingLogged = true;
+    console.debug(
+      '[db-bootstrap] 无 DB binding（build/预渲染阶段）— 跳过 schema patch + admin seed（运行时冷启动会执行）',
+    );
+  }
+  return true;
+}
 
 /** Admin seed cache: we want to re-attempt until we've actually
  *  provisioned the admin row. A *resolved* Promise here means
@@ -74,6 +107,11 @@ let schemaPatchDone: Promise<void> | null = null;
 let adminSeedDone: Promise<void> | null = null;
 
 export function ensureSchemaApplied(): Promise<void> {
+  // Build/预渲染阶段无 DB binding：安静短路，不缓存（运行时再执行），
+  // 避免逐条 DDL 抛错刷屏（issue #191）。
+  if (dbUnavailableForBootstrap()) {
+    return Promise.resolve();
+  }
   if (!schemaPatchDone) {
     schemaPatchDone = runSchemaPatch().catch((err) => {
       schemaPatchDone = null;
@@ -95,6 +133,11 @@ export function ensureSchemaApplied(): Promise<void> {
  * caller retries.
  */
 export function ensureAdminSeeded(): Promise<void> {
+  // 同 ensureSchemaApplied：build 期无 DB binding 时安静跳过、不缓存，
+  // 运行时冷启动再重试（issue #191）。
+  if (dbUnavailableForBootstrap()) {
+    return Promise.resolve();
+  }
   if (adminSeedDone) return adminSeedDone;
   adminSeedDone = runAdminSeed()
     .then((didFinalize) => {

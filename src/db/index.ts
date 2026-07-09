@@ -84,6 +84,22 @@ function getConnectionString(env?: CloudflareEnv): string {
 }
 
 /**
+ * 是否存在可用的数据库连接来源（Hyperdrive binding 或 DATABASE_URL）。
+ *
+ * 用于 build 期短路：`next build` / opennext 预渲染阶段既无 Hyperdrive binding、
+ * 也无 DATABASE_URL，此时任何 getDb() 都会抛 "connection string not found"。
+ * 冷启动自愈（db-bootstrap）在预渲染时被 layout 顺带触发，本判定让它安静跳过，
+ * 而不是逐条 DDL 抛错刷屏。不抛错、纯布尔，安全用于任何环境。
+ */
+export function hasDbBinding(): boolean {
+  const env = getCloudflareEnvSync();
+  if (env?.HYPERDRIVE?.connectionString) {
+    return true;
+  }
+  return Boolean(process.env.HYPERDRIVE_DATABASE_URL || process.env.DATABASE_URL);
+}
+
+/**
  * 创建数据库客户端
  * Hyperdrive 负责连接池，这里只是创建客户端包装器
  */
