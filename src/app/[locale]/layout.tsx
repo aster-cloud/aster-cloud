@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from 'next/headers';
-import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
+import { IntlClientProvider } from '@/i18n/intl-client-provider';
 import { notFound } from 'next/navigation';
 import { Toaster } from '@aster-cloud/ui';
 import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
@@ -121,7 +121,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         />
       </head>
       <body className="antialiased">
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <IntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider nonce={nonce}>
             <AuthProvider>{children}</AuthProvider>
             {/* Global docs search. The palette mounts here (not just
@@ -139,7 +139,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                 without owning its own banner state. */}
             <Toaster />
           </ThemeProvider>
-        </NextIntlClientProvider>
+        </IntlClientProvider>
       </body>
     </html>
   );
