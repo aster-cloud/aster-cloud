@@ -265,6 +265,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#200) *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -549,6 +550,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Build 期无 DB binding 时安静短路，消除 CI 日志刷屏 (#191) (#193) *(db-bootstrap)*
 - Label 非致命（先建 PR 再加 label） (#199) *(image-pin)*
 - Push-to-main 不再直推 main，改开 changelog PR (digest-pin freshness 根治) (#197) *(changelog)*
 - Git clone 用 basic auth 而非 bearer（修 CI 克隆 k3s 失败） (#198) *(image-pin)*
