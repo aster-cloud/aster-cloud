@@ -173,3 +173,43 @@ export async function signLexiconAdminHeaders(
     'X-Internal-Signature': signature,
   };
 }
+
+/**
+ * 为 aster-api 的 ByokAllowlistAdminResource（/api/v1/admin/byok-allowlist）生成签名头。
+ *
+ * ★与 lexicon admin 不同：byok 端点用 {@code AdminHmacVerifier}，canonical 是 **7 段含 body
+ * sha256**：`method\npath\nts\nnonce\ncontentType\ncontentLength\nbodySha256`。必须与
+ * AdminHmacVerifier.verify 逐字节一致，否则验签失败。GET 无 body（ct=空/len=0/sha=空）；
+ * POST 传 JSON body（ct=application/json/len=字节数/sha=body sha256hex）。
+ *
+ * @param body POST 的原始 body 文本（GET 传 null / 空）
+ */
+export async function signByokAllowlistHeaders(
+  method: string,
+  path: string,
+  body: string | null = null,
+): Promise<LexiconAdminHeaders> {
+  const secret = process.env.ASTER_PLAN_GATE_HMAC_KEY;
+  if (!secret) {
+    throw new Error('ASTER_PLAN_GATE_HMAC_KEY not configured');
+  }
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = generateNonce();
+  let contentType = '';
+  let contentLength = 0;
+  let bodySha = '';
+  if (body != null && body.length > 0) {
+    const bytes = new TextEncoder().encode(body);
+    contentType = 'application/json';
+    contentLength = bytes.length;
+    bodySha = await sha256Hex(bytes.buffer as ArrayBuffer);
+  }
+  // AdminHmacVerifier canonical：method\npath\nts\nnonce\ncontentType\ncontentLength\nbodySha256
+  const canonical = `${method}\n${path}\n${timestamp}\n${nonce}\n${contentType}\n${contentLength}\n${bodySha}`;
+  const signature = await hmacSha256(secret, canonical);
+  return {
+    'X-Aster-Timestamp': timestamp,
+    'X-Aster-Nonce': nonce,
+    'X-Internal-Signature': signature,
+  };
+}

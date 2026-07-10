@@ -1,0 +1,150 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Badge, Button, Card, CardBody, Input, Stack } from '@/components/ui';
+
+/**
+ * BYOK endpoint allowlist 管理卡片（平台管理员）。
+ *
+ * 控制 aster-api 允许 BYOK 自定义 Provider URL 指向哪些 host（出站 SSRF 边界）。
+ * 真相源 = 后端 /api/admin/byok-allowlist（GET）。add/remove 即时生效（后端 Redis SET +
+ * pub/sub 广播，跨所有 replica，零 CI/零重启）。
+ *
+ * 来源标注：builtin（官方 openai/anthropic）+ env（k3s bootstrap）只读；dynamic（管理员动态
+ * 添加）可删。add 的 host 由 aster-api SsrfGuard 校验（私网/元数据 deny），非法 host 返回 400。
+ */
+interface EndpointView {
+  host: string;
+  port: number;
+  pathPrefix: string;
+  source: 'builtin' | 'env' | 'dynamic';
+  tenantScope: string | null;
+  removable: boolean;
+}
+
+export function ByokAllowlistCard() {
+  const t = useTranslations('byokAllowlistSettings');
+  const [endpoints, setEndpoints] = useState<EndpointView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newHost, setNewHost] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/byok-allowlist', { cache: 'no-store' });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as { endpoints?: EndpointView[] };
+      setEndpoints(data.endpoints ?? []);
+      setError('');
+    } catch {
+      setError(t('loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const mutate = async (action: 'add' | 'remove', host: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/byok-allowlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, host }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { message?: string } | null;
+        setError(body?.message ?? t('mutateFailed'));
+        return;
+      }
+      if (action === 'add') setNewHost('');
+      await load();
+    } catch {
+      setError(t('mutateFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sourceBadge = (source: EndpointView['source']) => {
+    const variant =
+      source === 'dynamic' ? 'success' : source === 'builtin' ? 'primary' : 'neutral';
+    return <Badge variant={variant}>{t(`source.${source}`)}</Badge>;
+  };
+
+  return (
+    <Card>
+      <CardBody>
+        <Stack gap={4}>
+          <div>
+            <h3 className="text-sm font-semibold">{t('title')}</h3>
+            <p className="text-xs text-fg-muted">{t('description')}</p>
+          </div>
+
+          {/* 添加 host */}
+          <div className="flex gap-2">
+            <Input
+              value={newHost}
+              onChange={(e) => setNewHost(e.target.value)}
+              placeholder={t('addPlaceholder')}
+              disabled={busy}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newHost.trim()) void mutate('add', newHost.trim());
+              }}
+            />
+            <Button
+              onClick={() => newHost.trim() && void mutate('add', newHost.trim())}
+              disabled={busy || !newHost.trim()}
+            >
+              {t('add')}
+            </Button>
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+          )}
+
+          {/* 列表 */}
+          {loading ? (
+            <p className="text-xs text-fg-muted">{t('loading')}</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {endpoints.map((e) => (
+                <li
+                  key={`${e.source}:${e.host}:${e.port}:${e.pathPrefix}`}
+                  className="flex items-center justify-between py-2"
+                >
+                  <span className="flex items-center gap-2 text-sm">
+                    <code className="text-xs">
+                      {e.host}
+                      {e.port !== 443 ? `:${e.port}` : ''}
+                      {e.pathPrefix}
+                    </code>
+                    {sourceBadge(e.source)}
+                  </span>
+                  {e.removable && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void mutate('remove', e.host)}
+                      disabled={busy}
+                    >
+                      {t('remove')}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Stack>
+      </CardBody>
+    </Card>
+  );
+}
