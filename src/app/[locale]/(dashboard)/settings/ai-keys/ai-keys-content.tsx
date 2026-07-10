@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
@@ -63,6 +63,11 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Hydration-safe：toLocaleDateString/toLocaleString 在 SSR(Node) 与 CSR(浏览器) 的
+  // 时区/locale 数据不同 → 首帧文本不一致 → React #418 hydration mismatch。用 mounted gate：
+  // 服务端 + 客户端首帧都渲染确定性内容（ISO 日期 / 原始数字），挂载后再切 locale 格式。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [success, setSuccess] = useState<string | null>(null);
   const [revokeProvider, setRevokeProvider] = useState<string | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
@@ -150,8 +155,12 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
 
   const formatDate = (iso: string | null) => {
     if (!iso) return t('never');
+    // 挂载前用确定性 ISO 日期（YYYY-MM-DD，SSR/CSR 一致）；挂载后切 locale 本地格式。
+    if (!mounted) return iso.slice(0, 10);
     return new Date(iso).toLocaleDateString(locale);
   };
+  // 数字千分位同理 hydration-safe：挂载前用原始数字串，挂载后用 locale 格式。
+  const formatNum = (n: number) => (mounted ? n.toLocaleString(locale) : String(n));
 
   return (
     <Container size="xl" className="py-6 sm:py-10">
@@ -331,8 +340,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                       {b.tokenQuota == null
                         ? t('quotaUnlimited')
                         : t('quotaUsage', {
-                            used: b.usedTokensThisMonth.toLocaleString(),
-                            quota: b.tokenQuota.toLocaleString(),
+                            used: formatNum(b.usedTokensThisMonth),
+                            quota: formatNum(b.tokenQuota),
                           })}
                     </td>
                     <td className="py-3 text-fg-muted">
