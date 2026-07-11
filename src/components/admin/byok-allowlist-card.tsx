@@ -81,20 +81,23 @@ export function ByokAllowlistCard() {
 
   return (
     <Card>
-      <CardBody>
+      <CardBody className="pt-6">
         <Stack gap={4}>
-          <div>
-            <h3 className="text-sm font-semibold">{t('title')}</h3>
-            <p className="text-xs text-fg-muted">{t('description')}</p>
-          </div>
+          <Stack gap={1}>
+            <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+              {t('title')}
+            </h2>
+            <p className="text-sm text-fg-muted">{t('description')}</p>
+          </Stack>
 
           {/* 添加 host */}
-          <div className="flex gap-2">
+          <Stack direction="row" gap={2} align="center">
             <Input
               value={newHost}
               onChange={(e) => setNewHost(e.target.value)}
               placeholder={t('addPlaceholder')}
               disabled={busy}
+              className="flex-1"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && newHost.trim()) void mutate('add', newHost.trim());
               }}
@@ -105,30 +108,28 @@ export function ByokAllowlistCard() {
             >
               {t('add')}
             </Button>
-          </div>
+          </Stack>
 
-          {error && (
-            <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-          )}
+          {error && <p className="text-sm text-danger">{error}</p>}
 
           {/* 列表 */}
           {loading ? (
-            <p className="text-xs text-fg-muted">{t('loading')}</p>
+            <p className="text-sm text-fg-muted">{t('loading')}</p>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="flex flex-col gap-2" aria-label={t('title')}>
               {endpoints.map((e) => (
                 <li
                   key={`${e.source}:${e.host}:${e.port}:${e.pathPrefix}`}
-                  className="flex items-center justify-between py-2"
+                  className="flex items-center justify-between gap-3"
                 >
-                  <span className="flex items-center gap-2 text-sm">
-                    <code className="text-xs">
+                  <Stack direction="row" gap={2} align="center" className="min-w-0 flex-1">
+                    <code className="truncate text-sm font-medium text-fg">
                       {e.host}
                       {e.port !== 443 ? `:${e.port}` : ''}
                       {e.pathPrefix}
                     </code>
                     {sourceBadge(e.source)}
-                  </span>
+                  </Stack>
                   {e.removable && (
                     <Button
                       variant="ghost"
