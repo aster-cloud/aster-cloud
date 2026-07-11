@@ -606,7 +606,7 @@ export function PolicyForm({
             )}
           </div>
           {sidePanelOpen && !isMobile && (
-            <div className="hidden w-[24rem] shrink-0 lg:flex xl:w-[28rem]">
+            <div className="hidden w-[26rem] shrink-0 lg:flex">
               <SidePanel
                 editor={editorInstanceRef.current}
                 cnlLocale={cnlLocale}
