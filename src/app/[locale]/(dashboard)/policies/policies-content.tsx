@@ -845,7 +845,8 @@ export function PoliciesContent({
           subtitle={t.subtitle}
           action={
             <div className="flex space-x-3">
-              {/* 多选 / 单选切换按钮 */}
+              {/* 多选 / 单选切换按钮 —— 与分组侧栏（PolicyGroupTree hidden lg:block）同断点显隐：
+                  多选的唯一用途是批量拖拽移动到分组，分组功能移动端不可用，故多选也仅桌面端（≥ lg）。 */}
               <button
                 type="button"
                 onClick={() => {
@@ -854,7 +855,10 @@ export function PoliciesContent({
                     clearSelection();
                   }
                 }}
-                className={buttonVariants({ variant: 'secondary', size: 'md' })}
+                className={cn(
+                  buttonVariants({ variant: 'secondary', size: 'md' }),
+                  'hidden lg:inline-flex',
+                )}
               >
                 {isMultiSelectMode ? (
                   <>
