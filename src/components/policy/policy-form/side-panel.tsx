@@ -282,16 +282,18 @@ function DecisionTab({
 }) {
   const t = useTranslations('policies.form');
   // Empty editor / first mount: helpful nudge, not an error.
+  // 内容内边距对齐关键词别名/策略信息卡片（px-5 py-5），确保各 tab 内容
+  // 从卡片边缘的起始位置一致，视觉上「填满」宽度而非左对齐留白。
   if (!state || state === 'idle') {
     return (
-      <div className="p-4 text-sm text-fg-muted">{t('decisionNone')}</div>
+      <div className="px-5 py-5 text-sm text-fg-muted">{t('decisionNone')}</div>
     );
   }
   const errors = diagnostics.filter((d) => d.severity === 'error');
   const warnings = diagnostics.filter((d) => d.severity === 'warning');
 
   return (
-    <div className="space-y-4 p-3">
+    <div className="space-y-4 px-5 py-5">
       {(errors.length > 0 || warnings.length > 0) && (
         <ul className="space-y-1.5">
           {[...errors, ...warnings].map((d, i) => (
@@ -366,7 +368,8 @@ function TemplatesTab({
   const isZh = uiLocale.startsWith('zh');
 
   return (
-    <div className="space-y-4 p-3">
+    // 内边距对齐关键词别名/策略信息卡片（px-5 py-5），各 tab 内容起始位置一致。
+    <div className="space-y-4 px-5 py-5">
       <p className="text-xs text-fg-muted">
         {isZh
           ? '点击模板会插入到编辑器光标位置。'
