@@ -234,7 +234,9 @@ export function PolicyGroupTree({
   };
 
   return (
-    <div className="w-56 flex-shrink-0 border-r border-border bg-bg-subtle overflow-y-auto">
+    // 移动端（< lg）隐藏分组侧栏：策略分组操作（创建/编辑/拖拽移动）仅桌面端可用。
+    // 右侧策略列表 flex-1 自动占满移动端全宽。
+    <div className="hidden w-56 flex-shrink-0 border-r border-border bg-bg-subtle overflow-y-auto lg:block">
       <div className="p-3">
         {/* Header with Create Button */}
         <div className="flex items-center justify-between mb-2">
