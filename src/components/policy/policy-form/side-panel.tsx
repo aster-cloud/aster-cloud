@@ -231,23 +231,34 @@ export function SidePanel({
           </div>
         )}
         {tab === 'templates' && (
-          <TemplatesTab
-            uiLocale={uiLocale}
-            cnlLocale={cnlLocale}
-            // Picking a template fully delegates to the parent's
-            // template handler — which in PR-3 inserts at cursor
-            // rather than wiping the form body. We deliberately
-            // don't call onApplyContent here anymore.
-            onSelect={onApplyTemplate}
-          />
+          <div className="p-3">
+            {/* 与 settings/aliases/ai/syntax 面板一致：统一的全宽卡片容器，
+                让「模板/决策预览」内容也填满抽屉宽度、有清晰边界，避免看着比
+                「关键词别名」窄。 */}
+            <div className="rounded-xl border border-border bg-bg shadow-sm">
+              <TemplatesTab
+                uiLocale={uiLocale}
+                cnlLocale={cnlLocale}
+                // Picking a template fully delegates to the parent's
+                // template handler — which in PR-3 inserts at cursor
+                // rather than wiping the form body. We deliberately
+                // don't call onApplyContent here anymore.
+                onSelect={onApplyTemplate}
+              />
+            </div>
+          </div>
         )}
         {tab === 'problems' && (
-          <DecisionTab
-            state={compileState}
-            diagnostics={compileDiagnostics ?? []}
-            module={compileModule}
-            onJumpToLine={onJumpToLine}
-          />
+          <div className="p-3">
+            <div className="rounded-xl border border-border bg-bg shadow-sm">
+              <DecisionTab
+                state={compileState}
+                diagnostics={compileDiagnostics ?? []}
+                module={compileModule}
+                onJumpToLine={onJumpToLine}
+              />
+            </div>
+          </div>
         )}
       </div>
     </aside>
