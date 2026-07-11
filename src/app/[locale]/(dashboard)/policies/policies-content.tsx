@@ -257,8 +257,9 @@ function DraggablePolicyItem({
             </Link>
           </div>
           <div className="ml-4 flex items-center space-x-3">
+            {/* 分组信息仅桌面端（≥ sm）：移动端策略行只留名称/CTA/更新时间。 */}
             {policy.group && (
-              <Badge variant="neutral">
+              <Badge variant="neutral" className="hidden sm:inline-flex">
                 <Folder className="size-3" aria-hidden />
                 {policy.group.name}
               </Badge>
@@ -276,7 +277,8 @@ function DraggablePolicyItem({
             )}
             {policy.isPublic && <Badge variant="success">{t.public}</Badge>}
 
-            <span className="text-sm text-fg-muted">
+            {/* 执行次数仅桌面端（≥ sm）：移动端策略行精简。 */}
+            <span className="hidden text-sm text-fg-muted sm:inline">
               {formatTemplate(t.executionsTemplate, { count: policy._count.executions })}
             </span>
 
