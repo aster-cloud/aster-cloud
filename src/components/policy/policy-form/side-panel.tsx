@@ -9,15 +9,20 @@ import {
   LayoutTemplate,
   Activity,
   AlertCircle,
+  Settings,
+  Tags,
   X,
 } from 'lucide-react';
 import { AIAssistantPanel } from '@/components/policy/ai-assistant-panel';
 import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
+import { PolicyAliasPanel } from '@/components/policy/policy-alias-panel';
+import type { ReservedSets } from '@/lib/policy-alias-shared';
 import type {
   CompileDiagnostic,
   CompileModuleSummary,
   CompileState,
 } from './use-compile';
+import { MetaSection } from './meta-section';
 import {
   POLICY_EXAMPLES,
   CATEGORY_LABELS,
@@ -49,12 +54,31 @@ import { cn } from '@/components/ui';
  *     with descriptions visible.
  */
 
-export type SidePanelTab = 'ai' | 'syntax' | 'templates' | 'decision';
+export type SidePanelTab =
+  | 'settings'
+  | 'aliases'
+  | 'problems'
+  | 'ai'
+  | 'syntax'
+  | 'templates';
 
 export interface SidePanelProps {
   editor: editor.IStandaloneCodeEditor | null;
   cnlLocale: SupportedLocale;
   uiLocale: string;
+  name: string;
+  description: string;
+  groupId: string | null;
+  isPublic: boolean;
+  nameError?: string | null;
+  onNameChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
+  onGroupIdChange: (value: string | null) => void;
+  onIsPublicChange: (value: boolean) => void;
+  aliasSet: Record<string, string[]>;
+  reservedSets: ReservedSets;
+  allowStructuralAliases: boolean;
+  onAliasSetChange: (aliasSet: Record<string, string[]>) => void;
   /** Apply a generated/template body to the form's main content. */
   onApplyContent: (content: string) => void;
   /** Apply a template — sets name + description + content together. */
@@ -76,6 +100,19 @@ export function SidePanel({
   editor,
   cnlLocale,
   uiLocale,
+  name,
+  description,
+  groupId,
+  isPublic,
+  nameError,
+  onNameChange,
+  onDescriptionChange,
+  onGroupIdChange,
+  onIsPublicChange,
+  aliasSet,
+  reservedSets,
+  allowStructuralAliases,
+  onAliasSetChange,
   onApplyContent,
   onApplyTemplate,
   onClose,
@@ -103,6 +140,31 @@ export function SidePanel({
       <header className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5">
         <div className="flex items-center gap-1" role="tablist">
           <TabButton
+            active={tab === 'settings'}
+            onClick={() => setTab('settings')}
+            icon={<Settings aria-hidden className="size-4" />}
+            label={t('metaSection')}
+          />
+          <TabButton
+            active={tab === 'aliases'}
+            onClick={() => setTab('aliases')}
+            icon={<Tags aria-hidden className="size-4" />}
+            label={t('aliases.title')}
+          />
+          <TabButton
+            active={tab === 'problems'}
+            onClick={() => setTab('problems')}
+            icon={
+              errorCount > 0 ? (
+                <AlertCircle aria-hidden className="size-4 text-danger" />
+              ) : (
+                <Activity aria-hidden className="size-4" />
+              )
+            }
+            label={t('decisionPreview')}
+            badge={errorCount > 0 ? errorCount : undefined}
+          />
+          <TabButton
             active={tab === 'ai'}
             onClick={() => setTab('ai')}
             icon={<Sparkles aria-hidden className="size-4" />}
@@ -120,19 +182,6 @@ export function SidePanel({
             icon={<LayoutTemplate aria-hidden className="size-4" />}
             label={t('sidePanelTemplates')}
           />
-          <TabButton
-            active={tab === 'decision'}
-            onClick={() => setTab('decision')}
-            icon={
-              errorCount > 0 ? (
-                <AlertCircle aria-hidden className="size-4 text-danger" />
-              ) : (
-                <Activity aria-hidden className="size-4" />
-              )
-            }
-            label={t('decisionPreview')}
-            badge={errorCount > 0 ? errorCount : undefined}
-          />
         </div>
         <button
           type="button"
@@ -145,6 +194,39 @@ export function SidePanel({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {tab === 'settings' && (
+          <div className="p-3">
+            <MetaSection
+              name={name}
+              description={description}
+              groupId={groupId}
+              isPublic={isPublic}
+              locale={uiLocale}
+              expanded
+              // 抽屉 tab 本身就是容器，这里固定展开，避免在抽屉内再折叠。
+              onExpandedChange={() => { /* fixed open in the IDE drawer */ }}
+              onNameChange={onNameChange}
+              onDescriptionChange={onDescriptionChange}
+              onGroupIdChange={onGroupIdChange}
+              onIsPublicChange={onIsPublicChange}
+              nameError={nameError}
+            />
+          </div>
+        )}
+        {tab === 'aliases' && (
+          <div className="p-3">
+            <PolicyAliasPanel
+              aliasSet={aliasSet}
+              locale={cnlLocale}
+              reservedSets={reservedSets}
+              allowStructural={allowStructuralAliases}
+              onChange={onAliasSetChange}
+              expanded
+              // 抽屉 tab 本身就是容器，这里固定展开，避免在抽屉内再折叠。
+              onExpandedChange={() => { /* fixed open in the IDE drawer */ }}
+            />
+          </div>
+        )}
         {tab === 'ai' && (
           <div className="p-3">
             <AIAssistantPanel
@@ -180,7 +262,7 @@ export function SidePanel({
             onSelect={onApplyTemplate}
           />
         )}
-        {tab === 'decision' && (
+        {tab === 'problems' && (
           <DecisionTab
             state={compileState}
             diagnostics={compileDiagnostics ?? []}
@@ -211,9 +293,11 @@ function TabButton({
       type="button"
       role="tab"
       aria-selected={active}
+      aria-label={label}
+      title={label}
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors',
+        'inline-flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-md px-2 py-1 text-sm transition-colors',
         'focus-visible:outline-none focus-visible:shadow-ring',
         active
           ? 'bg-primary-subtle text-primary-hover'
@@ -221,7 +305,7 @@ function TabButton({
       )}
     >
       {icon}
-      {label}
+      <span className="sr-only">{label}</span>
       {badge !== undefined && (
         <span className="ml-1 rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-danger-fg leading-none">
           {badge}

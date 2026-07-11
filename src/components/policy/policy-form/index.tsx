@@ -70,7 +70,6 @@ import {
 import { ConfirmDialog } from '@/components/ui';
 import { normalizeLocale } from '@/data/policy-examples';
 
-import { MetaSection } from './meta-section';
 import { SidePanel, type SidePanelTab } from './side-panel';
 import { StatusBar } from './status-bar';
 import { usePolicyDraft, type PolicyDraftFields } from './use-policy-draft';
@@ -78,8 +77,8 @@ import { useUnsavedWarning } from './use-unsaved-warning';
 import { usePolicyShortcuts } from './use-policy-shortcuts';
 import { useIsMobile } from './use-is-mobile';
 import { EditorPalette } from './editor-palette';
+import { EditorRail } from './editor-rail';
 import { CNLSyntaxConverterDialog } from '@/components/policy/cnl-syntax-converter-dialog';
-import { PolicyAliasPanel } from '@/components/policy/policy-alias-panel';
 import { type PolicyExample, getExampleSource } from '@/data/policy-examples';
 import { extractReservedAliasSets, getLexicon } from '@/lib/aster-lexicon';
 import { validateUserAliases } from '@/lib/policy-alias-shared';
@@ -202,10 +201,10 @@ export function PolicyForm({
   // ---------------------------------------------------------------
   // UI state
   // ---------------------------------------------------------------
-  const [metaExpanded, setMetaExpanded] = useState(mode === 'create');
-  const [aliasesExpanded, setAliasesExpanded] = useState(false);
-  const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [requestedTab, setRequestedTab] = useState<SidePanelTab | undefined>();
+  const [sidePanelOpen, setSidePanelOpen] = useState(mode === 'create');
+  const [requestedTab, setRequestedTab] = useState<SidePanelTab | undefined>(
+    mode === 'create' ? 'settings' : undefined,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [serverError, setServerError] = useState<PolicySaveError | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -238,6 +237,23 @@ export function PolicyForm({
     () => extractReservedAliasSets(getLexicon(cnlLocale)),
     [cnlLocale],
   );
+  const compileErrorCount = useMemo(
+    () => compile.diagnostics.filter((d) => d.severity === 'error').length,
+    [compile.diagnostics],
+  );
+
+  const openSidePanel = useCallback((tab: SidePanelTab) => {
+    setRequestedTab(tab);
+    setSidePanelOpen(true);
+  }, []);
+
+  const previousErrorCountRef = useRef(0);
+  useEffect(() => {
+    if (compileErrorCount > 0 && previousErrorCountRef.current === 0) {
+      openSidePanel('problems');
+    }
+    previousErrorCountRef.current = compileErrorCount;
+  }, [compileErrorCount, openSidePanel]);
 
   // ---------------------------------------------------------------
   // Editor command helpers
@@ -353,7 +369,7 @@ export function PolicyForm({
       setNameError(
         uiLocale.startsWith('zh') ? '请填写策略名称' : 'Name is required',
       );
-      setMetaExpanded(true);
+      openSidePanel('settings');
       return false;
     }
     setNameError(null);
@@ -361,11 +377,18 @@ export function PolicyForm({
       allowStructural: allowStructuralAliases,
     });
     if (!aliasValidation.valid) {
-      setAliasesExpanded(true);
+      openSidePanel('aliases');
       return false;
     }
     return true;
-  }, [name, uiLocale, aliasSet, reservedSets, allowStructuralAliases]);
+  }, [
+    name,
+    uiLocale,
+    aliasSet,
+    reservedSets,
+    allowStructuralAliases,
+    openSidePanel,
+  ]);
 
   /** Submit. Optional callback to fire on success (e.g. navigate). */
   const handleSubmit = useCallback(
@@ -533,42 +556,21 @@ export function PolicyForm({
           </div>
         )}
 
-        {/* ----- Meta section ----- */}
-        <MetaSection
-          name={name}
-          description={description}
-          groupId={groupId}
-          isPublic={isPublic}
-          locale={uiLocale}
-          expanded={metaExpanded}
-          onExpandedChange={setMetaExpanded}
-          onNameChange={(v) => {
-            setName(v);
-            if (nameError && v.trim().length > 0) setNameError(null);
-          }}
-          onDescriptionChange={setDescription}
-          onGroupIdChange={setGroupId}
-          onIsPublicChange={setIsPublic}
-          nameError={nameError}
-        />
-
-        <PolicyAliasPanel
-          aliasSet={aliasSet}
-          locale={cnlLocale}
-          reservedSets={reservedSets}
-          allowStructural={allowStructuralAliases}
-          onChange={setAliasSet}
-          expanded={aliasesExpanded}
-          onExpandedChange={setAliasesExpanded}
-        />
-
-        {/* ----- Editor + Side panel ----- */}
+        {/* ----- IDE workbench: rail + editor + drawer ----- */}
         <div
           className="flex gap-3"
-          // Clamp the editor row to a usable working height. Below this,
-          // the page just gains a natural scrollbar — no broken flex.
-          style={{ height: 'clamp(500px, calc(100vh - 16rem), 720px)' }}
+          // Meta 和别名移入抽屉后，主任务区可以吃到更多垂直空间。
+          // 低于 lg 时 rail/抽屉隐藏，编辑器仍自然占满可用宽度。
+          style={{ height: 'clamp(560px, calc(100vh - 12rem), 900px)' }}
         >
+          {!isMobile && (
+            <EditorRail
+              activeTab={requestedTab}
+              open={sidePanelOpen}
+              errorCount={compileErrorCount}
+              onSelect={openSidePanel}
+            />
+          )}
           <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-border bg-bg shadow-sm overflow-hidden">
             {isMobile ? (
               // Read-only viewer for phones. Pre-formatted text with the
@@ -599,19 +601,32 @@ export function PolicyForm({
                 }}
                 onCompileChange={setCompile}
                 enableAICompletion
-                onToggleAIPanel={() => {
-                  setRequestedTab('ai');
-                  setSidePanelOpen(true);
-                }}
+                onToggleAIPanel={() => openSidePanel('ai')}
               />
             )}
           </div>
-          {sidePanelOpen && (
-            <div className="hidden w-[28rem] lg:flex">
+          {sidePanelOpen && !isMobile && (
+            <div className="hidden w-[24rem] shrink-0 lg:flex xl:w-[28rem]">
               <SidePanel
                 editor={editorInstanceRef.current}
                 cnlLocale={cnlLocale}
                 uiLocale={uiLocale}
+                name={name}
+                description={description}
+                groupId={groupId}
+                isPublic={isPublic}
+                onNameChange={(v) => {
+                  setName(v);
+                  if (nameError && v.trim().length > 0) setNameError(null);
+                }}
+                onDescriptionChange={setDescription}
+                onGroupIdChange={setGroupId}
+                onIsPublicChange={setIsPublic}
+                nameError={nameError}
+                aliasSet={aliasSet}
+                reservedSets={reservedSets}
+                allowStructuralAliases={allowStructuralAliases}
+                onAliasSetChange={setAliasSet}
                 onApplyContent={(body) => setContent(body)}
                 onApplyTemplate={(tpl) => {
                   // PR-3: insert at cursor position rather than wiping
@@ -645,10 +660,7 @@ export function PolicyForm({
           compileState={compile.state}
           compileDiagnostics={compile.diagnostics}
           compileTransportError={compile.transportError}
-          onCompileChipClick={() => {
-            setRequestedTab('decision');
-            setSidePanelOpen(true);
-          }}
+          onCompileChipClick={() => openSidePanel('problems')}
         />
 
         {/* ----- Editor command palette ----- */}
@@ -656,24 +668,15 @@ export function PolicyForm({
           isOpen={paletteOpen}
           onClose={() => setPaletteOpen(false)}
           uiLocale={uiLocale}
-          onAskAI={() => {
-            setRequestedTab('ai');
-            setSidePanelOpen(true);
-          }}
+          onAskAI={() => openSidePanel('ai')}
           onInsertTemplate={insertTemplateAtCursor}
           onConvertLocale={() => setConverterOpen(true)}
           onFormat={formatDocument}
           onSave={onSaveOnly}
           onSaveAndView={onSaveAndView}
           onTogglePanel={() => setSidePanelOpen((v) => !v)}
-          onShowSyntax={() => {
-            setRequestedTab('syntax');
-            setSidePanelOpen(true);
-          }}
-          onShowDecision={() => {
-            setRequestedTab('decision');
-            setSidePanelOpen(true);
-          }}
+          onShowSyntax={() => openSidePanel('syntax')}
+          onShowDecision={() => openSidePanel('problems')}
         />
 
         {/* ----- CNL locale converter dialog ----- */}
