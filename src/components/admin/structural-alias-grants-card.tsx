@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Badge, Card, CardBody, Stack, buttonVariants, cn } from '@/components/ui';
+import { Badge, Button, Card, CardBody, Input, Stack, buttonVariants, cn } from '@/components/ui';
 
 interface GrantRow {
   userId: string;
@@ -11,10 +11,14 @@ interface GrantRow {
   granted: boolean;
 }
 
+const PAGE_SIZE = 10;
+
 export function StructuralAliasGrantsCard() {
   const t = useTranslations('admin.structuralAliasGrants');
   const [rows, setRows] = useState<GrantRow[]>([]);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     void (async () => {
@@ -24,6 +28,26 @@ export function StructuralAliasGrantsCard() {
       setRows(data.users);
     })();
   }, []);
+
+  // 搜索（email / name / userId，大小写不敏感）+ 分页均为客户端：卡片已 fetch 全量用户，
+  // 且它是 admin 概览里的自包含卡片，不走 URL-driven 分页（避免污染 admin 页 URL / 与其它卡片冲突）。
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        (r.email ?? '').toLowerCase().includes(q) ||
+        (r.name ?? '').toLowerCase().includes(q) ||
+        r.userId.toLowerCase().includes(q),
+    );
+  }, [rows, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // 搜索变化时回到第 1 页（否则可能停在超出结果集的空页）。
+  useEffect(() => setPage(1), [query]);
 
   const toggle = async (row: GrantRow) => {
     const next = !row.granted;
@@ -61,8 +85,21 @@ export function StructuralAliasGrantsCard() {
             </h2>
             <p className="mt-1 text-sm text-fg-muted">{t('description')}</p>
           </div>
-          <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
-            {rows.map((row) => {
+
+          {/* 搜索（email / name / userId） */}
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('searchPlaceholder')}
+          />
+
+          {filtered.length === 0 ? (
+            <p className="py-4 text-center text-sm text-fg-muted">{t('noResults')}</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {pageRows.map((row) => {
               const busyNow = busy[row.userId] ?? false;
               return (
                 <li
@@ -96,8 +133,36 @@ export function StructuralAliasGrantsCard() {
                   </button>
                 </li>
               );
-            })}
-          </ul>
+              })}
+            </ul>
+          )}
+
+          {/* 分页控件（客户端，多于 1 页才显示） */}
+          {totalPages > 1 && (
+            <Stack direction="row" gap={2} align="center" className="justify-between">
+              <p className="text-xs text-fg-muted">
+                {t('pageOf', { page: currentPage, totalPages, total: filtered.length })}
+              </p>
+              <Stack direction="row" gap={2} align="center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  {t('prev')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  {t('next')}
+                </Button>
+              </Stack>
+            </Stack>
+          )}
         </Stack>
       </CardBody>
     </Card>
