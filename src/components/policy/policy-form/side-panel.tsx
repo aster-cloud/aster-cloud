@@ -7,11 +7,11 @@ import {
   Sparkles,
   BookOpen,
   LayoutTemplate,
-  Activity,
-  AlertCircle,
+  AlertTriangle,
   Settings,
   Tags,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import { AIAssistantPanel } from '@/components/policy/ai-assistant-panel';
 import { CNLSyntaxReferencePanel } from '@/components/policy/cnl-syntax-reference-panel';
@@ -132,62 +132,41 @@ export function SidePanel({
   const errorCount =
     compileDiagnostics?.filter((d) => d.severity === 'error').length ?? 0;
 
+  // header 标题/图标由当前 tab 派生——与左侧 rail 的图标/文案同源，
+  // 保证两处一致（含「决策预览」用 AlertTriangle）。
+  const tabMeta: Record<SidePanelTab, { icon: LucideIcon; label: string }> = {
+    settings: { icon: Settings, label: t('metaSection') },
+    aliases: { icon: Tags, label: t('aliases.title') },
+    problems: { icon: AlertTriangle, label: t('decisionPreview') },
+    ai: { icon: Sparkles, label: t('sidePanelAI') },
+    syntax: { icon: BookOpen, label: t('sidePanelSyntax') },
+    templates: { icon: LayoutTemplate, label: t('sidePanelTemplates') },
+  };
+  const HeaderIcon = tabMeta[tab].icon;
+  const headerLabel = tabMeta[tab].label;
+
   return (
     <aside
       className="flex h-full min-h-0 flex-col rounded-xl border border-border bg-bg shadow-sm"
       aria-label={t('sidePanelToggle')}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5">
-        <div className="flex items-center gap-1" role="tablist">
-          <TabButton
-            active={tab === 'settings'}
-            onClick={() => setTab('settings')}
-            icon={<Settings aria-hidden className="size-4" />}
-            label={t('metaSection')}
-          />
-          <TabButton
-            active={tab === 'aliases'}
-            onClick={() => setTab('aliases')}
-            icon={<Tags aria-hidden className="size-4" />}
-            label={t('aliases.title')}
-          />
-          <TabButton
-            active={tab === 'problems'}
-            onClick={() => setTab('problems')}
-            icon={
-              errorCount > 0 ? (
-                <AlertCircle aria-hidden className="size-4 text-danger" />
-              ) : (
-                <Activity aria-hidden className="size-4" />
-              )
-            }
-            label={t('decisionPreview')}
-            badge={errorCount > 0 ? errorCount : undefined}
-          />
-          <TabButton
-            active={tab === 'ai'}
-            onClick={() => setTab('ai')}
-            icon={<Sparkles aria-hidden className="size-4" />}
-            label={t('sidePanelAI')}
-          />
-          <TabButton
-            active={tab === 'syntax'}
-            onClick={() => setTab('syntax')}
-            icon={<BookOpen aria-hidden className="size-4" />}
-            label={t('sidePanelSyntax')}
-          />
-          <TabButton
-            active={tab === 'templates'}
-            onClick={() => setTab('templates')}
-            icon={<LayoutTemplate aria-hidden className="size-4" />}
-            label={t('sidePanelTemplates')}
-          />
+      <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+        {/* rail 是主导航（切 tab）；header 只显示当前 tab 标题 + 关闭，消除旧横向 tab
+            按钮的宽度不一致（决策预览带角标会撑宽）。 */}
+        <div className="flex min-w-0 items-center gap-2">
+          <HeaderIcon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+          <span className="truncate text-sm font-medium text-fg">{headerLabel}</span>
+          {errorCount > 0 && tab === 'problems' && (
+            <span className="shrink-0 rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-semibold leading-none text-danger-fg">
+              {errorCount}
+            </span>
+          )}
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label={t('sidePanelToggle')}
-          className="rounded p-1 text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:outline-none focus-visible:shadow-ring"
+          className="shrink-0 rounded p-1 text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:outline-none focus-visible:shadow-ring"
         >
           <X aria-hidden className="size-4" />
         </button>
@@ -272,46 +251,6 @@ export function SidePanel({
         )}
       </div>
     </aside>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-  badge,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  badge?: number;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cn(
-        'inline-flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-md px-2 py-1 text-sm transition-colors',
-        'focus-visible:outline-none focus-visible:shadow-ring',
-        active
-          ? 'bg-primary-subtle text-primary-hover'
-          : 'text-fg-muted hover:bg-bg-subtle hover:text-fg',
-      )}
-    >
-      {icon}
-      <span className="sr-only">{label}</span>
-      {badge !== undefined && (
-        <span className="ml-1 rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-danger-fg leading-none">
-          {badge}
-        </span>
-      )}
-    </button>
   );
 }
 
