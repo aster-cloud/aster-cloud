@@ -299,9 +299,10 @@ function DraggablePolicyItem({
                   {t.executeAction}
                 </Link>
               )}
+              {/* 编辑仅桌面端（≥ sm）：移动端策略只可浏览/运行/删除，不可编辑。 */}
               {policy.isFrozen ? (
                 <span
-                  className="cursor-not-allowed text-sm text-fg-subtle"
+                  className="hidden cursor-not-allowed text-sm text-fg-subtle sm:inline"
                   title={t.freeze.cannotEdit}
                 >
                   {t.edit}
@@ -309,7 +310,7 @@ function DraggablePolicyItem({
               ) : (
                 <Link
                   href={`/${locale}/policies/${policy.id}/edit`}
-                  className="text-sm text-fg-muted hover:text-fg"
+                  className="hidden text-sm text-fg-muted hover:text-fg sm:inline"
                 >
                   {t.edit}
                 </Link>
@@ -872,9 +873,13 @@ export function PoliciesContent({
                 <Trash2 className="size-4" aria-hidden />
                 {t.trash}
               </Link>
+              {/* New Policy 仅桌面端（≥ sm）：移动端不支持创建/编辑策略。 */}
               <Link
                 href={`/${locale}/policies/new`}
-                className={buttonVariants({ variant: 'primary', size: 'md' })}
+                className={cn(
+                  buttonVariants({ variant: 'primary', size: 'md' }),
+                  'hidden sm:inline-flex',
+                )}
               >
                 <Plus className="size-4" aria-hidden />
                 {t.newPolicy}
@@ -926,7 +931,8 @@ export function PoliciesContent({
             <FileText className="mx-auto size-12 text-fg-subtle" aria-hidden />
             <h3 className="mt-2 text-sm font-semibold text-fg">{t.noPolicies}</h3>
             <p className="mt-1 text-sm text-fg-muted">{t.getStarted}</p>
-            <div className="mt-6">
+            {/* 空状态创建 CTA 仅桌面端（≥ sm）：移动端不支持创建策略。 */}
+            <div className="mt-6 hidden sm:block">
               <Link
                 href={`/${locale}/policies/new`}
                 className={buttonVariants({ variant: 'primary', size: 'md' })}

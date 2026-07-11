@@ -224,8 +224,10 @@ export function PolicyVersionList({
             key={version.id}
             className="bg-bg dark:bg-gray-800 rounded-lg shadow-sm border border-border dark:border-gray-700 p-4"
           >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
+            {/* 移动端纵向堆叠（信息在上、操作按钮在下换行），桌面端横向并排——
+                否则窄屏时右侧一排按钮（查看源码/提交审批/…）挤出卡片边界。 */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-semibold text-fg dark:text-white">
                     v{version.version}
@@ -268,7 +270,7 @@ export function PolicyVersionList({
                 )}
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
                 {/* View Source */}
                 {onViewSource && (
                   <button
