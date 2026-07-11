@@ -301,18 +301,13 @@ function DraggablePolicyItem({
                   {t.executeAction}
                 </Link>
               )}
-              {/* 编辑仅桌面端（≥ sm）：移动端策略只可浏览/运行/删除，不可编辑。 */}
-              {policy.isFrozen ? (
-                <span
-                  className="hidden cursor-not-allowed text-sm text-fg-subtle sm:inline"
-                  title={t.freeze.cannotEdit}
-                >
-                  {t.edit}
-                </span>
-              ) : (
+              {/* 编辑：仅当策略可编辑（未冻结）时显示——不可编辑时直接隐藏，不再置灰。
+                  且仅桌面端（≥ lg）：编辑用 Monaco 代码编辑器，窄屏（< lg，如 661px）点进去无法
+                  编辑，故与分组侧栏/多选/New Policy 同断点隐藏。 */}
+              {!policy.isFrozen && (
                 <Link
                   href={`/${locale}/policies/${policy.id}/edit`}
-                  className="hidden text-sm text-fg-muted hover:text-fg sm:inline"
+                  className="hidden text-sm text-fg-muted hover:text-fg lg:inline"
                 >
                   {t.edit}
                 </Link>
@@ -879,12 +874,13 @@ export function PoliciesContent({
                 <Trash2 className="size-4" aria-hidden />
                 {t.trash}
               </Link>
-              {/* New Policy 仅桌面端（≥ sm）：移动端不支持创建/编辑策略。 */}
+              {/* New Policy 仅桌面端（≥ lg）：创建策略用 Monaco 代码编辑器，窄屏（< lg）不可用，
+                  与分组侧栏/多选/Edit 同断点，避免中等屏（如 661px）点进去却无法编辑。 */}
               <Link
                 href={`/${locale}/policies/new`}
                 className={cn(
                   buttonVariants({ variant: 'primary', size: 'md' }),
-                  'hidden sm:inline-flex',
+                  'hidden lg:inline-flex',
                 )}
               >
                 <Plus className="size-4" aria-hidden />
@@ -937,8 +933,8 @@ export function PoliciesContent({
             <FileText className="mx-auto size-12 text-fg-subtle" aria-hidden />
             <h3 className="mt-2 text-sm font-semibold text-fg">{t.noPolicies}</h3>
             <p className="mt-1 text-sm text-fg-muted">{t.getStarted}</p>
-            {/* 空状态创建 CTA 仅桌面端（≥ sm）：移动端不支持创建策略。 */}
-            <div className="mt-6 hidden sm:block">
+            {/* 空状态创建 CTA 仅桌面端（≥ lg）：创建策略用 Monaco 编辑器，窄屏不可用。 */}
+            <div className="mt-6 hidden lg:block">
               <Link
                 href={`/${locale}/policies/new`}
                 className={buttonVariants({ variant: 'primary', size: 'md' })}
