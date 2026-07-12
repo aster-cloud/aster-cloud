@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
 import { AIDiffPreview } from './ai-diff-preview';
 import { track, Events } from '@/lib/mixpanel';
+import { extractAsterCode, parseSegments } from '@/lib/extract-aster-code';
 import type { editor } from 'monaco-editor';
 
 // NSM/WAADR 埋点会话上下文：将 ai_draft_generated 与后续 draft_edited 关联
@@ -82,6 +83,13 @@ export function AIAssistantPanel({
     if (completed && validated && content && !autoApplied) {
       setAutoApplied(true);
 
+      // 只插纯 aster 代码：LLM 可能违反 no-markdown 约定而包 ```aster 围栏
+      // 或夹带散文，直接插整段会污染编辑器。extractAsterCode 剥离 markdown。
+      // 提前到埋点之前：draft 上下文/char_count 必须记录实际写入编辑器的
+      // code（而非 raw markdown），否则下游 aiDraft.content !== fields.content
+      // 会把「未编辑」误判成 ai_draft_edited。
+      const code = extractAsterCode(content);
+
       // NSM 埋点：AI 草稿生成完成
       const ctx = generationCtxRef.current;
       if (ctx) {
@@ -91,7 +99,7 @@ export function AIAssistantPanel({
           lang: locale,
           model: 'gpt-5.2',
           latency_ms: latencyMs,
-          char_count: content.length,
+          char_count: code.length,
           validated: true,
           auto_applied: true,
         });
@@ -99,7 +107,7 @@ export function AIAssistantPanel({
         if (typeof window !== 'undefined') {
           window.__asterAiDraft = {
             promptId: ctx.promptId,
-            content,
+            content: code,
             generatedAt: Date.now(),
             lang: locale,
             model: 'gpt-5.2',
@@ -114,12 +122,12 @@ export function AIAssistantPanel({
           monacoEditor.executeEdits('ai-assistant', [
             {
               range: model.getFullModelRange(),
-              text: content,
+              text: code,
             },
           ]);
         }
       }
-      onApply(content);
+      onApply(code);
     }
   }, [completed, validated, content, autoApplied, monacoEditor, onApply, locale]);
 
@@ -167,18 +175,20 @@ export function AIAssistantPanel({
   const handleApply = useCallback(() => {
     if (!content) return;
 
+    // 同 auto-apply：剥离 markdown，只插纯 aster 代码 snippet。
+    const code = extractAsterCode(content);
     if (monacoEditor) {
       const model = monacoEditor.getModel();
       if (model) {
         monacoEditor.executeEdits('ai-assistant', [
           {
             range: model.getFullModelRange(),
-            text: content,
+            text: code,
           },
         ]);
       }
     }
-    onApply(content);
+    onApply(code);
     setShowDiffPreview(false);
     reset();
   }, [content, monacoEditor, onApply, reset]);
@@ -330,11 +340,11 @@ export function AIAssistantPanel({
               </div>
             )}
 
-            {/* 代码预览 */}
-            <pre className="text-xs font-mono text-fg dark:text-gray-200 whitespace-pre-wrap break-words max-h-64 overflow-auto">
-              {content}
-              {streaming && <span className="inline-block w-1.5 h-4 bg-primary animate-pulse ml-0.5" />}
-            </pre>
+            {/* AI 输出预览：markdown 感知渲染（散文成段、```代码块高亮成盒），
+                而非把 markdown 当纯文本平铺。流式时末尾追加光标。 */}
+            <div className="max-h-64 overflow-auto">
+              <AiOutputView content={content} streaming={streaming} />
+            </div>
           </div>
 
           {/* 修复中校验错误（流式过程中短暂显示） */}
@@ -431,7 +441,9 @@ export function AIAssistantPanel({
             <div className="mt-3">
               <AIDiffPreview
                 original={originalSource}
-                generated={content}
+                // diff 展示实际会插入的纯代码（与 handleApply 一致），
+                // 而非含 markdown 的原始输出，避免预览与结果不符。
+                generated={extractAsterCode(content)}
                 onAccept={handleApply}
                 onReject={handleReject}
               />
@@ -440,5 +452,78 @@ export function AIAssistantPanel({
         </div>
       )}
     </aside>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* AI 输出渲染                                                          */
+/* ------------------------------------------------------------------ */
+
+/** 极简内联 markdown → React 节点：**加粗** 与 `行内代码`。不引入依赖。 */
+function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  // 交替匹配 **bold** 与 `code`，其余为纯文本。
+  const re = /(\*\*([^*]+)\*\*)|(`([^`]+)`)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    if (m[2] !== undefined) {
+      nodes.push(
+        <strong key={`${keyPrefix}-b-${i}`} className="font-semibold text-fg">
+          {m[2]}
+        </strong>,
+      );
+    } else if (m[4] !== undefined) {
+      nodes.push(
+        <code
+          key={`${keyPrefix}-c-${i}`}
+          className="rounded bg-bg-muted px-1 py-0.5 font-mono text-[0.85em] text-fg"
+        >
+          {m[4]}
+        </code>,
+      );
+    }
+    last = re.lastIndex;
+    i += 1;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
+/**
+ * markdown 感知的 AI 输出视图：散文按段渲染（支持内联加粗/行内代码），
+ * 代码块渲染成 mono 盒子。不引入运行时 markdown/shiki 依赖（流式面板对
+ * bundle 和重渲染敏感），只覆盖 LLM 实际输出的段落+围栏结构。
+ */
+function AiOutputView({
+  content,
+  streaming,
+}: {
+  content: string;
+  streaming: boolean;
+}) {
+  const segments = parseSegments(content);
+  return (
+    <div className="space-y-2 text-xs text-fg dark:text-gray-200">
+      {segments.map((seg, idx) =>
+        seg.kind === 'code' ? (
+          <pre
+            key={idx}
+            className="overflow-auto rounded-md border border-border bg-bg-muted p-2 font-mono text-[11px] leading-relaxed text-fg dark:text-gray-200"
+          >
+            {seg.code}
+          </pre>
+        ) : (
+          <p key={idx} className="whitespace-pre-wrap break-words leading-relaxed">
+            {renderInline(seg.text, `s${idx}`)}
+          </p>
+        ),
+      )}
+      {streaming && (
+        <span className="inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />
+      )}
+    </div>
   );
 }
