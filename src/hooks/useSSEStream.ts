@@ -42,28 +42,43 @@ export interface UseSSEStreamResult {
  * 把所有 `data:` 行的内容拼接为 payload，再尝试 JSON.parse。
  */
 export function parseSSEFrame(frame: string): SSEEvent | null {
-  const trimmed = frame.trim();
-  if (!trimmed) return null;
+  // 只去掉帧首尾的换行/回车用于「空帧」判断，不能用 trim()——data 值里的
+  // 前导/尾随空格是有意义的（LLM 逐 token 流式，token 常带前导空格如 " is"，
+  // trim 掉会把 "Rule is" 拼成 "Ruleis"）。
+  if (!frame.replace(/[\r\n]/g, '').trim()) return null;
 
   let eventType: SSEEventType | null = null;
   const dataParts: string[] = [];
 
-  for (const line of trimmed.split('\n')) {
-    const l = line.trim();
-    if (!l || l.startsWith(':')) continue; // SSE 注释 / 空行
-    if (l.startsWith('event:')) {
-      const v = l.slice(6).trim();
+  // SSE 行以 \n 分隔，可能带 \r（CRLF）。逐行按字段解析，遵循 SSE 规范：
+  // 字段名后的冒号，其后「一个」可选前导空格被移除，其余空格保留。
+  for (const rawLine of frame.split('\n')) {
+    const line = rawLine.replace(/\r$/, ''); // 去掉行尾 \r，保留内部空格
+    if (!line || line.startsWith(':')) continue; // 空行 / SSE 注释
+    const colon = line.indexOf(':');
+    if (colon === -1) continue; // 无冒号的字段行按 SSE 规范整行为字段名、值空，忽略
+    const field = line.slice(0, colon);
+    // 值 = 冒号后内容，移除「恰好一个」前导空格（SSE 规范），保留其余空格。
+    let value = line.slice(colon + 1);
+    if (value.startsWith(' ')) value = value.slice(1);
+    if (field === 'event') {
+      const v = value.trim(); // 事件类型是枚举 token，可安全 trim
       if (v === 'delta' || v === 'validation_error' || v === 'repair_start' || v === 'final' || v === 'error') {
         eventType = v;
       }
-    } else if (l.startsWith('data:')) {
-      dataParts.push(l.slice(5).trim());
+    } else if (field === 'data') {
+      dataParts.push(value); // ★ 不 trim：保留 token 前后有意义的空格
     }
   }
 
+  const frameTrimmedForFallback = frame.trim();
+
   if (dataParts.length === 0) {
-    // 既没 event: 也没 data:（或全空），按纯文本 delta 处理
-    return eventType ? { type: eventType } : { type: 'delta', data: trimmed };
+    // 既没 event: 也没 data:（或全空），按纯文本 delta 处理。此回退分支是
+    // 非标准整帧兜底，用 trim 后的帧文本即可（不涉及逐 token 拼接）。
+    return eventType
+      ? { type: eventType }
+      : { type: 'delta', data: frameTrimmedForFallback };
   }
 
   const payload = dataParts.join('\n');
@@ -190,8 +205,9 @@ export function useSSEStream(): UseSSEStreamResult {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        // SSE 帧由空行（"\n\n"）分隔。逐帧 split + 保留最后一个不完整 frame。
-        const frames = buffer.split(/\n\n/);
+        // SSE 帧由空行分隔（LF 或 CRLF）。用 `\r?\n\r?\n` 兼容两种换行，
+        // 逐帧 split + 保留最后一个不完整 frame。
+        const frames = buffer.split(/\r?\n\r?\n/);
         buffer = frames.pop() ?? '';
 
         for (const frame of frames) {
