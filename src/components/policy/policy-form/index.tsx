@@ -418,6 +418,33 @@ export function PolicyForm({
       openSidePanel('aliases');
       return false;
     }
+    // 有解析/编译错误的策略不允许保存——落库不可编译的源码会污染版本链，
+    // 且执行时必然失败。此门禁是**唯一生效的门禁**：编译由客户端 alias-aware
+    // 编译器（useAsterCompiler）即时完成，compileErrorCount 已别名感知。
+    // 注：后端 defense-in-depth 尚缺——aster-api 无 raw-source compile 端点
+    // （/api/v1/policies/compile 实测 404，只有按 module.function 名的 /validate），
+    // 故 API 直调目前仍可绕过。补齐需 aster-api 先加源码编译端点（独立工作）。
+    // idle=空策略/未编译允许保存（空策略合法）。
+    if (compileErrorCount > 0) {
+      openSidePanel('problems');
+      toast.error(
+        uiLocale.startsWith('zh')
+          ? '策略存在解析错误，请先修复再保存'
+          : 'Fix parse errors before saving',
+      );
+      return false;
+    }
+    // pending=编译中（非空源码，debounce 未跑完）：此刻 compileErrorCount 可能
+    // 还是旧值（0），直接保存会漏过刚引入的错误。非空内容编译未定论前不放行，
+    // 提示稍候。空源码走 idle 分支不受影响。
+    if (compile.state === 'pending' && content.trim().length > 0) {
+      toast.error(
+        uiLocale.startsWith('zh')
+          ? '正在检查语法，请稍候再保存'
+          : 'Checking syntax, please wait before saving',
+      );
+      return false;
+    }
     return true;
   }, [
     name,
@@ -425,6 +452,9 @@ export function PolicyForm({
     aliasSet,
     reservedSets,
     allowStructuralAliases,
+    compileErrorCount,
+    compile.state,
+    content,
     openSidePanel,
   ]);
 
@@ -557,7 +587,16 @@ export function PolicyForm({
                 <button
                   type="button"
                   onClick={onSaveOnly}
-                  disabled={isSaving}
+                  // 有解析错误时禁用保存（button disabled 给即时视觉反馈），
+                  // validate() 里再兜底拦截 + 跳 problems tab。
+                  disabled={isSaving || compileErrorCount > 0}
+                  title={
+                    compileErrorCount > 0
+                      ? uiLocale.startsWith('zh')
+                        ? '策略存在解析错误，请先修复再保存'
+                        : 'Fix parse errors before saving'
+                      : undefined
+                  }
                   className={cn(
                     buttonVariants({ variant: 'primary', size: 'md' }),
                     'gap-2',
