@@ -147,7 +147,11 @@ export function SidePanel({
 
   return (
     <aside
-      className="flex h-full min-h-0 flex-col rounded-xl border border-border bg-bg shadow-sm"
+      // w-full 关键：抽屉列 `w-[26rem] lg:flex` 是 flex 容器，本 aside 作为 flex
+      // item 若无宽度指令会收缩到内在内容宽度（各 tab 内容不同→宽度漂移
+      // 249/311/300…）。w-full 强制铺满 26rem 列，各 tab 内容宽度才一致。
+      // min-w-0 防未来某个 tab 出现长不可断内容时横向溢出撑破列宽。
+      className="flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl border border-border bg-bg shadow-sm"
       aria-label={t('sidePanelToggle')}
     >
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
