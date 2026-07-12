@@ -112,6 +112,16 @@ describe('parseSSEFrame', () => {
       const e = parseSSEFrame('event: delta\ndata: {"type":"delta","data":" and"}');
       expect(e?.data).toBe(' and');
     });
+
+    it('JSON delta 携带换行的代码块：换行+缩进+空格全保留（suggest 场景）', () => {
+      // suggest 现与 generate 一致发 JSON delta；Jackson 把 \n 转义成 \\n，
+      // SSE data 行仍单行，JSON.parse 后还原 \n + 缩进 + 词间空格。
+      const code = 'Rule allow given actor as Text:\n  Return actor in ["a", "b"].';
+      const e = parseSSEFrame(
+        `data: ${JSON.stringify({ type: 'delta', data: code })}`,
+      );
+      expect(e?.data).toBe(code);
+    });
   });
 
   // 帧分隔符 CRLF 兼容：stream buffer 用 `\r?\n\r?\n` 拆帧（见 startStream）。

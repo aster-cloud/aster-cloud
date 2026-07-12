@@ -166,3 +166,28 @@ export function parseSegments(raw: string): OutputSegment[] {
   else flushProse();
   return segments;
 }
+
+/** 散文单行的行级 markdown 分类，供显示层选渲染方式。 */
+export type ProseLine =
+  | { kind: 'heading'; level: number; text: string }
+  | { kind: 'list'; text: string }
+  | { kind: 'text'; text: string };
+
+/**
+ * 判定散文一行是标题 / 列表项 / 普通文本。
+ *
+ * 标题规范是 `### 文字`（# 后空格），但 LLM 有时省略空格甚至直接跟标点
+ * （`###.白名单` / `###文字`）——宽松匹配 # 后可选的空白/前导标点。用
+ * `[^#\s]` 起始确保 bare `###` / `####` 不被误判为标题。
+ */
+export function classifyProseLine(line: string): ProseLine {
+  const heading = /^(#{1,6})[ \t]*[.。、:：)]?[ \t]*([^#\s].*)$/.exec(line);
+  if (heading) {
+    return { kind: 'heading', level: heading[1].length, text: heading[2] };
+  }
+  const list = /^\s*[-*]\s+(.*)$/.exec(line);
+  if (list) {
+    return { kind: 'list', text: list[1] };
+  }
+  return { kind: 'text', text: line };
+}
