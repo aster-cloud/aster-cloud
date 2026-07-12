@@ -6,7 +6,12 @@ import { upgradeResponse, UPGRADE_HTTP_STATUS } from '@/lib/plan-quota';
 import { detectPII } from '@/services/pii/detector';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
-import { createVersion } from '@/services/policy/version-manager';
+import {
+  createVersion,
+  assertCompilable,
+  PolicyCompileError,
+} from '@/services/policy/version-manager';
+import { makeCompileValidator } from '@/lib/policy-compile-validator';
 import {
   buildAliasReservedForUser,
   getStructuralAliasGrant,
@@ -257,6 +262,14 @@ export async function POST(req: Request) {
       ? await buildAliasReservedForUser(session.user.id, compileLocale)
       : undefined;
 
+    // 编译门禁在开启事务**之前** preflight——避免事务内网络调用（慢/超时会持锁
+    // + 挂着已插入行等 30s）。有 error 诊断抛 PolicyCompileError → 下方 catch 转 400。
+    await assertCompilable(makeCompileValidator(session.user.id), {
+      source: content,
+      locale: compileLocale,
+      aliasSet: aliasSetInput,
+    });
+
     const policy = await db.transaction(async (tx) => {
       const result = await tx
         .insert(policies)
@@ -281,6 +294,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(policy, { status: 201 });
   } catch (error: unknown) {
+    // 有解析错误的源码——用户可修正的 4xx。
+    if (error instanceof PolicyCompileError) {
+      return NextResponse.json(
+        { error: 'compile_error', message: error.message },
+        { status: 400 },
+      );
+    }
     // aliasSet 校验失败是用户可修正的输入错误（4xx）——回显校验信息本就是给用户看的，
     // 不含内部实现细节，保留 400 分支。
     if (

@@ -16,6 +16,9 @@ const {
   mockCreateVersion,
   mockGetStructuralAliasGrant,
   mockBuildAliasReservedForUser,
+  mockCompile,
+  mockPolicyCompileError,
+  mockAssertCompilable,
 } = vi.hoisted(() => {
   const mockReturningInsert = vi.fn();
   const mockValuesInsert = vi.fn().mockReturnValue({ returning: mockReturningInsert });
@@ -42,6 +45,16 @@ const {
     baseAliasesLower: new Set<string>(),
     vocabularyTermsLower: new Set<string>(),
   });
+  const mockCompile = vi.fn().mockResolvedValue({ success: true, diagnostics: [] });
+  // 与 version-manager 的 PolicyCompileError 同构，供 mock 导出 + 测试 instanceof。
+  class MockPolicyCompileError extends Error {
+    constructor(message = '策略存在解析错误，无法保存，请先修复后再试。') {
+      super(message);
+      this.name = 'PolicyCompileError';
+    }
+  }
+  // assertCompilable 默认放行（no-op）；门禁真实逻辑在 policy-version-compile-gate.test.ts。
+  const mockAssertCompilable = vi.fn().mockResolvedValue(undefined);
 
   return {
     mockReturningInsert,
@@ -57,6 +70,9 @@ const {
     mockCreateVersion,
     mockGetStructuralAliasGrant,
     mockBuildAliasReservedForUser,
+    mockCompile,
+    mockPolicyCompileError: MockPolicyCompileError,
+    mockAssertCompilable,
   };
 });
 
@@ -83,6 +99,13 @@ vi.mock('@/services/pii/detector', () => ({
 
 vi.mock('@/services/policy/version-manager', () => ({
   createVersion: mockCreateVersion,
+  PolicyCompileError: mockPolicyCompileError,
+  // 默认 no-op（放行）；单个测试可覆写以模拟 compile 门禁抛 PolicyCompileError。
+  assertCompilable: mockAssertCompilable,
+}));
+
+vi.mock('@/services/policy/policy-api', () => ({
+  createPolicyApiClient: vi.fn(() => ({ compile: mockCompile })),
 }));
 
 vi.mock('@/lib/structural-alias-grants', () => ({
@@ -263,6 +286,9 @@ describe('Policies API - Drizzle Migration', () => {
       sourceHash: 'hash',
       sourceEnvelopeSha256: 'envelope',
     });
+    // 编译门禁默认放行（clearAllMocks 后重置实现）。
+    mockAssertCompilable.mockResolvedValue(undefined);
+    mockCompile.mockResolvedValue({ success: true, diagnostics: [] });
     // Default select: returns empty execution counts
     setupGroupBySelect([]);
   });
@@ -426,6 +452,28 @@ describe('Policies API - Drizzle Migration', () => {
       const response = await POST(makeRequest('http://localhost/api/policies', 'POST', validBody));
 
       expect(response.status).toBe(201);
+    });
+
+    it('编译门禁抛 PolicyCompileError → 路由返回 400 compile_error（事务外 preflight）', async () => {
+      // 门禁在事务外 assertCompilable preflight（门禁逻辑单测见
+      // policy-version-compile-gate.test.ts）；此处验证路由把 PolicyCompileError
+      // 映射为 400 而非 500，且未落库（createVersion 不被调用）。
+      mockAssertCompilable.mockRejectedValueOnce(new mockPolicyCompileError());
+      const response = await POST(
+        makeRequest('http://localhost/api/policies', 'POST', validBody),
+      );
+      const body = await response.json();
+      expect(response.status).toBe(400);
+      expect(body.error).toBe('compile_error');
+      expect(mockCreateVersion).not.toHaveBeenCalled();
+    });
+
+    it('保存前调 assertCompilable 门禁（已接线）', async () => {
+      await POST(makeRequest('http://localhost/api/policies', 'POST', validBody));
+      expect(mockAssertCompilable).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ source: validBody.content }),
+      );
     });
 
     it('should pass aliasSet into createVersion with server-built reserved sets', async () => {

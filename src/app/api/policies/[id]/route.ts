@@ -3,7 +3,12 @@ import { getSession } from '@/lib/auth';
 import { db, policies, policyVersions, executions } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
-import { createVersion } from '@/services/policy/version-manager';
+import {
+  createVersion,
+  assertCompilable,
+  PolicyCompileError,
+} from '@/services/policy/version-manager';
+import { makeCompileValidator } from '@/lib/policy-compile-validator';
 import { getStructuralAliasGrant, buildAliasReservedForUser } from '@/lib/structural-alias-grants';
 import { canonicalAliasJson } from '@/lib/policy-alias';
 import { isPolicyFrozen } from '@/lib/policy-freeze';
@@ -237,6 +242,17 @@ export async function PUT(req: Request, { params }: RouteParams) {
       updateData.piiFields = piiResult?.detectedTypes;
     }
 
+    // 只有新建版本（源码变更）才编译校验；在事务外 preflight（避免事务内网络调用）。
+    // 用与 createVersion 一致的 aliasSetInput（effective 别名）编译，避免语义分裂。
+    // 有 error 诊断抛 PolicyCompileError → 下方 catch 转 400。
+    if (newVersion) {
+      await assertCompilable(makeCompileValidator(session.user.id), {
+        source: versionSource,
+        locale: compileLocale,
+        aliasSet: aliasSetInput,
+      });
+    }
+
     const policy = await db.transaction(async (tx) => {
       if (newVersion) {
         // allowStructural 来源：
@@ -278,6 +294,13 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(policy);
   } catch (error) {
+    // 有解析错误的源码——用户可修正的 4xx。
+    if (error instanceof PolicyCompileError) {
+      return NextResponse.json(
+        { error: 'compile_error', message: error.message },
+        { status: 400 },
+      );
+    }
     console.error('Error updating policy:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

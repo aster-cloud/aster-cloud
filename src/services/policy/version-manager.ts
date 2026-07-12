@@ -30,6 +30,68 @@ type PolicyVersion = InferSelectModel<typeof policyVersions>;
 type PolicyVersionStatus = PolicyVersion['status'];
 type VersionDbClient = Pick<typeof db, 'query' | 'insert'>;
 
+/**
+ * 源码存在解析/编译错误——不允许落库。路由 catch 此异常返回 400。
+ * 与「别名校验失败」区分：那是别名输入非法，这是源码本身不可编译。
+ */
+export class PolicyCompileError extends Error {
+  constructor(message = '策略存在解析错误，无法保存，请先修复后再试。') {
+    super(message);
+    this.name = 'PolicyCompileError';
+  }
+}
+
+/** 编译诊断（只关心 severity 判「是否有 error」）。 */
+export interface CompileDiagnostic {
+  severity: 'error' | 'warning' | 'info' | 'hint';
+}
+
+/**
+ * 源码可编译性校验器：返回诊断列表（severity==='error' 即不可保存）。由调用方
+ * 注入（依赖倒置）——version-manager 不直接依赖 HTTP 客户端，保持可测且解耦。
+ * 用与执行一致的输入（source+locale+aliasSet）编译，避免「前端带 alias 编译
+ * 通过、后端不带 alias 误判 error」的前后端语义分裂。校验器自身抛异常（如
+ * aster-api 不可达）由 createVersion fail-open 放行。
+ */
+export type CompileValidator = (input: {
+  source: string;
+  locale: string;
+  aliasSet?: Readonly<Record<string, readonly string[]>> | null;
+}) => Promise<{ diagnostics?: CompileDiagnostic[] }>;
+
+/**
+ * 跑源码可编译性门禁：编译含 error 诊断则抛 PolicyCompileError。
+ * 校验器抛 PolicyCompileError（如上游 4xx 用户输入错误）→ 上抛拒绝落库；
+ * 其它异常（5xx/网络/超时）→ fail-open 放行（记录，不阻断保存）。
+ *
+ * POST/PUT 路由在 db.transaction **之前**调用（避免事务内网络调用+持锁等待）；
+ * createVersion 内部也调它，作为无事务直调入口（如 v1/versions）的兜底。
+ */
+export async function assertCompilable(
+  validator: CompileValidator,
+  input: {
+    source: string;
+    locale: string;
+    aliasSet?: Readonly<Record<string, readonly string[]>> | null;
+  },
+): Promise<void> {
+  try {
+    const result = await validator(input);
+    const hasError = (result.diagnostics ?? []).some(
+      (d) => d.severity === 'error',
+    );
+    if (hasError) {
+      throw new PolicyCompileError();
+    }
+  } catch (err) {
+    if (err instanceof PolicyCompileError) throw err;
+    console.warn(
+      '[assertCompilable] compile precheck unavailable, allowing save',
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
 export interface CreateVersionParams {
   policyId: string;
   source: string;
@@ -48,6 +110,12 @@ export interface CreateVersionParams {
   allowStructuralAliases?: boolean;
   /** 工具链身份串（进 envelope）。缺省由 env ASTER_RUNTIME_BUILD 拼。 */
   toolchainId?: string;
+  /**
+   * 源码可编译性校验器（注入）。提供时：编译源码，若含 error 诊断则抛
+   * PolicyCompileError（拒绝落库不可编译源码）。fail-open：校验器自身抛异常
+   * （编译服务不可达）→ 记录并放行。缺省=不校验（向后兼容）。
+   */
+  validateCompilable?: CompileValidator;
   /** 事务客户端；用于把 policy insert + version insert 包进同一事务。 */
   dbClient?: VersionDbClient;
 }
@@ -90,6 +158,18 @@ export async function createVersion(
     }
     aliasSetJson = canonicalAliasJson(params.aliasSet);
   }
+
+  // 有解析错误的源码不落库（覆盖所有 createVersion 入口）。POST/PUT 已在事务外
+  // preflight（见 assertCompilable），故不再传 validateCompilable 进来避免事务内
+  // 网络调用+重复编译；v1/versions 无事务，直接靠此兜底。
+  if (params.validateCompilable) {
+    await assertCompilable(params.validateCompilable, {
+      source,
+      locale,
+      aliasSet: params.aliasSet,
+    });
+  }
+
   const toolchainId = params.toolchainId ?? cloudToolchainId();
   const sourceEnvelopeSha256 = computeSourceEnvelope(source, aliasSetJson, locale, toolchainId);
 
