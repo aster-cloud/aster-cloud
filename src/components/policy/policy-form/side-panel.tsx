@@ -369,16 +369,18 @@ function TemplatesTab({
   const categories = Object.keys(CATEGORY_LABELS) as Array<
     keyof typeof CATEGORY_LABELS
   >;
-  const isZh = uiLocale.startsWith('zh');
+  // 点击模板会清空并整体替换编辑器内容（非插入到光标）。文案本仓内联三语，
+  // 避免为一句提示走 ui-messages 跨仓发版。
+  const hint = uiLocale.startsWith('zh')
+    ? '点击模板会清空编辑器并替换为该模板内容。'
+    : uiLocale.startsWith('de')
+      ? 'Ein Klick ersetzt den gesamten Editorinhalt durch die Vorlage.'
+      : 'Picking a template clears the editor and replaces its content.';
 
   return (
     // 内边距对齐关键词别名/策略信息卡片（px-5 py-5），各 tab 内容起始位置一致。
     <div className="space-y-4 px-5 py-5">
-      <p className="text-xs text-fg-muted">
-        {isZh
-          ? '点击模板会插入到编辑器光标位置。'
-          : 'Picking a template inserts it at the editor cursor.'}
-      </p>
+      <p className="text-xs text-fg-muted">{hint}</p>
       {categories.map((category) => {
         const items = POLICY_EXAMPLES.filter((e) => e.category === category);
         if (items.length === 0) return null;
