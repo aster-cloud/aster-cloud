@@ -209,6 +209,10 @@ export function PolicyForm({
   const [serverError, setServerError] = useState<PolicySaveError | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  // 点击模板整体替换编辑器内容时，若已有内容先弹确认，避免误抹未保存草稿。
+  const [pendingTemplate, setPendingTemplate] = useState<PolicyExample | null>(
+    null,
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [converterOpen, setConverterOpen] = useState(false);
 
@@ -296,6 +300,40 @@ export function PolicyForm({
       toast.success(t('templateInsertedAtCursor'));
     },
     [cnlLocale, insertAtCursor, t],
+  );
+
+  /** 用模板内容整体替换编辑器（清空后写入），非插入到光标。设默认名称仅在
+   *  名称为空时，避免覆盖用户已填内容。侧栏「模板」tab 走此路径。 */
+  const applyTemplateReplace = useCallback(
+    (tpl: PolicyExample) => {
+      const body = getExampleSource(tpl, cnlLocale);
+      // setContent 是编辑器内容的唯一真相源（Monaco 受控于 value），直接整体
+      // 替换即清空并写入模板；无需先手动清空。
+      setContent(body);
+      setName((prev) => prev || tpl.id);
+      // 文案本仓内联三语（替换语义，非「插入到光标」）。
+      toast.success(
+        uiLocale.startsWith('zh')
+          ? '已用模板替换编辑器内容。'
+          : uiLocale.startsWith('de')
+            ? 'Editorinhalt durch Vorlage ersetzt.'
+            : 'Editor content replaced with template.',
+      );
+    },
+    [cnlLocale, uiLocale],
+  );
+
+  /** 侧栏「模板」tab 点击入口：编辑器有内容先弹确认（防误抹未保存草稿），
+   *  为空则直接替换。 */
+  const requestTemplateReplace = useCallback(
+    (tpl: PolicyExample) => {
+      if (content.trim().length > 0) {
+        setPendingTemplate(tpl);
+      } else {
+        applyTemplateReplace(tpl);
+      }
+    },
+    [content, applyTemplateReplace],
   );
 
   /** Trigger Monaco's built-in format-document action. */
@@ -629,10 +667,9 @@ export function PolicyForm({
                 onAliasSetChange={setAliasSet}
                 onApplyContent={(body) => setContent(body)}
                 onApplyTemplate={(tpl) => {
-                  // PR-3: insert at cursor position rather than wiping
-                  // whatever the user already typed. Preserves the form
-                  // body and just adds the template snippet inline.
-                  insertTemplateAtCursor(tpl);
+                  // 侧栏「模板」tab：整体替换编辑器内容（有内容先弹确认）。
+                  // 命令面板的「插入到光标」保持 insertTemplateAtCursor 不变。
+                  requestTemplateReplace(tpl);
                 }}
                 onClose={() => setSidePanelOpen(false)}
                 compileState={compile.state}
@@ -705,6 +742,41 @@ export function PolicyForm({
             // user explicitly chose to discard.
             clearDraft();
             router.push(cancelHref);
+          }}
+        />
+
+        {/* ----- Template overwrite confirmation ----- */}
+        {/* 模板整体替换编辑器内容前的确认（仅编辑器非空时触发）。文案本仓内联
+            三语，避免为一处确认走 ui-messages 跨仓发版。 */}
+        <ConfirmDialog
+          isOpen={pendingTemplate !== null}
+          title={
+            uiLocale.startsWith('zh')
+              ? '用模板替换当前内容？'
+              : uiLocale.startsWith('de')
+                ? 'Inhalt durch Vorlage ersetzen?'
+                : 'Replace current content with template?'
+          }
+          description={
+            uiLocale.startsWith('zh')
+              ? '编辑器当前内容将被清空并替换为该模板。此操作无法撤销。'
+              : uiLocale.startsWith('de')
+                ? 'Der aktuelle Editorinhalt wird gelöscht und durch die Vorlage ersetzt. Dies kann nicht rückgängig gemacht werden.'
+                : 'The current editor content will be cleared and replaced by this template. This cannot be undone.'
+          }
+          confirmLabel={
+            uiLocale.startsWith('zh')
+              ? '替换'
+              : uiLocale.startsWith('de')
+                ? 'Ersetzen'
+                : 'Replace'
+          }
+          cancelLabel={tCommon('cancel')}
+          variant="warning"
+          onCancel={() => setPendingTemplate(null)}
+          onConfirm={() => {
+            if (pendingTemplate) applyTemplateReplace(pendingTemplate);
+            setPendingTemplate(null);
           }}
         />
       </div>
