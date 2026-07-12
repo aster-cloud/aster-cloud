@@ -5,7 +5,11 @@ import { useTranslations } from 'next-intl';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
 import { AIDiffPreview } from './ai-diff-preview';
 import { track, Events } from '@/lib/mixpanel';
-import { extractAsterCode, parseSegments } from '@/lib/extract-aster-code';
+import {
+  classifyProseLine,
+  extractAsterCode,
+  parseSegments,
+} from '@/lib/extract-aster-code';
 import type { editor } from 'monaco-editor';
 
 // NSM/WAADR 埋点会话上下文：将 ai_draft_generated 与后续 draft_edited 关联
@@ -583,17 +587,16 @@ function renderProse(text: string, keyPrefix: string): React.ReactNode {
 
   lines.forEach((line, i) => {
     const key = `${keyPrefix}-l${i}`;
-    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
-    const listItem = /^\s*[-*]\s+(.*)$/.exec(line);
-    if (heading) {
+    // 行级分类（标题/列表/文本）由可测纯函数 classifyProseLine 负责。
+    const cls_ = classifyProseLine(line);
+    if (cls_.kind === 'heading') {
       flushList(`${key}-ul`);
-      const level = heading[1].length;
-      const inner = renderInline(heading[2], key);
+      const inner = renderInline(cls_.text, key);
       // 面板空间有限：h1/h2 稍大加粗，h3+ 用小号加粗，层级靠字号+粗细区分。
       const cls =
-        level <= 1
+        cls_.level <= 1
           ? 'text-sm font-bold text-fg'
-          : level === 2
+          : cls_.level === 2
             ? 'text-[13px] font-bold text-fg'
             : 'text-xs font-semibold text-fg';
       nodes.push(
@@ -601,8 +604,8 @@ function renderProse(text: string, keyPrefix: string): React.ReactNode {
           {inner}
         </div>,
       );
-    } else if (listItem) {
-      listBuf.push(listItem[1]);
+    } else if (cls_.kind === 'list') {
+      listBuf.push(cls_.text);
     } else {
       flushList(`${key}-ul`);
       if (line.trim()) {

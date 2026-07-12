@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  classifyProseLine,
   extractAsterCode,
   looksLikeMarkdown,
   parseSegments,
@@ -138,5 +139,68 @@ describe('parseSegments', () => {
 
   it('空输入返回空数组', () => {
     expect(parseSegments('')).toEqual([]);
+  });
+});
+
+describe('classifyProseLine', () => {
+  it('规范标题 `### 文字`', () => {
+    expect(classifyProseLine('### 改进片段')).toEqual({
+      kind: 'heading',
+      level: 3,
+      text: '改进片段',
+    });
+  });
+
+  it('省略空格直接跟标点 `###.文字`（用户实测场景）', () => {
+    expect(classifyProseLine('###.白名单应抽成常量')).toEqual({
+      kind: 'heading',
+      level: 3,
+      text: '白名单应抽成常量',
+    });
+  });
+
+  it('完全无空格 `###文字`', () => {
+    expect(classifyProseLine('###文字')).toEqual({
+      kind: 'heading',
+      level: 1 * 3,
+      text: '文字',
+    });
+  });
+
+  it('一级/二级标题层级正确', () => {
+    expect(classifyProseLine('# 一级').kind).toBe('heading');
+    expect((classifyProseLine('# 一级') as { level: number }).level).toBe(1);
+    expect((classifyProseLine('## 二级') as { level: number }).level).toBe(2);
+  });
+
+  it('中文冒号分隔 `###：文字`', () => {
+    expect(classifyProseLine('###：小节')).toEqual({
+      kind: 'heading',
+      level: 3,
+      text: '小节',
+    });
+  });
+
+  it('bare `###` / `####` 不误判为标题', () => {
+    expect(classifyProseLine('###').kind).toBe('text');
+    expect(classifyProseLine('####').kind).toBe('text');
+  });
+
+  it('无序列表 `- 项` / `* 项`', () => {
+    expect(classifyProseLine('- 拷贝到剪贴板')).toEqual({
+      kind: 'list',
+      text: '拷贝到剪贴板',
+    });
+    expect(classifyProseLine('* 插入到光标')).toEqual({
+      kind: 'list',
+      text: '插入到光标',
+    });
+  });
+
+  it('普通段落 → text', () => {
+    expect(classifyProseLine('这是一段普通说明文字')).toEqual({
+      kind: 'text',
+      text: '这是一段普通说明文字',
+    });
   });
 });
