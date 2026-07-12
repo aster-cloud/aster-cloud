@@ -12,7 +12,9 @@ import {
   createVersion,
   listVersions,
   listExecutableVersions,
+  PolicyCompileError,
 } from '@/services/policy/version-manager';
+import { makeCompileValidator } from '@/lib/policy-compile-validator';
 import {
   getStructuralAliasGrant,
   buildAliasReservedForUser,
@@ -167,10 +169,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       aliasSet: aliasSetInput,
       aliasReserved,
       allowStructuralAliases: allowStructural,
+      validateCompilable: makeCompileValidator(session.user.id),
     });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
+    // 有解析错误的源码——用户可修正的 4xx。
+    if (error instanceof PolicyCompileError) {
+      return NextResponse.json(
+        { error: 'compile_error', message: error.message },
+        { status: 400 },
+      );
+    }
     console.error('[Versions POST] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : '创建版本失败' },

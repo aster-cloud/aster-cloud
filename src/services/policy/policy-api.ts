@@ -49,6 +49,12 @@ export interface PolicyCompileRequest {
   source: string;
   /** CNL 语言 */
   locale?: string;
+  /**
+   * 用户自定义关键词别名（ADR 0022，kind → 多词短语数组）。编译前归一阶段据此
+   * 把别名归回规范关键词——保存前的编译校验必须与执行用同一 aliasSet，否则
+   * 依赖别名的合法源码会被「不带 alias 的编译」误判为解析错误。
+   */
+  aliasSet?: Record<string, string[]> | null;
 }
 
 // 响应类型定义
@@ -307,7 +313,14 @@ export class PolicyApiClient {
    * 编译策略 (验证语法)
    */
   async compile(request: PolicyCompileRequest): Promise<PolicyCompileResponse> {
-    return this.request<PolicyCompileResponse>('POST', API_ENDPOINTS.compile, request);
+    const hasAliases =
+      request.aliasSet != null && Object.keys(request.aliasSet).length > 0;
+    return this.request<PolicyCompileResponse>('POST', API_ENDPOINTS.compile, {
+      source: request.source,
+      locale: request.locale || 'en-US',
+      // 仅在有别名时携带（与 evaluateSource 一致），避免空字段增大请求体。
+      ...(hasAliases ? { aliasSet: request.aliasSet } : {}),
+    });
   }
 
   /**
