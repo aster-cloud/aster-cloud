@@ -46,6 +46,11 @@ export function AIAssistantPanel({
   const [showDiffPreview, setShowDiffPreview] = useState(false);
   const [originalSource, setOriginalSource] = useState('');
   const [autoApplied, setAutoApplied] = useState(false);
+  // 区分本次输出来自 generate（单份完整策略→底部整体应用）还是 suggest
+  // （优化建议 markdown 多代码块→靠每块的 拷贝/插入/替换 按钮操作）。
+  const [lastAction, setLastAction] = useState<'generate' | 'suggest' | null>(
+    null,
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const generationCtxRef = useRef<{ promptId: string; startedAt: number; goal: string } | null>(null);
   const {
@@ -78,9 +83,11 @@ export function AIAssistantPanel({
     };
   }, []);
 
-  // 编译通过时自动填充到编辑器
+  // 编译通过时自动填充到编辑器。仅 generate（单份完整策略）自动应用；suggest
+  // 优化建议是多代码块 markdown，必须靠每块的 拷贝/插入/替换 按钮由用户选择，
+  // 不能整体自动替换编辑器（防御后端 final/validated 语义变化误伤）。
   useEffect(() => {
-    if (completed && validated && content && !autoApplied) {
+    if (lastAction === 'generate' && completed && validated && content && !autoApplied) {
       setAutoApplied(true);
 
       // 只插纯 aster 代码：LLM 可能违反 no-markdown 约定而包 ```aster 围栏
@@ -129,12 +136,13 @@ export function AIAssistantPanel({
       }
       onApply(code);
     }
-  }, [completed, validated, content, autoApplied, monacoEditor, onApply, locale]);
+  }, [lastAction, completed, validated, content, autoApplied, monacoEditor, onApply, locale]);
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) return;
 
     setAutoApplied(false);
+    setLastAction('generate');
     const existingSource = monacoEditor?.getValue() || '';
     setOriginalSource(existingSource);
 
@@ -161,6 +169,7 @@ export function AIAssistantPanel({
     if (!source?.trim()) return;
 
     setAutoApplied(false);
+    setLastAction('suggest');
     await suggest(
       { source, locale },
       tenantId,
@@ -192,6 +201,51 @@ export function AIAssistantPanel({
     setShowDiffPreview(false);
     reset();
   }, [content, monacoEditor, onApply, reset]);
+
+  // 代码块级操作（Augment 风格）：每个 AI 输出的代码块可独立拷贝 / 插入到
+  // 光标 / 整体替换编辑器，而不必只对整段输出做单一「应用」。
+  const copyCodeBlock = useCallback(async (code: string) => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return false;
+    try {
+      await navigator.clipboard.writeText(code);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const insertCodeBlock = useCallback(
+    (code: string) => {
+      if (!monacoEditor) return;
+      const selection = monacoEditor.getSelection();
+      const range = selection ?? {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 1,
+      };
+      monacoEditor.executeEdits('ai-assistant-insert-block', [
+        { range, text: code, forceMoveMarkers: true },
+      ]);
+      monacoEditor.focus();
+    },
+    [monacoEditor],
+  );
+
+  const replaceCodeBlock = useCallback(
+    (code: string) => {
+      if (monacoEditor) {
+        const model = monacoEditor.getModel();
+        if (model) {
+          monacoEditor.executeEdits('ai-assistant-replace-block', [
+            { range: model.getFullModelRange(), text: code },
+          ]);
+        }
+      }
+      onApply(code);
+    },
+    [monacoEditor, onApply],
+  );
 
   const handleRetry = useCallback(() => {
     setAutoApplied(false);
@@ -343,7 +397,14 @@ export function AIAssistantPanel({
             {/* AI 输出预览：markdown 感知渲染（散文成段、```代码块高亮成盒），
                 而非把 markdown 当纯文本平铺。流式时末尾追加光标。 */}
             <div className="max-h-64 overflow-auto">
-              <AiOutputView content={content} streaming={streaming} />
+              <AiOutputView
+                content={content}
+                streaming={streaming}
+                uiLocale={locale}
+                onCopyCode={copyCodeBlock}
+                onInsertCode={monacoEditor ? insertCodeBlock : undefined}
+                onReplaceCode={replaceCodeBlock}
+              />
             </div>
           </div>
 
@@ -387,32 +448,36 @@ export function AIAssistantPanel({
             </div>
           )}
 
-          {/* 操作按钮：仅在编译未通过或需要手动操作时显示 */}
+          {/* 操作按钮组：Retry/Reject 两种模式都保留；底部整体 Apply/Diff 仅
+              generate（单份完整策略）显示——suggest 优化建议是多代码块 markdown，
+              改用每个代码块 header 上的 拷贝/插入/替换 按钮操作，不再用底部单一
+              「应用」。 */}
           {completed && content && !streaming && !showDiffPreview && !autoApplied && (
             <div className="mt-3 flex items-center gap-2">
-              {originalSource ? (
-                <button
-                  type="button"
-                  onClick={handleShowDiff}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
-                >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-                  </svg>
-                  {t('diffPreview')}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleApply}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
-                >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                  {t('apply')}
-                </button>
-              )}
+              {lastAction !== 'suggest' &&
+                (originalSource ? (
+                  <button
+                    type="button"
+                    onClick={handleShowDiff}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                    </svg>
+                    {t('diffPreview')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApply}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    {t('apply')}
+                  </button>
+                ))}
               <button
                 type="button"
                 onClick={handleRetry}
@@ -493,32 +558,198 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
 }
 
 /**
- * markdown 感知的 AI 输出视图：散文按段渲染（支持内联加粗/行内代码），
- * 代码块渲染成 mono 盒子。不引入运行时 markdown/shiki 依赖（流式面板对
- * bundle 和重渲染敏感），只覆盖 LLM 实际输出的段落+围栏结构。
+ * 渲染散文段：把段落内的行按 markdown 行级语法分派——标题（#/##/###…）渲染成
+ * 对应字号 heading、无序列表（-/* ）渲染成列表项、其余为普通行。行内仍走
+ * renderInline（加粗/行内代码）。不引入 markdown 依赖，只覆盖 AI 实际输出的
+ * 行级结构（此前 ### 改进片段 直接当字面文本显示的 bug）。
+ */
+function renderProse(text: string, keyPrefix: string): React.ReactNode {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let listBuf: string[] = [];
+
+  const flushList = (key: string) => {
+    if (listBuf.length === 0) return;
+    const items = listBuf;
+    listBuf = [];
+    nodes.push(
+      <ul key={key} className="ml-4 list-disc space-y-0.5">
+        {items.map((it, i) => (
+          <li key={i}>{renderInline(it, `${key}-li${i}`)}</li>
+        ))}
+      </ul>,
+    );
+  };
+
+  lines.forEach((line, i) => {
+    const key = `${keyPrefix}-l${i}`;
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    const listItem = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (heading) {
+      flushList(`${key}-ul`);
+      const level = heading[1].length;
+      const inner = renderInline(heading[2], key);
+      // 面板空间有限：h1/h2 稍大加粗，h3+ 用小号加粗，层级靠字号+粗细区分。
+      const cls =
+        level <= 1
+          ? 'text-sm font-bold text-fg'
+          : level === 2
+            ? 'text-[13px] font-bold text-fg'
+            : 'text-xs font-semibold text-fg';
+      nodes.push(
+        <div key={key} className={`mt-1 ${cls}`}>
+          {inner}
+        </div>,
+      );
+    } else if (listItem) {
+      listBuf.push(listItem[1]);
+    } else {
+      flushList(`${key}-ul`);
+      if (line.trim()) {
+        nodes.push(
+          <p key={key} className="whitespace-pre-wrap break-words leading-relaxed">
+            {renderInline(line, key)}
+          </p>,
+        );
+      }
+    }
+  });
+  flushList(`${keyPrefix}-ul-end`);
+  return <div className="space-y-1">{nodes}</div>;
+}
+
+/** 三语按钮标签（本仓内联，不走 ui-messages 跨仓发版）。 */
+function codeActionLabels(uiLocale: string) {
+  const zh = uiLocale.startsWith('zh');
+  const de = uiLocale.startsWith('de');
+  return {
+    copy: zh ? '拷贝' : de ? 'Kopieren' : 'Copy',
+    copied: zh ? '已拷贝' : de ? 'Kopiert' : 'Copied',
+    insert: zh ? '插入' : de ? 'Einfügen' : 'Insert',
+    replace: zh ? '替换' : de ? 'Ersetzen' : 'Replace',
+  };
+}
+
+/**
+ * 单个代码块：顶部 header 栏（左语言标签，右 拷贝/插入/替换 按钮，Augment 风格），
+ * 下方 mono 代码体。按钮回调由 AI 面板注入（insert=光标处，replace=整体替换）。
+ */
+function CodeBlock({
+  code,
+  lang,
+  uiLocale,
+  onCopy,
+  onInsert,
+  onReplace,
+}: {
+  code: string;
+  lang: string;
+  uiLocale: string;
+  onCopy?: (code: string) => Promise<boolean>;
+  onInsert?: (code: string) => void;
+  onReplace?: (code: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const labels = codeActionLabels(uiLocale);
+  const langLabel = lang || 'aster';
+
+  // 卸载时清掉「已拷贝」计时器，避免卸载后 setState 警告。
+  useEffect(() => {
+    return () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    };
+  }, []);
+
+  const handleCopy = async () => {
+    if (!onCopy) return;
+    const ok = await onCopy(code);
+    if (ok) {
+      setCopied(true);
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  return (
+    <div className="overflow-hidden rounded-md border border-border">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-bg-subtle px-2 py-1">
+        <span className="font-mono text-[10px] uppercase tracking-wide text-fg-muted">
+          {langLabel}
+        </span>
+        <div className="flex items-center gap-1">
+          {onCopy && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg"
+            >
+              {copied ? labels.copied : labels.copy}
+            </button>
+          )}
+          {onInsert && (
+            <button
+              type="button"
+              onClick={() => onInsert(code)}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg"
+            >
+              {labels.insert}
+            </button>
+          )}
+          {onReplace && (
+            <button
+              type="button"
+              onClick={() => onReplace(code)}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary-subtle"
+            >
+              {labels.replace}
+            </button>
+          )}
+        </div>
+      </div>
+      <pre className="overflow-auto bg-bg-muted p-2 font-mono text-[11px] leading-relaxed text-fg dark:text-gray-200">
+        {code}
+      </pre>
+    </div>
+  );
+}
+
+/**
+ * markdown 感知的 AI 输出视图：散文按行渲染（标题/列表/加粗/行内代码），
+ * 代码块带 header 操作栏（拷贝/插入/替换）。不引入运行时 markdown/shiki 依赖
+ * （流式面板对 bundle 和重渲染敏感），只覆盖 LLM 实际输出的结构。
  */
 function AiOutputView({
   content,
   streaming,
+  uiLocale,
+  onCopyCode,
+  onInsertCode,
+  onReplaceCode,
 }: {
   content: string;
   streaming: boolean;
+  uiLocale: string;
+  onCopyCode?: (code: string) => Promise<boolean>;
+  onInsertCode?: (code: string) => void;
+  onReplaceCode?: (code: string) => void;
 }) {
   const segments = parseSegments(content);
   return (
     <div className="space-y-2 text-xs text-fg dark:text-gray-200">
       {segments.map((seg, idx) =>
         seg.kind === 'code' ? (
-          <pre
+          <CodeBlock
             key={idx}
-            className="overflow-auto rounded-md border border-border bg-bg-muted p-2 font-mono text-[11px] leading-relaxed text-fg dark:text-gray-200"
-          >
-            {seg.code}
-          </pre>
+            code={seg.code}
+            lang={seg.lang}
+            uiLocale={uiLocale}
+            onCopy={onCopyCode}
+            onInsert={onInsertCode}
+            onReplace={onReplaceCode}
+          />
         ) : (
-          <p key={idx} className="whitespace-pre-wrap break-words leading-relaxed">
-            {renderInline(seg.text, `s${idx}`)}
-          </p>
+          <div key={idx}>{renderProse(seg.text, `s${idx}`)}</div>
         ),
       )}
       {streaming && (
