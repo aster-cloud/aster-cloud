@@ -5,7 +5,7 @@
  * 供 Dashboard 和 API v1 两个执行端点复用。
  */
 
-import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateDiagnostic, type PolicyEvaluateResponse } from './policy-api';
+import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateDiagnostic, type PolicyEvaluateResponse, type PolicyReplayMetadata } from './policy-api';
 import { executePolicy as executeSimplePolicy } from './executor';
 import type { Policy } from '@/lib/prisma';
 
@@ -109,6 +109,11 @@ export interface PolicyExecutionResult {
       actual: unknown;
       matched: boolean;
     }>;
+    /**
+     * 回放元数据（ADR 0030 附录 A）——仅 replayCapture=true 的 CNL 执行有；aster-api 权威侧
+     * 算的回放地基 hash + 工具链。execute route 据此写 Execution 回放列。simple 引擎无。
+     */
+    replay?: PolicyReplayMetadata;
   };
   /** CNL 引擎返回的原始结果 */
   result?: unknown;
@@ -138,6 +143,11 @@ export interface ExecutePolicyOptions {
    * 的 aliasSet 快照加载传入。冻结版本已在创建时经授权+校验+进 envelope，执行端信任应用。
    */
   aliasSet?: Record<string, string[]> | null;
+  /**
+   * 回放捕获（ADR 0030）：true 时向 aster-api 请求 replayCapture，响应带回放地基 hash。
+   * 仅**已认证 execute 路径**应开（走 HMAC 内部调用）；aster-api 侧 gate 到 HMAC 已验证才生效。
+   */
+  replayCapture?: boolean;
 }
 
 /**
@@ -150,12 +160,12 @@ export interface ExecutePolicyOptions {
 export async function executePolicyUnified(
   options: ExecutePolicyOptions
 ): Promise<PolicyExecutionResult> {
-  const { policy, input, userId, tenantId, functionName, aliasSet } = options;
+  const { policy, input, userId, tenantId, functionName, aliasSet, replayCapture } = options;
   const policyContent = policy.content || '';
   const useAsterEngine = isAsterCNL(policyContent);
 
   if (useAsterEngine) {
-    return executeWithAsterEngine(policy, policyContent, input, userId, tenantId, functionName, aliasSet);
+    return executeWithAsterEngine(policy, policyContent, input, userId, tenantId, functionName, aliasSet, replayCapture);
   } else {
     return executeWithSimpleEngine(policy, policyContent, input, userId);
   }
@@ -174,7 +184,8 @@ async function executeWithAsterEngine(
   userId: string,
   tenantId?: string,
   functionName?: string,
-  aliasSet?: Record<string, string[]> | null
+  aliasSet?: Record<string, string[]> | null,
+  replayCapture?: boolean
 ): Promise<PolicyExecutionResult> {
   const locale = detectCNLLocale(policyContent) as CNLLocale;
   const effectiveTenantId = tenantId || policy.teamId || policy.userId;
@@ -182,7 +193,8 @@ async function executeWithAsterEngine(
 
   try {
     // aliasSet：已发布版本冻结的别名快照，透传给执行端使别名源码能编译（C1）。
-    const response = await apiClient.evaluateSource(policyContent, input, { locale, functionName, aliasSet });
+    // replayCapture：回放地基（ADR 0030）——已认证 execute 路径开，透传 aster-api 权威 hash。
+    const response = await apiClient.evaluateSource(policyContent, input, { locale, functionName, aliasSet, replayCapture });
     return buildCNLResult(policy, response);
   } catch (error) {
     return buildCNLErrorResult(policy, error);
@@ -450,6 +462,8 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
         engine: 'aster-cnl',
         executionTime: apiResponse.executionTimeMs,
         ...(indeterminate ? { decision: 'indeterminate' as const } : {}),
+        // 回放地基（ADR 0030）：aster-api replayCapture 返回的权威 hash，透传给 execute route 落 Execution。
+        ...(apiResponse.replayMetadata ? { replay: apiResponse.replayMetadata } : {}),
       },
       result: apiResponse.result,
       executedFunction: apiResponse.executedFunction,
@@ -472,6 +486,7 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
       denyCount: 1,
       engine: 'aster-cnl',
       executionTime: apiResponse.executionTimeMs,
+      ...(apiResponse.replayMetadata ? { replay: apiResponse.replayMetadata } : {}),
     },
     result: apiResponse.result,
     executedFunction: apiResponse.executedFunction,

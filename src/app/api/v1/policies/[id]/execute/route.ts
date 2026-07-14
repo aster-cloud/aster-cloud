@@ -5,7 +5,8 @@ import { eq, sql, desc, asc } from 'drizzle-orm';
 import { PLANS, PlanType } from '@/lib/plans';
 import { upgradeResponse } from '@/lib/plan-quota';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
-import { executePolicyUnified, getPrimaryError, deriveExecutionDecision } from '@/services/policy/cnl-executor';
+import { executePolicyUnified, getPrimaryError, deriveExecutionDecision, detectCNLLocale } from '@/services/policy/cnl-executor';
+import { buildReplayColumns } from '@/lib/policy-execution-log';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -28,6 +29,10 @@ type UnifiedQueryResult = {
   policy_is_public: boolean | null;
   // 活跃版本冻结的关键词别名（canonical JSON）。C1（v1）：执行时透传别名。
   policy_alias_set: string | null;
+  // 回放地基（ADR 0030）：不可变 PolicyVersion 行引用 + 工具链 + 词汇快照（已 JOIN，免费取）。
+  policy_version_row_id: string | null;
+  policy_source_toolchain_id: string | null;
+  policy_vocab_snapshot_ids: unknown;
   // User fields
   user_plan: string | null;
   user_trial_ends_at: Date | null;
@@ -78,6 +83,9 @@ export async function POST(req: Request, { params }: RouteParams) {
         p."teamId" AS policy_team_id,
         p."isPublic" AS policy_is_public,
         pv."aliasSet" AS policy_alias_set,
+        pv.id AS policy_version_row_id,
+        pv."sourceToolchainId" AS policy_source_toolchain_id,
+        pv."vocabularySnapshotIds" AS policy_vocab_snapshot_ids,
         u.plan AS user_plan,
         u."trialEndsAt" AS user_trial_ends_at,
         api_ur.count AS api_usage_count,
@@ -114,6 +122,10 @@ export async function POST(req: Request, { params }: RouteParams) {
       teamId: row.policy_team_id,
       isPublic: row.policy_is_public ?? false,
       aliasSet: row.policy_alias_set ?? null,
+      // 回放地基（ADR 0030）：不可变版本引用 + 工具链 + 词汇快照。
+      versionRowId: row.policy_version_row_id ?? null,
+      sourceToolchainId: row.policy_source_toolchain_id ?? null,
+      vocabSnapshotIds: row.policy_vocab_snapshot_ids ?? null,
     } : null;
 
     const userData = row ? {
@@ -229,9 +241,24 @@ export async function POST(req: Request, { params }: RouteParams) {
       userId,
       tenantId: policy.teamId || policy.userId,
       aliasSet: parsedAliasSet,
+      // 回放地基（ADR 0030）：已认证 execute 走 HMAC 内部调用 → 开 replayCapture 取权威 hash。
+      replayCapture: true,
     });
     const primaryError = getPrimaryError(executionResult);
     const durationMs = Date.now() - startTime;
+
+    // 回放地基（ADR 0030）：aster-api 权威 replayMetadata + 不可变版本引用 → Execution 回放列。
+    // aliasSetJson：有别名写解析后的 set，无别名写 {}（captured-no-alias≠null uncaptured）；
+    // 别名解析失败（parsedAliasSet=null 但 policy.aliasSet 非空）视为未捕获 → null。
+    const replayAliasSetJson = policy.aliasSet ? (parsedAliasSet ?? null) : {};
+    const replayColumns = buildReplayColumns(executionResult.metadata.replay, {
+      policyVersionRowId: policy.versionRowId,
+      sourceToolchainId: policy.sourceToolchainId,
+      vocabSnapshotRef: policy.vocabSnapshotIds,
+      locale: detectCNLLocale(policy.content),
+      aliasSetJson: replayAliasSetJson,
+      functionName: executionResult.executedFunction ?? null,
+    });
 
     // 异步写入（fire-and-forget）
     const now = new Date();
@@ -249,6 +276,8 @@ export async function POST(req: Request, { params }: RouteParams) {
         decision: deriveExecutionDecision(executionResult),
         source: 'api',
         apiKeyId: apiKeyId || null,
+        // 回放列（ADR 0030 附录 A）。
+        ...replayColumns,
       }),
       db.insert(usageRecords)
         .values({ id: crypto.randomUUID(), userId, type: 'api_call', period, count: 1, createdAt: now, updatedAt: now })

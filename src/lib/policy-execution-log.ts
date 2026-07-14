@@ -4,6 +4,145 @@
 import { db, executions } from '@/lib/prisma';
 import { eq, and, gte, lte, desc, lt, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
+import type { PolicyReplayMetadata } from '@/services/policy/policy-api';
+
+/** 回放捕获里程碑（M1）——只落漂移检测地基 hash，trace 明文 payload 待 M2 PII envelope。 */
+export const REPLAY_CAPTURE_MILESTONE_M1 = 'p0a.m1';
+/** M1 未落 trace/replay payload 的显式原因（回归工具据此知道行级回放材料不全）。 */
+export const REPLAY_PAYLOAD_NOT_CAPTURED_M1 = 'REPLAY_PAYLOAD_NOT_CAPTURED_M1';
+/** 行级回放完整性状态：不完整（M1 恒此值——缺 trace payload，见 buildReplayColumns doc）。 */
+export const STATUS_NON_REPLAYABLE = 'NON_REPLAYABLE';
+
+/**
+ * 回放列取值（ADR 0030 附录 A）——把 aster-api 的 replayMetadata + 不可变 PolicyVersion 字段
+ * 映射成 Execution 回放列的 insert 片段。两个 execute 写路径共用，保证口径一致。
+ *
+ * <p><b>M1 语义（Codex 设计审 #2）：</b>本里程碑只落「漂移检测地基」（canonical hash + 工具链
+ * + status/reasons），**不**落 trace 明文 / replayPayload*（PII envelope 待 M2 KMS）。因此：
+ * <ul>
+ *   <li><b>replayCaptureVersion 留 null</b>——schema 不变式「replayCaptureVersion 非空→其余列
+ *       全 set」，若置非 null 而 payload 列空会让回归工具误判「完整可回放」。用 canonicalizationVersion
+ *       + hashes 表达「hash 地基完整」，replayCaptureVersion 专表「完整 capture」（M2 才置）。</li>
+ *   <li><b>replayabilityStatus 行级恒 NON_REPLAYABLE</b>（Codex 复审 #3）——即使后端 hash
+ *       地基完整报 REPLAYABLE，本行仍缺 trace payload（M2 才落），行级回放材料不全。
+ *       {@code replayabilityStatus_idx} 是回归工具筛 REPLAYABLE 的入口；若写 REPLAYABLE 会被
+ *       选中却读不到完整材料。后端原状态保留进 reasons（{@code backend_status=...}）供追溯。</li>
+ *   <li>replayabilityReasons 追加 {@link REPLAY_PAYLOAD_NOT_CAPTURED_M1}，显式告知行级回放
+ *       材料不全（trace payload 未存）。</li>
+ *   <li>replayPayload* / traceJson / piiRetentionUntil / piiPolicyVersion 全 null。</li>
+ * </ul>
+ *
+ * <p>replayMetadata 缺失（未开 capture / 后端未返回）→ 回放列全 null（该行不参与回放聚合），
+ * 不阻断 Execution 写入（执行成功就该记录，回放是增强非前提）。
+ */
+export interface ReplayVersionRefs {
+  /** 不可变 PolicyVersion 行 id（Execution.policyVersionRowId）。 */
+  policyVersionRowId: string | null;
+  /** PolicyVersion.sourceToolchainId（envelope 编译工具链）。 */
+  sourceToolchainId: string | null;
+  /** PolicyVersion.vocabularySnapshotIds（不可变引用）。 */
+  vocabSnapshotRef: unknown;
+  /** 执行时实际 locale。 */
+  locale: string | null;
+  /** 冻结 aliasSet（无别名传 {} 非 null；未捕获传 null）。 */
+  aliasSetJson: unknown;
+  /** 实际执行的 function 名。 */
+  functionName: string | null;
+}
+
+/** Execution 回放列 insert 片段（drizzle 列名）。 */
+export interface ExecutionReplayColumns {
+  policyVersionRowId: string | null;
+  functionName: string | null;
+  locale: string | null;
+  aliasSetJson: unknown;
+  vocabSnapshotRef: unknown;
+  sourceToolchainId: string | null;
+  runtimeToolchainId: string | null;
+  reasonCodes: unknown;
+  traceJson: unknown;
+  traceHash: string | null;
+  canonicalInputHash: string | null;
+  canonicalOutputHash: string | null;
+  canonicalizationVersion: string | null;
+  replayCaptureVersion: string | null;
+  replayabilityStatus: string | null;
+  replayabilityReasons: unknown;
+  replayPayloadCiphertext: string | null;
+  replayPayloadAlg: string | null;
+  replayPayloadKeyId: string | null;
+  replayPayloadNonce: string | null;
+  replayPayloadHash: string | null;
+  piiRetentionUntil: Date | null;
+  piiPolicyVersion: string | null;
+}
+
+/**
+ * 构建 Execution 回放列（M1）。见 {@link ReplayVersionRefs} doc 的 M1 语义。
+ */
+export function buildReplayColumns(
+  replay: PolicyReplayMetadata | undefined,
+  refs: ReplayVersionRefs
+): ExecutionReplayColumns {
+  // 版本引用列总是可填（不依赖 replayMetadata）——即使未开 capture，记录执行时的不可变版本引用
+  // 仍有审计价值。回放 hash 列则依赖 replayMetadata。
+  const base: ExecutionReplayColumns = {
+    policyVersionRowId: refs.policyVersionRowId,
+    functionName: refs.functionName,
+    locale: refs.locale,
+    aliasSetJson: refs.aliasSetJson,
+    vocabSnapshotRef: refs.vocabSnapshotRef ?? null,
+    sourceToolchainId: refs.sourceToolchainId,
+    runtimeToolchainId: null,
+    reasonCodes: null,
+    traceJson: null,
+    traceHash: null,
+    canonicalInputHash: null,
+    canonicalOutputHash: null,
+    canonicalizationVersion: null,
+    // ★M1 留 null（见 doc）：不假装完整 capture。
+    replayCaptureVersion: null,
+    replayabilityStatus: null,
+    replayabilityReasons: null,
+    replayPayloadCiphertext: null,
+    replayPayloadAlg: null,
+    replayPayloadKeyId: null,
+    replayPayloadNonce: null,
+    replayPayloadHash: null,
+    piiRetentionUntil: null,
+    piiPolicyVersion: null,
+  };
+
+  if (!replay) {
+    return base;
+  }
+
+  // 后端权威 hash + 工具链。M1 追加 payload-not-captured 原因 + 保留后端原状态供追溯。
+  const reasons = Array.isArray(replay.replayabilityReasons)
+    ? [...replay.replayabilityReasons]
+    : [];
+  reasons.push(REPLAY_PAYLOAD_NOT_CAPTURED_M1);
+  if (replay.replayabilityStatus) {
+    // 后端 hash 地基完整性状态保留供追溯——但不作为行级 replayabilityStatus（见下）。
+    reasons.push(`backend_status=${replay.replayabilityStatus}`);
+  }
+
+  return {
+    ...base,
+    runtimeToolchainId: replay.runtimeToolchainId ?? null,
+    reasonCodes: Array.isArray(replay.reasonCodes) ? replay.reasonCodes : null,
+    traceHash: replay.traceHash ?? null,
+    canonicalInputHash: replay.canonicalInputHash ?? null,
+    canonicalOutputHash: replay.canonicalOutputHash ?? null,
+    canonicalizationVersion: replay.canonicalizationVersion ?? null,
+    // ★行级恒 NON_REPLAYABLE（Codex 复审 #3）：即使后端 hash 地基完整报 REPLAYABLE，本行仍缺
+    // trace payload（M2 才落），行级回放材料不全。replayabilityStatus_idx 是回归工具筛
+    // REPLAYABLE 的入口——写 REPLAYABLE 会被选中却读不到完整材料。hash 地基完整性由
+    // canonicalizationVersion + canonical*Hash + traceHash 表达，不靠此列。
+    replayabilityStatus: STATUS_NON_REPLAYABLE,
+    replayabilityReasons: reasons,
+  };
+}
 
 type ExecutionSource = InferSelectModel<typeof executions>['source'];
 type ExecutionDecision = InferSelectModel<typeof executions>['decision'];

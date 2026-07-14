@@ -5,8 +5,9 @@ import { eq, sql, desc, asc } from 'drizzle-orm';
 import { PLANS, PlanType } from '@/lib/plans';
 import { upgradeResponse } from '@/lib/plan-quota';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
-import { executePolicyUnified, getPrimaryError, deriveExecutionDecision } from '@/services/policy/cnl-executor';
+import { executePolicyUnified, getPrimaryError, deriveExecutionDecision, detectCNLLocale } from '@/services/policy/cnl-executor';
 import { getCachedPolicyMeta, cachePolicyMeta, type CachedPolicyMeta } from '@/lib/cache';
+import { buildReplayColumns } from '@/lib/policy-execution-log';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -28,6 +29,10 @@ type UnifiedQueryResult = {
   policy_user_id: string | null;
   policy_team_id: string | null;
   policy_is_public: boolean | null;
+  // 回放地基（ADR 0030）：不可变 PolicyVersion 引用（cache-miss 时从 JOIN 取，随后写入缓存）。
+  policy_version_row_id: string | null;
+  policy_source_toolchain_id: string | null;
+  policy_vocab_snapshot_ids: unknown;
   // User fields
   user_plan: string | null;
   user_trial_ends_at: Date | null;
@@ -95,6 +100,9 @@ export async function POST(req: Request, { params }: RouteParams) {
         NULL::text AS policy_user_id,
         NULL::text AS policy_team_id,
         NULL::boolean AS policy_is_public,
+        NULL::text AS policy_version_row_id,
+        NULL::text AS policy_source_toolchain_id,
+        NULL::jsonb AS policy_vocab_snapshot_ids,
         u.plan AS user_plan,
         u."trialEndsAt" AS user_trial_ends_at,
         ur.count AS usage_count,
@@ -116,6 +124,9 @@ export async function POST(req: Request, { params }: RouteParams) {
         p."userId" AS policy_user_id,
         p."teamId" AS policy_team_id,
         p."isPublic" AS policy_is_public,
+        pv.id AS policy_version_row_id,
+        pv."sourceToolchainId" AS policy_source_toolchain_id,
+        pv."vocabularySnapshotIds" AS policy_vocab_snapshot_ids,
         u.plan AS user_plan,
         u."trialEndsAt" AS user_trial_ends_at,
         ur.count AS usage_count,
@@ -151,6 +162,10 @@ export async function POST(req: Request, { params }: RouteParams) {
         teamId: row.policy_team_id,
         isPublic: row.policy_is_public ?? false,
         aliasSet: row.policy_alias_set ?? null,
+        // 回放地基（ADR 0030）：随缓存持久化，使 cache-hit 执行也能落版本引用。
+        versionRowId: row.policy_version_row_id ?? null,
+        sourceToolchainId: row.policy_source_toolchain_id ?? null,
+        vocabSnapshotIds: row.policy_vocab_snapshot_ids ?? null,
       };
       // 保存缓存写入 Promise，稍后通过 waitUntil 执行
       cacheWritePromise = cachePolicyMeta(id, policy).catch(err =>
@@ -309,6 +324,8 @@ export async function POST(req: Request, { params }: RouteParams) {
       tenantId: policy.teamId || policy.userId,
       functionName: functionName || undefined,
       aliasSet: parsedAliasSet,
+      // 回放地基（ADR 0030）：dashboard execute 走 HMAC 内部调用 → 开 replayCapture 取权威 hash。
+      replayCapture: true,
     });
     timings.executionWait = Date.now() - t3;
     timings.executionTotal = Date.now() - t3;
@@ -316,6 +333,18 @@ export async function POST(req: Request, { params }: RouteParams) {
     const primaryError = getPrimaryError(executionResult);
     const durationMs = Date.now() - startTime;
     const executionId = globalThis.crypto.randomUUID();
+
+    // 回放地基（ADR 0030）：aster-api 权威 replayMetadata + 不可变版本引用 → Execution 回放列。
+    // aliasSetJson：有别名写解析后的 set，无别名写 {}；别名解析失败视为未捕获 → null。
+    const replayAliasSetJson = policy.aliasSet ? (parsedAliasSet ?? null) : {};
+    const replayColumns = buildReplayColumns(executionResult.metadata.replay, {
+      policyVersionRowId: policy.versionRowId ?? null,
+      sourceToolchainId: policy.sourceToolchainId ?? null,
+      vocabSnapshotRef: policy.vocabSnapshotIds ?? null,
+      locale: detectCNLLocale(policy.content),
+      aliasSetJson: replayAliasSetJson,
+      functionName: executionResult.executedFunction ?? null,
+    });
 
     // 异步写入（fire-and-forget）
     const now = new Date();
@@ -335,6 +364,8 @@ export async function POST(req: Request, { params }: RouteParams) {
         success: executionResult.allowed ?? false,
         decision: deriveExecutionDecision(executionResult),
         source: 'dashboard',
+        // 回放列（ADR 0030 附录 A）。
+        ...replayColumns,
       }),
       db.insert(usageRecords)
         .values({ id: crypto.randomUUID(), userId, type: 'execution', period, count: 1, createdAt: now, updatedAt: now })

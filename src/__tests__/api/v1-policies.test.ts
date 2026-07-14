@@ -52,6 +52,9 @@ vi.mock('@/lib/team-permissions', () => ({
 vi.mock('@/services/policy/cnl-executor', () => ({
   executePolicyUnified: vi.fn(),
   getPrimaryError: vi.fn(),
+  // 回放地基（ADR 0030）：execute route 用 detectCNLLocale(policy.content) 填 Execution.locale。
+  // mock 返回默认 locale（测试不断言 locale 值，只需 mock 提供该导出避免 mocker 抛缺失）。
+  detectCNLLocale: vi.fn(() => 'en-US'),
   // 审计决策派生（execute route 写 executions.decision 用）。测试里从执行结果派生。
   deriveExecutionDecision: vi.fn((r: {
     allowed?: boolean;
