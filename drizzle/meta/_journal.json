@@ -218,6 +218,13 @@
       "when": 1779286402004,
       "tag": "0031_ai_key_binding_byok_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1779286403004,
+      "tag": "0032_execution_replay_columns",
+      "breakpoints": true
     }
   ]
 }
