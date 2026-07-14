@@ -57,6 +57,32 @@ export interface PolicyCompileRequest {
   aliasSet?: Record<string, string[]> | null;
 }
 
+/**
+ * 回放元数据（ADR 0030 附录 A）——aster-api replayCapture 模式产出的回放地基。
+ *
+ * ★权威 hash 由 aster-api（Java 评估侧）计算，cloud 只**存储**写 Execution 列，不重算、
+ * 不覆盖。字段与 Java {@code io.aster.policy.replay.ReplayMetadata} record 对齐，全可选
+ * （replayCapture 未开或非 HMAC 内部调用时后端不返回此字段）。
+ */
+export interface PolicyReplayMetadata {
+  /** 运行时工具链身份（abi/core/validator/build）。 */
+  runtimeToolchainId?: string;
+  /** canonical 算法版本（aster-canonical-json/vN）。 */
+  canonicalizationVersion?: string;
+  /** 请求级 context 的 canonical hash（null=未提供/未捕获）。 */
+  canonicalInputHash?: string | null;
+  /** 业务 result 的 canonical hash。 */
+  canonicalOutputHash?: string | null;
+  /** 决策级 trace 的 canonical hash（M1 决策级非步骤级）。 */
+  traceHash?: string | null;
+  /** 结构化 reason（M1 恒空 []）。 */
+  reasonCodes?: unknown[];
+  /** 回放完整性状态：REPLAYABLE / NON_REPLAYABLE。 */
+  replayabilityStatus?: string;
+  /** NON_REPLAYABLE 时的具体原因（`<field>_hash_failed: ...`）。 */
+  replayabilityReasons?: string[];
+}
+
 // 响应类型定义
 export interface PolicyEvaluateResponse {
   /** 评估结果 */
@@ -69,6 +95,8 @@ export interface PolicyEvaluateResponse {
   executedFunction?: string;
   /** 可恢复或阻断性诊断 */
   diagnostics?: PolicyEvaluateDiagnostic[];
+  /** 回放元数据（仅 replayCapture=true + HMAC 内部调用时后端返回，ADR 0030）。 */
+  replayMetadata?: PolicyReplayMetadata;
 }
 
 export interface PolicyEvaluateDiagnostic {
@@ -236,6 +264,12 @@ export class PolicyApiClient {
 
     try {
       const url = `${this.baseUrl}${path}`;
+      // ★签名/路由匹配用**纯 pathname**（不含 query）——aster-api InternalCallerFilter 签
+      // ctx.getUriInfo().getPath()=纯 path 不含 query；且下方内部签名判断是 pathname 精确匹配。
+      // fetch URL 仍用完整 path（含 ?replayCapture=true 等业务 query，aster-api @QueryParam 接收）。
+      // 若把 query 拼进签名 path，会双重破：精确匹配失效→不发 HMAC 头→internal_only；即便发也
+      // 签名 mismatch 403（ADR 0030 回放地基写路径，Codex 设计审 go/no-go）。
+      const pathname = path.split('?')[0];
       const bodyStr = body ? JSON.stringify(body) : undefined;
       const headers: Record<string, string> = {
         ...this.getHeaders() as Record<string, string>,
@@ -249,9 +283,9 @@ export class PolicyApiClient {
       // /evaluate-source 受 InternalCallerFilter 保护：必须带 X-Internal-Caller + HMAC 签名
       // 防止外部客户绕过审核流提交未批准源码（详见 AKA-9）
       // 红队 P0-C：签名绑定 body + tenant + role，参数须与 headers 里实际发送的一致。
-      if (path === API_ENDPOINTS.evaluateSource && process.env.ASTER_PLAN_GATE_HMAC_KEY) {
+      if (pathname === API_ENDPOINTS.evaluateSource && process.env.ASTER_PLAN_GATE_HMAC_KEY) {
         const internalHeaders = await signInternalCallerHeaders(
-          method, path, bodyStr, this.tenantId, this.userRole,
+          method, pathname, bodyStr, this.tenantId, this.userRole,
         );
         Object.assign(headers, internalHeaders);
       }
@@ -364,10 +398,22 @@ export class PolicyApiClient {
        * envelope，故执行端按 allowStructural=true 信任应用（见 aster-api evaluate-source）。
        */
       aliasSet?: Record<string, string[]> | null;
+      /**
+       * 回放捕获（ADR 0030）：true 时以 `?replayCapture=true` 请求 aster-api，响应带
+       * replayMetadata（回放地基 hash + 工具链）。仅**已认证 execute 路径**（走 HMAC 内部
+       * 调用）应开——aster-api 侧也 gate 到 HMAC 已验证才生效，匿名/trial 传了也被忽略。
+       * query param 只进 fetch URL，**不进 HMAC 签名 path**（见 request()）。
+       */
+      replayCapture?: boolean;
     }
   ): Promise<PolicyEvaluateResponse> {
     const hasAliases = options?.aliasSet != null && Object.keys(options.aliasSet).length > 0;
-    return this.request<PolicyEvaluateResponse>('POST', API_ENDPOINTS.evaluateSource, {
+    // replayCapture 走 query param（aster-api @QueryParam("replayCapture")）；path 拼 query 供
+    // fetch，但 request() 签名/精确匹配用 pathname（split('?')[0]），不受 query 影响。
+    const path = options?.replayCapture
+      ? `${API_ENDPOINTS.evaluateSource}?replayCapture=true`
+      : API_ENDPOINTS.evaluateSource;
+    return this.request<PolicyEvaluateResponse>('POST', path, {
       source,
       context,
       locale: options?.locale || 'en-US',
