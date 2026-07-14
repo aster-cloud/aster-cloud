@@ -225,6 +225,13 @@
       "when": 1779286403004,
       "tag": "0032_execution_replay_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1779286404004,
+      "tag": "0033_regression_harness",
+      "breakpoints": true
     }
   ]
 }

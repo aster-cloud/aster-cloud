@@ -288,6 +288,15 @@ export const users = pgTable(
     isAdmin: boolean('isAdmin').default(false).notNull(),
 
     /**
+     * 回放留存准入开关（ADR 0030 pii-admission/v1）。tenant（=userId）级 opt-in：
+     * true 时该租户执行的 RegressionCase 可长期留存明文 inputJson（供 semantic replay）；
+     * false（默认）时只冻结 canonical hash，不存明文金融输入（case 标 replay-limited，
+     * 无法 semantic run）。默认关=不留明文，须显式授权。回归工具（rule-regression）据此
+     * 决定是否把 Execution 明文冻进 golden case。
+     */
+    replayRetentionEnabled: boolean('replayRetentionEnabled').default(false).notNull(),
+
+    /**
      * Force password change on next login.
      *
      * Set to `true` when an account is provisioned with a temporary
@@ -698,6 +707,109 @@ export const executions = pgTable(
     index('Execution_canonicalOutputHash_idx').on(table.canonicalOutputHash),
     index('Execution_traceHash_idx').on(table.traceHash),
     index('Execution_piiRetentionUntil_idx').on(table.piiRetentionUntil),
+  ]
+);
+
+// ============================================
+// P0-A 规则集升级回归工具（ADR 0030 M1，附录 B）
+// ============================================
+
+/**
+ * 不可变回归 golden case。冻结即不可变（服务层无 update/delete）；进报告 hash。
+ *
+ * <p>来源：Execution 候选冻结（sourceKind='execution'）或作者手写边界 case（'handwritten'）。
+ * 缺回放上下文（functionName/locale/canonicalInputHash）的行不会被冻结（候选谓词已过滤）。
+ * inputJson 是明文金融输入——**仅当 tenant 开 replayRetentionEnabled 时才存**（ADR
+ * pii-admission/v1）；未开则 inputJson 为 null，case 为 replay-limited（无法 semantic run）。
+ */
+export const regressionCases = pgTable(
+  'RegressionCase',
+  {
+    id: text('id').primaryKey().notNull(),
+    policyId: text('policyId').notNull(),
+    // 不可变版本行引用（非版本号）。
+    policyVersionRowId: text('policyVersionRowId').notNull(),
+    policyVersion: integer('policyVersion'),
+    functionName: text('functionName').notNull(),
+    locale: text('locale').notNull(),
+    // 冻结回放上下文（无别名写 {}，无词汇写 []）。
+    aliasSetJson: jsonb('aliasSetJson').notNull().default({}),
+    vocabSnapshotRef: jsonb('vocabSnapshotRef').notNull().default([]),
+    // 明文输入——仅 tenant opt-in 时存；否则 null（case replay-limited）。
+    inputJson: jsonb('inputJson'),
+    canonicalInputHash: text('canonicalInputHash').notNull(),
+    expectedOutputHash: text('expectedOutputHash').notNull(),
+    // 冻结时的准入决策（approved/denied/indeterminate/error）——覆盖门禁统计用。
+    expectedDecision: text('expectedDecision'),
+    canonicalizationVersion: text('canonicalizationVersion').notNull(),
+    // execution（从历史冻结）| handwritten（作者补边界）。
+    sourceKind: text('sourceKind').notNull(),
+    sourceExecutionId: text('sourceExecutionId'),
+    // 边界标签：threshold/reject/null/date-boundary/rounding/boundary…（覆盖门禁用）。
+    coverageTags: jsonb('coverageTags').notNull().default([]),
+    // 冻结时基线工具链（诚实基线：expectedOutputHash 是此工具链下捕获的）。
+    baselineRuntimeToolchainId: text('baselineRuntimeToolchainId'),
+    sourceToolchainId: text('sourceToolchainId'),
+    sourceEnvelopeSha256: text('sourceEnvelopeSha256'),
+    // 覆盖核心字段的 canonical hash——防篡改 + 去重锚。
+    caseHash: text('caseHash').notNull().unique(),
+    createdBy: text('createdBy').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('RegressionCase_policyId_idx').on(table.policyId),
+    index('RegressionCase_policyVersionRowId_idx').on(table.policyVersionRowId),
+    index('RegressionCase_canonicalInputHash_idx').on(table.canonicalInputHash),
+    // 去重 + 幂等冻结锚（同版本+函数+locale+input 保一条）。
+    uniqueIndex('RegressionCase_unique_case_idx').on(
+      table.policyVersionRowId,
+      table.functionName,
+      table.locale,
+      table.canonicalInputHash
+    ),
+    // 证据模型完整性硬化（DB 层防非法枚举值）。
+    check('RegressionCase_sourceKind_check', sql`${table.sourceKind} IN ('execution', 'handwritten')`),
+  ]
+);
+
+/**
+ * 回归报告（审计 artifact，落库非仅返回）。可追溯当时按什么 case/toolchain/hash 判定。
+ *
+ * <p>M1 comparisonMode 恒 FROZEN_BASELINE_VS_CURRENT_BACKEND：基线是冻结时快照 hash，
+ * 非实时重跑 old toolchain（单后端约束，见 ADR 附录 B.1）。
+ */
+export const regressionReports = pgTable(
+  'RegressionReport',
+  {
+    id: text('id').primaryKey().notNull(),
+    policyId: text('policyId').notNull(),
+    policyVersionRowId: text('policyVersionRowId').notNull(),
+    // PASS | FAIL_REGRESSION | FAIL_INSUFFICIENT_COVERAGE | NON_REPLAYABLE。
+    status: text('status').notNull(),
+    comparisonMode: text('comparisonMode').notNull(),
+    caseCount: integer('caseCount').notNull().default(0),
+    runnableCaseCount: integer('runnableCaseCount').notNull().default(0),
+    passedCaseCount: integer('passedCaseCount').notNull().default(0),
+    failedCaseCount: integer('failedCaseCount').notNull().default(0),
+    nonReplayableCaseCount: integer('nonReplayableCaseCount').notNull().default(0),
+    coverageJson: jsonb('coverageJson').notNull(),
+    reportJson: jsonb('reportJson').notNull(),
+    // 覆盖 toolchain + case ids + hash + runner version——报告防篡改。
+    reportHash: text('reportHash').notNull().unique(),
+    currentRuntimeToolchainId: text('currentRuntimeToolchainId'),
+    createdBy: text('createdBy').notNull(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('RegressionReport_policyVersionRowId_createdAt_idx').on(
+      table.policyVersionRowId,
+      table.createdAt
+    ),
+    index('RegressionReport_status_idx').on(table.status),
+    check(
+      'RegressionReport_status_check',
+      sql`${table.status} IN ('PASS', 'FAIL_REGRESSION', 'FAIL_INSUFFICIENT_COVERAGE', 'NON_REPLAYABLE')`
+    ),
   ]
 );
 
@@ -1664,6 +1776,12 @@ export type NewPolicyGroup = InferInsertModel<typeof policyGroups>;
 
 export type Execution = InferSelectModel<typeof executions>;
 export type NewExecution = InferInsertModel<typeof executions>;
+
+// P0-A 回归工具（ADR 0030 M1）。
+export type RegressionCase = InferSelectModel<typeof regressionCases>;
+export type NewRegressionCase = InferInsertModel<typeof regressionCases>;
+export type RegressionReport = InferSelectModel<typeof regressionReports>;
+export type NewRegressionReport = InferInsertModel<typeof regressionReports>;
 
 export type Team = InferSelectModel<typeof teams>;
 export type NewTeam = InferInsertModel<typeof teams>;
