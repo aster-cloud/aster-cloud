@@ -300,6 +300,14 @@
       "locales": "all"
     },
     {
+      "path": "/admin/rule-regression",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/rule-regression/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
       "path": "/admin/sso",
       "status": "canonical-here",
       "owner": "admin",

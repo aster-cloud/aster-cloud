@@ -15,8 +15,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
-import { db, auditLogs, policies } from '@/lib/prisma';
-import { eq } from 'drizzle-orm';
+import { db, auditLogs, policies, regressionReports, regressionCases } from '@/lib/prisma';
+import { and, desc, eq } from 'drizzle-orm';
 import {
   freezeFromExecutions,
   freezeHandwritten,
@@ -27,6 +27,84 @@ import {
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+/**
+ * GET /api/admin/rule-regression?policyId=...[&policyVersionRowId=...][&reportId=...]
+ *   - reportId 指定 → 返回单份报告详情（reportJson，CCO 可签字 artifact）。
+ *   - 否则返回该 policy（可选版本）的报告列表 + 冻结 case 概览。
+ *
+ * 只读——不改状态，故只 requireAdmin（不需 license write gate）。
+ */
+export async function GET(req: NextRequest) {
+  const admin = await requireAdmin();
+  if (admin instanceof NextResponse) return admin;
+
+  const url = new URL(req.url);
+  const policyId = url.searchParams.get('policyId');
+  const policyVersionRowId = url.searchParams.get('policyVersionRowId');
+  const reportId = url.searchParams.get('reportId');
+
+  if (reportId) {
+    const report = await db.query.regressionReports.findFirst({
+      where: eq(regressionReports.id, reportId),
+    });
+    if (!report) {
+      return NextResponse.json({ error: 'report_not_found' }, { status: 404 });
+    }
+    return NextResponse.json({ report });
+  }
+
+  if (!policyId) {
+    return NextResponse.json({ error: 'invalid_query', message: 'policyId or reportId required' }, { status: 400 });
+  }
+
+  const reportWhere = policyVersionRowId
+    ? and(eq(regressionReports.policyId, policyId), eq(regressionReports.policyVersionRowId, policyVersionRowId))
+    : eq(regressionReports.policyId, policyId);
+  const caseWhere = policyVersionRowId
+    ? and(eq(regressionCases.policyId, policyId), eq(regressionCases.policyVersionRowId, policyVersionRowId))
+    : eq(regressionCases.policyId, policyId);
+
+  const [reports, cases] = await Promise.all([
+    db.query.regressionReports.findMany({
+      where: reportWhere,
+      orderBy: [desc(regressionReports.createdAt)],
+      limit: 50,
+      columns: {
+        id: true, policyVersionRowId: true, status: true, comparisonMode: true,
+        caseCount: true, runnableCaseCount: true, passedCaseCount: true,
+        failedCaseCount: true, nonReplayableCaseCount: true, reportHash: true,
+        currentRuntimeToolchainId: true, createdAt: true,
+      },
+    }),
+    db.query.regressionCases.findMany({
+      where: caseWhere,
+      orderBy: [desc(regressionCases.createdAt)],
+      limit: 500,
+      columns: {
+        id: true, policyVersionRowId: true, functionName: true, locale: true,
+        expectedDecision: true, sourceKind: true, coverageTags: true,
+        inputJson: true, canonicalInputHash: true, createdAt: true,
+      },
+    }),
+  ]);
+
+  // case 概览：不回传明文 inputJson（PII），只标是否 replay-limited。
+  const caseSummary = cases.map((c) => ({
+    id: c.id,
+    policyVersionRowId: c.policyVersionRowId,
+    functionName: c.functionName,
+    locale: c.locale,
+    expectedDecision: c.expectedDecision,
+    sourceKind: c.sourceKind,
+    coverageTags: c.coverageTags,
+    replayLimited: c.inputJson == null,
+    canonicalInputHash: c.canonicalInputHash,
+    createdAt: c.createdAt,
+  }));
+
+  return NextResponse.json({ policyId, reports, cases: caseSummary });
+}
 
 async function audit(userId: string, action: string, resourceId: string, metadata: object): Promise<void> {
   try {
