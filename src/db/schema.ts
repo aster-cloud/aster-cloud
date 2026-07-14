@@ -645,6 +645,45 @@ export const executions = pgTable(
     apiKeyId: text('apiKeyId'),
     metadata: json('metadata'),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+
+    // ═══ P0-A 决策级持久层（ADR 0030 附录 A.1）——回放地基 ═══
+    // 全 nullable（兼容历史行）；「新写路径必填」是应用层 invariant（replayCaptureVersion 非空时须全）。
+    // 缺任一 → 该行 replayabilityStatus=NON_REPLAYABLE，回归工具跳过（不静默算「通过」）。
+    // 不可变版本行引用（旧 policyVersion int 保留仅显示）。
+    policyVersionRowId: text('policyVersionRowId'),
+    functionName: text('functionName'),
+    // 执行时实际 locale（非运行时猜测）。
+    locale: text('locale'),
+    // 冻结的 alias set（无别名写 {}，非 NULL）。
+    aliasSetJson: json('aliasSetJson'),
+    // 从 PolicyVersion.vocabularySnapshotIds 复制（引用不可变）。
+    vocabSnapshotRef: json('vocabSnapshotRef'),
+    // 源码/envelope 编译工具链 + 实际执行引擎工具链。
+    sourceToolchainId: text('sourceToolchainId'),
+    runtimeToolchainId: text('runtimeToolchainId'),
+    // machine-readable 决策原因码（非自然语言）。
+    reasonCodes: json('reasonCodes'),
+    // PII-redacted 结构 trace（原值只在加密 payload）+ trace 的 canonical hash。
+    traceJson: json('traceJson'),
+    traceHash: text('traceHash'),
+    // canonical input/output hash（见 canonical-json.ts；剔除非决定性字段）。
+    canonicalInputHash: text('canonicalInputHash'),
+    canonicalOutputHash: text('canonicalOutputHash'),
+    canonicalizationVersion: text('canonicalizationVersion'),
+    // 回放捕获版本（如 p0a.v1）+ 可回放状态 + 原因。
+    replayCaptureVersion: text('replayCaptureVersion'),
+    replayabilityStatus: text('replayabilityStatus'),
+    replayabilityReasons: json('replayabilityReasons'),
+    // PII envelope 加密的完整 replay 真值（原始 input/output/full trace）——KMS 接线前留空（M2）。
+    replayPayloadCiphertext: text('replayPayloadCiphertext'),
+    replayPayloadAlg: text('replayPayloadAlg'),
+    replayPayloadKeyId: text('replayPayloadKeyId'),
+    replayPayloadNonce: text('replayPayloadNonce'),
+    replayPayloadHash: text('replayPayloadHash'),
+    // 到期 crypto-erasure（销毁 DEK），不改行。
+    piiRetentionUntil: timestamp('piiRetentionUntil', { mode: 'date' }),
+    // 本行适用的数据准入策略版本（如 pii-admission/v1）。
+    piiPolicyVersion: text('piiPolicyVersion'),
   },
   (table) => [
     index('Execution_userId_idx').on(table.userId),
@@ -652,6 +691,13 @@ export const executions = pgTable(
     index('Execution_createdAt_idx').on(table.createdAt),
     index('Execution_success_idx').on(table.success),
     index('Execution_decision_idx').on(table.decision),
+    // P0-A 回归工具查询用。
+    index('Execution_policyVersionRowId_idx').on(table.policyVersionRowId),
+    index('Execution_replayabilityStatus_idx').on(table.replayabilityStatus),
+    index('Execution_canonicalInputHash_idx').on(table.canonicalInputHash),
+    index('Execution_canonicalOutputHash_idx').on(table.canonicalOutputHash),
+    index('Execution_traceHash_idx').on(table.traceHash),
+    index('Execution_piiRetentionUntil_idx').on(table.piiRetentionUntil),
   ]
 );
 
