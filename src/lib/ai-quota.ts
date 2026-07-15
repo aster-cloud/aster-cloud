@@ -325,11 +325,25 @@ function currentPeriod(at: Date = new Date()): string {
  * 本月（UTC）该用户经 **BYOK** key 成功调用消耗的总 token 数（prompt+completion）。
  * ⚠️ aiUsageRecords 无 provider 列 → 这是**每用户跨所有 BYOK key 的总量**,非 per-provider。
  * 供 UI 显示「剩余额度」+ checkAiQuota 对 BYOK tokenQuota enforcement。
+ *
+ * 「重置额度」水位线：用户点「重置额度」后 users.byokQuotaResetAt 被盖成 now()——此后只统计
+ * createdAt >= max(当月初, byokQuotaResetAt) 的用量行（等价「清空本月已用」而不删不可变审计记录）。
+ * 用 createdAt 而非 periodMonth 做下界，才能在月中精确从重置时刻起算。
  */
 export async function byokTokensUsedThisMonth(
   userId: string,
   at: Date = new Date(),
 ): Promise<number> {
+  // 当月初（UTC）——统计的自然下界。
+  const monthStart = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 1));
+  // 用户重置水位线；取 max(月初, resetAt) 作为实际下界（重置只可能把下界往后推，不越月）。
+  const u = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { byokQuotaResetAt: true },
+  });
+  const resetAt = u?.byokQuotaResetAt ?? null;
+  const lowerBound = resetAt && resetAt.getTime() > monthStart.getTime() ? resetAt : monthStart;
+
   const r = await db
     .select({
       t: sql<number>`COALESCE(SUM("promptTokens" + "completionTokens"), 0)::int`,
@@ -339,11 +353,25 @@ export async function byokTokensUsedThisMonth(
       and(
         eq(aiUsageRecords.userId, userId),
         eq(aiUsageRecords.periodMonth, currentPeriod(at)),
+        gte(aiUsageRecords.createdAt, lowerBound),
         eq(aiUsageRecords.usedByok, true),
         eq(aiUsageRecords.status, 'success'),
       ),
     );
   return r[0]?.t ?? 0;
+}
+
+/**
+ * 「重置额度」：把用户 BYOK 用量重置水位线盖成 now()。
+ *
+ * 不删不可变 aiUsageRecords（加密审计 / 计费 / 180 天留存），只推进水位线——此后
+ * byokTokensUsedThisMonth 只统计 createdAt >= 该时刻的行，UI「本月已用」清零，enforcement
+ * （BYOK tokenQuota 接入推理后）也从此刻重新起算。返回盖入的时间戳供审计 metadata。
+ */
+export async function resetByokQuotaUsage(userId: string): Promise<Date> {
+  const now = new Date();
+  await db.update(users).set({ byokQuotaResetAt: now }).where(eq(users.id, userId));
+  return now;
 }
 
 async function countSuccessfulCalls(userId: string, periodMonth: string): Promise<number> {

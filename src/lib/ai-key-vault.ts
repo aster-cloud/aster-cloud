@@ -36,7 +36,7 @@ export async function saveBYOKKey(params: {
   tokenQuota?: number | null;
   /** 失效日期（可选）。null/undefined = 永不过期。 */
   expiresAt?: Date | null;
-}): Promise<void> {
+}): Promise<{ replaced: boolean }> {
   const secret = encryptionSecret();
   const keyHint = params.apiKey.slice(-4);
   // 显式 null 化 undefined，让 SQL 把「未提供」写成 NULL（覆盖旧值 → 用户清空即恢复默认）。
@@ -65,6 +65,8 @@ export async function saveBYOKKey(params: {
           "updatedAt" = NOW()
       WHERE "id" = ${existing.id}
     `);
+    // upsert 语义：既有行被替换（同 provider 换 key/改配置）。供审计区分 create vs replace。
+    return { replaced: true };
   } else {
     await db.execute(sql`
       INSERT INTO "AiKeyBinding"
@@ -84,7 +86,33 @@ export async function saveBYOKKey(params: {
         NOW()
       )
     `);
+    return { replaced: false };
   }
+}
+
+/**
+ * 编辑既有 BYOK key 的额度上限 / 失效日期——**不重输 key**（key 密文/keyHint 不动）。
+ *
+ * 按 binding id + userId 双重定位（userId 防越权改别人的 key）。字段用「显式传入才改」语义：
+ *   - tokenQuota / expiresAt 传 undefined = 不动该列；传 null = 清空（额度改无限 / 失效日期改永不过期）。
+ * 返回受影响行数据的 provider/keyHint（供审计 metadata；调用方不必再查一次）。null=没有匹配行（越权或已删）。
+ */
+export async function updateBYOKKeyMeta(params: {
+  userId: string;
+  bindingId: string;
+  tokenQuota?: number | null;
+  expiresAt?: Date | null;
+}): Promise<{ provider: string; keyHint: string } | null> {
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (params.tokenQuota !== undefined) set.tokenQuota = params.tokenQuota;
+  if (params.expiresAt !== undefined) set.expiresAt = params.expiresAt;
+
+  const rows = await db
+    .update(aiKeyBindings)
+    .set(set)
+    .where(and(eq(aiKeyBindings.id, params.bindingId), eq(aiKeyBindings.userId, params.userId)))
+    .returning({ provider: aiKeyBindings.provider, keyHint: aiKeyBindings.keyHint });
+  return rows[0] ?? null;
 }
 
 /** 解密用户的 BYOK key（仅供 LLM 调用使用） */
@@ -156,8 +184,14 @@ export async function deactivateBYOKKey(userId: string, provider: string): Promi
  * 硬删除 BYOK key（用户 UI「撤销/删除」按钮）——物理删除整行,含加密 key + 历史。
  * 撤销即删除（用户诉求 + 隐私：key 不再留存）。
  */
-export async function deleteBYOKKey(userId: string, provider: string): Promise<void> {
-  await db
+export async function deleteBYOKKey(
+  userId: string,
+  provider: string,
+): Promise<{ deleted: boolean; keyHint: string | null }> {
+  // .returning 拿被删行的 keyHint（供审计），并据此判断是否真的删到行（vs 无匹配的 no-op）。
+  const rows = await db
     .delete(aiKeyBindings)
-    .where(and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.provider, provider)));
+    .where(and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.provider, provider)))
+    .returning({ keyHint: aiKeyBindings.keyHint });
+  return { deleted: rows.length > 0, keyHint: rows[0]?.keyHint ?? null };
 }

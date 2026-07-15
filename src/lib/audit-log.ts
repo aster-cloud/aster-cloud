@@ -23,6 +23,12 @@ export type AuditAction =
   | 'subscription.cancelled'
   | 'api-key.create'
   | 'api-key.revoke'
+  // BYOK（用户自带 AI key）管理——高风险，须管理员可追溯/审计。metadata 只存
+  // provider / keyHint（后 4 位）/ 改动字段名与旧新值，**绝不**记录明文 key 或密文。
+  | 'ai-key.create'
+  | 'ai-key.update'
+  | 'ai-key.reset-quota'
+  | 'ai-key.delete'
   | 'user.delete'
   | 'settings.update'
   | 'payment.succeeded'

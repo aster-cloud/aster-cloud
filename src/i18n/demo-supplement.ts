@@ -76,6 +76,23 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       toggleAriaLabel: 'Toggle {language} for this team',
       saveFailed: 'Could not update — please try again',
     },
+    settings: {
+      aiKeysPage: {
+        // AI Key 行内编辑 + 重置额度（本地补充，ui-messages 包尚无这些 key）。
+        edit: 'Edit',
+        editSave: 'Save',
+        editCancel: 'Cancel',
+        editSaved: 'AI key updated.',
+        resetQuota: 'Reset quota',
+        quotaReset: 'This month’s usage has been reset.',
+        resetFailed: 'Could not reset quota (status {status}).',
+        resetDialogTitle: 'Reset this month’s usage?',
+        resetDialogBody:
+          'This clears the used-token counter for the current month so the key can be used again. Audit records are kept — only the counter is reset.',
+        resetDialogConfirm: 'Reset',
+        resetDialogCancel: 'Cancel',
+      },
+    },
     admin: {
       structuralAliasGrants: {
         title: 'Structural keyword aliases',
@@ -328,6 +345,22 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     languageSettings: {
       toggleAriaLabel: '为本团队开关{language}',
       saveFailed: '更新失败——请重试',
+    },
+    settings: {
+      aiKeysPage: {
+        edit: '编辑',
+        editSave: '保存',
+        editCancel: '取消',
+        editSaved: 'AI Key 已更新。',
+        resetQuota: '重置额度',
+        quotaReset: '本月已用额度已重置。',
+        resetFailed: '重置额度失败（状态 {status}）。',
+        resetDialogTitle: '重置本月已用额度？',
+        resetDialogBody:
+          '这会把当月已用 token 计数清零，使该 Key 重新可用。审计记录会保留——仅重置计数。',
+        resetDialogConfirm: '重置',
+        resetDialogCancel: '取消',
+      },
     },
     admin: {
       structuralAliasGrants: {
@@ -582,6 +615,22 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       toggleAriaLabel: '{language} für dieses Team umschalten',
       saveFailed: 'Aktualisierung fehlgeschlagen — bitte erneut versuchen',
     },
+    settings: {
+      aiKeysPage: {
+        edit: 'Bearbeiten',
+        editSave: 'Speichern',
+        editCancel: 'Abbrechen',
+        editSaved: 'AI-Schlüssel aktualisiert.',
+        resetQuota: 'Kontingent zurücksetzen',
+        quotaReset: 'Der Verbrauch dieses Monats wurde zurückgesetzt.',
+        resetFailed: 'Kontingent konnte nicht zurückgesetzt werden (Status {status}).',
+        resetDialogTitle: 'Verbrauch dieses Monats zurücksetzen?',
+        resetDialogBody:
+          'Dies setzt den Zähler der verbrauchten Token für den aktuellen Monat zurück, sodass der Schlüssel wieder verwendet werden kann. Audit-Datensätze bleiben erhalten – nur der Zähler wird zurückgesetzt.',
+        resetDialogConfirm: 'Zurücksetzen',
+        resetDialogCancel: 'Abbrechen',
+      },
+    },
     admin: {
       structuralAliasGrants: {
         title: 'Aliase für Strukturwörter',
@@ -835,6 +884,22 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     languageSettings: {
       toggleAriaLabel: 'इस टीम के लिए {language} टॉगल करें',
       saveFailed: 'अपडेट नहीं हो सका — कृपया पुनः प्रयास करें',
+    },
+    settings: {
+      aiKeysPage: {
+        edit: 'संपादित करें',
+        editSave: 'सहेजें',
+        editCancel: 'रद्द करें',
+        editSaved: 'AI कुंजी अपडेट की गई।',
+        resetQuota: 'कोटा रीसेट करें',
+        quotaReset: 'इस माह का उपयोग रीसेट कर दिया गया है।',
+        resetFailed: 'कोटा रीसेट नहीं हो सका (स्थिति {status})।',
+        resetDialogTitle: 'इस माह का उपयोग रीसेट करें?',
+        resetDialogBody:
+          'यह वर्तमान माह के उपयोग किए गए टोकन काउंटर को साफ़ कर देता है ताकि कुंजी फिर से उपयोग की जा सके। ऑडिट रिकॉर्ड सुरक्षित रहते हैं — केवल काउंटर रीसेट होता है।',
+        resetDialogConfirm: 'रीसेट करें',
+        resetDialogCancel: 'रद्द करें',
+      },
     },
     admin: {
       structuralAliasGrants: {

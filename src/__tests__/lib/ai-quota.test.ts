@@ -33,7 +33,14 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import { db } from '@/lib/prisma';
-import { checkAiQuota, recordAiUsage, AI_MONTHLY_QUOTA, AI_RATE_LIMIT_PER_MINUTE } from '@/lib/ai-quota';
+import {
+  checkAiQuota,
+  recordAiUsage,
+  byokTokensUsedThisMonth,
+  resetByokQuotaUsage,
+  AI_MONTHLY_QUOTA,
+  AI_RATE_LIMIT_PER_MINUTE,
+} from '@/lib/ai-quota';
 
 /**
  * 给 db.select().from().where() 链路返回固定 count 的结果
@@ -504,5 +511,76 @@ describe('AI_MONTHLY_QUOTA / AI_RATE_LIMIT 常量与 PM 文档对齐', () => {
     expect(AI_RATE_LIMIT_PER_MINUTE.free).toBe(5);
     expect(AI_RATE_LIMIT_PER_MINUTE.pro).toBe(30);
     expect(AI_RATE_LIMIT_PER_MINUTE.enterprise).toBe(200);
+  });
+});
+
+describe('byokTokensUsedThisMonth（重置额度水位线）', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  // 捕获 db.select().from().where() 的 where 参数并返回固定 SUM。
+  function setupSum(total: number) {
+    const whereArgs: unknown[] = [];
+    const mockWhere = vi.fn().mockImplementation((...args: unknown[]) => {
+      whereArgs.push(...args);
+      return Promise.resolve([{ t: total }]);
+    });
+    mockSelect.mockReturnValue({ from: vi.fn().mockReturnValue({ where: mockWhere }) });
+    return { mockWhere };
+  }
+
+  it('无重置水位线（byokQuotaResetAt=null）→ 返回聚合 SUM，下界=当月初', async () => {
+    vi.mocked(db.query.users.findFirst).mockResolvedValue({ byokQuotaResetAt: null } as never);
+    const { mockWhere } = setupSum(1234);
+    const at = new Date('2026-07-20T00:00:00Z');
+
+    const used = await byokTokensUsedThisMonth('user-1', at);
+    expect(used).toBe(1234);
+    // 读了用户水位线
+    expect(db.query.users.findFirst).toHaveBeenCalledTimes(1);
+    expect(mockWhere).toHaveBeenCalledTimes(1);
+  });
+
+  it('重置水位线在本月内 → 用 resetAt 作为下界（clamp 到 max(月初, resetAt)）', async () => {
+    // 7-20 才重置，比 7-01 月初晚 → 下界应取 resetAt。
+    const resetAt = new Date('2026-07-20T10:00:00Z');
+    vi.mocked(db.query.users.findFirst).mockResolvedValue({ byokQuotaResetAt: resetAt } as never);
+    setupSum(0);
+    const at = new Date('2026-07-25T00:00:00Z');
+
+    const used = await byokTokensUsedThisMonth('user-1', at);
+    // 重置后本月新用量为 0（本测试 SUM mock 返回 0，模拟「计数已清零」）
+    expect(used).toBe(0);
+    expect(db.query.users.findFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it('重置水位线早于当月初（上个月重置）→ 下界仍取当月初,不越月', async () => {
+    // 6-15 重置，早于 7-01 → clamp 回月初，本月正常从月初起算。
+    const resetAt = new Date('2026-06-15T00:00:00Z');
+    vi.mocked(db.query.users.findFirst).mockResolvedValue({ byokQuotaResetAt: resetAt } as never);
+    setupSum(999);
+    const at = new Date('2026-07-10T00:00:00Z');
+
+    const used = await byokTokensUsedThisMonth('user-1', at);
+    expect(used).toBe(999);
+  });
+});
+
+describe('resetByokQuotaUsage', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('盖 users.byokQuotaResetAt=now() 并返回该时间戳（不删审计记录）', async () => {
+    const before = Date.now();
+    const stamped = await resetByokQuotaUsage('user-1');
+    const after = Date.now();
+
+    // 走的是 update().set().where()，不是 delete（审计记录不被删除）
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateSet).toHaveBeenCalledTimes(1);
+    const setArg = mockUpdateSet.mock.calls[0][0] as { byokQuotaResetAt: Date };
+    expect(setArg.byokQuotaResetAt).toBeInstanceOf(Date);
+    // 返回的时间戳在调用窗口内
+    expect(stamped.getTime()).toBeGreaterThanOrEqual(before);
+    expect(stamped.getTime()).toBeLessThanOrEqual(after);
+    expect(setArg.byokQuotaResetAt.getTime()).toBe(stamped.getTime());
   });
 });

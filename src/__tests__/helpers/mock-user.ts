@@ -56,6 +56,7 @@ export function mockUser(overrides: Partial<MockUser> = {}): MockUser {
     isAdmin: false,
     replayRetentionEnabled: false,
     mustChangePassword: false,
+    byokQuotaResetAt: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

@@ -3,9 +3,10 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db, aiKeyBindings } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
-import { saveBYOKKey, deleteBYOKKey } from '@/lib/ai-key-vault';
+import { saveBYOKKey, deleteBYOKKey, updateBYOKKeyMeta } from '@/lib/ai-key-vault';
 import { errorEnvelope } from '@/lib/api/error-envelope';
-import { byokTokensUsedThisMonth } from '@/lib/ai-quota';
+import { byokTokensUsedThisMonth, resetByokQuotaUsage } from '@/lib/ai-quota';
+import { logAuditEvent, extractClientInfo } from '@/lib/audit-log';
 
 export async function GET() {
   try {
@@ -116,13 +117,34 @@ export async function POST(req: Request) {
       expiresAt = d;
     }
 
-    await saveBYOKKey({
+    const { replaced } = await saveBYOKKey({
       userId: session.user.id,
       provider: body.provider as 'openai' | 'anthropic' | 'vertex',
       apiKey: body.apiKey,
       providerUrl,
       tokenQuota,
       expiresAt,
+    });
+
+    // 审计（管理员可追溯）：只记 provider / keyHint（后 4 位）/ 是否设了 url/额度/失效日期，
+    // **绝不**记明文 key。POST 是按 (userId,provider) 的 upsert——replaced 区分「新建 vs 替换既有」，
+    // 让审计准确（管理员能看出用户是首次绑定还是换了 key，而非一律 create）。
+    const { ipAddress, userAgent } = extractClientInfo(req);
+    await logAuditEvent({
+      userId: session.user.id,
+      action: replaced ? 'ai-key.update' : 'ai-key.create',
+      resource: 'ai-key',
+      resourceId: body.provider,
+      metadata: {
+        provider: body.provider,
+        keyHint: body.apiKey.slice(-4),
+        operation: replaced ? 'replaced' : 'created',
+        hasProviderUrl: providerUrl != null,
+        tokenQuota,
+        expiresAt: expiresAt ? expiresAt.toISOString() : null,
+      },
+      ipAddress,
+      userAgent,
     });
 
     return NextResponse.json({ ok: true });
@@ -141,6 +163,115 @@ export async function POST(req: Request) {
   }
 }
 
+/**
+ * 编辑既有 BYOK key 的额度/失效日期（不重输 key），或重置本月已用额度。
+ *   - { id, tokenQuota?, expiresAt?, action?: 'update' }：改额度上限 / 失效日期。字段不传=不动；
+ *     传 null=清空（额度→无限 / 失效日期→永不过期）。
+ *   - { action: 'resetQuota' }：把用户 BYOK 用量重置水位线盖成 now()（清「本月已用」显示，不删审计）。
+ * 全部经 userId 归属校验；每个动作写 AuditLog（管理员可追溯，不记明文 key）。
+ */
+export async function PATCH(req: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = session.user.id;
+    const { ipAddress, userAgent } = extractClientInfo(req);
+
+    const body = (await req.json()) as {
+      id?: string;
+      action?: 'update' | 'resetQuota';
+      tokenQuota?: number | null;
+      expiresAt?: string | null;
+    };
+
+    // ── 重置本月已用额度 ──
+    if (body.action === 'resetQuota') {
+      const resetAt = await resetByokQuotaUsage(userId);
+      await logAuditEvent({
+        userId,
+        action: 'ai-key.reset-quota',
+        resource: 'ai-key',
+        metadata: { resetAt: resetAt.toISOString() },
+        ipAddress,
+        userAgent,
+      });
+      return NextResponse.json({ ok: true, resetAt: resetAt.toISOString() });
+    }
+
+    // ── 编辑额度上限 / 失效日期（不重输 key）──
+    if (!body.id) {
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    }
+
+    // tokenQuota：未提供=不动（undefined）；null=清空（改无限）；否则须正整数。
+    let tokenQuota: number | null | undefined = undefined;
+    if ('tokenQuota' in body) {
+      if (body.tokenQuota === null) {
+        tokenQuota = null;
+      } else if (!Number.isInteger(body.tokenQuota) || (body.tokenQuota as number) <= 0) {
+        return NextResponse.json({ error: 'tokenQuota must be a positive integer' }, { status: 400 });
+      } else {
+        tokenQuota = body.tokenQuota as number;
+      }
+    }
+
+    // expiresAt：未提供=不动；null 或空串=清空（永不过期）；否则须未来时间。
+    let expiresAt: Date | null | undefined = undefined;
+    if ('expiresAt' in body) {
+      if (body.expiresAt == null || body.expiresAt === '') {
+        expiresAt = null;
+      } else {
+        const d = new Date(body.expiresAt);
+        if (Number.isNaN(d.getTime())) {
+          return NextResponse.json({ error: 'Invalid expiresAt' }, { status: 400 });
+        }
+        if (d.getTime() <= Date.now()) {
+          return NextResponse.json({ error: 'expiresAt must be in the future' }, { status: 400 });
+        }
+        expiresAt = d;
+      }
+    }
+
+    if (tokenQuota === undefined && expiresAt === undefined) {
+      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+    }
+
+    const updated = await updateBYOKKeyMeta({ userId, bindingId: body.id, tokenQuota, expiresAt });
+    if (!updated) {
+      // 没有匹配行 = 越权改别人的 key 或该 key 已删。不泄露存在性，统一 404。
+      return NextResponse.json({ error: 'AI key not found' }, { status: 404 });
+    }
+
+    await logAuditEvent({
+      userId,
+      action: 'ai-key.update',
+      resource: 'ai-key',
+      resourceId: updated.provider,
+      metadata: {
+        provider: updated.provider,
+        keyHint: updated.keyHint,
+        // 只记「改了哪些字段 + 新值」，便于管理员回溯；不记明文 key。
+        ...(tokenQuota !== undefined ? { tokenQuota } : {}),
+        ...(expiresAt !== undefined ? { expiresAt: expiresAt ? expiresAt.toISOString() : null } : {}),
+      },
+      ipAddress,
+      userAgent,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const env = errorEnvelope({
+      status: 500,
+      code: 'service_unavailable',
+      message: 'Could not update the AI key. Please retry; the failure has been logged.',
+    });
+    console.error('[ai-keys PATCH] handler failed', env.headers.get('x-request-id'), err);
+    return env;
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const session = await auth();
@@ -154,7 +285,21 @@ export async function DELETE(req: Request) {
     }
 
     // 撤销 = 硬删除整行（含加密 key + 历史）。用户诉求「删除该 AI Key」+ 隐私。
-    await deleteBYOKKey(session.user.id, provider);
+    const { deleted, keyHint } = await deleteBYOKKey(session.user.id, provider);
+
+    // 审计（管理员可追溯）：记 provider + 被删行的 keyHint + 是否真的删到行（deleted=false 表示
+    // 用户发起删除但无匹配 key，是 no-op，管理员能据此区分「确实删了 vs 空删」）。不记明文 key。
+    const { ipAddress, userAgent } = extractClientInfo(req);
+    await logAuditEvent({
+      userId: session.user.id,
+      action: 'ai-key.delete',
+      resource: 'ai-key',
+      resourceId: provider,
+      metadata: { provider, deleted, keyHint },
+      ipAddress,
+      userAgent,
+    });
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     const env = errorEnvelope({
