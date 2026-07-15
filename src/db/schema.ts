@@ -310,6 +310,17 @@ export const users = pgTable(
      */
     mustChangePassword: boolean('mustChangePassword').default(false).notNull(),
 
+    /**
+     * BYOK 月度用量重置水位线（用户「重置额度」按钮）。
+     *
+     * 「已用额度」是 byokTokensUsedThisMonth 对不可变 aiUsageRecords 的**每用户聚合 SUM**
+     * （该表无 provider/binding 列 → 无法 per-key 精确）。用户点「重置额度」时不删审计记录
+     * （加密 prompt / 计费 / 180 天留存），而是把本水位线盖成 now()——此后 byokTokensUsedThisMonth
+     * 只统计 createdAt >= max(当月初, byokQuotaResetAt) 的行，等价于「清空本月已用计数」而不毁账。
+     * null=从未重置（按自然月初起算）。语义与现有每用户聚合一致（多 key 版另立）。
+     */
+    byokQuotaResetAt: timestamp('byokQuotaResetAt', { mode: 'date' }),
+
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },

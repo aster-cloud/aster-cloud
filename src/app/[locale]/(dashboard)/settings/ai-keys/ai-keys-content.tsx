@@ -71,12 +71,106 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [revokeProvider, setRevokeProvider] = useState<string | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
+  // 行内编辑（改额度上限 / 失效日期，不重输 key）：editingId=当前编辑的 binding，null=无。
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editQuota, setEditQuota] = useState('');
+  const [editExpiry, setEditExpiry] = useState('');
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [resetConfirmId, setResetConfirmId] = useState<string | null>(null);
 
   const refresh = async () => {
     const r = await fetch('/api/user/ai-keys');
     if (r.ok) {
       const data = await r.json();
       setBindings(data.bindings ?? []);
+    }
+  };
+
+  const startEdit = (b: BYOKBinding) => {
+    setError(null);
+    setSuccess(null);
+    setEditingId(b.id);
+    setEditQuota(b.tokenQuota != null ? String(b.tokenQuota) : '');
+    // date input 要 YYYY-MM-DD；从 ISO 截前 10 位。
+    setEditExpiry(b.expiresAt ? b.expiresAt.slice(0, 10) : '');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditQuota('');
+    setEditExpiry('');
+  };
+
+  const saveEdit = async (b: BYOKBinding) => {
+    setError(null);
+    setSuccess(null);
+    // tokenQuota：空=清空（改无限，传 null）；否则须正整数。
+    let quota: number | null = null;
+    if (editQuota.trim() !== '') {
+      const n = Number(editQuota);
+      if (!Number.isInteger(n) || n <= 0) {
+        setError(t('quotaInvalid'));
+        return;
+      }
+      quota = n;
+    }
+    // expiresAt 仅在用户**真的改了**失效日期时才提交（省略 = 服务端不动该列）。
+    // 关键边界（Codex 审查）：若 key 已过期、用户只想改额度，重发那个过期日期会被服务端
+    // 「必须未来时间」拒绝。故比较当前输入与原值（都归一到 YYYY-MM-DD），未改则不带 expiresAt。
+    const originalExpiryDay = b.expiresAt ? b.expiresAt.slice(0, 10) : '';
+    const expiryChanged = editExpiry !== originalExpiryDay;
+    const payload: {
+      id: string;
+      action: 'update';
+      tokenQuota: number | null;
+      expiresAt?: string | null;
+    } = { id: b.id, action: 'update', tokenQuota: quota };
+    if (expiryChanged) {
+      // 空=永不过期（null）；否则当天 UTC 结束前（未来时间）。
+      payload.expiresAt = editExpiry ? new Date(editExpiry + 'T23:59:59Z').toISOString() : null;
+    }
+
+    setRowBusy(b.id);
+    try {
+      const r = await fetch('/api/user/ai-keys', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(extractErrorMessage(data) || t('saveFailed', { status: r.status }));
+        return;
+      }
+      setSuccess(t('editSaved'));
+      cancelEdit();
+      await refresh();
+    } finally {
+      setRowBusy(null);
+    }
+  };
+
+  const confirmResetQuota = async () => {
+    if (!resetConfirmId) return;
+    setError(null);
+    setSuccess(null);
+    setRowBusy(resetConfirmId);
+    try {
+      const r = await fetch('/api/user/ai-keys', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resetQuota' }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(extractErrorMessage(data) || t('resetFailed', { status: r.status }));
+        return;
+      }
+      setSuccess(t('quotaReset'));
+      await refresh();
+    } finally {
+      setRowBusy(null);
+      setResetConfirmId(null);
     }
   };
 
@@ -337,15 +431,40 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                       )}
                     </td>
                     <td className="py-3 text-fg-muted">
-                      {b.tokenQuota == null
-                        ? t('quotaUnlimited')
-                        : t('quotaUsage', {
-                            used: formatNum(b.usedTokensThisMonth),
-                            quota: formatNum(b.tokenQuota),
-                          })}
+                      {editingId === b.id ? (
+                        <Input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={editQuota}
+                          onChange={(e) => setEditQuota(e.target.value)}
+                          placeholder={t('quotaUnlimited')}
+                          className="w-28"
+                          aria-label={t('tokenQuota')}
+                        />
+                      ) : b.tokenQuota == null ? (
+                        t('quotaUnlimited')
+                      ) : (
+                        t('quotaUsage', {
+                          used: formatNum(b.usedTokensThisMonth),
+                          quota: formatNum(b.tokenQuota),
+                        })
+                      )}
                     </td>
                     <td className="py-3 text-fg-muted">
-                      {b.expiresAt ? formatDate(b.expiresAt) : t('noExpiry')}
+                      {editingId === b.id ? (
+                        <Input
+                          type="date"
+                          value={editExpiry}
+                          onChange={(e) => setEditExpiry(e.target.value)}
+                          className="w-40"
+                          aria-label={t('expiresAt')}
+                        />
+                      ) : b.expiresAt ? (
+                        formatDate(b.expiresAt)
+                      ) : (
+                        t('noExpiry')
+                      )}
                     </td>
                     <td className="py-3 text-fg-muted">
                       {formatDate(b.lastUsedAt)}
@@ -354,12 +473,45 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                       {formatDate(b.createdAt)}
                     </td>
                     <td className="py-3">
-                      <button
-                        onClick={() => handleRevoke(b.provider)}
-                        className="text-xs text-red-600 hover:underline"
-                      >
-                        {t('delete')}
-                      </button>
+                      {editingId === b.id ? (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => saveEdit(b)}
+                            disabled={rowBusy === b.id}
+                            className="text-xs text-primary hover:underline disabled:opacity-50"
+                          >
+                            {rowBusy === b.id ? t('saving') : t('editSave')}
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            disabled={rowBusy === b.id}
+                            className="text-xs text-fg-muted hover:underline disabled:opacity-50"
+                          >
+                            {t('editCancel')}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => startEdit(b)}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {t('edit')}
+                          </button>
+                          <button
+                            onClick={() => setResetConfirmId(b.id)}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {t('resetQuota')}
+                          </button>
+                          <button
+                            onClick={() => handleRevoke(b.provider)}
+                            className="text-xs text-red-600 hover:underline"
+                          >
+                            {t('delete')}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -394,6 +546,17 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
         isLoading={isRevoking}
         onConfirm={confirmRevoke}
         onCancel={() => !isRevoking && setRevokeProvider(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={resetConfirmId !== null}
+        title={t('resetDialogTitle')}
+        description={t('resetDialogBody')}
+        confirmLabel={t('resetDialogConfirm')}
+        cancelLabel={t('resetDialogCancel')}
+        isLoading={rowBusy !== null && rowBusy === resetConfirmId}
+        onConfirm={confirmResetQuota}
+        onCancel={() => rowBusy === null && setResetConfirmId(null)}
       />
     </Container>
   );

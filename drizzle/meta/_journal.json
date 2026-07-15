@@ -232,6 +232,13 @@
       "when": 1779286404004,
       "tag": "0033_regression_harness",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0034_user_byok_quota_reset_at",
+      "breakpoints": true
     }
   ]
 }
