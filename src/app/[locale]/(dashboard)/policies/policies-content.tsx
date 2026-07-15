@@ -100,7 +100,6 @@ interface Translations {
     cannotEdit: string;
   };
   noPolicies: string;
-  noPoliciesInGroup: string;
   getStarted: string;
   piiFieldsTemplate: string;
   public: string;
@@ -114,7 +113,6 @@ interface Translations {
     ungrouped: string;
     newGroup: string;
     newSubgroup: string;
-    subgroupsHeading: string;
     edit: string;
     delete: string;
     policiesCount: string;
@@ -397,6 +395,22 @@ export function PoliciesContent({
   const [groups, setGroups] = useState<PolicyGroup[]>(initialGroups);
   const [freezeInfo, setFreezeInfo] = useState<FreezeInfo>(initialFreezeInfo);
   const [error, setError] = useState('');
+
+  // ★同步 server props → 本地 state（2026-07-15 修）：切换分组/分页/搜索是 App Router 内的
+  // search-param 导航，**不 remount 本组件**（无 key），server 组件按新 group 重新过滤并传入
+  // 新的 initialPolicies/initialGroups，但 useState(initialX) 只在首挂载生效——不加同步则
+  // 点分组后 policies 停在旧值 → 右侧不显示该组策略。故在 props 变化时 reconcile 本地 state。
+  // 乐观更新（拖拽/删除）由各自 setPolicies 覆盖；下次导航拿到 server 权威值再对齐。
+  useEffect(() => {
+    setPolicies(initialPolicies);
+  }, [initialPolicies]);
+  useEffect(() => {
+    setGroups(initialGroups);
+  }, [initialGroups]);
+  useEffect(() => {
+    setFreezeInfo(initialFreezeInfo);
+  }, [initialFreezeInfo]);
+
   // Selected group + query are driven by URL state. We mirror the
   // current URL into local state for keystroke-responsive search; the
   // mirror is reconciled on every props update so the back/forward
@@ -509,24 +523,6 @@ export function PoliciesContent({
   // 计算策略总数和未分组策略数（基于本地状态，拖拽后立即更新）
   const totalPoliciesCount = policies.length;
   const ungroupedCount = useMemo(() => policies.filter((p) => !p.groupId).length, [policies]);
-
-  // ★文件夹式导航（2026-07-15）：选中某组时右侧顶部展示该组的**直接子分组**（可点击下钻）。
-  // 未选组（All / Ungrouped 无子分组）时不展示。递归在树里找选中节点，取其 children。
-  const subgroupsOfSelected = useMemo<PolicyGroup[]>(() => {
-    if (!selectedGroupId || selectedGroupId === 'ungrouped') return [];
-    const find = (list: PolicyGroup[]): PolicyGroup | null => {
-      for (const g of list) {
-        if (g.id === selectedGroupId) return g;
-        if (g.children.length > 0) {
-          const hit = find(g.children);
-          if (hit) return hit;
-        }
-      }
-      return null;
-    };
-    const node = find(groups);
-    return node ? node.children : [];
-  }, [groups, selectedGroupId]);
 
   // 切换策略选中状态
   const handleToggleSelect = useCallback((policyId: string, event: React.MouseEvent) => {
@@ -938,34 +934,6 @@ export function PoliciesContent({
           </Alert>
         )}
 
-        {/* ★选中组的直接子分组（可点击下钻）——文件夹式导航。放在策略列表上方。 */}
-        {subgroupsOfSelected.length > 0 && (
-          <div className="mt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-              {t.groups.subgroupsHeading}
-            </h3>
-            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {subgroupsOfSelected.map((sub) => (
-                <li key={sub.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGroupIdNav(sub.id)}
-                    className="flex w-full items-center gap-3 rounded-md border border-border bg-bg-subtle px-3 py-2.5 text-left transition-colors hover:bg-bg-muted"
-                  >
-                    <Folder className="size-4 flex-shrink-0 text-fg-muted" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
-                      {sub.name}
-                    </span>
-                    <span className="flex-shrink-0 text-xs text-fg-muted">
-                      {sub._count.policies}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {policies.length > 0 && (
           <div className="mt-4">
             <ListSearchInput
@@ -977,10 +945,6 @@ export function PoliciesContent({
         )}
 
         {policies.length === 0 ? (
-          // 有子分组但无直属策略时，不显示大空状态（子分组已在上方）——只显示精简提示。
-          subgroupsOfSelected.length > 0 ? (
-            <p className="mt-6 text-center text-sm text-fg-muted">{t.noPoliciesInGroup}</p>
-          ) : (
           <div className="mt-8 text-center">
             <FileText className="mx-auto size-12 text-fg-subtle" aria-hidden />
             <h3 className="mt-2 text-sm font-semibold text-fg">{t.noPolicies}</h3>
@@ -996,7 +960,6 @@ export function PoliciesContent({
               </Link>
             </div>
           </div>
-          )
         ) : (
           <div className="mt-8 overflow-hidden rounded-md border border-border bg-bg shadow-sm">
             <ul className="divide-y divide-border">
