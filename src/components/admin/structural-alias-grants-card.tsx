@@ -95,47 +95,54 @@ export function StructuralAliasGrantsCard() {
             aria-label={t('searchPlaceholder')}
           />
 
-          {filtered.length === 0 ? (
-            <p className="py-4 text-center text-sm text-fg-muted">{t('noResults')}</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {pageRows.map((row) => {
-              const busyNow = busy[row.userId] ?? false;
-              return (
-                <li
-                  key={row.userId}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-bg-subtle p-3"
-                >
-                  <Stack gap={1} className="min-w-0 flex-1">
-                    <Stack direction="row" gap={2} align="center">
-                      <p className="truncate text-sm font-medium text-fg">
-                        {row.email ?? row.name ?? row.userId}
-                      </p>
-                      <Badge variant={row.granted ? 'success' : 'neutral'}>
-                        {row.granted ? t('granted') : t('notGranted')}
-                      </Badge>
-                    </Stack>
-                    <p className="truncate text-xs text-fg-muted">{row.userId}</p>
-                  </Stack>
-                  <button
-                    type="button"
-                    onClick={() => toggle(row)}
-                    disabled={busyNow}
-                    className={cn(
-                      buttonVariants({
-                        variant: row.granted ? 'secondary' : 'primary',
-                        size: 'sm',
-                      }),
-                      'disabled:opacity-50',
-                    )}
+          {/* 固定高度容器：列表区始终占 4 条记录的高度（18rem），**卡片高度不随搜索结果多少
+              伸缩**——0/1/几条 或空结果都保持同高，多于 4 条内部滚动。实测每行 66px（p-3 + 两行
+              文本）+ gap-2(8px)：4 行 = 4×66+3×8 = 288px = 18rem。 */}
+          <div className="h-[18rem] overflow-y-auto pr-1">
+            {filtered.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <p className="text-center text-sm text-fg-muted">{t('noResults')}</p>
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {pageRows.map((row) => {
+                const busyNow = busy[row.userId] ?? false;
+                return (
+                  <li
+                    key={row.userId}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-bg-subtle p-3"
                   >
-                    {busyNow ? t('saving') : row.granted ? t('revoke') : t('grant')}
-                  </button>
-                </li>
-              );
-              })}
-            </ul>
-          )}
+                    <Stack gap={1} className="min-w-0 flex-1">
+                      <Stack direction="row" gap={2} align="center">
+                        <p className="truncate text-sm font-medium text-fg">
+                          {row.email ?? row.name ?? row.userId}
+                        </p>
+                        <Badge variant={row.granted ? 'success' : 'neutral'}>
+                          {row.granted ? t('granted') : t('notGranted')}
+                        </Badge>
+                      </Stack>
+                      <p className="truncate text-xs text-fg-muted">{row.userId}</p>
+                    </Stack>
+                    <button
+                      type="button"
+                      onClick={() => toggle(row)}
+                      disabled={busyNow}
+                      className={cn(
+                        buttonVariants({
+                          variant: row.granted ? 'secondary' : 'primary',
+                          size: 'sm',
+                        }),
+                        'disabled:opacity-50',
+                      )}
+                    >
+                      {busyNow ? t('saving') : row.granted ? t('revoke') : t('grant')}
+                    </button>
+                  </li>
+                );
+                })}
+              </ul>
+            )}
+          </div>
 
           {/* 分页控件（客户端，多于 1 页才显示） */}
           {totalPages > 1 && (
