@@ -88,6 +88,11 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      // 文件夹式分组导航（选中组时右侧展示子分组 + 无直属策略时的精简提示）。
+      noPoliciesInGroup: 'No policies directly in this group.',
+      groups: {
+        subgroupsHeading: 'Subgroups',
+      },
       execute: {
         // 值/计算输出策略（如 greet 返回文本）：执行成功但无 allow/deny 语义。
         computed: 'Computed',
@@ -341,6 +346,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      noPoliciesInGroup: '该分组下暂无直属策略。',
+      groups: {
+        subgroupsHeading: '子分组',
+      },
       execute: {
         computed: '已计算',
         noDecision: '无决策（值输出）',
@@ -594,6 +603,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      noPoliciesInGroup: 'Keine Richtlinien direkt in dieser Gruppe.',
+      groups: {
+        subgroupsHeading: 'Untergruppen',
+      },
       execute: {
         computed: 'Berechnet',
         noDecision: 'Keine Entscheidung (Wertausgabe)',
@@ -848,6 +861,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       },
     },
     policies: {
+      noPoliciesInGroup: 'इस समूह में सीधे कोई नीति नहीं।',
+      groups: {
+        subgroupsHeading: 'उपसमूह',
+      },
       execute: {
         computed: 'परिकलित',
         noDecision: 'कोई निर्णय नहीं (मान आउटपुट)',

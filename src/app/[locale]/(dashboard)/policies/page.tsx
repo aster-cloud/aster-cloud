@@ -3,7 +3,6 @@ import { getSession } from '@/lib/auth';
 import { getTranslations } from 'next-intl/server';
 import { getPolicyFreezeStatus } from '@/lib/policy-freeze';
 import {
-  collectDescendantIds,
   listPolicyGroupsWithCounts,
   listUserPolicies,
   type PolicyGroupWithCount,
@@ -83,14 +82,10 @@ export default async function PoliciesPage({
     getPolicyFreezeStatus(userId),
   ]);
 
-  // Resolve descendant ids when a parent group is selected so policies
-  // assigned to subgroups still show up in the parent's view. Skipped
-  // for the "ungrouped" sentinel because ungrouped has no children.
+  // ★文件夹式导航（2026-07-15）：选中某组时，右侧只显示**直属该组**的策略（不再把子分组
+  // 的策略递归带进父视图）——子分组作为可下钻的项显示在右侧顶部（见 policies-content）。
+  // 故不再传 descendantIds（listUserPolicies 只按 groupId 精确过滤）。ungrouped 语义不变。
   const groupFilter = urlState.filters.group;
-  const descendantIds =
-    groupFilter && groupFilter !== 'ungrouped'
-      ? collectDescendantIds(groupsRaw, groupFilter)
-      : [];
 
   const { items: pagePolicies, total, page, pageSize } = await listUserPolicies(
     userId,
@@ -98,7 +93,7 @@ export default async function PoliciesPage({
       page: urlState.page,
       pageSize: urlState.pageSize,
       groupId: groupFilter ?? null,
-      descendantIds,
+      descendantIds: [],
       q: urlState.q,
     },
   );
@@ -172,6 +167,7 @@ export default async function PoliciesPage({
       cannotEdit: t('freeze.cannotEdit'),
     },
     noPolicies: t('noPolicies'),
+    noPoliciesInGroup: t('noPoliciesInGroup'),
     getStarted: t('getStarted'),
     piiFieldsTemplate: t.raw('piiFields'),
     public: t('public'),
@@ -185,6 +181,7 @@ export default async function PoliciesPage({
       ungrouped: t('groups.ungrouped'),
       newGroup: t('groups.newGroup'),
       newSubgroup: t('groups.newSubgroup'),
+      subgroupsHeading: t('groups.subgroupsHeading'),
       edit: t('groups.edit'),
       delete: t('groups.delete'),
       policiesCount: t.raw('groups.policiesCount'),
