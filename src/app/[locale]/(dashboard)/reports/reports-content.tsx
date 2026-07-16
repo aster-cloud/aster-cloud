@@ -44,6 +44,7 @@ interface Preview {
     error: number;
     unknown: number;
   };
+  coverage: { verifiable: number; legacy: number };
   exceedsLimit: boolean;
   limit: number;
 }
@@ -62,6 +63,7 @@ export function ReportsContent({ locale, policies, initialExports }: Props) {
   const [startDate, setStartDate] = useState<string>(defaultStart());
   const [endDate, setEndDate] = useState<string>('');
   const [format, setFormat] = useState<'json' | 'jsonl'>('json');
+  const [verifiableOnly, setVerifiableOnly] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -130,7 +132,7 @@ export function ReportsContent({ locale, policies, initialExports }: Props) {
       const r = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...rangePayload(), format }),
+        body: JSON.stringify({ ...rangePayload(), format, verifiableOnly }),
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
@@ -197,6 +199,20 @@ export function ReportsContent({ locale, policies, initialExports }: Props) {
               </Select>
             </div>
 
+            {/* 仅导有可验证哈希的执行（排除早于哈希采集接线的 legacy 行）。 */}
+            <label className="flex items-start gap-2 text-sm text-fg">
+              <input
+                type="checkbox"
+                checked={verifiableOnly}
+                onChange={(e) => setVerifiableOnly(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                {t('verifiableOnly')}
+                <span className="mt-0.5 block text-xs text-fg-muted">{t('verifiableOnlyHint')}</span>
+              </span>
+            </label>
+
             <Stack direction="row" gap={3} align="center">
               <Button variant="secondary" onClick={runPreview} disabled={previewing}>
                 {previewing ? t('previewing') : t('previewBtn')}
@@ -221,13 +237,28 @@ export function ReportsContent({ locale, policies, initialExports }: Props) {
                     {t('previewTooLarge', { limit: preview.limit })}
                   </Alert>
                 ) : (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {DECISION_KEYS.map((k) => (
-                      <Badge key={k} variant={decisionVariant(k)}>
-                        {t(`decision.${k}`)}: {preview.decisionTally[k]}
-                      </Badge>
-                    ))}
-                  </div>
+                  <>
+                    {/* 哈希覆盖率：多少条真有可验证证据 vs 早期无哈希 legacy 行。 */}
+                    <p className="mt-2 text-sm text-fg-muted">
+                      {t('previewCoverage', {
+                        verifiable: preview.coverage.verifiable,
+                        legacy: preview.coverage.legacy,
+                      })}
+                    </p>
+                    {/* 全部都是无哈希 legacy → 明确警告导出会全 null（除非勾「仅可验证」，此时导出为空）。 */}
+                    {preview.coverage.verifiable === 0 && (
+                      <Alert variant="warning" className="mt-2">
+                        {t('previewAllLegacy')}
+                      </Alert>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {DECISION_KEYS.map((k) => (
+                        <Badge key={k} variant={decisionVariant(k)}>
+                          {t(`decision.${k}`)}: {preview.decisionTally[k]}
+                        </Badge>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}

@@ -179,6 +179,24 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('evidence-export 数据层（�
     expect(ids).not.toContain('old-fake'); // 旧假分行被过滤
   });
 
+  it('★preview 覆盖率：分 verifiable(有哈希) / legacy(无哈希)', async () => {
+    await seedExecution({ id: 'v1', canonicalInputHash: 'h1', createdAt: new Date('2026-07-01T00:00:00Z') });
+    await seedExecution({ id: 'v2', canonicalInputHash: 'h2', createdAt: new Date('2026-07-02T00:00:00Z') });
+    await seedExecution({ id: 'legacy', canonicalInputHash: null, createdAt: new Date('2026-06-01T00:00:00Z') });
+    const p = await getEvidencePreview({ userId: U, policyId: POL });
+    expect(p.count).toBe(3);
+    expect(p.coverage).toEqual({ verifiable: 2, legacy: 1 });
+  });
+
+  it('★verifiableOnly 过滤掉无哈希 legacy 行', async () => {
+    await seedExecution({ id: 'v1', canonicalInputHash: 'h1', createdAt: new Date('2026-07-01T00:00:00Z') });
+    await seedExecution({ id: 'legacy', canonicalInputHash: null, createdAt: new Date('2026-06-01T00:00:00Z') });
+    const all = await queryEvidenceExecutions({ userId: U, policyId: POL });
+    expect(all).toHaveLength(2);
+    const verifiable = await queryEvidenceExecutions({ userId: U, policyId: POL, verifiableOnly: true });
+    expect(verifiable.map((r) => r.id)).toEqual(['v1']); // legacy 被排除
+  });
+
   it('★getEvidenceExportMetadata 只返回 manifest，不含 bundle.entries', async () => {
     await seedExecution({ id: 'e1', createdAt: new Date('2026-07-01T00:00:00Z') });
     const { id } = await createEvidenceExport(U, { policyId: POL, format: 'json' });

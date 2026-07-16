@@ -69,6 +69,7 @@ export async function createEvidenceExport(
       policyId: request.policyId,
       startDate: request.startDate,
       endDate: request.endDate,
+      verifiableOnly: request.verifiableOnly,
     });
 
     const bundle = buildBundle({
