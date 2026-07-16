@@ -13,6 +13,13 @@ import {
 
 export type UsageType = 'execution' | 'pii_scan' | 'compliance_report' | 'api_call';
 
+/**
+ * 证据导出的计量类型。★持久化枚举值仍是 'compliance_report'（usageRecords.type 是 pg enum，
+ * 改值需 ALTER TYPE 且旧值删不掉；现有行也用此值）——故只在代码/语义层重命名为 evidence-export，
+ * 计量口径的持久 identity 保持不变、向后兼容。日后若要一等公民 'evidence_export' 值须另立迁移 + 双读。
+ */
+export const EVIDENCE_EXPORT_METRIC = 'compliance_report' as const satisfies UsageType;
+
 const USAGE_LIMIT_MAPPING: Record<UsageType, PlanLimitType | null> = {
   execution: 'executions',
   pii_scan: null,
@@ -195,14 +202,15 @@ export async function getUsageStats(userId: string) {
       policies: policyCount,
       policiesLimit: limits.policies,
       piiScans: usageByType.pii_scan || 0,
-      complianceReports: usageByType.compliance_report || 0,
+      // 证据导出次数（仍读持久计量值 compliance_report，见 EVIDENCE_EXPORT_METRIC）。
+      evidenceExports: usageByType.compliance_report || 0,
       apiCalls: usageByType.api_call || 0,
       apiCallsLimit: limits.apiCalls,
     },
     features: {
       piiDetection: capabilities.piiDetection,
       sharing: capabilities.sharing,
-      complianceReports: capabilities.complianceReports,
+      evidenceExport: capabilities.evidenceExport,
       apiAccess: capabilities.apiAccess,
       teamFeatures: capabilities.teamFeatures,
     },

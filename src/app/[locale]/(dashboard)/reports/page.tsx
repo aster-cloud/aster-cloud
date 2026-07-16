@@ -1,7 +1,8 @@
-import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import { getComplianceReports } from '@/lib/compliance';
+import { db, policies } from '@/lib/prisma';
+import { and, eq, isNull, asc } from 'drizzle-orm';
+import { listEvidenceExports } from '@/lib/evidence';
 import { ReportsContent } from './reports-content';
 
 interface PageProps {
@@ -14,78 +15,37 @@ export default async function ReportsPage({ params }: PageProps) {
   if (!session?.user?.id) {
     redirect(`/${locale}/login`);
   }
+  const userId = session.user.id;
 
-  const t = await getTranslations('reports');
-  const tNav = await getTranslations('dashboardNav');
+  // 并行拉：用户策略（供选择器）+ 历史证据导出。
+  const [policyRows, exports] = await Promise.all([
+    db.query.policies.findMany({
+      where: and(eq(policies.userId, userId), isNull(policies.deletedAt)),
+      columns: { id: true, name: true },
+      orderBy: [asc(policies.name)],
+    }),
+    listEvidenceExports(userId),
+  ]);
 
-  // 获取报告列表
-  const reportsData = await getComplianceReports(session.user.id);
-
-  // 序列化数据以便传递给客户端组件
-  const reports = reportsData.map((report) => ({
-    id: report.id,
-    type: report.type,
-    title: report.title,
-    status: report.status as 'generating' | 'completed' | 'failed',
-    data: report.data as {
-      summary: {
-        totalPolicies: number;
-        policiesWithPII: number;
-        totalExecutions: number;
-        complianceScore: number;
-      };
-    } | null,
-    createdAt: report.createdAt.toISOString(),
-    completedAt: report.completedAt?.toISOString() ?? null,
-  }));
-
-  // 预渲染所有翻译字符串
-  const translations = {
-    title: t('title'),
-    subtitle: t('subtitle'),
-    upgradePlan: t('upgradePlan'),
-    generateNew: t('generateNew'),
-    generating: t('generating'),
-    generateTemplate: t.raw('generate'),
-    noReports: t('noReports'),
-    generateFirst: t('generateFirst'),
-    typeTemplate: t.raw('type'),
-    createdTemplate: t.raw('created'),
-    policiesAnalyzedTemplate: t.raw('policiesAnalyzed'),
-    status: {
-      completed: t('status.completed'),
-      generating: t('status.generating'),
-      failed: t('status.failed'),
-    },
-    reportTypes: {
-      gdpr: {
-        name: t('reportTypes.gdpr.name'),
-        description: t('reportTypes.gdpr.description'),
-      },
-      hipaa: {
-        name: t('reportTypes.hipaa.name'),
-        description: t('reportTypes.hipaa.description'),
-      },
-      soc2: {
-        name: t('reportTypes.soc2.name'),
-        description: t('reportTypes.soc2.description'),
-      },
-      pci_dss: {
-        name: t('reportTypes.pci_dss.name'),
-        description: t('reportTypes.pci_dss.description'),
-      },
-    },
-    nav: {
-      dashboard: tNav('dashboard'),
-      reports: tNav('reports'),
-    },
-  };
+  const initialExports = exports.map((e) => {
+    const data = e.data as { manifest?: { totals?: { count?: number }; bundleHash?: string } } | null;
+    return {
+      id: e.id,
+      title: e.title,
+      status: e.status as 'generating' | 'completed' | 'failed',
+      period: e.period ?? null,
+      count: data?.manifest?.totals?.count ?? null,
+      bundleHash: data?.manifest?.bundleHash ?? null,
+      createdAt: e.createdAt.toISOString(),
+      completedAt: e.completedAt?.toISOString() ?? null,
+    };
+  });
 
   return (
     <ReportsContent
-      initialReports={reports}
-      translations={translations}
       locale={locale}
+      policies={policyRows.map((p) => ({ id: p.id, name: p.name }))}
+      initialExports={initialExports}
     />
   );
 }
