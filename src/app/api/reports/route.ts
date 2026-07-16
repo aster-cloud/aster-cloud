@@ -25,8 +25,10 @@ interface ExportBody {
   startDate?: string | null;
   endDate?: string | null;
   format?: string;
-  /** true = 只预览规模（count + decision 分布），不生成导出。 */
+  /** true = 只预览规模（count + decision 分布 + 覆盖率），不生成导出。 */
   dryRun?: boolean;
+  /** true = 仅导有可验证哈希的执行（排除 legacy 无哈希行）。 */
+  verifiableOnly?: boolean;
 }
 
 // POST /api/reports — 生成证据导出（或 dryRun 预览）。付费门控 Pro/Team。
@@ -72,7 +74,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'startDate must be before endDate' }, { status: 400 });
     }
 
-    // 预览（dryRun）：只回 count + decision 分布 + 是否超限。
+    // 预览（dryRun）：回 count + decision 分布 + **覆盖率**（不带 verifiableOnly——预览要展示全量的
+    // verifiable/legacy 拆分，让用户据此决定是否勾「仅可验证」）。
     if (body.dryRun) {
       const preview = await getEvidencePreview({ userId: session.user.id, policyId, startDate, endDate });
       return NextResponse.json(preview);
@@ -87,6 +90,7 @@ export async function POST(req: Request) {
         startDate,
         endDate,
         format,
+        verifiableOnly: body.verifiableOnly === true,
       });
       // 计量（值仍 compliance_report，向后兼容——见 usage.ts EVIDENCE_EXPORT_METRIC）。
       await recordUsage(session.user.id, EVIDENCE_EXPORT_METRIC);

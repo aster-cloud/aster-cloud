@@ -4,7 +4,7 @@
 // **默认排除 traceJson 等 PII 明文**，只导 traceHash）。
 
 import { db, executions, policies } from '@/lib/prisma';
-import { and, eq, gte, lte, asc, isNull, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, asc, isNull, isNotNull, inArray, sql } from 'drizzle-orm';
 import type { EvidenceRow } from '@/services/evidence/bundle';
 import type { DecisionTally, EvidenceDecision, EvidencePreview } from '@/services/evidence/types';
 
@@ -24,6 +24,11 @@ export interface EvidenceQuery {
   policyId?: string;
   startDate?: Date;
   endDate?: Date;
+  /**
+   * 仅导有可验证 canonical 哈希的执行（排除早于哈希采集接线 ADR 0030 的 legacy 行）。
+   * 默认 false（导全部，legacy 行以 null 哈希 + manifest 缺口计数呈现）。
+   */
+  verifiableOnly?: boolean;
 }
 
 /**
@@ -48,6 +53,8 @@ function buildConditions(q: EvidenceQuery) {
   if (q.policyId) conditions.push(eq(executions.policyId, q.policyId));
   if (q.startDate) conditions.push(gte(executions.createdAt, q.startDate));
   if (q.endDate) conditions.push(lte(executions.createdAt, q.endDate));
+  // 仅可验证：过滤掉缺 canonical 输入哈希的 legacy 行（canonicalInputHash 是「有哈希地基」的代表列）。
+  if (q.verifiableOnly) conditions.push(isNotNull(executions.canonicalInputHash));
   return and(...conditions);
 }
 
@@ -112,7 +119,7 @@ export async function queryEvidenceExecutions(q: EvidenceQuery): Promise<Evidenc
     }));
 }
 
-/** 统计范围内执行数（含已删策略的行——仅作 count 上限守卫的粗估；精确排除在 query 层做）。 */
+/** 统计范围内执行数（已排除已删策略；与 query 层同一 WHERE，作 count 上限守卫）。 */
 export async function countEvidenceExecutions(q: EvidenceQuery): Promise<number> {
   const r = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -122,13 +129,16 @@ export async function countEvidenceExecutions(q: EvidenceQuery): Promise<number>
 }
 
 /**
- * 导出前预览：count + decision 分布（GROUP BY，不拉行体）。exceedsLimit 让 UI 提前拦。
- * decision=null（legacy）计入 unknown 桶。
+ * 导出前预览：count + decision 分布 + **哈希覆盖率**（有/无可验证 canonical 哈希的条数）。
+ * 覆盖率让用户看清「这批里多少条真有证据」——早于哈希采集接线（ADR 0030）的 legacy 执行没有哈希，
+ * 导出会全 null。exceedsLimit 让 UI 提前拦。decision=null（legacy）计入 unknown 桶。
  */
 export async function getEvidencePreview(q: EvidenceQuery): Promise<EvidencePreview> {
   const rows = await db
     .select({
       decision: executions.decision,
+      // 该 decision 桶里有可验证哈希的条数（canonicalInputHash 非空）。
+      withHash: sql<number>`count(*) FILTER (WHERE ${executions.canonicalInputHash} IS NOT NULL)::int`,
       count: sql<number>`count(*)::int`,
     })
     .from(executions)
@@ -143,15 +153,19 @@ export async function getEvidencePreview(q: EvidenceQuery): Promise<EvidencePrev
     unknown: 0,
   };
   let count = 0;
+  let withHash = 0;
   for (const r of rows) {
     const key: keyof DecisionTally = (r.decision as EvidenceDecision | null) ?? 'unknown';
     tally[key] += r.count;
     count += r.count;
+    withHash += r.withHash;
   }
 
   return {
     count,
     decisionTally: tally,
+    // 哈希覆盖率：verifiable=有 canonical 哈希（真证据）；legacy=无（早于 ADR 0030 采集）。
+    coverage: { verifiable: withHash, legacy: count - withHash },
     exceedsLimit: count > EVIDENCE_EXPORT_ROW_LIMIT,
     limit: EVIDENCE_EXPORT_ROW_LIMIT,
   };

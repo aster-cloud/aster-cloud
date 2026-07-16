@@ -83,6 +83,11 @@ export interface EvidenceBundle {
 export interface EvidencePreview {
   count: number;
   decisionTally: DecisionTally;
+  /**
+   * 哈希覆盖率：verifiable=有 canonical 哈希的条数（真可验证证据）；legacy=无哈希（早于 ADR 0030
+   * 哈希采集接线的历史执行，导出会是 null 字段）。让用户看清这批里多少条真有证据。
+   */
+  coverage: { verifiable: number; legacy: number };
   /** 是否超过导出行数上限（超则不允许导出，提示用户缩小范围）。 */
   exceedsLimit: boolean;
   limit: number;
@@ -95,4 +100,6 @@ export interface EvidenceExportRequest {
   startDate?: Date;
   endDate?: Date;
   format: EvidenceFormat;
+  /** 仅导有可验证哈希的执行（排除 legacy 无哈希行）。默认 false=导全部。 */
+  verifiableOnly?: boolean;
 }
