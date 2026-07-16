@@ -39,12 +39,13 @@ export async function createEvidenceExport(
   if (request.policyId) {
     const p = await db.query.policies.findFirst({
       where: and(eq(policies.id, request.policyId), eq(policies.userId, userId)),
-      columns: { id: true, name: true },
+      columns: { id: true, name: true, version: true },
     });
     if (!p) {
       throw new Error('policy_not_found');
     }
-    policySnapshot = { id: p.id, name: p.name, version: null, policyVersionRowId: null };
+    // manifest 记策略**当前**版本号（导出时刻）；每条 entry 各自带执行时的版本号（可能不同版本）。
+    policySnapshot = { id: p.id, name: p.name, version: p.version ?? null, policyVersionRowId: null };
     titleScope = p.name;
   }
 

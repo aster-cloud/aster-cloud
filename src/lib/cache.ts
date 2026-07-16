@@ -21,10 +21,11 @@ interface CloudflareEnv {
 
 // 缓存键前缀
 const CACHE_PREFIX = {
-  // v2：CachedPolicyMeta 加回放地基字段（versionRowId/sourceToolchainId/vocabSnapshotIds，
-  // ADR 0030）。bump key 前缀使旧形状（缺这些字段）条目失效——否则旧缓存命中会让 cache-hit
-  // 执行落不出版本引用，静默分裂漂移聚合。旧 `policy:` 条目自然 TTL 过期（≤1h）。
-  POLICY: 'policy:v2:',
+  // v3：CachedPolicyMeta 加 version（人类可读版本号，落 Execution.policyVersion）。bump key 前缀
+  // 使旧形状（缺 version）条目失效——否则 cache-hit 执行落不出 policyVersion，证据包版本号仍 null。
+  // v2 曾加回放地基字段（versionRowId/sourceToolchainId/vocabSnapshotIds，ADR 0030）。旧条目自然
+  // TTL 过期（≤1h）。
+  POLICY: 'policy:v3:',
   POLICY_CONTENT: 'policy-content:',
   USER: 'user:',
   SESSION: 'session:',
@@ -122,6 +123,8 @@ export interface CachedPolicyMeta {
    * （POLICY 缓存 key 已 bump 到 v2 使旧形状条目失效，见 CACHE_PREFIX.POLICY。）
    */
   versionRowId?: string | null;
+  /** 人类可读版本号（Policy.version）——落 Execution.policyVersion，证据包显示「第几版」。 */
+  version?: number | null;
   sourceToolchainId?: string | null;
   vocabSnapshotIds?: unknown;
 }

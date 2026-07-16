@@ -31,6 +31,7 @@ type UnifiedQueryResult = {
   policy_alias_set: string | null;
   // 回放地基（ADR 0030）：不可变 PolicyVersion 行引用 + 工具链 + 词汇快照（已 JOIN，免费取）。
   policy_version_row_id: string | null;
+  policy_version: number | null;
   policy_source_toolchain_id: string | null;
   policy_vocab_snapshot_ids: unknown;
   // User fields
@@ -84,6 +85,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         p."isPublic" AS policy_is_public,
         pv."aliasSet" AS policy_alias_set,
         pv.id AS policy_version_row_id,
+        p.version AS policy_version,
         pv."sourceToolchainId" AS policy_source_toolchain_id,
         pv."vocabularySnapshotIds" AS policy_vocab_snapshot_ids,
         u.plan AS user_plan,
@@ -124,6 +126,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       aliasSet: row.policy_alias_set ?? null,
       // 回放地基（ADR 0030）：不可变版本引用 + 工具链 + 词汇快照。
       versionRowId: row.policy_version_row_id ?? null,
+      version: row.policy_version ?? null,
       sourceToolchainId: row.policy_source_toolchain_id ?? null,
       vocabSnapshotIds: row.policy_vocab_snapshot_ids ?? null,
     } : null;
@@ -253,6 +256,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const replayAliasSetJson = policy.aliasSet ? (parsedAliasSet ?? null) : {};
     const replayColumns = buildReplayColumns(executionResult.metadata.replay, {
       policyVersionRowId: policy.versionRowId,
+      policyVersion: policy.version ?? null,
       sourceToolchainId: policy.sourceToolchainId,
       vocabSnapshotRef: policy.vocabSnapshotIds,
       locale: detectCNLLocale(policy.content),

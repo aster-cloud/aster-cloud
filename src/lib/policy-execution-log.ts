@@ -38,6 +38,9 @@ export const STATUS_NON_REPLAYABLE = 'NON_REPLAYABLE';
 export interface ReplayVersionRefs {
   /** 不可变 PolicyVersion 行 id（Execution.policyVersionRowId）。 */
   policyVersionRowId: string | null;
+  /** 人类可读的策略版本号（Policy.version / PolicyVersion.version）。证据包给审计员看「第几版」，
+   *  而非只有 UUID。执行时已 JOIN 到该值，随手带上即可。 */
+  policyVersion: number | null;
   /** PolicyVersion.sourceToolchainId（envelope 编译工具链）。 */
   sourceToolchainId: string | null;
   /** PolicyVersion.vocabularySnapshotIds（不可变引用）。 */
@@ -53,6 +56,8 @@ export interface ReplayVersionRefs {
 /** Execution 回放列 insert 片段（drizzle 列名）。 */
 export interface ExecutionReplayColumns {
   policyVersionRowId: string | null;
+  /** 人类可读版本号（Execution.policyVersion）。总是可填（不依赖 replayMetadata）。 */
+  policyVersion: number | null;
   functionName: string | null;
   locale: string | null;
   aliasSetJson: unknown;
@@ -88,6 +93,7 @@ export function buildReplayColumns(
   // 仍有审计价值。回放 hash 列则依赖 replayMetadata。
   const base: ExecutionReplayColumns = {
     policyVersionRowId: refs.policyVersionRowId,
+    policyVersion: refs.policyVersion,
     functionName: refs.functionName,
     locale: refs.locale,
     aliasSetJson: refs.aliasSetJson,

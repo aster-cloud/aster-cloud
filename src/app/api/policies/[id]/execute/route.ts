@@ -31,6 +31,8 @@ type UnifiedQueryResult = {
   policy_is_public: boolean | null;
   // 回放地基（ADR 0030）：不可变 PolicyVersion 引用（cache-miss 时从 JOIN 取，随后写入缓存）。
   policy_version_row_id: string | null;
+  // 人类可读版本号（证据包显示「第几版」）。
+  policy_version: number | null;
   policy_source_toolchain_id: string | null;
   policy_vocab_snapshot_ids: unknown;
   // User fields
@@ -125,6 +127,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         p."teamId" AS policy_team_id,
         p."isPublic" AS policy_is_public,
         pv.id AS policy_version_row_id,
+        p.version AS policy_version,
         pv."sourceToolchainId" AS policy_source_toolchain_id,
         pv."vocabularySnapshotIds" AS policy_vocab_snapshot_ids,
         u.plan AS user_plan,
@@ -164,6 +167,7 @@ export async function POST(req: Request, { params }: RouteParams) {
         aliasSet: row.policy_alias_set ?? null,
         // 回放地基（ADR 0030）：随缓存持久化，使 cache-hit 执行也能落版本引用。
         versionRowId: row.policy_version_row_id ?? null,
+        version: row.policy_version ?? null,
         sourceToolchainId: row.policy_source_toolchain_id ?? null,
         vocabSnapshotIds: row.policy_vocab_snapshot_ids ?? null,
       };
@@ -339,6 +343,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const replayAliasSetJson = policy.aliasSet ? (parsedAliasSet ?? null) : {};
     const replayColumns = buildReplayColumns(executionResult.metadata.replay, {
       policyVersionRowId: policy.versionRowId ?? null,
+      policyVersion: policy.version ?? null,
       sourceToolchainId: policy.sourceToolchainId ?? null,
       vocabSnapshotRef: policy.vocabSnapshotIds ?? null,
       locale: detectCNLLocale(policy.content),
