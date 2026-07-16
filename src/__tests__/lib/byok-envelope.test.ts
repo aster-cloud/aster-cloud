@@ -1,114 +1,160 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * byok-envelope 单测（Phase 2）：resolveByokEnvelope（provider allowlist + 解密失败回退）
+ * byok-envelope 单测：resolveByokEnvelope（**多 key 优先级 fallback** 选择层）
  * 与 injectByokEnvelope（剥离 caller _byok + 注入服务端 envelope）。
+ *
+ * 选择层契约（selection-time fallback，不做运行时重试）：候选按 priority asc 排序，顺次跳过
+ * provider 不支持 / 已过期 / 已超本月额度，选第一个通过的，只解密它。
  */
 
-const { mockFindFirst, mockGetDecrypted } = vi.hoisted(() => ({
-  mockFindFirst: vi.fn(),
-  mockGetDecrypted: vi.fn(),
+const { mockCandidates, mockDecryptById, mockUsed } = vi.hoisted(() => ({
+  mockCandidates: vi.fn(),
+  mockDecryptById: vi.fn(),
+  mockUsed: vi.fn(),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  db: { query: { aiKeyBindings: { findFirst: mockFindFirst } } },
-  aiKeyBindings: { userId: {}, active: {} },
+vi.mock('@/lib/ai-key-vault', () => ({
+  getBYOKCandidatesForInference: mockCandidates,
+  getDecryptedBYOKKeyById: mockDecryptById,
 }));
-vi.mock('drizzle-orm', () => ({
-  and: (...a: unknown[]) => ({ op: 'and', a }),
-  eq: (c: unknown, v: unknown) => ({ op: 'eq', c, v }),
-}));
-vi.mock('@/lib/ai-key-vault', () => ({ getDecryptedBYOKKey: mockGetDecrypted }));
+vi.mock('@/lib/ai-quota', () => ({ byokTokensUsedThisMonth: mockUsed }));
 
 import { resolveByokEnvelope, injectByokEnvelope } from '@/lib/byok-envelope';
 
-describe('resolveByokEnvelope', () => {
+// 候选工厂：默认 openai、无 url、无 quota、不过期。传入的候选已按调用优先级排好序（模拟 vault 已排序）。
+function cand(over: Partial<{
+  id: string; provider: string; providerUrl: string | null; tokenQuota: number | null; expiresAt: Date | null;
+}> = {}) {
+  return {
+    id: over.id ?? 'b1',
+    provider: over.provider ?? 'openai',
+    providerUrl: over.providerUrl ?? null,
+    tokenQuota: over.tokenQuota ?? null,
+    expiresAt: over.expiresAt ?? null,
+  };
+}
+
+describe('resolveByokEnvelope（多 key 选择层）', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUsed.mockResolvedValue(0);
   });
 
-  it('无 active 绑定 → null（平台）', async () => {
-    mockFindFirst.mockResolvedValue(undefined);
+  it('无 active 候选 → null（平台）', async () => {
+    mockCandidates.mockResolvedValue([]);
+    expect(await resolveByokEnvelope('u1')).toBeNull();
+    expect(mockDecryptById).not.toHaveBeenCalled();
+  });
+
+  it('单个 openai 候选 + 解密成功 → envelope（退化=旧单 key 行为不变）', async () => {
+    mockCandidates.mockResolvedValue([cand({ id: 'binding-1' })]);
+    mockDecryptById.mockResolvedValue('sk-user');
+    expect(await resolveByokEnvelope('u1')).toEqual({
+      provider: 'openai', apiKey: 'sk-user', baseUrl: null, bindingId: 'binding-1',
+    });
+    expect(mockDecryptById).toHaveBeenCalledWith('u1', 'binding-1');
+  });
+
+  it('★多 key：选 priority 最高（列表第一个可用）→ 只解密它', async () => {
+    // 候选已按 priority 排序：b1 在前。
+    mockCandidates.mockResolvedValue([cand({ id: 'b1' }), cand({ id: 'b2' })]);
+    mockDecryptById.mockResolvedValue('sk-b1');
+    const env = await resolveByokEnvelope('u1');
+    expect(env?.bindingId).toBe('b1');
+    // 只解密胜出的一个，不碰后面的
+    expect(mockDecryptById).toHaveBeenCalledTimes(1);
+    expect(mockDecryptById).toHaveBeenCalledWith('u1', 'b1');
+  });
+
+  it('★多 key：第一个已过期 → 跳过，选第二个', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000);
+    mockCandidates.mockResolvedValue([
+      cand({ id: 'b1', expiresAt: yesterday }),
+      cand({ id: 'b2' }),
+    ]);
+    mockDecryptById.mockResolvedValue('sk-b2');
+    const env = await resolveByokEnvelope('u1');
+    expect(env?.bindingId).toBe('b2');
+    expect(mockDecryptById).toHaveBeenCalledWith('u1', 'b2');
+  });
+
+  it('★多 key：第一个 provider 不支持（vertex）→ 跳过，选下一个 openai', async () => {
+    mockCandidates.mockResolvedValue([
+      cand({ id: 'b1', provider: 'vertex' }),
+      cand({ id: 'b2', provider: 'openai' }),
+    ]);
+    mockDecryptById.mockResolvedValue('sk-b2');
+    const env = await resolveByokEnvelope('u1');
+    expect(env?.provider).toBe('openai');
+    expect(env?.bindingId).toBe('b2');
+  });
+
+  it('★全部候选都不可用（全过期/全 vertex）→ null', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000);
+    mockCandidates.mockResolvedValue([
+      cand({ id: 'b1', expiresAt: yesterday }),
+      cand({ id: 'b2', provider: 'vertex' }),
+    ]);
+    expect(await resolveByokEnvelope('u1')).toBeNull();
+    expect(mockDecryptById).not.toHaveBeenCalled();
+  });
+
+  it('★超额跳过：第一个 quota 用满 → 跳过，选第二个（无 quota）', async () => {
+    mockUsed.mockResolvedValue(1000);
+    mockCandidates.mockResolvedValue([
+      cand({ id: 'b1', tokenQuota: 500 }),   // 已用 1000 >= 500 → 跳过
+      cand({ id: 'b2', tokenQuota: null }),  // 无限 → 选中
+    ]);
+    mockDecryptById.mockResolvedValue('sk-b2');
+    const env = await resolveByokEnvelope('u1');
+    expect(env?.bindingId).toBe('b2');
+  });
+
+  it('★超额边界：已用 == quota → 跳过（>= 判定）', async () => {
+    mockUsed.mockResolvedValue(500);
+    mockCandidates.mockResolvedValue([cand({ id: 'b1', tokenQuota: 500 })]);
     expect(await resolveByokEnvelope('u1')).toBeNull();
   });
 
-  it('openai 绑定 + 解密成功 → envelope（含 bindingId 供 stamp lastUsedAt）', async () => {
-    mockFindFirst.mockResolvedValue({ id: 'binding-1', provider: 'openai' });
-    mockGetDecrypted.mockResolvedValue('sk-user');
-    expect(await resolveByokEnvelope('u1')).toEqual({
-      provider: 'openai',
-      apiKey: 'sk-user',
-      baseUrl: null,
-      bindingId: 'binding-1',
-    });
+  it('未超额：已用 < quota → 选中', async () => {
+    mockUsed.mockResolvedValue(499);
+    mockCandidates.mockResolvedValue([cand({ id: 'b1', tokenQuota: 500 })]);
+    mockDecryptById.mockResolvedValue('sk-b1');
+    expect((await resolveByokEnvelope('u1'))?.bindingId).toBe('b1');
   });
 
-  // BYOK 自定义 Provider URL：providerUrl 非空 → 带进 envelope.baseUrl（aster-api 重新校验）。
-  it('★providerUrl 非空 → envelope 带 baseUrl（供 aster-api allowlist+SSRF 重校验）', async () => {
-    mockFindFirst.mockResolvedValue({
-      id: 'b1', provider: 'openai', providerUrl: 'https://llm-gateway.example.com/v1',
-    });
-    mockGetDecrypted.mockResolvedValue('sk-user');
-    expect(await resolveByokEnvelope('u1')).toEqual({
-      provider: 'openai',
-      apiKey: 'sk-user',
-      baseUrl: 'https://llm-gateway.example.com/v1',
-      bindingId: 'b1',
-    });
+  it('无候选设 quota → 不查用量（省一次聚合查询）', async () => {
+    mockCandidates.mockResolvedValue([cand({ id: 'b1', tokenQuota: null })]);
+    mockDecryptById.mockResolvedValue('sk-b1');
+    await resolveByokEnvelope('u1');
+    expect(mockUsed).not.toHaveBeenCalled();
   });
 
-  it('★不支持的 provider（vertex）→ null（不接入推理，走平台）', async () => {
-    mockFindFirst.mockResolvedValue({ provider: 'vertex' });
-    expect(await resolveByokEnvelope('u1')).toBeNull();
-    expect(mockGetDecrypted).not.toHaveBeenCalled();
+  it('★providerUrl 非空 → envelope 带 baseUrl（供 aster-api 重校验）', async () => {
+    mockCandidates.mockResolvedValue([cand({ id: 'b1', providerUrl: 'https://gw.example.com/v1' })]);
+    mockDecryptById.mockResolvedValue('sk-user');
+    expect((await resolveByokEnvelope('u1'))?.baseUrl).toBe('https://gw.example.com/v1');
   });
 
-  it('★解密失败 → 抛错（fail-closed，让路由返回 503，不静默回退平台偷烧预算）', async () => {
-    mockFindFirst.mockResolvedValue({ provider: 'anthropic' });
-    mockGetDecrypted.mockRejectedValue(new Error('decrypt boom'));
+  it('★解密抛错 → 抛出（fail-closed 503，不静默回退平台偷烧预算）', async () => {
+    mockCandidates.mockResolvedValue([cand({ id: 'b1' })]);
+    mockDecryptById.mockRejectedValue(new Error('decrypt boom'));
     await expect(resolveByokEnvelope('u1')).rejects.toThrow('decrypt boom');
   });
 
-  it('解密返回 null → null', async () => {
-    mockFindFirst.mockResolvedValue({ provider: 'openai' });
-    mockGetDecrypted.mockResolvedValue(null);
+  it('解密返回 null（行刚被删/停用竞态）→ 跳过看下一个', async () => {
+    mockCandidates.mockResolvedValue([cand({ id: 'b1' }), cand({ id: 'b2' })]);
+    mockDecryptById.mockResolvedValueOnce(null).mockResolvedValueOnce('sk-b2');
+    const env = await resolveByokEnvelope('u1');
+    expect(env?.bindingId).toBe('b2');
+    expect(mockDecryptById).toHaveBeenCalledTimes(2);
+  });
+
+  it('解密全返回 null → null', async () => {
+    mockCandidates.mockResolvedValue([cand({ id: 'b1' })]);
+    mockDecryptById.mockResolvedValue(null);
     expect(await resolveByokEnvelope('u1')).toBeNull();
-  });
-
-  // BYOK 增强：失效日期 enforcement —— 过期 key 不提供给推理层（回退平台）。
-  it('★expiresAt 已过期 → null（不提供过期 key，回退平台配额）', async () => {
-    const yesterday = new Date(Date.now() - 86_400_000);
-    mockFindFirst.mockResolvedValue({ id: 'b1', provider: 'openai', expiresAt: yesterday });
-    expect(await resolveByokEnvelope('u1')).toBeNull();
-    expect(mockGetDecrypted).not.toHaveBeenCalled(); // 过期即短路，不解密
-  });
-
-  // ★锁短路顺序：过期优先于 baseUrl —— 即使配了 providerUrl，过期 key 也短路返回 null，不解密、不带 baseUrl。
-  it('★expiresAt 过期 + providerUrl 非空 → null（过期先短路，不到 baseUrl）', async () => {
-    const yesterday = new Date(Date.now() - 86_400_000);
-    mockFindFirst.mockResolvedValue({
-      id: 'b1', provider: 'openai', expiresAt: yesterday, providerUrl: 'https://gw.example.com/v1',
-    });
-    expect(await resolveByokEnvelope('u1')).toBeNull();
-    expect(mockGetDecrypted).not.toHaveBeenCalled();
-  });
-
-  it('expiresAt 未来 → 正常提供 envelope', async () => {
-    const tomorrow = new Date(Date.now() + 86_400_000);
-    mockFindFirst.mockResolvedValue({ id: 'b1', provider: 'openai', expiresAt: tomorrow });
-    mockGetDecrypted.mockResolvedValue('sk-user');
-    expect(await resolveByokEnvelope('u1')).toEqual({
-      provider: 'openai',
-      apiKey: 'sk-user',
-      baseUrl: null,
-      bindingId: 'b1',
-    });
-  });
-
-  it('expiresAt 为 null → 永不过期，正常提供', async () => {
-    mockFindFirst.mockResolvedValue({ id: 'b1', provider: 'openai', expiresAt: null });
-    mockGetDecrypted.mockResolvedValue('sk-user');
-    expect((await resolveByokEnvelope('u1'))?.apiKey).toBe('sk-user');
   });
 });
 

@@ -1289,11 +1289,26 @@ export const aiKeyBindings = pgTable(
     tokenQuota: integer('tokenQuota'),
     /** key 失效日期。过期后推理层拒用该 BYOK key。null=永不过期。 */
     expiresAt: timestamp('expiresAt', { mode: 'date' }),
+    /**
+     * 同 provider 多 key 的调用优先级（数值**小**=优先级**高**，先被推理层选中）。
+     *
+     * 多 key（ADR：BYOK 优先级 fallback）：一个用户同一 provider 可绑多个 key，推理层按
+     * priority asc 取第一个「active 且未过期且未超额」的 key（selection-time fallback，不做
+     * 运行时重试）。同 priority 用 createdAt asc 兜底稳定排序。默认 0——历史单 key 行迁移后
+     * 全为 0，退化为「任取唯一一个」，行为不变。
+     */
+    priority: integer('priority').notNull().default(0),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('AiKey_userId_provider_idx').on(table.userId, table.provider),
+    // 多 key：去掉 (userId,provider) 唯一约束（一个 provider 现在可有多个 key）。
+    // 选择索引覆盖推理层排序谓词：按 (userId,provider,priority) 取最高优先级可用 key。
+    index('AiKey_userId_provider_priority_idx').on(
+      table.userId,
+      table.provider,
+      table.priority,
+    ),
     index('AiKey_active_idx').on(table.active),
   ]
 );

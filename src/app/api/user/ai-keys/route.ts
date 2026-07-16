@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db, aiKeyBindings } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
-import { saveBYOKKey, deleteBYOKKey, updateBYOKKeyMeta } from '@/lib/ai-key-vault';
+import { saveBYOKKey, deleteBYOKKey, updateBYOKKeyMeta, reorderBYOKKeys } from '@/lib/ai-key-vault';
 import { errorEnvelope } from '@/lib/api/error-envelope';
 import { byokTokensUsedThisMonth, resetByokQuotaUsage } from '@/lib/ai-quota';
 import { logAuditEvent, extractClientInfo } from '@/lib/audit-log';
@@ -15,6 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 多 key：按 (provider, priority, createdAt) 排序，前端按调用优先级顺序展示同 provider 的多 key。
     const bindings = await db.query.aiKeyBindings.findMany({
       where: eq(aiKeyBindings.userId, session.user.id),
       columns: {
@@ -25,11 +26,13 @@ export async function GET() {
         providerUrl: true,
         tokenQuota: true,
         expiresAt: true,
+        priority: true,
         lastUsedAt: true,
         lastErrorAt: true,
         lastError: true,
         createdAt: true,
       },
+      orderBy: (t, { asc }) => [asc(t.provider), asc(t.priority), asc(t.createdAt)],
     });
 
     // 附本月已用 BYOK tokens（UI 显示「剩余额度」）。
@@ -117,7 +120,8 @@ export async function POST(req: Request) {
       expiresAt = d;
     }
 
-    const { replaced } = await saveBYOKKey({
+    // 多 key：POST **总是新增一行**（同 provider 可多个 key）。返回新 binding id。
+    const { id } = await saveBYOKKey({
       userId: session.user.id,
       provider: body.provider as 'openai' | 'anthropic' | 'vertex',
       apiKey: body.apiKey,
@@ -126,19 +130,18 @@ export async function POST(req: Request) {
       expiresAt,
     });
 
-    // 审计（管理员可追溯）：只记 provider / keyHint（后 4 位）/ 是否设了 url/额度/失效日期，
-    // **绝不**记明文 key。POST 是按 (userId,provider) 的 upsert——replaced 区分「新建 vs 替换既有」，
-    // 让审计准确（管理员能看出用户是首次绑定还是换了 key，而非一律 create）。
+    // 审计（管理员可追溯）：只记 binding id / provider / keyHint（后 4 位）/ 是否设了 url/额度/失效
+    // 日期，**绝不**记明文 key。多 key 下 POST 一律是 create。
     const { ipAddress, userAgent } = extractClientInfo(req);
     await logAuditEvent({
       userId: session.user.id,
-      action: replaced ? 'ai-key.update' : 'ai-key.create',
+      action: 'ai-key.create',
       resource: 'ai-key',
-      resourceId: body.provider,
+      resourceId: id,
       metadata: {
+        bindingId: id,
         provider: body.provider,
         keyHint: body.apiKey.slice(-4),
-        operation: replaced ? 'replaced' : 'created',
         hasProviderUrl: providerUrl != null,
         tokenQuota,
         expiresAt: expiresAt ? expiresAt.toISOString() : null,
@@ -147,7 +150,7 @@ export async function POST(req: Request) {
       userAgent,
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, id });
   } catch (err) {
     const env = errorEnvelope({
       status: 500,
@@ -168,6 +171,7 @@ export async function POST(req: Request) {
  *   - { id, tokenQuota?, expiresAt?, action?: 'update' }：改额度上限 / 失效日期。字段不传=不动；
  *     传 null=清空（额度→无限 / 失效日期→永不过期）。
  *   - { action: 'resetQuota' }：把用户 BYOK 用量重置水位线盖成 now()（清「本月已用」显示，不删审计）。
+ *   - { action: 'reorder', orderedIds }：按 id 顺序重排多 key 优先级（priority 0,1,2…）。
  * 全部经 userId 归属校验；每个动作写 AuditLog（管理员可追溯，不记明文 key）。
  */
 export async function PATCH(req: Request) {
@@ -181,9 +185,11 @@ export async function PATCH(req: Request) {
 
     const body = (await req.json()) as {
       id?: string;
-      action?: 'update' | 'resetQuota';
+      action?: 'update' | 'resetQuota' | 'reorder';
       tokenQuota?: number | null;
       expiresAt?: string | null;
+      provider?: string;
+      orderedIds?: string[];
     };
 
     // ── 重置本月已用额度 ──
@@ -198,6 +204,42 @@ export async function PATCH(req: Request) {
         userAgent,
       });
       return NextResponse.json({ ok: true, resetAt: resetAt.toISOString() });
+    }
+
+    // ── 重排多 key 优先级（限定单个 provider 组）──
+    if (body.action === 'reorder') {
+      const provider = body.provider;
+      const orderedIds = body.orderedIds;
+      if (typeof provider !== 'string' || provider.length === 0) {
+        return NextResponse.json({ error: 'provider is required for reorder' }, { status: 400 });
+      }
+      if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+        return NextResponse.json({ error: 'orderedIds must be a non-empty array' }, { status: 400 });
+      }
+      if (!orderedIds.every((x) => typeof x === 'string' && x.length > 0)) {
+        return NextResponse.json({ error: 'orderedIds must be non-empty strings' }, { status: 400 });
+      }
+      // 去重防御：同一 id 出现两次会让 CASE 语义歧义。
+      if (new Set(orderedIds).size !== orderedIds.length) {
+        return NextResponse.json({ error: 'orderedIds must be unique' }, { status: 400 });
+      }
+      const updated = await reorderBYOKKeys(userId, provider, orderedIds);
+      // 完整归属校验（Codex 审查）：改到的行数必须**等于** orderedIds 数量——否则说明 orderedIds
+      // 含不属于该 (user, provider) 的 id（越权/跨 provider/已删）。此时不写成功审计，返回 404
+      // （不泄露哪个 id 无效）。已被 UPDATE 改到的行会随后续 refresh/正确重排对齐；此处 fail-fast。
+      if (updated !== orderedIds.length) {
+        return NextResponse.json({ error: 'AI keys not found' }, { status: 404 });
+      }
+      await logAuditEvent({
+        userId,
+        action: 'ai-key.reorder',
+        resource: 'ai-key',
+        // 只记 provider + id 顺序（管理员可追溯优先级变更），不含明文 key。
+        metadata: { provider, orderedIds },
+        ipAddress,
+        userAgent,
+      });
+      return NextResponse.json({ ok: true });
     }
 
     // ── 编辑额度上限 / 失效日期（不重输 key）──
@@ -278,24 +320,25 @@ export async function DELETE(req: Request) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    // 多 key：按 binding **id** 删（同 provider 多 key，不能再按 provider 一删一片）。
     const url = new URL(req.url);
-    const provider = url.searchParams.get('provider');
-    if (!provider) {
-      return NextResponse.json({ error: 'Missing provider' }, { status: 400 });
+    const id = url.searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     }
 
     // 撤销 = 硬删除整行（含加密 key + 历史）。用户诉求「删除该 AI Key」+ 隐私。
-    const { deleted, keyHint } = await deleteBYOKKey(session.user.id, provider);
+    const { deleted, provider, keyHint } = await deleteBYOKKey(session.user.id, id);
 
-    // 审计（管理员可追溯）：记 provider + 被删行的 keyHint + 是否真的删到行（deleted=false 表示
-    // 用户发起删除但无匹配 key，是 no-op，管理员能据此区分「确实删了 vs 空删」）。不记明文 key。
+    // 审计（管理员可追溯）：记 binding id + provider + keyHint + 是否真的删到行（deleted=false=
+    // 无匹配 no-op，含越权删别人 id 的情形）。不记明文 key。
     const { ipAddress, userAgent } = extractClientInfo(req);
     await logAuditEvent({
       userId: session.user.id,
       action: 'ai-key.delete',
       resource: 'ai-key',
-      resourceId: provider,
-      metadata: { provider, deleted, keyHint },
+      resourceId: id,
+      metadata: { bindingId: id, provider, deleted, keyHint },
       ipAddress,
       userAgent,
     });
