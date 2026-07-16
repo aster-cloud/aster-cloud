@@ -22,6 +22,8 @@ interface BYOKBinding {
   providerUrl: string | null;
   tokenQuota: number | null;
   expiresAt: string | null;
+  /** 同 provider 多 key 的调用优先级（数值小=优先级高）。 */
+  priority: number;
   usedTokensThisMonth: number;
   lastUsedAt: string | null;
   lastErrorAt: string | null;
@@ -69,8 +71,11 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const [success, setSuccess] = useState<string | null>(null);
-  const [revokeProvider, setRevokeProvider] = useState<string | null>(null);
+  // 多 key：撤销按 binding **id**（同 provider 多 key）；对话框标签仍显示 provider 名。
+  const [revokeTarget, setRevokeTarget] = useState<{ id: string; provider: string } | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
+  // 重排优先级进行中的 provider（禁用该 provider 组的上移/下移按钮，防连点竞态）。
+  const [reordering, setReordering] = useState<string | null>(null);
   // 行内编辑（改额度上限 / 失效日期，不重输 key）：editingId=当前编辑的 binding，null=无。
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQuota, setEditQuota] = useState('');
@@ -230,16 +235,17 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
     }
   };
 
-  const handleRevoke = (p: string) => setRevokeProvider(p);
+  const handleRevoke = (b: BYOKBinding) =>
+    setRevokeTarget({ id: b.id, provider: b.provider });
 
   const confirmRevoke = async () => {
-    if (!revokeProvider) return;
+    if (!revokeTarget) return;
     setIsRevoking(true);
     setRowError(null);
     setRowSuccess(null);
     try {
       const r = await fetch(
-        `/api/user/ai-keys?provider=${encodeURIComponent(revokeProvider)}`,
+        `/api/user/ai-keys?id=${encodeURIComponent(revokeTarget.id)}`,
         { method: 'DELETE' },
       );
       if (!r.ok) {
@@ -250,7 +256,45 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       await refresh();
     } finally {
       setIsRevoking(false);
-      setRevokeProvider(null);
+      setRevokeTarget(null);
+    }
+  };
+
+  // 多 key 优先级重排：把某 provider 组内某 key 上移/下移一位，提交新顺序（全组 id 数组）。
+  // 乐观：先本地重排 bindings 立即反馈，再 PATCH；失败则 refresh 拿服务端权威值回滚。
+  const moveKey = async (b: BYOKBinding, dir: -1 | 1) => {
+    setRowError(null);
+    setRowSuccess(null);
+    // 该 provider 组按当前展示顺序（已是 priority asc）取出。
+    const group = bindings.filter((x) => x.provider === b.provider);
+    const idx = group.findIndex((x) => x.id === b.id);
+    const swapWith = idx + dir;
+    if (idx < 0 || swapWith < 0 || swapWith >= group.length) return; // 越界（首/末）静默忽略
+    const reordered = [...group];
+    [reordered[idx], reordered[swapWith]] = [reordered[swapWith], reordered[idx]];
+    const orderedIds = reordered.map((x) => x.id);
+
+    // 乐观更新：把该组替换为新顺序，其它 provider 组不动。
+    const others = bindings.filter((x) => x.provider !== b.provider);
+    setBindings([...others, ...reordered].sort((a, c) =>
+      a.provider === c.provider ? 0 : a.provider < c.provider ? -1 : 1,
+    ));
+
+    setReordering(b.provider);
+    try {
+      const r = await fetch('/api/user/ai-keys', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reorder', provider: b.provider, orderedIds }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setRowError(extractErrorMessage(data) || t('reorderFailed', { status: r.status }));
+      }
+      // 无论成败都 refresh：成功=对齐服务端 priority，失败=回滚乐观更新。
+      await refresh();
+    } finally {
+      setReordering(null);
     }
   };
 
@@ -283,6 +327,13 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   };
   // 数字千分位同理 hydration-safe：挂载前用原始数字串，挂载后用 locale 格式。
   const formatNum = (n: number) => (mounted ? n.toLocaleString(locale) : String(n));
+
+  // 多 key：某 key 在其 provider 组内的位置（bindings 已按 provider→priority 排序）——用于
+  // 决定「上移/下移」是否可用（组内首个不能上移，末个不能下移）与显示 1/N 序号。
+  const groupPos = (b: BYOKBinding) => {
+    const group = bindings.filter((x) => x.provider === b.provider);
+    return { index: group.findIndex((x) => x.id === b.id), size: group.length };
+  };
 
   return (
     <Container size="xl" className="py-6 sm:py-10">
@@ -437,6 +488,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
               <thead>
                 <tr className="border-b border-border text-xs uppercase text-fg-muted">
                   <th className="pb-2 text-left">{t('thProvider')}</th>
+                  <th className="pb-2 text-left">{t('thPriority')}</th>
                   <th className="pb-2 text-left">{t('thKeyHint')}</th>
                   <th className="pb-2 text-left">{t('thStatus')}</th>
                   <th className="pb-2 text-left">{t('thQuota')}</th>
@@ -451,6 +503,41 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                   <tr key={b.id} className="border-b border-border">
                     <td className="py-3">
                       {PROVIDER_LABELS[b.provider] ?? b.provider}
+                    </td>
+                    <td className="py-3">
+                      {(() => {
+                        const { index, size } = groupPos(b);
+                        // 组内只有 1 个 key 时不显示排序控件（无可排）。
+                        if (size <= 1) return <span className="text-fg-muted">—</span>;
+                        const busyReorder = reordering === b.provider;
+                        return (
+                          <div className="flex items-center gap-1">
+                            <span className="tabular-nums text-xs text-fg-muted">
+                              {index + 1}/{size}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => moveKey(b, -1)}
+                              disabled={index === 0 || busyReorder}
+                              aria-label={t('moveUp')}
+                              title={t('moveUp')}
+                              className="rounded px-1 text-fg-muted hover:text-fg disabled:opacity-30"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveKey(b, 1)}
+                              disabled={index === size - 1 || busyReorder}
+                              aria-label={t('moveDown')}
+                              title={t('moveDown')}
+                              className="rounded px-1 text-fg-muted hover:text-fg disabled:opacity-30"
+                            >
+                              ↓
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 font-mono text-xs">****{b.keyHint}</td>
                     <td className="py-3">
@@ -545,7 +632,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                             {t('resetQuota')}
                           </button>
                           <button
-                            onClick={() => handleRevoke(b.provider)}
+                            onClick={() => handleRevoke(b)}
                             className="text-xs text-red-600 hover:underline"
                           >
                             {t('delete')}
@@ -571,12 +658,12 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       </section>
 
       <ConfirmDialog
-        isOpen={revokeProvider !== null}
+        isOpen={revokeTarget !== null}
         title={t('revokeDialogTitle')}
         description={
-          revokeProvider
+          revokeTarget
             ? t('revokeDialogBody', {
-                provider: PROVIDER_LABELS[revokeProvider] ?? revokeProvider,
+                provider: PROVIDER_LABELS[revokeTarget.provider] ?? revokeTarget.provider,
               })
             : ''
         }
@@ -585,7 +672,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
         variant="danger"
         isLoading={isRevoking}
         onConfirm={confirmRevoke}
-        onCancel={() => !isRevoking && setRevokeProvider(null)}
+        onCancel={() => !isRevoking && setRevokeTarget(null)}
       />
 
       <ConfirmDialog

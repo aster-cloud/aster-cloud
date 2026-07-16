@@ -239,6 +239,13 @@
       "when": 1779300000000,
       "tag": "0034_user_byok_quota_reset_at",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0035_ai_key_multi_key_priority",
+      "breakpoints": true
     }
   ]
 }

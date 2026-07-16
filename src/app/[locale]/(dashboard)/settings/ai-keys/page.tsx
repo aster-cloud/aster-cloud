@@ -24,11 +24,13 @@ export default async function AiKeysPage() {
       providerUrl: true,
       tokenQuota: true,
       expiresAt: true,
+      priority: true,
       lastUsedAt: true,
       lastErrorAt: true,
       lastError: true,
       createdAt: true,
     },
+    orderBy: (t, { asc }) => [asc(t.provider), asc(t.priority), asc(t.createdAt)],
   });
 
   // 本月 BYOK 已用 tokens（每用户总量,见 ai-quota 说明）。
@@ -42,6 +44,7 @@ export default async function AiKeysPage() {
     providerUrl: b.providerUrl ?? null,
     tokenQuota: b.tokenQuota ?? null,
     expiresAt: b.expiresAt?.toISOString() ?? null,
+    priority: b.priority,
     usedTokensThisMonth,
     lastUsedAt: b.lastUsedAt?.toISOString() ?? null,
     lastErrorAt: b.lastErrorAt?.toISOString() ?? null,

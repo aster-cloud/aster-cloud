@@ -28,6 +28,7 @@ export type AuditAction =
   | 'ai-key.create'
   | 'ai-key.update'
   | 'ai-key.reset-quota'
+  | 'ai-key.reorder'
   | 'ai-key.delete'
   | 'user.delete'
   | 'settings.update'

@@ -1,10 +1,12 @@
-// BYOK 管理接口（PATCH 编辑额度/失效日期 + 重置额度；DELETE 撤销）授权与审计测试。
+// BYOK 管理接口（PATCH 编辑额度/失效日期 + 重置额度 + 重排优先级；DELETE 按 id 撤销；
+// POST 多 key 新增）授权与审计测试。
 //
-// 关注最敏感的安全路径（Codex 审查建议补齐）：
+// 关注最敏感的安全路径：
 //   - PATCH 编辑按 (id, userId) 双校验：越权/不存在统一 404，不泄露存在性。
 //   - resetQuota 只改本人水位线，且**不删** aiUsageRecords（审计记录不可变）。
+//   - reorder 校验 orderedIds（非空/唯一/字符串），只改本人，审计记 id 顺序。
+//   - DELETE 按 id（多 key）；审计 deleted 区分真删/空删。
 //   - 审计 metadata **绝不**含明文 key（apiKey / encryptedKey）。
-//   - create vs replace 审计动作准确（upsert 语义）。
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -13,6 +15,7 @@ vi.mock('@/lib/ai-key-vault', () => ({
   saveBYOKKey: vi.fn(),
   deleteBYOKKey: vi.fn(),
   updateBYOKKeyMeta: vi.fn(),
+  reorderBYOKKeys: vi.fn(),
 }));
 vi.mock('@/lib/ai-quota', () => ({
   byokTokensUsedThisMonth: vi.fn().mockResolvedValue(0),
@@ -25,7 +28,7 @@ vi.mock('@/lib/audit-log', () => ({
 
 import { PATCH, DELETE, POST } from '@/app/api/user/ai-keys/route';
 import { auth } from '@/auth';
-import { saveBYOKKey, deleteBYOKKey, updateBYOKKeyMeta } from '@/lib/ai-key-vault';
+import { saveBYOKKey, deleteBYOKKey, updateBYOKKeyMeta, reorderBYOKKeys } from '@/lib/ai-key-vault';
 import { resetByokQuotaUsage } from '@/lib/ai-quota';
 import { logAuditEvent } from '@/lib/audit-log';
 
@@ -36,9 +39,9 @@ function patchReq(body: unknown) {
     body: JSON.stringify(body),
   }) as unknown as Parameters<typeof PATCH>[0];
 }
-function deleteReq(provider: string | null) {
-  const url = provider
-    ? `http://localhost/api/user/ai-keys?provider=${encodeURIComponent(provider)}`
+function deleteReq(id: string | null) {
+  const url = id
+    ? `http://localhost/api/user/ai-keys?id=${encodeURIComponent(id)}`
     : 'http://localhost/api/user/ai-keys';
   return new Request(url, { method: 'DELETE' }) as unknown as Parameters<typeof DELETE>[0];
 }
@@ -135,49 +138,94 @@ describe('PATCH /api/user/ai-keys — 重置额度', () => {
   });
 });
 
-describe('DELETE /api/user/ai-keys — 撤销', () => {
-  it('缺 provider → 400', async () => {
+describe('PATCH /api/user/ai-keys — 重排优先级（限定 provider 组）', () => {
+  it('action=reorder + provider + 合法 orderedIds（全改到）→ 调 reorderBYOKKeys + 审计', async () => {
+    vi.mocked(reorderBYOKKeys).mockResolvedValue(2); // 改到 2 行 == orderedIds.length
+    const r = await PATCH(patchReq({ action: 'reorder', provider: 'openai', orderedIds: ['b2', 'b1'] }));
+    expect(r.status).toBe(200);
+    expect(reorderBYOKKeys).toHaveBeenCalledWith('user-1', 'openai', ['b2', 'b1']);
+    const entry = vi.mocked(logAuditEvent).mock.calls[0][0];
+    expect(entry.action).toBe('ai-key.reorder');
+    expect(entry.metadata).toMatchObject({ provider: 'openai', orderedIds: ['b2', 'b1'] });
+  });
+
+  it('★改到的行数 != orderedIds.length（含越权/跨 provider id）→ 404，不写成功审计', async () => {
+    vi.mocked(reorderBYOKKeys).mockResolvedValue(1); // 只改到 1 行，但传了 2 个 id
+    const r = await PATCH(patchReq({ action: 'reorder', provider: 'openai', orderedIds: ['mine', 'foreign'] }));
+    expect(r.status).toBe(404);
+    expect(logAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('缺 provider → 400（不调 vault）', async () => {
+    const r = await PATCH(patchReq({ action: 'reorder', orderedIds: ['b1', 'b2'] }));
+    expect(r.status).toBe(400);
+    expect(reorderBYOKKeys).not.toHaveBeenCalled();
+  });
+
+  it('orderedIds 为空数组 → 400（不调 vault）', async () => {
+    const r = await PATCH(patchReq({ action: 'reorder', provider: 'openai', orderedIds: [] }));
+    expect(r.status).toBe(400);
+    expect(reorderBYOKKeys).not.toHaveBeenCalled();
+  });
+
+  it('orderedIds 有重复 id → 400（防 CASE 歧义）', async () => {
+    const r = await PATCH(patchReq({ action: 'reorder', provider: 'openai', orderedIds: ['b1', 'b1'] }));
+    expect(r.status).toBe(400);
+    expect(reorderBYOKKeys).not.toHaveBeenCalled();
+  });
+
+  it('orderedIds 含非字符串 → 400', async () => {
+    const r = await PATCH(patchReq({ action: 'reorder', provider: 'openai', orderedIds: ['b1', 123] }));
+    expect(r.status).toBe(400);
+    expect(reorderBYOKKeys).not.toHaveBeenCalled();
+  });
+});
+
+describe('DELETE /api/user/ai-keys — 按 id 撤销', () => {
+  it('缺 id → 400', async () => {
     const r = await DELETE(deleteReq(null));
     expect(r.status).toBe(400);
   });
 
-  it('删到行 → 审计 deleted=true + keyHint', async () => {
-    vi.mocked(deleteBYOKKey).mockResolvedValue({ deleted: true, keyHint: '9999' });
-    const r = await DELETE(deleteReq('openai'));
+  it('删到行 → 审计 deleted=true + provider + keyHint', async () => {
+    vi.mocked(deleteBYOKKey).mockResolvedValue({ deleted: true, provider: 'openai', keyHint: '9999' });
+    const r = await DELETE(deleteReq('b1'));
     expect(r.status).toBe(200);
+    // 按 (id, userId) 删
+    expect(deleteBYOKKey).toHaveBeenCalledWith('user-1', 'b1');
     const entry = vi.mocked(logAuditEvent).mock.calls[0][0];
     expect(entry.action).toBe('ai-key.delete');
-    expect(entry.metadata).toMatchObject({ provider: 'openai', deleted: true, keyHint: '9999' });
+    expect(entry.metadata).toMatchObject({ bindingId: 'b1', provider: 'openai', deleted: true, keyHint: '9999' });
   });
 
-  it('无匹配行（no-op）→ 审计 deleted=false（管理员能区分空删）', async () => {
-    vi.mocked(deleteBYOKKey).mockResolvedValue({ deleted: false, keyHint: null });
-    await DELETE(deleteReq('anthropic'));
+  it('无匹配行（越权别人 id / 已删）→ 审计 deleted=false', async () => {
+    vi.mocked(deleteBYOKKey).mockResolvedValue({ deleted: false, provider: null, keyHint: null });
+    await DELETE(deleteReq('someone-elses'));
     const entry = vi.mocked(logAuditEvent).mock.calls[0][0];
     expect(entry.metadata).toMatchObject({ deleted: false });
   });
 });
 
-describe('POST /api/user/ai-keys — create vs replace 审计准确', () => {
+describe('POST /api/user/ai-keys — 多 key 新增', () => {
   const goodKey = 'sk-'.padEnd(24, 'x');
 
-  it('首次绑定（replaced=false）→ ai-key.create', async () => {
-    vi.mocked(saveBYOKKey).mockResolvedValue({ replaced: false });
+  it('新增 → ai-key.create + 返回 id，审计不含明文 key', async () => {
+    vi.mocked(saveBYOKKey).mockResolvedValue({ id: 'new-binding-1' });
     const r = await POST(postReq({ provider: 'openai', apiKey: goodKey }));
     expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ ok: true, id: 'new-binding-1' });
     const entry = vi.mocked(logAuditEvent).mock.calls[0][0];
     expect(entry.action).toBe('ai-key.create');
-    expect(entry.metadata).toMatchObject({ operation: 'created' });
+    expect(entry.metadata).toMatchObject({ bindingId: 'new-binding-1', provider: 'openai' });
     // 绝不记明文 key
     expect(JSON.stringify(entry.metadata)).not.toContain(goodKey);
   });
 
-  it('替换既有（replaced=true）→ ai-key.update', async () => {
-    vi.mocked(saveBYOKKey).mockResolvedValue({ replaced: true });
+  it('同 provider 再加一个 → 仍是 create（多 key，不再 replace）', async () => {
+    vi.mocked(saveBYOKKey).mockResolvedValue({ id: 'new-binding-2' });
     const r = await POST(postReq({ provider: 'openai', apiKey: goodKey }));
     expect(r.status).toBe(200);
     const entry = vi.mocked(logAuditEvent).mock.calls[0][0];
-    expect(entry.action).toBe('ai-key.update');
-    expect(entry.metadata).toMatchObject({ operation: 'replaced' });
+    expect(entry.action).toBe('ai-key.create');
   });
 });

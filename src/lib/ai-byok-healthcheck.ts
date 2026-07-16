@@ -4,7 +4,7 @@
 
 import { db, aiKeyBindings, users } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
-import { getDecryptedBYOKKey } from '@/lib/ai-key-vault';
+import { getDecryptedBYOKKeyById } from '@/lib/ai-key-vault';
 
 export type HealthCheckResult = {
   bindingId: string;
@@ -34,7 +34,8 @@ export async function checkAllBYOKKeys(sendEmail: EmailSender): Promise<HealthCh
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   for (const b of bindings) {
-    const apiKey = await getDecryptedBYOKKey(b.userId, b.provider);
+    // 多 key：按**本行 id** 解密（不能再按 provider 取——同 provider 多 key 会都 ping 到同一个）。
+    const apiKey = await getDecryptedBYOKKeyById(b.userId, b.id);
     if (!apiKey) {
       results.push({ bindingId: b.id, userId: b.userId, provider: b.provider, status: 'failed', error: 'decrypt_failed' });
       continue;

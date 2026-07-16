@@ -4,7 +4,7 @@
 // 加密发生在 INSERT/UPDATE 时，解密只在 aster-api 调 LLM 时（in-memory，不入 log）。
 
 import { db, aiKeyBindings } from '@/lib/prisma';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, asc, sql } from 'drizzle-orm';
 
 function encryptionSecret(): string {
   const s = process.env.AI_KEY_ENCRYPTION_SECRET;
@@ -36,58 +36,75 @@ export async function saveBYOKKey(params: {
   tokenQuota?: number | null;
   /** 失效日期（可选）。null/undefined = 永不过期。 */
   expiresAt?: Date | null;
-}): Promise<{ replaced: boolean }> {
+}): Promise<{ id: string }> {
   const secret = encryptionSecret();
   const keyHint = params.apiKey.slice(-4);
-  // 显式 null 化 undefined，让 SQL 把「未提供」写成 NULL（覆盖旧值 → 用户清空即恢复默认）。
+  // 显式 null 化 undefined，让 SQL 把「未提供」写成 NULL（用户清空即恢复默认）。
   const providerUrl = params.providerUrl ?? null;
   const tokenQuota = params.tokenQuota ?? null;
   const expiresAt = params.expiresAt ? params.expiresAt.toISOString() : null;
+  const id = globalThis.crypto.randomUUID();
 
-  const existing = await db.query.aiKeyBindings.findFirst({
-    where: and(
-      eq(aiKeyBindings.userId, params.userId),
-      eq(aiKeyBindings.provider, params.provider)
-    ),
-  });
+  // 多 key：新 key **总是新增一行**（不再按 provider upsert 覆盖）。priority = 该 provider
+  // 现有最大 priority + 1，即追加到优先级末尾（新 key 默认排在既有 key 之后，用户可再调序）。
+  // 首个 key 时 MAX 为 NULL → COALESCE 到 -1 → priority=0。
+  await db.execute(sql`
+    INSERT INTO "AiKeyBinding"
+      ("id", "userId", "provider", "encryptedKey", "keyHint", "active",
+       "providerUrl", "tokenQuota", "expiresAt", "priority", "createdAt", "updatedAt")
+    VALUES (
+      ${id},
+      ${params.userId},
+      ${params.provider},
+      pgp_sym_encrypt(${params.apiKey}::text, ${secret}::text)::text,
+      ${keyHint},
+      true,
+      ${providerUrl},
+      ${tokenQuota},
+      ${expiresAt}::timestamp,
+      (SELECT COALESCE(MAX("priority"), -1) + 1 FROM "AiKeyBinding"
+        WHERE "userId" = ${params.userId} AND "provider" = ${params.provider}),
+      NOW(),
+      NOW()
+    )
+  `);
+  return { id };
+}
 
-  if (existing) {
-    await db.execute(sql`
-      UPDATE "AiKeyBinding"
-      SET "encryptedKey" = pgp_sym_encrypt(${params.apiKey}::text, ${secret}::text)::text,
-          "keyHint" = ${keyHint},
-          "active" = true,
-          "providerUrl" = ${providerUrl},
-          "tokenQuota" = ${tokenQuota},
-          "expiresAt" = ${expiresAt}::timestamp,
-          "lastErrorAt" = NULL,
-          "lastError" = NULL,
-          "updatedAt" = NOW()
-      WHERE "id" = ${existing.id}
-    `);
-    // upsert 语义：既有行被替换（同 provider 换 key/改配置）。供审计区分 create vs replace。
-    return { replaced: true };
-  } else {
-    await db.execute(sql`
-      INSERT INTO "AiKeyBinding"
-        ("id", "userId", "provider", "encryptedKey", "keyHint", "active",
-         "providerUrl", "tokenQuota", "expiresAt", "createdAt", "updatedAt")
-      VALUES (
-        ${globalThis.crypto.randomUUID()},
-        ${params.userId},
-        ${params.provider},
-        pgp_sym_encrypt(${params.apiKey}::text, ${secret}::text)::text,
-        ${keyHint},
-        true,
-        ${providerUrl},
-        ${tokenQuota},
-        ${expiresAt}::timestamp,
-        NOW(),
-        NOW()
-      )
-    `);
-    return { replaced: false };
-  }
+/**
+ * 重排某用户某 **provider 组**内多个 key 的调用优先级：按 orderedIds 的**顺序**赋 priority 0,1,2…
+ * （数值小=优先级高，先被推理层选中）。
+ *
+ * 归属 + 同组约束（Codex 审查）：UPDATE 限定 userId + **provider** + id ∈ orderedIds——
+ *   - 传别人的 id → provider/userId 不匹配 → 不被动到；
+ *   - 混入**其它 provider** 的 id → provider 不匹配 → 不被动到（不会把 openai/anthropic priority 混写）。
+ * 用 .returning 拿实际改到的行 id，返回 count；路由据此校验 count === orderedIds.length，
+ * 不匹配即拒（说明 orderedIds 含不属于该 user+provider 的 id）。
+ * 单条 UPDATE + CASE 一次改完；priority 冲突不成问题（已无唯一约束）。
+ */
+export async function reorderBYOKKeys(
+  userId: string,
+  provider: string,
+  orderedIds: string[],
+): Promise<number> {
+  if (orderedIds.length === 0) return 0;
+  const cases = sql.join(
+    orderedIds.map((id, i) => sql`WHEN ${id} THEN ${i}`),
+    sql` `,
+  );
+  const idList = sql.join(
+    orderedIds.map((id) => sql`${id}`),
+    sql`, `,
+  );
+  const res = await db.execute(sql`
+    UPDATE "AiKeyBinding"
+    SET "priority" = CASE "id" ${cases} END,
+        "updatedAt" = NOW()
+    WHERE "userId" = ${userId} AND "provider" = ${provider} AND "id" IN (${idList})
+    RETURNING "id"
+  `);
+  // execute 返回受影响行（RETURNING）——稳妥取 length（不同封装形态兜底）。
+  return Array.isArray(res) ? res.length : (res as { count?: number }).count ?? 0;
 }
 
 /**
@@ -115,6 +132,75 @@ export async function updateBYOKKeyMeta(params: {
   return rows[0] ?? null;
 }
 
+/**
+ * 多 key 选择候选：返回某用户某 provider 下所有 **active** key 的**非机密**元数据，按调用优先级
+ * 排序（priority asc，同 priority 用 createdAt asc 兜底稳定排序）。**不解密** key——选择层先按
+ * expiresAt/quota 挑出可用的那个，再用 getDecryptedBYOKKeyById 只解密胜出的一个（避免解密不会用到的）。
+ */
+export interface ByokCandidate {
+  id: string;
+  provider: string;
+  providerUrl: string | null;
+  tokenQuota: number | null;
+  expiresAt: Date | null;
+}
+/**
+ * 某用户所有 **active** key 的候选列表（跨 provider），按调用优先级排序（priority asc，同 priority
+ * 用 createdAt asc 兜底稳定排序）。**不解密**。选择层据此挑第一个可用 key（跳过过期/超额），
+ * 再用 getDecryptedBYOKKeyById 只解密胜出的一个。可选 provider 过滤（限定某 provider 的候选）。
+ */
+export async function getBYOKCandidatesForInference(
+  userId: string,
+  provider?: string,
+): Promise<ByokCandidate[]> {
+  const where = provider
+    ? and(
+        eq(aiKeyBindings.userId, userId),
+        eq(aiKeyBindings.provider, provider),
+        eq(aiKeyBindings.active, true),
+      )
+    : and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.active, true));
+  const rows = await db
+    .select({
+      id: aiKeyBindings.id,
+      provider: aiKeyBindings.provider,
+      providerUrl: aiKeyBindings.providerUrl,
+      tokenQuota: aiKeyBindings.tokenQuota,
+      expiresAt: aiKeyBindings.expiresAt,
+    })
+    .from(aiKeyBindings)
+    .where(where)
+    .orderBy(asc(aiKeyBindings.priority), asc(aiKeyBindings.createdAt));
+  return rows.map((r) => ({
+    id: r.id,
+    provider: r.provider,
+    providerUrl: r.providerUrl ?? null,
+    tokenQuota: r.tokenQuota ?? null,
+    expiresAt: r.expiresAt ?? null,
+  }));
+}
+
+/**
+ * 按 binding id 解密单个 key（多 key 选择层挑中某个 key 后，只解密它）。
+ * 带 userId + active 双条件（纵深防御：不解密别人的/已停用的 key）。
+ */
+export async function getDecryptedBYOKKeyById(
+  userId: string,
+  bindingId: string,
+): Promise<string | null> {
+  const secret = encryptionSecret();
+  const result = await db.execute(sql`
+    SELECT pgp_sym_decrypt("encryptedKey"::bytea, ${secret}::text) AS key
+    FROM "AiKeyBinding"
+    WHERE "id" = ${bindingId}
+      AND "userId" = ${userId}
+      AND "active" = true
+    LIMIT 1
+  `);
+  const rows = result as unknown as Array<{ key: string | null }>;
+  return rows[0]?.key ?? null;
+}
+
 /** 解密用户的 BYOK key（仅供 LLM 调用使用） */
 export async function getDecryptedBYOKKey(userId: string, provider: string): Promise<string | null> {
   const secret = encryptionSecret();
@@ -130,48 +216,6 @@ export async function getDecryptedBYOKKey(userId: string, provider: string): Pro
   return rows[0]?.key ?? null;
 }
 
-/**
- * 解密 BYOK key 并**同时**返回 quota/expiresAt/providerUrl（推理层 enforcement 用）。
- * 与 getDecryptedBYOKKey 分开，避免改动其现有调用点的返回契约。
- */
-export interface DecryptedBYOK {
-  key: string;
-  providerUrl: string | null;
-  tokenQuota: number | null;
-  expiresAt: Date | null;
-}
-export async function getBYOKForInference(
-  userId: string,
-  provider: string,
-): Promise<DecryptedBYOK | null> {
-  const secret = encryptionSecret();
-  const result = await db.execute(sql`
-    SELECT pgp_sym_decrypt("encryptedKey"::bytea, ${secret}::text) AS key,
-           "providerUrl" AS provider_url,
-           "tokenQuota"  AS token_quota,
-           "expiresAt"   AS expires_at
-    FROM "AiKeyBinding"
-    WHERE "userId" = ${userId}
-      AND "provider" = ${provider}
-      AND "active" = true
-    LIMIT 1
-  `);
-  const rows = result as unknown as Array<{
-    key: string | null;
-    provider_url: string | null;
-    token_quota: number | null;
-    expires_at: string | Date | null;
-  }>;
-  const row = rows[0];
-  if (!row?.key) return null;
-  return {
-    key: row.key,
-    providerUrl: row.provider_url ?? null,
-    tokenQuota: row.token_quota ?? null,
-    expiresAt: row.expires_at ? new Date(row.expires_at) : null,
-  };
-}
-
 /** 停用 BYOK（临时禁用而不删除；保留供内部使用/未来 UI）。 */
 export async function deactivateBYOKKey(userId: string, provider: string): Promise<void> {
   await db
@@ -181,17 +225,23 @@ export async function deactivateBYOKKey(userId: string, provider: string): Promi
 }
 
 /**
- * 硬删除 BYOK key（用户 UI「撤销/删除」按钮）——物理删除整行,含加密 key + 历史。
- * 撤销即删除（用户诉求 + 隐私：key 不再留存）。
+ * 硬删除单个 BYOK key（用户 UI「撤销/删除」按钮）——按 **binding id** 物理删除整行,含加密
+ * key + 历史。撤销即删除（用户诉求 + 隐私：key 不再留存）。
+ *
+ * 多 key：一个 provider 可有多个 key，故按 id 精确删（不再按 provider 一删一片）。
+ * 归属校验：id + userId 双条件——传别人的 id 删不到（deleted=false）。返回 provider/keyHint 供审计。
  */
 export async function deleteBYOKKey(
   userId: string,
-  provider: string,
-): Promise<{ deleted: boolean; keyHint: string | null }> {
-  // .returning 拿被删行的 keyHint（供审计），并据此判断是否真的删到行（vs 无匹配的 no-op）。
+  bindingId: string,
+): Promise<{ deleted: boolean; provider: string | null; keyHint: string | null }> {
   const rows = await db
     .delete(aiKeyBindings)
-    .where(and(eq(aiKeyBindings.userId, userId), eq(aiKeyBindings.provider, provider)))
-    .returning({ keyHint: aiKeyBindings.keyHint });
-  return { deleted: rows.length > 0, keyHint: rows[0]?.keyHint ?? null };
+    .where(and(eq(aiKeyBindings.id, bindingId), eq(aiKeyBindings.userId, userId)))
+    .returning({ provider: aiKeyBindings.provider, keyHint: aiKeyBindings.keyHint });
+  return {
+    deleted: rows.length > 0,
+    provider: rows[0]?.provider ?? null,
+    keyHint: rows[0]?.keyHint ?? null,
+  };
 }

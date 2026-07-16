@@ -91,6 +91,11 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
           'This clears the used-token counter for the current month so the key can be used again. Audit records are kept — only the counter is reset.',
         resetDialogConfirm: 'Reset',
         resetDialogCancel: 'Cancel',
+        // 多 key 优先级：同 provider 多个 key 按优先级顺序被调用（数值小=先用）。
+        thPriority: 'Priority',
+        moveUp: 'Raise priority',
+        moveDown: 'Lower priority',
+        reorderFailed: 'Could not reorder keys (status {status}).',
       },
     },
     admin: {
@@ -360,6 +365,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
           '这会把当月已用 token 计数清零，使该 Key 重新可用。审计记录会保留——仅重置计数。',
         resetDialogConfirm: '重置',
         resetDialogCancel: '取消',
+        thPriority: '优先级',
+        moveUp: '提高优先级',
+        moveDown: '降低优先级',
+        reorderFailed: '调整优先级失败（状态 {status}）。',
       },
     },
     admin: {
@@ -629,6 +638,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
           'Dies setzt den Zähler der verbrauchten Token für den aktuellen Monat zurück, sodass der Schlüssel wieder verwendet werden kann. Audit-Datensätze bleiben erhalten – nur der Zähler wird zurückgesetzt.',
         resetDialogConfirm: 'Zurücksetzen',
         resetDialogCancel: 'Abbrechen',
+        thPriority: 'Priorität',
+        moveUp: 'Priorität erhöhen',
+        moveDown: 'Priorität senken',
+        reorderFailed: 'Schlüssel konnten nicht neu geordnet werden (Status {status}).',
       },
     },
     admin: {
@@ -899,6 +912,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
           'यह वर्तमान माह के उपयोग किए गए टोकन काउंटर को साफ़ कर देता है ताकि कुंजी फिर से उपयोग की जा सके। ऑडिट रिकॉर्ड सुरक्षित रहते हैं — केवल काउंटर रीसेट होता है।',
         resetDialogConfirm: 'रीसेट करें',
         resetDialogCancel: 'रद्द करें',
+        thPriority: 'प्राथमिकता',
+        moveUp: 'प्राथमिकता बढ़ाएँ',
+        moveDown: 'प्राथमिकता घटाएँ',
+        reorderFailed: 'कुंजियाँ पुनः क्रमित नहीं हो सकीं (स्थिति {status})।',
       },
     },
     admin: {
