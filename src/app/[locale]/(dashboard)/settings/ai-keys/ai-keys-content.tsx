@@ -77,6 +77,10 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   const [editExpiry, setEditExpiry] = useState('');
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [resetConfirmId, setResetConfirmId] = useState<string | null>(null);
+  // 已绑定 key 区（编辑/重置/撤销）的反馈与上面「新增 key」表单的 error/success 分开——否则
+  // 在下方表格里改一个 key，成功提示却渲染到上面 form 底部，离操作点很远（用户反馈的位置错位）。
+  const [rowError, setRowError] = useState<string | null>(null);
+  const [rowSuccess, setRowSuccess] = useState<string | null>(null);
 
   const refresh = async () => {
     const r = await fetch('/api/user/ai-keys');
@@ -87,8 +91,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   };
 
   const startEdit = (b: BYOKBinding) => {
-    setError(null);
-    setSuccess(null);
+    setRowError(null);
+    setRowSuccess(null);
     setEditingId(b.id);
     setEditQuota(b.tokenQuota != null ? String(b.tokenQuota) : '');
     // date input 要 YYYY-MM-DD；从 ISO 截前 10 位。
@@ -102,14 +106,14 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   };
 
   const saveEdit = async (b: BYOKBinding) => {
-    setError(null);
-    setSuccess(null);
+    setRowError(null);
+    setRowSuccess(null);
     // tokenQuota：空=清空（改无限，传 null）；否则须正整数。
     let quota: number | null = null;
     if (editQuota.trim() !== '') {
       const n = Number(editQuota);
       if (!Number.isInteger(n) || n <= 0) {
-        setError(t('quotaInvalid'));
+        setRowError(t('quotaInvalid'));
         return;
       }
       quota = n;
@@ -139,10 +143,10 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(extractErrorMessage(data) || t('saveFailed', { status: r.status }));
+        setRowError(extractErrorMessage(data) || t('saveFailed', { status: r.status }));
         return;
       }
-      setSuccess(t('editSaved'));
+      setRowSuccess(t('editSaved'));
       cancelEdit();
       await refresh();
     } finally {
@@ -152,8 +156,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
 
   const confirmResetQuota = async () => {
     if (!resetConfirmId) return;
-    setError(null);
-    setSuccess(null);
+    setRowError(null);
+    setRowSuccess(null);
     setRowBusy(resetConfirmId);
     try {
       const r = await fetch('/api/user/ai-keys', {
@@ -163,10 +167,10 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(extractErrorMessage(data) || t('resetFailed', { status: r.status }));
+        setRowError(extractErrorMessage(data) || t('resetFailed', { status: r.status }));
         return;
       }
-      setSuccess(t('quotaReset'));
+      setRowSuccess(t('quotaReset'));
       await refresh();
     } finally {
       setRowBusy(null);
@@ -231,7 +235,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   const confirmRevoke = async () => {
     if (!revokeProvider) return;
     setIsRevoking(true);
-    setError(null);
+    setRowError(null);
+    setRowSuccess(null);
     try {
       const r = await fetch(
         `/api/user/ai-keys?provider=${encodeURIComponent(revokeProvider)}`,
@@ -239,7 +244,7 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       );
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError(extractErrorMessage(data) || t('revokeFailed', { status: r.status }));
+        setRowError(extractErrorMessage(data) || t('revokeFailed', { status: r.status }));
         return;
       }
       await refresh();
@@ -410,6 +415,20 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
 
       <section className="mt-6 rounded-lg border border-border bg-bg p-6">
         <h2 className="text-lg font-semibold text-fg">{t('boundTitle')}</h2>
+
+        {/* 已绑定 key 区的反馈就近渲染（编辑/重置/撤销的结果）——与上面「新增 key」表单的
+            error/success 分开，避免在下方表格操作却把提示显示到上面 form 底部。 */}
+        {rowError && (
+          <div className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">
+            {rowError}
+          </div>
+        )}
+        {rowSuccess && (
+          <div className="mt-3 rounded-md bg-green-50 p-3 text-sm text-green-800">
+            {rowSuccess}
+          </div>
+        )}
+
         {bindings.length === 0 ? (
           <p className="mt-3 text-sm text-fg-muted">{t('noneBound')}</p>
         ) : (
