@@ -80,6 +80,8 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('ai-key-vault 多 key（真库�
   });
 
   it('★reorder：CASE 真重排 priority（把 b 提到最前）', async () => {
+    // 回归锚点：CASE 的 THEN 序号若不 ::int 转型，此调用会抛「column priority is of type
+    // integer but expression is of type text」（生产 reorder 500 的根因）。真库跑到即守卫。
     const a = await saveBYOKKey({ userId: U, provider: 'openai', apiKey: KEY('a') }); // pri 0
     const b = await saveBYOKKey({ userId: U, provider: 'openai', apiKey: KEY('b') }); // pri 1
     const updated = await reorderBYOKKeys(U, 'openai', [b.id, a.id]);
