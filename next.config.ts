@@ -56,6 +56,33 @@ const withMDX = createMDX({
 const DEPLOYMENT_MODE: 'saas' | 'on-prem' =
   safeEnv('DEPLOYMENT_MODE') === 'on-prem' ? 'on-prem' : 'saas';
 
+// 构建 SHA（进 sourceToolchainId 的 build= 段，供证据包溯源）。构建时从 CI 注入的 commit SHA 取，
+// 缺省 'dev'。cloudToolchainId 运行时读 process.env.ASTER_RUNTIME_BUILD——这里 build 期 inline，
+// 使部署后的 Worker 拿到真实 build SHA 而非 'dev'（证据溯源不再显示 build=dev）。
+// 优先级：显式 ASTER_RUNTIME_BUILD > CF Workers Builds(WORKERS_CI_COMMIT_SHA) > CF_PAGES > GITHUB_SHA
+// > git rev-parse（git checkout 里总能拿到）> 'dev'。取前 12 位短哈希。
+function resolveRuntimeBuild(): string {
+  const fromEnv =
+    safeEnv('ASTER_RUNTIME_BUILD') ||
+    safeEnv('WORKERS_CI_COMMIT_SHA') ||
+    safeEnv('CF_PAGES_COMMIT_SHA') ||
+    safeEnv('GITHUB_SHA');
+  if (fromEnv) return fromEnv.slice(0, 12);
+  // 兜底：build 在 git checkout 里跑，rev-parse 拿当前 commit（CI env 未注入 SHA 时也不退化成 dev）。
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sha = require('node:child_process')
+      .execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+    if (sha) return sha.slice(0, 12);
+  } catch {
+    // 非 git 环境（如 vendored tarball）——落 'dev'。
+  }
+  return 'dev';
+}
+const RUNTIME_BUILD: string = resolveRuntimeBuild();
+
 // 只在 next build 阶段做一次 warn-only 校验。
 //
 // 历史踩坑：早先在这里无条件调 validateEnvOrWarn()，
@@ -92,6 +119,8 @@ const nextConfig: NextConfig = {
   // 与 CLIENT_CAPABILITIES 读这个变量。webpack 会编译期 inline。
   env: {
     NEXT_PUBLIC_DEPLOYMENT_MODE: DEPLOYMENT_MODE,
+    // build 期 inline 真实 build SHA → cloudToolchainId 读到它而非 'dev'（证据溯源用）。
+    ASTER_RUNTIME_BUILD: RUNTIME_BUILD,
   },
 
   webpack: (config, { webpack }) => {

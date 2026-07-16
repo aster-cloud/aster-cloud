@@ -18,6 +18,7 @@ import type { PolicyReplayMetadata } from '@/services/policy/policy-api';
  */
 const REFS: ReplayVersionRefs = {
   policyVersionRowId: 'pv_row_123',
+  policyVersion: 4,
   sourceToolchainId: 'abi=V1;core=1.0.8;validator=3;build=prod',
   vocabSnapshotRef: [{ snapshotId: 's1', domain: 'finance', locale: 'en-US' }],
   locale: 'en-US',
@@ -89,6 +90,8 @@ describe('buildReplayColumns — M1 回放列语义', () => {
   it('版本引用列不依赖 replayMetadata（总是填）', () => {
     const cols = buildReplayColumns(REPLAY, REFS);
     expect(cols.policyVersionRowId).toBe('pv_row_123');
+    // ★人类可读版本号也总是填（证据包显示「第几版」，而非只有 UUID）。
+    expect(cols.policyVersion).toBe(4);
     expect(cols.sourceToolchainId).toBe(REFS.sourceToolchainId);
     expect(cols.vocabSnapshotRef).toEqual(REFS.vocabSnapshotRef);
     expect(cols.locale).toBe('en-US');
@@ -105,6 +108,7 @@ describe('buildReplayColumns — M1 回放列语义', () => {
     expect(cols.replayabilityReasons).toBeNull();
     // 版本引用不受影响。
     expect(cols.policyVersionRowId).toBe('pv_row_123');
+    expect(cols.policyVersion).toBe(4);
     expect(cols.sourceToolchainId).toBe(REFS.sourceToolchainId);
   });
 
