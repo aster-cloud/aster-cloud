@@ -88,8 +88,11 @@ export async function reorderBYOKKeys(
   orderedIds: string[],
 ): Promise<number> {
   if (orderedIds.length === 0) return 0;
+  // ★THEN 的序号必须显式 ::int 转型：drizzle 把 ${i} 作为**绑定参数**，Postgres 对绑定参数在
+  // CASE 表达式里默认推断为 text → 赋给 integer 列会报「column priority is of type integer but
+  // expression is of type text」。故每个 THEN 值都 cast 到 int，让整个 CASE 结果类型为 integer。
   const cases = sql.join(
-    orderedIds.map((id, i) => sql`WHEN ${id} THEN ${i}`),
+    orderedIds.map((id, i) => sql`WHEN ${id} THEN ${i}::int`),
     sql` `,
   );
   const idList = sql.join(
