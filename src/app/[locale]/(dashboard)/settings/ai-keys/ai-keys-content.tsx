@@ -126,8 +126,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
       expiresAt?: string | null;
     } = { id: b.id, action: 'update', tokenQuota: quota };
     if (expiryChanged) {
-      // 空=永不过期（null）；否则当天 UTC 结束前（未来时间）。
-      payload.expiresAt = editExpiry ? new Date(editExpiry + 'T23:59:59Z').toISOString() : null;
+      // 空=永不过期（null）；否则存当天 00:00:00 UTC（选哪天=那天起失效，见 handleSubmit 注释）。
+      payload.expiresAt = editExpiry ? new Date(editExpiry + 'T00:00:00Z').toISOString() : null;
     }
 
     setRowBusy(b.id);
@@ -202,8 +202,10 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
           apiKey,
           providerUrl: providerUrl.trim() || null,
           tokenQuota: quotaNum,
-          // date input 是 YYYY-MM-DD;转成当天 UTC 结束前的 ISO（未来时间）。
-          expiresAt: expiresAt ? new Date(expiresAt + 'T23:59:59Z').toISOString() : null,
+          // 失效语义：选「7-31」= 7-31 当天起就不能用（该日已失效）。故存**当天 00:00:00 UTC**——
+          // 推理层 expiresAt<=now 即拒，key 在 7-31 当天内失效（而非存 23:59:59 让它当天整天仍可用）。
+          // 注：系统不追踪用户时区，用 UTC 日界；UTC+8 用户该日 08:00 起失效（仍落在 7-31 当天，符合语义）。
+          expiresAt: expiresAt ? new Date(expiresAt + 'T00:00:00Z').toISOString() : null,
         }),
       });
       if (!r.ok) {
@@ -247,11 +249,32 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
     }
   };
 
-  const formatDate = (iso: string | null) => {
-    if (!iso) return t('never');
-    // 挂载前用确定性 ISO 日期（YYYY-MM-DD，SSR/CSR 一致）；挂载后切 locale 本地格式。
+  // 失效日期是**日历日**（用户选一天，非某个时刻），存为该日 00:00:00 UTC。显示必须按 **UTC**
+  // 日期部分渲染，否则 UTC+8 浏览器把 00:00Z 本地化会把日期往后错一天（用户选 7-31 却显示 8-1）。
+  // 挂载前后都用 iso 前 10 位（YYYY-MM-DD）——即存进去的日历日，SSR/CSR 一致、零时区漂移。
+  const formatExpiry = (iso: string | null) => {
+    if (!iso) return t('noExpiry');
     if (!mounted) return iso.slice(0, 10);
-    return new Date(iso).toLocaleDateString(locale);
+    // 用 UTC 部分构造只含日期的本地格式（不引入本地时区偏移）。
+    const d = new Date(iso);
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toLocaleDateString(
+      locale,
+      { timeZone: 'UTC' },
+    );
+  };
+
+  // 创建/最近使用是**真实时刻**（instant），按浏览器本地时区显示日期**+时分**才不含糊
+  // （半夜发生的事件在本地显示成「当地那天+时刻」是正确的，与 formatExpiry 的日历日语义不同）。
+  const formatDateTime = (iso: string | null) => {
+    if (!iso) return t('never');
+    if (!mounted) return iso.slice(0, 16).replace('T', ' '); // SSR/CSR 一致的确定性 UTC 占位
+    return new Date(iso).toLocaleString(locale, {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
   // 数字千分位同理 hydration-safe：挂载前用原始数字串，挂载后用 locale 格式。
   const formatNum = (n: number) => (mounted ? n.toLocaleString(locale) : String(n));
@@ -460,17 +483,15 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
                           className="w-40"
                           aria-label={t('expiresAt')}
                         />
-                      ) : b.expiresAt ? (
-                        formatDate(b.expiresAt)
                       ) : (
-                        t('noExpiry')
+                        formatExpiry(b.expiresAt)
                       )}
                     </td>
                     <td className="py-3 text-fg-muted">
-                      {formatDate(b.lastUsedAt)}
+                      {formatDateTime(b.lastUsedAt)}
                     </td>
                     <td className="py-3 text-fg-muted">
-                      {formatDate(b.createdAt)}
+                      {formatDateTime(b.createdAt)}
                     </td>
                     <td className="py-3">
                       {editingId === b.id ? (
