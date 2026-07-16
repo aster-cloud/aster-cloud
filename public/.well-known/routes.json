@@ -371,14 +371,6 @@
       "locales": "all"
     },
     {
-      "path": "/reports/:id",
-      "status": "canonical-here",
-      "owner": "app",
-      "source": "src/app/[locale]/(dashboard)/reports/[id]/page.tsx",
-      "auth": "required",
-      "locales": "all"
-    },
-    {
       "path": "/settings/ai-keys",
       "status": "canonical-here",
       "owner": "app",

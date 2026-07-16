@@ -1,342 +1,319 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Link } from '@/i18n/navigation';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CLIENT_CAPABILITIES } from '@/hooks/use-deployment-mode';
-import { formatDate } from '@/lib/format';
-import { LoadingSkeleton } from '@/components/feedback/loading-skeleton';
-import { Container, PageHeader, ListSearchInput } from '@/components/ui';
+import {
+  Alert,
+  Badge,
+  Breadcrumbs,
+  Button,
+  Card,
+  CardBody,
+  Container,
+  EmptyState,
+  Input,
+  Label,
+  PageHeader,
+  Select,
+  Stack,
+} from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
-interface ComplianceReport {
+interface PolicyOption {
   id: string;
-  type: string;
+  name: string;
+}
+
+interface EvidenceExportRow {
+  id: string;
   title: string;
   status: 'generating' | 'completed' | 'failed';
-  data: {
-    summary: {
-      totalPolicies: number;
-      policiesWithPII: number;
-      totalExecutions: number;
-      complianceScore: number;
-    };
-  } | null;
+  period: string | null;
+  count: number | null;
+  bundleHash: string | null;
   createdAt: string;
   completedAt: string | null;
 }
 
-interface Translations {
-  title: string;
-  subtitle: string;
-  upgradePlan: string;
-  generateNew: string;
-  generating: string;
-  generateTemplate: string;
-  noReports: string;
-  generateFirst: string;
-  typeTemplate: string;
-  createdTemplate: string;
-  policiesAnalyzedTemplate: string;
-  status: {
-    completed: string;
-    generating: string;
-    failed: string;
+interface Preview {
+  count: number;
+  decisionTally: {
+    approved: number;
+    denied: number;
+    indeterminate: number;
+    error: number;
+    unknown: number;
   };
-  reportTypes: {
-    gdpr: { name: string; description: string };
-    hipaa: { name: string; description: string };
-    soc2: { name: string; description: string };
-    pci_dss: { name: string; description: string };
-  };
-  nav: {
-    dashboard: string;
-    reports: string;
-  };
+  exceedsLimit: boolean;
+  limit: number;
 }
 
-// 简单模板插值
-function formatTemplate(template: string, values: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
-}
-
-const REPORT_TYPE_IDS = ['gdpr', 'hipaa', 'soc2', 'pci_dss'] as const;
-
-interface ReportsContentProps {
-  initialReports: ComplianceReport[];
-  translations: Translations;
+interface Props {
   locale: string;
+  policies: PolicyOption[];
+  initialExports: EvidenceExportRow[];
 }
 
-export function ReportsContent({
-  initialReports,
-  translations: t,
-  locale,
-}: ReportsContentProps) {
-  const [reports, setReports] = useState<ComplianceReport[]>(initialReports);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedType, setSelectedType] = useState('');
-  const [error, setError] = useState('');
-  const [query, setQuery] = useState('');
-  const tCommon = useTranslations('common');
+const DECISION_KEYS = ['approved', 'denied', 'indeterminate', 'error', 'unknown'] as const;
 
-  // Client-side filter — matches report title and type (case-insensitive).
-  const visibleReports = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return reports;
-    return reports.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.type.toLowerCase().includes(q),
-    );
-  }, [reports, query]);
+export function ReportsContent({ locale, policies, initialExports }: Props) {
+  const t = useTranslations('evidenceExport');
+  const [policyId, setPolicyId] = useState<string>(''); // '' = 全部
+  const [startDate, setStartDate] = useState<string>(defaultStart());
+  const [endDate, setEndDate] = useState<string>('');
+  const [format, setFormat] = useState<'json' | 'jsonl'>('json');
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [exports, setExports] = useState<EvidenceExportRow[]>(initialExports);
 
-  const fetchReports = async () => {
+  const rangePayload = () => ({
+    policyId: policyId || null,
+    // date input 是 YYYY-MM-DD；start 取当天 00:00Z，end 取当天 23:59:59Z（含当天）。
+    startDate: startDate ? new Date(startDate + 'T00:00:00Z').toISOString() : null,
+    endDate: endDate ? new Date(endDate + 'T23:59:59Z').toISOString() : null,
+  });
+
+  const runPreview = async () => {
+    setError(null);
+    setPreviewing(true);
     try {
-      const res = await fetch('/api/reports');
-      if (!res.ok) throw new Error('Failed to fetch reports');
-      const data = await res.json();
-      setReports(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const generateReport = async (type: string) => {
-    setIsGenerating(true);
-    setError('');
-
-    try {
-      const res = await fetch('/api/reports', {
+      const r = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ ...rangePayload(), dryRun: true }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.upgrade) {
-          setError(extractErrorMessage(data) || 'Upgrade required');
-        } else {
-          throw new Error(extractErrorMessage(data) || 'Failed to generate report');
-        }
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(extractErrorMessage(data) || t('previewFailed', { status: r.status }));
+        setPreview(null);
         return;
       }
-
-      // Refresh reports list
-      await fetchReports();
-      setSelectedType('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate report');
+      setPreview((await r.json()) as Preview);
     } finally {
-      setIsGenerating(false);
+      setPreviewing(false);
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return (
-          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-            {t.status.completed}
-          </span>
-        );
-      case 'generating':
-        return (
-          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-            {t.status.generating}
-          </span>
-        );
-      case 'failed':
-        return (
-          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-            {t.status.failed}
-          </span>
-        );
-      default:
-        return null;
+  const refresh = async () => {
+    const r = await fetch('/api/reports');
+    if (r.ok) {
+      const rows = (await r.json()) as Array<{
+        id: string;
+        title: string;
+        status: EvidenceExportRow['status'];
+        period: string | null;
+        data: { manifest?: { totals?: { count?: number }; bundleHash?: string } } | null;
+        createdAt: string;
+        completedAt: string | null;
+      }>;
+      setExports(
+        rows.map((e) => ({
+          id: e.id,
+          title: e.title,
+          status: e.status,
+          period: e.period ?? null,
+          count: e.data?.manifest?.totals?.count ?? null,
+          bundleHash: e.data?.manifest?.bundleHash ?? null,
+          createdAt: e.createdAt,
+          completedAt: e.completedAt,
+        })),
+      );
     }
   };
 
-  const getReportTypeName = (id: string): string => {
-    const typeMap: Record<string, { name: string; description: string }> = {
-      gdpr: t.reportTypes.gdpr,
-      hipaa: t.reportTypes.hipaa,
-      soc2: t.reportTypes.soc2,
-      pci_dss: t.reportTypes.pci_dss,
-    };
-    return typeMap[id]?.name || id;
+  const runExport = async () => {
+    setError(null);
+    setExporting(true);
+    try {
+      const r = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...rangePayload(), format }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setError(extractErrorMessage(data) || t('exportFailed', { status: r.status }));
+        return;
+      }
+      const { id } = (await r.json()) as { id: string };
+      await refresh();
+      // 触发下载。
+      window.location.href = `/api/reports/${encodeURIComponent(id)}/download`;
+    } finally {
+      setExporting(false);
+    }
   };
+
+  const canExport = !exporting && (preview === null || (!preview.exceedsLimit && preview.count > 0));
 
   return (
     <Container size="xl" className="py-6 sm:py-10">
-      {/* 顶层页：sidebar 已高亮 "Reports" + PageHeader h1 显页名 → 不再放 Breadcrumbs（去三重重复）。 */}
-      <PageHeader title={t.title} subtitle={t.subtitle} className="mb-6" />
+      <PageHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        breadcrumbs={<Breadcrumbs items={[{ label: t('breadcrumb') }]} />}
+        className="mb-6"
+      />
 
-      {error && (
-        <div className="mb-6 rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-          {error.includes('subscription') && CLIENT_CAPABILITIES.billing && (
-            <Link href="/billing" className="text-sm font-medium text-red-700 underline">
-              {t.upgradePlan}
-            </Link>
-          )}
-        </div>
-      )}
-
-      {/* Generate Report */}
-      <div className="bg-bg shadow sm:rounded-lg mb-8">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-fg mb-4">
-            {t.generateNew}
-          </h3>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {REPORT_TYPE_IDS.map((id) => (
-              <button
-                key={id}
-                onClick={() => setSelectedType(id)}
-                disabled={isGenerating}
-                className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                  selectedType === id
-                    ? 'border-primary bg-primary-subtle'
-                    : 'border-border hover:border-border-strong'
-                } disabled:opacity-50`}
-              >
-                <div className="font-medium text-fg">{t.reportTypes[id].name}</div>
-                <div className="text-sm text-fg-muted">{t.reportTypes[id].description}</div>
-              </button>
-            ))}
-          </div>
-
-          {selectedType && (
-            <div className="mt-4">
-              <button
-                onClick={() => generateReport(selectedType)}
-                disabled={isGenerating}
-                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    {t.generating}
-                  </>
-                ) : (
-                  formatTemplate(t.generateTemplate, { type: getReportTypeName(selectedType) })
-                )}
-              </button>
+      {/* 导出配置 */}
+      <Card>
+        <CardBody className="pt-6">
+          <Stack gap={4}>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="ev-policy">{t('policy')}</Label>
+              <Select id="ev-policy" value={policyId} onChange={(e) => setPolicyId(e.target.value)}>
+                <option value="">{t('allPolicies')}</option>
+                {policies.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Reports List */}
-      {isGenerating && (
-        <div aria-live="polite" className="mb-4">
-          <LoadingSkeleton lines={3} className="bg-bg shadow sm:rounded-lg p-6" />
-        </div>
-      )}
-      {reports.length > 0 && (
-        <div className="mb-4">
-          <ListSearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder={tCommon('searchPlaceholder')}
-          />
-        </div>
-      )}
-      {reports.length === 0 ? (
-        <div className="text-center py-12 bg-bg rounded-lg shadow">
-          <svg
-            className="mx-auto h-12 w-12 text-fg-subtle"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-semibold text-fg">{t.noReports}</h3>
-          <p className="mt-1 text-sm text-fg-muted">
-            {t.generateFirst}
-          </p>
-        </div>
-      ) : (
-        <div className="bg-bg shadow sm:rounded-lg overflow-hidden">
-          <ul className="divide-y divide-border">
-            {visibleReports.map((report) => (
-              <li key={report.id}>
-                <Link
-                  href={`/reports/${report.id}`}
-                  className="block hover:bg-bg-subtle"
-                >
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-primary">
-                          {report.title}
-                        </span>
-                        <span className="ml-2">{getStatusBadge(report.status)}</span>
-                      </div>
-                      {report.status === 'completed' && report.data && (
-                        <span
-                          className={`text-2xl font-bold ${getScoreColor(
-                            report.data.summary.complianceScore
-                          )}`}
-                        >
-                          {report.data.summary.complianceScore}%
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 flex items-center text-sm text-fg-muted">
-                      <span>{formatTemplate(t.typeTemplate, { type: report.type.toUpperCase() })}</span>
-                      <span className="mx-2">|</span>
-                      <span>
-                        {formatTemplate(t.createdTemplate, { date: formatDate(report.createdAt, locale) })}
-                      </span>
-                      {report.status === 'completed' && report.data && (
-                        <>
-                          <span className="mx-2">|</span>
-                          <span>{formatTemplate(t.policiesAnalyzedTemplate, { count: report.data.summary.totalPolicies })}</span>
-                        </>
-                      )}
-                    </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="ev-start">{t('startDate')}</Label>
+                <Input id="ev-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="ev-end">{t('endDate')}</Label>
+                <Input id="ev-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="ev-format">{t('format')}</Label>
+              <Select
+                id="ev-format"
+                value={format}
+                onChange={(e) => setFormat(e.target.value as 'json' | 'jsonl')}
+                className="sm:w-48"
+              >
+                <option value="json">JSON</option>
+                <option value="jsonl">JSONL</option>
+              </Select>
+            </div>
+
+            <Stack direction="row" gap={3} align="center">
+              <Button variant="secondary" onClick={runPreview} disabled={previewing}>
+                {previewing ? t('previewing') : t('previewBtn')}
+              </Button>
+              <Button variant="primary" onClick={runExport} disabled={!canExport}>
+                {exporting ? t('exporting') : t('exportBtn')}
+              </Button>
+            </Stack>
+
+            {error && <Alert variant="danger">{error}</Alert>}
+
+            {/* 预览面板 */}
+            {preview && (
+              <div className="rounded-md border border-border bg-bg-subtle p-4">
+                <p className="text-sm font-medium text-fg">
+                  {t('previewCount', { count: preview.count })}
+                </p>
+                {preview.count === 0 ? (
+                  <p className="mt-2 text-sm text-fg-muted">{t('previewEmpty')}</p>
+                ) : preview.exceedsLimit ? (
+                  <Alert variant="warning" className="mt-2">
+                    {t('previewTooLarge', { limit: preview.limit })}
+                  </Alert>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {DECISION_KEYS.map((k) => (
+                      <Badge key={k} variant={decisionVariant(k)}>
+                        {t(`decision.${k}`)}: {preview.decisionTally[k]}
+                      </Badge>
+                    ))}
                   </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+                )}
+              </div>
+            )}
+          </Stack>
+        </CardBody>
+      </Card>
+
+      {/* 说明：证据包是什么 */}
+      <section className="mt-6 rounded-lg border border-border bg-bg-subtle p-6">
+        <h3 className="text-base font-semibold text-fg">{t('whatTitle')}</h3>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-fg">
+          <li>{t('whatEvidence')}</li>
+          <li>{t('whatHash')}</li>
+          <li>{t('whatNoScore')}</li>
+        </ul>
+      </section>
+
+      {/* 历史导出 */}
+      <section className="mt-6">
+        <h2 className="mb-3 text-lg font-semibold text-fg">{t('historyTitle')}</h2>
+        {exports.length === 0 ? (
+          <EmptyState title={t('historyEmpty')} description={t('historyEmptyDesc')} />
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs uppercase text-fg-muted">
+                  <th className="px-4 py-2 text-left">{t('thTitle')}</th>
+                  <th className="px-4 py-2 text-left">{t('thCount')}</th>
+                  <th className="px-4 py-2 text-left">{t('thStatus')}</th>
+                  <th className="px-4 py-2 text-left">{t('thCreated')}</th>
+                  <th className="px-4 py-2 text-left">{t('thActions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {exports.map((e) => (
+                  <tr key={e.id} className="border-b border-border">
+                    <td className="px-4 py-3">{e.title}</td>
+                    <td className="px-4 py-3 text-fg-muted">{e.count ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={e.status === 'completed' ? 'success' : e.status === 'failed' ? 'danger' : 'neutral'}>
+                        {t(`status.${e.status}`)}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-fg-muted">
+                      {new Date(e.createdAt).toLocaleString(locale)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {e.status === 'completed' ? (
+                        <a
+                          href={`/api/reports/${encodeURIComponent(e.id)}/download`}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t('download')}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-fg-muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </Container>
   );
+}
+
+function decisionVariant(k: (typeof DECISION_KEYS)[number]): 'success' | 'danger' | 'neutral' | 'warning' {
+  switch (k) {
+    case 'approved':
+      return 'success';
+    case 'denied':
+    case 'error':
+      return 'danger';
+    case 'indeterminate':
+      return 'warning';
+    default:
+      return 'neutral';
+  }
+}
+
+/** 默认起始日 = 30 天前（YYYY-MM-DD）。 */
+function defaultStart(): string {
+  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10);
 }

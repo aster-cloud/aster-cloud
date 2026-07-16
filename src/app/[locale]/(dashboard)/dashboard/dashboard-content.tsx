@@ -69,14 +69,14 @@ interface DashboardStats {
     policies: number;
     policiesLimit: number;
     piiScans: number;
-    complianceReports: number;
+    evidenceExports: number;
     apiCalls: number;
     apiCallsLimit: number;
   };
   features: {
     piiDetection: string;
     sharing: boolean;
-    complianceReports: boolean;
+    evidenceExport: boolean;
     apiAccess: boolean;
     teamFeatures: boolean;
   };

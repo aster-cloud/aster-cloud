@@ -59,6 +59,7 @@ import {
   getUsageStats,
   hasFeatureAccess,
   getLexiconQuota,
+  EVIDENCE_EXPORT_METRIC,
 } from '@/lib/usage';
 
 // Helper to setup db.select chain for policy count queries
@@ -217,6 +218,16 @@ describe('Usage Tracking', () => {
       const callArgs = mockInsertValues.mock.calls[0][0];
       expect(callArgs.period).toMatch(/^\d{4}-\d{2}$/);
     });
+
+    // ★向后兼容守卫：证据导出重命名后，持久化的计量枚举值必须仍是 'compliance_report'
+    // （usageRecords.type 是 pg enum，改值需迁移；现有行也用此值）。别把它误改成 'evidence_export'。
+    it('evidence export metric persists as the legacy enum value compliance_report', async () => {
+      expect(EVIDENCE_EXPORT_METRIC).toBe('compliance_report');
+      await recordUsage('user-1', EVIDENCE_EXPORT_METRIC);
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1', type: 'compliance_report' })
+      );
+    });
   });
 
   describe('getUsageStats', () => {
@@ -290,7 +301,7 @@ describe('Usage Tracking', () => {
 
       expect(result.usage.executions).toBe(0);
       expect(result.usage.piiScans).toBe(0);
-      expect(result.usage.complianceReports).toBe(0);
+      expect(result.usage.evidenceExports).toBe(0);
       expect(result.usage.apiCalls).toBe(0);
     });
   });
@@ -320,10 +331,10 @@ describe('Usage Tracking', () => {
       expect(result).toBe(true);
     });
 
-    it('should return false for free plan compliance reports', async () => {
+    it('should return false for free plan evidence export', async () => {
       vi.mocked(db.query.users.findFirst).mockResolvedValue(mockUser());
 
-      const result = await hasFeatureAccess('user-1', 'complianceReports');
+      const result = await hasFeatureAccess('user-1', 'evidenceExport');
 
       expect(result).toBe(false);
     });

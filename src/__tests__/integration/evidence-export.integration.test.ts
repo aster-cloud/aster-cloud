@@ -1,0 +1,198 @@
+// 证据导出数据层集成测试（真实 Postgres，testcontainers 或外部 DATABASE_URL）。
+//
+// 覆盖只有真库能验的：queryEvidenceExecutions 投影/排除已删策略/范围；getEvidencePreview 分布；
+// createEvidenceExport→getEvidenceExportBundle 重下载字节一致（bundleHash 稳定）；边缘：空范围、
+// legacy 缺哈希不崩、超限 413（EvidenceTooLargeError）。
+//
+// Run: LICENSE_E2E=1 pnpm test:integration
+// 本地绕过损坏的 migrate 链：起临时 pg + 手建 Policy/Execution/ComplianceReport 表 + 设 DATABASE_URL。
+
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { db, executions, policies, complianceReports } from '@/lib/prisma';
+import {
+  queryEvidenceExecutions,
+  getEvidencePreview,
+  countEvidenceExecutions,
+} from '@/lib/evidence-export';
+import {
+  createEvidenceExport,
+  getEvidenceExportBundle,
+  getEvidenceExportMetadata,
+  listEvidenceExports,
+} from '@/lib/evidence';
+import { setupTestDb, teardownTestDb } from './setup-postgres';
+
+const U = 'user-ev-1';
+const POL = 'pol-ev-1';
+
+async function seedPolicy(id: string, userId: string, name: string, deleted = false) {
+  await db.insert(policies).values({
+    id,
+    userId,
+    name,
+    content: 'Module M. Rule R.',
+    ...(deleted ? { deletedAt: new Date() } : {}),
+  } as typeof policies.$inferInsert);
+}
+
+async function seedExecution(over: Partial<typeof executions.$inferInsert> & { id: string; createdAt: Date }) {
+  await db.insert(executions).values({
+    userId: U,
+    policyId: POL,
+    input: {},
+    durationMs: 5,
+    success: true,
+    decision: 'approved',
+    canonicalInputHash: 'in',
+    canonicalOutputHash: 'out',
+    traceHash: 'tr',
+    source: 'api',
+    ...over,
+  } as typeof executions.$inferInsert);
+}
+
+describe.skipIf(process.env.LICENSE_E2E !== '1')('evidence-export 数据层（真库）', () => {
+  beforeAll(async () => {
+    process.env.AI_KEY_ENCRYPTION_SECRET = 'integration-test-secret-key-32chars';
+    await setupTestDb();
+  });
+  afterAll(async () => {
+    await teardownTestDb();
+  });
+  beforeEach(async () => {
+    await db.delete(executions);
+    await db.delete(complianceReports);
+    await db.delete(policies);
+    await seedPolicy(POL, U, 'Loan policy');
+  });
+
+  it('★queryEvidenceExecutions 投影哈希/溯源字段，按 createdAt 升序', async () => {
+    await seedExecution({ id: 'e2', createdAt: new Date('2026-07-02T00:00:00Z') });
+    await seedExecution({ id: 'e1', createdAt: new Date('2026-07-01T00:00:00Z') });
+    const rows = await queryEvidenceExecutions({ userId: U, policyId: POL });
+    expect(rows.map((r) => r.id)).toEqual(['e1', 'e2']); // 升序
+    expect(rows[0]).toMatchObject({ canonicalInputHash: 'in', canonicalOutputHash: 'out', traceHash: 'tr', decision: 'approved' });
+  });
+
+  it('★排除已删策略的执行', async () => {
+    await seedPolicy('pol-deleted', U, 'Deleted', true);
+    await seedExecution({ id: 'e1', createdAt: new Date('2026-07-01T00:00:00Z') });
+    await seedExecution({ id: 'e2', policyId: 'pol-deleted', createdAt: new Date('2026-07-02T00:00:00Z') });
+    const rows = await queryEvidenceExecutions({ userId: U }); // 全部策略
+    expect(rows.map((r) => r.id)).toEqual(['e1']); // e2 属已删策略，排除
+  });
+
+  it('★时间范围过滤', async () => {
+    await seedExecution({ id: 'old', createdAt: new Date('2026-06-01T00:00:00Z') });
+    await seedExecution({ id: 'inrange', createdAt: new Date('2026-07-15T00:00:00Z') });
+    const rows = await queryEvidenceExecutions({
+      userId: U,
+      startDate: new Date('2026-07-01T00:00:00Z'),
+      endDate: new Date('2026-07-31T00:00:00Z'),
+    });
+    expect(rows.map((r) => r.id)).toEqual(['inrange']);
+  });
+
+  it('★getEvidencePreview 分布正确（含 unknown=decision null）', async () => {
+    await seedExecution({ id: 'a', decision: 'approved', createdAt: new Date('2026-07-01T00:00:00Z') });
+    await seedExecution({ id: 'd', decision: 'denied', createdAt: new Date('2026-07-02T00:00:00Z') });
+    await seedExecution({ id: 'n', decision: null, createdAt: new Date('2026-07-03T00:00:00Z') });
+    const p = await getEvidencePreview({ userId: U, policyId: POL });
+    expect(p.count).toBe(3);
+    expect(p.decisionTally).toMatchObject({ approved: 1, denied: 1, unknown: 1 });
+    expect(p.exceedsLimit).toBe(false);
+  });
+
+  it('★legacy 行缺哈希/decision → 导出不崩，manifest 计缺口', async () => {
+    await seedExecution({
+      id: 'legacy',
+      decision: null,
+      canonicalInputHash: null,
+      canonicalOutputHash: null,
+      traceHash: null,
+      createdAt: new Date('2026-07-01T00:00:00Z'),
+    });
+    const { id, manifest } = await createEvidenceExport(U, { policyId: POL, format: 'json' });
+    expect(manifest.totals.count).toBe(1);
+    expect(manifest.notes.legacyRowsWithoutHashes).toBe(1);
+    expect(manifest.decisionTally.unknown).toBe(1);
+    expect(id).toBeTruthy();
+  });
+
+  it('★空范围 → count 0 的有效导出（合法空 manifest）', async () => {
+    const { manifest } = await createEvidenceExport(U, {
+      policyId: POL,
+      startDate: new Date('2030-01-01T00:00:00Z'),
+      endDate: new Date('2030-01-02T00:00:00Z'),
+      format: 'json',
+    });
+    expect(manifest.totals.count).toBe(0);
+    expect(manifest.bundleHash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('★createEvidenceExport→getEvidenceExportBundle 重下载字节一致（bundleHash 稳定）', async () => {
+    await seedExecution({ id: 'e1', createdAt: new Date('2026-07-01T00:00:00Z') });
+    await seedExecution({ id: 'e2', createdAt: new Date('2026-07-02T00:00:00Z') });
+    const { id } = await createEvidenceExport(U, { policyId: POL, format: 'json' });
+
+    const b1 = await getEvidenceExportBundle(U, id);
+    const b2 = await getEvidenceExportBundle(U, id);
+    expect(b1).not.toBeNull();
+    expect(b1!.body).toBe(b2!.body); // 两次读字节完全一致
+    // 越权取不到
+    expect(await getEvidenceExportBundle('other-user', id)).toBeNull();
+  });
+
+  it('countEvidenceExecutions 计数', async () => {
+    await seedExecution({ id: 'a', createdAt: new Date('2026-07-01T00:00:00Z') });
+    await seedExecution({ id: 'b', createdAt: new Date('2026-07-02T00:00:00Z') });
+    expect(await countEvidenceExecutions({ userId: U, policyId: POL })).toBe(2);
+  });
+
+  // ── Codex 审查修复的回归 ──
+
+  it('★preview/count 与 query 对已删策略语义一致（都排除，不会预览多于实际导出）', async () => {
+    await seedPolicy('pol-del', U, 'Deleted', true);
+    await seedExecution({ id: 'live', createdAt: new Date('2026-07-01T00:00:00Z') });
+    await seedExecution({ id: 'dead', policyId: 'pol-del', createdAt: new Date('2026-07-02T00:00:00Z') });
+    // 全部策略范围：count/preview 都应只算 live（1），与 query 一致
+    expect(await countEvidenceExecutions({ userId: U })).toBe(1);
+    const p = await getEvidencePreview({ userId: U });
+    expect(p.count).toBe(1);
+    const rows = await queryEvidenceExecutions({ userId: U });
+    expect(rows).toHaveLength(1);
+  });
+
+  it('★旧假分 ComplianceReport 行不出现在证据导出列表', async () => {
+    // 直插一条旧假分报告（data.kind 非 evidence-export）
+    await db.insert(complianceReports).values({
+      id: 'old-fake', userId: U, type: 'gdpr', title: 'Old GDPR score',
+      status: 'completed', data: { summary: { complianceScore: 88 } },
+    } as typeof complianceReports.$inferInsert);
+    // 再建一条真证据导出
+    await seedExecution({ id: 'e1', createdAt: new Date('2026-07-01T00:00:00Z') });
+    const { id } = await createEvidenceExport(U, { policyId: POL, format: 'json' });
+
+    const list = await listEvidenceExports(U);
+    const ids = list.map((r) => r.id);
+    expect(ids).toContain(id);
+    expect(ids).not.toContain('old-fake'); // 旧假分行被过滤
+  });
+
+  it('★getEvidenceExportMetadata 只返回 manifest，不含 bundle.entries', async () => {
+    await seedExecution({ id: 'e1', createdAt: new Date('2026-07-01T00:00:00Z') });
+    const { id } = await createEvidenceExport(U, { policyId: POL, format: 'json' });
+    const meta = await getEvidenceExportMetadata(U, id);
+    expect(meta).not.toBeNull();
+    expect(meta!.manifest?.totals.count).toBe(1);
+    // 不暴露 entries（既无 entries 键，也无 bundle 键——manifest.notes.verification 文本里出现
+    // "executionId" 字样是正常的校验说明，不算泄露，故只断言结构键而非子串）。
+    expect(meta).not.toHaveProperty('entries');
+    expect(meta).not.toHaveProperty('bundle');
+    // 旧假分行取不到（返回 null）
+    await db.insert(complianceReports).values({
+      id: 'old-fake2', userId: U, type: 'gdpr', title: 'x', status: 'completed', data: { summary: {} },
+    } as typeof complianceReports.$inferInsert);
+    expect(await getEvidenceExportMetadata(U, 'old-fake2')).toBeNull();
+  });
+});

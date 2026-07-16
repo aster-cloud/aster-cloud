@@ -64,7 +64,8 @@ type PlanLimits = {
 export type PlanCapabilities = {
   piiDetection: 'basic' | 'advanced';
   sharing: boolean;
-  complianceReports: boolean;
+  /** 证据导出（基于真实执行链）。旧名 complianceReports（已重命名，语义从「假合规分」改为「真证据导出」）。 */
+  evidenceExport: boolean;
   apiAccess: boolean;
   teamFeatures: boolean;
   sso?: boolean;
@@ -124,7 +125,7 @@ export const PLANS = {
     capabilities: {
       piiDetection: 'basic',
       sharing: false,
-      complianceReports: false,
+      evidenceExport: false,
       apiAccess: false,
       teamFeatures: false,
       customLexicon: false,
@@ -147,7 +148,7 @@ export const PLANS = {
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
-      complianceReports: true,
+      evidenceExport: true,
       apiAccess: true,
       teamFeatures: true,
       customLexicon: true,
@@ -183,7 +184,7 @@ export const PLANS = {
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
-      complianceReports: true,
+      evidenceExport: true,
       apiAccess: true,
       teamFeatures: true,
       auditLogs: true,
@@ -222,7 +223,7 @@ export const PLANS = {
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
-      complianceReports: true,
+      evidenceExport: true,
       apiAccess: true,
       teamFeatures: true,
       sso: true,
@@ -258,7 +259,7 @@ export const PLANS = {
     capabilities: {
       piiDetection: 'advanced',
       sharing: true,
-      complianceReports: true,
+      evidenceExport: true,
       apiAccess: true,
       teamFeatures: true,
       sso: true,
