@@ -113,7 +113,7 @@
     "eslint-config-next": "^16.2.10",
     "eslint-plugin-react": "^7.37.0",
     "eslint-plugin-react-hooks": "5.2.0",
-    "jsdom": "^27.4.0",
+    "jsdom": "^29.1.1",
     "lucide-react": "^1.24.0",
     "rehype-autolink-headings": "7.1.0",
     "rehype-pretty-code": "0.14.3",
@@ -144,7 +144,7 @@
       "postcss": ">=8.5.10",
       "ws": ">=8.20.1",
       "tmp": ">=0.2.6",
-      "undici": ">=8.5.0",
+      "undici@>=8.0.0 <8.5.0": ">=8.5.0",
       "form-data": ">=4.0.6",
       "vite": ">=8.0.16",
       "@babel/core": ">=7.29.6 <8"
