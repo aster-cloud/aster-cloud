@@ -8,8 +8,17 @@
 // 基线 expectedOutputHash 是冻结时捕获的快照，M1 不实时重跑 old backend/toolchain。这是试点
 // 实际操作方式（升级前 freeze → 部署新版 → run gate），诚实标注不假装实时对跑。
 
-import { and, eq, sql } from 'drizzle-orm';
-import { db, policyVersions, regressionCases, regressionReports, users } from '@/lib/prisma';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import {
+  db,
+  policyVersions,
+  regressionCases,
+  regressionReports,
+  regressionDriftApprovals,
+  users,
+  type RegressionReport,
+  type RegressionDriftApproval,
+} from '@/lib/prisma';
 import { canonicalHash } from '@/lib/canonical-json';
 import { createPolicyApiClient } from './policy-api';
 import { detectCNLLocale } from './cnl-executor';
@@ -1074,4 +1083,252 @@ export function assembleReport(params: {
     cases: details,
     runnerVersion: RULE_REGRESSION_RUNNER_VERSION,
   };
+}
+
+// ============ P0-4 受控接受漂移审批（ACCEPTED_DRIFT_WITH_APPROVAL）============
+// 核心不变量：FAIL_REGRESSION 报告**永不**被改成 PASS。真实 bugfix 漂移由独立不可变审批 artifact
+// 受控接受；有效状态由 report + 覆盖其全部 FAIL_REGRESSION drift 的有效审批 join **派生**。
+
+/** 审批版本（进 approvalHash，逻辑变更 bump）。 */
+export const DRIFT_APPROVAL_VERSION = 'p0a-drift-approval/m1.0';
+
+/** 派生的有效状态：报告行 status 4 态 + 受控接受派生态。 */
+export type EffectiveReportStatus = RegressionReportStatus | 'ACCEPTED_DRIFT_WITH_APPROVAL';
+
+/** 一条被受控接受的 case 漂移（钉死 before/after output hash）。 */
+export interface AcceptedDrift {
+  caseId: string;
+  /** 冻结基线的 expectedOutputHash（漂移前）。 */
+  baselineOutputHash: string;
+  /** 本次回放的 actualOutputHash（漂移后，已批范围）。升级后 case 输出须仍等于它。 */
+  acceptedOutputHash: string;
+}
+
+/**
+ * approvalHash = canonicalHash(审批决定性内容)——artifact 防篡改 + 可复算。
+ * 覆盖 reportHash + acceptedDrifts(稳定序) + approver + reason + ticket + expiry + 版本。不含 id/createdAt。
+ */
+export function computeApprovalHash(fields: {
+  reportHash: string;
+  policyVersionRowId: string;
+  acceptedDrifts: AcceptedDrift[];
+  reason: string;
+  ticketRef: string | null;
+  approvedBy: string;
+  expiresAt: string; // ISO
+}): string {
+  const drifts = fields.acceptedDrifts
+    .slice()
+    .sort((a, b) => (a.caseId < b.caseId ? -1 : a.caseId > b.caseId ? 1 : 0))
+    .map((d) => ({
+      caseId: d.caseId,
+      baselineOutputHash: d.baselineOutputHash,
+      acceptedOutputHash: d.acceptedOutputHash,
+    }));
+  return canonicalHash({
+    approvalVersion: DRIFT_APPROVAL_VERSION,
+    reportHash: fields.reportHash,
+    policyVersionRowId: fields.policyVersionRowId,
+    acceptedDrifts: drifts,
+    reason: fields.reason,
+    ticketRef: fields.ticketRef,
+    approvedBy: fields.approvedBy,
+    expiresAt: fields.expiresAt,
+  });
+}
+
+export interface CreateApprovalResult {
+  approvalId: string;
+  approvalHash: string;
+}
+
+/**
+ * 创建受控接受漂移审批（write 路径）。★职责分离：approvedBy **必须 != 报告 createdBy**（跨表 DB check
+ * 做不到，应用层强制 + 审计）。★只接受**当前有效**报告：reportHash 必须匹配 DB 里的报告（防审批已被
+ * 替换的旧报告）。★acceptedDrifts 必须精确覆盖报告全部 OUTPUT_HASH_MISMATCH drift（多/少/证据损坏 case
+ * 都拒——不能审批不可接受的失败）。
+ */
+export async function createDriftApproval(params: {
+  reportId: string;
+  reason: string;
+  ticketRef?: string | null;
+  approvedBy: string;
+  expiresAt: Date;
+}): Promise<CreateApprovalResult> {
+  const { reportId, reason, approvedBy, expiresAt } = params;
+  const ticketRef = params.ticketRef ?? null;
+
+  const report = (await db.query.regressionReports.findFirst({
+    where: eq(regressionReports.id, reportId),
+  })) as RegressionReport | undefined;
+  if (!report) throw new Error('report_not_found');
+  if (report.status !== 'FAIL_REGRESSION') {
+    throw new Error(`report_not_failing:${report.status}`); // 只失败报告才需受控接受。
+  }
+  // ★职责分离：审批人不能是报告创建者。
+  if (report.createdBy === approvedBy) {
+    throw new Error('separation_of_duties:approver_equals_report_creator');
+  }
+  if (expiresAt.getTime() <= Date.now()) {
+    throw new Error('invalid_expiry:not_in_future');
+  }
+
+  const runReport = report.reportJson as unknown as RunReport;
+  const failCases = runReport.cases.filter((c) => c.status === 'FAIL_REGRESSION');
+  const approvable = extractApprovableDrifts(runReport);
+  // 报告有不可受控接受的失败（证据损坏/回放破坏/编译失败）→ 整份不可审批。
+  if (approvable.length !== failCases.length || approvable.length === 0) {
+    throw new Error('report_has_unapprovable_failures');
+  }
+
+  const approvalHash = computeApprovalHash({
+    reportHash: report.reportHash,
+    policyVersionRowId: report.policyVersionRowId,
+    acceptedDrifts: approvable,
+    reason,
+    ticketRef,
+    approvedBy,
+    expiresAt: expiresAt.toISOString(),
+  });
+
+  const approvalId = crypto.randomUUID();
+  await db.insert(regressionDriftApprovals).values({
+    id: approvalId,
+    reportId,
+    reportHash: report.reportHash,
+    policyId: report.policyId,
+    policyVersionRowId: report.policyVersionRowId,
+    acceptedDrifts: approvable,
+    reason,
+    ticketRef,
+    approvedBy,
+    expiresAt,
+    approvalHash,
+  });
+  return { approvalId, approvalHash };
+}
+
+/**
+ * 查报告 + 其有效审批 → 派生有效状态（读路径）。
+ */
+export async function getEffectiveStatus(reportId: string, now: Date = new Date()): Promise<{
+  report: RegressionReport;
+  effectiveStatus: EffectiveReportStatus;
+} | null> {
+  const report = (await db.query.regressionReports.findFirst({
+    where: eq(regressionReports.id, reportId),
+  })) as RegressionReport | undefined;
+  if (!report) return null;
+  const approvals = await db.query.regressionDriftApprovals.findMany({
+    where: and(eq(regressionDriftApprovals.reportId, reportId), isNull(regressionDriftApprovals.revokedAt)),
+  });
+  const runReport = report.reportJson as unknown as RunReport;
+  const effectiveStatus = computeEffectiveStatus(
+    {
+      status: report.status as RegressionReportStatus,
+      reportHash: report.reportHash,
+      policyVersionRowId: report.policyVersionRowId,
+      cases: runReport.cases,
+    },
+    approvals,
+    now
+  );
+  return { report, effectiveStatus };
+}
+
+/**
+ * 从 report 的 FAIL_REGRESSION case 抽取 drift 明细（caseId + baseline/actual output hash）。
+ * 只 OUTPUT_HASH_MISMATCH 是「有意 bugfix 可受控接受」的漂移；GOLDEN_INTEGRITY_FAILURE / EVALUATE_FAILED /
+ * INPUT_HASH_MISMATCH 是证据损坏/回放破坏，**不可**受控接受（不返回，审批无法覆盖它们）。
+ */
+export function extractApprovableDrifts(report: Pick<RunReport, 'cases'>): AcceptedDrift[] {
+  return report.cases
+    .filter((c) => c.status === 'FAIL_REGRESSION' && c.reason === 'OUTPUT_HASH_MISMATCH')
+    .filter((c) => c.expectedOutputHash != null && c.actualOutputHash != null)
+    .map((c) => ({
+      caseId: c.caseId,
+      baselineOutputHash: c.expectedOutputHash as string,
+      acceptedOutputHash: c.actualOutputHash as string,
+    }));
+}
+
+/**
+ * 计算报告**有效状态**（纯函数，可单测）。核心：不改任何行，join report + 有效审批派生。
+ *
+ * FAIL_REGRESSION → ACCEPTED_DRIFT_WITH_APPROVAL 的条件（全满足）：
+ *   1. 报告行 status === 'FAIL_REGRESSION'；
+ *   2. 报告全部 FAIL_REGRESSION case **都是可受控接受的漂移**（OUTPUT_HASH_MISMATCH，无证据损坏/回放破坏）；
+ *   3. 存在**单条**有效审批（未撤销、未过期、reportHash 匹配、**approvalHash 重算一致**）其 acceptedDrifts
+ *      **精确等于**报告全部 approvable drift（不多不少、caseId+before/after hash 一致）。
+ * ★Codex 复审 2：不 union 多条部分审批（否则两条各覆盖一半也算通过，放大脏数据影响）；且**重算 approvalHash**
+ * 校验（否则直插一条伪造 approvalHash 的审批也能派生 ACCEPTED——artifact 防篡改必须在读路径闭环）。
+ * 任一不满足 → 保持原 FAIL_REGRESSION（诚实，不假装受控接受）。
+ * 其它状态（PASS/FAIL_INSUFFICIENT_COVERAGE/NON_REPLAYABLE）原样返回（不适用受控接受）。
+ */
+export function computeEffectiveStatus(
+  report: Pick<RunReport, 'status' | 'reportHash' | 'policyVersionRowId' | 'cases'>,
+  approvals: Array<
+    Pick<
+      RegressionDriftApproval,
+      | 'reportHash'
+      | 'policyVersionRowId'
+      | 'acceptedDrifts'
+      | 'reason'
+      | 'ticketRef'
+      | 'approvedBy'
+      | 'expiresAt'
+      | 'revokedAt'
+      | 'approvalHash'
+    >
+  >,
+  now: Date
+): EffectiveReportStatus {
+  if (report.status !== 'FAIL_REGRESSION') return report.status;
+
+  // 报告的全部 FAIL_REGRESSION case。
+  const failCases = report.cases.filter((c) => c.status === 'FAIL_REGRESSION');
+  const approvable = extractApprovableDrifts(report);
+  // 若有任何 FAIL case **不是**可受控接受的漂移（证据损坏/回放破坏）→ 不可受控接受。
+  if (approvable.length !== failCases.length) return 'FAIL_REGRESSION';
+  if (approvable.length === 0) return 'FAIL_REGRESSION';
+
+  // 期望 drift 集（稳定序，供精确相等比较）。
+  const expected = approvable
+    .slice()
+    .sort((a, b) => (a.caseId < b.caseId ? -1 : a.caseId > b.caseId ? 1 : 0));
+  const expectedKey = JSON.stringify(
+    expected.map((d) => [d.caseId, d.baselineOutputHash, d.acceptedOutputHash])
+  );
+
+  for (const a of approvals) {
+    if (a.revokedAt != null) continue;
+    if (a.expiresAt.getTime() <= now.getTime()) continue;
+    if (a.reportHash !== report.reportHash) continue;
+    if (a.policyVersionRowId !== report.policyVersionRowId) continue;
+
+    const drifts = (a.acceptedDrifts as AcceptedDrift[]) ?? [];
+    // ★单条审批**精确等于**期望 drift 集（不 union）。
+    const sorted = drifts
+      .slice()
+      .sort((x, y) => (x.caseId < y.caseId ? -1 : x.caseId > y.caseId ? 1 : 0));
+    const key = JSON.stringify(
+      sorted.map((d) => [d.caseId, d.baselineOutputHash, d.acceptedOutputHash])
+    );
+    if (key !== expectedKey) continue;
+
+    // ★重算 approvalHash 校验（读路径闭环，防直插伪造）。
+    const recomputed = computeApprovalHash({
+      reportHash: a.reportHash,
+      policyVersionRowId: a.policyVersionRowId,
+      acceptedDrifts: drifts,
+      reason: a.reason,
+      ticketRef: a.ticketRef,
+      approvedBy: a.approvedBy,
+      expiresAt: a.expiresAt.toISOString(),
+    });
+    if (recomputed !== a.approvalHash) continue;
+
+    return 'ACCEPTED_DRIFT_WITH_APPROVAL';
+  }
+  return 'FAIL_REGRESSION';
 }

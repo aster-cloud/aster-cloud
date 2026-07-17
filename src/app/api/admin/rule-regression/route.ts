@@ -15,12 +15,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
-import { db, auditLogs, policies, regressionReports, regressionCases } from '@/lib/prisma';
+import { db, auditLogs, policies, regressionReports, regressionCases, regressionDriftApprovals } from '@/lib/prisma';
 import { and, desc, eq } from 'drizzle-orm';
 import {
   freezeFromExecutions,
   freezeHandwritten,
   run,
+  createDriftApproval,
+  getEffectiveStatus,
   type HandwrittenCaseInput,
 } from '@/services/policy/rule-regression-runner';
 
@@ -44,13 +46,17 @@ export async function GET(req: NextRequest) {
   const reportId = url.searchParams.get('reportId');
 
   if (reportId) {
-    const report = await db.query.regressionReports.findFirst({
-      where: eq(regressionReports.id, reportId),
-    });
-    if (!report) {
+    // ★P0-4：单份报告返回 report + 有效审批 + **派生有效状态**（ACCEPTED_DRIFT_WITH_APPROVAL 由 join 算，
+    // 报告行 status 不改）。这样 CCO 面板既看到原始 FAIL_REGRESSION 又看到「已受控接受」的诚实结论。
+    const es = await getEffectiveStatus(reportId);
+    if (!es) {
       return NextResponse.json({ error: 'report_not_found' }, { status: 404 });
     }
-    return NextResponse.json({ report });
+    const approvals = await db.query.regressionDriftApprovals.findMany({
+      where: eq(regressionDriftApprovals.reportId, reportId),
+      orderBy: [desc(regressionDriftApprovals.createdAt)],
+    });
+    return NextResponse.json({ report: es.report, effectiveStatus: es.effectiveStatus, approvals });
   }
 
   if (!policyId) {
@@ -245,6 +251,88 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(report);
+  } catch (e) {
+    console.error('[rule-regression] error:', e);
+    return NextResponse.json(
+      { error: 'internal_error', message: e instanceof Error ? e.message : 'Internal error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/admin/rule-regression（受控接受漂移审批，P0-4）
+ *   { action: "approve-drift", reportId, reason, ticketRef?, expiresAt(ISO) }
+ *     → 对失败报告创建受控接受漂移审批（★职责分离：审批人 != 报告创建者，runner 强制）。
+ *   { action: "revoke-approval", approvalId }
+ *     → 撤销审批（append-only，走 revokedAt/revokedBy 一次性）。
+ */
+export async function PUT(req: NextRequest) {
+  const admin = await requireAdmin();
+  if (admin instanceof NextResponse) return admin;
+  const writeGate = await requireLicenseWriteOk();
+  if (writeGate) return writeGate;
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+  }
+
+  try {
+    if (body.action === 'approve-drift') {
+      if (typeof body.reportId !== 'string' || typeof body.reason !== 'string' || typeof body.expiresAt !== 'string') {
+        return NextResponse.json(
+          { error: 'invalid_input', message: 'reportId, reason, expiresAt(ISO) required' },
+          { status: 400 }
+        );
+      }
+      // ★reason trim 后必须非空（CCO 审批需实质理由，不接受空白）。
+      const reason = body.reason.trim();
+      if (reason.length === 0) {
+        return NextResponse.json({ error: 'invalid_reason', message: 'reason must be non-blank' }, { status: 400 });
+      }
+      const expiresAt = new Date(body.expiresAt);
+      if (Number.isNaN(expiresAt.getTime())) {
+        return NextResponse.json({ error: 'invalid_expiresAt' }, { status: 400 });
+      }
+      const result = await createDriftApproval({
+        reportId: body.reportId,
+        reason,
+        ticketRef: typeof body.ticketRef === 'string' ? body.ticketRef : null,
+        approvedBy: admin.userId,
+        expiresAt,
+      });
+      await audit(admin.userId, 'approve-drift', body.reportId, {
+        approvalId: result.approvalId,
+        approvalHash: result.approvalHash,
+        reason: body.reason,
+      });
+      return NextResponse.json({ action: 'approve-drift', ...result });
+    }
+
+    if (body.action === 'revoke-approval') {
+      if (typeof body.approvalId !== 'string') {
+        return NextResponse.json({ error: 'invalid_input', message: 'approvalId required' }, { status: 400 });
+      }
+      const existing = await db.query.regressionDriftApprovals.findFirst({
+        where: eq(regressionDriftApprovals.id, body.approvalId),
+      });
+      if (!existing) return NextResponse.json({ error: 'approval_not_found' }, { status: 404 });
+      if (existing.revokedAt != null) {
+        return NextResponse.json({ error: 'already_revoked' }, { status: 409 });
+      }
+      // 撤销走 append-only 允许的 revoke 列（DB trigger 只放行 revokedAt/revokedBy NULL→非 NULL）。
+      await db
+        .update(regressionDriftApprovals)
+        .set({ revokedAt: new Date(), revokedBy: admin.userId })
+        .where(eq(regressionDriftApprovals.id, body.approvalId));
+      await audit(admin.userId, 'revoke-approval', existing.policyId, { approvalId: body.approvalId });
+      return NextResponse.json({ action: 'revoke-approval', approvalId: body.approvalId, revoked: true });
+    }
+
+    return NextResponse.json({ error: 'invalid_action', message: 'approve-drift | revoke-approval' }, { status: 400 });
   } catch (e) {
     console.error('[rule-regression] error:', e);
     return NextResponse.json(
