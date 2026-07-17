@@ -8,32 +8,60 @@ import type { PolicyReplayMetadata } from '@/services/policy/policy-api';
 
 /** 回放捕获里程碑（M1）——只落漂移检测地基 hash，trace 明文 payload 待 M2 PII envelope。 */
 export const REPLAY_CAPTURE_MILESTONE_M1 = 'p0a.m1';
-/** M1 未落 trace/replay payload 的显式原因（回归工具据此知道行级回放材料不全）。 */
-export const REPLAY_PAYLOAD_NOT_CAPTURED_M1 = 'REPLAY_PAYLOAD_NOT_CAPTURED_M1';
-/** 行级回放完整性状态：不完整（M1 恒此值——缺 trace payload，见 buildReplayColumns doc）。 */
+/**
+ * REPLAYABLE 行的诊断（**非**不可回放原因）：本行有可信「重求值」回放路径（P0-A M1 用），但尚无 M2
+ * 完整自包含加密 capture（replayPayload*）。放在 reasons 里供审计区分「M1 重求值可回放」vs「M2 完整 capture」。
+ * ★Codex 复审：与旧 REPLAY_PAYLOAD_NOT_CAPTURED_M1 语义分开——那个易被误读为「不可回放」。
+ */
+export const FULL_CAPTURE_PAYLOAD_NOT_CAPTURED_M1 = 'FULL_CAPTURE_PAYLOAD_NOT_CAPTURED_M1';
+/** 行级回放完整性状态。 */
+export const STATUS_REPLAYABLE = 'REPLAYABLE';
 export const STATUS_NON_REPLAYABLE = 'NON_REPLAYABLE';
+
+/** 缺项机器可读码（NON_REPLAYABLE reasons 用，固定顺序，全记不止第一个）。 */
+export const REPLAY_MISSING_REASONS = {
+  BACKEND_STATUS_NOT_REPLAYABLE: 'BACKEND_STATUS_NOT_REPLAYABLE',
+  MISSING_TRACE_HASH: 'MISSING_TRACE_HASH',
+  MISSING_CANONICAL_INPUT_HASH: 'MISSING_CANONICAL_INPUT_HASH',
+  MISSING_CANONICAL_OUTPUT_HASH: 'MISSING_CANONICAL_OUTPUT_HASH',
+  MISSING_CANONICALIZATION_VERSION: 'MISSING_CANONICALIZATION_VERSION',
+  MISSING_RUNTIME_TOOLCHAIN_ID: 'MISSING_RUNTIME_TOOLCHAIN_ID',
+  MISSING_SOURCE_TOOLCHAIN_ID: 'MISSING_SOURCE_TOOLCHAIN_ID',
+  MISSING_POLICY_VERSION_ROW_ID: 'MISSING_POLICY_VERSION_ROW_ID',
+  MISSING_FUNCTION_NAME: 'MISSING_FUNCTION_NAME',
+  MISSING_LOCALE: 'MISSING_LOCALE',
+} as const;
+
+/** 非空且 trim 后非空白。 */
+function nonBlank(v: string | null | undefined): v is string {
+  return typeof v === 'string' && v.trim().length > 0;
+}
 
 /**
  * 回放列取值（ADR 0030 附录 A）——把 aster-api 的 replayMetadata + 不可变 PolicyVersion 字段
  * 映射成 Execution 回放列的 insert 片段。两个 execute 写路径共用，保证口径一致。
  *
- * <p><b>M1 语义（Codex 设计审 #2）：</b>本里程碑只落「漂移检测地基」（canonical hash + 工具链
- * + status/reasons），**不**落 trace 明文 / replayPayload*（PII envelope 待 M2 KMS）。因此：
+ * <p><b>语义（M2.1b 后修正，Codex 设计审 88）：</b>本里程碑落「漂移检测地基」（canonical hash + trace
+ * hash + 工具链 + status/reasons），**不**落 trace 明文 / replayPayload*（PII envelope 待 M2 KMS）。
  * <ul>
- *   <li><b>replayCaptureVersion 留 null</b>——schema 不变式「replayCaptureVersion 非空→其余列
- *       全 set」，若置非 null 而 payload 列空会让回归工具误判「完整可回放」。用 canonicalizationVersion
- *       + hashes 表达「hash 地基完整」，replayCaptureVersion 专表「完整 capture」（M2 才置）。</li>
- *   <li><b>replayabilityStatus 行级恒 NON_REPLAYABLE</b>（Codex 复审 #3）——即使后端 hash
- *       地基完整报 REPLAYABLE，本行仍缺 trace payload（M2 才落），行级回放材料不全。
- *       {@code replayabilityStatus_idx} 是回归工具筛 REPLAYABLE 的入口；若写 REPLAYABLE 会被
- *       选中却读不到完整材料。后端原状态保留进 reasons（{@code backend_status=...}）供追溯。</li>
- *   <li>replayabilityReasons 追加 {@link REPLAY_PAYLOAD_NOT_CAPTURED_M1}，显式告知行级回放
- *       材料不全（trace payload 未存）。</li>
- *   <li>replayPayload* / traceJson / piiRetentionUntil / piiPolicyVersion 全 null。</li>
+ *   <li><b>replayCaptureVersion 留 null</b>——schema 不变式「replayCaptureVersion 非空→其余 payload 列
+ *       全 set」（单向蕴含）。replayCaptureVersion 专表「M2 完整自包含加密 capture」（M2 才置），与
+ *       replayabilityStatus 是**两条独立轴**：REPLAYABLE 不要求 replayCaptureVersion 非空。</li>
+ *   <li><b>replayabilityStatus 行级由 gate 判</b>（M2.1b 后行级确实可回放，非恒 NON_REPLAYABLE）——
+ *       后端判 REPLAYABLE **且** freeze 所需字段（traceHash / canonicalInput+OutputHash /
+ *       canonicalizationVersion / runtime+sourceToolchainId / policyVersionRowId / functionName /
+ *       locale）全非空白 → REPLAYABLE；否则 NON_REPLAYABLE + 全部缺项机器码。★REPLAYABLE=有可信
+ *       「从冻结 input 重求值」的 P0-A 回放路径（M1 run 不读 replayPayload），≠「M2 完整 capture」。</li>
+ *   <li>REPLAYABLE 行 reasons 追加 {@link FULL_CAPTURE_PAYLOAD_NOT_CAPTURED_M1}（capture 局限诊断，
+ *       **非**不可回放原因）；NON_REPLAYABLE 追加 {@link REPLAY_MISSING_REASONS} 全部缺项。</li>
+ *   <li>replayPayload* / traceJson / piiRetentionUntil / piiPolicyVersion 全 null（M2 才落）。</li>
  * </ul>
  *
- * <p>replayMetadata 缺失（未开 capture / 后端未返回）→ 回放列全 null（该行不参与回放聚合），
- * 不阻断 Execution 写入（执行成功就该记录，回放是增强非前提）。
+ * <p>replayMetadata 缺失（未开 capture / 后端未返回）→ 回放列全 null，status=**null**（「未捕获」≠
+ * 「已评估但不满足」，两者都被 freeze 排除但审计语义不同）。不阻断 Execution 写入（执行成功就该记录）。
+ *
+ * <p>★注意：通用 {@code createExecutionLog()} **不**经本 builder（legacy/non-capture writer，回放列全 null），
+ * 故不会误标 REPLAYABLE；正式 capture 只走 dashboard execute + v1 API execute 两路径（共用本 builder）。
  */
 export interface ReplayVersionRefs {
   /** 不可变 PolicyVersion 行 id（Execution.policyVersionRowId）。 */
@@ -119,18 +147,43 @@ export function buildReplayColumns(
     piiPolicyVersion: null,
   };
 
+  // ★replayMetadata 缺失（未开 capture / 后端未返回）→ 回放列全 null，status=**null**（不是
+  // NON_REPLAYABLE）。「未捕获/未评估」与「已评估但不满足」审计语义不同（Codex 复审）；两者都会被
+  // freeze 排除（谓词要 = 'REPLAYABLE'）。
   if (!replay) {
     return base;
   }
 
-  // 后端权威 hash + 工具链。M1 追加 payload-not-captured 原因 + 保留后端原状态供追溯。
-  const reasons = Array.isArray(replay.replayabilityReasons)
-    ? [...replay.replayabilityReasons]
-    : [];
-  reasons.push(REPLAY_PAYLOAD_NOT_CAPTURED_M1);
-  if (replay.replayabilityStatus) {
-    // 后端 hash 地基完整性状态保留供追溯——但不作为行级 replayabilityStatus（见下）。
-    reasons.push(`backend_status=${replay.replayabilityStatus}`);
+  // ★行级 replayabilityStatus（M2.1b 后修正陈旧）：REPLAYABLE 表示「本行有可信『从冻结 input 重求值』的
+  // P0-A 回放路径」——**不**等于「已形成 M2 完整自包含加密 capture」（那由 replayCaptureVersion 表达）。
+  // M1 run 从 RegressionCase.inputJson 重求值比 hash，**不读 replayPayload**，故 payload=null 时仍可 REPLAYABLE。
+  // 门（全满足才 REPLAYABLE，否则 NON_REPLAYABLE + 全部缺项码）：后端判 REPLAYABLE + freeze 所需字段齐全。
+  // ★后端 `replayable` 判定 `(trace==null||...)`/`(input==null||...)` 在无 trace/input 时也算 REPLAYABLE——
+  // 故 cloud 侧独立硬 gate traceHash/canonicalInputHash 等非空，挡住后端宽松态（Codex 复审）。
+  const missing: string[] = [];
+  if (replay.replayabilityStatus !== STATUS_REPLAYABLE)
+    missing.push(REPLAY_MISSING_REASONS.BACKEND_STATUS_NOT_REPLAYABLE);
+  if (!nonBlank(replay.traceHash)) missing.push(REPLAY_MISSING_REASONS.MISSING_TRACE_HASH);
+  if (!nonBlank(replay.canonicalInputHash)) missing.push(REPLAY_MISSING_REASONS.MISSING_CANONICAL_INPUT_HASH);
+  if (!nonBlank(replay.canonicalOutputHash)) missing.push(REPLAY_MISSING_REASONS.MISSING_CANONICAL_OUTPUT_HASH);
+  if (!nonBlank(replay.canonicalizationVersion)) missing.push(REPLAY_MISSING_REASONS.MISSING_CANONICALIZATION_VERSION);
+  if (!nonBlank(replay.runtimeToolchainId)) missing.push(REPLAY_MISSING_REASONS.MISSING_RUNTIME_TOOLCHAIN_ID);
+  if (!nonBlank(refs.sourceToolchainId)) missing.push(REPLAY_MISSING_REASONS.MISSING_SOURCE_TOOLCHAIN_ID);
+  if (!nonBlank(refs.policyVersionRowId)) missing.push(REPLAY_MISSING_REASONS.MISSING_POLICY_VERSION_ROW_ID);
+  if (!nonBlank(refs.functionName)) missing.push(REPLAY_MISSING_REASONS.MISSING_FUNCTION_NAME);
+  if (!nonBlank(refs.locale)) missing.push(REPLAY_MISSING_REASONS.MISSING_LOCALE);
+
+  const isReplayable = missing.length === 0;
+
+  // reasons：保留后端 reasons + backend_status 追溯；REPLAYABLE 追加 capture-limitation 诊断，
+  // NON_REPLAYABLE 追加全部缺项码。去重、稳定序。
+  const backendReasons = Array.isArray(replay.replayabilityReasons) ? replay.replayabilityReasons : [];
+  const reasonSet = new Set<string>([...backendReasons]);
+  if (replay.replayabilityStatus) reasonSet.add(`backend_status=${replay.replayabilityStatus}`);
+  if (isReplayable) {
+    reasonSet.add(FULL_CAPTURE_PAYLOAD_NOT_CAPTURED_M1);
+  } else {
+    for (const m of missing) reasonSet.add(m);
   }
 
   return {
@@ -141,12 +194,9 @@ export function buildReplayColumns(
     canonicalInputHash: replay.canonicalInputHash ?? null,
     canonicalOutputHash: replay.canonicalOutputHash ?? null,
     canonicalizationVersion: replay.canonicalizationVersion ?? null,
-    // ★行级恒 NON_REPLAYABLE（Codex 复审 #3）：即使后端 hash 地基完整报 REPLAYABLE，本行仍缺
-    // trace payload（M2 才落），行级回放材料不全。replayabilityStatus_idx 是回归工具筛
-    // REPLAYABLE 的入口——写 REPLAYABLE 会被选中却读不到完整材料。hash 地基完整性由
-    // canonicalizationVersion + canonical*Hash + traceHash 表达，不靠此列。
-    replayabilityStatus: STATUS_NON_REPLAYABLE,
-    replayabilityReasons: reasons,
+    // ★replayCaptureVersion 仍 null（M2 完整 capture 才置——schema 不变量「非空须全 payload」不破坏）。
+    replayabilityStatus: isReplayable ? STATUS_REPLAYABLE : STATUS_NON_REPLAYABLE,
+    replayabilityReasons: [...reasonSet],
   };
 }
 
