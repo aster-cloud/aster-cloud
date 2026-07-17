@@ -22,7 +22,6 @@ import {
   freezeHandwritten,
   run,
   type HandwrittenCaseInput,
-  type CoverageThresholds,
 } from '@/services/policy/rule-regression-runner';
 
 export const runtime = 'nodejs';
@@ -216,15 +215,26 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const thresholds = validateThresholds(body.thresholds);
-    if (thresholds instanceof NextResponse) return thresholds;
+    // ★P0-2（CCO 复审）：run **不接受**请求级 thresholds 下调——覆盖门禁恒用 DEFAULT_THRESHOLDS。
+    // 否则同一 admin 既定阈值又跑又得 PASS，报告无法证明门禁未为本次升级临时放宽。传了就 400 明确拒，
+    // 不静默忽略（避免调用方以为放宽生效）。放宽须走独立 CCO approval artifact（P0-4，另表）。
+    if (body.thresholds !== undefined) {
+      return NextResponse.json(
+        {
+          error: 'thresholds_not_allowed',
+          message:
+            'run does not accept request-level coverage thresholds (P0-2). ' +
+            'Coverage gate is fixed to signable defaults; exceptions require a CCO approval artifact.',
+        },
+        { status: 400 }
+      );
+    }
 
     const report = await run({
       policyId,
       policyVersionRowId: body.policyVersionRowId,
       actorUserId: admin.userId,
       tenantId,
-      thresholds,
     });
 
     await audit(admin.userId, 'run', policyId, {
@@ -276,25 +286,6 @@ function validateHandwrittenCases(raw: unknown[]): HandwrittenCaseInput[] | Next
       input: c.input as Record<string, unknown> | unknown[],
       coverageTags,
     });
-  }
-  return out;
-}
-
-/** 校验并归一自定义阈值（可选）。 */
-function validateThresholds(raw: unknown): Partial<CoverageThresholds> | undefined | NextResponse {
-  if (raw == null) return undefined;
-  if (typeof raw !== 'object') {
-    return NextResponse.json({ error: 'invalid_thresholds', message: 'thresholds must be an object' }, { status: 400 });
-  }
-  const t = raw as Record<string, unknown>;
-  const out: Partial<CoverageThresholds> = {};
-  for (const key of ['minRunnableCases', 'minApprovedCases', 'minDeniedCases', 'minHandwrittenBoundaryCases'] as const) {
-    if (t[key] !== undefined) {
-      if (typeof t[key] !== 'number' || (t[key] as number) < 0) {
-        return NextResponse.json({ error: 'invalid_thresholds', message: `${key} must be a non-negative number` }, { status: 400 });
-      }
-      out[key] = t[key] as number;
-    }
   }
   return out;
 }

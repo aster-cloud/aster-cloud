@@ -764,6 +764,9 @@ export const regressionCases = pgTable(
     sourceEnvelopeSha256: text('sourceEnvelopeSha256'),
     // 覆盖核心字段的 canonical hash——防篡改 + 去重锚。
     caseHash: text('caseHash').notNull().unique(),
+    // caseHash 公式版本（case-hash/m1.0 | m1.1）——run 重算校验按此选公式（新旧共存）。
+    // 缺省 m1.0 兼容既有行（迁移把已有 NULL 回填 m1.0）。
+    caseHashVersion: text('caseHashVersion').notNull().default('case-hash/m1.0'),
     createdBy: text('createdBy').notNull(),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -780,6 +783,11 @@ export const regressionCases = pgTable(
     ),
     // 证据模型完整性硬化（DB 层防非法枚举值）。
     check('RegressionCase_sourceKind_check', sql`${table.sourceKind} IN ('execution', 'handwritten')`),
+    // caseHashVersion 只允许已知公式版本（DB 层 fail-closed，防写入 corrupt 版本绕过完整性校验）。
+    check(
+      'RegressionCase_caseHashVersion_check',
+      sql`${table.caseHashVersion} IN ('case-hash/m1.0', 'case-hash/m1.1')`
+    ),
   ]
 );
 

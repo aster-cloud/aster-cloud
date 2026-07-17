@@ -14,8 +14,14 @@ import { canonicalHash } from '@/lib/canonical-json';
 import { createPolicyApiClient } from './policy-api';
 import { detectCNLLocale } from './cnl-executor';
 
-/** runner 版本——进 reportHash，保证报告可复算归因到 runner 逻辑版本。 */
-export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.0';
+/**
+ * runner 版本——进 reportHash，保证报告可复算归因到 runner 逻辑版本。
+ * m1.1（本 PR，CCO 深审加固第一批）：P0-1 toolchain 强制 / P0-2 禁降阈值 / P0-3 筛回放态 /
+ * P0-5 reportHash 补全+稳定序+版本分派 / P0-6 run 重算 caseHash+未知版本 fail-closed。
+ * ★P0-4（受控接受 artifact）+ P0-7（DB append-only）留第二个 PR，**尚未实现**（勿据本注释误判口径）。
+ * 逻辑变更必须 bump（旧版报告 hash 与新版按各自 runnerVersion 分派公式，不混算）。
+ */
+export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.1';
 
 /** M1 单后端比对模式（诚实标注：基线=冻结快照 hash，非实时重跑 old backend）。 */
 export const COMPARISON_MODE_FROZEN_BASELINE = 'FROZEN_BASELINE_VS_CURRENT_BACKEND';
@@ -114,6 +120,9 @@ export interface CaseRunDetail {
   locale: string;
   coverageTags: string[];
   sourceKind: string;
+  // P0-1：基线/当前工具链（进 reportHash + 报告审计——证明跨升级对比）。
+  baselineToolchainId?: string;
+  currentToolchainId?: string;
   reason?: string;
 }
 
@@ -151,11 +160,18 @@ const BASELINE_SEMANTICS =
   '(single-backend constraint). Deploy the new version, then run the gate.';
 
 /**
- * caseHash = canonicalHash(核心不可变字段)——防篡改 + 去重锚。覆盖决定「同一 golden」的所有
- * 字段（版本行/函数/locale/canonical input/expected output/别名/词汇/canonicalization 版本）。
- * 不含 createdAt/createdBy/id（非决定性/身份字段）。
+ * caseHash 公式版本。逻辑变更必须 bump——case 存 caseHashVersion，run 重算校验时按 case 自己
+ * 的版本选公式（新旧共存），避免改公式让已冻结 m1 case 整批 GOLDEN_INTEGRITY_FAILURE。
+ * - m1.0：原始 9 字段（policyVersionRow/function/locale/canonicalInput/expectedOutput/
+ *   canonicalizationVersion/aliasSet/vocab/sourceKind）。
+ * - m1.1：★CCO 复审 P0-6 补全——加绑 policyId/expectedDecision/coverageTags/
+ *   baselineRuntimeToolchainId/sourceToolchainId/sourceEnvelopeSha256/sourceExecutionId，
+ *   让篡改这些字段也被完整性校验捕获。
  */
-export function computeCaseHash(fields: {
+export const CASE_HASH_VERSION_M10 = 'case-hash/m1.0';
+export const CASE_HASH_VERSION = 'case-hash/m1.1';
+
+export interface CaseHashFields {
   policyVersionRowId: string;
   functionName: string;
   locale: string;
@@ -165,42 +181,132 @@ export function computeCaseHash(fields: {
   aliasSetJson: unknown;
   vocabSnapshotRef: unknown;
   sourceKind: string;
-}): string {
+  // m1.1 新增绑定字段（防篡改覆盖）。
+  policyId?: string;
+  expectedDecision?: string | null;
+  coverageTags?: string[];
+  baselineRuntimeToolchainId?: string | null;
+  sourceToolchainId?: string | null;
+  sourceEnvelopeSha256?: string | null;
+  sourceExecutionId?: string | null;
+}
+
+/**
+ * caseHash = canonicalHash(核心不可变字段)——防篡改 + 去重锚。不含 createdAt/createdBy/id
+ * （非决定性/身份字段）。按 {@param version} 选公式：m1.0=原 9 字段；m1.1=补全 7 字段。
+ */
+export function computeCaseHash(fields: CaseHashFields, version: string = CASE_HASH_VERSION): string {
+  if (version === CASE_HASH_VERSION_M10) {
+    // 旧公式：原样保留，供已冻结 m1.0 case 复算校验（不得改动，否则破坏历史证据）。
+    return canonicalHash({
+      policyVersionRowId: fields.policyVersionRowId,
+      functionName: fields.functionName,
+      locale: fields.locale,
+      canonicalInputHash: fields.canonicalInputHash,
+      expectedOutputHash: fields.expectedOutputHash,
+      canonicalizationVersion: fields.canonicalizationVersion,
+      aliasSetJson: fields.aliasSetJson ?? {},
+      vocabSnapshotRef: fields.vocabSnapshotRef ?? [],
+      sourceKind: fields.sourceKind,
+    });
+  }
+  // ★Codex 复审 P0-6：未知版本 fail-closed——不静默按 m1.1 算，否则 case-hash/corrupt 会被当合法。
+  if (version !== CASE_HASH_VERSION) {
+    throw new Error(`unsupported caseHashVersion: ${version}`);
+  }
+  // m1.1：全字段绑定。canonicalHash 内部对 object 键排序，字段顺序无关。
   return canonicalHash({
+    version: CASE_HASH_VERSION,
+    policyId: fields.policyId ?? null,
     policyVersionRowId: fields.policyVersionRowId,
     functionName: fields.functionName,
     locale: fields.locale,
     canonicalInputHash: fields.canonicalInputHash,
     expectedOutputHash: fields.expectedOutputHash,
+    expectedDecision: fields.expectedDecision ?? null,
     canonicalizationVersion: fields.canonicalizationVersion,
     aliasSetJson: fields.aliasSetJson ?? {},
     vocabSnapshotRef: fields.vocabSnapshotRef ?? [],
     sourceKind: fields.sourceKind,
+    coverageTags: (fields.coverageTags ?? []).slice().sort(),
+    baselineRuntimeToolchainId: fields.baselineRuntimeToolchainId ?? null,
+    sourceToolchainId: fields.sourceToolchainId ?? null,
+    sourceEnvelopeSha256: fields.sourceEnvelopeSha256 ?? null,
+    sourceExecutionId: fields.sourceExecutionId ?? null,
   });
 }
 
 /**
- * reportHash = canonicalHash(报告决定性内容)——报告防篡改 + 可复算。覆盖 toolchain + case ids +
- * 逐 case 期望/实际 hash + 覆盖 + runner 版本。不含 reportId/createdAt（身份/时间）。
+ * reportHash 公式版本（同 caseHash 版本化）。★Codex 复审 P0-5：**按报告自身的 runnerVersion 选公式**，
+ * 不能用当前运行代码常量——否则拿 m1.0 历史 reportJson 在 m1.1 代码里复算会得到不同 hash（破坏历史可复算）。
+ * m1.0=原公式（未含新逐 case 字段）；m1.1=补全字段+稳定序。未知版本 fail-closed（抛错，不静默按新公式）。
+ */
+const REPORT_HASH_VERSION_M10 = 'p0a-runner/m1.0';
+
+/**
+ * reportHash = canonicalHash(报告决定性内容)——报告防篡改 + 可复算。不含 reportId/createdAt（身份/时间）。
+ * 按 {@code report.runnerVersion} 选公式（历史 artifact 用其自己冻结的版本复算）。
  */
 export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHash'>): string {
+  if (report.runnerVersion === REPORT_HASH_VERSION_M10) {
+    // m1.0 原公式：原样保留，供历史 m1.0 报告复算（不得改动）。
+    return canonicalHash({
+      status: report.status,
+      comparisonMode: report.comparisonMode,
+      policyId: report.policyId,
+      policyVersionRowId: report.policyVersionRowId,
+      currentRuntimeToolchainId: report.currentRuntimeToolchainId,
+      coverage: report.coverage,
+      summary: report.summary,
+      runnerVersion: report.runnerVersion,
+      cases: report.cases.map((c) => ({
+        caseId: c.caseId,
+        status: c.status,
+        expectedInputHash: c.expectedInputHash ?? null,
+        actualInputHash: c.actualInputHash ?? null,
+        expectedOutputHash: c.expectedOutputHash ?? null,
+        actualOutputHash: c.actualOutputHash ?? null,
+      })),
+    });
+  }
+  if (report.runnerVersion !== RULE_REGRESSION_RUNNER_VERSION) {
+    // 未知版本 fail-closed：不静默按新公式算，否则复算者拿到假的「可复算」hash。
+    throw new Error(`unsupported reportHash runnerVersion: ${report.runnerVersion}`);
+  }
+  // m1.1：逐 case 补全（reason/decision/function/locale/sourceKind/coverageTags/toolchain 排序稳定），
+  // 顶层补 baselineSemantics（报告对基线语义的声明也进 hash）。canonicalizationVersion 由每 case 的
+  // caseHash 间接保护（caseHash 绑了它），且报告级 currentRuntimeToolchainId 已在。
+  const cases = report.cases
+    .slice()
+    .sort((a, b) => (a.caseId < b.caseId ? -1 : a.caseId > b.caseId ? 1 : 0))
+    .map((c) => ({
+      caseId: c.caseId,
+      status: c.status,
+      reason: c.reason ?? null,
+      expectedDecision: c.expectedDecision ?? null,
+      functionName: c.functionName,
+      locale: c.locale,
+      sourceKind: c.sourceKind,
+      coverageTags: (c.coverageTags ?? []).slice().sort(),
+      expectedInputHash: c.expectedInputHash ?? null,
+      actualInputHash: c.actualInputHash ?? null,
+      expectedOutputHash: c.expectedOutputHash ?? null,
+      actualOutputHash: c.actualOutputHash ?? null,
+      baselineToolchainId: c.baselineToolchainId ?? null,
+      currentToolchainId: c.currentToolchainId ?? null,
+    }));
   return canonicalHash({
+    reportHashVersion: report.runnerVersion,
     status: report.status,
     comparisonMode: report.comparisonMode,
+    baselineSemantics: report.baselineSemantics,
     policyId: report.policyId,
     policyVersionRowId: report.policyVersionRowId,
     currentRuntimeToolchainId: report.currentRuntimeToolchainId,
     coverage: report.coverage,
     summary: report.summary,
     runnerVersion: report.runnerVersion,
-    cases: report.cases.map((c) => ({
-      caseId: c.caseId,
-      status: c.status,
-      expectedInputHash: c.expectedInputHash ?? null,
-      actualInputHash: c.actualInputHash ?? null,
-      expectedOutputHash: c.expectedOutputHash ?? null,
-      actualOutputHash: c.actualOutputHash ?? null,
-    })),
+    cases,
   });
 }
 
@@ -269,6 +375,14 @@ export async function freezeFromExecutions(params: {
       AND e."canonicalOutputHash" IS NOT NULL
       AND e."input" IS NOT NULL
       AND e."error" IS NULL
+      -- ★P0-3（CCO 复审）：只冻结宿主判定**可回放**的 execution。缺 traceHash / 缺基线工具链 /
+      -- replayabilityStatus 非 REPLAYABLE 的行=宿主已判「无法逐字节复现当时决策」，把它们洗成
+      -- runnable golden 会让报告假称「回放」。要求 REPLAYABLE + traceHash + baseline/source toolchain 齐全。
+      -- （承 M2.1b：步骤级 trace + async→NON_REPLAYABLE 的宿主判定端到端接入冻结门。）
+      AND e."replayabilityStatus" = 'REPLAYABLE'
+      AND e."traceHash" IS NOT NULL
+      AND e."runtimeToolchainId" IS NOT NULL
+      AND e."sourceToolchainId" IS NOT NULL
     ORDER BY
       e."policyVersionRowId", e."functionName", e."locale", e."canonicalInputHash",
       e."createdAt" DESC
@@ -279,15 +393,23 @@ export async function freezeFromExecutions(params: {
 
   for (const c of candidates) {
     const caseHash = computeCaseHash({
+      policyId: String(c.policyId),
       policyVersionRowId: String(c.policyVersionRowId),
       functionName: String(c.functionName),
       locale: String(c.locale),
       canonicalInputHash: String(c.canonicalInputHash),
       expectedOutputHash: String(c.expectedOutputHash),
+      expectedDecision: c.expectedDecision == null ? null : String(c.expectedDecision),
       canonicalizationVersion: String(c.canonicalizationVersion),
       aliasSetJson: c.aliasSetJson,
       vocabSnapshotRef: c.vocabSnapshotRef,
       sourceKind: 'execution',
+      coverageTags: [],
+      baselineRuntimeToolchainId:
+        c.baselineRuntimeToolchainId == null ? null : String(c.baselineRuntimeToolchainId),
+      sourceToolchainId: c.sourceToolchainId == null ? null : String(c.sourceToolchainId),
+      sourceEnvelopeSha256: c.sourceEnvelopeSha256 == null ? null : String(c.sourceEnvelopeSha256),
+      sourceExecutionId: String(c.sourceExecutionId),
     });
 
     const inserted = await db
@@ -315,6 +437,7 @@ export async function freezeFromExecutions(params: {
         sourceToolchainId: c.sourceToolchainId == null ? null : String(c.sourceToolchainId),
         sourceEnvelopeSha256: c.sourceEnvelopeSha256 == null ? null : String(c.sourceEnvelopeSha256),
         caseHash,
+        caseHashVersion: CASE_HASH_VERSION,
         createdBy: actorUserId,
       })
       // 幂等：同 (versionRow,function,locale,canonicalInput) 已存在则跳过。
@@ -369,6 +492,9 @@ async function evaluateForCapture(params: {
   canonicalOutputHash: string | null;
   runtimeToolchainId: string | null;
   canonicalizationVersion: string | null;
+  // ★P0-3（Codex 复审）：surface 宿主回放态——handwritten freeze 也据此 fail-closed（不冻不可回放）。
+  replayabilityStatus: string | null;
+  traceHash: string | null;
 }> {
   const client = createPolicyApiClient(params.tenantId, params.actorUserId);
   const resp = await client.evaluateSource(params.source, params.input, {
@@ -383,6 +509,8 @@ async function evaluateForCapture(params: {
     canonicalOutputHash: rm?.canonicalOutputHash ?? null,
     runtimeToolchainId: rm?.runtimeToolchainId ?? null,
     canonicalizationVersion: rm?.canonicalizationVersion ?? null,
+    replayabilityStatus: rm?.replayabilityStatus ?? null,
+    traceHash: rm?.traceHash ?? null,
   };
 }
 
@@ -466,17 +594,38 @@ export async function freezeHandwritten(params: {
       result.skippedReasons.push(`missing_replay_metadata:${hc.functionName}`);
       continue;
     }
+    // ★P0-3（Codex 复审）：handwritten 也 fail-closed——宿主判定不可回放（非 REPLAYABLE / 缺 traceHash /
+    // 缺 runtimeToolchainId）的 evaluation 不冻结成 golden，否则与 execution 洗态同一漏洞（async/缺 trace
+    // 的 handwritten 若后来 toolchain 不同就成 runnable case）。
+    if (
+      captured.replayabilityStatus !== 'REPLAYABLE' ||
+      !captured.traceHash ||
+      !captured.runtimeToolchainId
+    ) {
+      result.skipped++;
+      result.skippedReasons.push(
+        `not_replayable:${hc.functionName}:${captured.replayabilityStatus ?? 'unknown'}`
+      );
+      continue;
+    }
 
     const caseHash = computeCaseHash({
+      policyId,
       policyVersionRowId: pv.id,
       functionName: hc.functionName,
       locale,
       canonicalInputHash: captured.canonicalInputHash,
       expectedOutputHash: captured.canonicalOutputHash,
+      expectedDecision: null,
       canonicalizationVersion: captured.canonicalizationVersion,
       aliasSetJson: aliasSet ?? {},
       vocabSnapshotRef: pv.vocabularySnapshotIds ?? [],
       sourceKind: 'handwritten',
+      coverageTags: hc.coverageTags,
+      baselineRuntimeToolchainId: captured.runtimeToolchainId,
+      sourceToolchainId: pv.sourceToolchainId ?? null,
+      sourceEnvelopeSha256: pv.sourceEnvelopeSha256 ?? null,
+      sourceExecutionId: null,
     });
 
     const inserted = await db
@@ -503,6 +652,7 @@ export async function freezeHandwritten(params: {
         sourceToolchainId: pv.sourceToolchainId ?? null,
         sourceEnvelopeSha256: pv.sourceEnvelopeSha256 ?? null,
         caseHash,
+        caseHashVersion: CASE_HASH_VERSION,
         createdBy: actorUserId,
       })
       .onConflictDoNothing({
@@ -558,17 +708,21 @@ export async function run(params: {
   policyVersionRowId: string;
   actorUserId: string;
   tenantId: string;
-  thresholds?: Partial<CoverageThresholds>;
 }): Promise<RunReport> {
   const { policyId, policyVersionRowId, actorUserId, tenantId } = params;
-  const thresholds: CoverageThresholds = { ...DEFAULT_THRESHOLDS, ...params.thresholds };
+  // ★P0-2（CCO 复审）：签字模式覆盖门禁恒用 DEFAULT_THRESHOLDS，**不接受请求级下调**。
+  // 若确需放宽须走独立 CCO approval artifact（另表，非临时降阈值）——否则同一 admin 既定阈值
+  // 又跑又得 PASS，报告无法证明门禁未为本次升级临时放宽。
+  const thresholds: CoverageThresholds = DEFAULT_THRESHOLDS;
 
-  // 载入该版本的所有冻结 case。
+  // 载入该版本的所有冻结 case。★P0-5（CCO 复审）：稳定 orderBy(id)——同一 case 集必须以固定
+  // 顺序进 reportHash，否则返回序不同算出不同 hash，破坏「同内容可复算」。
   const cases = await db.query.regressionCases.findMany({
     where: and(
       eq(regressionCases.policyId, policyId),
       eq(regressionCases.policyVersionRowId, policyVersionRowId)
     ),
+    orderBy: (t, { asc }) => [asc(t.id)],
   });
 
   // 载入版本内容（replay 需要 source）。★绑 policyId（Codex 复审 #2）：防消费脏 case 用错 policy 版本。
@@ -582,7 +736,8 @@ export async function run(params: {
   let failed = 0;
   let nonReplayable = 0;
   let compileFailures = 0;
-  let currentRuntimeToolchainId: string | null = null;
+  // 所有成功 capture 的 current toolchain（含 input-mismatch case）——用于 mixed 检测（不漏）。
+  const capturedCurrentToolchains = new Set<string>();
 
   const aliasSet = pv ? parseAliasSet(pv.aliasSet) : null;
 
@@ -592,11 +747,51 @@ export async function run(params: {
       status: 'NON_REPLAYABLE',
       expectedInputHash: c.canonicalInputHash,
       expectedOutputHash: c.expectedOutputHash,
+      expectedDecision: c.expectedDecision,
       functionName: c.functionName,
       locale: c.locale,
       coverageTags: Array.isArray(c.coverageTags) ? (c.coverageTags as string[]) : [],
       sourceKind: c.sourceKind,
     };
+
+    // ★P0-6（CCO 复审）：run 前重算 caseHash 并与存储值比对。expectedOutputHash/input/覆盖元数据
+    // 被篡改后存储 hash 不再匹配 → 报证据损坏（GOLDEN_INTEGRITY_FAILURE），该 case 不参与业务判定
+    // （标 FAIL_REGRESSION，不算 runnable-PASS——不可信 golden 不能证明无漂移）。按 case 自己的
+    // caseHashVersion 选公式（新旧共存，见 CASE_HASH_VERSION）。
+    // 未知 caseHashVersion → computeCaseHash 抛错（fail-closed）；这里捕获并标证据损坏，不崩整个 run。
+    let recomputedCaseHash: string;
+    try {
+      recomputedCaseHash = computeCaseHash(
+        {
+          policyId: c.policyId,
+          policyVersionRowId: c.policyVersionRowId,
+          functionName: c.functionName,
+          locale: c.locale,
+          canonicalInputHash: c.canonicalInputHash,
+          expectedOutputHash: c.expectedOutputHash,
+          expectedDecision: c.expectedDecision,
+          canonicalizationVersion: c.canonicalizationVersion,
+          aliasSetJson: c.aliasSetJson,
+          vocabSnapshotRef: c.vocabSnapshotRef,
+          sourceKind: c.sourceKind,
+          coverageTags: Array.isArray(c.coverageTags) ? (c.coverageTags as string[]) : [],
+          baselineRuntimeToolchainId: c.baselineRuntimeToolchainId,
+          sourceToolchainId: c.sourceToolchainId,
+          sourceEnvelopeSha256: c.sourceEnvelopeSha256,
+          sourceExecutionId: c.sourceExecutionId,
+        },
+        c.caseHashVersion
+      );
+    } catch {
+      failed++;
+      details.push({ ...base, status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE_UNKNOWN_VERSION' });
+      continue;
+    }
+    if (recomputedCaseHash !== c.caseHash) {
+      failed++;
+      details.push({ ...base, status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE' });
+      continue;
+    }
 
     // replay-limited：无明文 input 无法 replay。
     if (c.inputJson == null) {
@@ -634,12 +829,44 @@ export async function run(params: {
       continue;
     }
 
-    if (captured.runtimeToolchainId) currentRuntimeToolchainId = captured.runtimeToolchainId;
+    // ★P0-1（CCO 复审，最致命）：强制 baseline≠current toolchain。M1 FROZEN_BASELINE_VS_CURRENT_BACKEND
+    // 的可信前提=冻结基线在**旧**工具链下捕获、run 在**新**工具链下回放。若团队升级**后**才 freeze，
+    // 基线捕获的是新行为→新后端自比自己→假 PASS（报告没证明升级前后无漂移）。故：
+    //   缺 baselineRuntimeToolchainId / 缺 current / 两者相同 → 该 case NON_REPLAYABLE（不算 runnable-PASS）。
+    // 诚实标注：这些 case 无法证明「跨升级无漂移」，绝不能计入证明升级安全的 PASS 分母。
+    if (
+      !c.baselineRuntimeToolchainId ||
+      !captured.runtimeToolchainId ||
+      c.baselineRuntimeToolchainId === captured.runtimeToolchainId
+    ) {
+      nonReplayable++;
+      const reason = !c.baselineRuntimeToolchainId
+        ? 'MISSING_BASELINE_TOOLCHAIN'
+        : !captured.runtimeToolchainId
+          ? 'MISSING_CURRENT_TOOLCHAIN'
+          : 'BASELINE_EQUALS_CURRENT_TOOLCHAIN';
+      details.push({
+        ...base,
+        baselineToolchainId: c.baselineRuntimeToolchainId ?? undefined,
+        currentToolchainId: captured.runtimeToolchainId ?? undefined,
+        reason,
+      });
+      continue;
+    }
+
+    // ★到此 P0-1 已保证 baseline/current toolchain 齐全且不等。把它们写进**每个成功 capture 后的**
+    // detail（PASS/FAIL/mismatch 全带，Codex 复审：否则新 reportHash 字段对有效 case 恒 null + mixed
+    // 检测漏掉只出现在 input-mismatch case 的 toolchain）。记录本次 current toolchain 供 mixed 检测。
+    const toolchainPair = {
+      baselineToolchainId: c.baselineRuntimeToolchainId ?? undefined,
+      currentToolchainId: captured.runtimeToolchainId ?? undefined,
+    };
+    capturedCurrentToolchains.add(captured.runtimeToolchainId);
 
     // 缺权威 output hash（后端未返回）→ 无法比对，不算通过。
     if (!captured.canonicalOutputHash) {
       nonReplayable++;
-      details.push({ ...base, reason: 'MISSING_ACTUAL_OUTPUT_HASH' });
+      details.push({ ...base, ...toolchainPair, reason: 'MISSING_ACTUAL_OUTPUT_HASH' });
       continue;
     }
 
@@ -650,6 +877,7 @@ export async function run(params: {
       failed++;
       details.push({
         ...base,
+        ...toolchainPair,
         status: 'FAIL_REGRESSION',
         actualInputHash: captured.canonicalInputHash ?? undefined,
         actualOutputHash: captured.canonicalOutputHash,
@@ -661,11 +889,18 @@ export async function run(params: {
     const actualOutputHash = captured.canonicalOutputHash;
     if (actualOutputHash === c.expectedOutputHash) {
       passed++;
-      details.push({ ...base, status: 'PASS', actualInputHash: captured.canonicalInputHash, actualOutputHash });
+      details.push({
+        ...base,
+        ...toolchainPair,
+        status: 'PASS',
+        actualInputHash: captured.canonicalInputHash,
+        actualOutputHash,
+      });
     } else {
       failed++;
       details.push({
         ...base,
+        ...toolchainPair,
         status: 'FAIL_REGRESSION',
         actualInputHash: captured.canonicalInputHash,
         actualOutputHash,
@@ -673,6 +908,17 @@ export async function run(params: {
       });
     }
   }
+
+  // ★P0-1 补（Codex 复审 2）：混合 current toolchain 处理（纯函数，可单测）——只降 PASS，保留真实失败。
+  const summary = applyMixedToolchainDowngrade(
+    details,
+    { passed, failed, nonReplayable, compileFailures },
+    capturedCurrentToolchains
+  );
+  ({ passed, failed, nonReplayable, compileFailures } = summary);
+  // 顶层 current toolchain：唯一则取该值，混合或无则 null（不取「最后一个」误导）。
+  const currentRuntimeToolchainId =
+    capturedCurrentToolchains.size === 1 ? [...capturedCurrentToolchains][0] : null;
 
   // 纯决策核心（覆盖门禁 + 状态优先级）——抽出以便单测不需 mock DB/backend。
   const reportBody = assembleReport({
@@ -714,6 +960,38 @@ export async function run(params: {
   });
 
   return { ...reportBody, reportId, reportHash };
+}
+
+export interface RunSummary {
+  passed: number;
+  failed: number;
+  nonReplayable: number;
+  compileFailures: number;
+}
+
+/**
+ * 混合 current toolchain 降级（纯函数，可单测）。★Codex 复审 2：capturedCurrentToolchains 出现 >1 个
+ * 不同 runtime toolchain 时，只把 **PASS** 降为 NON_REPLAYABLE（PASS 在混合后端下无法证明升级安全），
+ * **保留** 所有 FAIL_REGRESSION（含 GOLDEN_INTEGRITY_FAILURE/EVALUATE_FAILED/INPUT_HASH_MISMATCH）与既有
+ * NON_REPLAYABLE 原状态——真实失败/证据损坏是独立事实，不能被 mixed 洗白。原地改 details 状态，返回新计数。
+ */
+export function applyMixedToolchainDowngrade(
+  details: CaseRunDetail[],
+  summary: RunSummary,
+  capturedCurrentToolchains: Set<string>
+): RunSummary {
+  if (capturedCurrentToolchains.size <= 1) return summary;
+  let { passed } = summary;
+  let { nonReplayable } = summary;
+  for (const d of details) {
+    if (d.status === 'PASS') {
+      passed--;
+      nonReplayable++;
+      d.status = 'NON_REPLAYABLE';
+      d.reason = 'MIXED_CURRENT_TOOLCHAIN';
+    }
+  }
+  return { ...summary, passed, nonReplayable };
 }
 
 /** 覆盖统计需要的 case 元信息（纯决策核心用，不含 DB 行全字段）。 */
