@@ -667,8 +667,10 @@ export const executions = pgTable(
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
 
     // ═══ P0-A 决策级持久层（ADR 0030 附录 A.1）——回放地基 ═══
-    // 全 nullable（兼容历史行）；「新写路径必填」是应用层 invariant（replayCaptureVersion 非空时须全）。
-    // 缺任一 → 该行 replayabilityStatus=NON_REPLAYABLE，回归工具跳过（不静默算「通过」）。
+    // 全 nullable（兼容历史行）；应用层 invariant：replayCaptureVersion 非空**时**须全 payload 列 set（单向蕴含，
+    // M2 完整加密 capture）。★replayabilityStatus 与 replayCaptureVersion 是**两条独立轴**（M2.1b 后）：
+    // 行有可信「从冻结 input 重求值」回放路径（P0-A M1 用，不读 replayPayload）即可 REPLAYABLE，不要求 payload
+    // 在场。缺 freeze 所需字段（traceHash/canonical*/toolchain 等）→ NON_REPLAYABLE，回归工具跳过（见 buildReplayColumns）。
     // 不可变版本行引用（旧 policyVersion int 保留仅显示）。
     policyVersionRowId: text('policyVersionRowId'),
     functionName: text('functionName'),

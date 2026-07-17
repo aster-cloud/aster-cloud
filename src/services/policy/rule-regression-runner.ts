@@ -331,7 +331,8 @@ async function isReplayRetentionEnabled(userId: string): Promise<boolean> {
 /**
  * 从 Execution 冻结候选为 RegressionCase。
  *
- * ★候选谓词不筛 replayabilityStatus（M1 行级恒 NON_REPLAYABLE），筛非空 canonical hash 地基。
+ * ★候选谓词筛 replayabilityStatus='REPLAYABLE' + traceHash + canonical hash + toolchain 齐全（PR1，P0-3）——
+ * M2.1b 后 writer 对满足条件的行写 REPLAYABLE（见 buildReplayColumns），故这里能筛到真实可回放行。
  * DISTINCT ON 同 (versionRow,function,locale,canonicalInput) 保最新一条。插入 ON CONFLICT DO
  * NOTHING 幂等。inputJson 仅 tenant opt-in 时存明文（否则 null → case replay-limited）。
  *
