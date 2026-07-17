@@ -345,6 +345,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityUnsignable: 'Not signable',
       signabilityUnsignableHint:
         'Contains legacy weak-binding (case-hash/m1.0) cases whose signable-level fields are not bound by their caseHash. Not usable as signable evidence — re-freeze under a new policy version.',
+      signabilityDeclared: 'Declared · verify pending',
+      signabilityDeclaredHint:
+        'This list view derives signability from the stored report only; it has not re-verified the report against the current golden. Open the report detail (full re-verification) before signing off.',
       comparisonNote:
         'Baseline is the frozen snapshot hash captured at freeze time; M1 does not re-run the old toolchain. Freeze before upgrade, run the gate after deploying the new version.',
       replayLimitedNote:
@@ -666,6 +669,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityUnsignable: '不可签字',
       signabilityUnsignableHint:
         '含遗留弱绑定（case-hash/m1.0）case——其签字级字段未被 caseHash 绑定。不可作为签字级证据，请在新策略版本下重新冻结。',
+      signabilityDeclared: '声明可签字·待核验',
+      signabilityDeclaredHint:
+        '列表视图仅从存储报告派生签字资格，未重新核验报告是否仍对应当前 golden。签字前请打开报告详情（做全核验）。',
       comparisonNote:
         '基线是冻结时捕获的快照哈希；M1 不实时重跑旧工具链。请升级前冻结、部署新版后运行门禁。',
       replayLimitedNote:
@@ -988,6 +994,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityUnsignable: 'Nicht signierbar',
       signabilityUnsignableHint:
         'Enthält Legacy-Fälle mit schwacher Bindung (case-hash/m1.0), deren signierrelevante Felder nicht durch ihren caseHash gebunden sind. Nicht als signierbarer Nachweis verwendbar — unter einer neuen Policy-Version neu einfrieren.',
+      signabilityDeclared: 'Deklariert · Prüfung ausstehend',
+      signabilityDeclaredHint:
+        'Diese Listenansicht leitet die Signierbarkeit nur aus dem gespeicherten Bericht ab; sie wurde nicht erneut gegen die aktuellen Golden-Daten verifiziert. Öffnen Sie die Berichtsdetails (vollständige Neuverifizierung) vor der Freigabe.',
       comparisonNote:
         'Die Baseline ist der beim Einfrieren erfasste Snapshot-Hash; M1 führt die alte Toolchain nicht erneut aus. Vor dem Upgrade einfrieren, nach dem Deployment der neuen Version das Gate ausführen.',
       replayLimitedNote:
@@ -1309,6 +1318,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityUnsignable: 'हस्ताक्षर-अयोग्य',
       signabilityUnsignableHint:
         'इसमें लेगेसी कमज़ोर-बंधन (case-hash/m1.0) केस हैं जिनके हस्ताक्षर-स्तर के फ़ील्ड उनके caseHash से बंधे नहीं हैं। हस्ताक्षर-योग्य साक्ष्य के रूप में उपयोग योग्य नहीं — नई पॉलिसी वर्शन के तहत पुनः फ़्रीज़ करें।',
+      signabilityDeclared: 'घोषित · सत्यापन शेष',
+      signabilityDeclaredHint:
+        'यह सूची दृश्य केवल संग्रहीत रिपोर्ट से हस्ताक्षर-योग्यता निकालता है; इसे वर्तमान golden के विरुद्ध पुनः सत्यापित नहीं किया गया। हस्ताक्षर से पहले रिपोर्ट विवरण (पूर्ण पुनः सत्यापन) खोलें।',
       comparisonNote:
         'बेसलाइन फ़्रीज़ के समय कैप्चर किया गया स्नैपशॉट हैश है; M1 पुरानी टूलचेन को दोबारा नहीं चलाता। अपग्रेड से पहले फ़्रीज़ करें, नया संस्करण डिप्लॉय करने के बाद गेट चलाएँ।',
       replayLimitedNote:

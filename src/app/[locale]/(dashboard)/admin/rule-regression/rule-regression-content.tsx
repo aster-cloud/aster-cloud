@@ -22,6 +22,9 @@ interface ReportRow {
   signability: 'SIGNABLE' | 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION';
   unsignableLegacyCases: number | null;
   signablePass: boolean;
+  // ★F1（独立审查）：列表是**声明态**（未重核 golden），verified=false——UI 只显「声明可签字」弱信号，
+  // 强绿灯（已核验）以单报告详情 / ?verify=1 为准。旧后端缺此字段视为 false（fail-closed 弱信号）。
+  verified?: boolean;
 }
 
 interface CaseRow {
@@ -186,6 +189,16 @@ export function RuleRegressionContent() {
                               >
                                 {t('signabilityUnsignable')}
                                 {r.unsignableLegacyCases ? ` (${r.unsignableLegacyCases})` : ''}
+                              </span>
+                            )}
+                            {/* ★F1：列表是声明态（verified!==true）——可签字的报告标「声明可签字·待核验」，提醒 CCO
+                                强绿灯（golden 已核验）以详情/verify 为准，不要凭列表直接签字。 */}
+                            {r.status === 'PASS' && r.signablePass === true && r.verified !== true && (
+                              <span
+                                className="rounded px-2 py-0.5 text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300"
+                                title={t('signabilityDeclaredHint')}
+                              >
+                                {t('signabilityDeclared')}
                               </span>
                             )}
                           </div>
