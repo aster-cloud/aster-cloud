@@ -7,6 +7,7 @@ import {
   computeApprovalHash,
   computeEffectiveStatus,
   extractApprovableDrifts,
+  verifyReportIntegrity,
   DEFAULT_THRESHOLDS,
   COMPARISON_MODE_FROZEN_BASELINE,
   CASE_HASH_VERSION,
@@ -15,6 +16,8 @@ import {
   type CaseRunDetail,
   type CoverageThresholds,
   type AcceptedDrift,
+  type GoldenCaseSnapshot,
+  type RunReport,
 } from '@/services/policy/rule-regression-runner';
 
 /**
@@ -37,6 +40,8 @@ function coverageSatisfyingCases(): { cases: CaseCoverageMeta[]; details: CaseRu
   const details: CaseRunDetail[] = cases.map((c) => ({
     caseId: c.id,
     status: 'PASS',
+    caseHash: `${c.id}-hash`,
+    caseHashVersion: CASE_HASH_VERSION,
     expectedOutputHash: 'h',
     actualOutputHash: 'h',
     functionName: 'f',
@@ -85,7 +90,8 @@ describe('assembleReport — 四态状态机', () => {
       { id: 'c2', expectedDecision: 'denied', sourceKind: 'execution', coverageTags: [] },
     ];
     const details: CaseRunDetail[] = cases.map((c) => ({
-      caseId: c.id, status: 'PASS', functionName: 'f', locale: 'en-US',
+      caseId: c.id, status: 'PASS', caseHash: `${c.id}-hash`, caseHashVersion: CASE_HASH_VERSION,
+      functionName: 'f', locale: 'en-US',
       coverageTags: c.coverageTags, sourceKind: c.sourceKind, expectedOutputHash: 'h', actualOutputHash: 'h',
     }));
     const r = assemble(cases, details);
@@ -114,7 +120,8 @@ describe('assembleReport — 四态状态机', () => {
       coverageTags: i === 0 ? ['boundary'] : [],
     }));
     const details: CaseRunDetail[] = cases.map((c) => ({
-      caseId: c.id, status: 'PASS', functionName: 'f', locale: 'en-US',
+      caseId: c.id, status: 'PASS', caseHash: `${c.id}-hash`, caseHashVersion: CASE_HASH_VERSION,
+      functionName: 'f', locale: 'en-US',
       coverageTags: c.coverageTags, sourceKind: c.sourceKind, expectedOutputHash: 'h', actualOutputHash: 'h',
     }));
     const r = assemble(cases, details);
@@ -138,7 +145,8 @@ describe('assembleReport — 四态状态机', () => {
       { id: 'c2', expectedDecision: 'denied', sourceKind: 'execution', coverageTags: [] },
     ];
     const details: CaseRunDetail[] = cases.map((c) => ({
-      caseId: c.id, status: 'NON_REPLAYABLE', functionName: 'f', locale: 'en-US',
+      caseId: c.id, status: 'NON_REPLAYABLE', caseHash: `${c.id}-hash`, caseHashVersion: CASE_HASH_VERSION,
+      functionName: 'f', locale: 'en-US',
       coverageTags: c.coverageTags, sourceKind: c.sourceKind, reason: 'REPLAY_LIMITED_NO_INPUT',
     }));
     const r = assemble(cases, details);
@@ -159,8 +167,8 @@ describe('assembleReport — 四态状态机', () => {
       { id: 'c2', expectedDecision: 'denied', sourceKind: 'execution', coverageTags: [] },
     ];
     const details: CaseRunDetail[] = [
-      { caseId: 'c1', status: 'PASS', functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution', expectedOutputHash: 'h', actualOutputHash: 'h' },
-      { caseId: 'c2', status: 'FAIL_REGRESSION', functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution', expectedOutputHash: 'h', actualOutputHash: 'X', reason: 'OUTPUT_HASH_MISMATCH' },
+      { caseId: 'c1', status: 'PASS', caseHash: 'c1-hash', caseHashVersion: CASE_HASH_VERSION, functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution', expectedOutputHash: 'h', actualOutputHash: 'h' },
+      { caseId: 'c2', status: 'FAIL_REGRESSION', caseHash: 'c2-hash', caseHashVersion: CASE_HASH_VERSION, functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution', expectedOutputHash: 'h', actualOutputHash: 'X', reason: 'OUTPUT_HASH_MISMATCH' },
     ];
     const r = assemble(cases, details);
     // 覆盖不足优先（ADR 优先级：INSUFFICIENT_COVERAGE > FAIL_REGRESSION）。
@@ -346,6 +354,8 @@ describe('applyMixedToolchainDowngrade — 混合 toolchain 只降 PASS 不洗�
   const mk = (caseId: string, status: CaseRunDetail['status'], reason?: string): CaseRunDetail => ({
     caseId,
     status,
+    caseHash: `${caseId}-hash`,
+    caseHashVersion: CASE_HASH_VERSION,
     functionName: 'f',
     locale: 'en-US',
     coverageTags: [],
@@ -428,6 +438,8 @@ describe('computeEffectiveStatus — 受控接受派生态（不改任何行）'
   const mkCase = (caseId: string, status: CaseRunDetail['status'], reason?: string, eh?: string, ah?: string): CaseRunDetail => ({
     caseId,
     status,
+    caseHash: `${caseId}-hash`,
+    caseHashVersion: CASE_HASH_VERSION,
     reason,
     expectedOutputHash: eh,
     actualOutputHash: ah,
@@ -572,9 +584,9 @@ describe('computeEffectiveStatus — 受控接受派生态（不改任何行）'
 describe('extractApprovableDrifts / computeApprovalHash', () => {
   it('只抽 OUTPUT_HASH_MISMATCH（证据损坏/编译失败不可受控接受）', () => {
     const cases: CaseRunDetail[] = [
-      { caseId: 'c1', status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH', expectedOutputHash: 'b1', actualOutputHash: 'n1', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
-      { caseId: 'c2', status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
-      { caseId: 'c3', status: 'PASS', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
+      { caseId: 'c1', status: 'FAIL_REGRESSION', caseHash: 'c1-hash', caseHashVersion: CASE_HASH_VERSION, reason: 'OUTPUT_HASH_MISMATCH', expectedOutputHash: 'b1', actualOutputHash: 'n1', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
+      { caseId: 'c2', status: 'FAIL_REGRESSION', caseHash: 'c2-hash', caseHashVersion: CASE_HASH_VERSION, reason: 'GOLDEN_INTEGRITY_FAILURE', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
+      { caseId: 'c3', status: 'PASS', caseHash: 'c3-hash', caseHashVersion: CASE_HASH_VERSION, functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
     ];
     const drifts = extractApprovableDrifts({ cases });
     expect(drifts).toEqual([{ caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' }]);
@@ -589,5 +601,184 @@ describe('extractApprovableDrifts / computeApprovalHash', () => {
     // drift 顺序无关（排序进 hash）。
     const two = [{ caseId: 'a', baselineOutputHash: 'b', acceptedOutputHash: 'c' }, { caseId: 'z', baselineOutputHash: 'y', acceptedOutputHash: 'x' }];
     expect(computeApprovalHash({ ...f, acceptedDrifts: two })).toBe(computeApprovalHash({ ...f, acceptedDrifts: two.slice().reverse() }));
+  });
+});
+
+// ============ m1.2：reportHash 绑 caseHash + 离线核验协议（签字级） ============
+
+/** 固定报告体（决定性）——golden hash vector 的输入。改公式即会让下方硬编码向量失配（历史不破守卫）。 */
+function fixedReportBody(runnerVersion: string): Omit<RunReport, 'reportId' | 'reportHash'> {
+  const cases: CaseRunDetail[] = [
+    {
+      caseId: 'c1', status: 'PASS', caseHash: 'CASEHASH-1', caseHashVersion: 'case-hash/m1.1',
+      functionName: 'greet', locale: 'en-US', coverageTags: ['boundary'], sourceKind: 'execution',
+      expectedInputHash: 'ei1', actualInputHash: 'ai1', expectedOutputHash: 'eo1', actualOutputHash: 'ao1',
+      baselineToolchainId: 'tc-base', currentToolchainId: 'tc-cur',
+    },
+  ];
+  return {
+    status: 'PASS', comparisonMode: 'FROZEN_BASELINE_VS_CURRENT_BACKEND',
+    baselineSemantics: 'sem', policyId: 'pol-1', policyVersionRowId: 'pv-1',
+    currentRuntimeToolchainId: 'tc-cur',
+    coverage: {
+      totalCases: 1, runnableCases: 1, approvedCases: 1, deniedCases: 0, handwrittenBoundaryCases: 1,
+      thresholds: { minRunnableCases: 1, minApprovedCases: 1, minDeniedCases: 0, minHandwrittenBoundaryCases: 1 },
+      unmet: [],
+    },
+    summary: { passed: 1, failed: 0, nonReplayable: 0, compileFailures: 0 },
+    cases, runnerVersion,
+  };
+}
+
+describe('reportHash m1.2 — 绑 caseHash + 版本分派 + 历史向量冻结', () => {
+  // ★硬编码 golden vector（非同实现自算两次）：改动 m1.0/m1.1/m1.2 任一公式都会让对应向量失配。
+  // m1.0/m1.1 向量是历史不破守卫；m1.2 向量锁定新公式。
+  const VECTORS: Record<string, string> = {
+    'p0a-runner/m1.0': '357106de681456ad305f7a4e0c4d147adc1ddd10af04676b0499387f5f138177',
+    'p0a-runner/m1.1': '5b1a923ba14421233489b31344efebadfd634b25875cb1c373e7ab7b59379381',
+    'p0a-runner/m1.2': '00f72de53953e918eb6624d8dfeefaf89cc5bc6b2fa362e5c134c011da271b72',
+  };
+
+  it('★m1.0 历史向量冻结（改 m1.0 公式即失配）', () => {
+    expect(computeReportHash(fixedReportBody('p0a-runner/m1.0'))).toBe(VECTORS['p0a-runner/m1.0']);
+  });
+  it('★m1.1 历史向量冻结（改 m1.1 公式即失配——保护既有报告 + 绑其的 approval）', () => {
+    expect(computeReportHash(fixedReportBody('p0a-runner/m1.1'))).toBe(VECTORS['p0a-runner/m1.1']);
+  });
+  it('★m1.2 向量锁定（新公式含 caseHash）', () => {
+    expect(computeReportHash(fixedReportBody('p0a-runner/m1.2'))).toBe(VECTORS['p0a-runner/m1.2']);
+  });
+
+  it('★四路版本分派：m1.0/m1.1/m1.2 各不相同，未知 fail-closed', () => {
+    const h10 = computeReportHash(fixedReportBody('p0a-runner/m1.0'));
+    const h11 = computeReportHash(fixedReportBody('p0a-runner/m1.1'));
+    const h12 = computeReportHash(fixedReportBody('p0a-runner/m1.2'));
+    expect(new Set([h10, h11, h12]).size).toBe(3); // 三公式互不相同。
+    expect(() => computeReportHash(fixedReportBody('p0a-runner/CORRUPT'))).toThrow(/unsupported reportHash runnerVersion/);
+  });
+
+  it('★m1.2 敏感于 caseHash（改 caseHash → reportHash 变，锚定 golden 完整性）', () => {
+    const body = fixedReportBody('p0a-runner/m1.2');
+    const tampered = { ...body, cases: body.cases.map((c) => ({ ...c, caseHash: 'TAMPERED' })) };
+    expect(computeReportHash(body)).not.toBe(computeReportHash(tampered));
+  });
+  it('★m1.2 敏感于 caseHashVersion（算法域分离进 hash）', () => {
+    const body = fixedReportBody('p0a-runner/m1.2');
+    const tampered = { ...body, cases: body.cases.map((c) => ({ ...c, caseHashVersion: 'case-hash/m1.0' })) };
+    expect(computeReportHash(body)).not.toBe(computeReportHash(tampered));
+  });
+  it('m1.1 公式忽略 caseHash（历史报告不因 detail 多带 caseHash 而变）', () => {
+    const body = fixedReportBody('p0a-runner/m1.1');
+    const withDiffCaseHash = { ...body, cases: body.cases.map((c) => ({ ...c, caseHash: 'DIFFERENT' })) };
+    // m1.1 公式不纳入 caseHash → 改它不影响 m1.1 hash。
+    expect(computeReportHash(body)).toBe(computeReportHash(withDiffCaseHash));
+  });
+});
+
+describe('verifyReportIntegrity — 离线核验协议（消费 m1.2 承诺 + 当前行重算自洽）', () => {
+  // 一个 case 的 computeCaseHash 字段（可控），caseHash 由这些字段算出（自洽）。
+  const CASE_FIELDS = {
+    policyId: 'pol-1', policyVersionRowId: 'pv-1', functionName: 'greet', locale: 'en-US',
+    canonicalInputHash: 'in1', expectedOutputHash: 'out1', canonicalizationVersion: 'aster-canonical-json/v1',
+    aliasSetJson: {}, vocabSnapshotRef: [], sourceKind: 'execution',
+    expectedDecision: 'approved' as const, coverageTags: [] as string[],
+    baselineRuntimeToolchainId: 'tc-base', sourceToolchainId: 'tc-src',
+    sourceEnvelopeSha256: 'env1', sourceExecutionId: 'ex1',
+  };
+  const CASE_ID = 'ck-1';
+  const SELF_CASE_HASH = computeCaseHash(CASE_FIELDS, CASE_HASH_VERSION);
+
+  /** 自洽 golden 行（存储 caseHash = 从字段重算）。 */
+  const selfConsistentGolden = (over: Partial<GoldenCaseSnapshot> = {}): GoldenCaseSnapshot => ({
+    id: CASE_ID, caseHash: SELF_CASE_HASH, caseHashVersion: CASE_HASH_VERSION, ...CASE_FIELDS, ...over,
+  });
+
+  /** 承诺该 case 的 m1.2 报告（committed caseHash = SELF_CASE_HASH）。 */
+  const reportCommitting = (committedHash: string = SELF_CASE_HASH): Omit<RunReport, 'reportId' | 'reportHash'> => {
+    const body = fixedReportBody('p0a-runner/m1.2');
+    body.cases[0] = { ...body.cases[0], caseId: CASE_ID, caseHash: committedHash, caseHashVersion: CASE_HASH_VERSION };
+    return body;
+  };
+
+  it('★全 MATCH：报告承诺 == 存储 == 重算，三者一致 → ok', () => {
+    const body = reportCommitting();
+    const v = verifyReportIntegrity(body, computeReportHash(body), [selfConsistentGolden()]);
+    expect(v.ok).toBe(true);
+    expect(v.reportHashValid).toBe(true);
+    expect(v.structurallyValid).toBe(true);
+    expect(v.goldenCommitmentSupported).toBe(true);
+    expect(v.cases[0].status).toBe('MATCH');
+    expect(v.cases[0].recomputedCaseHash).toBe(SELF_CASE_HASH);
+  });
+
+  it('★reportHash 被改 → reportHashValid=false, ok=false', () => {
+    const body = reportCommitting();
+    const v = verifyReportIntegrity(body, 'WRONG-REPORT-HASH', [selfConsistentGolden()]);
+    expect(v.reportHashValid).toBe(false);
+    expect(v.ok).toBe(false);
+  });
+
+  it('★致命攻击 A：改被 hash 字段但**不改** caseHash（当前行不自洽）→ CURRENT_GOLDEN_INTEGRITY_FAILURE', () => {
+    // 攻击者直改 expectedOutputHash，但保留原 caseHash（更简单的攻击）。verifier 从字段重算 → 与存储不符。
+    const body = reportCommitting();
+    const tamperedRow = selfConsistentGolden({ expectedOutputHash: 'TAMPERED-OUTPUT' }); // caseHash 仍 SELF（未改）。
+    const v = verifyReportIntegrity(body, computeReportHash(body), [tamperedRow]);
+    expect(v.cases[0].status).toBe('CURRENT_GOLDEN_INTEGRITY_FAILURE');
+    expect(v.cases[0].currentCaseHash).toBe(SELF_CASE_HASH);
+    expect(v.cases[0].recomputedCaseHash).not.toBe(SELF_CASE_HASH); // 重算 ≠ 存储 → 抓出。
+    expect(v.ok).toBe(false);
+  });
+
+  it('★致命攻击 B：改字段 + 重算自洽 caseHash（run 自洽过）→ CASE_HASH_MISMATCH（与签字承诺不符）', () => {
+    // 当前行内部自洽（caseHash 随字段重算），但与报告签字时承诺的 caseHash 不同 → 抓出。
+    const body = reportCommitting(); // 承诺原始 SELF_CASE_HASH。
+    const newFields = { ...CASE_FIELDS, expectedOutputHash: 'TAMPERED-OUTPUT' };
+    const newHash = computeCaseHash(newFields, CASE_HASH_VERSION);
+    expect(newHash).not.toBe(SELF_CASE_HASH);
+    const rowSelfConsistentButChanged = selfConsistentGolden({ ...newFields, caseHash: newHash });
+    const v = verifyReportIntegrity(body, computeReportHash(body), [rowSelfConsistentButChanged]);
+    expect(v.cases[0].status).toBe('CASE_HASH_MISMATCH'); // 当前行自洽但 ≠ 承诺。
+    expect(v.ok).toBe(false);
+  });
+
+  it('★未知 caseHashVersion → UNSUPPORTED_CASE_HASH_VERSION（fail-closed）', () => {
+    const body = reportCommitting();
+    const v = verifyReportIntegrity(body, computeReportHash(body), [selfConsistentGolden({ caseHashVersion: 'case-hash/CORRUPT' })]);
+    expect(v.cases[0].status).toBe('UNSUPPORTED_CASE_HASH_VERSION');
+    expect(v.ok).toBe(false);
+  });
+
+  it('★golden 缺失 → MISSING_IN_GOLDEN, ok=false', () => {
+    const body = reportCommitting();
+    const v = verifyReportIntegrity(body, computeReportHash(body), []);
+    expect(v.cases[0].status).toBe('MISSING_IN_GOLDEN');
+    expect(v.ok).toBe(false);
+  });
+
+  it('★golden 多出未覆盖 case → EXTRA_IN_GOLDEN, ok=false（覆盖集变化）', () => {
+    const body = reportCommitting();
+    const extra = selfConsistentGolden({ id: 'extra-case' });
+    const v = verifyReportIntegrity(body, computeReportHash(body), [selfConsistentGolden(), extra]);
+    expect(v.cases.some((c) => c.status === 'EXTRA_IN_GOLDEN' && c.caseId === 'extra-case')).toBe(true);
+    expect(v.ok).toBe(false);
+  });
+
+  it('★结构 fail-closed：报告出现重复 caseId → structurallyValid=false, ok=false', () => {
+    const body = reportCommitting();
+    body.cases = [body.cases[0], { ...body.cases[0] }]; // 重复 caseId（同 id 两条 detail）。
+    const v = verifyReportIntegrity(body, computeReportHash(body), [selfConsistentGolden()]);
+    expect(v.structurallyValid).toBe(false);
+    expect(v.ok).toBe(false);
+  });
+
+  it('★m1.0/m1.1 报告不支持 golden 承诺 → goldenCommitmentSupported=false, ok=false', () => {
+    // 旧版报告没绑 caseHash → 即使当前行自洽也不能证明它对应签字承诺（诚实标注）。
+    const m11 = fixedReportBody('p0a-runner/m1.1');
+    m11.cases[0] = { ...m11.cases[0], caseId: CASE_ID };
+    const v = verifyReportIntegrity(m11, computeReportHash(m11), [selfConsistentGolden()]);
+    expect(v.reportHashValid).toBe(true);
+    expect(v.goldenCommitmentSupported).toBe(false);
+    expect(v.cases[0].status).toBe('CASE_HASH_MISMATCH'); // 当前行自洽但报告没承诺 → 不 MATCH。
+    expect(v.ok).toBe(false);
   });
 });

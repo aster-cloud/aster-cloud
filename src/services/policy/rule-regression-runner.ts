@@ -25,12 +25,14 @@ import { detectCNLLocale } from './cnl-executor';
 
 /**
  * runner 版本——进 reportHash，保证报告可复算归因到 runner 逻辑版本。
- * m1.1（本 PR，CCO 深审加固第一批）：P0-1 toolchain 强制 / P0-2 禁降阈值 / P0-3 筛回放态 /
+ * m1.1（CCO 深审加固第一批）：P0-1 toolchain 强制 / P0-2 禁降阈值 / P0-3 筛回放态 /
  * P0-5 reportHash 补全+稳定序+版本分派 / P0-6 run 重算 caseHash+未知版本 fail-closed。
- * ★P0-4（受控接受 artifact）+ P0-7（DB append-only）留第二个 PR，**尚未实现**（勿据本注释误判口径）。
- * 逻辑变更必须 bump（旧版报告 hash 与新版按各自 runnerVersion 分派公式，不混算）。
+ * m1.2（本 PR，签字级）：reportHash 逐 case 追加 caseHash + caseHashVersion——把「golden 完整性哈希」
+ * 绑进「报告哈希」，使已签 reportHash **密码学锚定**它覆盖的冻结 golden（配合离线核验协议
+ * {@link verifyReportIntegrity} 逐项比对承诺 caseHash vs 当前 golden，闭合验签边界）。
+ * 逻辑变更必须 bump（旧版报告 hash 与新版按各自 runnerVersion 分派公式，不混算——历史可复算铁律）。
  */
-export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.1';
+export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.2';
 
 /** M1 单后端比对模式（诚实标注：基线=冻结快照 hash，非实时重跑 old backend）。 */
 export const COMPARISON_MODE_FROZEN_BASELINE = 'FROZEN_BASELINE_VS_CURRENT_BACKEND';
@@ -120,6 +122,12 @@ async function detectOutputConflict(
 export interface CaseRunDetail {
   caseId: string;
   status: CaseRunStatus;
+  // ★m1.2（reportHash 绑 golden 完整性）：冻结 case 的完整性哈希 + 其公式版本。进 m1.2 reportHash 的
+  // 逐 case object，使已签报告**密码学锚定**它覆盖的 golden——签 reportHash 即承诺 golden 摘要。
+  // 全分支必带（base 注入，含 GOLDEN_INTEGRITY_FAILURE / unknown-version 失败 detail 也承诺「看到的
+  // 损坏证据是什么」）。DB 列 caseHash/caseHashVersion 均 NOT NULL，进循环必可取，无 null 分支。
+  caseHash: string;
+  caseHashVersion: string;
   expectedInputHash?: string;
   actualInputHash?: string;
   expectedOutputHash?: string;
@@ -247,10 +255,13 @@ export function computeCaseHash(fields: CaseHashFields, version: string = CASE_H
 
 /**
  * reportHash 公式版本（同 caseHash 版本化）。★Codex 复审 P0-5：**按报告自身的 runnerVersion 选公式**，
- * 不能用当前运行代码常量——否则拿 m1.0 历史 reportJson 在 m1.1 代码里复算会得到不同 hash（破坏历史可复算）。
- * m1.0=原公式（未含新逐 case 字段）；m1.1=补全字段+稳定序。未知版本 fail-closed（抛错，不静默按新公式）。
+ * 不能用当前运行代码常量——否则拿历史 reportJson 在新代码里复算会得到不同 hash（破坏历史可复算）。
+ * m1.0=原公式（未含新逐 case 字段）；m1.1=补全字段+稳定序；m1.2=逐 case 追加 caseHash+caseHashVersion
+ * （绑 golden 完整性）。三路显式分派 + 未知版本 fail-closed（抛错，不静默按新公式）。
  */
 const REPORT_HASH_VERSION_M10 = 'p0a-runner/m1.0';
+const REPORT_HASH_VERSION_M11 = 'p0a-runner/m1.1';
+const REPORT_HASH_VERSION_M12 = 'p0a-runner/m1.2';
 
 /**
  * reportHash = canonicalHash(报告决定性内容)——报告防篡改 + 可复算。不含 reportId/createdAt（身份/时间）。
@@ -278,18 +289,56 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
       })),
     });
   }
-  if (report.runnerVersion !== RULE_REGRESSION_RUNNER_VERSION) {
+  if (report.runnerVersion === REPORT_HASH_VERSION_M11) {
+    // m1.1 原公式：**逐字冻结**，供历史 m1.1 报告复算（不得改动，否则破坏既有报告 + 绑其 reportHash
+    // 的 drift approval）。m1.1 逐 case object 不含 caseHash（那是 m1.2 才加的）。
+    return canonicalHash({
+      reportHashVersion: report.runnerVersion,
+      status: report.status,
+      comparisonMode: report.comparisonMode,
+      baselineSemantics: report.baselineSemantics,
+      policyId: report.policyId,
+      policyVersionRowId: report.policyVersionRowId,
+      currentRuntimeToolchainId: report.currentRuntimeToolchainId,
+      coverage: report.coverage,
+      summary: report.summary,
+      runnerVersion: report.runnerVersion,
+      cases: report.cases
+        .slice()
+        .sort((a, b) => (a.caseId < b.caseId ? -1 : a.caseId > b.caseId ? 1 : 0))
+        .map((c) => ({
+          caseId: c.caseId,
+          status: c.status,
+          reason: c.reason ?? null,
+          expectedDecision: c.expectedDecision ?? null,
+          functionName: c.functionName,
+          locale: c.locale,
+          sourceKind: c.sourceKind,
+          coverageTags: (c.coverageTags ?? []).slice().sort(),
+          expectedInputHash: c.expectedInputHash ?? null,
+          actualInputHash: c.actualInputHash ?? null,
+          expectedOutputHash: c.expectedOutputHash ?? null,
+          actualOutputHash: c.actualOutputHash ?? null,
+          baselineToolchainId: c.baselineToolchainId ?? null,
+          currentToolchainId: c.currentToolchainId ?? null,
+        })),
+    });
+  }
+  if (report.runnerVersion !== REPORT_HASH_VERSION_M12) {
     // 未知版本 fail-closed：不静默按新公式算，否则复算者拿到假的「可复算」hash。
     throw new Error(`unsupported reportHash runnerVersion: ${report.runnerVersion}`);
   }
-  // m1.1：逐 case 补全（reason/decision/function/locale/sourceKind/coverageTags/toolchain 排序稳定），
-  // 顶层补 baselineSemantics（报告对基线语义的声明也进 hash）。canonicalizationVersion 由每 case 的
-  // caseHash 间接保护（caseHash 绑了它），且报告级 currentRuntimeToolchainId 已在。
+  // m1.2：在 m1.1 全字段基础上，逐 case **追加 caseHash + caseHashVersion**——把冻结 golden 的完整性
+  // 哈希绑进报告哈希。签 reportHash 即承诺「我跑的是这些 caseHash 的 golden」；离线核验
+  // （verifyReportIntegrity）再逐项比对承诺 caseHash vs 当前 golden，闭合验签。caseHashVersion 一并绑
+  // （算法域分离：告诉核验者用哪套公式复算 caseHash，防 version-confusion）。
   const cases = report.cases
     .slice()
     .sort((a, b) => (a.caseId < b.caseId ? -1 : a.caseId > b.caseId ? 1 : 0))
     .map((c) => ({
       caseId: c.caseId,
+      caseHash: c.caseHash,
+      caseHashVersion: c.caseHashVersion,
       status: c.status,
       reason: c.reason ?? null,
       expectedDecision: c.expectedDecision ?? null,
@@ -317,6 +366,200 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
     runnerVersion: report.runnerVersion,
     cases,
   });
+}
+
+// ── 离线核验协议（verify 半，Codex 设计审 + 实现复审：commitment 必须被 verification 消费，且
+//    verifier 必须从当前 golden **实际字段重算** caseHash，不能只信存储的 caseHash） ──
+
+/** 报告承诺的 golden 完整性核验：某一 case 的比对结果。 */
+export type CaseIntegrityStatus =
+  | 'MATCH' // 三者相等：报告承诺 caseHash == 存储 caseHash == 从当前字段重算的 caseHash
+  | 'CURRENT_GOLDEN_INTEGRITY_FAILURE' // 存储 caseHash ≠ 从当前字段重算（当前行内部不自洽：改了字段没改 caseHash）
+  | 'CASE_HASH_MISMATCH' // 当前行自洽，但与报告承诺不符（golden 被替换/重算成另一自洽值）
+  | 'UNSUPPORTED_CASE_HASH_VERSION' // 当前行 caseHashVersion 未知，无法重算（fail-closed）
+  | 'MISSING_IN_GOLDEN' // 报告承诺的 caseId 已不在当前 golden（被删/重冻换 id）
+  | 'EXTRA_IN_GOLDEN'; // 当前 golden 有报告未覆盖的 case（覆盖集变化，签字集不再完整）
+
+export interface CaseIntegrityResult {
+  caseId: string;
+  status: CaseIntegrityStatus;
+  /** 报告承诺值（m1.2 报告才有；旧版报告为 null）。 */
+  committedCaseHash: string | null;
+  committedCaseHashVersion: string | null;
+  /** 当前 golden 行**存储**的 caseHash/version（缺失时 null）。 */
+  currentCaseHash: string | null;
+  currentCaseHashVersion: string | null;
+  /** 从当前 golden 行**实际字段重算**的 caseHash（未知版本/缺行时 null）。 */
+  recomputedCaseHash: string | null;
+}
+
+/**
+ * 离线核验结果：报告自身完整性 + 报告↔当前 golden 逐项比对（含当前行自洽性重算 + 结构校验）。
+ *
+ * ★口径（Codex 复审 #2，诚实不夸大）：这是**存储完整性 + 当前 golden 一致性**核验，**不**验证 CCO
+ * 外部数字签名——{@code expectedReportHash} 由调用方传入（服务端封装传的是同库 reportHash 行值，只能
+ * 检测「reportJson 被单独改」+「golden 与报告承诺不符」，不能检测「同时改 reportJson+reportHash」）。
+ * 要证明「CCO 已签内容」，须由调用方传入来自可信签名 artifact 的 reportHash 并另行验签。
+ */
+export interface ReportIntegrityVerdict {
+  /** 报告是否绑了 golden 承诺（m1.2+ 才在逐 case 绑 caseHash；旧版报告只能核验自身 hash）。 */
+  goldenCommitmentSupported: boolean;
+  /** 复算 reportHash 是否等于传入的 expectedReportHash（报告 JSON 相对该期望值未被改）。 */
+  reportHashValid: boolean;
+  recomputedReportHash: string;
+  expectedReportHash: string;
+  /** artifact 结构是否合法（report caseId 唯一 + golden id 唯一）。重复即 fail-closed。 */
+  structurallyValid: boolean;
+  /** 每个 case 的完整性比对（含 MISSING/EXTRA/当前行不自洽）。 */
+  cases: CaseIntegrityResult[];
+  /** 全部满足：reportHash 有效 + 结构合法 + 支持 golden 承诺 + 所有 case MATCH。 */
+  ok: boolean;
+}
+
+/**
+ * 当前 golden 行——核验需要 id + 存储 caseHash/version + **computeCaseHash 所需的全部字段**
+ * （以便从实际字段重算，抓「改字段没改 caseHash」的当前行不自洽）。
+ */
+export interface GoldenCaseSnapshot extends CaseHashFields {
+  id: string;
+  caseHash: string;
+  caseHashVersion: string;
+}
+
+/** 找重复项（返回出现 >1 次的 key 集合）。 */
+function findDuplicates(ids: string[]): Set<string> {
+  const seen = new Set<string>();
+  const dup = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) dup.add(id);
+    else seen.add(id);
+  }
+  return dup;
+}
+
+/**
+ * 离线核验一份报告的存储完整性 + 当前 golden 一致性（纯函数，无 I/O，可离线可单测）。
+ *
+ * 三层（缺一即假证明）：
+ *  1. **报告自身完整性**：按报告冻结的 runnerVersion 复算 reportHash，比对 {@code expectedReportHash}。
+ *  2. **结构合法性**：report caseId / golden id 各自唯一（防重复 caseId 双 MATCH 绕过）——重复即 fail-closed。
+ *  3. **golden 承诺核验（三者相等）**：对每个报告 case，从当前 golden 行的**实际字段**用 computeCaseHash
+ *     **重算** caseHash，要求 `报告承诺 caseHash == 存储 caseHash == 重算 caseHash` 且 version 一致才 MATCH：
+ *       - 存储 ≠ 重算 → CURRENT_GOLDEN_INTEGRITY_FAILURE（当前行改了字段没改 caseHash，内部不自洽）；
+ *       - 当前行自洽但 ≠ 报告承诺 → CASE_HASH_MISMATCH（golden 被换/重算成另一自洽值，与签字承诺不符）；
+ *       - 当前行 caseHashVersion 未知 → UNSUPPORTED_CASE_HASH_VERSION（fail-closed）；
+ *       - caseId 缺 → MISSING_IN_GOLDEN；golden 多出 → EXTRA_IN_GOLDEN。
+ *
+ * ★m1.0/m1.1 报告逐 case 不含 caseHash（承诺不存在）→ goldenCommitmentSupported=false，只核验报告自身
+ * hash，不能证明 golden 未换（诚实标注，不假装核验没绑的东西）。
+ */
+export function verifyReportIntegrity(
+  report: Omit<RunReport, 'reportId' | 'reportHash'>,
+  expectedReportHash: string,
+  currentGolden: GoldenCaseSnapshot[]
+): ReportIntegrityVerdict {
+  const recomputedReportHash = computeReportHash(report);
+  const reportHashValid = recomputedReportHash === expectedReportHash;
+
+  // m1.2+ 才在逐 case 绑了 caseHash——只有此时报告才承诺了 golden 完整性。
+  const goldenCommitmentSupported = report.runnerVersion === REPORT_HASH_VERSION_M12;
+
+  // 结构校验（fail-closed）：report caseId / golden id 各自唯一（防重复项双 MATCH 绕过）。
+  const reportDup = findDuplicates(report.cases.map((c) => c.caseId));
+  const goldenDup = findDuplicates(currentGolden.map((g) => g.id));
+  const structurallyValid = reportDup.size === 0 && goldenDup.size === 0;
+
+  const goldenById = new Map(currentGolden.map((g) => [g.id, g]));
+  const reportCaseIds = new Set(report.cases.map((c) => c.caseId));
+  const results: CaseIntegrityResult[] = [];
+
+  for (const c of report.cases) {
+    const g = goldenById.get(c.caseId);
+    const committedCaseHash = c.caseHash ?? null;
+    const committedCaseHashVersion = c.caseHashVersion ?? null;
+    if (!g) {
+      results.push({
+        caseId: c.caseId,
+        status: 'MISSING_IN_GOLDEN',
+        committedCaseHash,
+        committedCaseHashVersion,
+        currentCaseHash: null,
+        currentCaseHashVersion: null,
+        recomputedCaseHash: null,
+      });
+      continue;
+    }
+
+    // ★从当前 golden 行的实际字段重算 caseHash（像 run 那样），抓「改字段没改 caseHash」。
+    let recomputedCaseHash: string | null = null;
+    try {
+      recomputedCaseHash = computeCaseHash(g, g.caseHashVersion);
+    } catch {
+      // 未知 caseHashVersion → 无法重算，fail-closed。
+      results.push({
+        caseId: c.caseId,
+        status: 'UNSUPPORTED_CASE_HASH_VERSION',
+        committedCaseHash,
+        committedCaseHashVersion,
+        currentCaseHash: g.caseHash,
+        currentCaseHashVersion: g.caseHashVersion,
+        recomputedCaseHash: null,
+      });
+      continue;
+    }
+
+    let status: CaseIntegrityStatus;
+    if (recomputedCaseHash !== g.caseHash) {
+      // 当前行内部不自洽：字段被改，存储 caseHash 未随之更新。
+      status = 'CURRENT_GOLDEN_INTEGRITY_FAILURE';
+    } else if (
+      !goldenCommitmentSupported ||
+      committedCaseHash !== g.caseHash ||
+      committedCaseHashVersion !== g.caseHashVersion
+    ) {
+      // 当前行自洽，但与报告签字承诺不符（golden 被换/重算成另一自洽值），或报告不支持承诺。
+      status = 'CASE_HASH_MISMATCH';
+    } else {
+      status = 'MATCH';
+    }
+    results.push({
+      caseId: c.caseId,
+      status,
+      committedCaseHash,
+      committedCaseHashVersion,
+      currentCaseHash: g.caseHash,
+      currentCaseHashVersion: g.caseHashVersion,
+      recomputedCaseHash,
+    });
+  }
+
+  // 当前 golden 里报告未覆盖的 case（签字覆盖集变化——多出未被证明的 golden）。
+  for (const g of currentGolden) {
+    if (!reportCaseIds.has(g.id)) {
+      results.push({
+        caseId: g.id,
+        status: 'EXTRA_IN_GOLDEN',
+        committedCaseHash: null,
+        committedCaseHashVersion: null,
+        currentCaseHash: g.caseHash,
+        currentCaseHashVersion: g.caseHashVersion,
+        recomputedCaseHash: null,
+      });
+    }
+  }
+
+  const allCasesMatch = results.every((r) => r.status === 'MATCH');
+  const ok = reportHashValid && structurallyValid && goldenCommitmentSupported && allCasesMatch;
+
+  return {
+    goldenCommitmentSupported,
+    reportHashValid,
+    recomputedReportHash,
+    expectedReportHash,
+    structurallyValid,
+    cases: results,
+    ok,
+  };
 }
 
 /** tenant（=userId）是否开启回放留存（PII opt-in，ADR pii-admission/v1）。 */
@@ -755,6 +998,9 @@ export async function run(params: {
     const base: CaseRunDetail = {
       caseId: c.id,
       status: 'NON_REPLAYABLE',
+      // ★m1.2：冻结 case 完整性哈希 + 公式版本进每个 detail（base 展开→全分支带上，含失败 detail）。
+      caseHash: c.caseHash,
+      caseHashVersion: c.caseHashVersion,
       expectedInputHash: c.canonicalInputHash,
       expectedOutputHash: c.expectedOutputHash,
       expectedDecision: c.expectedDecision,
@@ -1235,6 +1481,61 @@ export async function getEffectiveStatus(reportId: string, now: Date = new Date(
     now
   );
   return { report, effectiveStatus };
+}
+
+/**
+ * 服务端离线核验薄封装：查存储的报告 + 当前 golden 行（**含 computeCaseHash 所需全字段**，以便重算），
+ * 喂纯函数 {@link verifyReportIntegrity}。用于 GET ?verify=1。
+ *
+ * ★口径（Codex 复审 #2）：期望 reportHash 传的是**同库** report.reportHash 行值——故本封装核验的是
+ * 「存储完整性 + 当前 golden 一致性」（能抓 reportJson 被单独改 + golden 与报告承诺不符 + 当前行改字段
+ * 没改 caseHash），**不**等同于验证 CCO 外部数字签名（同时改 reportJson+reportHash 检测不到）。要证明
+ * CCO 已签，须另传可信签名 artifact 的 reportHash 并验签——超出本封装范围。
+ *
+ * golden 集范围 = 报告的 (policyId, policyVersionRowId) 下的全部 RegressionCase（签字覆盖集=这一版策略
+ * 的全部冻结 case）。EXTRA_IN_GOLDEN 即此范围内报告未覆盖的 case，表覆盖集已变。
+ */
+export async function verifyStoredReportIntegrity(
+  reportId: string
+): Promise<{ report: RegressionReport; verdict: ReportIntegrityVerdict } | null> {
+  const report = (await db.query.regressionReports.findFirst({
+    where: eq(regressionReports.id, reportId),
+  })) as RegressionReport | undefined;
+  if (!report) return null;
+
+  // 全字段查询——verifier 要从实际字段重算 caseHash，故 computeCaseHash 需要的每个字段都要取。
+  const goldenRows = await db.query.regressionCases.findMany({
+    where: and(
+      eq(regressionCases.policyId, report.policyId),
+      eq(regressionCases.policyVersionRowId, report.policyVersionRowId)
+    ),
+  });
+  const currentGolden: GoldenCaseSnapshot[] = goldenRows.map((g) => ({
+    id: g.id,
+    caseHash: g.caseHash,
+    caseHashVersion: g.caseHashVersion,
+    // computeCaseHash 所需字段（与 run 重算路径一致）。
+    policyId: g.policyId,
+    policyVersionRowId: g.policyVersionRowId,
+    functionName: g.functionName,
+    locale: g.locale,
+    canonicalInputHash: g.canonicalInputHash,
+    expectedOutputHash: g.expectedOutputHash,
+    expectedDecision: g.expectedDecision,
+    canonicalizationVersion: g.canonicalizationVersion,
+    aliasSetJson: g.aliasSetJson,
+    vocabSnapshotRef: g.vocabSnapshotRef,
+    sourceKind: g.sourceKind,
+    coverageTags: Array.isArray(g.coverageTags) ? (g.coverageTags as string[]) : [],
+    baselineRuntimeToolchainId: g.baselineRuntimeToolchainId,
+    sourceToolchainId: g.sourceToolchainId,
+    sourceEnvelopeSha256: g.sourceEnvelopeSha256,
+    sourceExecutionId: g.sourceExecutionId,
+  }));
+
+  const runReport = report.reportJson as unknown as RunReport;
+  const verdict = verifyReportIntegrity(runReport, report.reportHash, currentGolden);
+  return { report, verdict };
 }
 
 /**

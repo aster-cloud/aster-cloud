@@ -23,6 +23,7 @@ import {
   run,
   createDriftApproval,
   getEffectiveStatus,
+  verifyStoredReportIntegrity,
   type HandwrittenCaseInput,
 } from '@/services/policy/rule-regression-runner';
 
@@ -30,7 +31,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/admin/rule-regression?policyId=...[&policyVersionRowId=...][&reportId=...]
+ * GET /api/admin/rule-regression?policyId=...[&policyVersionRowId=...][&reportId=...][&verify=1]
+ *   - reportId + verify=1 → 离线核验：复算 reportHash + 逐项比对报告承诺 caseHash vs 当前 golden。
  *   - reportId 指定 → 返回单份报告详情（reportJson，CCO 可签字 artifact）。
  *   - 否则返回该 policy（可选版本）的报告列表 + 冻结 case 概览。
  *
@@ -44,6 +46,20 @@ export async function GET(req: NextRequest) {
   const policyId = url.searchParams.get('policyId');
   const policyVersionRowId = url.searchParams.get('policyVersionRowId');
   const reportId = url.searchParams.get('reportId');
+  const verify = url.searchParams.get('verify') === '1';
+
+  if (reportId && verify) {
+    // ★离线核验：**存储完整性 + 当前 golden 一致性**——复算 reportHash（相对同库 reportHash 行值，报告
+    // JSON 未被单独改）+ 从当前 RegressionCase 行的实际字段**重算** caseHash 并三者比对（报告承诺 == 存储
+    // == 重算）。抓 golden 被替换/改字段没改 caseHash/覆盖集变化。仅 m1.2+ 报告支持 golden 承诺。
+    // ★非 CCO 数字签名验证：期望 reportHash 取自同库行，检测不到「同时改 reportJson+reportHash」；要证明
+    // CCO 已签内容须另接可信签名 artifact（见 verifyStoredReportIntegrity doc）。
+    const res = await verifyStoredReportIntegrity(reportId);
+    if (!res) {
+      return NextResponse.json({ error: 'report_not_found' }, { status: 404 });
+    }
+    return NextResponse.json({ report: res.report, verdict: res.verdict });
+  }
 
   if (reportId) {
     // ★P0-4：单份报告返回 report + 有效审批 + **派生有效状态**（ACCEPTED_DRIFT_WITH_APPROVAL 由 join 算，
