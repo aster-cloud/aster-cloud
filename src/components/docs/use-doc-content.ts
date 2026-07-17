@@ -36,6 +36,9 @@ export function useDocContent(slug: string, active: boolean): DocContent {
   useEffect(() => {
     if (!active || !slug) return;
     let cancelled = false;
+    // 依赖（slug/active/locale）变化时发起 fetch 并置 loading——从外部条件同步
+    // 加载态，非无条件每次渲染置位。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState((s) => ({ ...s, loading: true, error: false }));
 
     // ★用 getPathname 构造 URL（尊重 localePrefix:'as-needed'）★：默认 locale en

@@ -107,7 +107,9 @@ function BillingContentInner({
   const [usage, _setUsage] = useState<Usage | null>(initialUsage);
 
   useEffect(() => {
+    // Stripe 回跳后按 URL query 同步提示（App Router URL→state 同步），故意在 effect 内 set
     if (searchParams.get('success') === 'true') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessage({ type: 'success', text: t.subscriptionActivated });
     } else if (searchParams.get('canceled') === 'true') {
       setMessage({ type: 'error', text: t.checkoutCanceled });
@@ -145,6 +147,8 @@ function BillingContentInner({
       }
 
       // Redirect to Stripe Checkout
+      // 页面跳转赋值非 React 状态突变，误报
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = data.url;
     } catch (error) {
       setMessage({

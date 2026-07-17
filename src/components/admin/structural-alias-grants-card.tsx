@@ -46,7 +46,8 @@ export function StructuralAliasGrantsCard() {
   const currentPage = Math.min(page, totalPages);
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  // 搜索变化时回到第 1 页（否则可能停在超出结果集的空页）。
+  // 搜索变化时回到第 1 页（否则可能停在超出结果集的空页）——按依赖键(query)变化重置分页状态，属合法的状态重置。
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setPage(1), [query]);
 
   const toggle = async (row: GrantRow) => {

@@ -42,6 +42,8 @@ export function DocsTOC() {
         text: n.textContent ?? '',
         level: n.tagName === 'H2' ? 2 : 3,
       }));
+    // 路由变化后从 DOM 重新抽取 TOC 标题——只能在渲染后的 effect 读 DOM，按 pathname 触发，属合法的外部(DOM)→状态同步。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHeadings(extracted);
 
     // IntersectionObserver — track topmost in-view heading.

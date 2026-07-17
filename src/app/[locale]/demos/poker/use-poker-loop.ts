@@ -136,6 +136,9 @@ export function usePokerLoop(loc: DemoLocale): {
             after(260, () => {
               if (pausedRef.current) return;
               setHand((h) => h && { ...h, phase: 'award' });
+              // 递归自引用：award 结束的 timer 回调再调用 playHand。deps=[after, clearAll, judge]（稳定）
+              // 故引用不会变旧，且仅在 timer 触发时（playHand 已赋值后）执行，无 TDZ 风险——往复循环的固有递归。
+              // eslint-disable-next-line react-hooks/immutability
               after(AWARD_MS, () => { if (!pausedRef.current) playHand(); });
             });
           });

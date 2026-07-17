@@ -28,6 +28,9 @@ export function ThemeToggle({ labels }: { labels: ThemeToggleLabels }) {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
+  // next-themes 挂载守卫：仅在客户端挂载后置 mounted=true，规避 SSR 与
+  // hydration 主题不一致。属一次性挂载态同步，非级联 setState。
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   const current = (theme as (typeof ORDER)[number] | undefined) ?? 'system';

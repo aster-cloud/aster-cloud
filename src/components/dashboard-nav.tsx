@@ -233,6 +233,8 @@ export function DashboardNavClient({
 
   // Close mobile menu on route change
   useEffect(() => {
+    // 路由(pathname)变化时关闭移动端菜单——按外部状态(路由)变化重置本地 UI 状态，属合法的状态重置。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobileMenuOpen(false);
   }, [pathname]);
 

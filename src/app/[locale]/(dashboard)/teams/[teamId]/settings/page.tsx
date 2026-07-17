@@ -64,6 +64,8 @@ export default function TeamSettingsPage() {
   }, [teamId, t]);
 
   useEffect(() => {
+    // 挂载时异步拉取团队数据，setState 发生在 fetch 完成后的回调中（非渲染期同步），属合法的数据加载副作用。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTeam();
   }, [fetchTeam]);
 

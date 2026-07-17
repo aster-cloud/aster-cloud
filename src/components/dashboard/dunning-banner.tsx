@@ -31,6 +31,8 @@ export function DunningBanner() {
     // 直接跳过 fetch 避免噪音日志。CLIENT_CAPABILITIES 是 build-time 字面量，
     // 这里的条件分支会被 terser 折叠掉（on-prem 全 effect 是 setLoading(false)）。
     if (!CLIENT_CAPABILITIES.dunning) {
+      // on-prem 无 dunning：挂载时一次性解除 loading 后 return，非渲染循环，属合法的初始加载态收敛。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }

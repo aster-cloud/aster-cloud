@@ -59,6 +59,8 @@ export function BulkJobProgress({ jobId, onClear, onTerminal }: BulkJobProgressP
   const [error, setError] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const onTerminalRef = useRef(onTerminal);
+  // ref-latch：让稳定的轮询 effect 始终拿到最新 onTerminal 回调，故意在渲染期写 ref
+  // eslint-disable-next-line react-hooks/refs
   onTerminalRef.current = onTerminal;
   const intervalRef = useRef<number>(POLL_INTERVAL_MS);
   const reachedTerminal = useRef(false);
@@ -170,6 +172,8 @@ export function BulkJobProgress({ jobId, onClear, onTerminal }: BulkJobProgressP
       <CardBody className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2">
+            {/* Icon 来自 statusIcon 返回的 lucide-react 模块级稳定引用，非渲染期新建组件，误报 */}
+            {/* eslint-disable-next-line react-hooks/static-components */}
             <Icon
               className={`mt-0.5 h-5 w-5 ${tone}`}
               aria-hidden="true"

@@ -40,6 +40,9 @@ export function DocsTopNavSearchButton() {
     const ua = (navigator.userAgent || '').toLowerCase();
     const isMac = platform.startsWith('mac') || ua.includes('mac os x');
     if (!isMac) {
+      // SSR 稳定默认渲染 Mac glyph，hydration 后按 navigator（外部环境）同步为
+      // 非 Mac 提示——一次性、条件成立才置位，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShortcut('Ctrl+K');
       setKeyShortcuts('Control+K');
     }

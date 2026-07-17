@@ -151,6 +151,9 @@ export function usePolicyDraft({
       aliasSet: stored.aliasSet ?? null,
     };
     if (!draftEquals(candidate, baseline)) {
+      // 挂载时一次性把 localStorage 里的草稿读入 state（刻意避开 useState
+      // 初始化器以防 hydration 错位）——从外部存储同步初值，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPendingDraft(candidate);
     }
     // baseline intentionally omitted — first mount only.
@@ -167,6 +170,9 @@ export function usePolicyDraft({
   // throttleMs window even during fast typing.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingFieldsRef = useRef(fields);
+  // ref-latch：每次渲染把最新 fields 挂到 ref，节流定时器 closure 从中读取最新
+  // 快照（不进 effect deps，避免每次键入重挂定时器）。仅写入不参与渲染输出。
+  // eslint-disable-next-line react-hooks/refs
   pendingFieldsRef.current = fields;
 
   useEffect(() => {

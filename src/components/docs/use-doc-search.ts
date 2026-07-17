@@ -46,6 +46,8 @@ export function useDocSearch(query: string): { results: SearchHit[]; ready: bool
     const q = query.trim();
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!q) {
+      // query 变空时同步清空结果——从入参 query 派生的一次性清空，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       return;
     }

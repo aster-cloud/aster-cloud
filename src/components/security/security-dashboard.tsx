@@ -128,6 +128,9 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
   }, [timeRange, policyId, getTimeRangeParams]);
 
   useEffect(() => {
+    // 挂载/依赖变化时异步拉取安全数据，并起 30 秒轮询定时器。
+    // setState 均在 await 之后触发，属正常数据加载副作用。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
     // 自动刷新（每 30 秒）
     const interval = setInterval(fetchData, 30000);

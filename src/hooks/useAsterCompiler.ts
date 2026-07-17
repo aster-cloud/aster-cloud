@@ -124,9 +124,14 @@ export function useAsterCompiler({
   const [diagnostics, setDiagnostics] = useState<TypecheckDiagnostic[]>([]);
 
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ref-latch：把最新的 editor/monaco prop 存进 ref，让稳定的 useCallback
+  // （getSource/applyDiagnostics 等，deps 为空）始终读到最新实例而无需重建。
+  // 属渲染期镜像最新 prop 的惯用写法，不用于本次渲染输出。
   const editorRef = useRef(editor);
+  // eslint-disable-next-line react-hooks/refs
   editorRef.current = editor;
   const monacoRef = useRef(monaco);
+  // eslint-disable-next-line react-hooks/refs
   monacoRef.current = monaco;
 
   const baseLexicon = LEXICON_MAP[locale];
@@ -391,6 +396,9 @@ export function useAsterCompiler({
     if (!model) return;
 
     // Initial validation
+    // 挂载/依赖变化时对当前源码做一次初始校验，validate 内部写入 diagnostics/errors。
+    // 属正常的编译副作用（非无条件每次渲染的级联 setState）。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const initialErrors = validate();
     applyDiagnostics(initialErrors);
 

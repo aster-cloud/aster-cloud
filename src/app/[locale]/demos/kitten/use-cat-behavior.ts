@@ -105,6 +105,9 @@ export function useCatBehavior(): { state: CatState; react: (mood: CatMood) => v
       const pose = pick(IDLE_POSES);
       setState((s) => ({ ...s, pose, moveMs: 0 }));
       const hold = pose === 'sleep' ? rand(3500, 6000) : rand(1800, 3600);
+      // 递归自引用：末拍 timer 回调再调用 idleLoop。deps=[walkTo]（稳定）故引用不会变旧，
+      // 且仅在 timer 触发时（idleLoop 已赋值后）执行，无 TDZ 风险——动画循环的固有递归。
+      // eslint-disable-next-line react-hooks/immutability
       after(hold, () => { if (!reactingRef.current) idleLoop(); });
     });
   }, [walkTo]);
@@ -128,6 +131,9 @@ export function useCatBehavior(): { state: CatState; react: (mood: CatMood) => v
       if (beat.pose === 'perch') perchedRef.current = true;
       else if (beat.pose !== 'leap') perchedRef.current = false;
       setState((s) => ({ ...s, pose: beat.pose, moveMs: 0 }));
+      // 递归自引用：下一拍由 timer 回调调用 runBeats。deps=[walkTo, idleLoop]（稳定）故引用不会变旧，
+      // 且仅在 timer 触发时（runBeats 已赋值后）执行，无 TDZ 风险——多拍序列的固有递归。
+      // eslint-disable-next-line react-hooks/immutability
       after(beat.hold, () => runBeats(beats, i + 1));
     };
     if (beat.to) walkTo(beat.to, enter); else enter();

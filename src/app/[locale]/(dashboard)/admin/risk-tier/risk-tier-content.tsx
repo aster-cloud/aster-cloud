@@ -78,6 +78,8 @@ export function RiskTierAdminContent() {
   }, [minTier]);
 
   useEffect(() => {
+    // 挂载/minTier 变化时拉取数据，fetchRows 首行同步 setLoading(true) 是刻意的加载态，故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRows();
   }, [fetchRows]);
 

@@ -26,6 +26,8 @@ export default function AcceptInvitePage() {
 
   useEffect(() => {
     if (!token) {
+      // 根据 URL token 缺失同步错误态，属合法的外部状态(URL)→本地状态同步。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(t('acceptInvite.invalid'));
       setIsLoading(false);
       return;

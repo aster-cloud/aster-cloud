@@ -69,6 +69,8 @@ export function Turnstile({
   useEffect(() => {
     // 检查是否已加载
     if (window.turnstile) {
+      // 外部脚本已由先前挂载注入 → 同步就绪态。仅一次、有条件，非渲染期同步 setState。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoaded(true);
       return;
     }
@@ -119,6 +121,8 @@ export function Turnstile({
       });
     } catch (error) {
       console.error('[Turnstile] 渲染失败:', error);
+      // widget 渲染这个副作用抛错后写入错误态，属副作用失败的正常状态回填。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadError('Failed to render Turnstile');
     }
 

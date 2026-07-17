@@ -155,6 +155,8 @@ export function useSidebarMode(): [SidebarMode, (next: SidebarMode) => void] {
   useEffect(() => {
     const stored = readStoredMode();
     if (stored !== mode) {
+      // 挂载时用 localStorage 持久值水合 mode（SSR 默认 'reference'，客户端读真值）——属合法的外部→状态同步。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setModeState(stored);
     }
     // Cross-tab sync — another tab flipping the toggle updates this

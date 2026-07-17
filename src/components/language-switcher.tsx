@@ -94,6 +94,9 @@ export function LanguageSwitcher({ allowedLocales = null }: LanguageSwitcherProp
       const stored = sessionStorage.getItem(TOAST_KEY);
       if (stored) {
         sessionStorage.removeItem(TOAST_KEY);
+        // 挂载时从 sessionStorage（外部存储，跨 router.replace 桥接）回收上次 toast，
+        // 读到才置位——从外部同步初值，非渲染循环。
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setToast(stored);
       }
     } catch {
@@ -118,6 +121,8 @@ export function LanguageSwitcher({ allowedLocales = null }: LanguageSwitcherProp
       sessionStorage.setItem(TOAST_KEY, message);
     } catch {
       // 隐私模式：降级到 in-memory，至少本组件实例能看到
+      // available 不含当前 locale 时的强制降级分支，条件成立才置位，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setToast(message);
     }
     setLocaleCookie(target);

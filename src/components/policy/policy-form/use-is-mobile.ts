@@ -18,6 +18,9 @@ export function useIsMobile(query = '(max-width: 767px)'): boolean {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const mql = window.matchMedia(query);
+    // SSR 稳定默认 false，hydration 后按 matchMedia（外部环境）同步真实值，
+    // 并挂 change 监听保持实时——从外部同步，非渲染循环。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobile(mql.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mql.addEventListener('change', handler);

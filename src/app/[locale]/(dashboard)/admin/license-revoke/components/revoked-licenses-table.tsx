@@ -31,6 +31,8 @@ export function RevokedLicensesTable({ revoked }: Props) {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    // 仅在 mount 后读取客户端时钟，避免 server/client 时钟差造成 hydration mismatch，故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNowMs(Date.now());
     const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
     return () => window.clearInterval(id);

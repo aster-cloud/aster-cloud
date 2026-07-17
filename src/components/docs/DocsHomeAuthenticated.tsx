@@ -122,6 +122,8 @@ export function DocsHomeAuthenticated() {
 
   useEffect(() => {
     const all = readVisits().filter((v) => KNOWN_DOC_SLUGS.has(v.slug));
+    // 挂载时把外部来源(localStorage 访问记录)读入本地状态——SSR 期无法读取，必须在 effect 中，属合法的外部→状态同步。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisits(all);
     track(Events.DOCS_HOME_PERSONALIZED, {
       panel: 'home_rendered',

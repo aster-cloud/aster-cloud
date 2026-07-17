@@ -47,6 +47,8 @@ export function ByokAllowlistCard() {
   }, [t]);
 
   useEffect(() => {
+    // 挂载时异步拉取 allowlist，setState 发生在 fetch 完成后的回调中（非渲染期同步），属合法的数据加载副作用。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 

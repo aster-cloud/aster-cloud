@@ -178,6 +178,9 @@ export function VersionDetailPanel({
   }, [policyId, version]);
 
   useEffect(() => {
+    // 依赖变化时异步拉取版本详情；setState 均在 await 之后触发，
+    // 属正常数据加载副作用，非渲染期同步 setState。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDetail();
   }, [fetchDetail]);
 

@@ -92,6 +92,9 @@ export function AIAssistantPanel({
   // 不能整体自动替换编辑器（防御后端 final/validated 语义变化误伤）。
   useEffect(() => {
     if (lastAction === 'generate' && completed && validated && content && !autoApplied) {
+      // 流式完成且编译通过时一次性自动填充编辑器；!autoApplied 守卫防止重触发，
+      // 从 completed/validated 等外部完成信号派生，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAutoApplied(true);
 
       // 只插纯 aster 代码：LLM 可能违反 no-markdown 约定而包 ```aster 围栏

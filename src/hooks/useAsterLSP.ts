@@ -185,10 +185,13 @@ export function useAsterLSP({
   const isDisposedRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
   const providerDisposablesRef = useRef<IDisposable[]>([]);
-  // Use ref for editor to avoid stale closures in callbacks
+  // ref-latch：把最新的 editor/documentUri prop 镜像进 ref，避免各回调里读到
+  // 陈旧闭包。属渲染期同步最新 prop 的惯用写法，ref 值不参与本次渲染输出。
   const editorRef = useRef(editor);
+  // eslint-disable-next-line react-hooks/refs
   editorRef.current = editor;
   const documentUriRef = useRef(documentUri);
+  // eslint-disable-next-line react-hooks/refs
   documentUriRef.current = documentUri;
 
   /**
@@ -876,6 +879,10 @@ export function useAsterLSP({
               console.log(`[LSP] Will reconnect in ${reconnectDelay}ms (attempt ${reconnectAttemptsRef.current})`);
             }
             reconnectTimeoutRef.current = setTimeout(() => {
+              // 断线自动重连：connect 递归引用自身（在自身声明前被 onclose 闭包捕获）。
+              // 这是自引用重连回调的既有模式，重连由延时定时器异步触发，运行期行为正确；
+              // 改用 ref 持有最新 connect 属高风险重构，故此处按既有行为抑制。
+              // eslint-disable-next-line react-hooks/immutability
               connect();
             }, reconnectDelay);
           }

@@ -219,6 +219,9 @@ export function DocsSessionProvider({ children }: { children: ReactNode }) {
 
     const cached = readCache();
     if (cached) {
+      // 挂载时把 localStorage 缓存的会话态同步进 state，避免登录用户每次导航
+      // 都闪一下 probing/anonymous chrome。属外部存储→state 的一次性 SWR 同步。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState(cached.state);
     }
     // Always revalidate, even with cached state, so cross-tab sign-in

@@ -69,6 +69,8 @@ export function AiKeysContent({ initialBindings, locale }: AiKeysContentProps) {
   // 时区/locale 数据不同 → 首帧文本不一致 → React #418 hydration mismatch。用 mounted gate：
   // 服务端 + 客户端首帧都渲染确定性内容（ISO 日期 / 原始数字），挂载后再切 locale 格式。
   const [mounted, setMounted] = useState(false);
+  // hydration-safe mounted gate：挂载后才切 locale 日期/数字格式，仅 set 一次，故意在 effect 内 set
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   const [success, setSuccess] = useState<string | null>(null);
   // 多 key：撤销按 binding **id**（同 provider 多 key）；对话框标签仍显示 provider 名。
