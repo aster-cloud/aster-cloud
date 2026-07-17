@@ -1100,3 +1100,22 @@ describe('verifyReportIntegrity — signabilityConsistent 纳入 ok（Codex 复�
     expect(v.ok).toBe(true);
   });
 });
+
+// ============ F1/F2（独立审查发现的 defense-in-depth 加固）============
+
+describe('verifyReportIntegrity — F2：空报告不给空证明 ok', () => {
+  it('★0 case 报告对空 golden → ok=false（非 vacuous true）', () => {
+    const empty: Omit<RunReport, 'reportId' | 'reportHash'> = {
+      status: 'NON_REPLAYABLE', comparisonMode: 'FROZEN_BASELINE_VS_CURRENT_BACKEND', baselineSemantics: 'sem',
+      policyId: 'p', policyVersionRowId: 'v', currentRuntimeToolchainId: null,
+      coverage: { totalCases: 0, runnableCases: 0, approvedCases: 0, deniedCases: 0, handwrittenBoundaryCases: 0,
+        thresholds: { minRunnableCases: 4, minApprovedCases: 1, minDeniedCases: 1, minHandwrittenBoundaryCases: 1 }, unmet: [] },
+      summary: { passed: 0, failed: 0, nonReplayable: 0, compileFailures: 0 },
+      cases: [], runnerVersion: 'p0a-runner/m1.3', signability: 'SIGNABLE', unsignableLegacyCases: 0,
+    };
+    const v = verifyReportIntegrity(empty, computeReportHash(empty), []);
+    // reportHash 有效 + 无 case mismatch，但**无覆盖 case**→不构成签字级证据。
+    expect(v.reportHashValid).toBe(true);
+    expect(v.ok).toBe(false);
+  });
+});

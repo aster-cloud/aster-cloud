@@ -620,11 +620,16 @@ export function verifyReportIntegrity(
   const sigDetail = deriveReportSignabilityDetail(report);
 
   const allCasesMatch = results.every((r) => r.status === 'MATCH');
+  // ★F2（独立审查）：空报告（0 case）对空 golden，allCasesMatch 空真会给 ok=true——是**空证明**（vacuous）。
+  // 无 case 的报告不构成签字级证据（现实里必是 NON_REPLAYABLE 不可签字，但 verdict.ok 直接暴露给客户端，
+  // 加此守卫防被误当有效核验）。要求至少一个覆盖 case 才可能 ok。
+  const hasCoveredCase = report.cases.length > 0;
   const ok =
     reportHashValid &&
     structurallyValid &&
     sigDetail.declaredConsistent &&
     goldenCommitmentSupported &&
+    hasCoveredCase &&
     allCasesMatch;
 
   return {

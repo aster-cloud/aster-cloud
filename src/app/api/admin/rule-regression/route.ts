@@ -83,9 +83,14 @@ export async function GET(req: NextRequest) {
       where: eq(regressionDriftApprovals.reportId, reportId),
       orderBy: [desc(regressionDriftApprovals.createdAt)],
     });
-    // ★Item 2：单报告详情顶层投影 signability/signablePass（与列表一致，用派生结果防详情端残留双口径）。
+    // ★Item 2 + F1（独立审查）：单报告详情**做全核验**（就一份报告，成本=查一次 golden）——signablePass
+    // 要求 verdict.ok（复算 reportHash + 从当前 golden 字段重算比对 + signability 自洽），而非只从存储 reportJson
+    // 派生。这样详情页能抓「report 没变但 golden 被换/篡改→不再对应」（存储派生看不到）。verified:true 标注
+    // 此绿灯经过核验（区别于列表的声明态）。
     const runReport = es.report.reportJson as unknown as RunReport;
     const sig = deriveReportSignabilityDetail(runReport);
+    const verifyRes = await verifyStoredReportIntegrity(reportId);
+    const verdict = verifyRes?.verdict ?? null;
     return NextResponse.json({
       report: es.report,
       effectiveStatus: es.effectiveStatus,
@@ -93,7 +98,10 @@ export async function GET(req: NextRequest) {
       signability: sig.signability,
       unsignableLegacyCases: sig.unsignableLegacyCases,
       signabilityConsistent: sig.declaredConsistent,
-      signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE',
+      verdict,
+      verified: true,
+      // 已核验的可签字绿：status===PASS && signability===SIGNABLE && 全核验通过（golden 未换/篡改）。
+      signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE' && verdict?.ok === true,
     });
   }
 
@@ -136,6 +144,9 @@ export async function GET(req: NextRequest) {
   ]);
 
   // ★Item 2：每份报告派生 signability + signablePass（不回传庞大 reportJson，只投影签字资格）。
+  // ★F1（独立审查）：列表**不做**全核验（N 份报告 × 全 golden 重算成本高）——signablePass 只从存储 reportJson
+  // **派生声明态**（证「报告自声明可签字」，未重核 golden 未换/reportHash 完整）。故标 `verified: false`：列表
+  // 是声明态，「已核验绿灯」以单报告详情（reportId，做全核验）或 ?verify=1 为准。UI 据 verified 区分强弱绿。
   const reports = reportRows.map((r) => {
     const runReport = r.reportJson as unknown as RunReport;
     // ★Item 2：用**派生**结果（signability + count 都来自 cases 事实，非不可信顶层声明）。
@@ -147,8 +158,9 @@ export async function GET(req: NextRequest) {
       signability: sig.signability,
       unsignableLegacyCases: sig.unsignableLegacyCases,
       signabilityConsistent: sig.declaredConsistent,
-      // 「绿色可签字通过」的唯一判据——UI 据此着色，不能只看 status。
+      // 声明态（未核验 golden）——UI 显示时须结合 verified=false 标注「声明可签字，核验以详情为准」。
       signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE',
+      verified: false,
     };
   });
 
