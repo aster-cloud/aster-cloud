@@ -827,8 +827,60 @@ export const regressionReports = pgTable(
     index('RegressionReport_status_idx').on(table.status),
     check(
       'RegressionReport_status_check',
+      // ★报告行 status 只存 4 个**跑出来的**态，永不被改成 PASS（不可变证据）。
+      // ACCEPTED_DRIFT_WITH_APPROVAL 是**派生态**——由 RegressionDriftApproval 覆盖 join 计算，不落此列。
       sql`${table.status} IN ('PASS', 'FAIL_REGRESSION', 'FAIL_INSUFFICIENT_COVERAGE', 'NON_REPLAYABLE')`
     ),
+  ]
+);
+
+/**
+ * 受控接受漂移审批（P0-4，ADR 0030 门禁四态 ACCEPTED_DRIFT_WITH_APPROVAL）。
+ *
+ * <p>★核心不变量（Codex CCO 复审）：**不把 FAIL_REGRESSION 报告改成 PASS**。真实 bugfix 导致的合理漂移
+ * 由独立、不可变的审批 artifact 受控接受——原失败报告保持原状，审批只声明「本报告的这些具体 case 漂移
+ * 经 {approver} 因 {reason/ticket} 在 {scope/expiry} 内受控接受」。有效状态由 report + 覆盖它全部
+ * FAIL_REGRESSION case 的有效审批 join 计算（派生 ACCEPTED_DRIFT_WITH_APPROVAL），不改任何行。
+ *
+ * <p>职责分离：approvedBy 必须 != 被审批报告的 createdBy（DB check 无法跨表，应用层 + 审计强制）。
+ * 每条审批钉死被接受 case 的 before/after output hash——升级后 case 输出再变（漂移超出已批范围）则
+ * 审批自动失效（有效性校验时比对当前 report 的 actualOutputHash）。
+ */
+export const regressionDriftApprovals = pgTable(
+  'RegressionDriftApproval',
+  {
+    id: text('id').primaryKey().notNull(),
+    // 被审批的失败报告（不可变引用）+ 其 reportHash（钉死审批针对的确切报告内容）。
+    reportId: text('reportId').notNull(),
+    reportHash: text('reportHash').notNull(),
+    policyId: text('policyId').notNull(),
+    policyVersionRowId: text('policyVersionRowId').notNull(),
+    // 被受控接受的 case 漂移明细：[{caseId, baselineOutputHash, acceptedOutputHash}]。
+    // 升级后 case 实际输出须等于 acceptedOutputHash 才算「在已批范围内」。
+    acceptedDrifts: jsonb('acceptedDrifts').notNull(),
+    // 审批理由 + 工单（可审计）。
+    reason: text('reason').notNull(),
+    ticketRef: text('ticketRef'),
+    // 审批人（职责分离：必须 != report.createdBy）。
+    approvedBy: text('approvedBy').notNull(),
+    approvedAt: timestamp('approvedAt', { mode: 'date' }).defaultNow().notNull(),
+    // 有效期（过期后审批失效，须重新审批——防一次审批永久放行未来所有升级）。
+    expiresAt: timestamp('expiresAt', { mode: 'date' }).notNull(),
+    // 撤销（append-only 不删，撤销走此列 + 派生态排除已撤销）。
+    revokedAt: timestamp('revokedAt', { mode: 'date' }),
+    revokedBy: text('revokedBy'),
+    // 审批 artifact 防篡改 hash（覆盖 reportHash + acceptedDrifts + approver + reason + expiry）。
+    approvalHash: text('approvalHash').notNull().unique(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('RegressionDriftApproval_reportId_idx').on(table.reportId),
+    index('RegressionDriftApproval_policyVersionRowId_idx').on(table.policyVersionRowId),
+    // ★一份报告对同一 approver 只允许**一条有效（未撤销）**审批（partial unique；撤销后可再建）。
+    // Codex 复审：非唯一 index 会让同 approver 建多条活跃审批，撤销一条另一条仍派生 ACCEPTED。
+    uniqueIndex('RegressionDriftApproval_active_unique')
+      .on(table.reportId, table.approvedBy)
+      .where(sql`${table.revokedAt} IS NULL`),
   ]
 );
 
@@ -1816,6 +1868,8 @@ export type RegressionCase = InferSelectModel<typeof regressionCases>;
 export type NewRegressionCase = InferInsertModel<typeof regressionCases>;
 export type RegressionReport = InferSelectModel<typeof regressionReports>;
 export type NewRegressionReport = InferInsertModel<typeof regressionReports>;
+export type RegressionDriftApproval = InferSelectModel<typeof regressionDriftApprovals>;
+export type NewRegressionDriftApproval = InferInsertModel<typeof regressionDriftApprovals>;
 
 export type Team = InferSelectModel<typeof teams>;
 export type NewTeam = InferInsertModel<typeof teams>;

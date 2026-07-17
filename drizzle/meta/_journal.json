@@ -253,6 +253,13 @@
       "when": 1779500000000,
       "tag": "0036_regression_case_hash_version",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0037_regression_drift_approval_and_append_only",
+      "breakpoints": true
     }
   ]
 }

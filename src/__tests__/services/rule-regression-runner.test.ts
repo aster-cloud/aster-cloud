@@ -4,6 +4,9 @@ import {
   applyMixedToolchainDowngrade,
   computeCaseHash,
   computeReportHash,
+  computeApprovalHash,
+  computeEffectiveStatus,
+  extractApprovableDrifts,
   DEFAULT_THRESHOLDS,
   COMPARISON_MODE_FROZEN_BASELINE,
   CASE_HASH_VERSION,
@@ -11,6 +14,7 @@ import {
   type CaseCoverageMeta,
   type CaseRunDetail,
   type CoverageThresholds,
+  type AcceptedDrift,
 } from '@/services/policy/rule-regression-runner';
 
 /**
@@ -416,5 +420,174 @@ describe('caseHash 未知版本 fail-closed — P0-6', () => {
   it('已知版本 m1.0/m1.1 不抛', () => {
     expect(() => computeCaseHash(base, CASE_HASH_VERSION_M10)).not.toThrow();
     expect(() => computeCaseHash(base, CASE_HASH_VERSION)).not.toThrow();
+  });
+});
+
+// ============ P0-4 受控接受漂移审批 ============
+describe('computeEffectiveStatus — 受控接受派生态（不改任何行）', () => {
+  const mkCase = (caseId: string, status: CaseRunDetail['status'], reason?: string, eh?: string, ah?: string): CaseRunDetail => ({
+    caseId,
+    status,
+    reason,
+    expectedOutputHash: eh,
+    actualOutputHash: ah,
+    functionName: 'f',
+    locale: 'en-US',
+    coverageTags: [],
+    sourceKind: 'execution',
+  });
+  const future = new Date(Date.now() + 86400_000);
+  const past = new Date(Date.now() - 86400_000);
+  const now = new Date();
+  const PVR = 'v1';
+
+  // 构造一条**有效**审批（approvalHash 由 computeApprovalHash 真算，读路径会重算校验）。
+  const validApproval = (opts: {
+    reportHash: string;
+    policyVersionRowId?: string;
+    drifts: AcceptedDrift[];
+    revokedAt?: Date | null;
+    expiresAt?: Date;
+    reason?: string;
+    ticketRef?: string | null;
+    approvedBy?: string;
+  }) => {
+    const policyVersionRowId = opts.policyVersionRowId ?? PVR;
+    const reason = opts.reason ?? 'bugfix';
+    const ticketRef = opts.ticketRef ?? null;
+    const approvedBy = opts.approvedBy ?? 'user-b';
+    const expiresAt = opts.expiresAt ?? future;
+    return {
+      reportHash: opts.reportHash,
+      policyVersionRowId,
+      acceptedDrifts: opts.drifts,
+      reason,
+      ticketRef,
+      approvedBy,
+      expiresAt,
+      revokedAt: opts.revokedAt ?? null,
+      approvalHash: computeApprovalHash({
+        reportHash: opts.reportHash,
+        policyVersionRowId,
+        acceptedDrifts: opts.drifts,
+        reason,
+        ticketRef,
+        approvedBy,
+        expiresAt: expiresAt.toISOString(),
+      }),
+    };
+  };
+  const rpt = (reportHash: string, cases: CaseRunDetail[]) => ({
+    status: 'FAIL_REGRESSION' as const,
+    reportHash,
+    policyVersionRowId: PVR,
+    cases,
+  });
+
+  it('非 FAIL_REGRESSION 报告原样返回（PASS/覆盖不足/NON_REPLAYABLE 不适用受控接受）', () => {
+    for (const s of ['PASS', 'FAIL_INSUFFICIENT_COVERAGE', 'NON_REPLAYABLE'] as const) {
+      expect(computeEffectiveStatus({ status: s, reportHash: 'rh', policyVersionRowId: PVR, cases: [] }, [], now)).toBe(s);
+    }
+  });
+
+  it('★有效审批精确覆盖全部 OUTPUT_HASH_MISMATCH → ACCEPTED_DRIFT_WITH_APPROVAL', () => {
+    const report = rpt('rh', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new1')]);
+    const approvals = [validApproval({ reportHash: 'rh', drifts: [{ caseId: 'c1', baselineOutputHash: 'base1', acceptedOutputHash: 'new1' }] })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('ACCEPTED_DRIFT_WITH_APPROVAL');
+  });
+
+  it('★无审批 → FAIL_REGRESSION', () => {
+    const report = rpt('rh', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new1')]);
+    expect(computeEffectiveStatus(report, [], now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★approvalHash 被篡改（直插伪造）→ FAIL_REGRESSION（读路径重算校验）', () => {
+    const report = rpt('rh', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new1')]);
+    const a = validApproval({ reportHash: 'rh', drifts: [{ caseId: 'c1', baselineOutputHash: 'base1', acceptedOutputHash: 'new1' }] });
+    const forged = { ...a, approvalHash: 'FORGED_HASH' };
+    expect(computeEffectiveStatus(report, [forged], now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★审批 reportHash 不匹配当前报告 → FAIL_REGRESSION', () => {
+    const report = rpt('rh-NEW', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new1')]);
+    const approvals = [validApproval({ reportHash: 'rh-OLD', drifts: [{ caseId: 'c1', baselineOutputHash: 'base1', acceptedOutputHash: 'new1' }] })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★已撤销审批 → FAIL_REGRESSION', () => {
+    const report = rpt('rh', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new1')]);
+    const approvals = [validApproval({ reportHash: 'rh', drifts: [{ caseId: 'c1', baselineOutputHash: 'base1', acceptedOutputHash: 'new1' }], revokedAt: past })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★已过期审批 → FAIL_REGRESSION（防一次审批永久放行）', () => {
+    const report = rpt('rh', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new1')]);
+    const approvals = [validApproval({ reportHash: 'rh', drifts: [{ caseId: 'c1', baselineOutputHash: 'base1', acceptedOutputHash: 'new1' }], expiresAt: past })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★acceptedOutputHash 与当前 drift 不符（升级后输出又变，超出已批范围）→ FAIL_REGRESSION', () => {
+    const report = rpt('rh', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new2')]);
+    const approvals = [validApproval({ reportHash: 'rh', drifts: [{ caseId: 'c1', baselineOutputHash: 'base1', acceptedOutputHash: 'new1' }] })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★报告含不可受控接受的失败（GOLDEN_INTEGRITY_FAILURE）→ FAIL_REGRESSION', () => {
+    const report = rpt('rh', [
+      mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'base1', 'new1'),
+      mkCase('c2', 'FAIL_REGRESSION', 'GOLDEN_INTEGRITY_FAILURE'),
+    ]);
+    const approvals = [validApproval({ reportHash: 'rh', drifts: [{ caseId: 'c1', baselineOutputHash: 'base1', acceptedOutputHash: 'new1' }] })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★单条审批部分覆盖（两 drift 只批一个）→ FAIL_REGRESSION（必须精确全覆盖）', () => {
+    const report = rpt('rh', [
+      mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'b1', 'n1'),
+      mkCase('c2', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'b2', 'n2'),
+    ]);
+    const approvals = [validApproval({ reportHash: 'rh', drifts: [{ caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' }] })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★两条各覆盖一半的审批 union → 仍 FAIL_REGRESSION（不 union，须单条精确覆盖，Codex 复审 2）', () => {
+    const report = rpt('rh', [
+      mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'b1', 'n1'),
+      mkCase('c2', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'b2', 'n2'),
+    ]);
+    const a1 = validApproval({ reportHash: 'rh', approvedBy: 'user-b', drifts: [{ caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' }] });
+    const a2 = validApproval({ reportHash: 'rh', approvedBy: 'user-c', drifts: [{ caseId: 'c2', baselineOutputHash: 'b2', acceptedOutputHash: 'n2' }] });
+    expect(computeEffectiveStatus(report, [a1, a2], now)).toBe('FAIL_REGRESSION');
+  });
+
+  it('★审批含额外 drift（超出报告）→ FAIL_REGRESSION（不多不少）', () => {
+    const report = rpt('rh', [mkCase('c1', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH', 'b1', 'n1')]);
+    const approvals = [validApproval({ reportHash: 'rh', drifts: [
+      { caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' },
+      { caseId: 'cX', baselineOutputHash: 'bX', acceptedOutputHash: 'nX' },
+    ] })];
+    expect(computeEffectiveStatus(report, approvals, now)).toBe('FAIL_REGRESSION');
+  });
+});
+describe('extractApprovableDrifts / computeApprovalHash', () => {
+  it('只抽 OUTPUT_HASH_MISMATCH（证据损坏/编译失败不可受控接受）', () => {
+    const cases: CaseRunDetail[] = [
+      { caseId: 'c1', status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH', expectedOutputHash: 'b1', actualOutputHash: 'n1', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
+      { caseId: 'c2', status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
+      { caseId: 'c3', status: 'PASS', functionName: 'f', locale: 'l', coverageTags: [], sourceKind: 'execution' },
+    ];
+    const drifts = extractApprovableDrifts({ cases });
+    expect(drifts).toEqual([{ caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' }]);
+  });
+
+  it('approvalHash 确定性 + 敏感于关键字段', () => {
+    const f = { reportHash: 'rh', policyVersionRowId: 'v1', acceptedDrifts: [{ caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' }], reason: 'bugfix', ticketRef: 'T-1', approvedBy: 'user-b', expiresAt: '2026-01-01T00:00:00.000Z' };
+    expect(computeApprovalHash(f)).toBe(computeApprovalHash({ ...f }));
+    expect(computeApprovalHash(f)).not.toBe(computeApprovalHash({ ...f, approvedBy: 'user-c' }));
+    expect(computeApprovalHash(f)).not.toBe(computeApprovalHash({ ...f, reason: 'other' }));
+    expect(computeApprovalHash(f)).not.toBe(computeApprovalHash({ ...f, expiresAt: '2027-01-01T00:00:00.000Z' }));
+    // drift 顺序无关（排序进 hash）。
+    const two = [{ caseId: 'a', baselineOutputHash: 'b', acceptedOutputHash: 'c' }, { caseId: 'z', baselineOutputHash: 'y', acceptedOutputHash: 'x' }];
+    expect(computeApprovalHash({ ...f, acceptedDrifts: two })).toBe(computeApprovalHash({ ...f, acceptedDrifts: two.slice().reverse() }));
   });
 });
