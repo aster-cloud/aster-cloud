@@ -342,6 +342,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       statusFailRegression: 'FAIL — regression',
       statusFailCoverage: 'FAIL — insufficient coverage',
       statusNonReplayable: 'Non-replayable',
+      signabilityUnsignable: 'Not signable',
+      signabilityUnsignableHint:
+        'Contains legacy weak-binding (case-hash/m1.0) cases whose signable-level fields are not bound by their caseHash. Not usable as signable evidence — re-freeze under a new policy version.',
       comparisonNote:
         'Baseline is the frozen snapshot hash captured at freeze time; M1 does not re-run the old toolchain. Freeze before upgrade, run the gate after deploying the new version.',
       replayLimitedNote:
@@ -660,6 +663,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       statusFailRegression: '失败——漂移',
       statusFailCoverage: '失败——覆盖不足',
       statusNonReplayable: '不可回放',
+      signabilityUnsignable: '不可签字',
+      signabilityUnsignableHint:
+        '含遗留弱绑定（case-hash/m1.0）case——其签字级字段未被 caseHash 绑定。不可作为签字级证据，请在新策略版本下重新冻结。',
       comparisonNote:
         '基线是冻结时捕获的快照哈希；M1 不实时重跑旧工具链。请升级前冻结、部署新版后运行门禁。',
       replayLimitedNote:
@@ -979,6 +985,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       statusFailRegression: 'FEHLER — Regression',
       statusFailCoverage: 'FEHLER — unzureichende Abdeckung',
       statusNonReplayable: 'Nicht abspielbar',
+      signabilityUnsignable: 'Nicht signierbar',
+      signabilityUnsignableHint:
+        'Enthält Legacy-Fälle mit schwacher Bindung (case-hash/m1.0), deren signierrelevante Felder nicht durch ihren caseHash gebunden sind. Nicht als signierbarer Nachweis verwendbar — unter einer neuen Policy-Version neu einfrieren.',
       comparisonNote:
         'Die Baseline ist der beim Einfrieren erfasste Snapshot-Hash; M1 führt die alte Toolchain nicht erneut aus. Vor dem Upgrade einfrieren, nach dem Deployment der neuen Version das Gate ausführen.',
       replayLimitedNote:
@@ -1297,6 +1306,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       statusFailRegression: 'विफल — रिग्रेशन',
       statusFailCoverage: 'विफल — अपर्याप्त कवरेज',
       statusNonReplayable: 'रीप्ले-अयोग्य',
+      signabilityUnsignable: 'हस्ताक्षर-अयोग्य',
+      signabilityUnsignableHint:
+        'इसमें लेगेसी कमज़ोर-बंधन (case-hash/m1.0) केस हैं जिनके हस्ताक्षर-स्तर के फ़ील्ड उनके caseHash से बंधे नहीं हैं। हस्ताक्षर-योग्य साक्ष्य के रूप में उपयोग योग्य नहीं — नई पॉलिसी वर्शन के तहत पुनः फ़्रीज़ करें।',
       comparisonNote:
         'बेसलाइन फ़्रीज़ के समय कैप्चर किया गया स्नैपशॉट हैश है; M1 पुरानी टूलचेन को दोबारा नहीं चलाता। अपग्रेड से पहले फ़्रीज़ करें, नया संस्करण डिप्लॉय करने के बाद गेट चलाएँ।',
       replayLimitedNote:

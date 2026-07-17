@@ -24,7 +24,9 @@ import {
   createDriftApproval,
   getEffectiveStatus,
   verifyStoredReportIntegrity,
+  deriveReportSignabilityDetail,
   type HandwrittenCaseInput,
+  type RunReport,
 } from '@/services/policy/rule-regression-runner';
 
 export const runtime = 'nodejs';
@@ -58,7 +60,16 @@ export async function GET(req: NextRequest) {
     if (!res) {
       return NextResponse.json({ error: 'report_not_found' }, { status: 404 });
     }
-    return NextResponse.json({ report: res.report, verdict: res.verdict });
+    // ★Item 2：verdict 已含 signabilityConsistent/derivedSignability；顶层再投影便于详情消费。
+    const vRun = res.report.reportJson as unknown as RunReport;
+    const vSig = deriveReportSignabilityDetail(vRun);
+    return NextResponse.json({
+      report: res.report,
+      verdict: res.verdict,
+      signability: vSig.signability,
+      unsignableLegacyCases: vSig.unsignableLegacyCases,
+      signablePass: vRun.status === 'PASS' && vSig.signability === 'SIGNABLE',
+    });
   }
 
   if (reportId) {
@@ -72,7 +83,18 @@ export async function GET(req: NextRequest) {
       where: eq(regressionDriftApprovals.reportId, reportId),
       orderBy: [desc(regressionDriftApprovals.createdAt)],
     });
-    return NextResponse.json({ report: es.report, effectiveStatus: es.effectiveStatus, approvals });
+    // ★Item 2：单报告详情顶层投影 signability/signablePass（与列表一致，用派生结果防详情端残留双口径）。
+    const runReport = es.report.reportJson as unknown as RunReport;
+    const sig = deriveReportSignabilityDetail(runReport);
+    return NextResponse.json({
+      report: es.report,
+      effectiveStatus: es.effectiveStatus,
+      approvals,
+      signability: sig.signability,
+      unsignableLegacyCases: sig.unsignableLegacyCases,
+      signabilityConsistent: sig.declaredConsistent,
+      signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE',
+    });
   }
 
   if (!policyId) {
@@ -86,7 +108,7 @@ export async function GET(req: NextRequest) {
     ? and(eq(regressionCases.policyId, policyId), eq(regressionCases.policyVersionRowId, policyVersionRowId))
     : eq(regressionCases.policyId, policyId);
 
-  const [reports, cases] = await Promise.all([
+  const [reportRows, cases] = await Promise.all([
     db.query.regressionReports.findMany({
       where: reportWhere,
       orderBy: [desc(regressionReports.createdAt)],
@@ -96,6 +118,9 @@ export async function GET(req: NextRequest) {
         caseCount: true, runnableCaseCount: true, passedCaseCount: true,
         failedCaseCount: true, nonReplayableCaseCount: true, reportHash: true,
         currentRuntimeToolchainId: true, createdAt: true,
+        // ★Item 2：读 reportJson 派生 signability——列表也要暴露签字资格，否则 PASS+UNSIGNABLE 在 CCO 面板
+        // 仍显示绿色可签字（Codex 复审：双口径不能从核心函数搬到消费端）。
+        reportJson: true,
       },
     }),
     db.query.regressionCases.findMany({
@@ -109,6 +134,23 @@ export async function GET(req: NextRequest) {
       },
     }),
   ]);
+
+  // ★Item 2：每份报告派生 signability + signablePass（不回传庞大 reportJson，只投影签字资格）。
+  const reports = reportRows.map((r) => {
+    const runReport = r.reportJson as unknown as RunReport;
+    // ★Item 2：用**派生**结果（signability + count 都来自 cases 事实，非不可信顶层声明）。
+    const sig = deriveReportSignabilityDetail(runReport);
+    const { reportJson: _omit, ...meta } = r;
+    void _omit;
+    return {
+      ...meta,
+      signability: sig.signability,
+      unsignableLegacyCases: sig.unsignableLegacyCases,
+      signabilityConsistent: sig.declaredConsistent,
+      // 「绿色可签字通过」的唯一判据——UI 据此着色，不能只看 status。
+      signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE',
+    };
+  });
 
   // case 概览：不回传明文 inputJson（PII），只标是否 replay-limited。
   const caseSummary = cases.map((c) => ({
@@ -263,6 +305,9 @@ export async function POST(req: NextRequest) {
       policyVersionRowId: body.policyVersionRowId,
       reportId: report.reportId,
       status: report.status,
+      // ★Item 2：签字级审计同时记 signability（不可只记 status，否则审计漏「不可签字」事实）。
+      signability: report.signability,
+      unsignableLegacyCases: report.unsignableLegacyCases,
       reportHash: report.reportHash,
     });
 
