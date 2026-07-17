@@ -846,7 +846,8 @@ export const regressionReports = pgTable(
  * 经 {approver} 因 {reason/ticket} 在 {scope/expiry} 内受控接受」。有效状态由 report + 覆盖它全部
  * FAIL_REGRESSION case 的有效审批 join 计算（派生 ACCEPTED_DRIFT_WITH_APPROVAL），不改任何行。
  *
- * <p>职责分离：approvedBy 必须 != 被审批报告的 createdBy（DB check 无法跨表，应用层 + 审计强制）。
+ * <p>职责分离：approvedBy 必须 != 被审批报告的 createdBy——应用层 + 0039 INSERT trigger 在 DB 层执行**声明
+ * 身份不相等**检查（★不证明真实主体身份，真身份来自应用认证上下文，见 docs/p0a-db-sod-decision.md）。
  * 每条审批钉死被接受 case 的 before/after output hash——升级后 case 输出再变（漂移超出已批范围）则
  * 审批自动失效（有效性校验时比对当前 report 的 actualOutputHash）。
  */
@@ -855,7 +856,11 @@ export const regressionDriftApprovals = pgTable(
   {
     id: text('id').primaryKey().notNull(),
     // 被审批的失败报告（不可变引用）+ 其 reportHash（钉死审批针对的确切报告内容）。
-    reportId: text('reportId').notNull(),
+    // ★Item 3（迁移 0039）：FK 到 RegressionReport——防直插引用不存在报告的审批（append-only 无 DELETE，
+    // 故 ON DELETE NO ACTION）。父表 reportHash/policyId/policyVersionRowId 一致性由 INSERT trigger 校验。
+    reportId: text('reportId')
+      .notNull()
+      .references(() => regressionReports.id, { onDelete: 'no action' }),
     reportHash: text('reportHash').notNull(),
     policyId: text('policyId').notNull(),
     policyVersionRowId: text('policyVersionRowId').notNull(),
@@ -865,7 +870,8 @@ export const regressionDriftApprovals = pgTable(
     // 审批理由 + 工单（可审计）。
     reason: text('reason').notNull(),
     ticketRef: text('ticketRef'),
-    // 审批人（职责分离：必须 != report.createdBy）。
+    // 审批人（★声明身份职责分离：声明 approvedBy 必须 != report 声明 createdBy——应用层 + 0039 INSERT
+    // trigger 双拦。诚实：这是声明身份不相等，非真身份 SoD；真身份来自应用认证上下文，见 docs/p0a-db-sod-decision.md）。
     approvedBy: text('approvedBy').notNull(),
     approvedAt: timestamp('approvedAt', { mode: 'date' }).defaultNow().notNull(),
     // 有效期（过期后审批失效，须重新审批——防一次审批永久放行未来所有升级）。

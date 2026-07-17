@@ -267,6 +267,13 @@
       "when": 1779700000000,
       "tag": "0038_regression_case_hash_version_default_m11",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0039_regression_insert_guards",
+      "breakpoints": true
     }
   ]
 }
