@@ -56,6 +56,9 @@ export function CnlDemo({ className }: { className?: string }) {
   // Reset to first snippet whenever locale changes — index must not
   // outlive the snippet array it indexed into.
   useEffect(() => {
+    // locale（外部）切换时重置动画状态：index 不能残留指向旧 snippet 数组。
+    // 从 locale 派生的一次性重置，非渲染循环。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSnippetIdx(0);
     setTypedChars(0);
     setPhase('typing');
@@ -76,6 +79,9 @@ export function CnlDemo({ className }: { className?: string }) {
   useEffect(() => {
     if (prefersReducedMotion) {
       // Show each snippet fully for HOLD_MS * 2, then rotate.
+      // reduced-motion 分支：切到当前 snippet 时一次性铺满全文（跳过打字动画），
+      // 从 snippet 派生，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTypedChars(snippet.source.length);
       const t = setTimeout(() => {
         setSnippetIdx((i) => (i + 1) % snippets.length);

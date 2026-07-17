@@ -533,6 +533,9 @@ export function MonacoPolicyEditor({
   );
 
   // Local compiler for real-time validation with accurate error positions
+  // Monaco 实例句柄经 ref 持有；isEditorReady state 变化才重跑，读取的是编辑器
+  // 就绪后的当前实例（非渲染派生值），传给 hook 属合法用法。
+  /* eslint-disable react-hooks/refs */
   const { diagnostics, compileResult } = useAsterCompiler({
     editor: isEditorReady ? editorRef.current : null,
     monaco: isEditorReady ? monacoRef.current : null,
@@ -546,6 +549,7 @@ export function MonacoPolicyEditor({
     debounceDelay,
     enableValidation: true,
   });
+  /* eslint-enable react-hooks/refs */
 
   // 把编译结果上抛父层（StatusBar/SidePanel 复用，取代父层冗余 useCompile）。
   // 映射 TypecheckDiagnostic → 父层 CompileDiagnostic。★Aster span 的 line/col 均为 **1-based**
@@ -598,12 +602,15 @@ export function MonacoPolicyEditor({
     return { errorCount: errors, warningCount: warnings };
   }, [diagnostics]);
 
+  // 同上：Monaco 实例经 ref 持有，isEditorReady 就绪后读取当前实例传给装饰 hook。
+  /* eslint-disable react-hooks/refs */
   useEntryRuleDecorations(
     isEditorReady ? editorRef.current : null,
     isEditorReady ? monacoRef.current : null,
     value,
     tEntry('entryHover'),
   );
+  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     const ed = editorRef.current;

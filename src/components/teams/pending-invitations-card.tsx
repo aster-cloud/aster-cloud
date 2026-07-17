@@ -87,6 +87,9 @@ export function PendingInvitationsCard() {
   }, []);
 
   useEffect(() => {
+    // 挂载时异步拉取收件箱并起 30 秒轮询；setState 均在 await 之后触发，
+    // 属正常数据加载副作用，非渲染期同步 setState。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     reload();
     // Same 30s cadence as the topbar bell so an invite that lands
     // while the user is sitting on /teams surfaces without a manual

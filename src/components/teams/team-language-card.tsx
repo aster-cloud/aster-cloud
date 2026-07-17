@@ -81,6 +81,9 @@ export function TeamLanguageCard({ teamId }: { teamId: string }) {
   }, [teamId]);
 
   useEffect(() => {
+    // 挂载时异步拉取团队白名单；setState 均在 await 之后触发，
+    // 属正常数据加载副作用，非渲染期同步 setState。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

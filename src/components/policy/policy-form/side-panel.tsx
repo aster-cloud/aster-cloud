@@ -127,6 +127,9 @@ export function SidePanel({
   // Whenever the parent bumps the requested tab (e.g. compile errored),
   // honor it without losing user-selected state otherwise.
   useEffect(() => {
+    // 父层 bump initialTab（如编译报错切到 problems）时同步 tab——刻意的
+    // prop→state 同步，改掉会丢失父层驱动的切换。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
   const errorCount =

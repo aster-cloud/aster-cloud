@@ -204,6 +204,8 @@ export function DocsCommandPalette() {
   // Reset state on close + emit open telemetry exactly once per open.
   useEffect(() => {
     if (!open) {
+      // 面板关闭(open→false)时重置查询/结果/选中——按 prop(open)变化重置本地状态，属合法的状态重置。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery('');
       setResults([]);
       setActiveIndex(0);
@@ -237,6 +239,8 @@ export function DocsCommandPalette() {
   useEffect(() => {
     let cancelled = false;
     if (!query.trim()) {
+      // 查询清空时同步清空结果——按依赖(query)变化重置派生状态，属合法的状态重置。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       return;
     }

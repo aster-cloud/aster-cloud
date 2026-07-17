@@ -46,6 +46,9 @@ export function PolicyGroupDialog({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
+  // 对话框打开时按 mode/group（外部 prop）重新播种表单——刻意的 prop→state
+  // 同步，改掉会丢失「每次打开重置为最新 group」的行为。条件成立才置位。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isOpen) {
       if (mode === 'edit' && group) {
@@ -59,6 +62,7 @@ export function PolicyGroupDialog({
       setShowDeleteConfirm(false);
     }
   }, [isOpen, mode, group]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // P1-R19: keyboard accessibility — Esc dismisses dialog (WCAG 2.1.1).
   useEffect(() => {

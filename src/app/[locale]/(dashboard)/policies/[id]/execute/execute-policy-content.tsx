@@ -302,6 +302,8 @@ export function ExecutePolicyContent({ policyId, locale }: ExecutePolicyContentP
   }, [policyId, fetchSchema, locale]);
 
   useEffect(() => {
+    // ruleSymbols 变化时重置默认规则（selectedRule 仍可被用户手动改），故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedRule(chooseDefaultRule(ruleSymbols));
   }, [ruleSymbols]);
 

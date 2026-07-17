@@ -81,6 +81,9 @@ export function ShareWithTeamsCard({ policyId }: { policyId: string }) {
   }, [policyId]);
 
   useEffect(() => {
+    // 挂载时异步拉取分享列表；setState 发生在 await 之后（数据到达时），
+    // 非渲染期同步写入，不会造成级联渲染。属正常数据加载副作用。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadShares();
   }, [loadShares]);
 

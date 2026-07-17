@@ -113,6 +113,9 @@ export function EditorPalette({
   // Reset when reopened so the next session starts at the top.
   useEffect(() => {
     if (isOpen) {
+      // isOpen（外部）转为打开时重置面板状态，让下次会话从顶部开始；
+      // 条件成立才置位，从 isOpen 派生，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setView('commands');
       setQuery('');
       setActiveIdx(0);

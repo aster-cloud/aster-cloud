@@ -65,6 +65,8 @@ export default async function BillingOverviewPage() {
   const trialEndsAtRaw = session.user.trialEndsAt
     ? new Date(session.user.trialEndsAt)
     : null;
+  // Server Component 每请求只渲染一次，Date.now() 在此渲染安全（非客户端重渲染）
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const trialDaysLeft = trialEndsAtRaw
     ? Math.max(

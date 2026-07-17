@@ -27,6 +27,22 @@ interface PolicyGroupSelectProps {
   disabled?: boolean;
 }
 
+// 纯函数：把树形分组拍平成一维数组便于 id 查找。无闭包依赖（只用入参），
+// 提到模块级消除「在声明前使用」错误，并让 effect 内引用稳定。
+function flattenGroups(groups: PolicyGroup[]): PolicyGroup[] {
+  const result: PolicyGroup[] = [];
+  const flatten = (items: PolicyGroup[]) => {
+    for (const item of items) {
+      result.push(item);
+      if (item.children && item.children.length > 0) {
+        flatten(item.children);
+      }
+    }
+  };
+  flatten(groups);
+  return result;
+}
+
 export function PolicyGroupSelect({
   value,
   onChange,
@@ -45,6 +61,9 @@ export function PolicyGroupSelect({
   // Fetch groups if not provided externally
   useEffect(() => {
     if (externalGroups) {
+      // externalGroups（prop）变化时同步内部缓存——刻意的 prop→state 同步，
+      // 条件成立才置位，非渲染循环。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGroups(externalGroups);
       setFlatGroups(flattenGroups(externalGroups));
       setIsLoading(false);
@@ -67,21 +86,6 @@ export function PolicyGroupSelect({
 
     fetchGroups();
   }, [externalGroups]);
-
-  // Flatten groups for easy lookup
-  const flattenGroups = (groups: PolicyGroup[]): PolicyGroup[] => {
-    const result: PolicyGroup[] = [];
-    const flatten = (items: PolicyGroup[]) => {
-      for (const item of items) {
-        result.push(item);
-        if (item.children && item.children.length > 0) {
-          flatten(item.children);
-        }
-      }
-    };
-    flatten(groups);
-    return result;
-  };
 
   // Close dropdown when clicking outside
   useEffect(() => {

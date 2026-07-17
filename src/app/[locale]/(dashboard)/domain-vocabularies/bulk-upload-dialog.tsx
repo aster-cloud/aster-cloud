@@ -78,6 +78,8 @@ export function BulkUploadDialog({
 
   useEffect(() => {
     if (!isOpen) return;
+    // 打开时重置表单状态（防上次编辑泄漏），故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRaw('');
     setMode('sync');
     setSubmitError('');
@@ -111,6 +113,8 @@ export function BulkUploadDialog({
   // If the chosen mode doesn't fit, auto-pick the larger one when allowed.
   useEffect(() => {
     if (overSync && bulkAsyncAllowed && mode === 'sync') {
+      // 行数超同步上限时自动切到 async（条件收敛不会循环），故意在 effect 内 set
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode('async');
     }
   }, [overSync, bulkAsyncAllowed, mode]);

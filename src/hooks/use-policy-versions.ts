@@ -142,6 +142,9 @@ export function usePolicyVersions({
   // 自动加载
   useEffect(() => {
     if (autoLoad && policyId) {
+      // 挂载/依赖变化时异步拉取版本列表；setState 均在 await 之后触发，
+      // 属正常数据加载副作用，非渲染期同步 setState。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       refresh();
     }
   }, [autoLoad, policyId, refresh]);
@@ -420,6 +423,9 @@ export function useDefaultVersion(policyId: string) {
   }, [policyId]);
 
   useEffect(() => {
+    // 挂载/依赖变化时异步拉取默认版本；setState 均在 await 之后触发，
+    // 属正常数据加载副作用，非渲染期同步 setState。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 

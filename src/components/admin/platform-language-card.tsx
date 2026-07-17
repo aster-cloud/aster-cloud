@@ -90,6 +90,9 @@ export function PlatformLanguageCard() {
         changed = true;
       }
     }
+    // 后端(SSE)现状确认了乐观目标后，清除对应覆盖——将本地乐观状态与外部真相收敛；
+    // 有 changed 守卫，非每渲染无条件触发，属合法的外部状态→本地状态同步。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (changed) setPending(next);
   }, [backendSet, pending]);
 

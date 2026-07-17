@@ -189,6 +189,8 @@ export function CommandPalette({ commands, labels }: CommandPaletteProps) {
 
   // Reset active index whenever the result set shrinks under it.
   useEffect(() => {
+    // 结果集缩小到当前选中项之下时把高亮索引钳回 0——有越界守卫，非每渲染无条件触发，属合法的状态钳制。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeIdx >= filtered.length) setActiveIdx(0);
   }, [filtered.length, activeIdx]);
 

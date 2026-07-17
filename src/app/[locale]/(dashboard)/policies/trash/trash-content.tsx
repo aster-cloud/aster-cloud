@@ -86,6 +86,8 @@ export function TrashContent({ translations: t, locale }: TrashContentProps) {
   }, [t.trash.loadError]);
 
   useEffect(() => {
+    // 挂载时拉取回收站数据，fetchTrash 首行同步 setLoading(true) 是刻意的加载态，故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTrash();
   }, [fetchTrash]);
 

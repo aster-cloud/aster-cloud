@@ -113,6 +113,8 @@ export function SnapshotsContent({
     (next: string) => {
       setSearchInput(next);
       if (debouncedSearchTimer.current) clearTimeout(debouncedSearchTimer.current);
+      // debouncedSearchTimer 是 useMemo 造的可变 ref 容器，此处在事件回调内写 .current，非渲染期突变，误报
+      // eslint-disable-next-line react-hooks/immutability
       debouncedSearchTimer.current = setTimeout(() => {
         navigate({ q: next });
       }, SEARCH_DEBOUNCE_MS);

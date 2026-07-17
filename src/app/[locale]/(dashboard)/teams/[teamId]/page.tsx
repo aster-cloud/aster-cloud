@@ -95,6 +95,8 @@ export default function TeamDashboardPage() {
   }, [teamId, t]);
 
   useEffect(() => {
+    // 挂载时拉取团队/成员/策略/邀请数据（异步数据加载的规范用法），故意在 effect 内触发 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTeamData();
   }, [fetchTeamData]);
 

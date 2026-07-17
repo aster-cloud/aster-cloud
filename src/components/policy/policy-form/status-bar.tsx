@@ -186,6 +186,9 @@ function useTimeAgo(epochMs: number): string {
   // useEffect, which never runs server-side.
   const [now, setNow] = useState(0);
   useEffect(() => {
+    // SSR 稳定初值 0，hydration 后在 effect 内填入真实时间并每 30s 刷新——
+    // 从外部时钟同步，非渲染循环。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNow(Date.now());
     if (!epochMs) return;
     const t = window.setInterval(() => setNow(Date.now()), 30_000);

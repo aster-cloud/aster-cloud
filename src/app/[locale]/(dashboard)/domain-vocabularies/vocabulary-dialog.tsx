@@ -91,6 +91,8 @@ export function VocabularyDialog({
   // create flow" bug that hand-rolled dialogs reliably ship.
   useEffect(() => {
     if (!isOpen) return;
+    // 打开时按 initialValues 重播表单状态（防上次编辑泄漏），故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDomain(initialValues?.domain ?? '');
     setLocale(initialValues?.locale ?? '');
     setKind(isKnownKind(initialValues?.kind) ? initialValues.kind : 'struct');

@@ -685,6 +685,10 @@ export function PolicyForm({
           {sidePanelOpen && !isMobile && (
             <div className="hidden w-[26rem] shrink-0 lg:flex">
               <SidePanel
+                // Monaco 实例经 ref 持有；onEditorReady 里 setEditorReady 强制一次
+                // 重渲染，此处正是为读到已挂载的编辑器实例传给 SidePanel（见上方
+                // onEditorReady 注释）。属合法 ref 读取。
+                // eslint-disable-next-line react-hooks/refs
                 editor={editorInstanceRef.current}
                 cnlLocale={cnlLocale}
                 uiLocale={uiLocale}

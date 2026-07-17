@@ -41,6 +41,8 @@ export function useAsterModuleCatalog(enabled = true): UseAsterModuleCatalogResu
 
   useEffect(() => {
     if (!enabled) {
+      // hook 被禁用时关闭 loading 态；仅有条件触发一次，非级联 setState。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }

@@ -389,6 +389,8 @@ export function PoliciesContent({
 }: PoliciesContentProps) {
   // 延迟挂载 DndContext，避免 @dnd-kit aria 属性导致的 hydration mismatch (#418)
   const [mounted, setMounted] = useState(false);
+  // 延迟挂载 DndContext 避免 hydration mismatch，仅 mount 后 set 一次，故意在 effect 内 set
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   const [policies, setPolicies] = useState<Policy[]>(initialPolicies);
@@ -402,12 +404,18 @@ export function PoliciesContent({
   // 点分组后 policies 停在旧值 → 右侧不显示该组策略。故在 props 变化时 reconcile 本地 state。
   // 乐观更新（拖拽/删除）由各自 setPolicies 覆盖；下次导航拿到 server 权威值再对齐。
   useEffect(() => {
+    // App Router 导航不 remount 本组件，须在 server props 变化时 reconcile 本地 state，故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPolicies(initialPolicies);
   }, [initialPolicies]);
   useEffect(() => {
+    // 同上：groups 随 server props 同步
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGroups(initialGroups);
   }, [initialGroups]);
   useEffect(() => {
+    // 同上：freezeInfo 随 server props 同步
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFreezeInfo(initialFreezeInfo);
   }, [initialFreezeInfo]);
 
@@ -418,6 +426,8 @@ export function PoliciesContent({
   const selectedGroupId = pagination.selectedGroupId;
   const [searchInput, setSearchInput] = useState(pagination.query);
   useEffect(() => {
+    // URL query → 本地搜索框镜像，back/forward 时保持同步，故意在 effect 内 set
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchInput(pagination.query);
   }, [pagination.query]);
 
@@ -496,6 +506,8 @@ export function PoliciesContent({
     if (previousPaginationKeyRef.current === paginationKey) return;
     previousPaginationKeyRef.current = paginationKey;
     if (selectedPolicyIds.size > 0) {
+      // 翻页/换组时清空多选（selectedPolicyIds 无锚点），条件仅在 key 变化时触发不循环，故意在 effect 内 set
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPolicyIds(new Set());
       toast.info(tPolicies('multiSelectClearedOnPaging'));
     }
