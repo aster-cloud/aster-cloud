@@ -3,7 +3,7 @@
 // 验证目标（Item 1「reportHash 绑 caseHash + 离线核验协议」）：
 //   #261 后 freeze 能选真实 REPLAYABLE execution 冻成 golden；本测试再往下走 run → 产出 m1.2 报告，
 //   证明：
-//     (1) commit 半：真 run 产出的 reportJson.runnerVersion='p0a-runner/m1.2' 且每 case detail 携带
+//     (1) commit 半：真 run 产出的 reportJson.runnerVersion='p0a-runner/m1.3' 且每 case detail 携带
 //         caseHash + caseHashVersion，且与其 RegressionCase 行的 caseHash 一致（golden 完整性绑进报告）；
 //     (2) verify 半：verifyStoredReportIntegrity 对真库报告 + 真 golden → reportHashValid + goldenCommitment
 //         + 全 MATCH；篡改真库某 RegressionCase 的 caseHash → 抓出 CASE_HASH_MISMATCH，ok=false。
@@ -115,7 +115,8 @@ describe.skipIf(process.env.LICENSE_E2E !== '1' || process.env.P0A_LIVE_BACKEND 
 
       const report = await run({ policyId: POL, policyVersionRowId: PV_ROW, actorUserId: OWNER, tenantId: OWNER });
       // commit 半：报告版本 = m1.2，逐 case 带 caseHash + caseHashVersion。
-      expect(report.runnerVersion).toBe('p0a-runner/m1.2');
+      // ★Item 2 后 run 产 m1.3（signability 轴）；m1.2/m1.3 都绑 caseHash（golden 承诺）。
+      expect(report.runnerVersion).toBe('p0a-runner/m1.3');
       expect(report.cases.length).toBeGreaterThanOrEqual(1);
 
       const goldenRows = await db

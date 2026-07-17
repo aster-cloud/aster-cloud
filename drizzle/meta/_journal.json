@@ -260,6 +260,13 @@
       "when": 1779600000000,
       "tag": "0037_regression_drift_approval_and_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0038_regression_case_hash_version_default_m11",
+      "breakpoints": true
     }
   ]
 }

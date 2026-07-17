@@ -767,8 +767,10 @@ export const regressionCases = pgTable(
     // 覆盖核心字段的 canonical hash——防篡改 + 去重锚。
     caseHash: text('caseHash').notNull().unique(),
     // caseHash 公式版本（case-hash/m1.0 | m1.1）——run 重算校验按此选公式（新旧共存）。
-    // 缺省 m1.0 兼容既有行（迁移把已有 NULL 回填 m1.0）。
-    caseHashVersion: text('caseHashVersion').notNull().default('case-hash/m1.0'),
+    // ★Item 2（迁移 0038）：default 从 m1.0 改 m1.1——m1.0 已被政策定义为**不可签字**弱绑定版本，
+    // 新写入不应再默认产生不可签字证据。既有 m1.0 行不动（0036 回填是历史事实）。应用层 freeze 一直显式
+    // 写 CASE_HASH_VERSION(m1.1)；改 default 只关闭「直接 DB/遗漏 writer 继续产 m1.0」入口。
+    caseHashVersion: text('caseHashVersion').notNull().default('case-hash/m1.1'),
     createdBy: text('createdBy').notNull(),
     createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
   },

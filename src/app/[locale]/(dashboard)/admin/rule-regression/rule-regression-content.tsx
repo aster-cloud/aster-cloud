@@ -17,6 +17,11 @@ interface ReportRow {
   reportHash: string;
   currentRuntimeToolchainId: string | null;
   createdAt: string;
+  // ★Item 2：签字资格（独立于 status）。list API 承诺总返回，故设为必填——旧后端/异常缺失时前端应 fail-closed
+  // 显示「未知」而非绿色（见渲染逻辑）。
+  signability: 'SIGNABLE' | 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION';
+  unsignableLegacyCases: number | null;
+  signablePass: boolean;
 }
 
 interface CaseRow {
@@ -161,9 +166,29 @@ export function RuleRegressionContent() {
                     {reports.map((r) => (
                       <tr key={r.id} className="border-t border-border">
                         <td className="px-3 py-2">
-                          <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[r.status]}`}>
-                            {statusLabel(r.status)}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            {/* 执行结果 badge。★fail-closed：status=PASS 只有 signablePass===true 才用绿色；否则
+                                （不可签字或字段缺失/未知）一律中性，绝不误显「绿色可签字」。 */}
+                            <span
+                              className={`rounded px-2 py-0.5 text-xs font-medium ${
+                                r.status === 'PASS' && r.signablePass !== true
+                                  ? 'bg-bg-muted text-fg-muted'
+                                  : STATUS_STYLES[r.status]
+                              }`}
+                            >
+                              {statusLabel(r.status)}
+                            </span>
+                            {/* 签字资格 badge（独立轴）。不可签字醒目标注，含 legacy case 数。 */}
+                            {r.signability === 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' && (
+                              <span
+                                className="rounded px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                                title={t('signabilityUnsignableHint')}
+                              >
+                                {t('signabilityUnsignable')}
+                                {r.unsignableLegacyCases ? ` (${r.unsignableLegacyCases})` : ''}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2 font-mono text-xs">{r.policyVersionRowId}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.caseCount}</td>

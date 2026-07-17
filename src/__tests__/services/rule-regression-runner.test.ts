@@ -8,6 +8,8 @@ import {
   computeEffectiveStatus,
   extractApprovableDrifts,
   verifyReportIntegrity,
+  deriveReportSignability,
+  isSignablePass,
   DEFAULT_THRESHOLDS,
   COMPARISON_MODE_FROZEN_BASELINE,
   CASE_HASH_VERSION,
@@ -494,11 +496,16 @@ describe('computeEffectiveStatus — 受控接受派生态（不改任何行）'
     reportHash,
     policyVersionRowId: PVR,
     cases,
+    // ★Item 2：默认 m1.3 可签字报告（cases 全 m1.1 → signability SIGNABLE + count 0，与 deriveReportSignability
+    // 自洽性校验一致）。
+    runnerVersion: 'p0a-runner/m1.3' as const,
+    signability: 'SIGNABLE' as const,
+    unsignableLegacyCases: 0,
   });
 
   it('非 FAIL_REGRESSION 报告原样返回（PASS/覆盖不足/NON_REPLAYABLE 不适用受控接受）', () => {
     for (const s of ['PASS', 'FAIL_INSUFFICIENT_COVERAGE', 'NON_REPLAYABLE'] as const) {
-      expect(computeEffectiveStatus({ status: s, reportHash: 'rh', policyVersionRowId: PVR, cases: [] }, [], now)).toBe(s);
+      expect(computeEffectiveStatus({ status: s, reportHash: 'rh', policyVersionRowId: PVR, cases: [], runnerVersion: 'p0a-runner/m1.3', signability: 'SIGNABLE', unsignableLegacyCases: 0 }, [], now)).toBe(s);
     }
   });
 
@@ -627,6 +634,9 @@ function fixedReportBody(runnerVersion: string): Omit<RunReport, 'reportId' | 'r
     },
     summary: { passed: 1, failed: 0, nonReplayable: 0, compileFailures: 0 },
     cases, runnerVersion,
+    // signability/unsignableLegacyCases 只进 m1.3 hash；m1.0/m1.1/m1.2 公式忽略它们（向量不受影响）。
+    signability: 'SIGNABLE',
+    unsignableLegacyCases: 0,
   };
 }
 
@@ -637,6 +647,7 @@ describe('reportHash m1.2 — 绑 caseHash + 版本分派 + 历史向量冻结',
     'p0a-runner/m1.0': '357106de681456ad305f7a4e0c4d147adc1ddd10af04676b0499387f5f138177',
     'p0a-runner/m1.1': '5b1a923ba14421233489b31344efebadfd634b25875cb1c373e7ab7b59379381',
     'p0a-runner/m1.2': '00f72de53953e918eb6624d8dfeefaf89cc5bc6b2fa362e5c134c011da271b72',
+    'p0a-runner/m1.3': '854a48427f10ead508a2fa839bdd1443e99002ab7387b1bdb65bc7e9e8502134',
   };
 
   it('★m1.0 历史向量冻结（改 m1.0 公式即失配）', () => {
@@ -645,16 +656,29 @@ describe('reportHash m1.2 — 绑 caseHash + 版本分派 + 历史向量冻结',
   it('★m1.1 历史向量冻结（改 m1.1 公式即失配——保护既有报告 + 绑其的 approval）', () => {
     expect(computeReportHash(fixedReportBody('p0a-runner/m1.1'))).toBe(VECTORS['p0a-runner/m1.1']);
   });
-  it('★m1.2 向量锁定（新公式含 caseHash）', () => {
+  it('★m1.2 历史向量冻结（含 caseHash，加 m1.3 后不得漂移）', () => {
     expect(computeReportHash(fixedReportBody('p0a-runner/m1.2'))).toBe(VECTORS['p0a-runner/m1.2']);
   });
+  it('★m1.3 向量锁定（新公式含 signability）', () => {
+    expect(computeReportHash(fixedReportBody('p0a-runner/m1.3'))).toBe(VECTORS['p0a-runner/m1.3']);
+  });
 
-  it('★四路版本分派：m1.0/m1.1/m1.2 各不相同，未知 fail-closed', () => {
-    const h10 = computeReportHash(fixedReportBody('p0a-runner/m1.0'));
-    const h11 = computeReportHash(fixedReportBody('p0a-runner/m1.1'));
-    const h12 = computeReportHash(fixedReportBody('p0a-runner/m1.2'));
-    expect(new Set([h10, h11, h12]).size).toBe(3); // 三公式互不相同。
+  it('★五路版本分派：m1.0/m1.1/m1.2/m1.3 各不相同，未知 fail-closed', () => {
+    const hs = ['m1.0', 'm1.1', 'm1.2', 'm1.3'].map((v) => computeReportHash(fixedReportBody(`p0a-runner/${v}`)));
+    expect(new Set(hs).size).toBe(4); // 四公式互不相同。
     expect(() => computeReportHash(fixedReportBody('p0a-runner/CORRUPT'))).toThrow(/unsupported reportHash runnerVersion/);
+  });
+
+  it('★m1.3 敏感于 signability（改签字资格 → reportHash 变）', () => {
+    const signable = fixedReportBody('p0a-runner/m1.3');
+    const unsignable = { ...signable, signability: 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' as const, unsignableLegacyCases: 1 };
+    expect(computeReportHash(signable)).not.toBe(computeReportHash(unsignable));
+  });
+  it('m1.2 公式忽略 signability（历史 m1.2 报告不因 signability 字段而变）', () => {
+    const body = fixedReportBody('p0a-runner/m1.2');
+    const withDiff = { ...body, signability: 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' as const, unsignableLegacyCases: 3 };
+    // m1.2 公式不纳入 signability → 改它不影响 m1.2 hash。
+    expect(computeReportHash(body)).toBe(computeReportHash(withDiff));
   });
 
   it('★m1.2 敏感于 caseHash（改 caseHash → reportHash 变，锚定 golden 完整性）', () => {
@@ -780,5 +804,299 @@ describe('verifyReportIntegrity — 离线核验协议（消费 m1.2 承诺 + �
     expect(v.goldenCommitmentSupported).toBe(false);
     expect(v.cases[0].status).toBe('CASE_HASH_MISMATCH'); // 当前行自洽但报告没承诺 → 不 MATCH。
     expect(v.ok).toBe(false);
+  });
+});
+
+// ============ Item 2：legacy m1.0 签字策略（signability 轴 + verify 弱绑定态） ============
+
+describe('signability — assembleReport 报告级签字资格（Item 2）', () => {
+  const detail = (caseId: string, over: Partial<CaseRunDetail> = {}): CaseRunDetail => ({
+    caseId, status: 'PASS', caseHash: `${caseId}-h`, caseHashVersion: CASE_HASH_VERSION,
+    functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution',
+    expectedOutputHash: 'h', actualOutputHash: 'h', ...over,
+  });
+
+  it('★全 m1.1 case（无 legacy）→ signability=SIGNABLE', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    const r = assemble(cases, details);
+    expect(r.signability).toBe('SIGNABLE');
+    expect(r.unsignableLegacyCases).toBe(0);
+  });
+
+  it('★含 LEGACY_UNSIGNABLE case → signability=UNSIGNABLE（即使 status 达标）', () => {
+    // 4 强 case 覆盖达标（PASS）+ 1 个 legacy-unsignable（非 runnable）。status 可能 PASS，但 signability=UNSIGNABLE。
+    const { cases, details } = coverageSatisfyingCases();
+    cases.push({ id: 'legacy', expectedDecision: 'approved', sourceKind: 'execution', coverageTags: [] });
+    details.push(detail('legacy', { status: 'NON_REPLAYABLE', reason: 'LEGACY_UNSIGNABLE_CASE_HASH_VERSION', caseHashVersion: CASE_HASH_VERSION_M10 }));
+    const r = assemble(cases, details);
+    // ★双口径防护：报告级 signability 宣告不可签字，不靠调用方看 case。
+    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(r.unsignableLegacyCases).toBe(1);
+    // 可签字通过 = status===PASS && signability===SIGNABLE → 此报告不满足。
+    expect(r.status === 'PASS' && r.signability === 'SIGNABLE').toBe(false);
+  });
+});
+
+describe('verifyReportIntegrity — m1.0 golden 弱绑定 + m1.3 承诺（Item 2）', () => {
+  // 自洽的 m1.0 golden 行（用 m1.0 公式算 caseHash）。
+  const M10_FIELDS = {
+    policyId: 'pol-1', policyVersionRowId: 'pv-1', functionName: 'greet', locale: 'en-US',
+    canonicalInputHash: 'in1', expectedOutputHash: 'out1', canonicalizationVersion: 'aster-canonical-json/v1',
+    aliasSetJson: {}, vocabSnapshotRef: [], sourceKind: 'execution',
+    expectedDecision: 'approved' as const, coverageTags: [] as string[],
+    baselineRuntimeToolchainId: 'tc-base', sourceToolchainId: 'tc-src',
+    sourceEnvelopeSha256: 'env1', sourceExecutionId: 'ex1',
+  };
+  const M10_ID = 'legacy-case';
+  const M10_HASH = computeCaseHash(M10_FIELDS, CASE_HASH_VERSION_M10);
+
+  const m10Golden = (): GoldenCaseSnapshot => ({
+    id: M10_ID, caseHash: M10_HASH, caseHashVersion: CASE_HASH_VERSION_M10, ...M10_FIELDS,
+  });
+  const reportCommittingM10 = (version: string): Omit<RunReport, 'reportId' | 'reportHash'> => {
+    const body = fixedReportBody(version);
+    body.cases[0] = { ...body.cases[0], caseId: M10_ID, caseHash: M10_HASH, caseHashVersion: CASE_HASH_VERSION_M10 };
+    return body;
+  };
+
+  it('★m1.0 golden 自洽且匹配承诺，但弱绑定 → LEGACY_WEAK_BINDING_CASE_HASH_VERSION（不计 MATCH）', () => {
+    const body = reportCommittingM10('p0a-runner/m1.3');
+    const v = verifyReportIntegrity(body, computeReportHash(body), [m10Golden()]);
+    // 三者相等（committed==stored==recomputed 都是 m1.0 公式），但 caseHashVersion 弱绑定。
+    expect(v.cases[0].status).toBe('LEGACY_WEAK_BINDING_CASE_HASH_VERSION');
+    expect(v.ok).toBe(false); // 弱绑定不足签字。
+  });
+
+  it('★弱绑定诊断对所有报告版本一致（m1.2 报告 + m1.0 golden 也标弱绑定）', () => {
+    const body = reportCommittingM10('p0a-runner/m1.2');
+    const v = verifyReportIntegrity(body, computeReportHash(body), [m10Golden()]);
+    expect(v.cases[0].status).toBe('LEGACY_WEAK_BINDING_CASE_HASH_VERSION');
+    expect(v.ok).toBe(false);
+  });
+
+  it('★m1.3 报告支持 golden 承诺（goldenCommitmentSupported=true，与 m1.2 同）', () => {
+    // 用 m1.1（可签字）case 确认 m1.3 报告的 goldenCommitmentSupported。
+    const body = fixedReportBody('p0a-runner/m1.3');
+    const g: GoldenCaseSnapshot = {
+      id: body.cases[0].caseId, caseHash: body.cases[0].caseHash, caseHashVersion: CASE_HASH_VERSION,
+      policyId: 'pol-1', policyVersionRowId: 'pv-1', functionName: 'greet', locale: 'en-US',
+      canonicalInputHash: 'in1', expectedOutputHash: 'out1', canonicalizationVersion: 'aster-canonical-json/v1',
+      aliasSetJson: {}, vocabSnapshotRef: [], sourceKind: 'execution', expectedDecision: 'approved',
+      coverageTags: [], baselineRuntimeToolchainId: 'tc-base', sourceToolchainId: 'tc-src',
+      sourceEnvelopeSha256: 'env1', sourceExecutionId: 'ex1',
+    };
+    // committed caseHash 与 g.caseHash 不同（body 的 caseHash 是假串），故非 MATCH，但确认 goldenCommitmentSupported。
+    const v = verifyReportIntegrity(body, computeReportHash(body), [g]);
+    expect(v.goldenCommitmentSupported).toBe(true);
+  });
+});
+
+// ============ Item 2 复审补强：signability 从 caseHashVersion 派生 + 消费链闭合 ============
+
+describe('signability 从 caseHashVersion 事实派生（非 reason）— Codex 复审致命 1', () => {
+  const det = (caseId: string, caseHashVersion: string, over: Partial<CaseRunDetail> = {}): CaseRunDetail => ({
+    caseId, status: 'NON_REPLAYABLE', caseHash: `${caseId}-h`, caseHashVersion,
+    functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution', ...over,
+  });
+  // 4 强 case 达标 + 1 个变体 legacy。
+  const withLegacy = (legacyDetail: CaseRunDetail) => {
+    const { cases, details } = coverageSatisfyingCases();
+    cases.push({ id: legacyDetail.caseId, expectedDecision: 'approved', sourceKind: 'execution', coverageTags: [] });
+    details.push(legacyDetail);
+    return assemble(cases, details);
+  };
+
+  it('★m1.0 case 自洽（reason=legacy）→ UNSIGNABLE', () => {
+    const r = withLegacy(det('lg', CASE_HASH_VERSION_M10, { reason: 'LEGACY_UNSIGNABLE_CASE_HASH_VERSION' }));
+    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(r.unsignableLegacyCases).toBe(1);
+  });
+
+  it('★致命：m1.0 case **不自洽**（reason=GOLDEN_INTEGRITY_FAILURE，非 legacy）仍 UNSIGNABLE', () => {
+    // 这是 Codex 抓的漏判：用 reason 反推会漏（reason 是 integrity failure），必须用 caseHashVersion 事实。
+    const r = withLegacy(det('lg', CASE_HASH_VERSION_M10, { status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE' }));
+    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+  });
+
+  it('★未知 caseHashVersion（非 signable）→ UNSIGNABLE', () => {
+    const r = withLegacy(det('lg', 'case-hash/CORRUPT', { status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE_UNKNOWN_VERSION' }));
+    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+  });
+
+  it('全 m1.1 → SIGNABLE', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    expect(assemble(cases, details).signability).toBe('SIGNABLE');
+  });
+});
+
+describe('deriveReportSignability / isSignablePass — 统一消费入口', () => {
+  const m13 = (sig: 'SIGNABLE' | 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION') => ({
+    ...fixedReportBody('p0a-runner/m1.3'), signability: sig,
+  });
+
+  it('m1.3：读顶层 signability', () => {
+    expect(deriveReportSignability(m13('SIGNABLE'))).toBe('SIGNABLE');
+    expect(deriveReportSignability(m13('UNSIGNABLE_LEGACY_CASE_HASH_VERSION'))).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+  });
+
+  it('m1.2：从 cases caseHashVersion 派生（含 m1.0 case → UNSIGNABLE）', () => {
+    const clean = fixedReportBody('p0a-runner/m1.2');
+    expect(deriveReportSignability(clean)).toBe('SIGNABLE');
+    const withM10 = { ...clean, cases: clean.cases.map((c) => ({ ...c, caseHashVersion: CASE_HASH_VERSION_M10 })) };
+    expect(deriveReportSignability(withM10)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+  });
+
+  it('m1.0/m1.1 报告（无 golden 承诺）→ 一律 UNSIGNABLE', () => {
+    expect(deriveReportSignability(fixedReportBody('p0a-runner/m1.1'))).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(deriveReportSignability(fixedReportBody('p0a-runner/m1.0'))).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+  });
+
+  it('★isSignablePass：PASS + SIGNABLE → true；PASS + UNSIGNABLE → false（防绿色可签字双口径）', () => {
+    expect(isSignablePass({ ...m13('SIGNABLE'), status: 'PASS' })).toBe(true);
+    expect(isSignablePass({ ...m13('UNSIGNABLE_LEGACY_CASE_HASH_VERSION'), status: 'PASS' })).toBe(false);
+    expect(isSignablePass({ ...m13('SIGNABLE'), status: 'FAIL_REGRESSION' })).toBe(false);
+  });
+});
+
+describe('computeEffectiveStatus — 不可签字报告绝不派生 ACCEPTED（Codex 复审致命 3）', () => {
+  const PVR = 'pv-eff';
+  const now = new Date('2026-07-18T00:00:00.000Z');
+  const mkCase = (caseId: string, caseHashVersion: string): CaseRunDetail => ({
+    caseId, status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH',
+    expectedOutputHash: 'b1', actualOutputHash: 'n1', caseHash: `${caseId}-h`, caseHashVersion,
+    functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution',
+  });
+  const approval = {
+    reportHash: 'rh', policyVersionRowId: PVR, reason: 'r', ticketRef: null, approvedBy: 'user-b',
+    expiresAt: new Date('2027-01-01T00:00:00.000Z'), revokedAt: null,
+    acceptedDrifts: [{ caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' }],
+    approvalHash: computeApprovalHash({
+      reportHash: 'rh', policyVersionRowId: PVR,
+      acceptedDrifts: [{ caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' }],
+      reason: 'r', ticketRef: null, approvedBy: 'user-b', expiresAt: '2027-01-01T00:00:00.000Z',
+    }),
+  };
+
+  it('★signable 报告 + 有效审批 → ACCEPTED（对照，确认正常路径仍工作）', () => {
+    const report = {
+      status: 'FAIL_REGRESSION' as const, reportHash: 'rh', policyVersionRowId: PVR,
+      cases: [mkCase('c1', CASE_HASH_VERSION)], runnerVersion: 'p0a-runner/m1.3' as const,
+      signability: 'SIGNABLE' as const, unsignableLegacyCases: 0,
+    };
+    expect(computeEffectiveStatus(report, [approval], now)).toBe('ACCEPTED_DRIFT_WITH_APPROVAL');
+  });
+
+  it('★不可签字报告（含真 m1.0 case）+ 同样的有效审批 → 仍 FAIL_REGRESSION（绝不 ACCEPTED）', () => {
+    // 真 m1.0 case（cases 派生 UNSIGNABLE）→ 即使审批精确覆盖 drift 也不派生 ACCEPTED。
+    const report = {
+      status: 'FAIL_REGRESSION' as const, reportHash: 'rh', policyVersionRowId: PVR,
+      cases: [mkCase('c1', CASE_HASH_VERSION_M10)],
+      runnerVersion: 'p0a-runner/m1.3' as const, signability: 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' as const,
+      unsignableLegacyCases: 1,
+    };
+    expect(computeEffectiveStatus(report, [approval], now)).toBe('FAIL_REGRESSION');
+  });
+});
+
+// ============ Item 2 复审2补强：m1.3 顶层 signability 自洽性 fail-closed（Codex 复审致命）============
+
+describe('deriveReportSignability — m1.3 顶层声明必须与 cases 一致（fail-closed）', () => {
+  it('★致命：m1.3 声明 SIGNABLE 但 cases 含 m1.0（矛盾）→ fail-closed UNSIGNABLE', () => {
+    // 自洽 reportHash 但内部矛盾的 artifact：cases 有 m1.0，却顶层声明 SIGNABLE/count=0。
+    const body = fixedReportBody('p0a-runner/m1.3');
+    const lying = {
+      ...body,
+      cases: body.cases.map((c) => ({ ...c, caseHashVersion: CASE_HASH_VERSION_M10 })),
+      signability: 'SIGNABLE' as const,
+      unsignableLegacyCases: 0,
+    };
+    // 不信顶层声明，从 cases 派生 → UNSIGNABLE。
+    expect(deriveReportSignability(lying)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(isSignablePass({ ...lying, status: 'PASS' })).toBe(false);
+  });
+
+  it('★count 不一致（全 m1.1 但声明 unsignableLegacyCases=1）→ fail-closed UNSIGNABLE', () => {
+    const body = fixedReportBody('p0a-runner/m1.3'); // cases 全 m1.1（signable）
+    const inconsistent = { ...body, signability: 'SIGNABLE' as const, unsignableLegacyCases: 1 };
+    expect(deriveReportSignability(inconsistent)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+  });
+
+  it('m1.3 声明与 cases 一致 → 返回声明值', () => {
+    const signable = fixedReportBody('p0a-runner/m1.3'); // 全 m1.1 + SIGNABLE + count 0
+    expect(deriveReportSignability(signable)).toBe('SIGNABLE');
+    const unsignable = {
+      ...fixedReportBody('p0a-runner/m1.3'),
+      cases: fixedReportBody('p0a-runner/m1.3').cases.map((c) => ({ ...c, caseHashVersion: CASE_HASH_VERSION_M10 })),
+      signability: 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' as const,
+      unsignableLegacyCases: 1,
+    };
+    expect(deriveReportSignability(unsignable)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+  });
+
+  it('★伪造 m1.3 SIGNABLE + m1.0 case + 有效审批 → computeEffectiveStatus 仍 FAIL_REGRESSION（不 ACCEPTED）', () => {
+    const now = new Date('2026-07-18T00:00:00.000Z');
+    const drift = { caseId: 'c1', baselineOutputHash: 'b1', acceptedOutputHash: 'n1' };
+    const approval = {
+      reportHash: 'rh', policyVersionRowId: 'pv', reason: 'r', ticketRef: null, approvedBy: 'user-b',
+      expiresAt: new Date('2027-01-01T00:00:00.000Z'), revokedAt: null, acceptedDrifts: [drift],
+      approvalHash: computeApprovalHash({
+        reportHash: 'rh', policyVersionRowId: 'pv', acceptedDrifts: [drift], reason: 'r', ticketRef: null,
+        approvedBy: 'user-b', expiresAt: '2027-01-01T00:00:00.000Z',
+      }),
+    };
+    // 伪造：cases 含 m1.0 FAIL case，但顶层谎称 SIGNABLE。
+    const report = {
+      status: 'FAIL_REGRESSION' as const, reportHash: 'rh', policyVersionRowId: 'pv',
+      cases: [{
+        caseId: 'c1', status: 'FAIL_REGRESSION' as const, reason: 'OUTPUT_HASH_MISMATCH',
+        expectedOutputHash: 'b1', actualOutputHash: 'n1', caseHash: 'c1-h', caseHashVersion: CASE_HASH_VERSION_M10,
+        functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution',
+      }],
+      runnerVersion: 'p0a-runner/m1.3' as const, signability: 'SIGNABLE' as const, unsignableLegacyCases: 0,
+    };
+    // deriveReportSignability 从 cases 派生 UNSIGNABLE（顶层谎言不被信）→ 不 ACCEPTED。
+    expect(computeEffectiveStatus(report, [approval], now)).toBe('FAIL_REGRESSION');
+  });
+});
+
+// ============ Item 2 复审3：verify verdict.ok 纳入 signability 声明自洽性 ============
+
+describe('verifyReportIntegrity — signabilityConsistent 纳入 ok（Codex 复审）', () => {
+  // 自洽 golden（caseHash = 从字段用 m1.1 公式重算），供 verify 三段全 MATCH。
+  const FIELDS = {
+    policyId: 'pol-1', policyVersionRowId: 'pv-1', functionName: 'greet', locale: 'en-US',
+    canonicalInputHash: 'in1', expectedOutputHash: 'out1', canonicalizationVersion: 'aster-canonical-json/v1',
+    aliasSetJson: {}, vocabSnapshotRef: [], sourceKind: 'execution', expectedDecision: 'approved' as const,
+    coverageTags: [] as string[], baselineRuntimeToolchainId: 'tc-base', sourceToolchainId: 'tc-src',
+    sourceEnvelopeSha256: 'env1', sourceExecutionId: 'ex1',
+  };
+  const SELF_HASH = computeCaseHash(FIELDS, CASE_HASH_VERSION);
+  const CID = fixedReportBody('p0a-runner/m1.3').cases[0].caseId;
+  const golden = (): GoldenCaseSnapshot => ({ id: CID, caseHash: SELF_HASH, caseHashVersion: CASE_HASH_VERSION, ...FIELDS });
+  // m1.3 报告，其 case 承诺 SELF_HASH（与自洽 golden 全 MATCH）。
+  const reportM13 = (over: { unsignableLegacyCases?: number } = {}) => {
+    const b = fixedReportBody('p0a-runner/m1.3');
+    return {
+      ...b,
+      cases: b.cases.map((c) => ({ ...c, caseId: CID, caseHash: SELF_HASH, caseHashVersion: CASE_HASH_VERSION })),
+      ...over,
+    };
+  };
+
+  it('★m1.3 count 声明错误（全 m1.1 case 但 unsignableLegacyCases=1）→ signabilityConsistent=false, ok=false', () => {
+    const lying = reportM13({ unsignableLegacyCases: 1 }); // 声明 count=1，派生应为 0（矛盾）
+    const v = verifyReportIntegrity(lying, computeReportHash(lying), [golden()]);
+    expect(v.reportHashValid).toBe(true);
+    expect(v.signabilityConsistent).toBe(false); // 声明 count 与事实不符。
+    expect(v.ok).toBe(false); // 纳入 ok（消除 verify「完整性 ok」+「不可签字」双口径）。
+    expect(v.derivedSignability).toBe('SIGNABLE'); // 事实派生（cases 全 m1.1）。
+  });
+
+  it('m1.3 声明一致 + cases MATCH → signabilityConsistent=true, ok=true', () => {
+    const body = reportM13(); // 全 m1.1, SIGNABLE, count 0（一致）
+    const v = verifyReportIntegrity(body, computeReportHash(body), [golden()]);
+    expect(v.signabilityConsistent).toBe(true);
+    expect(v.cases[0].status).toBe('MATCH');
+    expect(v.ok).toBe(true);
   });
 });
