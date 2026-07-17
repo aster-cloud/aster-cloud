@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   assembleReport,
+  applyMixedToolchainDowngrade,
   computeCaseHash,
   computeReportHash,
   DEFAULT_THRESHOLDS,
   COMPARISON_MODE_FROZEN_BASELINE,
+  CASE_HASH_VERSION,
+  CASE_HASH_VERSION_M10,
   type CaseCoverageMeta,
   type CaseRunDetail,
   type CoverageThresholds,
@@ -236,5 +239,182 @@ describe('computeCaseHash / computeReportHash — 防篡改 + 确定性', () => 
     const body = assemble(cases, details);
     const tampered = { ...body, cases: body.cases.map((c, i) => (i === 0 ? { ...c, actualOutputHash: 'FORGED' } : c)) };
     expect(computeReportHash(body)).not.toBe(computeReportHash(tampered));
+  });
+});
+
+// ============ CCO 复审加固（P0-1/2/3/5/6）新行为契约 ============
+describe('caseHash 加固 — P0-6 补全字段（m1.1）', () => {
+  const base = {
+    policyId: 'p1',
+    policyVersionRowId: 'v1',
+    functionName: 'approveLoan',
+    locale: 'en-US',
+    canonicalInputHash: 'ih',
+    expectedOutputHash: 'oh',
+    expectedDecision: 'approved' as string | null,
+    canonicalizationVersion: 'aster-canonical-json/v1',
+    aliasSetJson: {},
+    vocabSnapshotRef: [],
+    sourceKind: 'execution',
+    coverageTags: ['boundary'],
+    baselineRuntimeToolchainId: 'tc-old',
+    sourceToolchainId: 'src-1',
+    sourceEnvelopeSha256: 'env-1',
+    sourceExecutionId: 'exec-1',
+  };
+
+  it('m1.1 caseHash 敏感于新绑定字段（改任一 → hash 变 → 篡改被捕获）', () => {
+    const h = computeCaseHash(base);
+    // 每个 m1.1 新绑字段单独改，hash 必须变。
+    expect(h).not.toBe(computeCaseHash({ ...base, policyId: 'p2' }));
+    expect(h).not.toBe(computeCaseHash({ ...base, expectedDecision: 'denied' }));
+    expect(h).not.toBe(computeCaseHash({ ...base, baselineRuntimeToolchainId: 'tc-new' }));
+    expect(h).not.toBe(computeCaseHash({ ...base, sourceToolchainId: 'src-2' }));
+    expect(h).not.toBe(computeCaseHash({ ...base, sourceEnvelopeSha256: 'env-2' }));
+    expect(h).not.toBe(computeCaseHash({ ...base, sourceExecutionId: 'exec-2' }));
+    expect(h).not.toBe(computeCaseHash({ ...base, coverageTags: ['reject'] }));
+  });
+
+  it('coverageTags 顺序无关（排序后进 hash）', () => {
+    expect(computeCaseHash({ ...base, coverageTags: ['a', 'b'] })).toBe(
+      computeCaseHash({ ...base, coverageTags: ['b', 'a'] })
+    );
+  });
+
+  it('★新旧公式共存：m1.0 与 m1.1 对同字段算不同 hash（版本隔离，不混算）', () => {
+    const m10 = computeCaseHash(base, CASE_HASH_VERSION_M10);
+    const m11 = computeCaseHash(base, CASE_HASH_VERSION);
+    expect(m10).not.toBe(m11);
+    // m1.0 公式对新字段不敏感（只 9 字段）——改 policyId 不影响 m1.0 hash。
+    expect(computeCaseHash(base, CASE_HASH_VERSION_M10)).toBe(
+      computeCaseHash({ ...base, policyId: 'other' }, CASE_HASH_VERSION_M10)
+    );
+    // m1.1 对 policyId 敏感。
+    expect(computeCaseHash(base, CASE_HASH_VERSION)).not.toBe(
+      computeCaseHash({ ...base, policyId: 'other' }, CASE_HASH_VERSION)
+    );
+  });
+});
+
+describe('reportHash 加固 — P0-5 补全 + 稳定排序', () => {
+  it('★case 顺序无关：同 case 集乱序算同 reportHash（可复算）', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    const body = assemble(cases, details);
+    const shuffled = { ...body, cases: body.cases.slice().reverse() };
+    expect(computeReportHash(body)).toBe(computeReportHash(shuffled));
+  });
+
+  it('reportHash 敏感于 case reason（改 reason 不再保持同 hash）', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    const body = assemble(cases, details);
+    const tampered = { ...body, cases: body.cases.map((c, i) => (i === 0 ? { ...c, reason: 'FORGED_REASON' } : c)) };
+    expect(computeReportHash(body)).not.toBe(computeReportHash(tampered));
+  });
+
+  it('reportHash 敏感于 baseline/current toolchain（改工具链归因不可篡改）', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    const body = assemble(cases, details);
+    const tampered = {
+      ...body,
+      cases: body.cases.map((c, i) => (i === 0 ? { ...c, baselineToolchainId: 'FORGED_TC' } : c)),
+    };
+    expect(computeReportHash(body)).not.toBe(computeReportHash(tampered));
+  });
+
+  it('★reportHash 按报告自身 runnerVersion 选公式（m1.0 报告用 m1.0 公式复算，不被 m1.1 代码改写）', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    const m11 = assemble(cases, details); // runnerVersion=m1.1
+    const m10 = { ...m11, runnerVersion: 'p0a-runner/m1.0' };
+    // m1.0 与 m1.1 公式不同 → 同报告体不同 hash（版本分派生效）。
+    expect(computeReportHash(m10)).not.toBe(computeReportHash(m11));
+    // m1.0 复算确定性（历史报告可复算）。
+    expect(computeReportHash(m10)).toBe(computeReportHash({ ...m10 }));
+  });
+
+  it('★未知 runnerVersion → fail-closed 抛错（不静默按新公式给假可复算 hash）', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    const body = { ...assemble(cases, details), runnerVersion: 'p0a-runner/CORRUPT' };
+    expect(() => computeReportHash(body)).toThrow(/unsupported reportHash runnerVersion/);
+  });
+});
+
+describe('applyMixedToolchainDowngrade — 混合 toolchain 只降 PASS 不洗真实失败（P0-1 补，Codex 复审 2）', () => {
+  const mk = (caseId: string, status: CaseRunDetail['status'], reason?: string): CaseRunDetail => ({
+    caseId,
+    status,
+    functionName: 'f',
+    locale: 'en-US',
+    coverageTags: [],
+    sourceKind: 'execution',
+    reason,
+  });
+
+  it('单一 toolchain → 不变', () => {
+    const details = [mk('a', 'PASS')];
+    const s = applyMixedToolchainDowngrade(details, { passed: 1, failed: 0, nonReplayable: 0, compileFailures: 0 }, new Set(['tc-1']));
+    expect(details[0].status).toBe('PASS');
+    expect(s).toEqual({ passed: 1, failed: 0, nonReplayable: 0, compileFailures: 0 });
+  });
+
+  it('混合 toolchain：两 PASS 全降 NON_REPLAYABLE（passed→0, nonReplayable+2）', () => {
+    const details = [mk('a', 'PASS'), mk('b', 'PASS')];
+    const s = applyMixedToolchainDowngrade(details, { passed: 2, failed: 0, nonReplayable: 0, compileFailures: 0 }, new Set(['tc-1', 'tc-2']));
+    expect(details.every((d) => d.status === 'NON_REPLAYABLE' && d.reason === 'MIXED_CURRENT_TOOLCHAIN')).toBe(true);
+    expect(s).toEqual({ passed: 0, failed: 0, nonReplayable: 2, compileFailures: 0 });
+  });
+
+  it('★混合 toolchain 不洗 OUTPUT_HASH_MISMATCH（真实回归保留）', () => {
+    const details = [mk('a', 'PASS'), mk('b', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH')];
+    const s = applyMixedToolchainDowngrade(details, { passed: 1, failed: 1, nonReplayable: 0, compileFailures: 0 }, new Set(['tc-1', 'tc-2']));
+    expect(details[0].status).toBe('NON_REPLAYABLE'); // PASS 降级
+    expect(details[1].status).toBe('FAIL_REGRESSION'); // 回归保留
+    expect(details[1].reason).toBe('OUTPUT_HASH_MISMATCH');
+    expect(s).toEqual({ passed: 0, failed: 1, nonReplayable: 1, compileFailures: 0 });
+  });
+
+  it('★混合 toolchain 不洗 GOLDEN_INTEGRITY_FAILURE（证据损坏保留）', () => {
+    const details = [mk('a', 'PASS'), mk('b', 'FAIL_REGRESSION', 'GOLDEN_INTEGRITY_FAILURE')];
+    const s = applyMixedToolchainDowngrade(details, { passed: 1, failed: 1, nonReplayable: 0, compileFailures: 0 }, new Set(['tc-1', 'tc-2']));
+    expect(details[1].status).toBe('FAIL_REGRESSION');
+    expect(details[1].reason).toBe('GOLDEN_INTEGRITY_FAILURE');
+    expect(s.failed).toBe(1);
+  });
+
+  it('★混合 toolchain 不洗 EVALUATE_FAILED（compileFailures 与 failed 不矛盾）', () => {
+    const details = [mk('a', 'PASS'), mk('b', 'FAIL_REGRESSION', 'EVALUATE_FAILED:boom')];
+    const s = applyMixedToolchainDowngrade(details, { passed: 1, failed: 1, nonReplayable: 0, compileFailures: 1 }, new Set(['tc-1', 'tc-2']));
+    // compileFailures 保持 1，failed 保持 1（对应的 EVALUATE_FAILED 未被洗）——不出现 failed<compileFailures 矛盾。
+    expect(s.failed).toBe(1);
+    expect(s.compileFailures).toBe(1);
+    expect(details[1].status).toBe('FAIL_REGRESSION');
+  });
+
+  it('计数守恒：passed+failed+nonReplayable 总数不变', () => {
+    const details = [mk('a', 'PASS'), mk('b', 'PASS'), mk('c', 'FAIL_REGRESSION', 'OUTPUT_HASH_MISMATCH')];
+    const before = { passed: 2, failed: 1, nonReplayable: 0, compileFailures: 0 };
+    const s = applyMixedToolchainDowngrade(details, before, new Set(['tc-1', 'tc-2']));
+    expect(s.passed + s.failed + s.nonReplayable).toBe(before.passed + before.failed + before.nonReplayable);
+  });
+});
+
+describe('caseHash 未知版本 fail-closed — P0-6', () => {
+  const base = {
+    policyId: 'p1',
+    policyVersionRowId: 'v1',
+    functionName: 'f',
+    locale: 'en-US',
+    canonicalInputHash: 'ih',
+    expectedOutputHash: 'oh',
+    canonicalizationVersion: 'aster-canonical-json/v1',
+    aliasSetJson: {},
+    vocabSnapshotRef: [],
+    sourceKind: 'execution',
+  };
+  it('未知 caseHashVersion → 抛错（不静默按 m1.1）', () => {
+    expect(() => computeCaseHash(base, 'case-hash/CORRUPT')).toThrow(/unsupported caseHashVersion/);
+  });
+  it('已知版本 m1.0/m1.1 不抛', () => {
+    expect(() => computeCaseHash(base, CASE_HASH_VERSION_M10)).not.toThrow();
+    expect(() => computeCaseHash(base, CASE_HASH_VERSION)).not.toThrow();
   });
 });
