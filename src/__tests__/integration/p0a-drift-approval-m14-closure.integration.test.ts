@@ -15,7 +15,7 @@
 // ★前置：DB 须已应用 0039 trigger（drizzle-kit push 不跑迁移 SQL——用 pnpm db:migrate 或手 apply 0039）。
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { db, regressionReports, regressionDriftApprovals, regressionCases } from '@/lib/prisma';
 import {
   createDriftApproval,
