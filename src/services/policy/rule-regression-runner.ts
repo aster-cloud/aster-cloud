@@ -36,7 +36,7 @@ import { detectCNLLocale } from './cnl-executor';
  * verifier，任何声称跨升级安全的报告其 toolchain 是自报未验证）。诚实降级：无可信 provenance→不可签字（不假装）。
  * 逻辑变更必须 bump（旧版报告 hash 与新版按各自 runnerVersion 分派公式，不混算——历史可复算铁律）。
  */
-export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.4';
+export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.5';
 
 /** M1 单后端比对模式（诚实标注：基线=冻结快照 hash，非实时重跑 old backend）。 */
 export const COMPARISON_MODE_FROZEN_BASELINE = 'FROZEN_BASELINE_VS_CURRENT_BACKEND';
@@ -255,6 +255,14 @@ export interface RunReport {
    * 自洽性校验（顶层声明须与派生一致，防伪造空 reasons 假装可签字）。m1.0-m1.3 报告无此字段（读路径纯派生）。
    */
   unsignableReasons?: UnsignableReason[];
+  /**
+   * ★P0-A S1（m1.5+，信任层5）：已批准升级证据。approvedTransitionManifestHash = 已验签 upgrade-manifest 的
+   * manifestHash（证「有主体批准了 X→Y 方向升级」）；transitionVerified = 该 manifest 是否验签通过。
+   * ★这是**额外证据**，进 m1.5 reportHash——但**绝不**影响 signability：携此报告仍 UNSIGNABLE（层5≠层3，
+   * provenance 未验证）。m1.0-m1.4 报告无此字段。
+   */
+  approvedTransitionManifestHash?: string | null;
+  transitionVerified?: boolean | null;
 }
 
 const BASELINE_SEMANTICS =
@@ -365,12 +373,16 @@ const REPORT_HASH_VERSION_M11 = 'p0a-runner/m1.1';
 const REPORT_HASH_VERSION_M12 = 'p0a-runner/m1.2';
 const REPORT_HASH_VERSION_M13 = 'p0a-runner/m1.3';
 const REPORT_HASH_VERSION_M14 = 'p0a-runner/m1.4';
+// ★P0-A S1（信任层5）：m1.5 = m1.4 全字段 + 顶层已批准升级证据（approvedTransitionManifestHash +
+// transitionVerified）。这是**额外证据**——绝不改 signability/unsignableReasons 派生，携此报告仍 UNSIGNABLE。
+const REPORT_HASH_VERSION_M15 = 'p0a-runner/m1.5';
 
 /** 逐 case 绑了 caseHash 承诺的 reportHash 版本（golden 完整性可核验）——verify 认这些。 */
 const GOLDEN_COMMITMENT_REPORT_VERSIONS: ReadonlySet<string> = new Set([
   REPORT_HASH_VERSION_M12,
   REPORT_HASH_VERSION_M13,
   REPORT_HASH_VERSION_M14,
+  REPORT_HASH_VERSION_M15,
 ]);
 
 /**
@@ -437,7 +449,8 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
   if (
     report.runnerVersion !== REPORT_HASH_VERSION_M12 &&
     report.runnerVersion !== REPORT_HASH_VERSION_M13 &&
-    report.runnerVersion !== REPORT_HASH_VERSION_M14
+    report.runnerVersion !== REPORT_HASH_VERSION_M14 &&
+    report.runnerVersion !== REPORT_HASH_VERSION_M15
   ) {
     // 未知版本 fail-closed：不静默按新公式算，否则复算者拿到假的「可复算」hash。
     throw new Error(`unsupported reportHash runnerVersion: ${report.runnerVersion}`);
@@ -508,14 +521,37 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
   // deriveReportSignabilityDetail 的 declaredConsistent 判定**同一约束**，防两处漂移），校验通过后按原样绑入。
   const declaredReasons = report.unsignableReasons ?? [];
   if (!isCanonicalReasonList(declaredReasons)) {
-    throw new Error(`non-canonical or unsupported unsignableReasons in m1.4 report: ${JSON.stringify(declaredReasons)}`);
+    throw new Error(`non-canonical or unsupported unsignableReasons in m1.4/m1.5 report: ${JSON.stringify(declaredReasons)}`);
   }
+  if (report.runnerVersion === REPORT_HASH_VERSION_M14) {
+    return canonicalHash({
+      reportHashVersion: report.runnerVersion,
+      status: report.status,
+      signability: report.signability,
+      unsignableLegacyCases: report.unsignableLegacyCases,
+      unsignableReasons: declaredReasons,
+      comparisonMode: report.comparisonMode,
+      baselineSemantics: report.baselineSemantics,
+      policyId: report.policyId,
+      policyVersionRowId: report.policyVersionRowId,
+      currentRuntimeToolchainId: report.currentRuntimeToolchainId,
+      coverage: report.coverage,
+      summary: report.summary,
+      runnerVersion: report.runnerVersion,
+      cases,
+    });
+  }
+  // m1.5（S1）：m1.4 全字段 + 顶层已批准升级证据（approvedTransitionManifestHash + transitionVerified）。
+  // ★这是**额外证据**（层5「批准了 X→Y 方向」），进 hash 供审计/复算；**不**改 signability/unsignableReasons
+  // 派生——携此报告仍 UNSIGNABLE（provenance 层3 未验证）。缺证据时字段为 null（进 hash，向量稳定）。
   return canonicalHash({
     reportHashVersion: report.runnerVersion,
     status: report.status,
     signability: report.signability,
     unsignableLegacyCases: report.unsignableLegacyCases,
     unsignableReasons: declaredReasons,
+    approvedTransitionManifestHash: report.approvedTransitionManifestHash ?? null,
+    transitionVerified: report.transitionVerified ?? null,
     comparisonMode: report.comparisonMode,
     baselineSemantics: report.baselineSemantics,
     policyId: report.policyId,
@@ -1589,6 +1625,10 @@ export function assembleReport(params: {
     signability,
     unsignableLegacyCases,
     unsignableReasons,
+    // ★S1（m1.5）：新 run 产报告时**无** transition 证据（manifest 由后续独立批准流程附加）。默认 null。
+    // ★铁律：这两个字段是额外证据，**不**进 signability/unsignableReasons 派生——携证据的报告仍 UNSIGNABLE。
+    approvedTransitionManifestHash: null,
+    transitionVerified: null,
   };
 }
 
