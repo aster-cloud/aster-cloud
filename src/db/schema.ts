@@ -894,6 +894,53 @@ export const regressionDriftApprovals = pgTable(
   ]
 );
 
+// ★P0-A S1（信任层5 transition authorization）：已签名的 upgrade-manifest，附到回归报告作为「baseline
+// toolchainId X → current Y 是被批准的有方向升级」证据。mirror RegressionDriftApproval（append-only +
+// 父一致性 + 声明身份 SoD 触发器，见迁移 0040）。★S1 不解锁签字：manifest 只证「有主体批准了方向」（层5），
+// **不**证明执行环境是 X/Y（层3）——报告携此仍 UNSIGNABLE（provenance 未验证）。
+export const regressionUpgradeManifests = pgTable(
+  'RegressionUpgradeManifest',
+  {
+    id: text('id').primaryKey().notNull(),
+    // 被证明升级的报告（不可变引用）+ 父一致性字段（INSERT trigger 校验与父报告一致）。
+    reportId: text('reportId')
+      .notNull()
+      .references(() => regressionReports.id, { onDelete: 'no action' }),
+    reportHash: text('reportHash').notNull(),
+    policyId: text('policyId').notNull(),
+    policyVersionRowId: text('policyVersionRowId').notNull(),
+    // 有方向的 X→Y toolchain 对（升级方向；X≠Y 由签名端 signing-api + 应用层强制）。
+    baselineToolchainId: text('baselineToolchainId').notNull(),
+    currentToolchainId: text('currentToolchainId').notNull(),
+    // 签名工件（signing-api RawSignResult）：canonical payload（被签字节）+ Ed25519 签名 + Vault key 版本 +
+    // keyId（独立 regression-transition-signing key，验签按 keyId+purpose 分派信任根）。
+    canonicalPayloadB64url: text('canonicalPayloadB64url').notNull(),
+    signature: text('signature').notNull(),
+    keyId: text('keyId').notNull(),
+    keyVersion: text('keyVersion').notNull(),
+    // 批准人（★声明身份 SoD：声明 approvedBy != report 声明 createdBy——应用层 + 0040 INSERT trigger 双拦。
+    // 诚实：声明身份不相等，非真身份 SoD；真身份来自 2-人 ceremony 的 operator/witness，见 docs/p0a-db-sod-decision.md）。
+    approvedBy: text('approvedBy').notNull(),
+    approvedAt: timestamp('approvedAt', { mode: 'date' }).defaultNow().notNull(),
+    // 有效期（过期后 manifest 失效，须重新批准——防一次批准永久放行）。
+    expiresAt: timestamp('expiresAt', { mode: 'date' }).notNull(),
+    // 撤销（append-only 不删；撤销走此列 + 派生态排除已撤销）。
+    revokedAt: timestamp('revokedAt', { mode: 'date' }),
+    revokedBy: text('revokedBy'),
+    // manifest artifact 防篡改 hash（= sha256(canonical payload bytes)；报告 reportJson 挂它作证据）。
+    manifestHash: text('manifestHash').notNull().unique(),
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('RegressionUpgradeManifest_reportId_idx').on(table.reportId),
+    index('RegressionUpgradeManifest_policyVersionRowId_idx').on(table.policyVersionRowId),
+    // ★一份报告对同一 (baseline,current) transition 只允许**一条有效（未撤销）** manifest（partial unique）。
+    uniqueIndex('RegressionUpgradeManifest_active_unique')
+      .on(table.reportId, table.baselineToolchainId, table.currentToolchainId)
+      .where(sql`${table.revokedAt} IS NULL`),
+  ]
+);
+
 // ============================================
 // Usage Record
 // ============================================
@@ -1880,6 +1927,8 @@ export type RegressionReport = InferSelectModel<typeof regressionReports>;
 export type NewRegressionReport = InferInsertModel<typeof regressionReports>;
 export type RegressionDriftApproval = InferSelectModel<typeof regressionDriftApprovals>;
 export type NewRegressionDriftApproval = InferInsertModel<typeof regressionDriftApprovals>;
+export type RegressionUpgradeManifest = InferSelectModel<typeof regressionUpgradeManifests>;
+export type NewRegressionUpgradeManifest = InferInsertModel<typeof regressionUpgradeManifests>;
 
 export type Team = InferSelectModel<typeof teams>;
 export type NewTeam = InferInsertModel<typeof teams>;

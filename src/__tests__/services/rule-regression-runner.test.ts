@@ -1242,7 +1242,7 @@ describe('Item 4 F — toolchain provenance 诚实降级（m1.4）', () => {
     expect(d.signability).toBe('UNSIGNABLE');
   });
 
-  it('assembleReport 产 m1.4 报告 + unsignableReasons（含 provenance）', () => {
+  it('assembleReport 产 m1.5 报告 + unsignableReasons（含 provenance）+ transition 证据默认 null', () => {
     const cases: CaseCoverageMeta[] = [
       { id: 'c1', expectedDecision: 'approved', sourceKind: 'execution', coverageTags: [] },
       { id: 'c2', expectedDecision: 'approved', sourceKind: 'execution', coverageTags: [] },
@@ -1255,7 +1255,10 @@ describe('Item 4 F — toolchain provenance 诚实降级（m1.4）', () => {
       expectedOutputHash: 'h', actualOutputHash: 'h', baselineToolchainId: 'tc-base', currentToolchainId: 'tc-cur',
     }));
     const r = assemble(cases, details);
-    expect(r.runnerVersion).toBe('p0a-runner/m1.4');
+    // ★S1：新 run 产 m1.5 报告；transition 证据默认 null（manifest 由后续独立批准流程附加）。
+    expect(r.runnerVersion).toBe('p0a-runner/m1.5');
+    expect(r.approvedTransitionManifestHash).toBeNull();
+    expect(r.transitionVerified).toBeNull();
     expect(r.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
     // 有 provenance reason → 该 PASS 报告不可签字通过。
     expect(isSignablePass(r)).toBe(false);
@@ -1357,5 +1360,78 @@ describe('Item 4 F — toolchain provenance 诚实降级（m1.4）', () => {
     };
     expect(_drsd(forged).declaredConsistent).toBe(false);
     expect(isDriftApprovable(forged)).toBe(false);
+  });
+});
+
+// ============ P0-A S1（m1.5）：已批准升级证据（层5）——★铁律：携证据报告仍 UNSIGNABLE ============
+
+describe('P0-A S1 — m1.5 transition 证据（层5，不解锁签字）', () => {
+  // m1.5 报告基体：cross-toolchain PASS（派生 provenance）+ 携 transition 证据。
+  const m15Base = () => ({
+    ...fixedReportBody('p0a-runner/m1.5'),
+    signability: 'UNSIGNABLE' as const,
+    unsignableReasons: ['TOOLCHAIN_PROVENANCE_UNVERIFIED'] as _UR[],
+  });
+
+  it('★铁律：m1.5 报告**携已验签 transition 证据**仍派生 UNSIGNABLE（层5≠层3，provenance 未验证）', () => {
+    // manifest 已验签（transitionVerified=true）也**不**移除 TOOLCHAIN_PROVENANCE_UNVERIFIED。
+    const withEvidence = {
+      ...m15Base(),
+      approvedTransitionManifestHash: 'mh-abc',
+      transitionVerified: true,
+    };
+    const d = _drsd(withEvidence);
+    expect(d.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+    expect(d.signability).toBe('UNSIGNABLE');
+    // isSignablePass 恒 false（status===PASS 但 provenance 未验证）——携 manifest 不改变。
+    expect(isSignablePass({ ...withEvidence, status: 'PASS' })).toBe(false);
+  });
+
+  it('★m1.5 golden 向量冻结 + transition 证据**不进** hash（Codex 复审 P1-4：证据是报告外可撤销 artifact）', () => {
+    const base = {
+      status: 'PASS' as const, comparisonMode: 'FROZEN_BASELINE_VS_CURRENT_BACKEND' as const,
+      baselineSemantics: 'sem', policyId: 'pol-1', policyVersionRowId: 'pv-1', currentRuntimeToolchainId: 'tc-cur',
+      coverage: { totalCases: 1, runnableCases: 1, approvedCases: 1, deniedCases: 0, handwrittenBoundaryCases: 1,
+        thresholds: { minRunnableCases: 1, minApprovedCases: 1, minDeniedCases: 0, minHandwrittenBoundaryCases: 1 }, unmet: [] },
+      summary: { passed: 1, failed: 0, nonReplayable: 0, compileFailures: 0 },
+      cases: [{ caseId: 'c1', status: 'PASS' as const, caseHash: 'CASEHASH-1', caseHashVersion: 'case-hash/m1.1',
+        functionName: 'greet', locale: 'en-US', coverageTags: ['boundary'], sourceKind: 'execution' as const,
+        expectedInputHash: 'ei1', actualInputHash: 'ai1', expectedOutputHash: 'eo1', actualOutputHash: 'ao1',
+        baselineToolchainId: 'tc-base', currentToolchainId: 'tc-cur' }],
+      runnerVersion: 'p0a-runner/m1.5' as const, signability: 'UNSIGNABLE' as const, unsignableLegacyCases: 0,
+      unsignableReasons: ['TOOLCHAIN_PROVENANCE_UNVERIFIED'] as _UR[],
+    };
+    // 冻结向量。
+    const V = 'f7fda1d254657b40af153cd662eac8d78d97c5c1480b6dc05fcd70c099221f8e';
+    expect(computeReportHash({ ...base })).toBe(V);
+    // ★transition 证据字段**不影响** hash（携证据/不携证据同 hash）——证据由独立 manifest 表派生，报告 hash
+    // 不承诺可撤销的事后 artifact。
+    expect(computeReportHash({ ...base, approvedTransitionManifestHash: 'mh-abc', transitionVerified: true })).toBe(V);
+    expect(computeReportHash({ ...base, approvedTransitionManifestHash: null, transitionVerified: null })).toBe(V);
+    // m1.5 与 m1.4 结构相同仅版本串不同 → 不同 hash（正常）。
+    expect(computeReportHash({ ...base, runnerVersion: 'p0a-runner/m1.4' })).not.toBe(V);
+  });
+
+  it('★Codex 复审 P1-1：m1.5 lying artifact——声明 SIGNABLE+空 reasons 但 cases 派生 UNSIGNABLE → declaredConsistent=false', () => {
+    // m1.5 须与 m1.4 共用严格声明一致性（否则落旧默认分支 declaredConsistent 恒 true = lying artifact 漏网）。
+    const base = fixedReportBody('p0a-runner/m1.5');
+    const lying = {
+      ...base,
+      status: 'PASS' as const,
+      signability: 'SIGNABLE' as const, // 谎称可签字
+      unsignableReasons: [] as _UR[], // 谎称空 reasons
+      unsignableLegacyCases: 0,
+    };
+    const d = _drsd(lying);
+    expect(d.declaredConsistent).toBe(false); // 派生事实 = UNSIGNABLE(provenance)，与声明矛盾 → fail-closed
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('★assembleReport 新 run 产 m1.5 + transition 证据默认 null', () => {
+    const { cases, details } = coverageSatisfyingCases();
+    const r = assemble(cases, details);
+    expect(r.runnerVersion).toBe('p0a-runner/m1.5');
+    expect(r.approvedTransitionManifestHash).toBeNull();
+    expect(r.transitionVerified).toBeNull();
   });
 });

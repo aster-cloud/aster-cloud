@@ -36,7 +36,7 @@ import { detectCNLLocale } from './cnl-executor';
  * verifier，任何声称跨升级安全的报告其 toolchain 是自报未验证）。诚实降级：无可信 provenance→不可签字（不假装）。
  * 逻辑变更必须 bump（旧版报告 hash 与新版按各自 runnerVersion 分派公式，不混算——历史可复算铁律）。
  */
-export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.4';
+export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.5';
 
 /** M1 单后端比对模式（诚实标注：基线=冻结快照 hash，非实时重跑 old backend）。 */
 export const COMPARISON_MODE_FROZEN_BASELINE = 'FROZEN_BASELINE_VS_CURRENT_BACKEND';
@@ -255,6 +255,16 @@ export interface RunReport {
    * 自洽性校验（顶层声明须与派生一致，防伪造空 reasons 假装可签字）。m1.0-m1.3 报告无此字段（读路径纯派生）。
    */
   unsignableReasons?: UnsignableReason[];
+  /**
+   * ★P0-A S1（信任层5）：已批准升级证据。approvedTransitionManifestHash = 已验签 upgrade-manifest 的
+   * manifestHash（证「有主体批准了 X→Y 方向升级」）；transitionVerified = 该 manifest 是否验签通过。
+   * ★★这是**非持久化的 API view 字段**（Codex 复审 P1-4）——**不进** reportHash（报告 append-only，运行后
+   * 无法写证据；证据是报告外、可撤销、可过期的独立 manifest artifact）。由读路径 deriveReportTransitionEvidence
+   * **重新验签** manifest 表动态派生填充。**绝不**影响 signability：携此报告仍 UNSIGNABLE（层5≠层3，provenance
+   * 未验证）。assembleReport 产报告时恒 null。
+   */
+  approvedTransitionManifestHash?: string | null;
+  transitionVerified?: boolean | null;
 }
 
 const BASELINE_SEMANTICS =
@@ -365,12 +375,16 @@ const REPORT_HASH_VERSION_M11 = 'p0a-runner/m1.1';
 const REPORT_HASH_VERSION_M12 = 'p0a-runner/m1.2';
 const REPORT_HASH_VERSION_M13 = 'p0a-runner/m1.3';
 const REPORT_HASH_VERSION_M14 = 'p0a-runner/m1.4';
+// ★P0-A S1（信任层5）：m1.5 = m1.4 全字段 + 顶层已批准升级证据（approvedTransitionManifestHash +
+// transitionVerified）。这是**额外证据**——绝不改 signability/unsignableReasons 派生，携此报告仍 UNSIGNABLE。
+const REPORT_HASH_VERSION_M15 = 'p0a-runner/m1.5';
 
 /** 逐 case 绑了 caseHash 承诺的 reportHash 版本（golden 完整性可核验）——verify 认这些。 */
 const GOLDEN_COMMITMENT_REPORT_VERSIONS: ReadonlySet<string> = new Set([
   REPORT_HASH_VERSION_M12,
   REPORT_HASH_VERSION_M13,
   REPORT_HASH_VERSION_M14,
+  REPORT_HASH_VERSION_M15,
 ]);
 
 /**
@@ -437,7 +451,8 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
   if (
     report.runnerVersion !== REPORT_HASH_VERSION_M12 &&
     report.runnerVersion !== REPORT_HASH_VERSION_M13 &&
-    report.runnerVersion !== REPORT_HASH_VERSION_M14
+    report.runnerVersion !== REPORT_HASH_VERSION_M14 &&
+    report.runnerVersion !== REPORT_HASH_VERSION_M15
   ) {
     // 未知版本 fail-closed：不静默按新公式算，否则复算者拿到假的「可复算」hash。
     throw new Error(`unsupported reportHash runnerVersion: ${report.runnerVersion}`);
@@ -508,8 +523,14 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
   // deriveReportSignabilityDetail 的 declaredConsistent 判定**同一约束**，防两处漂移），校验通过后按原样绑入。
   const declaredReasons = report.unsignableReasons ?? [];
   if (!isCanonicalReasonList(declaredReasons)) {
-    throw new Error(`non-canonical or unsupported unsignableReasons in m1.4 report: ${JSON.stringify(declaredReasons)}`);
+    throw new Error(`non-canonical or unsupported unsignableReasons in m1.4/m1.5 report: ${JSON.stringify(declaredReasons)}`);
   }
+  // m1.4（Item 4 F）+ m1.5（S1）：共用同一 hash 公式（reportHashVersion=runnerVersion 已区分两版本）。
+  // ★Codex 复审 P1-4：transition 证据（approvedTransitionManifestHash/transitionVerified）**不进** reportHash
+  // ——报告是**不可变** artifact（0037 append-only），运行后无法把事后附加、**可撤销**的 manifest 证据写进报告；
+  // 强行进 hash 会变死字段（恒 null）且自相矛盾（hash 承诺一个可撤销的东西）。证据由独立 manifest 表 + 读路径
+  // 重新验签派生（deriveReportTransitionEvidence），报告 hash 只承诺 run 时事实。m1.5 与 m1.4 hash 结构相同，
+  // 仅版本串不同（=不同 hash，正常）。
   return canonicalHash({
     reportHashVersion: report.runnerVersion,
     status: report.status,
@@ -1589,6 +1610,10 @@ export function assembleReport(params: {
     signability,
     unsignableLegacyCases,
     unsignableReasons,
+    // ★S1（m1.5）：新 run 产报告时**无** transition 证据（manifest 由后续独立批准流程附加）。默认 null。
+    // ★铁律：这两个字段是额外证据，**不**进 signability/unsignableReasons 派生——携证据的报告仍 UNSIGNABLE。
+    approvedTransitionManifestHash: null,
+    transitionVerified: null,
   };
 }
 
@@ -1646,10 +1671,14 @@ export function deriveReportSignabilityDetail(
   // GOLDEN_INTEGRITY_UNSIGNABLE_REASONS 注释）。声明不自洽时下方各分支会再叠 declaredConsistent 收紧。
   const goldenIntegrityClean = !derivedReasons.some((r) => GOLDEN_INTEGRITY_UNSIGNABLE_REASONS.has(r));
 
-  if (report.runnerVersion === REPORT_HASH_VERSION_M14) {
-    // ★m1.4：顶层声明（signability + count + reasons）进 reportHash，但 hash 只证「声明没变」不证「声明正确」
-    // ——必须与派生事实**严格**一致。★Codex 复审致命 2：顶层 reasons 含未知/重复/非 canonical → 声明结构损坏
-    // （**不**先过滤再比——过滤=fail-open）。矛盾（漏报 reason 假装可签字 / 注入未知）→ fail-closed。
+  if (
+    report.runnerVersion === REPORT_HASH_VERSION_M14 ||
+    report.runnerVersion === REPORT_HASH_VERSION_M15
+  ) {
+    // ★m1.4/m1.5：顶层声明（signability + count + reasons）进 reportHash，但 hash 只证「声明没变」不证「声明
+    // 正确」——必须与派生事实**严格**一致。★Codex 复审致命 2 + S1 复审 P1：m1.5 必须与 m1.4 共用此严格分支
+    // （否则 m1.5 落旧版本默认分支 declaredConsistent 恒 true → 可构造 hash 自洽却声明 SIGNABLE 的 lying artifact）。
+    // 顶层 reasons 含未知/重复/非 canonical → 声明结构损坏（不过滤=fail-open）。矛盾 → fail-closed。
     const declared = report.unsignableReasons ?? [];
     const reasonsConsistent =
       isCanonicalReasonList(declared) &&

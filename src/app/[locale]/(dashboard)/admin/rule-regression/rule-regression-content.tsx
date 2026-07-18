@@ -28,6 +28,9 @@ interface ReportRow {
   verified?: boolean;
   // ★Item 4 F：完整不可签字原因（含 TOOLCHAIN_PROVENANCE_UNVERIFIED）。UI 据此显各维度 badge。
   unsignableReasons?: string[];
+  // ★S1（层5）：是否有活跃已批准升级 manifest。显「已批准升级」badge——诚实：这是层5 证据，**不**解锁签字
+  //（报告仍 UNSIGNABLE，provenance 未验证）。旧后端缺此字段视为 false。
+  transitionVerified?: boolean;
 }
 
 interface CaseRow {
@@ -201,6 +204,16 @@ export function RuleRegressionContent() {
                                 title={t('signabilityProvenanceHint')}
                               >
                                 {t('signabilityProvenance')}
+                              </span>
+                            )}
+                            {/* ★S1（层5）：已批准升级 manifest badge——诚实：这是「批准了 X→Y 方向」的证据（层5），
+                                **不**解锁签字（报告仍不可签字，provenance 层3 未验证）。故用中性 indigo，非绿色。 */}
+                            {r.transitionVerified === true && (
+                              <span
+                                className="rounded px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                title={t('transitionApprovedHint')}
+                              >
+                                {t('transitionApproved')}
                               </span>
                             )}
                             {/* ★F1：列表是声明态（verified!==true）——可签字的报告标「声明可签字·待核验」，提醒 CCO
