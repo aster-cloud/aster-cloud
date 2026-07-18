@@ -39,9 +39,17 @@ export interface SignedLicenseResult {
   canonicalPayloadB64url: string;
 }
 
+/** signing-api 支持的 purpose（与 aster-deploy signing-api PurposeSchema 对齐）。 */
+export type SigningPurpose = 'license' | 'revocation' | 'regression-transition';
+
 export interface SigningClientConfig {
   baseUrl: string;
   signingKeyId: string;
+  /**
+   * ★P0-A S1：签名 purpose（默认 'license'，向后兼容——现有 license 调用不传即 license）。
+   * regression-transition 用独立 keyId（密钥分离），signing-api 按 purpose↔key 前缀强制绑定。
+   */
+  purpose?: SigningPurpose;
   /** JWT issuer the signing-api expects (configured via BILLING_JWT_ISSUER on server). */
   issuer: string;
   /** JWT audience the signing-api enforces (e.g. 'aster-license-signing-api'). */
@@ -185,6 +193,39 @@ export async function signLicensePayload(
     throw new Error('[license-signing-client] IS_SAAS=false; refusing to call signing-api');
   }
   const cfg: SigningClientConfig = { ...getConfig(), ...overrides };
+  const raw = await signPayloadRaw(payload, cfg);
+
+  // Reconstruct full license key. signing-api returns canonicalPayload
+  // already b64url-encoded — same bytes verifier feeds to crypto.verify.
+  const licenseKey = `aster-ent-v2-${cfg.signingKeyId}-${raw.canonicalPayloadB64url}.${raw.signature}`;
+  return {
+    licenseKey,
+    payloadHash: raw.payloadHash,
+    keyVersion: raw.keyVersion,
+    canonicalPayloadB64url: raw.canonicalPayloadB64url,
+  };
+}
+
+/** 原始签名结果（无 license-key envelope 重组）——manifest 签发直接持久化这些字段。 */
+export interface RawSignResult {
+  canonicalPayloadB64url: string;
+  signature: string;
+  keyVersion: string;
+  /** sha256(canonical payload bytes) hex——审计 / artifact hash。 */
+  payloadHash: string;
+}
+
+/**
+ * ★共享 2-人 approve+sign 核心（purpose-无关）。签任意 payload，返回原始签名结果（不含 license
+ * envelope）。license 走 signLicensePayload（在此之上重组 aster-ent-v2- key）；regression-transition
+ * 走 signRegressionTransition（直接用原始结果）。cfg.purpose 决定 signing-api 分派（license/regression-
+ * transition）+ keyId 前缀绑定（密钥分离）。
+ */
+async function signPayloadRaw(
+  payload: Record<string, unknown>,
+  cfg: SigningClientConfig,
+): Promise<RawSignResult> {
+  const purpose: SigningPurpose = cfg.purpose ?? 'license';
   const timeoutMs = cfg.timeoutMs ?? 10_000;
 
   const operatorJwt = mintJwt({
@@ -206,7 +247,7 @@ export async function signLicensePayload(
         'x-operator-jwt': operatorJwt,
       },
       body: JSON.stringify({
-        purpose: 'license',
+        purpose,
         keyId: cfg.signingKeyId,
         payload,
       }),
@@ -240,7 +281,7 @@ export async function signLicensePayload(
         'x-witness-jwt': witnessJwt,
       },
       body: JSON.stringify({
-        purpose: 'license',
+        purpose,
         keyId: cfg.signingKeyId,
         payload,
         approvalToken: approveBody.approvalToken,
@@ -260,18 +301,46 @@ export async function signLicensePayload(
     throw new Error('[license-signing-client] /v1/sign returned incomplete body');
   }
 
-  // Reconstruct full license key. signing-api returns canonicalPayload
-  // already b64url-encoded — same bytes verifier feeds to crypto.verify.
+  // signing-api 返回 canonicalPayload 已 b64url——即 verifier 喂给 crypto.verify 的确切字节。
   const canonicalBytes = Buffer.from(signBody.canonicalPayload, 'base64url');
   const payloadHash = sha256Hex(canonicalBytes.toString('utf8'));
-  const licenseKey = `aster-ent-v2-${cfg.signingKeyId}-${signBody.canonicalPayload}.${signBody.signature}`;
-
   return {
-    licenseKey,
-    payloadHash,
-    keyVersion: signBody.keyVersion,
     canonicalPayloadB64url: signBody.canonicalPayload,
+    signature: signBody.signature,
+    keyVersion: signBody.keyVersion,
+    payloadHash,
   };
+}
+
+/**
+ * ★P0-A S1：签一个 regression-transition upgrade-manifest（信任层5）。复用共享 2-人 ceremony
+ * （signPayloadRaw），purpose='regression-transition' + 独立 keyId（密钥分离）。返回**原始**签名结果
+ * （无 license envelope）——调用方持久化 {canonicalPayloadB64url, signature, keyVersion, keyId}，
+ * cloud 侧用 verifyRegressionTransition 验签。
+ *
+ * config 从独立 env 载（REGRESSION_TRANSITION_SIGNING_KEY_ID + 复用 LICENSE_SIGNING_API_URL/BILLING_* JWT
+ * ——2-人 ceremony 身份共享，密钥分离靠 keyId+purpose）。overrides 供测试注入。
+ */
+export async function signRegressionTransition(
+  manifest: Record<string, unknown>,
+  overrides: Partial<SigningClientConfig> = {},
+): Promise<RawSignResult & { keyId: string }> {
+  if (typeof __DEPLOYMENT_MODE__ !== 'undefined' && __DEPLOYMENT_MODE__ !== 'saas') {
+    throw new Error('[license-signing-client] regression-transition signing unavailable in on-prem build');
+  }
+  if (!IS_SAAS) {
+    throw new Error('[license-signing-client] IS_SAAS=false; refusing to call signing-api');
+  }
+  const base = getConfig();
+  const cfg: SigningClientConfig = {
+    ...base,
+    // 独立 keyId（密钥分离）。默认从专用 env；未配则回落到显式 override（测试）。
+    signingKeyId: (process.env.REGRESSION_TRANSITION_SIGNING_KEY_ID ?? base.signingKeyId).trim(),
+    purpose: 'regression-transition',
+    ...overrides,
+  };
+  const raw = await signPayloadRaw(manifest, cfg);
+  return { ...raw, keyId: cfg.signingKeyId };
 }
 
 // ───────── Errors + fetch helpers ─────────

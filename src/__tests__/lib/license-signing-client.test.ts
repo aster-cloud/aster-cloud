@@ -21,6 +21,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { generateKeyPairSync } from 'node:crypto';
 import {
   signLicensePayload,
+  signRegressionTransition,
   canonicalStringify,
   sha256Hex,
   SigningApiError,
@@ -198,5 +199,75 @@ describe.skipIf(process.env.DEPLOYMENT_MODE === 'on-prem')('signLicensePayload',
       });
     }) as typeof fetch;
     await expect(signLicensePayload(SAMPLE_PAYLOAD)).rejects.toThrow();
+  });
+});
+
+// ── P0-A S1：signRegressionTransition（复用共享 ceremony，purpose+独立 keyId）──
+
+const REGR_MANIFEST = {
+  schemaVersion: 1,
+  purpose: 'regression-transition',
+  baselineToolchainId: 'abi=1.0;core=1.0.13;validator=1;build=oldsha',
+  currentToolchainId: 'abi=1.0;core=1.0.14;validator=1;build=newsha',
+  policyId: 'pol-1',
+  approvedBy: 'user-approver',
+};
+
+describe.skipIf(process.env.DEPLOYMENT_MODE === 'on-prem')('signRegressionTransition', () => {
+  const realFetch = globalThis.fetch;
+  const REGR_KEY = 'regression-transition-signing-v2-2026-01';
+
+  beforeEach(() => {
+    __setConfigForTests(testConfig());
+    process.env.REGRESSION_TRANSITION_SIGNING_KEY_ID = REGR_KEY;
+  });
+  afterEach(() => {
+    __setConfigForTests(null);
+    delete process.env.REGRESSION_TRANSITION_SIGNING_KEY_ID;
+    globalThis.fetch = realFetch;
+  });
+
+  it('★approve+sign 带 purpose=regression-transition + 独立 keyId → 返回 raw 结果（含 keyId，无 license envelope）', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : (input as URL | Request).toString();
+      bodies.push(JSON.parse((init?.body as string) ?? '{}'));
+      if (url.endsWith('/v1/approve')) {
+        return new Response(JSON.stringify({ approvalToken: 'a'.repeat(64) }), { status: 200 });
+      }
+      return new Response(
+        JSON.stringify({
+          signature: 'regr_sig_b64url',
+          keyVersion: '1',
+          canonicalPayload: Buffer.from(canonicalStringify(REGR_MANIFEST), 'utf8').toString('base64url'),
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    const result = await signRegressionTransition(REGR_MANIFEST);
+
+    // ★请求体带正确 purpose + 独立 keyId（密钥分离）——approve 和 sign 两次都是。
+    expect(bodies).toHaveLength(2);
+    for (const b of bodies) {
+      expect(b.purpose).toBe('regression-transition');
+      expect(b.keyId).toBe(REGR_KEY);
+    }
+    // ★返回 raw 结果：有 keyId + 签名字段，**无** license envelope（licenseKey）。
+    expect(result.keyId).toBe(REGR_KEY);
+    expect(result.signature).toBe('regr_sig_b64url');
+    expect(result.keyVersion).toBe('1');
+    expect(result.canonicalPayloadB64url).toBeTruthy();
+    expect(result.payloadHash).toMatch(/^[0-9a-f]{64}$/);
+    expect((result as unknown as Record<string, unknown>).licenseKey).toBeUndefined();
+  });
+
+  it('★signing-api 400（错 purpose-key）→ SigningApiError', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as URL | Request).toString();
+      if (url.endsWith('/v1/approve')) return new Response('{"error":"purpose-key-mismatch"}', { status: 400 });
+      throw new Error('should not reach sign');
+    }) as typeof fetch;
+    await expect(signRegressionTransition(REGR_MANIFEST)).rejects.toBeInstanceOf(SigningApiError);
   });
 });
