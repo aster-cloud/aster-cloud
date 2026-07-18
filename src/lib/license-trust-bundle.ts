@@ -10,7 +10,11 @@
 //     时若发现 bundle 仍为 dev 占位会 throw，阻止启动
 
 export type TrustBundleEntryStatus = 'active' | 'verify-only' | 'retired';
-export type TrustBundleEntryPurpose = 'license' | 'revocation';
+// ★P0-A S1（信任层5 transition authorization）：新增 regression-transition purpose，验签 aster-deploy
+// signing-api 用**独立 Vault Transit key**（regression-transition-signing-*）签的 upgrade-manifest。
+// purpose 严格分离——findTrustedKey(keyId, purpose) 按 purpose 分派信任根，regression-transition 的
+// manifest 绝不 fall back 到 license/revocation 公钥（密钥分离，承 PR-A）。
+export type TrustBundleEntryPurpose = 'license' | 'revocation' | 'regression-transition';
 
 export interface TrustBundleEntry {
   /** 例如 'lic-2026-01'，与 Vault transit key name 对应。 */
@@ -41,6 +45,11 @@ const DEV_LIC_FINGERPRINT =
 const DEV_REV_PUBKEY = 'SSeCAGEh4Ko0poy4qq8HO1p+43yKeRUWwxwlHg2zkVg=';
 const DEV_REV_FINGERPRINT =
   'c3f2bce0cefb3b4f43b5e5e409d8960fa5c770dee678782fc61db110c6fecfd9';
+// P0-A S1：regression-transition 的 DEV 占位公钥（真实 Ed25519，非全零/非 low-order）。生产 build 经
+// release pipeline 用 Vault 提取的真实 regression-transition-signing 公钥替换（同 license/revocation）。
+const DEV_REGR_PUBKEY = 'E1XqwNARB3uUl8cUx5Twsljfb5DtxCJI+jMir008iLw=';
+const DEV_REGR_FINGERPRINT =
+  'd3fb64302c666835119520fd43eb40c65dacdea8f8539c646e463907799867b2';
 
 // 已知 Ed25519 small-order 公钥（应被显式拒绝以防 forgery）
 // 来源：cryptography.io / RFC 8032 附录 A.3 列出的低阶 generator
@@ -71,6 +80,14 @@ const BASE_BUNDLE: readonly TrustBundleEntry[] = [
     status: 'active',
     activatedAt: '2026-01-01T00:00:00.000Z',
     fingerprint: DEV_REV_FINGERPRINT,
+  },
+  {
+    keyId: '__dev-regr-2026-01__',
+    purpose: 'regression-transition',
+    pubKey: DEV_REGR_PUBKEY,
+    status: 'active',
+    activatedAt: '2026-01-01T00:00:00.000Z',
+    fingerprint: DEV_REGR_FINGERPRINT,
   },
 ] as const;
 
