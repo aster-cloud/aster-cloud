@@ -15,6 +15,7 @@ import { __setConfigForTests, canonicalStringify } from '@/lib/license-signing-c
 import {
   createUpgradeManifest,
   deriveReportTransitionEvidence,
+  reportIdsWithVerifiedTransition,
 } from '@/services/policy/regression-upgrade-manifest';
 import { deriveReportSignabilityDetail, type RunReport } from '@/services/policy/rule-regression-runner';
 import { setupTestDb, teardownTestDb } from './setup-postgres';
@@ -200,6 +201,71 @@ describe.skipIf(process.env.LICENSE_E2E !== '1' || process.env.DEPLOYMENT_MODE =
       const ev = await deriveReportTransitionEvidence(REP);
       expect(ev.approvedTransitionManifestHash).toBeNull();
       expect(ev.transitionVerified).toBeNull();
+    });
+
+    it('★★Codex 复审 v2 P0：合法签名**改挂别报告**（存储 reportId/reportHash 改）→ 读路径拒（签名体 reportHash 不符）', async () => {
+      // 先合法签一个 manifest（针对 REP）。
+      const r = await createUpgradeManifest({
+        reportId: REP, baselineToolchainId: X, currentToolchainId: Y,
+        approvedBy: APPROVER, expiresAt: new Date(Date.now() + 365 * 24 * 3600_000),
+      });
+      // 造第二份报告（同 policy 不同 reportHash）。
+      await db.insert(regressionReports).values({
+        id: 'rep-tm-2', policyId: POL, policyVersionRowId: PVR, status: 'PASS',
+        comparisonMode: 'FROZEN_BASELINE_VS_CURRENT_BACKEND', caseCount: 4, runnableCaseCount: 4,
+        passedCaseCount: 4, failedCaseCount: 0, nonReplayableCaseCount: 0,
+        coverageJson: reportJson().coverage, reportJson: reportJson() as unknown as object,
+        reportHash: 'rhash-tm-2', currentRuntimeToolchainId: Y, createdBy: CREATOR,
+      } as typeof regressionReports.$inferInsert);
+      // 攻击：直改存储行改挂到 rep-tm-2（存储 reportId/reportHash 改，但签名体仍绑 REP 的 rhash-tm-1）。
+      // append-only guard 冻结列，须绕 trigger 直改（模拟 DB 层攻击）。
+      await db.execute(sql`SET session_replication_role = replica`);
+      await db.execute(sql`UPDATE "RegressionUpgradeManifest" SET "reportId"='rep-tm-2',"reportHash"='rhash-tm-2' WHERE id=${r.manifestId}`);
+      await db.execute(sql`SET session_replication_role = DEFAULT`);
+      // ★读路径重新验签：签名体 reportHash=rhash-tm-1 ≠ 存储/父报告 rhash-tm-2 → 拒。
+      const ev = await deriveReportTransitionEvidence('rep-tm-2');
+      expect(ev.transitionVerified).toBeNull();
+    });
+
+    it('★★Codex 复审 v2 P0：合法签名**延寿**（存储 expiresAt 改长）→ 读路径拒（签名体 expiresAt 不符）', async () => {
+      const shortExpiry = new Date(Date.now() + 60_000); // 1 分钟后过期
+      const r = await createUpgradeManifest({
+        reportId: REP, baselineToolchainId: X, currentToolchainId: Y,
+        approvedBy: APPROVER, expiresAt: shortExpiry,
+      });
+      // 攻击：直改存储 expiresAt 延长到 1 年后（签名体仍是 shortExpiry）。
+      await db.execute(sql`SET session_replication_role = replica`);
+      await db.execute(sql`UPDATE "RegressionUpgradeManifest" SET "expiresAt"=${new Date(Date.now() + 365 * 24 * 3600_000).toISOString()} WHERE id=${r.manifestId}`);
+      await db.execute(sql`SET session_replication_role = DEFAULT`);
+      // ★读路径：签名体 expiresAt(short) ≠ 存储 expiresAt(延长) → 拒。
+      const ev = await deriveReportTransitionEvidence(REP);
+      expect(ev.transitionVerified).toBeNull();
+    });
+
+    it('★Codex 复审 v2：列表 reportIdsWithVerifiedTransition 也重新验签——伪造行不显 badge（防双口径）', async () => {
+      await db.execute(sql`
+        INSERT INTO "RegressionUpgradeManifest"(id,"reportId","reportHash","policyId","policyVersionRowId",
+          "baselineToolchainId","currentToolchainId","canonicalPayloadB64url",signature,"keyId","keyVersion",
+          "approvedBy","expiresAt","manifestHash")
+        VALUES ('mf-list-forged',${REP},'rhash-tm-1',${POL},${PVR},${X},${Y},'ZmFrZQ','ZmFrZXNpZw',${REGR_KEY},'1',
+          ${APPROVER},${new Date(Date.now() + 365 * 24 * 3600_000).toISOString()},'mh-list-forged')
+      `);
+      const verified = await reportIdsWithVerifiedTransition([REP]);
+      expect(verified.has(REP)).toBe(false); // 伪造行不显 badge
+    });
+
+    it('★Codex 复审 v2 P1：currentRuntimeToolchainId=null（mixed）→ create fail-closed', async () => {
+      await db.insert(regressionReports).values({
+        id: 'rep-tm-null', policyId: POL, policyVersionRowId: PVR, status: 'PASS',
+        comparisonMode: 'FROZEN_BASELINE_VS_CURRENT_BACKEND', caseCount: 1, runnableCaseCount: 1,
+        passedCaseCount: 1, failedCaseCount: 0, nonReplayableCaseCount: 0,
+        coverageJson: reportJson().coverage, reportJson: reportJson() as unknown as object,
+        reportHash: 'rhash-tm-null', currentRuntimeToolchainId: null, createdBy: CREATOR,
+      } as typeof regressionReports.$inferInsert);
+      await expect(createUpgradeManifest({
+        reportId: 'rep-tm-null', baselineToolchainId: X, currentToolchainId: Y,
+        approvedBy: APPROVER, expiresAt: new Date(Date.now() + 3600_000),
+      })).rejects.toThrow(/no single currentRuntimeToolchainId/);
     });
   }
 );

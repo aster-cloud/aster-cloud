@@ -256,10 +256,12 @@ export interface RunReport {
    */
   unsignableReasons?: UnsignableReason[];
   /**
-   * ★P0-A S1（m1.5+，信任层5）：已批准升级证据。approvedTransitionManifestHash = 已验签 upgrade-manifest 的
+   * ★P0-A S1（信任层5）：已批准升级证据。approvedTransitionManifestHash = 已验签 upgrade-manifest 的
    * manifestHash（证「有主体批准了 X→Y 方向升级」）；transitionVerified = 该 manifest 是否验签通过。
-   * ★这是**额外证据**，进 m1.5 reportHash——但**绝不**影响 signability：携此报告仍 UNSIGNABLE（层5≠层3，
-   * provenance 未验证）。m1.0-m1.4 报告无此字段。
+   * ★★这是**非持久化的 API view 字段**（Codex 复审 P1-4）——**不进** reportHash（报告 append-only，运行后
+   * 无法写证据；证据是报告外、可撤销、可过期的独立 manifest artifact）。由读路径 deriveReportTransitionEvidence
+   * **重新验签** manifest 表动态派生填充。**绝不**影响 signability：携此报告仍 UNSIGNABLE（层5≠层3，provenance
+   * 未验证）。assembleReport 产报告时恒 null。
    */
   approvedTransitionManifestHash?: string | null;
   transitionVerified?: boolean | null;

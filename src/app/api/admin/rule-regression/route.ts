@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
 import { db, auditLogs, policies, regressionReports, regressionCases, regressionDriftApprovals, regressionUpgradeManifests } from '@/lib/prisma';
-import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import {
   freezeFromExecutions,
   freezeHandwritten,
@@ -31,6 +31,7 @@ import {
 import {
   createUpgradeManifest,
   deriveReportTransitionEvidence,
+  reportIdsWithVerifiedTransition,
 } from '@/services/policy/regression-upgrade-manifest';
 
 export const runtime = 'nodejs';
@@ -157,22 +158,11 @@ export async function GET(req: NextRequest) {
 
   // ★S1（层5）：批量查所有报告的**活跃**（未撤销）manifest → 每报告是否有 transition 证据（避免 N+1）。
   // ★这只是**额外证据** badge——绝不影响 signability/signablePass（携证据报告仍 UNSIGNABLE，层5≠层3）。
-  // ★Codex 复审 P1：批量查活跃 manifest 须**同时**过滤未撤销 + **未过期**（详情走 deriveReportTransitionEvidence
-  // 已过滤 expiry，列表也必须一致，否则已过期 manifest 仍显 badge）。★注意：列表 badge 是弱信号——真实性由
-  // 详情/读路径的**重新验签**保证（见 deriveReportTransitionEvidence），列表仅显「有活跃 manifest 行」。
-  const listNow = new Date();
+  // ★Codex 复审 P0/P1：列表与详情**共用**验签逻辑（防双口径）——列表也**重新验签**每个候选 manifest，只有
+  // 验签通过 + 全字段绑定的报告才显「已批准升级」。绝不因「表里有行」就标 transitionVerified（伪造/重放/延寿
+  // 都被挡）。批量取行逐个验签（≤50 报告，非 N+1 重复查）。
   const reportIds = reportRows.map((r) => r.id);
-  const activeManifests = reportIds.length
-    ? await db.query.regressionUpgradeManifests.findMany({
-        where: and(
-          inArray(regressionUpgradeManifests.reportId, reportIds),
-          isNull(regressionUpgradeManifests.revokedAt),
-          gt(regressionUpgradeManifests.expiresAt, listNow)
-        ),
-        columns: { reportId: true },
-      })
-    : [];
-  const reportIdsWithTransition = new Set(activeManifests.map((m) => m.reportId));
+  const reportIdsWithTransition = await reportIdsWithVerifiedTransition(reportIds);
 
   // ★Item 2：每份报告派生 signability + signablePass（不回传庞大 reportJson，只投影签字资格）。
   // ★F1（独立审查）：列表**不做**全核验（N 份报告 × 全 golden 重算成本高）——signablePass 只从存储 reportJson

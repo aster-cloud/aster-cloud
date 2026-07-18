@@ -12,7 +12,7 @@
 //   - 声明身份 SoD：approvedBy(=admin) != report.createdBy——应用层 + 0040 INSERT trigger 双拦。
 
 import { createHash, randomUUID } from 'node:crypto';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db, regressionReports, regressionUpgradeManifests } from '@/lib/prisma';
 import { signRegressionTransition } from '@/lib/license-signing-client';
 import { verifyRegressionTransition } from '@/lib/regression-transition-verify';
@@ -100,18 +100,25 @@ export async function createUpgradeManifest(
   ) {
     throw new Error('manifest_mismatch: signed manifest fields do not match requested transition/report');
   }
-  // ★X/Y 须与**报告实际 toolchain 事实**一致（防批准一个与报告无关的方向）。报告的 current 在
-  // currentRuntimeToolchainId；baseline 在 case.baselineToolchainId（取任一 runnable case 的 baseline）。
+  // ★X/Y 须与**报告实际 toolchain 事实**一致（防批准一个与报告无关的方向）。★Codex 复审 P1：**fail-closed**
+  // ——缺事实（currentRuntimeToolchainId=null / 无 case baseline）时**拒绝**（不允许批准 toolchain 事实缺失的报告），
+  // 且 baseline 集合**必须严格单一且 == X**（多 baseline 报告的报告级批准语义不清：X→Y 批了不代表 Z→Y 批了）。
   const runReport = report.reportJson as unknown as RunReport;
   const reportCurrent = report.currentRuntimeToolchainId;
+  if (reportCurrent === null) {
+    throw new Error('transition_mismatch: report has no single currentRuntimeToolchainId (mixed/unknown); cannot approve transition');
+  }
+  if (reportCurrent !== currentToolchainId) {
+    throw new Error('transition_mismatch: currentToolchainId does not match report currentRuntimeToolchainId');
+  }
   const reportBaselines = new Set(
     (runReport.cases ?? []).map((c) => c.baselineToolchainId).filter((b): b is string => typeof b === 'string')
   );
-  if (reportCurrent !== null && reportCurrent !== currentToolchainId) {
-    throw new Error('transition_mismatch: currentToolchainId does not match report currentRuntimeToolchainId');
+  if (reportBaselines.size !== 1) {
+    throw new Error(`transition_mismatch: report baseline toolchain set must be exactly one value (got ${reportBaselines.size}); report-level transition approval requires a single baseline`);
   }
-  if (reportBaselines.size > 0 && !reportBaselines.has(baselineToolchainId)) {
-    throw new Error('transition_mismatch: baselineToolchainId not among report case baselines');
+  if (!reportBaselines.has(baselineToolchainId)) {
+    throw new Error('transition_mismatch: baselineToolchainId does not match report case baseline');
   }
 
   // manifestHash = sha256(被签 canonical payload bytes)——报告挂它作证据。
@@ -168,6 +175,39 @@ export interface ReportTransitionEvidence {
  * 候选范围：未撤销 + 未过期。多条时取最近批准且通过验签的一条。
  * ★这只是**证据**——消费端（signability 派生）绝不因它移除 TOOLCHAIN_PROVENANCE_UNVERIFIED（层5≠层3）。
  */
+/** 一行 manifest（存储态）的字段子集——共享验证函数用。 */
+type StoredManifest = typeof regressionUpgradeManifests.$inferSelect;
+
+/**
+ * ★共享候选验证（详情 + 列表**共用**，防双口径——Codex 复审：列表和详情必须同一验证逻辑）。
+ * 「表里有行」≠「已验签」——只有：重新验签通过 + 签名体**全字段** == 存储列 == 父报告事实 + manifestHash 绑定，
+ * 才算 verified。任一不符 → false（伪造/重放/延寿/改挂都被挡）。
+ */
+async function isStoredManifestVerified(
+  m: StoredManifest,
+  report: { policyId: string; reportHash: string },
+): Promise<boolean> {
+  const verify = await verifyRegressionTransition(m.keyId, m.canonicalPayloadB64url, m.signature);
+  if (verify.status !== 'verified' || !verify.manifest) return false;
+  const vm = verify.manifest;
+  // ★签名体**全字段** == 存储列（防验签通过但存储列被篡改指向别的方向/policy/批准人/报告/期限）。
+  if (
+    vm.baselineToolchainId !== m.baselineToolchainId ||
+    vm.currentToolchainId !== m.currentToolchainId ||
+    vm.policyId !== m.policyId ||
+    vm.approvedBy !== m.approvedBy ||
+    vm.reportHash !== m.reportHash || // ★防合法签名改挂别报告（存储 reportHash 改了但签名体没改）
+    vm.expiresAt !== m.expiresAt.toISOString() // ★防延寿（存储 expiresAt 改长但签名体没改）
+  ) {
+    return false;
+  }
+  // ★签名体钉死的 reportHash + policyId == 父报告事实（防重放到别的报告）。
+  if (vm.reportHash !== report.reportHash || vm.policyId !== report.policyId) return false;
+  // ★manifestHash == sha256(被签 canonical bytes)（存储 hash 列与签名工件绑定）。
+  if (sha256Hex(Buffer.from(m.canonicalPayloadB64url, 'base64url').toString('utf8')) !== m.manifestHash) return false;
+  return true;
+}
+
 export async function deriveReportTransitionEvidence(
   reportId: string,
   now: Date = new Date(),
@@ -184,25 +224,38 @@ export async function deriveReportTransitionEvidence(
     .sort((a, b) => b.approvedAt.getTime() - a.approvedAt.getTime());
 
   for (const m of candidates) {
-    // ★重新验签（不信表行）：用存储的签名工件对存储的 keyId 验签。
-    const verify = await verifyRegressionTransition(m.keyId, m.canonicalPayloadB64url, m.signature);
-    if (verify.status !== 'verified' || !verify.manifest) continue;
-    // ★核对存储列与**签名体**一致（防：验签通过但存储列被篡改成指向别的方向/policy）。
-    if (
-      verify.manifest.baselineToolchainId !== m.baselineToolchainId ||
-      verify.manifest.currentToolchainId !== m.currentToolchainId ||
-      verify.manifest.policyId !== m.policyId ||
-      verify.manifest.approvedBy !== m.approvedBy
-    ) {
-      continue;
+    if (await isStoredManifestVerified(m, report)) {
+      return { approvedTransitionManifestHash: m.manifestHash, transitionVerified: true };
     }
-    // ★核对签名体的 policyId/reportHash 与父报告事实一致（防挂到别的报告）。
-    if (m.policyId !== report.policyId || m.reportHash !== report.reportHash) continue;
-    // ★manifestHash 须 = sha256(被签 canonical bytes)（存储列与签名工件绑定）。
-    const recomputedHash = sha256Hex(Buffer.from(m.canonicalPayloadB64url, 'base64url').toString('utf8'));
-    if (recomputedHash !== m.manifestHash) continue;
-
-    return { approvedTransitionManifestHash: m.manifestHash, transitionVerified: true };
   }
   return { approvedTransitionManifestHash: null, transitionVerified: null };
+}
+
+/**
+ * ★批量：一组报告中，哪些**有已验签**的活跃 transition manifest（列表用，共享同一验证逻辑，防双口径）。
+ * 批量取行 + 逐行验签（≤50 报告，非 N+1 的重复 DB 查）。返回 verified 的 reportId 集合。
+ */
+export async function reportIdsWithVerifiedTransition(
+  reportIds: string[],
+  now: Date = new Date(),
+): Promise<Set<string>> {
+  if (reportIds.length === 0) return new Set();
+  const reports = await db.query.regressionReports.findMany({
+    where: inArray(regressionReports.id, reportIds),
+    columns: { id: true, policyId: true, reportHash: true },
+  });
+  const reportById = new Map(reports.map((r) => [r.id, r]));
+  const rows = await db
+    .select()
+    .from(regressionUpgradeManifests)
+    .where(and(inArray(regressionUpgradeManifests.reportId, reportIds), isNull(regressionUpgradeManifests.revokedAt)));
+  const verified = new Set<string>();
+  for (const m of rows) {
+    if (verified.has(m.reportId)) continue; // 已确认，跳过。
+    if (m.expiresAt.getTime() <= now.getTime()) continue;
+    const report = reportById.get(m.reportId);
+    if (!report) continue;
+    if (await isStoredManifestVerified(m, report)) verified.add(m.reportId);
+  }
+  return verified;
 }

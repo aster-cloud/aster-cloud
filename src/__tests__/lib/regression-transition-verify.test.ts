@@ -41,6 +41,8 @@ const VALID_MANIFEST = {
   currentToolchainId: 'abi=1.0;core=1.0.14;validator=1;build=newsha',
   policyId: 'pol-1',
   approvedBy: 'user-approver',
+  reportHash: 'rhash-1',
+  expiresAt: '2027-01-01T00:00:00.000Z',
 };
 
 describe('verifyRegressionTransition', () => {
@@ -98,6 +100,22 @@ describe('verifyRegressionTransition', () => {
     const { policyId: _omit, ...noPolicyId } = VALID_MANIFEST;
     void _omit;
     const { payload, sig } = signManifest(noPolicyId);
+    const r = await verifyRegressionTransition(KEY_ID, payload, sig);
+    expect(r.status).toBe('manifest-invalid');
+  });
+
+  it('★Codex 复审 P0：签名体缺 reportHash → manifest-invalid（reportHash 必填，防跨报告重放）', async () => {
+    const { reportHash: _omit, ...noReportHash } = VALID_MANIFEST;
+    void _omit;
+    const { payload, sig } = signManifest(noReportHash);
+    const r = await verifyRegressionTransition(KEY_ID, payload, sig);
+    expect(r.status).toBe('manifest-invalid');
+  });
+
+  it('★Codex 复审 P0：签名体缺 expiresAt → manifest-invalid（expiresAt 必填，防延寿）', async () => {
+    const { expiresAt: _omit, ...noExpiry } = VALID_MANIFEST;
+    void _omit;
+    const { payload, sig } = signManifest(noExpiry);
     const r = await verifyRegressionTransition(KEY_ID, payload, sig);
     expect(r.status).toBe('manifest-invalid');
   });
