@@ -17,14 +17,17 @@ interface ReportRow {
   reportHash: string;
   currentRuntimeToolchainId: string | null;
   createdAt: string;
-  // ★Item 2：签字资格（独立于 status）。list API 承诺总返回，故设为必填——旧后端/异常缺失时前端应 fail-closed
-  // 显示「未知」而非绿色（见渲染逻辑）。
-  signability: 'SIGNABLE' | 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION';
+  // ★Item 2/4 F：签字资格（独立于 status）。list API 返回的是**派生**值（deriveReportSignabilityDetail），
+  // 已归一为**真二值** 'SIGNABLE' | 'UNSIGNABLE'（provenance-only 报告不再返回 LEGACY 枚举——Codex 复审致命 3）。
+  // 具体不可签字维度看 unsignableReasons。旧后端/异常缺失时前端应 fail-closed（见渲染逻辑，不显绿色）。
+  signability: 'SIGNABLE' | 'UNSIGNABLE';
   unsignableLegacyCases: number | null;
   signablePass: boolean;
   // ★F1（独立审查）：列表是**声明态**（未重核 golden），verified=false——UI 只显「声明可签字」弱信号，
   // 强绿灯（已核验）以单报告详情 / ?verify=1 为准。旧后端缺此字段视为 false（fail-closed 弱信号）。
   verified?: boolean;
+  // ★Item 4 F：完整不可签字原因（含 TOOLCHAIN_PROVENANCE_UNVERIFIED）。UI 据此显各维度 badge。
+  unsignableReasons?: string[];
 }
 
 interface CaseRow {
@@ -181,14 +184,23 @@ export function RuleRegressionContent() {
                             >
                               {statusLabel(r.status)}
                             </span>
-                            {/* 签字资格 badge（独立轴）。不可签字醒目标注，含 legacy case 数。 */}
-                            {r.signability === 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' && (
+                            {/* 签字资格 badge（独立轴）。legacy 维度（含 case-hash/m1.0 弱绑定）。 */}
+                            {r.unsignableReasons?.includes('LEGACY_CASE_HASH_VERSION') && (
                               <span
                                 className="rounded px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
                                 title={t('signabilityUnsignableHint')}
                               >
                                 {t('signabilityUnsignable')}
                                 {r.unsignableLegacyCases ? ` (${r.unsignableLegacyCases})` : ''}
+                              </span>
+                            )}
+                            {/* ★Item 4 F：toolchain provenance 未验证维度——声称跨升级安全但无 runtime provenance。 */}
+                            {r.unsignableReasons?.includes('TOOLCHAIN_PROVENANCE_UNVERIFIED') && (
+                              <span
+                                className="rounded px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300"
+                                title={t('signabilityProvenanceHint')}
+                              >
+                                {t('signabilityProvenance')}
                               </span>
                             )}
                             {/* ★F1：列表是声明态（verified!==true）——可签字的报告标「声明可签字·待核验」，提醒 CCO

@@ -29,11 +29,14 @@ import { detectCNLLocale } from './cnl-executor';
  * P0-5 reportHash 补全+稳定序+版本分派 / P0-6 run 重算 caseHash+未知版本 fail-closed。
  * m1.2：reportHash 逐 case 追加 caseHash + caseHashVersion——把「golden 完整性哈希」绑进「报告哈希」，
  * 使已签 reportHash **密码学锚定**它覆盖的冻结 golden（配合 {@link verifyReportIntegrity} 闭合验签）。
- * m1.3（本 PR，Item 2）：reportHash 追加报告级 signability + unsignableLegacyCases——把「签字资格」绑进
- * 报告哈希，使含 m1.0 弱绑定 case 的报告在哈希层就宣告 UNSIGNABLE（防「report PASS 但 verify 拒签」双口径）。
+ * m1.3（Item 2）：reportHash 追加报告级 signability + unsignableLegacyCases——把「签字资格」绑进报告哈希，
+ * 使含 m1.0 弱绑定 case 的报告在哈希层就宣告 UNSIGNABLE（防「report PASS 但 verify 拒签」双口径）。
+ * m1.4（本 PR，Item 4 F）：reportHash 追加 unsignableReasons（封闭枚举 canonical 排序）——把「完整不可签字
+ * 原因」绑进哈希，含 TOOLCHAIN_PROVENANCE_UNVERIFIED（★版本政策派生：cloud 无 runtime provenance 第 3 层
+ * verifier，任何声称跨升级安全的报告其 toolchain 是自报未验证）。诚实降级：无可信 provenance→不可签字（不假装）。
  * 逻辑变更必须 bump（旧版报告 hash 与新版按各自 runnerVersion 分派公式，不混算——历史可复算铁律）。
  */
-export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.3';
+export const RULE_REGRESSION_RUNNER_VERSION = 'p0a-runner/m1.4';
 
 /** M1 单后端比对模式（诚实标注：基线=冻结快照 hash，非实时重跑 old backend）。 */
 export const COMPARISON_MODE_FROZEN_BASELINE = 'FROZEN_BASELINE_VS_CURRENT_BACKEND';
@@ -50,7 +53,71 @@ export type RegressionReportStatus =
  * 签字级证据。含任何不可签字 caseHash 版本的 case（m1.0 弱绑定）→ UNSIGNABLE_LEGACY_CASE_HASH_VERSION。
  * ★可签字通过 = `status===PASS && signability===SIGNABLE`（防「report PASS 但 verify 拒签」双口径）。
  */
-export type ReportSignability = 'SIGNABLE' | 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION';
+/**
+ * 签字资格（真二值——Codex 复审：provenance-only 报告不能返回 LEGACY 枚举=自相矛盾）。deriveReportSignabilityDetail
+ * 的派生结果 + m1.4+ 报告声明用此。具体不可签字原因见 unsignableReasons。
+ */
+export type ReportSignability = 'SIGNABLE' | 'UNSIGNABLE';
+
+/**
+ * 报告 artifact 声明的 signability **字段**类型——含历史 m1.3 冻结值 UNSIGNABLE_LEGACY_CASE_HASH_VERSION
+ * （不可改，进 m1.3 hash）+ m1.4+ 真二值。读路径**不信**此声明，一律走 deriveReportSignabilityDetail 从事实派生。
+ */
+export type DeclaredSignability = ReportSignability | 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION';
+
+/**
+ * 不可签字原因（封闭枚举，Codex 设计审：非任意 string[]——去重 + canonical 排序 + 未知 fail-closed）。
+ * 一份报告可同时多个原因（如既有 legacy case 又缺 toolchain provenance）。
+ * - LEGACY_CASE_HASH_VERSION：含弱绑定 case-hash/m1.0 case（Item 2）。
+ * - GOLDEN_COMMITMENT_UNSUPPORTED：m1.0/m1.1 报告无 golden 承诺（Item 1/2）。
+ * - TOOLCHAIN_PROVENANCE_UNVERIFIED：★Item 4 选项 F——报告声称「跨升级安全」（有跨 toolchain 对比证据的
+ *   runnable case），但 current/baseline toolchainId 是 aster-api **自报、未经 runtime provenance 验证**
+ *   （cloud 无第 3 层 verifier）。★**版本政策派生**的原因，不是可自报翻转的字段（防 Item 3 同构自证漏洞）。
+ */
+export type UnsignableReason =
+  | 'LEGACY_CASE_HASH_VERSION'
+  | 'GOLDEN_COMMITMENT_UNSUPPORTED'
+  | 'TOOLCHAIN_PROVENANCE_UNVERIFIED';
+
+/** canonical 排序（进 reportHash / 比较用，防数组顺序影响 hash）。 */
+const UNSIGNABLE_REASON_ORDER: readonly UnsignableReason[] = [
+  'LEGACY_CASE_HASH_VERSION',
+  'GOLDEN_COMMITMENT_UNSUPPORTED',
+  'TOOLCHAIN_PROVENANCE_UNVERIFIED',
+];
+
+/**
+ * ★破坏 golden 完整性的 reason（阻断「受控接受漂移」）——与 provenance 维度正交。
+ *
+ * 受控接受（ACCEPTED_DRIFT_WITH_APPROVAL）= 管理员人工背书一个**具体 output 漂移**，其语义完备性只依赖
+ * 「golden 是否可信」：LEGACY 弱绑定 / 无 golden 承诺 → 你不知道审批的是不是真 golden → 必须拦。而
+ * TOOLCHAIN_PROVENANCE_UNVERIFIED（谁执行了 replay 未证明）与「能否接受这个漂移」**正交**——ACCEPTED 是
+ * 「有人背书的已知漂移」，**不**声称跨升级签字级通过，故 provenance 缺失**不**阻断审批（否则整个 Item 2
+ * 受控接受功能全废=破坏性回归）。反之 isSignablePass（绿色可签字，status===PASS）**含全维度**，仍要 provenance。
+ */
+const GOLDEN_INTEGRITY_UNSIGNABLE_REASONS: ReadonlySet<UnsignableReason> = new Set([
+  'LEGACY_CASE_HASH_VERSION',
+  'GOLDEN_COMMITMENT_UNSUPPORTED',
+]);
+
+/** 去重 + 按 canonical 顺序排序。 */
+function canonicalizeReasons(reasons: Iterable<UnsignableReason>): UnsignableReason[] {
+  const set = new Set(reasons);
+  return UNSIGNABLE_REASON_ORDER.filter((r) => set.has(r));
+}
+
+/** 是否已知封闭枚举 reason（校验顶层声明用：含任何未知 → 声明不合法，fail-closed）。 */
+function isKnownUnsignableReason(r: unknown): r is UnsignableReason {
+  return typeof r === 'string' && (UNSIGNABLE_REASON_ORDER as readonly string[]).includes(r);
+}
+
+/** 顶层声明的 reasons 是否全合法（已知枚举 + 无重复 + canonical 顺序）——任一不满足即声明结构损坏。 */
+function isCanonicalReasonList(declared: readonly unknown[]): declared is UnsignableReason[] {
+  if (!declared.every(isKnownUnsignableReason)) return false;
+  const canonical = canonicalizeReasons(declared as UnsignableReason[]);
+  // 严格：长度 + 顺序完全一致（去重后长度变=有重复；顺序变=非 canonical）。
+  return declared.length === canonical.length && declared.every((r, i) => r === canonical[i]);
+}
 
 /** case 级回放结果。 */
 export type CaseRunStatus = 'PASS' | 'FAIL_REGRESSION' | 'NON_REPLAYABLE';
@@ -177,10 +244,17 @@ export interface RunReport {
   };
   cases: CaseRunDetail[];
   runnerVersion: string;
-  /** 签字资格（Item 2，独立于 status）。含任何不可签字 caseHash 版本的 case → UNSIGNABLE。进 m1.3 reportHash。 */
-  signability: ReportSignability;
+  /** 报告 artifact 声明的签字资格（历史 m1.3 含 UNSIGNABLE_LEGACY_...，m1.4+ 真二值）。★读路径不信此声明，
+   * 走 deriveReportSignabilityDetail 从事实派生。进 m1.3/m1.4 reportHash。 */
+  signability: DeclaredSignability;
   /** 不可签字 case 数（signability 归因，进 m1.3 reportHash 供审计/复算）。 */
   unsignableLegacyCases: number;
+  /**
+   * ★Item 4 F（m1.4+）：**全部**不可签字原因（封闭枚举，canonical 排序）。signability 二值兼容 Item 2，
+   * unsignableReasons 是完整多维原因（含 TOOLCHAIN_PROVENANCE_UNVERIFIED）。进 m1.4 reportHash + 读路径
+   * 自洽性校验（顶层声明须与派生一致，防伪造空 reasons 假装可签字）。m1.0-m1.3 报告无此字段（读路径纯派生）。
+   */
+  unsignableReasons?: UnsignableReason[];
 }
 
 const BASELINE_SEMANTICS =
@@ -290,11 +364,13 @@ const REPORT_HASH_VERSION_M10 = 'p0a-runner/m1.0';
 const REPORT_HASH_VERSION_M11 = 'p0a-runner/m1.1';
 const REPORT_HASH_VERSION_M12 = 'p0a-runner/m1.2';
 const REPORT_HASH_VERSION_M13 = 'p0a-runner/m1.3';
+const REPORT_HASH_VERSION_M14 = 'p0a-runner/m1.4';
 
 /** 逐 case 绑了 caseHash 承诺的 reportHash 版本（golden 完整性可核验）——verify 认这些。 */
 const GOLDEN_COMMITMENT_REPORT_VERSIONS: ReadonlySet<string> = new Set([
   REPORT_HASH_VERSION_M12,
   REPORT_HASH_VERSION_M13,
+  REPORT_HASH_VERSION_M14,
 ]);
 
 /**
@@ -358,7 +434,11 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
         })),
     });
   }
-  if (report.runnerVersion !== REPORT_HASH_VERSION_M12 && report.runnerVersion !== REPORT_HASH_VERSION_M13) {
+  if (
+    report.runnerVersion !== REPORT_HASH_VERSION_M12 &&
+    report.runnerVersion !== REPORT_HASH_VERSION_M13 &&
+    report.runnerVersion !== REPORT_HASH_VERSION_M14
+  ) {
     // 未知版本 fail-closed：不静默按新公式算，否则复算者拿到假的「可复算」hash。
     throw new Error(`unsupported reportHash runnerVersion: ${report.runnerVersion}`);
   }
@@ -403,12 +483,39 @@ export function computeReportHash(report: Omit<RunReport, 'reportId' | 'reportHa
       cases,
     });
   }
-  // m1.3：m1.2 全字段 + 顶层 signability + unsignableLegacyCases（把签字资格绑进报告哈希）。
+  if (report.runnerVersion === REPORT_HASH_VERSION_M13) {
+    // m1.3 逐字冻结：m1.2 全字段 + 顶层 signability + unsignableLegacyCases。
+    return canonicalHash({
+      reportHashVersion: report.runnerVersion,
+      status: report.status,
+      signability: report.signability,
+      unsignableLegacyCases: report.unsignableLegacyCases,
+      comparisonMode: report.comparisonMode,
+      baselineSemantics: report.baselineSemantics,
+      policyId: report.policyId,
+      policyVersionRowId: report.policyVersionRowId,
+      currentRuntimeToolchainId: report.currentRuntimeToolchainId,
+      coverage: report.coverage,
+      summary: report.summary,
+      runnerVersion: report.runnerVersion,
+      cases,
+    });
+  }
+  // m1.4（Item 4 F）：m1.3 全字段 + 顶层 unsignableReasons（canonical 排序）——把「完整不可签字原因」（含
+  // TOOLCHAIN_PROVENANCE_UNVERIFIED）绑进报告哈希。★Codex 复审致命 2 + 复审2 建议 5：m1.4 编码必须**严格单射**
+  // ——含未知/重复/非 canonical 序的 reason 一律 **throw**（不静默过滤/不宽容归一）。否则 [] 与 ['FORGED']、
+  // 或 ['A','B'] 与 ['B','A','A'] 可能得同一 hash=非单射 + 版本混淆。用 isCanonicalReasonList 严格校验（与读路径
+  // deriveReportSignabilityDetail 的 declaredConsistent 判定**同一约束**，防两处漂移），校验通过后按原样绑入。
+  const declaredReasons = report.unsignableReasons ?? [];
+  if (!isCanonicalReasonList(declaredReasons)) {
+    throw new Error(`non-canonical or unsupported unsignableReasons in m1.4 report: ${JSON.stringify(declaredReasons)}`);
+  }
   return canonicalHash({
     reportHashVersion: report.runnerVersion,
     status: report.status,
     signability: report.signability,
     unsignableLegacyCases: report.unsignableLegacyCases,
+    unsignableReasons: declaredReasons,
     comparisonMode: report.comparisonMode,
     baselineSemantics: report.baselineSemantics,
     policyId: report.policyId,
@@ -1351,6 +1458,46 @@ export interface CaseCoverageMeta {
 }
 
 /**
+ * ★不可签字原因的**唯一事实派生源**（assembleReport 产生 + deriveReportSignabilityDetail 读路径共用，
+ * 防两处漂移）。全从**报告声称的业务结果 + 版本政策**派生，**不由可删/可改的 artifact 字段决定**（Codex
+ * 复审致命 1：用 case 的 toolchain pair 当开关=自证漏洞，攻击者设相等/删除即消除 reason）：
+ *
+ * - `LEGACY_CASE_HASH_VERSION`：任何 case 的 caseHashVersion 不可签字（m1.0 弱绑定，cases 事实）。
+ * - `GOLDEN_COMMITMENT_UNSUPPORTED`：报告版本不含 golden 承诺（m1.0/m1.1，版本事实）。
+ * - `TOOLCHAIN_PROVENANCE_UNVERIFIED`：★Item 4 F——报告**声称跨升级安全**（status===PASS，或存在可审批的
+ *   OUTPUT_HASH_MISMATCH drift——这两者都在 FROZEN_BASELINE_VS_CURRENT 语义下声称通过了跨 toolchain 门禁），
+ *   但 cloud **无 runtime provenance 第 3 层 verifier**（版本政策：当前**所有**版本恒缺，无可翻 true 开关，
+ *   未来 E+D 落地再 bump m1.5）。★由 **status/reason 事实**判「是否需 provenance」，toolchain pair 只作诊断，
+ *   不当开关。
+ *
+ * @param status 报告 status（判「是否声称跨升级安全」）。
+ * @param goldenCommitmentSupported 该报告版本是否绑了 golden 承诺（m1.2+）。
+ */
+function deriveUnsignableReasons(
+  cases: Pick<CaseRunDetail, 'caseHashVersion' | 'status' | 'reason'>[],
+  status: RegressionReportStatus,
+  goldenCommitmentSupported: boolean
+): UnsignableReason[] {
+  const reasons = new Set<UnsignableReason>();
+  if (cases.some((c) => !c.caseHashVersion || !isSignableCaseHashVersion(c.caseHashVersion))) {
+    reasons.add('LEGACY_CASE_HASH_VERSION');
+  }
+  if (!goldenCommitmentSupported) {
+    reasons.add('GOLDEN_COMMITMENT_UNSUPPORTED');
+  }
+  // ★F（Codex 复审致命 1）：「是否需 provenance」由**报告声称的业务结果**决定，非 artifact 字段。
+  // status===PASS = 报告声称通过了跨 toolchain 门禁（FROZEN_BASELINE_VS_CURRENT 语义）；可审批的
+  // OUTPUT_HASH_MISMATCH = 声称是升级后输出漂移（同样跨升级语义）。两者恒加 provenance reason（F 阶段无第 3 层）。
+  const claimsCrossUpgrade =
+    status === 'PASS' ||
+    cases.some((c) => c.status === 'FAIL_REGRESSION' && c.reason === 'OUTPUT_HASH_MISMATCH');
+  if (claimsCrossUpgrade) {
+    reasons.add('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+  }
+  return canonicalizeReasons(reasons);
+}
+
+/**
  * 纯决策核心（ADR 附录 B.4）——覆盖门禁 + 四态状态优先级。抽出以便单测不需 mock DB/backend。
  *
  * ★状态优先级（防假通过）：
@@ -1402,15 +1549,23 @@ export function assembleReport(params: {
     status = 'PASS';
   }
 
-  // ★Item 2：签字资格（独立于 status）。从每 case 的 **caseHashVersion 事实**推导（**不**从 reason
-  // 流程推导——Codex 复审：m1.0 case 若同时自洽失败，reason 会是 GOLDEN_INTEGRITY_FAILURE 而非 legacy，
-  // 用 reason 反推会漏判成 SIGNABLE）。含任何不可签字 caseHashVersion 的 case → UNSIGNABLE。可签字通过=
-  // status===PASS && signability===SIGNABLE（报告在哈希层宣告不可签字，防双口径）。
+  // ★Item 2/4：签字资格（独立于 status）。从**事实**派生（非 reason 流程）。unsignableLegacyCases 保持
+  // Item 2 语义（进 m1.3/m1.4 hash）；unsignableReasons 是 Item 4 F 的完整多维原因（含 TOOLCHAIN_PROVENANCE
+  // _UNVERIFIED）。signability 二值兼容 Item 2：任一 reason 非空 → UNSIGNABLE。可签字通过=status===PASS &&
+  // signability===SIGNABLE（报告在哈希层宣告不可签字，防双口径）。
   const unsignableLegacyCases = details.filter(
     (d) => !isSignableCaseHashVersion(d.caseHashVersion)
   ).length;
+  // 新报告版本 = RULE_REGRESSION_RUNNER_VERSION（m1.4，∈ GOLDEN_COMMITMENT_REPORT_VERSIONS）→ 有 golden 承诺。
+  const unsignableReasons = deriveUnsignableReasons(
+    details,
+    status,
+    GOLDEN_COMMITMENT_REPORT_VERSIONS.has(RULE_REGRESSION_RUNNER_VERSION)
+  );
+  // ★signability 反映**完整** reasons——任一 reason 非空 → UNSIGNABLE（真二值，Codex 复审：provenance-only
+  // 报告不能返回 LEGACY 枚举=自相矛盾）。具体原因见 unsignableReasons。
   const signability: ReportSignability =
-    unsignableLegacyCases > 0 ? 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' : 'SIGNABLE';
+    unsignableReasons.length > 0 ? 'UNSIGNABLE' : 'SIGNABLE';
 
   return {
     status,
@@ -1433,6 +1588,7 @@ export function assembleReport(params: {
     runnerVersion: RULE_REGRESSION_RUNNER_VERSION,
     signability,
     unsignableLegacyCases,
+    unsignableReasons,
   };
 }
 
@@ -1453,8 +1609,20 @@ export interface SignabilityDerivation {
   casesDerivedSignability: ReportSignability;
   /** 从 cases 事实派生的不可签字 case 数（唯一真相源，非顶层声明）。 */
   unsignableLegacyCases: number;
-  /** m1.3 顶层声明（signability + count）是否与 cases 事实一致（矛盾即 artifact 结构损坏）。 */
+  /**
+   * ★Item 4 F：从**事实 + 版本政策**派生的**完整**不可签字原因（封闭枚举 canonical 排序）。含
+   * TOOLCHAIN_PROVENANCE_UNVERIFIED（版本政策：cloud 无 runtime provenance 第 3 层 → 声称跨升级的报告恒缺）。
+   * 消费端「可签字通过」以此为准：reasons 非空 → 不可签字。
+   */
+  unsignableReasons: UnsignableReason[];
+  /** m1.4 顶层声明（signability + count + reasons）是否与派生事实一致（矛盾即 artifact 结构损坏，fail-closed）。 */
   declaredConsistent: boolean;
+  /**
+   * ★golden 完整性维度是否可信（unsignableReasons 排除 provenance 后为空 + 声明自洽）。「受控接受漂移」
+   * （ACCEPTED_DRIFT_WITH_APPROVAL）以此为前置门——与全维度 signability 正交（provenance 缺失不阻断审批）。
+   * 见 [[GOLDEN_INTEGRITY_UNSIGNABLE_REASONS]] 注释。
+   */
+  goldenIntegritySignable: boolean;
 }
 
 /**
@@ -1462,47 +1630,97 @@ export interface SignabilityDerivation {
  * 还校验顶层声明是否与事实一致——矛盾 artifact（自洽 reportHash 但声明造假）fail-closed 为 UNSIGNABLE。
  */
 export function deriveReportSignabilityDetail(
-  report: Pick<RunReport, 'runnerVersion' | 'signability' | 'cases' | 'unsignableLegacyCases'>
+  report: Pick<RunReport, 'runnerVersion' | 'signability' | 'cases' | 'unsignableLegacyCases' | 'unsignableReasons' | 'status'>
 ): SignabilityDerivation {
   const derivedUnsignable = report.cases.filter(
     (c) => !c.caseHashVersion || !isSignableCaseHashVersion(c.caseHashVersion)
   ).length;
-  const derivedSignability: ReportSignability =
-    derivedUnsignable > 0 ? 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' : 'SIGNABLE';
+  const casesDerivedSignability: ReportSignability = derivedUnsignable > 0 ? 'UNSIGNABLE' : 'SIGNABLE';
 
-  if (report.runnerVersion === REPORT_HASH_VERSION_M13) {
-    // m1.3 顶层声明进 reportHash，但 hash 只证「声明没变」不证「声明正确」——必须与 cases 事实一致
-    // （用**冻结** M13 常量，非当前 runner 常量，否则未来 bump m1.4 后历史 m1.3 被误判）。
+  // ★从**报告声称的业务结果（status）+ 事实 + 版本政策**派生完整 reasons（唯一真相源）。provenance 由
+  // status/reason 判「是否声称跨升级」（非可删的 toolchain 字段，Codex 复审致命 1），版本政策恒缺第 3 层。
+  const goldenCommitmentSupported = GOLDEN_COMMITMENT_REPORT_VERSIONS.has(report.runnerVersion);
+  const derivedReasons = deriveUnsignableReasons(report.cases, report.status, goldenCommitmentSupported);
+  const effectiveSignability: ReportSignability = derivedReasons.length > 0 ? 'UNSIGNABLE' : 'SIGNABLE';
+  // ★golden 完整性维度：排除 provenance 后是否还有阻断 reason（受控接受漂移的前置门，见
+  // GOLDEN_INTEGRITY_UNSIGNABLE_REASONS 注释）。声明不自洽时下方各分支会再叠 declaredConsistent 收紧。
+  const goldenIntegrityClean = !derivedReasons.some((r) => GOLDEN_INTEGRITY_UNSIGNABLE_REASONS.has(r));
+
+  if (report.runnerVersion === REPORT_HASH_VERSION_M14) {
+    // ★m1.4：顶层声明（signability + count + reasons）进 reportHash，但 hash 只证「声明没变」不证「声明正确」
+    // ——必须与派生事实**严格**一致。★Codex 复审致命 2：顶层 reasons 含未知/重复/非 canonical → 声明结构损坏
+    // （**不**先过滤再比——过滤=fail-open）。矛盾（漏报 reason 假装可签字 / 注入未知）→ fail-closed。
+    const declared = report.unsignableReasons ?? [];
+    const reasonsConsistent =
+      isCanonicalReasonList(declared) &&
+      declared.length === derivedReasons.length &&
+      declared.every((r, i) => r === derivedReasons[i]);
     const declaredConsistent =
-      report.signability === derivedSignability &&
-      (report.unsignableLegacyCases ?? -1) === derivedUnsignable;
+      report.signability === effectiveSignability &&
+      (report.unsignableLegacyCases ?? -1) === derivedUnsignable &&
+      reasonsConsistent;
     return {
-      signability: declaredConsistent && report.signability ? report.signability : 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION',
-      casesDerivedSignability: derivedSignability,
+      signability: declaredConsistent ? effectiveSignability : 'UNSIGNABLE',
+      casesDerivedSignability,
       unsignableLegacyCases: derivedUnsignable,
+      unsignableReasons: derivedReasons,
       declaredConsistent,
+      goldenIntegritySignable: declaredConsistent && goldenIntegrityClean,
     };
   }
-  if (report.runnerVersion === REPORT_HASH_VERSION_M12) {
-    // m1.2：无顶层声明，纯从 cases 派生（无声明→declaredConsistent=true）。
-    return { signability: derivedSignability, casesDerivedSignability: derivedSignability, unsignableLegacyCases: derivedUnsignable, declaredConsistent: true };
+  if (report.runnerVersion === REPORT_HASH_VERSION_M13) {
+    // m1.3 顶层声明 signability + count 进 hash（无 reasons 字段）。★历史 m1.3 声明值是 SIGNABLE 或
+    // UNSIGNABLE_LEGACY_CASE_HASH_VERSION——与 cases 派生的二值比较时需归一化（UNSIGNABLE_LEGACY→UNSIGNABLE）。
+    const declaredBinary: ReportSignability = report.signability === 'SIGNABLE' ? 'SIGNABLE' : 'UNSIGNABLE';
+    const declaredConsistent =
+      declaredBinary === casesDerivedSignability &&
+      (report.unsignableLegacyCases ?? -1) === derivedUnsignable;
+    return {
+      // ★即使 m1.3 顶层声明自洽，也叠加版本政策派生的 provenance reason → effectiveSignability。
+      signability: declaredConsistent ? effectiveSignability : 'UNSIGNABLE',
+      casesDerivedSignability,
+      unsignableLegacyCases: derivedUnsignable,
+      unsignableReasons: derivedReasons,
+      declaredConsistent,
+      goldenIntegritySignable: declaredConsistent && goldenIntegrityClean,
+    };
   }
-  // m1.0/m1.1：无 golden 承诺（cases 不含 caseHashVersion）→ 一律不可签字。
-  return { signability: 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION', casesDerivedSignability: derivedSignability, unsignableLegacyCases: derivedUnsignable, declaredConsistent: true };
+  // m1.0/m1.1/m1.2：无顶层 reasons 声明——纯从事实 + 版本政策派生（declaredConsistent=true，无声明可矛盾）。
+  return {
+    signability: effectiveSignability,
+    casesDerivedSignability,
+    unsignableLegacyCases: derivedUnsignable,
+    unsignableReasons: derivedReasons,
+    declaredConsistent: true,
+    goldenIntegritySignable: goldenIntegrityClean,
+  };
 }
 
 /** 签字资格枚举（薄封装，消费端判定用；需 count/一致性用 deriveReportSignabilityDetail）。 */
 export function deriveReportSignability(
-  report: Pick<RunReport, 'runnerVersion' | 'signability' | 'cases' | 'unsignableLegacyCases'>
+  report: Pick<RunReport, 'runnerVersion' | 'signability' | 'cases' | 'unsignableLegacyCases' | 'unsignableReasons' | 'status'>
 ): ReportSignability {
   return deriveReportSignabilityDetail(report).signability;
 }
 
 /** 报告是否可签字通过（status===PASS && 派生 signability===SIGNABLE）。消费端判「绿色可签字」的唯一入口。 */
 export function isSignablePass(
-  report: Pick<RunReport, 'runnerVersion' | 'signability' | 'cases' | 'status' | 'unsignableLegacyCases'>
+  report: Pick<RunReport, 'runnerVersion' | 'signability' | 'cases' | 'status' | 'unsignableLegacyCases' | 'unsignableReasons'>
 ): boolean {
   return report.status === 'PASS' && deriveReportSignability(report) === 'SIGNABLE';
+}
+
+/**
+ * ★受控接受漂移审批的**唯一准入门**（写路径 createDriftApproval + 读路径 computeEffectiveStatus **共用**，
+ * 防双口径：Codex 复审 P0——曾因写路径用全维度 signability、读路径用 goldenIntegritySignable 而分叉，导致
+ * m1.4 drift 审批在正常 API 全废）。门 = golden 完整性可信（排除 provenance 维度，见
+ * GOLDEN_INTEGRITY_UNSIGNABLE_REASONS 注释）。provenance 缺失不阻断审批（ACCEPTED 是有人背书的已知漂移，
+ * 不声称跨升级签字级通过）；legacy 弱绑定 / 无 golden 承诺则拦（golden 无法证明，审批不可信）。
+ */
+export function isDriftApprovable(
+  report: Pick<RunReport, 'runnerVersion' | 'signability' | 'cases' | 'status' | 'unsignableLegacyCases' | 'unsignableReasons'>
+): boolean {
+  return deriveReportSignabilityDetail(report).goldenIntegritySignable;
 }
 
 // ============ P0-4 受控接受漂移审批（ACCEPTED_DRIFT_WITH_APPROVAL）============
@@ -1525,8 +1743,13 @@ export interface AcceptedDrift {
 }
 
 /**
- * approvalHash = canonicalHash(审批决定性内容)——artifact 防篡改 + 可复算。
+ * approvalHash = canonicalHash(审批决定性内容)——**完整性 checksum**（非签名/MAC，无秘密）+ 可复算。
  * 覆盖 reportHash + acceptedDrifts(稳定序) + approver + reason + ticket + expiry + 版本。不含 id/createdAt。
+ *
+ * ★信任边界（诚实，Codex 复审）：approvalHash 只能检测「审批行被**不同步修改**」（改字段没重算 hash → 读路径
+ * 重算不符 → 拒）；它**不**证明审批人身份，也**不**阻止「完整重造」——任何能直接 INSERT 审批行的主体都能自行
+ * 重算一致的 hash。抵御完整伪造依赖：API 鉴权 + DB 写权限最小化 + 0039 INSERT trigger 的声明身份 SoD（见
+ * docs/p0a-db-sod-decision.md），而非本 checksum。
  */
 export function computeApprovalHash(fields: {
   reportHash: string;
@@ -1586,10 +1809,15 @@ export async function createDriftApproval(params: {
     throw new Error(`report_not_failing:${report.status}`); // 只失败报告才需受控接受。
   }
   const runReport0 = report.reportJson as unknown as RunReport;
-  // ★Item 2（Codex 复审致命 3）：不可签字报告**拒绝**受控接受——否则含 m1.0 弱绑定 case 的 FAIL_REGRESSION
-  // 报告可被审批派生成 ACCEPTED_DRIFT_WITH_APPROVAL，产出「看似审批完成」却不可签字的假有效态。
-  if (deriveReportSignability(runReport0) !== 'SIGNABLE') {
-    throw new Error('report_unsignable:cannot_approve_drift_on_unsignable_report');
+  // ★Item 2（Codex 复审致命 3）：golden 完整性不可信的报告**拒绝**受控接受——否则含 m1.0 弱绑定 case 的
+  // FAIL_REGRESSION 报告可被审批派生成 ACCEPTED_DRIFT_WITH_APPROVAL，产出「看似审批完成」却 golden 无法证明
+  // 的假有效态。★Item 4 F（Codex 复审 P0）：写路径**必须**与读路径（computeEffectiveStatus）用**同一个**门
+  // ——isDriftApprovable（goldenIntegritySignable，排除 provenance 维度）。否则 m1.4 的 OUTPUT_HASH_MISMATCH
+  // drift 恒带 provenance reason → 全维度 UNSIGNABLE → createDriftApproval 永远拒绝 → 整个受控接受功能在正常
+  // API 流程中全废（读路径虽允许 provenance-only ACCEPTED 却永远到不了）。ACCEPTED 是「有人背书的已知漂移」
+  // 不声称跨升级签字级通过，provenance 缺失不该阻断审批。★写/读**共用** isDriftApprovable，防双口径。
+  if (!isDriftApprovable(runReport0)) {
+    throw new Error('report_unsignable:cannot_approve_drift_on_golden_untrusted_report');
   }
   // ★职责分离：审批人不能是报告创建者。
   if (report.createdBy === approvedBy) {
@@ -1655,11 +1883,12 @@ export async function getEffectiveStatus(reportId: string, now: Date = new Date(
       reportHash: report.reportHash,
       policyVersionRowId: report.policyVersionRowId,
       cases: runReport.cases,
-      // ★Item 2：传 runnerVersion + signability + unsignableLegacyCases 供 deriveReportSignability
-      // （自洽性校验 + 不可签字报告不派生 ACCEPTED）。
+      // ★Item 2/4：传 runnerVersion + signability + unsignableLegacyCases + unsignableReasons 供
+      // isDriftApprovable（声明自洽性校验 + golden 完整性不可信报告不派生 ACCEPTED；provenance 不阻断）。
       runnerVersion: runReport.runnerVersion,
       signability: runReport.signability,
       unsignableLegacyCases: runReport.unsignableLegacyCases,
+      unsignableReasons: runReport.unsignableReasons,
     },
     approvals,
     now
@@ -1747,12 +1976,12 @@ export function extractApprovableDrifts(report: Pick<RunReport, 'cases'>): Accep
  *   3. 存在**单条**有效审批（未撤销、未过期、reportHash 匹配、**approvalHash 重算一致**）其 acceptedDrifts
  *      **精确等于**报告全部 approvable drift（不多不少、caseId+before/after hash 一致）。
  * ★Codex 复审 2：不 union 多条部分审批（否则两条各覆盖一半也算通过，放大脏数据影响）；且**重算 approvalHash**
- * 校验（否则直插一条伪造 approvalHash 的审批也能派生 ACCEPTED——artifact 防篡改必须在读路径闭环）。
+ * 校验（拦截「改了审批字段没重算 hash」的**不同步篡改**——非防身份伪造，见 computeApprovalHash 信任边界注释）。
  * 任一不满足 → 保持原 FAIL_REGRESSION（诚实，不假装受控接受）。
  * 其它状态（PASS/FAIL_INSUFFICIENT_COVERAGE/NON_REPLAYABLE）原样返回（不适用受控接受）。
  */
 export function computeEffectiveStatus(
-  report: Pick<RunReport, 'status' | 'reportHash' | 'policyVersionRowId' | 'cases' | 'runnerVersion' | 'signability' | 'unsignableLegacyCases'>,
+  report: Pick<RunReport, 'status' | 'reportHash' | 'policyVersionRowId' | 'cases' | 'runnerVersion' | 'signability' | 'unsignableLegacyCases' | 'unsignableReasons'>,
   approvals: Array<
     Pick<
       RegressionDriftApproval,
@@ -1771,9 +2000,11 @@ export function computeEffectiveStatus(
 ): EffectiveReportStatus {
   if (report.status !== 'FAIL_REGRESSION') return report.status;
 
-  // ★Item 2（Codex 复审致命 3）：不可签字报告**绝不**派生 ACCEPTED_DRIFT_WITH_APPROVAL——含 m1.0 弱绑定
-  // case 的报告即使有覆盖其 drift 的有效审批，也保持 FAIL_REGRESSION（不假装受控接受一个不可签字的报告）。
-  if (deriveReportSignability(report) !== 'SIGNABLE') return 'FAIL_REGRESSION';
+  // ★Item 2（Codex 复审致命 3）：golden 完整性不可信的报告**绝不**派生 ACCEPTED_DRIFT_WITH_APPROVAL——含
+  // m1.0 弱绑定 / 无 golden 承诺的报告即使有覆盖其 drift 的有效审批，也保持 FAIL_REGRESSION（不假装受控接受
+  // 一个 golden 无法证明的报告）。★Item 4 F：与写路径 createDriftApproval **共用** isDriftApprovable（门用
+  // goldenIntegritySignable 排除 provenance 维度），防双口径（Codex 复审 P0）。见 isDriftApprovable 注释。
+  if (!isDriftApprovable(report)) return 'FAIL_REGRESSION';
 
   // 报告的全部 FAIL_REGRESSION case。
   const failCases = report.cases.filter((c) => c.status === 'FAIL_REGRESSION');
@@ -1806,7 +2037,8 @@ export function computeEffectiveStatus(
     );
     if (key !== expectedKey) continue;
 
-    // ★重算 approvalHash 校验（读路径闭环，防直插伪造）。
+    // ★重算 approvalHash 校验（读路径闭环，检测审批字段被改但 approvalHash 未同步重算；非防身份伪造，
+    // 见 computeApprovalHash 信任边界注释）。
     const recomputed = computeApprovalHash({
       reportHash: a.reportHash,
       policyVersionRowId: a.policyVersionRowId,
