@@ -114,9 +114,9 @@ describe.skipIf(process.env.LICENSE_E2E !== '1' || process.env.P0A_LIVE_BACKEND 
       expect(fr.frozen).toBe(1);
 
       const report = await run({ policyId: POL, policyVersionRowId: PV_ROW, actorUserId: OWNER, tenantId: OWNER });
-      // commit 半：报告版本 = m1.2，逐 case 带 caseHash + caseHashVersion。
-      // ★Item 2 后 run 产 m1.3（signability 轴）；m1.2/m1.3 都绑 caseHash（golden 承诺）。
-      expect(report.runnerVersion).toBe('p0a-runner/m1.3');
+      // commit 半：逐 case 带 caseHash + caseHashVersion。★Item 4 F 后 run 产 m1.4（+ unsignableReasons 轴）；
+      // m1.2/m1.3/m1.4 都绑 caseHash（golden 承诺，verifyReportIntegrity 认这些）。
+      expect(report.runnerVersion).toBe('p0a-runner/m1.4');
       expect(report.cases.length).toBeGreaterThanOrEqual(1);
 
       const goldenRows = await db

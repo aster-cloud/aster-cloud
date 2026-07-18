@@ -9,7 +9,10 @@ import {
   extractApprovableDrifts,
   verifyReportIntegrity,
   deriveReportSignability,
+  deriveReportSignabilityDetail as _drsd,
   isSignablePass,
+  isDriftApprovable,
+  type UnsignableReason as _UR,
   DEFAULT_THRESHOLDS,
   COMPARISON_MODE_FROZEN_BASELINE,
   CASE_HASH_VERSION,
@@ -816,11 +819,14 @@ describe('signability — assembleReport 报告级签字资格（Item 2）', () 
     expectedOutputHash: 'h', actualOutputHash: 'h', ...over,
   });
 
-  it('★全 m1.1 case（无 legacy）→ signability=SIGNABLE', () => {
+  it('★全 m1.1 case（无 legacy）→ legacy 维度干净（count=0）；但 PASS 报告仍 UNSIGNABLE（provenance 维度，F）', () => {
+    // ★Item 4 F：signability 是**多维复合**——legacy 维度干净（unsignableLegacyCases=0）不代表可签字。
+    // 此报告 status===PASS（声称跨升级门禁通过）→ 恒加 TOOLCHAIN_PROVENANCE_UNVERIFIED → 顶层 UNSIGNABLE。
     const { cases, details } = coverageSatisfyingCases();
     const r = assemble(cases, details);
-    expect(r.signability).toBe('SIGNABLE');
-    expect(r.unsignableLegacyCases).toBe(0);
+    expect(r.unsignableLegacyCases).toBe(0); // legacy 维度干净
+    expect(r.unsignableReasons).toEqual(['TOOLCHAIN_PROVENANCE_UNVERIFIED']); // 唯一 reason=provenance
+    expect(r.signability).toBe('UNSIGNABLE'); // 复合结果：因 provenance 不可签字
   });
 
   it('★含 LEGACY_UNSIGNABLE case → signability=UNSIGNABLE（即使 status 达标）', () => {
@@ -830,7 +836,7 @@ describe('signability — assembleReport 报告级签字资格（Item 2）', () 
     details.push(detail('legacy', { status: 'NON_REPLAYABLE', reason: 'LEGACY_UNSIGNABLE_CASE_HASH_VERSION', caseHashVersion: CASE_HASH_VERSION_M10 }));
     const r = assemble(cases, details);
     // ★双口径防护：报告级 signability 宣告不可签字，不靠调用方看 case。
-    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(r.signability).toBe('UNSIGNABLE');
     expect(r.unsignableLegacyCases).toBe(1);
     // 可签字通过 = status===PASS && signability===SIGNABLE → 此报告不满足。
     expect(r.status === 'PASS' && r.signability === 'SIGNABLE').toBe(false);
@@ -908,53 +914,74 @@ describe('signability 从 caseHashVersion 事实派生（非 reason）— Codex 
 
   it('★m1.0 case 自洽（reason=legacy）→ UNSIGNABLE', () => {
     const r = withLegacy(det('lg', CASE_HASH_VERSION_M10, { reason: 'LEGACY_UNSIGNABLE_CASE_HASH_VERSION' }));
-    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(r.signability).toBe('UNSIGNABLE');
     expect(r.unsignableLegacyCases).toBe(1);
   });
 
   it('★致命：m1.0 case **不自洽**（reason=GOLDEN_INTEGRITY_FAILURE，非 legacy）仍 UNSIGNABLE', () => {
     // 这是 Codex 抓的漏判：用 reason 反推会漏（reason 是 integrity failure），必须用 caseHashVersion 事实。
     const r = withLegacy(det('lg', CASE_HASH_VERSION_M10, { status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE' }));
-    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(r.signability).toBe('UNSIGNABLE');
   });
 
   it('★未知 caseHashVersion（非 signable）→ UNSIGNABLE', () => {
     const r = withLegacy(det('lg', 'case-hash/CORRUPT', { status: 'FAIL_REGRESSION', reason: 'GOLDEN_INTEGRITY_FAILURE_UNKNOWN_VERSION' }));
-    expect(r.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(r.signability).toBe('UNSIGNABLE');
   });
 
-  it('全 m1.1 → SIGNABLE', () => {
+  it('全 m1.1 → legacy 维度干净（casesDerivedSignability=SIGNABLE, count=0）；复合仍 UNSIGNABLE（provenance）', () => {
+    // ★本块专测 legacy 维度（caseHashVersion 事实派生）。全 m1.1 → legacy 干净。但 PASS 报告叠加 provenance
+    // 维度 → 复合 signability=UNSIGNABLE（F）。用 casesDerivedSignability 隔离验证 legacy 维度本身干净。
     const { cases, details } = coverageSatisfyingCases();
-    expect(assemble(cases, details).signability).toBe('SIGNABLE');
+    const d = _drsd(assemble(cases, details));
+    expect(d.casesDerivedSignability).toBe('SIGNABLE'); // legacy 维度干净
+    expect(d.unsignableLegacyCases).toBe(0);
+    expect(d.signability).toBe('UNSIGNABLE'); // 复合：provenance 维度
+    expect(d.unsignableReasons).toEqual(['TOOLCHAIN_PROVENANCE_UNVERIFIED']);
   });
 });
 
-describe('deriveReportSignability / isSignablePass — 统一消费入口', () => {
+describe('deriveReportSignability / isSignablePass — 统一消费入口（legacy 维度隔离）', () => {
+  // ★Item 4 F：provenance 维度由**报告 status 事实**驱动（status===PASS 或有可审批 OUTPUT_HASH_MISMATCH →
+  // 声称跨升级安全 → 恒加 TOOLCHAIN_PROVENANCE_UNVERIFIED）。为**纯**测 legacy 维度，须用一个**不声称跨升级**
+  // 的 status——FAIL_INSUFFICIENT_COVERAGE（覆盖不足，未通过跨升级门禁，不需 provenance）。★关键：不能再靠改
+  // toolchain 字段隔离（那是被 Codex 判为自证漏洞的旧路径——字段可删可改）。provenance 维度见下方 F 专属 describe。
+  const isolateLegacy = (body: ReturnType<typeof fixedReportBody>) => ({
+    ...body,
+    status: 'FAIL_INSUFFICIENT_COVERAGE' as const,
+    cases: body.cases.map((c) => ({ ...c, status: 'PASS' as const, reason: undefined })),
+  });
   const m13 = (sig: 'SIGNABLE' | 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION') => ({
-    ...fixedReportBody('p0a-runner/m1.3'), signability: sig,
+    ...isolateLegacy(fixedReportBody('p0a-runner/m1.3')), signability: sig,
   });
 
-  it('m1.3：读顶层 signability', () => {
+  it('m1.3：读顶层 signability（非跨升级 status，无 provenance 干扰）', () => {
     expect(deriveReportSignability(m13('SIGNABLE'))).toBe('SIGNABLE');
-    expect(deriveReportSignability(m13('UNSIGNABLE_LEGACY_CASE_HASH_VERSION'))).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(deriveReportSignability(m13('UNSIGNABLE_LEGACY_CASE_HASH_VERSION'))).toBe('UNSIGNABLE');
   });
 
   it('m1.2：从 cases caseHashVersion 派生（含 m1.0 case → UNSIGNABLE）', () => {
-    const clean = fixedReportBody('p0a-runner/m1.2');
+    const clean = isolateLegacy(fixedReportBody('p0a-runner/m1.2'));
     expect(deriveReportSignability(clean)).toBe('SIGNABLE');
     const withM10 = { ...clean, cases: clean.cases.map((c) => ({ ...c, caseHashVersion: CASE_HASH_VERSION_M10 })) };
-    expect(deriveReportSignability(withM10)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(deriveReportSignability(withM10)).toBe('UNSIGNABLE');
   });
 
   it('m1.0/m1.1 报告（无 golden 承诺）→ 一律 UNSIGNABLE', () => {
-    expect(deriveReportSignability(fixedReportBody('p0a-runner/m1.1'))).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
-    expect(deriveReportSignability(fixedReportBody('p0a-runner/m1.0'))).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(deriveReportSignability(isolateLegacy(fixedReportBody('p0a-runner/m1.1')))).toBe('UNSIGNABLE');
+    expect(deriveReportSignability(isolateLegacy(fixedReportBody('p0a-runner/m1.0')))).toBe('UNSIGNABLE');
   });
 
-  it('★isSignablePass：PASS + SIGNABLE → true；PASS + UNSIGNABLE → false（防绿色可签字双口径）', () => {
-    expect(isSignablePass({ ...m13('SIGNABLE'), status: 'PASS' })).toBe(true);
+  it('★isSignablePass 铁律：唯有 status===PASS && 派生 SIGNABLE 才 true——但 PASS 恒触发 provenance → 当前生态永不为 true（F 诚实降级）', () => {
+    // ★F 的核心诚实结论：可签字通过 = status===PASS && signability===SIGNABLE。而 status===PASS 恒加
+    // provenance reason（无 runtime 第 3 层）→ signability===UNSIGNABLE → isSignablePass 恒 false。
+    // 即使人为把 signability 声明成 SIGNABLE（造假），派生仍从 status 事实判 provenance → false（防绿色可签字双口径）。
+    const passClaimingSignable = { ...fixedReportBody('p0a-runner/m1.3'), signability: 'SIGNABLE' as const, status: 'PASS' as const };
+    expect(deriveReportSignability(passClaimingSignable)).toBe('UNSIGNABLE'); // provenance 覆盖伪造声明
+    expect(isSignablePass(passClaimingSignable)).toBe(false);
+    // 非 PASS 的 SIGNABLE 报告（legacy 隔离态）signability 可为 SIGNABLE，但 status≠PASS → 仍非「可签字通过」。
+    expect(isSignablePass(m13('SIGNABLE'))).toBe(false); // status===FAIL_INSUFFICIENT_COVERAGE
     expect(isSignablePass({ ...m13('UNSIGNABLE_LEGACY_CASE_HASH_VERSION'), status: 'PASS' })).toBe(false);
-    expect(isSignablePass({ ...m13('SIGNABLE'), status: 'FAIL_REGRESSION' })).toBe(false);
   });
 });
 
@@ -1003,34 +1030,54 @@ describe('computeEffectiveStatus — 不可签字报告绝不派生 ACCEPTED（C
 describe('deriveReportSignability — m1.3 顶层声明必须与 cases 一致（fail-closed）', () => {
   it('★致命：m1.3 声明 SIGNABLE 但 cases 含 m1.0（矛盾）→ fail-closed UNSIGNABLE', () => {
     // 自洽 reportHash 但内部矛盾的 artifact：cases 有 m1.0，却顶层声明 SIGNABLE/count=0。
+    // ★用 status=FAIL_INSUFFICIENT_COVERAGE（非跨升级，不触发 provenance）——**隔离** fail-closed 机制，
+    // 确保 UNSIGNABLE 来自「声明矛盾」而非被 provenance 维度掩盖（否则测试无法证明 fail-closed 真起作用）。
     const body = fixedReportBody('p0a-runner/m1.3');
     const lying = {
       ...body,
-      cases: body.cases.map((c) => ({ ...c, caseHashVersion: CASE_HASH_VERSION_M10 })),
+      status: 'FAIL_INSUFFICIENT_COVERAGE' as const,
+      cases: body.cases.map((c) => ({ ...c, status: 'PASS' as const, caseHashVersion: CASE_HASH_VERSION_M10 })),
       signability: 'SIGNABLE' as const,
       unsignableLegacyCases: 0,
     };
-    // 不信顶层声明，从 cases 派生 → UNSIGNABLE。
-    expect(deriveReportSignability(lying)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    const d = _drsd(lying);
+    expect(d.declaredConsistent).toBe(false); // 声明矛盾被抓（核心断言，非 provenance 副作用）
+    expect(d.signability).toBe('UNSIGNABLE'); // fail-closed
     expect(isSignablePass({ ...lying, status: 'PASS' })).toBe(false);
   });
 
   it('★count 不一致（全 m1.1 但声明 unsignableLegacyCases=1）→ fail-closed UNSIGNABLE', () => {
+    // 同样用非跨升级 status 隔离 fail-closed（防 provenance 掩盖）。
     const body = fixedReportBody('p0a-runner/m1.3'); // cases 全 m1.1（signable）
-    const inconsistent = { ...body, signability: 'SIGNABLE' as const, unsignableLegacyCases: 1 };
-    expect(deriveReportSignability(inconsistent)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    const inconsistent = {
+      ...body,
+      status: 'FAIL_INSUFFICIENT_COVERAGE' as const,
+      cases: body.cases.map((c) => ({ ...c, status: 'PASS' as const })),
+      signability: 'SIGNABLE' as const,
+      unsignableLegacyCases: 1,
+    };
+    const d = _drsd(inconsistent);
+    expect(d.declaredConsistent).toBe(false); // count 矛盾被抓
+    expect(d.signability).toBe('UNSIGNABLE');
   });
 
-  it('m1.3 声明与 cases 一致 → 返回声明值', () => {
-    const signable = fixedReportBody('p0a-runner/m1.3'); // 全 m1.1 + SIGNABLE + count 0
+  it('m1.3 声明与 cases 一致 → 返回声明值（隔离 legacy 维度：用非跨升级 status，不靠可删的 toolchain 字段）', () => {
+    // ★Item 4 F：provenance 由 status 事实驱动（非 toolchain 字段——那是 Codex 判定的自证漏洞路径）。为隔离
+    // legacy 维度，用 status=FAIL_INSUFFICIENT_COVERAGE（不声称跨升级，不触发 provenance）。
+    const base = fixedReportBody('p0a-runner/m1.3');
+    const signable = {
+      ...base,
+      status: 'FAIL_INSUFFICIENT_COVERAGE' as const,
+      cases: base.cases.map((c) => ({ ...c, status: 'PASS' as const })),
+    };
     expect(deriveReportSignability(signable)).toBe('SIGNABLE');
     const unsignable = {
-      ...fixedReportBody('p0a-runner/m1.3'),
-      cases: fixedReportBody('p0a-runner/m1.3').cases.map((c) => ({ ...c, caseHashVersion: CASE_HASH_VERSION_M10 })),
+      ...signable,
+      cases: signable.cases.map((c) => ({ ...c, caseHashVersion: CASE_HASH_VERSION_M10 })),
       signability: 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION' as const,
       unsignableLegacyCases: 1,
     };
-    expect(deriveReportSignability(unsignable)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(deriveReportSignability(unsignable)).toBe('UNSIGNABLE');
   });
 
   it('★伪造 m1.3 SIGNABLE + m1.0 case + 有效审批 → computeEffectiveStatus 仍 FAIL_REGRESSION（不 ACCEPTED）', () => {
@@ -1117,5 +1164,198 @@ describe('verifyReportIntegrity — F2：空报告不给空证明 ok', () => {
     // reportHash 有效 + 无 case mismatch，但**无覆盖 case**→不构成签字级证据。
     expect(v.reportHashValid).toBe(true);
     expect(v.ok).toBe(false);
+  });
+});
+
+// ============ Item 4 F：toolchain provenance 诚实降级（m1.4）============
+
+describe('Item 4 F — toolchain provenance 诚实降级（m1.4）', () => {
+  // 有跨 toolchain 证据的 case（baseline≠current）——声称跨升级安全。
+  const crossToolchainCase = (over: Partial<CaseRunDetail> = {}): CaseRunDetail => ({
+    caseId: 'c1', status: 'PASS', caseHash: 'c1-h', caseHashVersion: CASE_HASH_VERSION,
+    functionName: 'f', locale: 'en-US', coverageTags: [], sourceKind: 'execution',
+    baselineToolchainId: 'tc-base', currentToolchainId: 'tc-cur', ...over,
+  });
+  // ★m1.4 报告顶层 signability = **真二值**（任一 reason 非空→'UNSIGNABLE'，与 assembleReport 一致）。
+  // ★Codex 复审致命 3：provenance-only 报告顶层绝不能返回 'UNSIGNABLE_LEGACY_CASE_HASH_VERSION'（自相矛盾——
+  // 明明不是 legacy 原因）。m1.4 只用真二值 'SIGNABLE' | 'UNSIGNABLE'。
+  const m14 = (cases: CaseRunDetail[], reasons: _UR[], legacyCount = 0) => ({
+    ...fixedReportBody('p0a-runner/m1.4'), cases, unsignableReasons: reasons,
+    signability: (reasons.length > 0 ? 'UNSIGNABLE' : 'SIGNABLE') as 'SIGNABLE' | 'UNSIGNABLE',
+    unsignableLegacyCases: legacyCount,
+  });
+
+  it('★m1.4 golden 向量冻结（含 reasons 进 hash）', () => {
+    // 硬编码向量：改 m1.4 公式即失配；空 reasons vs 含 provenance 不同（reasons 真进 hash）。
+    const base = fixedReportBody('p0a-runner/m1.4');
+    expect(computeReportHash({ ...base, unsignableReasons: [] }))
+      .toBe('dac8baf5cb818519010727e19fb8b002333c2f2a0559add9ce370509506a8f15');
+    expect(computeReportHash({ ...base, unsignableReasons: ['TOOLCHAIN_PROVENANCE_UNVERIFIED'] }))
+      .toBe('49405a514302e96732526941f86b5a64764d75d0fdb27d8dbaeb78d1e9a5d04e');
+  });
+
+  it('★核心：有跨 toolchain 证据的报告 → TOOLCHAIN_PROVENANCE_UNVERIFIED → UNSIGNABLE（F 诚实降级）', () => {
+    const d = _drsd(m14([crossToolchainCase()], ['TOOLCHAIN_PROVENANCE_UNVERIFIED']));
+    expect(d.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+    expect(d.signability).toBe('UNSIGNABLE');
+    expect(d.declaredConsistent).toBe(true); // 顶层声明与派生一致。
+  });
+
+  it('★Codex 复审致命 1：PASS 报告即便 baseline===current 也 UNSIGNABLE（provenance 由 status 派生，非可删/可改的 toolchain 字段）', () => {
+    // ★自证漏洞防线：旧实现用 case 的 toolchain pair 当「是否需 provenance」开关——攻击者把 baseline 设成
+    // ===current（或删字段）即消除 reason 洗白成 SIGNABLE。现由 **status===PASS 事实**判定（报告声称跨升级
+    // 门禁通过），toolchain 字段仅诊断。故 PASS 报告无论 toolchain 字段如何都恒 UNSIGNABLE。
+    const same = crossToolchainCase({ baselineToolchainId: 'tc-x', currentToolchainId: 'tc-x' });
+    const d = _drsd(m14([same], ['TOOLCHAIN_PROVENANCE_UNVERIFIED']));
+    expect(d.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('★Codex 复审致命 1：PASS 报告**删除** toolchain pair（字段全缺）仍 UNSIGNABLE（不能删字段洗白）', () => {
+    const noPair = crossToolchainCase({ baselineToolchainId: undefined, currentToolchainId: undefined });
+    const d = _drsd(m14([noPair], ['TOOLCHAIN_PROVENANCE_UNVERIFIED']));
+    expect(d.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('★致命防线：m1.4 报告漏报 provenance reason（伪造空 reasons 假装可签字）→ fail-closed UNSIGNABLE', () => {
+    // 报告有跨 toolchain 证据（派生应含 provenance），但顶层声明 reasons=[] → 声明与事实矛盾。
+    const lying = m14([crossToolchainCase()], []); // 顶层 reasons 空但事实有 provenance
+    const d = _drsd(lying);
+    expect(d.declaredConsistent).toBe(false);
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('★历史 m1.3 PASS 报告（有跨 toolchain 证据）→ 现按版本政策派生 provenance → UNSIGNABLE（有意语义收紧）', () => {
+    // Item 4 F 前 m1.3 跨升级 PASS 是 SIGNABLE；现诚实降级（provenance 未验证）。
+    const m13 = { ...fixedReportBody('p0a-runner/m1.3'), cases: [crossToolchainCase()], signability: 'SIGNABLE' as const, unsignableLegacyCases: 0 };
+    const d = _drsd(m13);
+    expect(d.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('★legacy + provenance 双原因并存（reasons 集去重+canonical 排序）', () => {
+    const d = _drsd(m14([crossToolchainCase({ caseHashVersion: CASE_HASH_VERSION_M10 })],
+      ['LEGACY_CASE_HASH_VERSION', 'TOOLCHAIN_PROVENANCE_UNVERIFIED'], 1));
+    // canonical 顺序：LEGACY 在 TOOLCHAIN 前。
+    expect(d.unsignableReasons).toEqual(['LEGACY_CASE_HASH_VERSION', 'TOOLCHAIN_PROVENANCE_UNVERIFIED']);
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('assembleReport 产 m1.4 报告 + unsignableReasons（含 provenance）', () => {
+    const cases: CaseCoverageMeta[] = [
+      { id: 'c1', expectedDecision: 'approved', sourceKind: 'execution', coverageTags: [] },
+      { id: 'c2', expectedDecision: 'approved', sourceKind: 'execution', coverageTags: [] },
+      { id: 'c3', expectedDecision: 'denied', sourceKind: 'execution', coverageTags: [] },
+      { id: 'c4', expectedDecision: 'denied', sourceKind: 'handwritten', coverageTags: ['boundary'] },
+    ];
+    const details: CaseRunDetail[] = cases.map((c) => ({
+      caseId: c.id, status: 'PASS', caseHash: `${c.id}-h`, caseHashVersion: CASE_HASH_VERSION,
+      functionName: 'f', locale: 'en-US', coverageTags: c.coverageTags, sourceKind: c.sourceKind,
+      expectedOutputHash: 'h', actualOutputHash: 'h', baselineToolchainId: 'tc-base', currentToolchainId: 'tc-cur',
+    }));
+    const r = assemble(cases, details);
+    expect(r.runnerVersion).toBe('p0a-runner/m1.4');
+    expect(r.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+    // 有 provenance reason → 该 PASS 报告不可签字通过。
+    expect(isSignablePass(r)).toBe(false);
+  });
+
+  it('★Codex 复审致命 1：OUTPUT_HASH_MISMATCH drift **删除** toolchain pair 仍派生 provenance（不可删字段洗白可审批漂移）', () => {
+    // FAIL_REGRESSION + 可审批的 OUTPUT_HASH_MISMATCH = 声称「升级后输出漂移」（跨升级语义）。攻击者删 toolchain
+    // pair 想消除 provenance reason → 派生由 case.status/reason 事实判定，删字段无效，reason 仍在。
+    const drift = crossToolchainCase({
+      status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH',
+      expectedOutputHash: 'b1', actualOutputHash: 'n1',
+      baselineToolchainId: undefined, currentToolchainId: undefined,
+    });
+    const d = _drsd(m14([drift], ['TOOLCHAIN_PROVENANCE_UNVERIFIED']));
+    expect(d.unsignableReasons).toContain('TOOLCHAIN_PROVENANCE_UNVERIFIED');
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('★Codex 复审致命 2：m1.4 顶层含**未知** reason → computeReportHash **throw**（非静默过滤——防 [] 与 ["FORGED"] 同 hash）', () => {
+    const forged = {
+      ...fixedReportBody('p0a-runner/m1.4'),
+      unsignableReasons: ['FORGED_REASON' as unknown as _UR],
+    };
+    expect(() => computeReportHash(forged)).toThrow(/unsupported unsignableReason/);
+  });
+
+  it('★Codex 复审致命 2：m1.4 顶层含未知 reason → declaredConsistent=false → fail-closed UNSIGNABLE（不先过滤再比）', () => {
+    // 报告事实为 PASS（派生 reasons=[TOOLCHAIN_PROVENANCE_UNVERIFIED]），但顶层注入未知 reason → 声明结构损坏。
+    const injected = {
+      ...fixedReportBody('p0a-runner/m1.4'),
+      cases: [crossToolchainCase()],
+      signability: 'UNSIGNABLE' as const,
+      unsignableReasons: ['FORGED_REASON' as unknown as _UR],
+      unsignableLegacyCases: 0,
+    };
+    const d = _drsd(injected);
+    expect(d.declaredConsistent).toBe(false);
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  it('★Codex 复审致命 2：m1.4 顶层 reasons **重复/非 canonical 排序** → declaredConsistent=false（严格一致，不宽容归一）', () => {
+    // 事实派生 = ['LEGACY_CASE_HASH_VERSION','TOOLCHAIN_PROVENANCE_UNVERIFIED']（canonical）；顶层给逆序 → 结构损坏。
+    const nonCanonical = {
+      ...fixedReportBody('p0a-runner/m1.4'),
+      cases: [crossToolchainCase({ caseHashVersion: CASE_HASH_VERSION_M10 })],
+      signability: 'UNSIGNABLE' as const,
+      unsignableReasons: ['TOOLCHAIN_PROVENANCE_UNVERIFIED', 'LEGACY_CASE_HASH_VERSION'] as _UR[],
+      unsignableLegacyCases: 1,
+    };
+    const d = _drsd(nonCanonical);
+    expect(d.declaredConsistent).toBe(false);
+    expect(d.signability).toBe('UNSIGNABLE');
+  });
+
+  // ── isDriftApprovable：写/读共用的受控接受准入门（Codex 复审 P0：防写路径与读路径双口径）──
+
+  it('★Codex 复审 P0：provenance-only 报告（golden 干净）isDriftApprovable=true——provenance 缺失不阻断审批', () => {
+    // m1.4 OUTPUT_HASH_MISMATCH drift：派生 reasons=[TOOLCHAIN_PROVENANCE_UNVERIFIED]，全维度 UNSIGNABLE，
+    // 但 golden 完整性维度干净 → 可受控接受（否则整个受控接受功能在正常 API 全废=破坏性回归）。
+    const drift = crossToolchainCase({
+      status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH', expectedOutputHash: 'b1', actualOutputHash: 'n1',
+    });
+    const report = m14([drift], ['TOOLCHAIN_PROVENANCE_UNVERIFIED']);
+    expect(_drsd(report).goldenIntegritySignable).toBe(true);
+    expect(isDriftApprovable(report)).toBe(true); // provenance 不阻断
+    expect(_drsd(report).signability).toBe('UNSIGNABLE'); // 但全维度仍不可签字（provenance）
+  });
+
+  it('★golden 完整性门：legacy（m1.0 弱绑定）drift → isDriftApprovable=false（golden 无法证明，拒审批）', () => {
+    const drift = crossToolchainCase({
+      status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH', expectedOutputHash: 'b1', actualOutputHash: 'n1',
+      caseHashVersion: CASE_HASH_VERSION_M10,
+    });
+    const report = m14([drift], ['LEGACY_CASE_HASH_VERSION', 'TOOLCHAIN_PROVENANCE_UNVERIFIED'], 1);
+    expect(isDriftApprovable(report)).toBe(false); // legacy 维度拦
+  });
+
+  it('★golden 完整性门：无 golden 承诺（m1.0 runner）→ isDriftApprovable=false', () => {
+    // m1.0 报告无 golden 承诺 → GOLDEN_COMMITMENT_UNSUPPORTED → golden 完整性不可信 → 拒审批。
+    const drift = crossToolchainCase({
+      status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH', expectedOutputHash: 'b1', actualOutputHash: 'n1',
+    });
+    const m10Report = { ...fixedReportBody('p0a-runner/m1.0'), status: 'FAIL_REGRESSION' as const, cases: [drift] };
+    expect(_drsd(m10Report).unsignableReasons).toContain('GOLDEN_COMMITMENT_UNSUPPORTED');
+    expect(isDriftApprovable(m10Report)).toBe(false);
+  });
+
+  it('★声明不自洽（m1.4 顶层伪造）→ isDriftApprovable=false（fail-closed，即便 golden 派生干净）', () => {
+    // 顶层注入未知 reason → declaredConsistent=false → goldenIntegritySignable=false（不能因派生 golden 干净放行）。
+    const drift = crossToolchainCase({
+      status: 'FAIL_REGRESSION', reason: 'OUTPUT_HASH_MISMATCH', expectedOutputHash: 'b1', actualOutputHash: 'n1',
+    });
+    const forged = {
+      ...fixedReportBody('p0a-runner/m1.4'),
+      cases: [drift],
+      signability: 'UNSIGNABLE' as const,
+      unsignableReasons: ['FORGED_REASON' as unknown as _UR],
+      unsignableLegacyCases: 0,
+    };
+    expect(_drsd(forged).declaredConsistent).toBe(false);
+    expect(isDriftApprovable(forged)).toBe(false);
   });
 });

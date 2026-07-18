@@ -348,6 +348,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityDeclared: 'Declared · verify pending',
       signabilityDeclaredHint:
         'This list view derives signability from the stored report only; it has not re-verified the report against the current golden. Open the report detail (full re-verification) before signing off.',
+      signabilityProvenance: 'Toolchain provenance unverified',
+      signabilityProvenanceHint:
+        'This report claims cross-upgrade safety (cases compared across baseline≠current toolchain), but the toolchain identity is self-reported by the backend with no runtime provenance verification. Not usable as a signable cross-upgrade proof until provenance is established.',
       comparisonNote:
         'Baseline is the frozen snapshot hash captured at freeze time; M1 does not re-run the old toolchain. Freeze before upgrade, run the gate after deploying the new version.',
       replayLimitedNote:
@@ -672,6 +675,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityDeclared: '声明可签字·待核验',
       signabilityDeclaredHint:
         '列表视图仅从存储报告派生签字资格，未重新核验报告是否仍对应当前 golden。签字前请打开报告详情（做全核验）。',
+      signabilityProvenance: 'toolchain 溯源未验证',
+      signabilityProvenanceHint:
+        '此报告声称跨升级安全（case 在 baseline≠current toolchain 下对比），但 toolchain 身份由后端自报、无 runtime provenance 验证。在建立溯源前，不可作为签字级跨升级证明。',
       comparisonNote:
         '基线是冻结时捕获的快照哈希；M1 不实时重跑旧工具链。请升级前冻结、部署新版后运行门禁。',
       replayLimitedNote:
@@ -997,6 +1003,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityDeclared: 'Deklariert · Prüfung ausstehend',
       signabilityDeclaredHint:
         'Diese Listenansicht leitet die Signierbarkeit nur aus dem gespeicherten Bericht ab; sie wurde nicht erneut gegen die aktuellen Golden-Daten verifiziert. Öffnen Sie die Berichtsdetails (vollständige Neuverifizierung) vor der Freigabe.',
+      signabilityProvenance: 'Toolchain-Herkunft unverifiziert',
+      signabilityProvenanceHint:
+        'Dieser Bericht beansprucht Upgrade-Sicherheit (Fälle über baseline≠current Toolchain verglichen), aber die Toolchain-Identität wird vom Backend selbst gemeldet, ohne Laufzeit-Herkunftsprüfung. Nicht als signierbarer Upgrade-Nachweis verwendbar, bis die Herkunft nachgewiesen ist.',
       comparisonNote:
         'Die Baseline ist der beim Einfrieren erfasste Snapshot-Hash; M1 führt die alte Toolchain nicht erneut aus. Vor dem Upgrade einfrieren, nach dem Deployment der neuen Version das Gate ausführen.',
       replayLimitedNote:
@@ -1321,6 +1330,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityDeclared: 'घोषित · सत्यापन शेष',
       signabilityDeclaredHint:
         'यह सूची दृश्य केवल संग्रहीत रिपोर्ट से हस्ताक्षर-योग्यता निकालता है; इसे वर्तमान golden के विरुद्ध पुनः सत्यापित नहीं किया गया। हस्ताक्षर से पहले रिपोर्ट विवरण (पूर्ण पुनः सत्यापन) खोलें।',
+      signabilityProvenance: 'toolchain उद्गम असत्यापित',
+      signabilityProvenanceHint:
+        'यह रिपोर्ट क्रॉस-अपग्रेड सुरक्षा का दावा करती है (baseline≠current toolchain पर केस तुलना), लेकिन toolchain पहचान बैकएंड द्वारा स्व-रिपोर्ट की गई है, बिना रनटाइम उद्गम सत्यापन के। उद्गम स्थापित होने तक हस्ताक्षर-योग्य अपग्रेड प्रमाण के रूप में उपयोग योग्य नहीं।',
       comparisonNote:
         'बेसलाइन फ़्रीज़ के समय कैप्चर किया गया स्नैपशॉट हैश है; M1 पुरानी टूलचेन को दोबारा नहीं चलाता। अपग्रेड से पहले फ़्रीज़ करें, नया संस्करण डिप्लॉय करने के बाद गेट चलाएँ।',
       replayLimitedNote:

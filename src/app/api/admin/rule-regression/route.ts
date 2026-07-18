@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
       verdict: res.verdict,
       signability: vSig.signability,
       unsignableLegacyCases: vSig.unsignableLegacyCases,
+      unsignableReasons: vSig.unsignableReasons,
       signablePass: vRun.status === 'PASS' && vSig.signability === 'SIGNABLE',
     });
   }
@@ -97,6 +98,7 @@ export async function GET(req: NextRequest) {
       approvals,
       signability: sig.signability,
       unsignableLegacyCases: sig.unsignableLegacyCases,
+      unsignableReasons: sig.unsignableReasons,
       signabilityConsistent: sig.declaredConsistent,
       verdict,
       verified: true,
@@ -157,6 +159,7 @@ export async function GET(req: NextRequest) {
       ...meta,
       signability: sig.signability,
       unsignableLegacyCases: sig.unsignableLegacyCases,
+      unsignableReasons: sig.unsignableReasons,
       signabilityConsistent: sig.declaredConsistent,
       // 声明态（未核验 golden）——UI 显示时须结合 verified=false 标注「声明可签字，核验以详情为准」。
       signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE',
@@ -317,9 +320,11 @@ export async function POST(req: NextRequest) {
       policyVersionRowId: body.policyVersionRowId,
       reportId: report.reportId,
       status: report.status,
-      // ★Item 2：签字级审计同时记 signability（不可只记 status，否则审计漏「不可签字」事实）。
+      // ★Item 2/4：签字级审计同时记 signability + 完整 unsignableReasons（不可只记 status，否则审计漏
+      // 「不可签字」事实及其原因，含 TOOLCHAIN_PROVENANCE_UNVERIFIED）。
       signability: report.signability,
       unsignableLegacyCases: report.unsignableLegacyCases,
+      unsignableReasons: report.unsignableReasons,
       reportHash: report.reportHash,
     });
 

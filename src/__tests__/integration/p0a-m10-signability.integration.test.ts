@@ -132,9 +132,12 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('P0-A Item 2 m1.0 签字策略�
     // 不发远程 replay。这才真正走 base detail / legacy 分支 / summary 计数 / assembleReport / 持久化。
     const report = await run({ policyId: POL, policyVersionRowId: PV_ROW, actorUserId: OWNER, tenantId: OWNER });
 
-    // run 真实产出：m1.3 报告，signability=UNSIGNABLE（含 m1.0 弱绑定 case），legacy case 不算 runnable。
-    expect(report.runnerVersion).toBe('p0a-runner/m1.3');
-    expect(report.signability).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    // run 真实产出：m1.4 报告（Item 4 F），signability=**真二值** 'UNSIGNABLE'（含 m1.0 弱绑定 case），
+    // legacy case 不算 runnable。★Codex 复审致命 3：m1.4 顶层 signability 只用真二值，不用 LEGACY 枚举。
+    expect(report.runnerVersion).toBe('p0a-runner/m1.4');
+    expect(report.signability).toBe('UNSIGNABLE');
+    // ★纯 m1.0 且 status=NON_REPLAYABLE（0 runnable，不声称跨升级）→ 只 LEGACY reason，无 provenance reason。
+    expect(report.unsignableReasons).toEqual(['LEGACY_CASE_HASH_VERSION']);
     expect(report.unsignableLegacyCases).toBe(1);
     const legacyCase = report.cases.find((c) => c.caseId === CASE_ID);
     expect(legacyCase?.reason).toBe('LEGACY_UNSIGNABLE_CASE_HASH_VERSION');
@@ -145,6 +148,6 @@ describe.skipIf(process.env.LICENSE_E2E !== '1')('P0-A Item 2 m1.0 签字策略�
     const stored = await db.select().from(regressionReports).where(eq(regressionReports.id, report.reportId));
     expect(stored).toHaveLength(1);
     const storedReport = stored[0].reportJson as unknown as RunReport;
-    expect(deriveReportSignability(storedReport)).toBe('UNSIGNABLE_LEGACY_CASE_HASH_VERSION');
+    expect(deriveReportSignability(storedReport)).toBe('UNSIGNABLE');
   });
 });
