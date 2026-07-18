@@ -15,8 +15,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
-import { db, auditLogs, policies, regressionReports, regressionCases, regressionDriftApprovals } from '@/lib/prisma';
-import { and, desc, eq } from 'drizzle-orm';
+import { db, auditLogs, policies, regressionReports, regressionCases, regressionDriftApprovals, regressionUpgradeManifests } from '@/lib/prisma';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import {
   freezeFromExecutions,
   freezeHandwritten,
@@ -28,6 +28,10 @@ import {
   type HandwrittenCaseInput,
   type RunReport,
 } from '@/services/policy/rule-regression-runner';
+import {
+  createUpgradeManifest,
+  deriveReportTransitionEvidence,
+} from '@/services/policy/regression-upgrade-manifest';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -92,6 +96,9 @@ export async function GET(req: NextRequest) {
     const sig = deriveReportSignabilityDetail(runReport);
     const verifyRes = await verifyStoredReportIntegrity(reportId);
     const verdict = verifyRes?.verdict ?? null;
+    // ★S1（层5）：从活跃 manifest 派生 transition 证据（读路径 join，不 mutate 报告行）。这是**额外证据**，
+    // 绝不影响 signability/signablePass——携证据报告仍 UNSIGNABLE（provenance 层3 未验证）。
+    const transition = await deriveReportTransitionEvidence(reportId);
     return NextResponse.json({
       report: es.report,
       effectiveStatus: es.effectiveStatus,
@@ -103,7 +110,10 @@ export async function GET(req: NextRequest) {
       verdict,
       verified: true,
       // 已核验的可签字绿：status===PASS && signability===SIGNABLE && 全核验通过（golden 未换/篡改）。
+      // ★不含 transition——manifest 是层5，不解锁签字。
       signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE' && verdict?.ok === true,
+      approvedTransitionManifestHash: transition.approvedTransitionManifestHash,
+      transitionVerified: transition.transitionVerified,
     });
   }
 
@@ -145,6 +155,20 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
+  // ★S1（层5）：批量查所有报告的**活跃**（未撤销）manifest → 每报告是否有 transition 证据（避免 N+1）。
+  // ★这只是**额外证据** badge——绝不影响 signability/signablePass（携证据报告仍 UNSIGNABLE，层5≠层3）。
+  const reportIds = reportRows.map((r) => r.id);
+  const activeManifests = reportIds.length
+    ? await db.query.regressionUpgradeManifests.findMany({
+        where: and(
+          inArray(regressionUpgradeManifests.reportId, reportIds),
+          isNull(regressionUpgradeManifests.revokedAt)
+        ),
+        columns: { reportId: true },
+      })
+    : [];
+  const reportIdsWithTransition = new Set(activeManifests.map((m) => m.reportId));
+
   // ★Item 2：每份报告派生 signability + signablePass（不回传庞大 reportJson，只投影签字资格）。
   // ★F1（独立审查）：列表**不做**全核验（N 份报告 × 全 golden 重算成本高）——signablePass 只从存储 reportJson
   // **派生声明态**（证「报告自声明可签字」，未重核 golden 未换/reportHash 完整）。故标 `verified: false`：列表
@@ -164,6 +188,8 @@ export async function GET(req: NextRequest) {
       // 声明态（未核验 golden）——UI 显示时须结合 verified=false 标注「声明可签字，核验以详情为准」。
       signablePass: runReport.status === 'PASS' && sig.signability === 'SIGNABLE',
       verified: false,
+      // ★S1：是否有活跃已批准升级 manifest（层5 证据）——UI 显「已批准升级」badge（诚实：不解锁签字）。
+      transitionVerified: reportIdsWithTransition.has(r.id),
     };
   });
 
@@ -410,7 +436,70 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ action: 'revoke-approval', approvalId: body.approvalId, revoked: true });
     }
 
-    return NextResponse.json({ error: 'invalid_action', message: 'approve-drift | revoke-approval' }, { status: 400 });
+    // ★P0-A S1（层5）：批准一次跨升级 transition（签名 upgrade-manifest 挂到报告作证据）。
+    // ★不解锁签字——报告携证据仍 UNSIGNABLE（provenance 层3 未验证）。
+    if (body.action === 'approve-transition') {
+      if (
+        typeof body.reportId !== 'string' ||
+        typeof body.baselineToolchainId !== 'string' ||
+        typeof body.currentToolchainId !== 'string' ||
+        typeof body.expiresAt !== 'string'
+      ) {
+        return NextResponse.json(
+          { error: 'invalid_input', message: 'reportId, baselineToolchainId, currentToolchainId, expiresAt(ISO) required' },
+          { status: 400 }
+        );
+      }
+      const expiresAt = new Date(body.expiresAt);
+      if (Number.isNaN(expiresAt.getTime())) {
+        return NextResponse.json({ error: 'invalid_expiresAt' }, { status: 400 });
+      }
+      const result = await createUpgradeManifest({
+        reportId: body.reportId,
+        baselineToolchainId: body.baselineToolchainId,
+        currentToolchainId: body.currentToolchainId,
+        approvedBy: admin.userId,
+        expiresAt,
+      });
+      await audit(admin.userId, 'approve-transition', body.reportId, {
+        manifestId: result.manifestId,
+        manifestHash: result.manifestHash,
+        keyId: result.keyId,
+        baselineToolchainId: body.baselineToolchainId,
+        currentToolchainId: body.currentToolchainId,
+      });
+      // ★诚实响应：明确「层5 批准，不解锁签字」。
+      return NextResponse.json({
+        action: 'approve-transition',
+        ...result,
+        note: 'layer-5 transition authorization recorded; report remains UNSIGNABLE (runtime provenance layer-3 not verified)',
+      });
+    }
+
+    if (body.action === 'revoke-transition') {
+      if (typeof body.manifestId !== 'string') {
+        return NextResponse.json({ error: 'invalid_input', message: 'manifestId required' }, { status: 400 });
+      }
+      const existing = await db.query.regressionUpgradeManifests.findFirst({
+        where: eq(regressionUpgradeManifests.id, body.manifestId),
+      });
+      if (!existing) return NextResponse.json({ error: 'manifest_not_found' }, { status: 404 });
+      if (existing.revokedAt != null) {
+        return NextResponse.json({ error: 'already_revoked' }, { status: 409 });
+      }
+      // 撤销走 append-only 允许的 revoke 列（0040 trigger 只放行 revokedAt/revokedBy NULL→非 NULL）。
+      await db
+        .update(regressionUpgradeManifests)
+        .set({ revokedAt: new Date(), revokedBy: admin.userId })
+        .where(eq(regressionUpgradeManifests.id, body.manifestId));
+      await audit(admin.userId, 'revoke-transition', existing.policyId, { manifestId: body.manifestId });
+      return NextResponse.json({ action: 'revoke-transition', manifestId: body.manifestId, revoked: true });
+    }
+
+    return NextResponse.json(
+      { error: 'invalid_action', message: 'approve-drift | revoke-approval | approve-transition | revoke-transition' },
+      { status: 400 }
+    );
   } catch (e) {
     console.error('[rule-regression] error:', e);
     return NextResponse.json(

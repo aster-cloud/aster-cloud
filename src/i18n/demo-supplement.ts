@@ -351,6 +351,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityProvenance: 'Toolchain provenance unverified',
       signabilityProvenanceHint:
         'This report claims cross-upgrade safety (cases compared across baseline≠current toolchain), but the toolchain identity is self-reported by the backend with no runtime provenance verification. Not usable as a signable cross-upgrade proof until provenance is established.',
+      transitionApproved: 'Upgrade approved',
+      transitionApprovedHint:
+        'A signed upgrade-manifest records that the baseline→current toolchain transition was approved (layer-5 authorization). This is evidence of an approved direction only — it does NOT prove the replay actually ran on that runtime (layer-3 provenance), so the report remains NOT signable.',
       comparisonNote:
         'Baseline is the frozen snapshot hash captured at freeze time; M1 does not re-run the old toolchain. Freeze before upgrade, run the gate after deploying the new version.',
       replayLimitedNote:
@@ -675,6 +678,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityDeclared: '声明可签字·待核验',
       signabilityDeclaredHint:
         '列表视图仅从存储报告派生签字资格，未重新核验报告是否仍对应当前 golden。签字前请打开报告详情（做全核验）。',
+      transitionApproved: '已批准升级',
+      transitionApprovedHint:
+        '已签名的 upgrade-manifest 记录了 baseline→current toolchain 升级方向被批准（层5 授权）。这只是「批准了方向」的证据——**不**证明回放确实在该 runtime 执行（层3 provenance），故报告**仍不可签字**。',
       signabilityProvenance: 'toolchain 溯源未验证',
       signabilityProvenanceHint:
         '此报告声称跨升级安全（case 在 baseline≠current toolchain 下对比），但 toolchain 身份由后端自报、无 runtime provenance 验证。在建立溯源前，不可作为签字级跨升级证明。',
@@ -1003,6 +1009,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityDeclared: 'Deklariert · Prüfung ausstehend',
       signabilityDeclaredHint:
         'Diese Listenansicht leitet die Signierbarkeit nur aus dem gespeicherten Bericht ab; sie wurde nicht erneut gegen die aktuellen Golden-Daten verifiziert. Öffnen Sie die Berichtsdetails (vollständige Neuverifizierung) vor der Freigabe.',
+      transitionApproved: 'Upgrade genehmigt',
+      transitionApprovedHint:
+        'Ein signiertes Upgrade-Manifest belegt, dass der Übergang baseline→current Toolchain genehmigt wurde (Layer-5-Autorisierung). Dies ist nur ein Nachweis einer genehmigten Richtung — es beweist NICHT, dass der Replay tatsächlich auf dieser Runtime lief (Layer-3-Provenance); der Bericht bleibt daher NICHT signierbar.',
       signabilityProvenance: 'Toolchain-Herkunft unverifiziert',
       signabilityProvenanceHint:
         'Dieser Bericht beansprucht Upgrade-Sicherheit (Fälle über baseline≠current Toolchain verglichen), aber die Toolchain-Identität wird vom Backend selbst gemeldet, ohne Laufzeit-Herkunftsprüfung. Nicht als signierbarer Upgrade-Nachweis verwendbar, bis die Herkunft nachgewiesen ist.',
@@ -1330,6 +1339,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       signabilityDeclared: 'घोषित · सत्यापन शेष',
       signabilityDeclaredHint:
         'यह सूची दृश्य केवल संग्रहीत रिपोर्ट से हस्ताक्षर-योग्यता निकालता है; इसे वर्तमान golden के विरुद्ध पुनः सत्यापित नहीं किया गया। हस्ताक्षर से पहले रिपोर्ट विवरण (पूर्ण पुनः सत्यापन) खोलें।',
+      transitionApproved: 'अपग्रेड स्वीकृत',
+      transitionApprovedHint:
+        'एक हस्ताक्षरित अपग्रेड-मैनिफेस्ट दर्ज करता है कि baseline→current toolchain संक्रमण स्वीकृत था (परत-5 प्राधिकरण)। यह केवल स्वीकृत दिशा का प्रमाण है — यह सिद्ध नहीं करता कि रीप्ले वास्तव में उस runtime पर चला (परत-3 provenance), इसलिए रिपोर्ट हस्ताक्षर-योग्य नहीं रहती।',
       signabilityProvenance: 'toolchain उद्गम असत्यापित',
       signabilityProvenanceHint:
         'यह रिपोर्ट क्रॉस-अपग्रेड सुरक्षा का दावा करती है (baseline≠current toolchain पर केस तुलना), लेकिन toolchain पहचान बैकएंड द्वारा स्व-रिपोर्ट की गई है, बिना रनटाइम उद्गम सत्यापन के। उद्गम स्थापित होने तक हस्ताक्षर-योग्य अपग्रेड प्रमाण के रूप में उपयोग योग्य नहीं।',
