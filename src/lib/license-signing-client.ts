@@ -332,12 +332,20 @@ export async function signRegressionTransition(
     throw new Error('[license-signing-client] IS_SAAS=false; refusing to call signing-api');
   }
   const base = getConfig();
+  // ★Codex 复审 P2：独立 keyId（密钥分离）**必须**从专用 env——**绝不**回落到 license key（否则密钥分离失效，
+  // 用 license key 签 transition manifest）。缺失 fail-fast（测试用 overrides.signingKeyId 显式注入）。
+  const regrKeyId = overrides.signingKeyId ?? process.env.REGRESSION_TRANSITION_SIGNING_KEY_ID?.trim();
+  if (!regrKeyId) {
+    throw new Error(
+      '[license-signing-client] missing REGRESSION_TRANSITION_SIGNING_KEY_ID (regression-transition signing requires ' +
+        'a dedicated key; refusing to fall back to the license signing key)',
+    );
+  }
   const cfg: SigningClientConfig = {
     ...base,
-    // 独立 keyId（密钥分离）。默认从专用 env；未配则回落到显式 override（测试）。
-    signingKeyId: (process.env.REGRESSION_TRANSITION_SIGNING_KEY_ID ?? base.signingKeyId).trim(),
-    purpose: 'regression-transition',
     ...overrides,
+    signingKeyId: regrKeyId,
+    purpose: 'regression-transition',
   };
   const raw = await signPayloadRaw(manifest, cfg);
   return { ...raw, keyId: cfg.signingKeyId };

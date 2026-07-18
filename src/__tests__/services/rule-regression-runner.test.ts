@@ -1387,7 +1387,7 @@ describe('P0-A S1 — m1.5 transition 证据（层5，不解锁签字）', () =>
     expect(isSignablePass({ ...withEvidence, status: 'PASS' })).toBe(false);
   });
 
-  it('★m1.5 golden 向量冻结（transition 证据真进 hash——no-manifest vs with-manifest 不同）', () => {
+  it('★m1.5 golden 向量冻结 + transition 证据**不进** hash（Codex 复审 P1-4：证据是报告外可撤销 artifact）', () => {
     const base = {
       status: 'PASS' as const, comparisonMode: 'FROZEN_BASELINE_VS_CURRENT_BACKEND' as const,
       baselineSemantics: 'sem', policyId: 'pol-1', policyVersionRowId: 'pv-1', currentRuntimeToolchainId: 'tc-cur',
@@ -1401,10 +1401,30 @@ describe('P0-A S1 — m1.5 transition 证据（层5，不解锁签字）', () =>
       runnerVersion: 'p0a-runner/m1.5' as const, signability: 'UNSIGNABLE' as const, unsignableLegacyCases: 0,
       unsignableReasons: ['TOOLCHAIN_PROVENANCE_UNVERIFIED'] as _UR[],
     };
-    expect(computeReportHash({ ...base, approvedTransitionManifestHash: null, transitionVerified: null }))
-      .toBe('bd1f2dfc4d72e60b04f4710351f62cbe13416dc9cbcf9a88480f12b14f53c3cf');
-    expect(computeReportHash({ ...base, approvedTransitionManifestHash: 'mh-abc', transitionVerified: true }))
-      .toBe('e330368b46b311ec2502f481d3b6937d4d4cb2be45a35201b303522bda4999da');
+    // 冻结向量。
+    const V = 'f7fda1d254657b40af153cd662eac8d78d97c5c1480b6dc05fcd70c099221f8e';
+    expect(computeReportHash({ ...base })).toBe(V);
+    // ★transition 证据字段**不影响** hash（携证据/不携证据同 hash）——证据由独立 manifest 表派生，报告 hash
+    // 不承诺可撤销的事后 artifact。
+    expect(computeReportHash({ ...base, approvedTransitionManifestHash: 'mh-abc', transitionVerified: true })).toBe(V);
+    expect(computeReportHash({ ...base, approvedTransitionManifestHash: null, transitionVerified: null })).toBe(V);
+    // m1.5 与 m1.4 结构相同仅版本串不同 → 不同 hash（正常）。
+    expect(computeReportHash({ ...base, runnerVersion: 'p0a-runner/m1.4' })).not.toBe(V);
+  });
+
+  it('★Codex 复审 P1-1：m1.5 lying artifact——声明 SIGNABLE+空 reasons 但 cases 派生 UNSIGNABLE → declaredConsistent=false', () => {
+    // m1.5 须与 m1.4 共用严格声明一致性（否则落旧默认分支 declaredConsistent 恒 true = lying artifact 漏网）。
+    const base = fixedReportBody('p0a-runner/m1.5');
+    const lying = {
+      ...base,
+      status: 'PASS' as const,
+      signability: 'SIGNABLE' as const, // 谎称可签字
+      unsignableReasons: [] as _UR[], // 谎称空 reasons
+      unsignableLegacyCases: 0,
+    };
+    const d = _drsd(lying);
+    expect(d.declaredConsistent).toBe(false); // 派生事实 = UNSIGNABLE(provenance)，与声明矛盾 → fail-closed
+    expect(d.signability).toBe('UNSIGNABLE');
   });
 
   it('★assembleReport 新 run 产 m1.5 + transition 证据默认 null', () => {

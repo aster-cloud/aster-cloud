@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
 import { db, auditLogs, policies, regressionReports, regressionCases, regressionDriftApprovals, regressionUpgradeManifests } from '@/lib/prisma';
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import {
   freezeFromExecutions,
   freezeHandwritten,
@@ -157,12 +157,17 @@ export async function GET(req: NextRequest) {
 
   // ★S1（层5）：批量查所有报告的**活跃**（未撤销）manifest → 每报告是否有 transition 证据（避免 N+1）。
   // ★这只是**额外证据** badge——绝不影响 signability/signablePass（携证据报告仍 UNSIGNABLE，层5≠层3）。
+  // ★Codex 复审 P1：批量查活跃 manifest 须**同时**过滤未撤销 + **未过期**（详情走 deriveReportTransitionEvidence
+  // 已过滤 expiry，列表也必须一致，否则已过期 manifest 仍显 badge）。★注意：列表 badge 是弱信号——真实性由
+  // 详情/读路径的**重新验签**保证（见 deriveReportTransitionEvidence），列表仅显「有活跃 manifest 行」。
+  const listNow = new Date();
   const reportIds = reportRows.map((r) => r.id);
   const activeManifests = reportIds.length
     ? await db.query.regressionUpgradeManifests.findMany({
         where: and(
           inArray(regressionUpgradeManifests.reportId, reportIds),
-          isNull(regressionUpgradeManifests.revokedAt)
+          isNull(regressionUpgradeManifests.revokedAt),
+          gt(regressionUpgradeManifests.expiresAt, listNow)
         ),
         columns: { reportId: true },
       })

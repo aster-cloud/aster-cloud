@@ -182,5 +182,24 @@ describe.skipIf(process.env.LICENSE_E2E !== '1' || process.env.DEPLOYMENT_MODE =
       expect(ev.approvedTransitionManifestHash).toBeNull();
       expect(ev.transitionVerified).toBeNull();
     });
+
+    it('★★Codex 复审 P0：直插**伪造签名**的 manifest 行 → 读路径重新验签拒绝 → transitionVerified=null（不信表行）', async () => {
+      // 攻击：普通 DB 写直插一行任意 canonicalPayload/signature（触发器只查结构不验签）。读路径必须重新验签
+      // 才算 verified——伪造字节验签失败 → 不计入证据。这是 P0「表里有行≠已验签」的防线。
+      await db.execute(sql`
+        INSERT INTO "RegressionUpgradeManifest"(id,"reportId","reportHash","policyId","policyVersionRowId",
+          "baselineToolchainId","currentToolchainId","canonicalPayloadB64url",signature,"keyId","keyVersion",
+          "approvedBy","expiresAt","manifestHash")
+        VALUES ('mf-forged',${REP},'rhash-tm-1',${POL},${PVR},${X},${Y},'ZmFrZQ','ZmFrZXNpZw',${REGR_KEY},'1',
+          ${APPROVER},${new Date(Date.now() + 365 * 24 * 3600_000).toISOString()},'mh-forged')
+      `);
+      // 行确实落库了（触发器只查结构，伪造字节通过）。
+      const rows = await db.select().from(regressionUpgradeManifests).where(eq(regressionUpgradeManifests.id, 'mf-forged'));
+      expect(rows).toHaveLength(1);
+      // ★但读路径重新验签 → 伪造签名验不过 → 证据为 null（不被伪造）。
+      const ev = await deriveReportTransitionEvidence(REP);
+      expect(ev.approvedTransitionManifestHash).toBeNull();
+      expect(ev.transitionVerified).toBeNull();
+    });
   }
 );

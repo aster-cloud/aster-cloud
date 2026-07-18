@@ -22,6 +22,10 @@ export interface RegressionTransitionManifest {
   currentToolchainId: string; // Y
   policyId: string;
   approvedBy: string;
+  /** 钉死针对的报告内容（createUpgradeManifest 写入，验签后核对与父报告一致）。 */
+  reportHash?: string;
+  /** ★有效期进签名体（Codex 复审 P1：否则期限不被签名保护）。ISO 串。 */
+  expiresAt?: string;
   [k: string]: unknown; // 前向兼容附加字段（signing-api passthrough）。
 }
 
