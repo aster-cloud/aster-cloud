@@ -1,7 +1,9 @@
 // P0-A S1（信任层5 transition authorization）：创建/撤销「已批准升级」manifest 服务。
 //
 // createUpgradeManifest：对一份回归报告，签发 + 验签 + 持久化一个 upgrade-manifest（证「baseline X →
-// current Y 是被批准的有方向升级」），并把证据（manifestHash + transitionVerified）挂回报告 reportJson。
+// current Y 是被批准的有方向升级」）。★证据**不写回报告**（报告 append-only）——manifest 是独立、可撤销、
+// 可过期的 artifact；报告的 transition 证据由读路径（deriveReportTransitionEvidence / reportIdsWithVerified-
+// Transition）**重新验签** manifest 表动态派生（单一真相源，详情/列表共用 isStoredManifestVerified）。
 //
 // ★铁律（S1 诚实核心）：
 //   - manifest 是**层5 证据**（批准了方向），**不**证明执行环境是 X/Y（层3）——挂证据**绝不**改报告 signability，
@@ -65,6 +67,30 @@ export async function createUpgradeManifest(
     throw new Error('separation_of_duties: approver equals report creator');
   }
 
+  // ★X/Y 须与**报告实际 toolchain 事实**一致（防批准一个与报告无关的方向）。★Codex 复审 P1：**fail-closed**
+  // ——缺事实（currentRuntimeToolchainId=null / 无 case baseline）时**拒绝**；baseline 集合**必须严格单一且 == X**
+  // （多 baseline 报告的报告级批准语义不清）。★Codex v3 建议：纯本地检查前移到**签名前**（无效请求不浪费远程
+  // ceremony），且要求**每个 case 都携带 baseline**（防「一部分 X、一部分缺」被当单一 baseline 放行）。
+  const runReport = report.reportJson as unknown as RunReport;
+  const reportCurrent = report.currentRuntimeToolchainId;
+  if (reportCurrent === null) {
+    throw new Error('transition_mismatch: report has no single currentRuntimeToolchainId (mixed/unknown); cannot approve transition');
+  }
+  if (reportCurrent !== currentToolchainId) {
+    throw new Error('transition_mismatch: currentToolchainId does not match report currentRuntimeToolchainId');
+  }
+  const reportCases = runReport.cases ?? [];
+  if (reportCases.length === 0 || !reportCases.every((c) => typeof c.baselineToolchainId === 'string' && c.baselineToolchainId.length > 0)) {
+    throw new Error('transition_mismatch: report has cases without a baseline toolchain; cannot establish single baseline');
+  }
+  const reportBaselines = new Set(reportCases.map((c) => c.baselineToolchainId as string));
+  if (reportBaselines.size !== 1) {
+    throw new Error(`transition_mismatch: report baseline toolchain set must be exactly one value (got ${reportBaselines.size}); report-level transition approval requires a single baseline`);
+  }
+  if (!reportBaselines.has(baselineToolchainId)) {
+    throw new Error('transition_mismatch: baselineToolchainId does not match report case baseline');
+  }
+
   // 被签 manifest（自证协议域：purpose + 方向 + policy + 批准人 + reportHash + **expiresAt**）。
   // ★Codex 复审 P1：expiresAt 进签名体（否则有效期不被签名保护，可被篡改）。
   const expiresAtIso = expiresAt.toISOString();
@@ -99,26 +125,6 @@ export async function createUpgradeManifest(
     vm.expiresAt !== expiresAtIso
   ) {
     throw new Error('manifest_mismatch: signed manifest fields do not match requested transition/report');
-  }
-  // ★X/Y 须与**报告实际 toolchain 事实**一致（防批准一个与报告无关的方向）。★Codex 复审 P1：**fail-closed**
-  // ——缺事实（currentRuntimeToolchainId=null / 无 case baseline）时**拒绝**（不允许批准 toolchain 事实缺失的报告），
-  // 且 baseline 集合**必须严格单一且 == X**（多 baseline 报告的报告级批准语义不清：X→Y 批了不代表 Z→Y 批了）。
-  const runReport = report.reportJson as unknown as RunReport;
-  const reportCurrent = report.currentRuntimeToolchainId;
-  if (reportCurrent === null) {
-    throw new Error('transition_mismatch: report has no single currentRuntimeToolchainId (mixed/unknown); cannot approve transition');
-  }
-  if (reportCurrent !== currentToolchainId) {
-    throw new Error('transition_mismatch: currentToolchainId does not match report currentRuntimeToolchainId');
-  }
-  const reportBaselines = new Set(
-    (runReport.cases ?? []).map((c) => c.baselineToolchainId).filter((b): b is string => typeof b === 'string')
-  );
-  if (reportBaselines.size !== 1) {
-    throw new Error(`transition_mismatch: report baseline toolchain set must be exactly one value (got ${reportBaselines.size}); report-level transition approval requires a single baseline`);
-  }
-  if (!reportBaselines.has(baselineToolchainId)) {
-    throw new Error('transition_mismatch: baselineToolchainId does not match report case baseline');
   }
 
   // manifestHash = sha256(被签 canonical payload bytes)——报告挂它作证据。
