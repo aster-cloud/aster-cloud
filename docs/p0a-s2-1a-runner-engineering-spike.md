@@ -28,10 +28,10 @@
 | 逻辑 | 现状 Quarkus 耦合 | 归属（§2 共享用例） |
 |---|---|---|
 | `PolicyEvaluationResource` replay 编排 | 重（JAX-RS/12×@Inject/RoutingContext/Mutiny/HMAC/quota）但**replay 纯逻辑混在其中** | 认证/配额/HTTP/遥测**留 resource**；**replay 编排移入 `ReplayExecutionCore`** |
-| `DynamicCnlExecutor` | `@ApplicationScoped`+1×`@Inject ModuleResolver`+1×`@ConfigProperty` 但**管线 static** | static 执行逻辑**移入共享模块**；CDI 壳留 aster-api adapter |
+| `DynamicCnlExecutor` | `@ApplicationScoped`+1×`@Inject ModuleResolver`(→DB)+1×`@ConfigProperty` | ★**S2-1a-0 首刀不移**（留 aster-api）；core 定义 `ReplayExecutor` 接口，aster-api adapter 委托它；executor 提取延后（§2c） |
 | `ReplayMetadata`（+liftDecimals/stableTraceNode） | **零**（plain record + static compute） | 移入/依赖共享模块 |
 | `CanonicalJson`/`TypeContext`/`DecisionTrace` | **零**（aster-lang-core + plain record） | 依赖不动 |
-| `InProcessCnlParser`/`NamedContextMapper`/`UserAliasValidator`/`EntryPointSelector` | 无（public static） | 共享模块调 |
+| `InProcessCnlParser`/`NamedContextMapper`/`UserAliasValidator`/`EntryPointSelector` | 无（public static） | ★**首刀留 aster-api**（被 `DynamicCnlExecutor` 调）；后续随唯一 executor implementation 提取 |
 | `ToolchainIdentityProvider` | `@ApplicationScoped`+`@ConfigProperty aster.runtime.build` | **格式化函数共享**；env/build-id 读取留各自 adapter（§3 observed vs expected） |
 | `ModuleResolver` | `@ApplicationScoped`+**查 DB**（`PolicyVersion.findLibraryVersion`）+tenant | **非浅层**（§5 受签 ModuleClosure 或 import fail-closed） |
 | `toTraceSteps`/`buildVocabularyIndex`/`buildAliasSet` glue + DecisionTrace 组装 | **private in JAX-RS resource**（byte-sensitive） | **移入共享模块**（resource 与 runner 共调，**非复制**）——分叉风险主因 |
@@ -53,26 +53,55 @@ request 默认值(locale/function)+原始 context → vocabulary/alias 转换 �
 ```
 只共享 executor + 3 glue，仍让 aster-api 与 runner **各自编排** trace arm/drain/finally、replayable 传播、compute 异常降级、locale/function 默认化、vocab 解析失败退化、alias trust——**仍 Java↔Java 分叉**。
 
-**★共享对象必须是「从受信 replay 请求到 ReplayMetadata 的完整纯编排」**：
+**★共享对象 = 「从受信 replay 请求到 ReplayMetadata 的完整纯编排」，但按 §2c 的分阶段 API 暴露（非一次 execute——一次返回会破坏 metrics/audit 交织顺序，见 §2c P0-1）**：
 ```
 // 新共享模块 aster-replay-core（aster-api 与 runner 都依赖，唯一一份代码）
-ReplayExecutionCore.execute(ReplayExecutionRequest) → ReplayExecutionResult {
-    businessOutput,          // 规范形式
-    decisionTrace,           // 完整 DecisionTrace（steps 全稳定字段）
-    replayMetadata,          // 三 hash + M2 canonical bytes + replayabilityStatus/reasons
-    executionOutcome,        // 成功 / 各类签字级错误
-    errorCode                // 规范化错误码（签字级错误契约，§4b）
-}
+// ★三阶段（唯一权威拓扑，见 §2c）：
+core.execute(ReplayExecutionRequest) → ExecutionPhaseResult{execResult, traceDrainResult}
+core.buildDecisionTrace(execution, captureTrace) → DecisionTrace
+core.computeReplayMetadata(...) → ReplayMetadata
+// ReplayExecutionResult{execResult, decisionTrace, replayMetadata, executionOutcome, errorCode}
+// 只作最终数据模型，非一次 execute 返回。
 ```
-- **aster-api resource**：只做认证、配额、HTTP 映射、遥测；**调 `ReplayExecutionCore.execute`**（不再自行编排 replay）。
-- **runner main**：只做协议、challenge、SVID 签名；**调同一 `ReplayExecutionCore.execute`**。
-- **两边不得自行重组 replay 流程**——这才是「同一份代码保 byte-parity」的真落地。
+- **aster-api resource**：只做认证、配额、HTTP 映射、遥测；**在三阶段之间原位交织 metrics/audit**（§2c）。
+- **runner main**：只做协议、challenge、SVID 签名；**调同一三阶段 core**。
+- **两边必须遵循同一三阶段顺序契约**（由顺序字符化测试约束）——调用者客观上负责串联三阶段，但不得改写各阶段内部编排；这才是「同一份代码保 byte-parity」的真落地。
+- ★**executor implementation 唯一份**：aster-api 与 runner **共享同一 `ReplayExecutor` 实现**（parser/入口选择/module linking/执行同一份），**只有 `ModuleGraphResolver` 因环境替换**（aster-api=DB-backed，runner=签名 ModuleClosure-backed）。不允许两边各写一套 parser/executor（否则重造执行分叉）。
 
-**共享模块内含（从 resource + executor 抽出、去 CDI）**：完整 replay orchestration（含 trace arm/drain/finally、replayable 传播、异常降级、默认化、vocab/alias 转换）+ `ReplayMetadata`/`DecisionTrace`（本就 pure-JVM）+ `DynamicCnlExecutor` static 执行 + `toTraceSteps`/`buildVocabularyIndex`/`buildAliasSet` glue + **toolchain identity 格式化函数**（env 读取只留在各自 adapter）。
+**S2-1a-0 共享模块内含（从 resource 抽出、去 CDI；★首刀 executor 不移，见 §2c）**：完整 replay orchestration（含 trace arm/drain/finally、replayable 传播、异常降级、默认化、vocab/alias 转换）+ `ReplayMetadata`/`DecisionTrace`（本就 pure-JVM，移入并保留原 FQCN）+ `toTraceSteps`/`buildVocabularyIndex`/`buildAliasSet` glue + **toolchain identity 格式化函数**（env 读取留各自 adapter）+ **`ReplayExecutor` 纯接口**（aster-api adapter 委托现有 `DynamicCnlExecutor`；executor 本体首刀留 aster-api）。
 
 **依赖不动**（aster-lang）：`CanonicalJson`/`CoreLowering`/`CoreModel`/`IdentifierIndex`/`LexiconAbiVersion`/`Canonicalizer`/`AsterLanguage`(Truffle)/`TraceAccess`/`TraceCollector`/`LambdaValue`/interop `Aster*Value`/lexicon SPI 包。
 
 **★落地顺序（S2-1a-0 最小第一刀，低风险独立价值）**：先把完整 replay orchestration 从 resource 抽进 `aster-replay-core`，**aster-api resource 改调它**，证**行为不变 = 全回归绿 + 现有 ReplayMetadata 单测绿**（trace/错误降级/默认值 byte-identical）——这步不引入 runner，纯重构，独立可验；再让 runner 依赖同模块。
+
+### 2c. ★S2-1a-0 提取策略（Codex 策略校验退回 64 后纠正——两个我原策略的 P0）
+
+**★P0-1：不能「三元组单次返回 + adapter 原样交织」（自相矛盾）**。生产真实顺序：`executor → trace drain → metrics → recordLoanDecision → audit publish → LOG → DecisionTrace → recordApiCall → EvaluationResponse → ReplayMetadata`。若 core 一次返回 `{execResult, decisionTrace, replayMetadata}`，则 metadata 在 metrics/audit **之前**算 → **改行为**（metrics/audit 抛异常时现状跳过 metadata，新版会先算；toolchainId 调用时机/异常优先级变）。→ **必须分阶段 core API**（非一次调用）：
+```
+core.execute(request) → ExecutionPhaseResult{execResult, traceDrainResult}
+  ↓ adapter: metrics / recordLoanDecision / audit / completion log（原位）
+core.buildDecisionTrace(execution, captureTrace) → DecisionTrace
+  ↓ adapter: recordApiCall(success) / EvaluationResponse.success(...)（原位）
+core.computeReplayMetadata(...) → ReplayMetadata
+  ↓ adapter: response.withReplayMetadata(...)（原位）
+```
+三元组只作**最终数据模型**，非「一次 execute 返回」。**不用回调把 adapter 逻辑塞回 core**（隐式控制流）。
+
+**★P0-2：移 `DynamicCnlExecutor` 不解循环**（它依赖 `NamedContextMapper`/`InProcessCnlParser`/`ModuleResolver`，而 `ModuleResolver` 依赖 Panache `PolicyVersion` = DB）→ `aster-api → aster-replay-core → aster-api` 仍成环，编不过。
+
+★★**S2-1a-0 最小首刀拓扑（选死，非「或」——Codex 第2轮）**：
+- **不移动 `DynamicCnlExecutor`**（连同 `ModuleResolver`/Panache 实体**暂留 aster-api**）。
+- **core 只定义一个纯接口 `ReplayExecutor`**（不依赖 Quarkus/Panache/`PolicyVersion`）；orchestration 依赖它。
+- **aster-api 提供 `ReplayExecutor` adapter**，委托现有 `DynamicCnlExecutor.executeWithTenantContext(...)`。
+- **`ModuleGraphResolver` 接口延后**（S2-1a-0 **不引入**）——首刀 orchestration 只调 `ReplayExecutor`，不直接知道 module 解析；`ModuleGraphResolver` 到**真正提取 executor implementation 时**再引入（那时 aster-api=DB-backed / runner=签名 ModuleClosure-backed）。**首刀不做 executor 内部依赖倒置重构**（避免首刀从「纯提取」膨胀成「大重构」）。
+- ★**executor implementation 唯一份的兑现在后续刀**：S2-1a-0 只搬 orchestration + trace/metadata glue；runner 尚未实现。**后续 runner 必须复用同一 executor implementation**（届时把 executor 也提取，`ModuleGraphResolver` 才登场），**不允许 runner 另写一套 parser/executor**（否则重造执行分叉）。此约束写进 `ReplayExecutor` 契约文档。
+- ★★**跨模块 DTO 全由 core 拥有（Codex 第3轮——否则环从实现依赖移进方法签名）**：`ReplayExecutor.execute(...)` **不得返回 `DynamicCnlExecutor.ExecutionResult`**（那会让 core 为声明签名反依赖 aster-api）。core 定义自己的纯值类型 **`ReplayExecutorResult`**（含 `result/moduleName/functionName/executionTimeMs` 四字段）；aster-api adapter 把 `DynamicCnlExecutor.ExecutionResult` **机械映射**过去。**core 任何 public API 均不得引用 `DynamicCnlExecutor`/`ModuleResolver` 等 aster-api 类型**——接口边界成立的必要条件。
+
+**★byte-parity 门补字符化测试**（Codex——现有测试门不足以证时序重构 byte-safe）：钉死成功路径完整事件顺序 / metrics 抛异常时不调 metadata+toolchain / audit 抛异常时不调 / executor 四类异常时 trace 被 drain 且不构建 metadata / metadata compute 异常仍走 NON_REPLAYABLE 降级 / trace=false&replayCapture=false 时历史 ThreadLocal 被清 / trace=false&replayCapture=true 只返回 replayMetadata 不返回 decisionTrace / **JSON golden 比响应原始 bytes 非只对象字段**。
+
+**★defaulting/惰性求值（Codex——机械提取阶段不顺手归并）**：`toolchainId` **不提前无条件快照**（现只在 effectiveReplayCapture 且 metrics/audit/response 后读）；locale/functionName getter **不合并成一次求值**（改调用次数/时序）；`request.context()` 原始对象**分别**用于 executor/audit/replay hash，**不提前转 positional 复用**；★**定案：`ReplayExecutionRequest` 收 raw vocabulary + raw aliasSet**（core `execute` 内按现有顺序先建 vocabulary index 再建 alias set，不留 vocabIndex 已建入参的第二种所有权）；`aliasesTrusted` 由 adapter 派生后传入；toolchainId **不进 execute request**，由 computeReplayMetadata 阶段惰性获取。
+
+**★TraceAccess/SHARED_ENGINE 铁律**：arm/execute/drain **同一 worker 线程同一同步调用栈**；core 内**不新增** Uni/CompletionStage/线程池/异步边界；保留 `finally` drain；未捕获时仍先 drain 历史 ThreadLocal；独立 runner 进程独立 `SHARED_ENGINE` 正常（非跨进程共享）。★首刀 executor 不移（§2c）→ `TruffleRuntimeHealthCheck`/`HotPlugLexiconLoader`/`LexiconAvailabilityService.clearCompilationCaches()` 对 `DynamicCnlExecutor` 的引用**不受影响**（executor 留原位）。★移入 core 的类型（`ReplayMetadata`/`DecisionTrace` + trace glue）保留原 FQCN/package（只改 Gradle 归属），减 Jackson/OpenAPI/测试 import/反射变化。★**`ReplayExecutor` 异常契约 = 原样透传（Codex 第3轮选死，非「或一一映射」）**：`ReplayExecutor` 不捕获/不包装 executor runtime exception；core `execute` 只 `finally` drain trace 后**继续抛同一异常实例**；resource 保留现有四类 catch + HTTP 映射；首刀**不新增 core 统一异常、不做一一转换**（executor 真提入共享模块时再迁异常类型保 FQCN）。
 
 ---
 
