@@ -172,7 +172,11 @@ BOTH_ENDPOINTS_VERIFIED → POLICY_EVALUATED → RECEIPT_SIGNED → FINALIZED_SI
 
 ---
 
-## 7. 必须你拍板的决策点
+## 7. 决策点（★用户已拍板 2026-07-19）
+
+**已拍板**：①下一步 = **先做 S2-1a-0 共享模块重构**（纯 aster-api 内部抽取，证回归绿，不引入 runner）；②代码组织 = **同仓 aster-api 新 module**（`aster-replay-core` 共享 + `aster-replay-runner`）；③共享模块（非复制）；④多模块 = **首版就支持受签 ModuleClosure**（→须先补独立 ModuleClosure 协议 spike）；⑤首版并发 = 单 Job 单 execution。★**序列**：S2-1a-0 不依赖 ModuleClosure 决策（纯抽取不改行为）→先做；ModuleClosure 协议 spike 是后续 runner 侧 track。
+
+### 原决策点全文（存档）
 
 1. **runner 代码组织：新 gradle module（同 aster-api 仓）vs 独立仓？** ——同仓 module 复用构建/版本对齐易，但 runner 与 aster-api 同仓（common-mode 面稍大）；独立仓隔离强但版本同步/共享模块跨仓复杂。★推荐**同仓新 module `aster-replay-core`（共享）+ `aster-replay-runner`（main+镜像）**——共享模块保 byte-parity，runner 镜像最小化排除 quarkus。
 2. **共享模块 vs 复制**：确认走**共享 `aster-replay-core` 模块**（aster-api resource 重构调它 + runner 依赖它，同一份代码保 byte-parity），而非复制 glue 到 runner（复制=分叉风险）？——★推荐共享。
