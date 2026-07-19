@@ -256,7 +256,11 @@ isFinalizedSignablePass(report, verifiedContext): boolean   // CCO/UI/export 唯
 
 ---
 
-## 9. 必须你拍板的决策点
+## 9. 决策点（★用户已拍板 2026-07-19）
+
+**已拍板**：①runner 形态 = **B digest-pinned ephemeral Job**；②部署位置 = **on-prem k3s 同 aster-api 集群**（复用 S2 PSAT 根 + S2-0 admission；cloud→runner mTLS/challenge）；③最终 SIGNABLE = **方案三 finalization receipt**（原报告永 UNSIGNABLE 冻结，`isFinalizedSignablePass` 唯一入口）；④signing policy 首档 = **`PLATFORM_EXECUTION_VERIFIED`**；⑤旧 baseline = 形态 B 蕴含（旧 digest 可 cosign-verified→其 Job 重执行须匹配冻结 commitment 否则 fail-closed；不可拉/不匹配→重冻）。下一步 = **先出 S2-1a 工程 spike/plan**。
+
+### 原决策点全文（存档）
 
 1. **runner 部署形态：形态 B（digest-pinned ephemeral Job，推荐）还是 C（常驻+baseline 重冻）？**（§3）——B 能捕获 Java toolchain X→Y 漂移、双端版本化、绑定强，但要 Job 编排 + 旧 digest 须仍 cosign-verifiable；C 简单但放弃证明历史 Java 版本（baseline 语义变，捕获不到 toolchain 漂移）。这是 S2-1 epic 形态总开关。
 2. **runner 部署位置**：on-prem k3s（同 aster-api 集群，复用 S2 spike PSAT 根 + S2-0 admission）还是独立节点？runner 触发链（cloud→runner）是否 mTLS/challenge 防又一个自报面。
