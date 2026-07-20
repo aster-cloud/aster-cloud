@@ -103,6 +103,8 @@ AUTH_TRUST_HOST = "true"
 #
 # Aster API 内部调用（policy evaluate-source 必需）：
 # wrangler secret put ASTER_PLAN_GATE_HMAC_KEY  # 与 aster-api Vault apps/aster-api-plan-gate.hmac-key 同值
+# wrangler secret put ASTER_RUNNER_LAUNCHER_HMAC_KEY  # runner-launcher 独立 HMAC key（密钥隔离，非 plan-gate key；launcher 是新 TCB 成员）
+# wrangler secret put ASTER_RUNNER_LAUNCHER_URL       # runner-launcher endpoint（Slice-2a stub/local，Slice-2b 真 launcher）
 #
 # Aster API URL（可选，默认 https://policy.aster-lang.dev）：
 # 编辑器 / AI 客户端会读 NEXT_PUBLIC_ASTER_POLICY_API_URL 作为运行时 baseUrl
