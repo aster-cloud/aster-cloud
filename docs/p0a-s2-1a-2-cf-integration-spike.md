@@ -116,13 +116,15 @@
 
 ---
 
-## 6. 必须你拍板的决策点（5 个；C2 是既定工程约束非决策——见 §1）
+## 6. 决策点（★用户已拍板 2026-07-20 全按推荐）
 
-1. **C1 workflow 组织**：runner 镜像 CI = **独立 workflow（推荐，解耦发版+独立 cert-identity）** 还是 aster-api deploy.yml 加 job？
-2. **D1 D-2 arm64 parity 频率**（D-1 恒每 PR）：每 PR QEMU（慢）／nightly／**仅镜像发版门（推荐，arm64 是镜像属性只随镜像变）**？
-3. **E1 launcher 语言/框架**：**Go（推荐，client-go 原生+轻量占用，契合紧资源节点）** 还是 Quarkus/Java（团队熟但 JVM 重）？（复用 aster-api 已否决——污染 TCB）。
-4. **E2 + 分阶段**：**Slice-2a（C+D+F-abstraction 不碰 k3s 建 Job）先上 + launcher 独立 Slice-2b（独立安全审）（推荐）** 还是 C–F 一刀全做（含 launcher）？★两 slice 都属 S2-1a-2，2a 非完成态。
-5. **F1 HMAC key**：launcher 用**独立新 key（推荐，密钥隔离，承 S1）** 还是复用 plan-gate key？
+1. **C1 workflow 组织**：✅ **拍板 = 独立 workflow `aster-replay-runner-deploy.yml`**（解耦发版 + 独立 cert-identity）。
+2. **D1 D-2 arm64 parity 频率**：✅ **拍板 = D-1 distribution parity 恒每 PR + D-2 arm64 parity 仅镜像发版门跑**（arm64 是镜像属性只随镜像变；避免每 PR QEMU 慢门 + nightly 冗余）。
+3. **E1 launcher 语言/框架**：✅ **拍板 = Go**（client-go 原生 + 轻量占用契合紧资源节点；复用 aster-api 加 endpoint 否决=污染 TCB）。
+4. **E2 + 分阶段**：✅ **拍板 = Slice-2a（C+D+F-abstraction，不碰 k3s 建 Job）先上 + launcher 独立 Slice-2b（独立安全审）**。★两 slice 都属 S2-1a-2，Slice-2a 非完成态（S2-1a-2 完成 = 2a+2b 都上线，真 in-cluster 编排跑通）。
+5. **F1 HMAC key**：✅ **拍板 = 独立新 key `ASTER_RUNNER_LAUNCHER_HMAC_KEY`**（密钥隔离，承 S1 独立 keyId 原则；launcher 攻破不泄 plan-gate key）。
+
+**★下一步**：先出 **Slice-2a spec+plan**（C 独立签名 workflow + D 分层 parity 门 + F cloud 旁路抽象，stub target），Codex 审后 subagent-driven 实现；launcher（Slice-2b）待 Slice-2a 上线后独立安全审 + spec/plan。
 
 ---
 
