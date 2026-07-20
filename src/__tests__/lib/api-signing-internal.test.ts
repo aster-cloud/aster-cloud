@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createHmac, createHash } from 'node:crypto';
-import { signInternalCallerHeaders } from '@/lib/api-signing';
+import { signInternalCallerHeaders, signRunnerLauncherHeaders } from '@/lib/api-signing';
 
 const KEY = 'test-internal-caller-secret-32chars';
 
@@ -119,4 +119,30 @@ describe('signInternalCallerHeaders (红队 P0-C 加固)', () => {
     expect(ts).toBeGreaterThanOrEqual(before);
     expect(ts).toBeLessThanOrEqual(after + 1);
   });
+});
+
+describe('signRunnerLauncherHeaders', () => {
+  beforeEach(() => { process.env.ASTER_RUNNER_LAUNCHER_HMAC_KEY = 'test-launcher-key'; });
+
+  it('构造 7 行 canonical 独立签名 + cloud-runner-launcher caller', async () => {
+    const headers = await signRunnerLauncherHeaders(
+      'POST', '/api/v1/runner/launch', '{"tenantId":"t1"}', 't1', 'ADMIN');
+    expect(headers['X-Internal-Caller']).toBe('cloud-runner-launcher');
+    expect(headers['X-Internal-Signature']).toMatch(/^[a-f0-9]{64}$/); // sha256 hex
+    expect(headers['X-Aster-Timestamp']).toMatch(/^\d+$/);
+    expect(headers['X-Aster-Nonce']).toBeTruthy();
+  });
+
+  it('缺 key → 抛（不静默）', async () => {
+    delete process.env.ASTER_RUNNER_LAUNCHER_HMAC_KEY;
+    await expect(signRunnerLauncherHeaders('POST', '/p', 'b', 't', 'r')).rejects.toThrow('ASTER_RUNNER_LAUNCHER_HMAC_KEY');
+  });
+
+  it('tenant/role 放 header（供接收端重建 canonical）', async () => {
+    const h = await signRunnerLauncherHeaders('POST', '/p', 'b', 'tenant-x', 'ADMIN');
+    expect(h['X-Aster-Tenant']).toBe('tenant-x');
+    expect(h['X-Aster-Role']).toBe('ADMIN');
+  });
+  // ★「独立 key 真隔离」由 Task 4b stub 测试证明（错 key 签名被真 key 的 stub 拒 4xx）——
+  //   比在此处比对两次调用的签名更可靠（后者 nonce/timestamp 每次不同，无法单独归因于 key）。
 });

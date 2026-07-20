@@ -5,14 +5,14 @@
  * canonical 格式: method|path|query|timestamp|nonce|bodyHash
  */
 
-async function sha256Hex(data: ArrayBuffer): Promise<string> {
+export async function sha256Hex(data: ArrayBuffer): Promise<string> {
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
 
-async function hmacSha256(secret: string, data: string): Promise<string> {
+export async function hmacSha256(secret: string, data: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
@@ -210,6 +210,37 @@ export async function signByokAllowlistHeaders(
   return {
     'X-Aster-Timestamp': timestamp,
     'X-Aster-Nonce': nonce,
+    'X-Internal-Signature': signature,
+  };
+}
+
+/**
+ * runner-launcher 内部调用签名（独立 HMAC key，密钥隔离——launcher 是新 TCB 成员，
+ * 攻破不牵连 aster-api plan-gate key）。逐字节复用 signInternalCallerHeaders 的 7 行
+ * canonical（method\npath\nts\nnonce\nbodyHash\ntenant\nrole），仅两处不同：key 与 caller 标识。
+ */
+export async function signRunnerLauncherHeaders(
+  method: string, path: string, body: string, tenantId: string, role: string,
+): Promise<Record<string, string>> {
+  const key = process.env.ASTER_RUNNER_LAUNCHER_HMAC_KEY;
+  if (!key) throw new Error('ASTER_RUNNER_LAUNCHER_HMAC_KEY 未配置');
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = generateNonce();
+  // ★sha256Hex 签名是 (data: ArrayBuffer)——须先 TextEncoder 编码 body 再取 .buffer
+  //   （逐字对齐 signInternalCallerHeaders 的 body 处理，api-signing.ts:113-115）。
+  const encoder = new TextEncoder();
+  const bodyBytes = body ? encoder.encode(body) : new Uint8Array(0);
+  const bodyHash = await sha256Hex(bodyBytes.buffer as ArrayBuffer);
+  const canonical = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodyHash}\n${tenantId}\n${role}`;
+  const signature = await hmacSha256(key, canonical);
+  return {
+    'X-Internal-Caller': 'cloud-runner-launcher',
+    'X-Aster-Timestamp': timestamp,
+    'X-Aster-Nonce': nonce,
+    // ★tenant/role 也放 header——canonical 含 tenant/role，接收端（stub/launcher）须能重建同一
+    //   canonical 才能验签。不放 header 则接收端不知 role→永远验签失败（Codex 抓的契约缺口）。
+    'X-Aster-Tenant': tenantId,
+    'X-Aster-Role': role,
     'X-Internal-Signature': signature,
   };
 }
