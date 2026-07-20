@@ -1,8 +1,9 @@
 // ★这是 stub/契约参考实现：真验独立 HMAC key，返回固定 ReplayMetadata（Slice-2a 验接线）。
 //   Slice-2b 真 launcher 复用同一 HMAC 验证契约，但用真 runner Job 产 ReplayMetadata。
-// sha256Hex/hmacSha256 已在 api-signing.ts 导出（DRY），保证 stub 验的 hash/canonical
-// 与 client（signRunnerLauncherHeaders）签的逐字节一致。
-import { sha256Hex, hmacSha256 } from '../../lib/api-signing';
+// sha256Hex/hmacVerify 已在 api-signing.ts 导出（DRY），保证 stub 验的 hash/canonical
+// 与 client（signRunnerLauncherHeaders）签的逐字节一致；hmacVerify 用 crypto.subtle.verify
+// 常数时间原语（非手写 hex 比对）。
+import { sha256Hex, hmacVerify } from '../../lib/api-signing';
 
 let stubReplayMetadata: Record<string, unknown> = {
   canonicalInputHash: 'stub-i', canonicalOutputHash: 'stub-o',
@@ -28,6 +29,13 @@ export async function handleRunnerLaunch(request: Request): Promise<Response> {
   if (!sig || !timestamp || !nonce || caller !== 'cloud-runner-launcher' || tenant == null || role == null) {
     return new Response('缺签名头/caller 不符', { status: 401 });
   }
+  // ★时间戳窗口（5min）先校验——过期请求 fail-fast，不做无谓 crypto（也避免 expired-vs-wrong-key
+  //   的语义混淆）。★Number('abc')=NaN，Math.abs(NaN)>300=false 会误放行，故先 Number.isFinite。
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts) || Math.abs(Math.floor(Date.now() / 1000) - ts) > 300) {
+    return new Response('时间戳无效或过期', { status: 401 });
+  }
+
   const body = await request.text();
   const url = new URL(request.url);
 
@@ -36,25 +44,12 @@ export async function handleRunnerLaunch(request: Request): Promise<Response> {
   const encoder = new TextEncoder();
   const bodyHash = await sha256Hex(encoder.encode(body).buffer as ArrayBuffer);   // ★同 client 的 body 处理
   const canonical = `${request.method}\n${url.pathname}\n${timestamp}\n${nonce}\n${bodyHash}\n${tenant}\n${role}`;
-  const expected = await hmacSha256(key, canonical);
 
-  // 常数时间比对（防时序侧信）；失败 → 403（密钥隔离验证：错 key 签的 sig 对不上真 key 重算的）。
-  if (!timingSafeEqualHex(sig, expected)) return new Response('HMAC 验证失败', { status: 403 });
-  // ★时间戳窗口（5min）+ nonce 去重（生产/真 launcher 须做；stub 可简化为仅窗口校验）。
-  //   ★先校验 timestamp 是纯数字——Number('abc')=NaN，Math.abs(NaN)>300=false 会误放行（Codex 抓）。
-  const ts = Number(timestamp);
-  if (!Number.isFinite(ts) || Math.abs(Math.floor(Date.now() / 1000) - ts) > 300) {
-    return new Response('时间戳无效或过期', { status: 401 });
-  }
+  // ★用 crypto.subtle.verify 常数时间原语验证（非手写 hex 比对——后者长度早退+逐字符泄时序）。
+  //   验签失败 → 403（密钥隔离验证：错 key 签的 sig 对不上真 key 的 verify）。
+  const ok = await hmacVerify(key, canonical, sig);
+  if (!ok) return new Response('HMAC 验证失败', { status: 403 });
 
   return new Response(JSON.stringify({ outcome: 'SUCCESS', replayMetadata: stubReplayMetadata }),
     { status: 200, headers: { 'Content-Type': 'application/json' } });
-}
-
-/** 常数时间十六进制比对。 */
-function timingSafeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }

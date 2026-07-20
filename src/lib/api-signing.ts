@@ -27,6 +27,33 @@ export async function hmacSha256(secret: string, data: string): Promise<string> 
     .join('');
 }
 
+/**
+ * 用真正的密码学原语 crypto.subtle.verify('HMAC', ...) 验证签名——WebCrypto 的 verify 是
+ * 常数时间实现（不像手写 hex 字符串比对会因长度早退/字符逐比泄时序）。
+ * secret=HMAC 密钥；data=canonical 串；hexSignature=收到的 X-Internal-Signature（hex）。
+ * hex 非法/长度不符直接返回 false（在做 verify 前，无 key 相关时序泄露）。
+ */
+export async function hmacVerify(secret: string, data: string, hexSignature: string): Promise<boolean> {
+  // hex → bytes（长度须为偶数且全 hex；否则签名不可能对，直接 false）。
+  if (hexSignature.length === 0 || hexSignature.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(hexSignature)) {
+    return false;
+  }
+  const sigBytes = new Uint8Array(hexSignature.length / 2);
+  for (let i = 0; i < sigBytes.length; i++) {
+    sigBytes[i] = parseInt(hexSignature.slice(i * 2, i * 2 + 2), 16);
+  }
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  // ★crypto.subtle.verify 是常数时间的密码学验证原语（Codex 整支审要求）。
+  return crypto.subtle.verify('HMAC', key, sigBytes.buffer as ArrayBuffer, encoder.encode(data));
+}
+
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
