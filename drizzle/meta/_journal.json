@@ -281,6 +281,13 @@
       "when": 1779900000000,
       "tag": "0040_regression_upgrade_manifest",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0041_runner_parity_columns",
+      "breakpoints": true
     }
   ]
 }
