@@ -23,7 +23,16 @@ import { db, platformSettings } from '@/lib/prisma';
 
 export const PLATFORM_SETTING_KEYS = {
   POLICY_SHARING_ENABLED: 'policy_sharing.enabled',
+  // runner-parity 影子校验触发模式（管理员可配）。off=不跑；sampled=按 sample_pct 概率跑；
+  //   every=每次执行都跑；manual=仅显式 verify-parity endpoint 触发。默认 off（fail-OFF，须显式 opt-in）。
+  RUNNER_PARITY_MODE: 'runner_parity.mode',
+  //   sampled 模式的采样百分比（0-100 整数）。默认 5。
+  RUNNER_PARITY_SAMPLE_PCT: 'runner_parity.sample_pct',
 } as const;
+
+/** runner-parity trigger 模式枚举（fail-OFF 默认 'off'）。 */
+export const RUNNER_PARITY_MODES = ['off', 'sampled', 'every', 'manual'] as const;
+export type RunnerParityMode = (typeof RUNNER_PARITY_MODES)[number];
 
 /**
  * Per-key default when the row is missing. Every key in
@@ -32,6 +41,8 @@ export const PLATFORM_SETTING_KEYS = {
  */
 const DEFAULTS: Record<string, unknown> = {
   [PLATFORM_SETTING_KEYS.POLICY_SHARING_ENABLED]: false,
+  [PLATFORM_SETTING_KEYS.RUNNER_PARITY_MODE]: 'off',
+  [PLATFORM_SETTING_KEYS.RUNNER_PARITY_SAMPLE_PCT]: 5,
 };
 
 const CACHE_TTL_MS = 60_000;
@@ -107,4 +118,23 @@ export async function setSetting(
 export async function isPolicySharingEnabled(): Promise<boolean> {
   const v = await getSetting<boolean>(PLATFORM_SETTING_KEYS.POLICY_SHARING_ENABLED);
   return v === true;
+}
+
+/**
+ * runner-parity 触发配置（管理员可配三模式 + 采样率）。★任何非法值 fail-closed 为 { mode: 'off' }
+ * （诚实边界：parity 是纯附加影子校验，误开销比误关严重；且 launcher 调用有成本）。
+ * sample_pct 越界/非整数 → 夹到 [0,100]，非法 → 0（=off 效果）。
+ */
+export async function getRunnerParityConfig(): Promise<{ mode: RunnerParityMode; samplePct: number }> {
+  const rawMode = await getSetting<unknown>(PLATFORM_SETTING_KEYS.RUNNER_PARITY_MODE);
+  const mode: RunnerParityMode =
+    typeof rawMode === 'string' && (RUNNER_PARITY_MODES as readonly string[]).includes(rawMode)
+      ? (rawMode as RunnerParityMode)
+      : 'off';
+  const rawPct = await getSetting<unknown>(PLATFORM_SETTING_KEYS.RUNNER_PARITY_SAMPLE_PCT);
+  let samplePct = 0;
+  if (typeof rawPct === 'number' && Number.isFinite(rawPct)) {
+    samplePct = Math.min(100, Math.max(0, Math.floor(rawPct)));
+  }
+  return { mode, samplePct };
 }

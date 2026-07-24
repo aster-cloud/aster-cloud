@@ -15,6 +15,7 @@ import { requireAdmin } from '@/lib/admin-auth';
 import { requireLicenseWriteOk } from '@/lib/license-write-gate';
 import {
   PLATFORM_SETTING_KEYS,
+  RUNNER_PARITY_MODES,
   getSetting,
   setSetting,
 } from '@/lib/platform-settings';
@@ -71,6 +72,23 @@ export async function POST(req: Request) {
         { error: `Unknown setting key: ${body.key}` },
         { status: 400 },
       );
+    }
+    // 值级校验（写侧 fail-fast，给管理员清晰 400；读侧 getRunnerParityConfig 也 fail-closed 兜底）。
+    if (body.key === PLATFORM_SETTING_KEYS.RUNNER_PARITY_MODE) {
+      if (typeof body.value !== 'string' || !(RUNNER_PARITY_MODES as readonly string[]).includes(body.value)) {
+        return NextResponse.json(
+          { error: `runner_parity.mode 须为 ${RUNNER_PARITY_MODES.join('|')} 之一` },
+          { status: 400 },
+        );
+      }
+    }
+    if (body.key === PLATFORM_SETTING_KEYS.RUNNER_PARITY_SAMPLE_PCT) {
+      if (typeof body.value !== 'number' || !Number.isInteger(body.value) || body.value < 0 || body.value > 100) {
+        return NextResponse.json(
+          { error: 'runner_parity.sample_pct 须为 0-100 的整数' },
+          { status: 400 },
+        );
+      }
     }
     await setSetting(body.key, body.value, check.userId);
     return NextResponse.json({ ok: true });
