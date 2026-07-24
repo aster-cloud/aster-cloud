@@ -20,7 +20,7 @@ vi.mock('@/lib/prisma', () => ({
     policyVersions: { findFirst: findFirstVersion },
   } },
   policies: { id: 'id', userId: 'userId', deletedAt: 'deletedAt' },
-  executions: { id: 'id', policyId: 'policyId' },
+  executions: { id: 'id', policyId: 'policyId', userId: 'userId' },
   policyVersions: { id: 'id', policyId: 'policyId' },
 }));
 vi.mock('drizzle-orm', () => ({
@@ -73,6 +73,23 @@ describe('POST verify-parity', () => {
     findFirstExec.mockResolvedValue(undefined);
     expect((await call()).status).toBe(404);
     expect(runParityForExecutionNow).not.toHaveBeenCalled();
+  });
+
+  it('★跨租户纵深隔离（Codex 抓 P0）：execution 查询 where 必含 executions.userId==会话用户', async () => {
+    await call();
+    // and/eq mock 把 where 捕获为 [{c,v}...]；断言含 userId 约束——不依赖跨表不变量。
+    const where = findFirstExec.mock.calls[0][0].where as Array<{ c: string; v: string }>;
+    expect(where).toContainEqual({ c: 'id', v: 'e1' });
+    expect(where).toContainEqual({ c: 'policyId', v: 'p1' });
+    expect(where).toContainEqual({ c: 'userId', v: 'u1' }); // ★关键：约束 execution 自身 userId
+  });
+
+  it('★policyId 匹配但 execution.userId 不匹配（脏行）→ 真库 findFirst 过滤掉 → 404，不跑 parity', async () => {
+    // 真库下 userId 约束会过滤脏行 → findFirst 返 undefined。断言此时 404 且 side-B 不启动。
+    findFirstExec.mockResolvedValue(undefined);
+    const resp = await call();
+    expect(resp.status).toBe(404);
+    expect(runParityForExecutionNow).not.toHaveBeenCalled(); // 绝不读/触发/回写他人 execution
   });
 
   it('成功 → 200 + parity 结果 + persisted，复用行上 side-A + **当次冻结源码**（非当前 policy.content）', async () => {

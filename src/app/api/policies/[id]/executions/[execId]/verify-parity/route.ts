@@ -37,9 +37,16 @@ export async function POST(_req: Request, { params }: RouteParams) {
     });
     if (!policy) return NextResponse.json({ error: 'Policy not found' }, { status: 404 });
 
-    // 取目标 execution（须属于该策略）。
+    // 取目标 execution（须属于该策略**且属于当前用户**）。★纵深隔离（Codex 抓 P0）：executions 有独立
+    //   userId，仅约束 policyId 会依赖「execution.userId==policy.userId」这一跨表不变量——一旦别处写入脏行
+    //   （policyId=攻击者策略、userId=受害者）即成跨租户读+触发+回写洞。故直接约束 executions.userId，
+    //   与本仓 canonical 读模式（policy-execution-log.ts 恒 eq(executions.userId, …)）一致。
     const exec = await db.query.executions.findFirst({
-      where: and(eq(executions.id, execId), eq(executions.policyId, id)),
+      where: and(
+        eq(executions.id, execId),
+        eq(executions.policyId, id),
+        eq(executions.userId, session.user.id),
+      ),
       columns: {
         id: true, input: true, functionName: true, locale: true, aliasSetJson: true,
         // ★该次执行的**冻结版本引用**（Codex 抓：必须用当次源码，非当前可变 policy.content——否则策略
