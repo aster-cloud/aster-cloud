@@ -7,6 +7,7 @@ import { upgradeResponse } from '@/lib/plan-quota';
 import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError, deriveExecutionDecision, detectCNLLocale } from '@/services/policy/cnl-executor';
 import { buildReplayColumns } from '@/lib/policy-execution-log';
+import { maybeRunParityForExecution, RUNNER_LAUNCHER_HMAC_ROLE } from '@/services/policy/runner-parity-from-execution';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -266,23 +267,28 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     // 异步写入（fire-and-forget）
     const now = new Date();
+    const executionId = globalThis.crypto.randomUUID();
+    // ★execution INSERT 单独保存（Codex 抓竞态）：parity UPDATE 须链在本行 INSERT 提交后，否则并行下
+    //   UPDATE 可能先到→0 行匹配→parity 结果静默丢。
+    // ★Promise.resolve 包裹（同 dashboard route）：让 .then 链在测试 mock 与真库下均可靠。
+    const executionInsertPromise = Promise.resolve(db.insert(executions).values({
+      id: executionId,
+      userId,
+      policyId: id,
+      input: validatedInput as object,
+      output: executionResult as object,
+      error: primaryError,
+      durationMs,
+      // success 保持 = allowed（旧语义不变）；准入四态由新增 decision 列表达（服务端派生）。
+      success: executionResult.allowed ?? false,
+      decision: deriveExecutionDecision(executionResult),
+      source: 'api',
+      apiKeyId: apiKeyId || null,
+      // 回放列（ADR 0030 附录 A）。
+      ...replayColumns,
+    }));
     const writePromise = Promise.all([
-      db.insert(executions).values({
-        id: globalThis.crypto.randomUUID(),
-        userId,
-        policyId: id,
-        input: validatedInput as object,
-        output: executionResult as object,
-        error: primaryError,
-        durationMs,
-        // success 保持 = allowed（旧语义不变）；准入四态由新增 decision 列表达（服务端派生）。
-        success: executionResult.allowed ?? false,
-        decision: deriveExecutionDecision(executionResult),
-        source: 'api',
-        apiKeyId: apiKeyId || null,
-        // 回放列（ADR 0030 附录 A）。
-        ...replayColumns,
-      }),
+      executionInsertPromise,
       db.insert(usageRecords)
         .values({ id: crypto.randomUUID(), userId, type: 'api_call', period, count: 1, createdAt: now, updatedAt: now })
         .onConflictDoUpdate({
@@ -297,14 +303,33 @@ export async function POST(req: Request, { params }: RouteParams) {
         }),
     ]).catch(err => console.error('Failed to record execution:', err));
 
+    // runner-parity 影子校验（PR-3）：flag 三模式 → waitUntil 后台跑，绝不阻塞响应/不影响决策。
+    //   复用已在手的权威侧 A，只真跑 side-B launcher，回写 parity 列。★链在 execution INSERT 成功之后。
+    const parityTask = executionInsertPromise.then(
+      () => maybeRunParityForExecution({
+        executionId,
+        tenantId: policy.teamId || policy.userId,
+        actorUserId: userId,
+        source: policy.content,
+        input: validatedInput as Record<string, unknown> | unknown[],
+        locale: detectCNLLocale(policy.content),
+        functionName: executionResult.executedFunction ?? '',
+        aliasSet: parsedAliasSet,
+        role: RUNNER_LAUNCHER_HMAC_ROLE,
+        authorityReplay: executionResult.metadata.replay,
+      }),
+      () => null, // execution INSERT 失败 → 跳过 parity，不冒泡
+    );
+    const backgroundTasks = Promise.all([writePromise, parityTask]);
+
     // 使用 OpenNext 的 getCloudflareContext 获取 ctx.waitUntil
     try {
       const { getCloudflareContext } = await import('@opennextjs/cloudflare');
       const { ctx } = await getCloudflareContext({ async: true });
-      ctx.waitUntil(writePromise);
+      ctx.waitUntil(backgroundTasks);
     } catch {
       // 非 Cloudflare 环境，直接执行（不阻塞响应）
-      void writePromise;
+      void backgroundTasks;
     }
 
     return NextResponse.json({

@@ -8,6 +8,7 @@ import { checkTeamPermission, TeamPermission } from '@/lib/team-permissions';
 import { executePolicyUnified, getPrimaryError, deriveExecutionDecision, detectCNLLocale } from '@/services/policy/cnl-executor';
 import { getCachedPolicyMeta, cachePolicyMeta, type CachedPolicyMeta } from '@/lib/cache';
 import { buildReplayColumns } from '@/lib/policy-execution-log';
+import { maybeRunParityForExecution, RUNNER_LAUNCHER_HMAC_ROLE } from '@/services/policy/runner-parity-from-execution';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -353,37 +354,62 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     // 异步写入（fire-and-forget）
     const now = new Date();
-    const dbWritePromise = Promise.all([
-      db.insert(executions).values({
-        id: executionId,
-        userId,
-        policyId: id,
-        input: validatedInput as object,
-        output: executionResult as object,
-        error: primaryError,
-        durationMs,
-        // success 保持 = allowed（旧语义不变，避免与历史行/响应体/日志 UI 割裂）。
-        // 准入四态（approved/denied/indeterminate/error）由新增 decision 列表达——值输出
-        // 策略的 indeterminate 靠它区分，而非把 success 语义翻转。decision 服务端从执行
-        // 结果派生，绝不信客户端。
-        success: executionResult.allowed ?? false,
-        decision: deriveExecutionDecision(executionResult),
-        source: 'dashboard',
-        // 回放列（ADR 0030 附录 A）。
-        ...replayColumns,
-      }),
-      db.insert(usageRecords)
-        .values({ id: crypto.randomUUID(), userId, type: 'execution', period, count: 1, createdAt: now, updatedAt: now })
-        .onConflictDoUpdate({
-          target: [usageRecords.userId, usageRecords.type, usageRecords.period],
-          set: { count: sql`${usageRecords.count} + 1`, updatedAt: now },
-        }),
-    ]).catch(err => console.error('Failed to record execution:', err));
+    // ★execution INSERT 单独保存（Codex 抓竞态）：parity 的 UPDATE 必须在**本行 INSERT 提交后**才跑，
+    //   否则并行下 UPDATE 可能先到→0 行匹配→parity 结果静默丢。故不并入 usage/cache 的 Promise.all
+    //   （那是多写 fail-fast 聚合，其 catch 恢复不保证 execution insert 已 settle）。
+    // ★Promise.resolve 包裹：drizzle insert builder 原生 thenable，但为让 .then 链在测试 mock（返回
+    //   query-builder 非 thenable）与真库下均可靠，统一 Promise.resolve（thenable 被 adopt，非 promise 被 wrap）。
+    const executionInsertPromise = Promise.resolve(db.insert(executions).values({
+      id: executionId,
+      userId,
+      policyId: id,
+      input: validatedInput as object,
+      output: executionResult as object,
+      error: primaryError,
+      durationMs,
+      // success 保持 = allowed（旧语义不变，避免与历史行/响应体/日志 UI 割裂）。
+      // 准入四态（approved/denied/indeterminate/error）由新增 decision 列表达——值输出
+      // 策略的 indeterminate 靠它区分，而非把 success 语义翻转。decision 服务端从执行
+      // 结果派生，绝不信客户端。
+      success: executionResult.allowed ?? false,
+      decision: deriveExecutionDecision(executionResult),
+      source: 'dashboard',
+      // 回放列（ADR 0030 附录 A）。
+      ...replayColumns,
+    }));
+    const usageWritePromise = db.insert(usageRecords)
+      .values({ id: crypto.randomUUID(), userId, type: 'execution', period, count: 1, createdAt: now, updatedAt: now })
+      .onConflictDoUpdate({
+        target: [usageRecords.userId, usageRecords.type, usageRecords.period],
+        set: { count: sql`${usageRecords.count} + 1`, updatedAt: now },
+      });
+    const dbWritePromise = Promise.all([executionInsertPromise, usageWritePromise])
+      .catch(err => console.error('Failed to record execution:', err));
 
-    // 合并所有后台任务（包括 KV 缓存写入）
+    // runner-parity 影子校验（PR-3）：flag 三模式（管理员可配）→ waitUntil 后台跑，绝不阻塞响应/不影响
+    //   决策。复用已在手的权威侧 A（executionResult.metadata.replay），只真跑 side-B launcher，结果回写
+    //   execution 行的 parity 列。任何失败吞掉（log-only）。★**链在 execution INSERT 成功之后**跑，
+    //   保证 UPDATE 时行已存在；INSERT 失败则跳过 parity（无行可更），整体 Promise 仍 fulfilled。
+    const parityTask = executionInsertPromise.then(
+      () => maybeRunParityForExecution({
+        executionId,
+        tenantId: policy.teamId || policy.userId,
+        actorUserId: userId,
+        source: policy.content,
+        input: validatedInput as Record<string, unknown> | unknown[],
+        locale: detectCNLLocale(policy.content),
+        functionName: executionResult.executedFunction ?? functionName ?? '',
+        aliasSet: parsedAliasSet,
+        role: RUNNER_LAUNCHER_HMAC_ROLE,
+        authorityReplay: executionResult.metadata.replay,
+      }),
+      () => null, // execution INSERT 失败 → 跳过 parity（无行可更），不冒泡
+    );
+
+    // 合并所有后台任务（包括 KV 缓存写入 + parity）
     const backgroundTasks = cacheWritePromise
-      ? Promise.all([dbWritePromise, cacheWritePromise])
-      : dbWritePromise;
+      ? Promise.all([dbWritePromise, cacheWritePromise, parityTask])
+      : Promise.all([dbWritePromise, parityTask]);
 
     // 使用 OpenNext 的 getCloudflareContext 获取 ctx.waitUntil
     try {
