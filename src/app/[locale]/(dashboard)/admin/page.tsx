@@ -17,6 +17,7 @@ import { db, users, auditLogs } from '@/lib/prisma';
 import { Link } from '@/i18n/navigation';
 import { Container, PageHeader } from '@/components/ui';
 import { FeatureFlagsCard } from '@/components/admin/feature-flags-card';
+import { RunnerParityCard } from '@/components/admin/runner-parity-card';
 import { PlatformLanguageCard } from '@/components/admin/platform-language-card';
 import { StructuralAliasGrantsCard } from '@/components/admin/structural-alias-grants-card';
 import { ByokAllowlistCard } from '@/components/admin/byok-allowlist-card';
@@ -246,6 +247,7 @@ export default async function AdminOverviewPage({ params }: Props) {
         </h2>
         <div className="grid gap-4">
           <FeatureFlagsCard />
+          <RunnerParityCard />
           <PlatformLanguageCard />
           <ByokAllowlistCard />
           <StructuralAliasGrantsCard />
