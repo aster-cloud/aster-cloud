@@ -19,6 +19,8 @@ interface ExecutionLog {
   source: ExecutionSource;
   policyVersion: number | null;
   createdAt: string;
+  /** runner-parity 影子校验状态（null=未跑）。match|divergent|runner-unavailable|runner-error|authority-failure。 */
+  runnerParityStatus: string | null;
 }
 
 interface Stats {
@@ -78,6 +80,15 @@ interface Translations {
     avgDuration: string;
     recentActivity: string;
     loadError: string;
+    /** runner-parity 影子校验徽章文案（可选——旧翻译包无此键时降级默认英文）。 */
+    parity?: {
+      tooltip: string;
+      match: string;
+      divergent: string;
+      unavailable: string;
+      error: string;
+      indeterminate: string;
+    };
   };
 }
 
@@ -156,6 +167,35 @@ const sourceConfig: Record<ExecutionSource, { bg: string; text: string; ring: st
     ),
   },
 };
+
+/** runner-parity 徽章配色（match=绿 / divergent=红 / 其余=灰）。 */
+function parityBadge(status: string): string {
+  switch (status) {
+    case 'match':
+      return 'bg-green-50 text-green-700 ring-green-600/20';
+    case 'divergent':
+      return 'bg-red-50 text-red-700 ring-red-600/20';
+    default: // runner-unavailable | runner-error | authority-failure
+      return 'bg-bg-muted text-fg-muted ring-gray-600/20';
+  }
+}
+
+/** runner-parity 徽章文案（i18n，缺翻译降级默认英文）。 */
+function parityLabel(status: string, t: Translations): string {
+  const p = t.logs.parity;
+  switch (status) {
+    case 'match':
+      return p?.match ?? 'parity ✓';
+    case 'divergent':
+      return p?.divergent ?? 'parity ✗';
+    case 'runner-unavailable':
+      return p?.unavailable ?? 'parity —';
+    case 'runner-error':
+      return p?.error ?? 'parity err';
+    default: // authority-failure
+      return p?.indeterminate ?? 'parity ?';
+  }
+}
 
 export function LogsContent({
   policyId,
@@ -556,6 +596,16 @@ export function LogsContent({
                         {sourceConfig[log.source]?.icon}
                         {getSourceLabel(log.source)}
                       </span>
+
+                      {/* runner-parity 影子校验徽章（仅已跑的行显示；null=未跑不渲染） */}
+                      {log.runnerParityStatus && (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${parityBadge(log.runnerParityStatus)}`}
+                          title={t.logs.parity?.tooltip ?? 'runner replay parity'}
+                        >
+                          {parityLabel(log.runnerParityStatus, t)}
+                        </span>
+                      )}
 
                       {/* Version */}
                       {log.policyVersion && (
