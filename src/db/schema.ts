@@ -706,6 +706,14 @@ export const executions = pgTable(
     piiRetentionUntil: timestamp('piiRetentionUntil', { mode: 'date' }),
     // 本行适用的数据准入策略版本（如 pii-admission/v1）。
     piiPolicyVersion: text('piiPolicyVersion'),
+    // ── runner-parity 影子校验结果（cloud 权威侧 vs runner 侧执行的 5 canonical-hash 字段比对）──
+    // ★纯附加、log-only、绝不 gate 决策。NULL=本行未跑 parity（历史行 / mode=off / 未采样）。
+    //   status: match | divergent | runner-unavailable | runner-error | authority-failure。
+    runnerParityStatus: text('runnerParityStatus'),
+    // divergent 时哪些字段不一致（string[] JSON，如 ["canonicalOutputHash","traceHash"]）。
+    runnerParityDivergentFields: json('runnerParityDivergentFields'),
+    // parity 校验完成时刻（异步 waitUntil 回写；NULL=未跑）。
+    runnerParityCheckedAt: timestamp('runnerParityCheckedAt', { mode: 'date' }),
   },
   (table) => [
     index('Execution_userId_idx').on(table.userId),
@@ -720,6 +728,10 @@ export const executions = pgTable(
     index('Execution_canonicalOutputHash_idx').on(table.canonicalOutputHash),
     index('Execution_traceHash_idx').on(table.traceHash),
     index('Execution_piiRetentionUntil_idx').on(table.piiRetentionUntil),
+    // runner-parity 状态查询（查 divergent/error 快；大量 NULL 未跑行不占索引=部分索引）。
+    index('Execution_runnerParityStatus_idx')
+      .on(table.runnerParityStatus)
+      .where(sql`${table.runnerParityStatus} IS NOT NULL`),
   ]
 );
 
