@@ -39,10 +39,18 @@ const baseCtx = {
   },
 };
 
+// db.update(...).set(...).where(...).returning(...) 链——returning 默认返 1 行（=persisted）。
+function mockUpdateReturning(returning: unknown[] | (() => Promise<unknown[]>)) {
+  const returningFn = typeof returning === 'function'
+    ? vi.fn(returning)
+    : vi.fn().mockResolvedValue(returning);
+  dbUpdateSet.mockReturnValue({ where: vi.fn().mockReturnValue({ returning: returningFn }) });
+  dbUpdate.mockReturnValue({ set: dbUpdateSet });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  dbUpdateSet.mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
-  dbUpdate.mockReturnValue({ set: dbUpdateSet });
+  mockUpdateReturning([{ id: 'exec-1' }]); // 默认 1 行更新 = persisted
   runRunnerParityCheck.mockResolvedValue({ status: 'match' });
 });
 
@@ -131,7 +139,7 @@ describe('maybeRunParityForExecution — 失败隔离（铁律：绝不冒泡）
   it('回写 DB 抛 → 吞掉（parity 结果仍返回，不冒泡）', async () => {
     getRunnerParityConfig.mockResolvedValue({ mode: 'every', samplePct: 0 });
     runRunnerParityCheck.mockResolvedValue({ status: 'divergent', divergentFields: ['traceHash'] });
-    dbUpdateSet.mockReturnValue({ where: vi.fn().mockRejectedValue(new Error('update fail')) });
+    mockUpdateReturning(() => Promise.reject(new Error("update fail")));
     // 回写失败被 persist 内部吞掉；maybeRun 仍返回结果（不 null，因跑成功了）。
     await expect(maybeRunParityForExecution(baseCtx)).resolves.toEqual({ status: 'divergent', divergentFields: ['traceHash'] });
   });
@@ -159,13 +167,27 @@ describe('回写列映射', () => {
 });
 
 describe('runParityForExecutionNow（manual 显式路径）无视 flag 直接跑', () => {
-  it('不读 flag、直接跑并回写', async () => {
+  it('不读 flag、直接跑并回写，返回 {result, persisted:true}', async () => {
     runRunnerParityCheck.mockResolvedValue({ status: 'match' });
     const r = await runParityForExecutionNow(baseCtx);
-    expect(r).toEqual({ status: 'match' });
+    expect(r).toEqual({ result: { status: 'match' }, persisted: true });
     expect(getRunnerParityConfig).not.toHaveBeenCalled(); // 显式路径不看 flag
     expect(runRunnerParityCheck).toHaveBeenCalledOnce();
     expect(dbUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('★回写抛 → persisted:false（manual 路径让持久化失败可见，非静默）', async () => {
+    runRunnerParityCheck.mockResolvedValue({ status: 'match' });
+    mockUpdateReturning(() => Promise.reject(new Error("update fail")));
+    const r = await runParityForExecutionNow(baseCtx);
+    expect(r).toEqual({ result: { status: 'match' }, persisted: false });
+  });
+
+  it('★回写 0 行（execution 并发删/GC）→ persisted:false（Codex 抓：不抛但影响 0 行）', async () => {
+    runRunnerParityCheck.mockResolvedValue({ status: 'match' });
+    mockUpdateReturning([]); // returning 返 0 行 = 行不存在
+    const r = await runParityForExecutionNow(baseCtx);
+    expect(r).toEqual({ result: { status: 'match' }, persisted: false });
   });
 });
 

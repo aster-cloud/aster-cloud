@@ -218,6 +218,8 @@ export interface ExecutionLogItem {
   source: ExecutionSource;
   metadata: unknown;
   createdAt: Date;
+  /** runner-parity 影子校验状态（null=未跑；match|divergent|runner-unavailable|runner-error|authority-failure）。 */
+  runnerParityStatus: string | null;
 }
 
 export interface ExecutionLogQuery {
@@ -317,6 +319,7 @@ export async function queryExecutionLogs(query: ExecutionLogQuery): Promise<Exec
       source: item.source,
       metadata: item.metadata,
       createdAt: item.createdAt,
+      runnerParityStatus: item.runnerParityStatus ?? null,
     })),
     total,
     page,
@@ -362,6 +365,7 @@ export async function getExecutionLogDetail(
     source: item.source,
     metadata: item.metadata,
     createdAt: item.createdAt,
+    runnerParityStatus: item.runnerParityStatus ?? null,
   };
 }
 
@@ -526,6 +530,7 @@ export async function getRecentExecutions(
     source: item.source,
     metadata: item.metadata,
     createdAt: item.createdAt,
+    runnerParityStatus: item.runnerParityStatus ?? null,
   }));
 }
 

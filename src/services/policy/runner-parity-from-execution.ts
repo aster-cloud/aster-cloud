@@ -87,16 +87,27 @@ export async function maybeRunParityForExecution(
 
 /**
  * 显式路径（manual verify-parity endpoint，PR-4）：无视 flag 直接跑一次并回写。同样只真跑 side-B。
+ * ★返回结果 + persisted（Codex 抓：manual 路径持久化失败须让调用方可见，非静默吞——否则 endpoint
+ *   返 200 但徽章不更新，误导管理员以为成功）。
  */
 export async function runParityForExecutionNow(
   ctx: ParityFromExecutionCtx,
-): Promise<RunnerParityResult> {
-  return runParityAndPersist(ctx);
+): Promise<{ result: RunnerParityResult; persisted: boolean }> {
+  const result = await runParity(ctx);
+  const persisted = await persistParityResult(ctx.executionId, result);
+  return { result, persisted };
 }
 
-/** 共享核心：注入已在手 side-A → 只真跑 side-B → 结果回写 execution 行。 */
+/** 共享核心：注入已在手 side-A → 只真跑 side-B → 结果回写 execution 行（回写失败吞，用于 auto 路径）。 */
 async function runParityAndPersist(ctx: ParityFromExecutionCtx): Promise<RunnerParityResult> {
-  const result = await runRunnerParityCheck(
+  const result = await runParity(ctx);
+  await persistParityResult(ctx.executionId, result); // auto 路径：回写失败吞（log-only）
+  return result;
+}
+
+/** 只跑 parity（注入 side-A，只真跑 side-B），不回写。 */
+async function runParity(ctx: ParityFromExecutionCtx): Promise<RunnerParityResult> {
+  return runRunnerParityCheck(
     {
       tenantId: ctx.tenantId,
       actorUserId: ctx.actorUserId,
@@ -110,26 +121,35 @@ async function runParityAndPersist(ctx: ParityFromExecutionCtx): Promise<RunnerP
     // ★注入已在手的权威侧 A（归一化）——runRunnerParityCheck 不重跑 callAuthorityForParity（不双评估 aster-api）。
     { authority: async () => normalizeAuthorityReplay(ctx.authorityReplay) },
   );
-  await persistParityResult(ctx.executionId, result);
-  return result;
 }
 
-/** 把 RunnerParityResult 映射到 execution 的 parity 列并 UPDATE。写失败吞掉（log-only）。 */
-async function persistParityResult(executionId: string, result: RunnerParityResult): Promise<void> {
+/** 把 RunnerParityResult 映射到 execution 的 parity 列并 UPDATE。返回是否**真的更新了该行**（失败/0 行仍 log，不抛）。 */
+async function persistParityResult(executionId: string, result: RunnerParityResult): Promise<boolean> {
   const divergentFields = result.status === 'divergent' ? result.divergentFields : null;
   try {
-    await db.update(executions)
+    // ★.returning 拿受影响行（Codex 抓：并发删/GC 下 UPDATE 匹配 0 行不抛→须查 affected-rows，
+    //   否则误报 persisted:true）。0 行=该 execution 已不存在→persisted:false。
+    const updated = await db.update(executions)
       .set({
         runnerParityStatus: result.status,
         runnerParityDivergentFields: divergentFields as object | null,
         runnerParityCheckedAt: new Date(),
       })
-      // 只更新仍存在的该行（幂等；行被删/GC 则 no-op）。
-      .where(and(eq(executions.id, executionId)));
+      .where(and(eq(executions.id, executionId)))
+      .returning({ id: executions.id });
+    if (updated.length === 0) {
+      console.error(JSON.stringify({
+        event: 'runner_parity_persist_norow', executionId, status: result.status,
+        reason: 'execution 行不存在（并发删/GC）→ 0 行更新',
+      }));
+      return false;
+    }
+    return true;
   } catch (err) {
     console.error(JSON.stringify({
       event: 'runner_parity_persist_error', executionId,
       status: result.status, error: err instanceof Error ? err.message : String(err),
     }));
+    return false;
   }
 }
