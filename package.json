@@ -125,7 +125,7 @@
     "testcontainers": "^12.0.4",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.1.5",
     "vitest": "^4.1.10",
     "wrangler": "^4.110.0",
     "yaml": "^2.9.0"
