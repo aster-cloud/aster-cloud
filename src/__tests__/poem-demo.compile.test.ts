@@ -22,6 +22,7 @@
 import { describe, it, expect } from 'vitest';
 import { compile, evaluate, EN_US, ZH_CN, DE_DE, HI_IN, vocabularyRegistry, initBuiltinVocabularies } from '@aster-cloud/aster-lang-ts/browser';
 import { POEMS, type PoemLocale, type PoemConfig } from '@/config/poem-demo';
+import { toCanonical, toDisplay, verifyContentParity } from '@/lib/layout-map';
 
 const BASE: Record<PoemLocale, typeof ZH_CN> = { en: EN_US, zh: ZH_CN, de: DE_DE, hi: HI_IN };
 const LOCALES: PoemLocale[] = ['en', 'zh', 'de', 'hi'];
@@ -157,6 +158,51 @@ describe('poem demo: source-as-poem across three paradigms', () => {
           const hasRecursiveCall = aliasApply.length > 0 && poem.source.includes(aliasApply);
           expect(hasListSum || hasRecursiveCall, `[${loc}] has List sum or paren-free recursive call`).toBe(true);
         }
+      });
+    }
+
+    // ── LayoutMap 不变式（携 layout 的诗才验；zh《静夜思》）─────────────────
+    // 显示/编译解耦的核心契约：页面**显示** toDisplay（无空格工整原诗），**编译**走 toCanonical，
+    // 而 toCanonical 必须逐字 === poem.source（编译行为零漂移，仅显示层变化）。
+    if (poem.layout) {
+      it(`${loc} (${poem.title}): LayoutMap — toCanonical(layout) 逐字 === poem.source（编译零漂移）`, () => {
+        expect(toCanonical(poem.layout!)).toBe(poem.source);
+      });
+
+      it(`${loc} (${poem.title}): LayoutMap — toDisplay 隐去关键词间空格（显示为无空格原诗）`, () => {
+        const display = toDisplay(poem.layout!);
+        // 显示层不含「关键词 内容」之间用于满足语法的空格；也不含缩进空格（结构 span 用换行标点替代）。
+        expect(display.includes(' '), `[${loc}] display must have no keyword-space`).toBe(false);
+        // 且显示层仍逐字保留全部诗词内容 span（内容不被隐藏）。
+        const contentPieces = poem.layout!
+          .filter((s): s is { text: string } => 'text' in s)
+          .map((s) => s.text);
+        for (const piece of contentPieces) {
+          expect(display.includes(piece), `[${loc}] display retains content '${piece}'`).toBe(true);
+        }
+      });
+
+      it(`${loc} (${poem.title}): LayoutMap — verifyContentParity 通过（结构 span 未偷塞字面量）`, () => {
+        const v = verifyContentParity(poem.layout!);
+        expect(v.ok, `[${loc}] ${v.reason ?? ''}`).toBe(true);
+      });
+
+      it(`${loc} (${poem.title}): LayoutMap — 用 toCanonical 编译与用 source 编译得同一 Core IR`, () => {
+        // 证明「走 layout 的 canonical 源码」与「直接用 source」编译结果结构一致（因二者逐字相等）。
+        const viaLayout = poem.vocab
+          ? (() => {
+              initBuiltinVocabularies();
+              vocabularyRegistry.registerCustom(poem.vocab!.id, poem.vocab!);
+              return compile(toCanonical(poem.layout!), {
+                lexicon: poem.lexicon,
+                domain: poem.vocab!.id,
+                tenantId: poem.vocab!.id,
+              });
+            })()
+          : compile(toCanonical(poem.layout!), { lexicon: poem.lexicon });
+        const viaSource = compilePoem(poem);
+        expect(viaLayout.core, `[${loc}] layout compiles`).toBeTruthy();
+        expect(stripOrigin(viaLayout.core)).toEqual(stripOrigin(viaSource.core));
       });
     }
   }
