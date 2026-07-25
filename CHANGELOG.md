@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- 流行歌曲即源码(周杰伦歌名→简笔画,中文彩蛋) (#290) *(demos)*
 - 管理员 UI 卡片（mode 三模式 + sample_pct） (#283) *(runner-parity)*
 - Manual verify-parity endpoint + logs UI 徽章 — PR-4/4 (#282) *(runner-parity)*
 - Execute 路由 waitUntil 触发 parity（不双评估）— PR-3/4 (#281) *(runner-parity)*
@@ -296,6 +297,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#289) *(changelog)*
+- Refresh unreleased [skip ci] (#204) *(changelog)*
 - 签字政策文档诚实化——legacy m1.0 为 defense-in-depth，生产永不触发 (#265) *(p0a)*
 - Refresh unreleased [skip ci] (#202) *(changelog)*
 - Refresh unreleased [skip ci] (#200) *(changelog)*
