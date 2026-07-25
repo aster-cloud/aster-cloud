@@ -18,6 +18,7 @@
  */
 import { EN_US, ZH_CN, DE_DE, HI_IN, IdentifierKind } from '@aster-cloud/aster-lang-ts/browser';
 import type { Lexicon, DomainVocabulary } from '@aster-cloud/aster-lang-ts/browser';
+import type { LayoutSpan } from '@/lib/layout-map';
 
 export type PoemLocale = 'en' | 'zh' | 'de' | 'hi';
 
@@ -125,6 +126,12 @@ export interface PoemConfig {
   decision?: DecisionSpec;
   /** 诗体源码（连贯一首，Match + List + apply，诗句即代码）。 */
   source: string;
+  /**
+   * 可选 LayoutMap：源码「显示排版」与「编译规范源码」解耦。存在时页面**显示** `toDisplay(layout)`
+   * （如无空格的工整原诗「床前明月光」），而**编译**走 `toCanonical(layout)`（语法必需的带空格版
+   * 「床前 明月光」）。用于让 zh 诗真正呈现为原诗排版。不变式:toCanonical(layout) === source。
+   */
+  layout?: readonly LayoutSpan[];
   /** 规范关键词版（证明诗体版 ≡ 规范版，结构一致 Core IR）。 */
   canonical: string;
   /** 入口 rule 名（规范名；三范式共用）。 */
@@ -177,6 +184,21 @@ Rule gather given stars:
 // 字面量（思故乡→"静夜思"）。运行入口 rule「地上霜」输出诗名「静夜思」。
 // 别名 + 字面量宏都只在 canonicalize 表层，Lexer/Parser/Core IR 不知其存在 → 诗体版 ≡ 规范版。
 const JYS_DOMAIN = 'jingyesi-zh';
+
+/**
+ * 静夜思 LayoutMap：`toCanonical` 精确复原 POEM_ZH.source（语法必需的带空格版），
+ * `toDisplay` 把四处关键词间空格隐去、把结构标点换回原诗标点，呈现无空格工整原诗
+ * （床前明月光，\n 疑是地上霜。\n 举头望明月，\n 低头思故乡。）。
+ * 不变式（由 poem-demo.compile.test.ts 钉死）：toCanonical(JINGYESI_LAYOUT) === POEM_ZH.source。
+ */
+const SP: LayoutSpan = { canonical: ' ', display: '' };
+const JINGYESI_LAYOUT: readonly LayoutSpan[] = [
+  { text: '床前' }, SP, { text: '明月光' }, { canonical: '。\n', display: '，\n' },
+  { text: '疑是' }, SP, { text: '地上霜' }, { canonical: '，', display: '。\n' },
+  { text: '举头' }, SP, { text: '望明月' }, { canonical: '：\n  ', display: '，\n' },
+  { text: '低头' }, SP, { text: '思故乡' }, { canonical: '。', display: '。' },
+];
+
 const POEM_ZH: PoemConfig = {
   title: '静夜思',
   attribution: '李白 · 整首诗即源码，运行输出诗名「静夜思」',
@@ -194,6 +216,8 @@ const POEM_ZH: PoemConfig = {
   source: `床前 明月光。
 疑是 地上霜，举头 望明月：
   低头 思故乡。`,
+  // LayoutMap：页面**显示** toDisplay（无空格工整原诗），**编译**走 toCanonical（=上面 source）。
+  layout: JINGYESI_LAYOUT,
   canonical: `模块 明月光。
 规则 地上霜 产出 望明月：
   返回 「静夜思」。`,

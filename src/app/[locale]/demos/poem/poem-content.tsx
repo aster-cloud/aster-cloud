@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { compile, evaluate, canonicalize, vocabularyRegistry, initBuiltinVocabularies } from '@aster-cloud/aster-lang-ts/browser';
 import { POEMS, toPoemLocale } from '@/config/poem-demo';
+import { toCanonical, toDisplay } from '@/lib/layout-map';
 import { cn } from '@/components/ui';
 
 interface RunResult {
@@ -33,22 +34,29 @@ export function PoemDemoContent({ locale }: { locale: string }) {
   const result = run && run.poemId === poem.lexicon.id ? run : null;
   const [showCanonical, setShowCanonical] = useState(false);
 
+  // LayoutMap 解耦：`compileSource` 是编译用的规范源码（关键词间带语法必需空格）；`displaySource`
+  // 是给用户看的排版（如无空格工整原诗）。无 layout 时二者都退回 poem.source（向后兼容）。
+  // 不变式（poem-demo.compile.test.ts 钉死）：toCanonical(layout) === poem.source，故编译行为不变，
+  // 仅**显示**变成无空格原诗。
+  const compileSource = poem.layout ? toCanonical(poem.layout) : poem.source;
+  const displaySource = poem.layout ? toDisplay(poem.layout) : poem.source;
+
   // 编译诗体源码（注入诗词别名词典）→ canonicalize 归一回规范关键词 → 同款引擎编译。
   // alias-literal 范式（《静夜思》）还需先注册字面量宏词汇表，并以 domain/tenantId 触发展开。
   const core = useMemo(() => {
     if (poem.vocab) {
       initBuiltinVocabularies();
       vocabularyRegistry.registerCustom(poem.vocab.id, poem.vocab);
-      const r = compile(poem.source, {
+      const r = compile(compileSource, {
         lexicon: poem.lexicon,
         domain: poem.vocab.id,
         tenantId: poem.vocab.id,
       });
       return r.core ?? null;
     }
-    const r = compile(poem.source, { lexicon: poem.lexicon });
+    const r = compile(compileSource, { lexicon: poem.lexicon });
     return r.core ?? null;
-  }, [poem]);
+  }, [poem, compileSource]);
 
   // computed 范式：代入 input 算出整首诗。
   function runAt(input: number) {
@@ -68,7 +76,7 @@ export function PoemDemoContent({ locale }: { locale: string }) {
   // 入口 rule 无 given 参数，故传空参对象。
   function runOnce() {
     if (!core || !poem.vocab) return;
-    const canonical = canonicalize(poem.source, {
+    const canonical = canonicalize(compileSource, {
       lexicon: poem.lexicon,
       domain: poem.vocab.id,
       locale: poem.lexicon.id,
@@ -104,7 +112,7 @@ export function PoemDemoContent({ locale }: { locale: string }) {
           <span> · {poem.attribution}</span>
         </p>
         <pre className="overflow-x-auto rounded-xl border border-border bg-bg-subtle p-5 font-mono text-sm leading-relaxed text-fg">
-          {poem.source}
+          {displaySource}
         </pre>
         <button
           onClick={() => setShowCanonical((v) => !v)}
