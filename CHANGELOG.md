@@ -297,6 +297,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#291) *(changelog)*
 - Refresh unreleased [skip ci] (#289) *(changelog)*
 - Refresh unreleased [skip ci] (#204) *(changelog)*
 - 签字政策文档诚实化——legacy m1.0 为 defense-in-depth，生产永不触发 (#265) *(p0a)*
