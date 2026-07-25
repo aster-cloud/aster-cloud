@@ -65,14 +65,23 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     expect(toCanonical(GUYONG.layout)).toBe(GUYONG.source);
   });
 
-  it('3b. LayoutMap — toDisplay 隐去关键词间空格且逐字保留全部内容', () => {
+  it('3b. LayoutMap — toDisplay 隐去关键词间空格且逐字保留全部内容（按顺序、按次数）', () => {
     const display = toDisplay(GUYONG.layout);
     expect(display.includes(' '), 'display must have no keyword-space').toBe(false);
     const contentPieces = GUYONG.layout
       .filter((s): s is { text: string } => 'text' in s)
       .map((s) => s.text);
+    // 成员性：每段内容 span 都出现在 display 中。
     for (const piece of contentPieces) {
       expect(display.includes(piece), `display retains content '${piece}'`).toBe(true);
+    }
+    // 顺序 + 次数（Codex 审查改进 #1）：逐段从游标位置向后 indexOf，确保内容 span 按
+    // layout 顺序、按出现次数逐一命中——防止某段被结构 span 悄悄吞掉或重排却仍通过成员性检查。
+    let cursor = 0;
+    for (const piece of contentPieces) {
+      const at = display.indexOf(piece, cursor);
+      expect(at, `content '${piece}' must appear in order at/after ${cursor}`).toBeGreaterThanOrEqual(cursor);
+      cursor = at + piece.length;
     }
   });
 
@@ -101,5 +110,32 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     expect(runVerdict(r.core!, allHeld)).toBe(GUYONG.verdictAll);
     const oneOff = { ...allHeld, [GUYONG.tokens[0]!.name]: false };
     expect(runVerdict(r.core!, oneOff)).toBe(GUYONG.verdictElse);
+  });
+
+  // 6. config 自洽断言（Codex 审查改进 #3）：把「拨失不翻转」类的隐性配置错误从「裁决错误」
+  //    提前成明确的配置断言失败，定位更直接。
+  it('6. config 自洽：token name 唯一 / matchValue≠missValue / derived.from 引用存在的 token', () => {
+    const tokenNames = GUYONG.tokens.map((tk) => tk.name);
+    // token name 唯一（重名会让 held 映射相互覆盖）。
+    expect(new Set(tokenNames).size, `token names must be unique: ${JSON.stringify(tokenNames)}`).toBe(tokenNames.length);
+    // 每个 token 的匹配值与失配值必须不同，否则拨失后引擎不会翻转（裁决恒真）。
+    for (const tk of GUYONG.tokens) {
+      expect(tk.matchValue, `token '${tk.name}' matchValue must differ from missValue`).not.toBe(tk.missValue);
+    }
+    // derived.from 只能引用存在的 token 名（前端镜像复算引用不存在的输入会静默为 falsy）。
+    const nameSet = new Set(tokenNames);
+    for (const d of GUYONG.derived) {
+      for (const from of d.from) {
+        // derived 既可引用 token（守/进/记←光/步/路 的输入名），也可引用同为 token 名的推导域；
+        // 这里只校验非 token 名的 from 至少是另一个 derived 名（不引用凭空的名字）。
+        const derivedNames = new Set(GUYONG.derived.map((x) => x.name));
+        expect(
+          nameSet.has(from) || derivedNames.has(from),
+          `derived '${d.name}' references unknown name '${from}'`,
+        ).toBe(true);
+      }
+    }
+    // 两裁决必须不同（否则 decision 范式无意义）。
+    expect(GUYONG.verdictAll).not.toBe(GUYONG.verdictElse);
   });
 });
