@@ -92,6 +92,30 @@ export default async function DemosIndexPage({ params }: Props) {
               </Link>
             </li>
           )}
+          {/* 「原创歌词即源码」——中文专属彩蛋(《孤勇》原创词 + decision + LayoutMap)。文案内联,
+              仅 zh locale 展示;非 zh 不列(歌词是中文的)。 */}
+          {locale.toLowerCase().startsWith('zh') && (
+            <li key="guyong">
+              <Link href="/demos/guyong" className="block h-full focus:outline-none">
+                <Card className="h-full transition-shadow hover:shadow-brand">
+                  <CardBody className="flex h-full flex-col gap-3 pt-6">
+                    <span className="text-3xl" aria-hidden>🕯️</span>
+                    <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                      原创歌词即源码
+                    </h2>
+                    <p className="flex-1 text-sm text-fg-muted">
+                      一段原创叙事体歌词即源码——三个信物即前提，引擎真推导裁决出「归途」或「坠落」；
+                      显示无空格流动歌词，编译带空格规范源码。
+                    </p>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                      {t('enter')}
+                      <span aria-hidden>→</span>
+                    </span>
+                  </CardBody>
+                </Card>
+              </Link>
+            </li>
+          )}
         </ul>
       </Container>
     </main>
