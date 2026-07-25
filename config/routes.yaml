@@ -104,6 +104,13 @@ routes:
     locales: all
     notes: Fun demo — "the source is a poem", an alias ballad (ADR 0022 + paren-free apply ADR 0027) that compiles and recursively runs in-browser
 
+  - path: /demos/pop-song
+    status: canonical-here
+    owner: marketing
+    source: src/app/[locale]/demos/pop-song/page.tsx
+    locales: zh
+    notes: Fun demo (zh-only easter egg) — "pop song as source", Jay Chou song titles as boolean premises; in-browser compile + engine verdict drives a procedural SVG sketch
+
   - path: /privacy
     status: canonical-here
     owner: legal
