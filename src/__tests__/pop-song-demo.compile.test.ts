@@ -1,13 +1,33 @@
 /**
- * 「流行歌曲即源码」demo 的**生产可验证性**契约,钉死不变式,任一失败 = CI 硬失败:
- *  1. 歌词体源码用周杰伦别名词典编译成功(无诊断错误)。
- *  2. 别名不变式:歌词体版 ≡ 规范关键词版(剥 origin 后结构一致 Core IR)——证明别名只在表层。
- *  3. 引擎真裁决:四种前提组合 evaluate 出四种不同风格,翻前提即变(非回声)。
- *  4. If 分支优先级与源码顺序一致(晴天 > 青花瓷 > 双截棍)。
+ * 「流行歌曲即源码」demo(《以父之名》)的**生产可验证性**契约(alias-literal 范式),钉死不变式,
+ * 任一失败 = CI 硬失败:
+ *  1. 歌词体源码用《以父之名》别名词典 + 字面量宏词汇编译成功(无诊断错误)。
+ *  2. 别名不变式:歌词体版 ≡ 规范关键词版(剥 origin 后结构一致 Core IR)——别名/宏只在表层。
+ *  3. 字面量宏真实生效:歌词体源码含触发词「自负」但**不含**展开主题句,规范版**含**展开主题句,
+ *     运行输出 = 宏展开内容。
+ *  4. 入口规则运行恒输出主题句(宏展开,与入参无关;入口规则无参)。
+ *  5. config.output 与引擎实际输出一致(配置不漂移)。
  */
 import { describe, it, expect } from 'vitest';
-import { compile, evaluate, ZH_CN } from '@aster-cloud/aster-lang-ts/browser';
-import { POP_SONG, type SketchStyle } from '@/config/pop-song-demo';
+import {
+  compile,
+  evaluate,
+  ZH_CN,
+  vocabularyRegistry,
+  initBuiltinVocabularies,
+} from '@aster-cloud/aster-lang-ts/browser';
+import { POP_SONG } from '@/config/pop-song-demo';
+
+/** 按 demo content 同款方式编译:先注册字面量宏词汇,再带 domain 编译。 */
+function compileLyric() {
+  initBuiltinVocabularies();
+  vocabularyRegistry.registerCustom(POP_SONG.vocab.id, POP_SONG.vocab);
+  return compile(POP_SONG.source, {
+    lexicon: POP_SONG.lexicon,
+    domain: POP_SONG.vocab.id,
+    tenantId: POP_SONG.vocab.id,
+  });
+}
 
 /** 剥离 origin/span(位置元数据;结构比较口径)。 */
 function stripOrigin(o: unknown): unknown {
@@ -23,16 +43,9 @@ function stripOrigin(o: unknown): unknown {
   return o;
 }
 
-function run(inputs: Record<string, boolean>): SketchStyle {
-  const r = compile(POP_SONG.source, { lexicon: POP_SONG.lexicon });
-  expect(r.core).toBeTruthy();
-  const ev = evaluate(r.core!, POP_SONG.entry, inputs);
-  return ev.value as SketchStyle;
-}
-
-describe('pop-song demo: 流行歌曲即源码(周杰伦歌名即前提)', () => {
+describe('pop-song demo: 以父之名 · 歌词即源码(alias-literal 范式)', () => {
   it('1. 歌词体源码编译成功(无诊断错误)', () => {
-    const r = compile(POP_SONG.source, { lexicon: POP_SONG.lexicon });
+    const r = compileLyric();
     const errs = (r as { parseErrors?: { message?: string }[] }).parseErrors ?? [];
     expect(r.core, `core; diags=${JSON.stringify(errs.map((e) => e.message))}`).toBeTruthy();
     expect(errs.length, JSON.stringify(errs.map((e) => e.message))).toBe(0);
@@ -40,7 +53,7 @@ describe('pop-song demo: 流行歌曲即源码(周杰伦歌名即前提)', () =>
   });
 
   it('2. 别名不变式:歌词体版 ≡ 规范关键词版(结构一致 Core IR)', () => {
-    const lyric = compile(POP_SONG.source, { lexicon: POP_SONG.lexicon });
+    const lyric = compileLyric();
     const canon = compile(POP_SONG.canonical, { lexicon: ZH_CN });
     const lyricErrs = (lyric as { parseErrors?: unknown[] }).parseErrors ?? [];
     const canonErrs = (canon as { parseErrors?: unknown[] }).parseErrors ?? [];
@@ -49,23 +62,27 @@ describe('pop-song demo: 流行歌曲即源码(周杰伦歌名即前提)', () =>
     expect(stripOrigin(lyric.core)).toEqual(stripOrigin(canon.core));
   });
 
-  it('3. 引擎真裁决:四种前提 → 四种不同风格', () => {
-    expect(run({ 晴天: true, 青花瓷: false, 双截棍: false })).toBe('sunny');
-    expect(run({ 晴天: false, 青花瓷: true, 双截棍: false })).toBe('chinese');
-    expect(run({ 晴天: false, 青花瓷: false, 双截棍: true })).toBe('kungfu');
-    expect(run({ 晴天: false, 青花瓷: false, 双截棍: false })).toBe('default');
+  it('3. 字面量宏真实生效:源码含触发词但不含展开内容,规范版含展开内容', () => {
+    // 歌词体源码含触发词「自负」,但**不含**展开主题句。
+    expect(POP_SONG.source).toContain(POP_SONG.macroTrigger);
+    expect(POP_SONG.source).not.toContain(POP_SONG.output);
+    // 规范版**含**展开主题句(宏在此已展开)。
+    expect(POP_SONG.canonical).toContain(POP_SONG.output);
   });
 
-  it('4. If 分支优先级与源码顺序一致(晴天 > 青花瓷 > 双截棍)', () => {
-    // 同时为真时,取源码里最先命中的分支。
-    expect(run({ 晴天: true, 青花瓷: true, 双截棍: true })).toBe('sunny');
-    expect(run({ 晴天: false, 青花瓷: true, 双截棍: true })).toBe('chinese');
-  });
-
-  it('5. toggles 声明的 style 与引擎单命中裁决一致(配置不漂移)', () => {
-    for (const tg of POP_SONG.toggles) {
-      const inputs = Object.fromEntries(POP_SONG.toggles.map((t) => [t.name, t.name === tg.name]));
-      expect(run(inputs), `${tg.name} 单命中应得 ${tg.style}`).toBe(tg.style);
+  it('4. 入口规则运行输出主题句(宏展开,与入参无关)', () => {
+    const r = compileLyric();
+    expect(r.core).toBeTruthy();
+    // 无参入口;传任意入参都应恒输出主题句(宏展开与入参无关)。
+    for (const inp of [{}, { x: 1 }, { 自负: false }]) {
+      const ev = evaluate(r.core!, POP_SONG.entry, inp);
+      expect(ev.value, `入参 ${JSON.stringify(inp)}`).toBe(POP_SONG.output);
     }
+  });
+
+  it('5. config.output 与引擎实际输出一致(配置不漂移)', () => {
+    const r = compileLyric();
+    const ev = evaluate(r.core!, POP_SONG.entry, {});
+    expect(ev.value).toBe(POP_SONG.output);
   });
 });

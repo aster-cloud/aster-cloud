@@ -1,65 +1,50 @@
 'use client';
 
 /**
- * 「流行歌曲即源码」demo(中文彩蛋):周杰伦歌名/歌词即 `.aster` 源码,点「执行」后浏览器内
- * 生产同款 TS 引擎真编译真裁决,决策驱动一幅程序化 SVG 周杰伦简笔画。
+ * 「流行歌曲即源码」demo(中文彩蛋)——《以父之名》真实歌词逐字即 `.aster` 源码。
  *
- * 交互:三个歌名前提(晴天/青花瓷/双截棍)可拨,点执行 → compile(歌词体源码,周杰伦别名词典)
- * → evaluate(前提值) → 得风格枚举 → 渲染对应简笔画。同时给一键切换看「规范关键词版」,
- * 佐证歌词体 ≡ 规范版(别名只在表层)。
+ * 范式=源码即歌 + 字面量宏(同静夜思):点「运行」后浏览器内生产同款 TS 引擎真编译真求值,
+ * 别名把歌词领字变结构关键词、字面量宏把末词「自负」展开成整句主题句,入口规则输出该句。
+ * 一键切「看规范版」佐证歌词体 ≡ 规范版(别名/宏只在表层)。
  */
 import { useMemo, useState } from 'react';
-import { compile, evaluate } from '@aster-cloud/aster-lang-ts/browser';
-import { POP_SONG, type SketchStyle } from '@/config/pop-song-demo';
-import { JaySketch } from './jay-sketch';
+import {
+  compile,
+  evaluate,
+  vocabularyRegistry,
+  initBuiltinVocabularies,
+} from '@aster-cloud/aster-lang-ts/browser';
+import { POP_SONG } from '@/config/pop-song-demo';
 import { cn } from '@/components/ui';
 
-/** 编译一次歌词体源码,拿 Core(memo,避免每次渲染重编译)。 */
+/** 编译一次歌词体源码(先注册字面量宏词汇,再带 domain 编译),memo 避免重复编译。 */
 function useCompiledCore() {
   return useMemo(() => {
-    const r = compile(POP_SONG.source, { lexicon: POP_SONG.lexicon });
+    initBuiltinVocabularies();
+    vocabularyRegistry.registerCustom(POP_SONG.vocab.id, POP_SONG.vocab);
+    const r = compile(POP_SONG.source, {
+      lexicon: POP_SONG.lexicon,
+      domain: POP_SONG.vocab.id,
+      tenantId: POP_SONG.vocab.id,
+    });
     const errs = (r as { parseErrors?: { message?: string }[] }).parseErrors ?? [];
     return { core: r.core, ok: r.success && errs.length === 0, errs };
   }, []);
 }
 
-const STYLE_LABEL: Record<SketchStyle, string> = {
-  sunny: '《晴天》· 阳光下弹吉他',
-  chinese: '《青花瓷》· 执笔的中国风',
-  kungfu: '《双截棍》· 双截棍武术姿',
-  default: '经典侧影 · 戴帽握麦',
-};
-
 export function PopSongDemoContent() {
   const { core, ok, errs } = useCompiledCore();
-  const [values, setValues] = useState<Record<string, boolean>>(
-    Object.fromEntries(POP_SONG.toggles.map((t) => [t.name, false])),
-  );
-  const [style, setStyle] = useState<SketchStyle | null>(null);
-  const [ran, setRan] = useState(false);
+  const [output, setOutput] = useState<string | null>(null);
   const [showCanonical, setShowCanonical] = useState(false);
 
   function run() {
     if (!core) return;
-    const ev = evaluate(core, POP_SONG.entry, values);
-    // evaluate 返回引擎真裁决的风格字符串;收敛到已知 SketchStyle(兜底 default)。
-    const raw = typeof ev.value === 'string' ? ev.value : 'default';
-    const s: SketchStyle = (['sunny', 'chinese', 'kungfu', 'default'] as const).includes(raw as SketchStyle)
-      ? (raw as SketchStyle)
-      : 'default';
-    setStyle(s);
-    setRan(true);
-  }
-
-  function toggle(name: string) {
-    setValues((v) => ({ ...v, [name]: !v[name] }));
-    // 拨动前提后清空上一幅,提示需重新执行(强调「引擎裁决」而非实时联动)。
-    setRan(false);
-    setStyle(null);
+    const ev = evaluate(core, POP_SONG.entry, {});
+    setOutput(typeof ev.value === 'string' ? ev.value : String(ev.value));
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <header className="mb-8">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
           {POP_SONG.title}
@@ -67,100 +52,60 @@ export function PopSongDemoContent() {
         <p className="mt-2 text-sm text-fg-muted">{POP_SONG.attribution}</p>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* 左:源码 + 前提 + 执行 */}
-        <section className="flex flex-col gap-4">
-          <div className="rounded-lg border border-border bg-bg-subtle p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-fg-muted">
-                {showCanonical ? '规范关键词版' : '歌词体源码（歌名即代码）'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowCanonical((v) => !v)}
-                className="text-xs text-accent hover:underline"
-              >
-                {showCanonical ? '看歌词体' : '看规范版'}
-              </button>
-            </div>
-            <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-fg">
-              {showCanonical ? POP_SONG.canonical : POP_SONG.source}
-            </pre>
-          </div>
-
-          {!ok && (
-            <p className="text-xs text-danger">
-              源码编译失败：{errs.map((e) => e.message).join('; ')}
-            </p>
-          )}
-
-          <div className="rounded-lg border border-border bg-bg-subtle p-4">
-            <p className="mb-3 text-xs font-medium text-fg-muted">歌名前提（拨动后点执行，引擎裁决画什么）</p>
-            <ul className="flex flex-col gap-2">
-              {POP_SONG.toggles.map((tg) => (
-                <li key={tg.name}>
-                  <button
-                    type="button"
-                    onClick={() => toggle(tg.name)}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-md border p-2.5 text-left text-sm transition',
-                      values[tg.name]
-                        ? 'border-accent bg-accent-subtle text-accent-hover'
-                        : 'border-border bg-bg text-fg hover:border-accent/40',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]',
-                        values[tg.name] ? 'border-accent bg-accent text-white' : 'border-border text-transparent',
-                      )}
-                    >
-                      ✓
-                    </span>
-                    <span className="min-w-0">{tg.label}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
+      {/* 歌词体源码 / 规范版 */}
+      <div className="rounded-lg border border-border bg-bg-subtle p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-medium text-fg-muted">
+            {showCanonical ? '规范关键词版' : '歌词体源码（真实歌词，逐字未改）'}
+          </span>
           <button
             type="button"
-            onClick={run}
-            disabled={!ok}
-            className={cn(
-              'rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50',
-            )}
+            onClick={() => setShowCanonical((v) => !v)}
+            className="text-xs text-accent hover:underline"
           >
-            执行 · 让引擎裁决画什么
+            {showCanonical ? '看歌词体' : '看规范版'}
           </button>
-        </section>
+        </div>
+        <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-relaxed text-fg">
+          {showCanonical ? POP_SONG.canonical : POP_SONG.source}
+        </pre>
+      </div>
 
-        {/* 右:简笔画舞台 */}
-        <section className="flex flex-col gap-3">
-          <div className="flex aspect-square items-center justify-center rounded-lg border border-border bg-bg-subtle p-6">
-            <div className="h-full w-full max-w-xs">
-              <JaySketch style={style} />
-            </div>
-          </div>
-          <p className="min-h-[1.5rem] text-center text-sm">
-            {ran && style ? (
-              <span className="text-fg">
-                引擎裁决：<span className="font-medium text-accent">{STYLE_LABEL[style]}</span>
-              </span>
-            ) : (
-              <span className="text-fg-muted">拨动歌名前提，点「执行」看引擎画什么</span>
-            )}
-          </p>
-        </section>
+      {!ok && (
+        <p className="mt-3 text-xs text-danger">
+          源码编译失败：{errs.map((e) => e.message).join('; ')}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={run}
+        disabled={!ok}
+        className={cn(
+          'mt-5 w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50',
+        )}
+      >
+        运行 · 以父之名
+      </button>
+
+      {/* 运行输出 */}
+      <div className="mt-6 flex min-h-[6rem] items-center justify-center rounded-lg border border-border bg-bg-subtle p-6 text-center">
+        {output !== null ? (
+          <p className="font-display text-xl leading-relaxed text-fg">{output}</p>
+        ) : (
+          <p className="text-sm text-fg-muted">点「运行」，让引擎逐字执行这段歌词</p>
+        )}
       </div>
 
       <footer className="mt-8 rounded-lg border border-border bg-bg-subtle p-4 text-xs leading-relaxed text-fg-muted">
         <p>
-          这段源码用<strong className="text-fg">周杰伦歌名/歌词的领字</strong>当结构关键词（七里香→模块、画面→规则、若→如果、画→返回），
-          读起来像歌，却由<strong className="text-fg">生产同款浏览器 TS 引擎逐字真编译、真裁决</strong>——
-          歌词体版与规范关键词版编译出<strong className="text-fg">完全一致的 Core IR</strong>（别名只在表层，Lexer/Parser 不知歌名存在）。
-          翻动任一前提，引擎裁决即变；这幅简笔画是<strong className="text-fg">决策驱动的程序化 SVG</strong>，非预存图片。
+          这段源码是《以父之名》<strong className="text-fg">真实歌词，逐字未改</strong>——
+          关键词别名把每句领字变结构关键词（仁慈的父→模块、看不见→规则、请原谅我→产出、我低头→返回），
+          <strong className="text-fg">字面量宏</strong>把末词「
+          <span className="font-mono text-fg">{POP_SONG.macroTrigger}</span>
+          」展开成整句主题句。歌词读起来是歌，却由<strong className="text-fg">生产同款浏览器 TS 引擎逐字真编译、真求值</strong>——
+          歌词体版与规范关键词版编译出<strong className="text-fg">完全一致的 Core IR</strong>
+          （别名与宏只在表层，Lexer/Parser 不知歌词存在）。运行入口规则，引擎输出这句歌词。
           底层与信贷 demo 同一套可证明的执行链。
         </p>
       </footer>
