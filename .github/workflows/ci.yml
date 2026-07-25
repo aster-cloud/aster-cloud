@@ -438,8 +438,34 @@ jobs:
           DIGEST: ${{ steps.migrate-build.outputs.digest }}
         run: |
           test -n "${DIGEST}" || { echo "build 未输出 digest，中止"; exit 1; }
-          cosign sign "docker.io/wontlost/aster-cloud-migrate@${DIGEST}"
-          echo "signed digest=${DIGEST}"
+          REF="docker.io/wontlost/aster-cloud-migrate@${DIGEST}"
+          # 身份判据与下游 fail-closed verify 步骤逐字一致(单一真相,勿分叉)。
+          ID_REGEXP="^https://github.com/${GITHUB_REPOSITORY}/\.github/workflows/ci\.yml@refs/heads/main$"
+          OIDC_ISSUER="https://token.actions.githubusercontent.com"
+
+          # 幂等守卫:该 digest 是否已被本仓身份签过?用 --insecure-ignore-tlog **只探证书身份、
+          # 不触 Rekor**——避开「签名已存在→取旧 Rekor inclusion proof→404」的抖动路径(重跑 CI
+          # 时常命中,一次 Rekor 打嗝就噪声红)。已签则跳过重签。
+          # ★不放松 fail-closed:trust 由下方独立的 full verify(带 tlog)兜底,本守卫只决定「要不要
+          #   重签」不决定「能不能放行」;即便误判已签,下游 full verify 仍会独立验签,未签好照样红。
+          if cosign verify "${REF}" \
+               --insecure-ignore-tlog \
+               --certificate-identity-regexp "${ID_REGEXP}" \
+               --certificate-oidc-issuer "${OIDC_ISSUER}" >/dev/null 2>&1; then
+            echo "digest 已被本仓身份签过，跳过重签(幂等):${DIGEST}"
+            exit 0
+          fi
+
+          # 未签 → 新签,带退避 retry 兜 Rekor 瞬时抖动(仅重试签名上传本身,不改签名语义)。
+          for attempt in 1 2 3; do
+            if cosign sign "${REF}"; then
+              echo "signed digest=${DIGEST} (attempt ${attempt})"
+              exit 0
+            fi
+            echo "cosign sign 第 ${attempt} 次失败(Rekor 抖动?),退避重试…"
+            sleep $((attempt * 5))
+          done
+          echo "cosign sign 连续 3 次失败,中止"; exit 1
 
       # fail-closed：签名/身份不符 → verify 失败 → job 失败（:latest 不提升、迁移 sync 不触发）。
       - name: Verify freshly-built migrate digest signature
