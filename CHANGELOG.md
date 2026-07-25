@@ -6,6 +6,37 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- 管理员 UI 卡片（mode 三模式 + sample_pct） (#283) *(runner-parity)*
+- Manual verify-parity endpoint + logs UI 徽章 — PR-4/4 (#282) *(runner-parity)*
+- Execute 路由 waitUntil 触发 parity（不双评估）— PR-3/4 (#281) *(runner-parity)*
+- Executions parity 结果列 + 迁移 — PR-2/4 (#280) *(runner-parity)*
+- Platform-settings flag（管理员三模式配置）— PR-1/4 (#279) *(runner-parity)*
+- Cloud runner-launcher 旁路抽象（parity 验证接线，stub target） (#278) *(s2-1a-2 F)*
+- S1 已批准升级 manifest（信任层5 transition authorization） (#269) *(p0a)*
+- Item 4 F — toolchain provenance 诚实降级（m1.4，签字级） (#268) *(p0a)*
+- DB INSERT 层 artifact 完整性 + 声明身份 SoD（签字级 Item 3） (#266) *(p0a)*
+- Legacy m1.0 不可签字策略 + 报告级 signability 轴（签字级 Item 2） (#264) *(p0a)*
+- ReportHash 绑 caseHash + 离线核验协议（签字级 m1.2） (#263) *(p0a)*
+- 受控接受漂移审批 + DB append-only（CCO 深审 P0-4/P0-7，hardening 第二批） (#260) *(p0a)*
+- 证据导出预览显哈希覆盖率 + 全 legacy 警告 + 仅导可验证条目 (#254) *(reports)*
+- /reports 改造为「基于真实执行链的证据导出」(PR1) (#253) *(reports)*
+- BYOK 多 key + 优先级 fallback（同用户同 provider 可绑多个 key） (#251) *(ai-keys)*
+- BYOK 支持编辑额度/失效日期 + 重置额度，全程管理员可审计 (#248) *(ai-keys)*
+- 回归报告只读查看 UI + GET 端点（ADR 0030 M1，CCO 审阅面） (#244) *(p0a)*
+- RuleRegressionRunner freeze/run + admin endpoint（ADR 0030 M1 附录 B 第二步） (#243) *(p0a)*
+- 回归工具证据模型表 RegressionCase/Report + PII opt-in（ADR 0030 M1 附录 B 第一步） (#242) *(p0a)*
+- BFF 回放持久化写路径 — Execution 回放地基列（ADR 0030，M1） (#241) *(p0a)*
+- Execution 决策级持久层 schema——回放地基（ADR 0030 附录 A.1） (#240) *(p0a)*
+- Canonical JSON serializer（规则集升级回归工具地基） (#239) *(p0a)*
+- 保存前编译门禁后端 defense-in-depth（接线 compile 端点） (#231) *(policy)*
+- 标题渲染 + 代码块级操作栏（拷贝/插入/替换，Augment 风格） (#228) *(ai-panel)*
+- Markdown 感知渲染 + 提取 aster snippet 插入编辑器 (#226) *(ai-panel)*
+- 模板点击改为清空并整体替换编辑器内容 (#225) *(policy-editor)*
+- IDE 三栏工作台布局（C 方案第一阶段，桌面 lg+） (#220) *(policy-editor)*
+- 结构词别名授权卡片加分页 + 搜索 (#213) *(admin)*
+- BYOK allowlist 管理员 UI + BFF（配 aster-api 动态 allowlist） (#210) *(admin)*
+- Envelope 带自定义 Provider URL（接入 aster-api allowlist+SSRF 重校验） (#206) *(byok)*
+- BYOK 撤销即硬删除 + token 额度/失效日期/自定义 Provider URL (#205) *(ai-keys)*
 - P3-2b 退 promote:latest+trigger-sync,迁移 fail-loud 后移到 by-digest (#201) *(migrate)*
 - Phase 2 — migrate CI 开 PR 到 k3s pin digest (k3s#4) (#196) *(image-pin)*
 - Migrate 镜像 cosign keyless 签名 + :latest 只指向已验签 digest (#192 Phase 0) (#194) *(ci)*
@@ -265,6 +296,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- 签字政策文档诚实化——legacy m1.0 为 defense-in-depth，生产永不触发 (#265) *(p0a)*
+- Refresh unreleased [skip ci] (#202) *(changelog)*
 - Refresh unreleased [skip ci] (#200) *(changelog)*
 - Update [skip ci] *(changelog)*
 - Update [skip ci] *(changelog)*
@@ -550,6 +583,35 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- 重建快照基线恢复 db:generate 增量能力 (#287) *(drizzle)*
+- Bump next/next-auth + 补 override 消 3 critical + 10 high (#286) *(security)*
+- 独立审查发现的两个签字级 defense-in-depth 加固（F1/F2） (#267) *(p0a)*
+- Execution writer 按 M2.1b 判 REPLAYABLE，解 freeze 空集（承 P0-A） (#261) *(p0a)*
+- 加固 M1 回归 runner 完整性（CCO 深审 P0-1/2/3/5/6，中间 hardening） (#259) *(p0a)*
+- Jsdom 27→29 + undici override 收窄为区间键（解安全 override 与 jsdom 冲突） (#257) *(deps)*
+- 采集人类可读 policyVersion + 部署注入真实 build SHA（去 build=dev） (#255) *(evidence)*
+- 修复排序 AI Key 报 500（CASE THEN 序号缺 ::int 转型） (#252) *(ai-keys)*
+- 编辑/重置/撤销的提示就近显示，不再错位到上面新增表单底部 (#250) *(ai-keys)*
+- 修失效日期时区错位（选7-31显示8-1）+ 创建/最近使用显示时分 (#249) *(ai-keys)*
+- 修点击分组不显示策略 + 删除 SUBGROUPS 区（只保留直属过滤） (#247) *(policies)*
+- 分组文件夹式导航——右侧只显示直属策略 + 直接子分组（可下钻） (#246) *(policies)*
+- Structural keyword aliases 卡片固定高度（不随搜索结果伸缩） (#245) *(admin)*
+- 有解析错误的策略不能保存（前端编译门禁） (#230) *(policy-editor)*
+- 标题无空格渲染 + suggest JSON delta 空格链路（前端侧） (#229) *(ai-panel)*
+- 修 SSE 解析吞空格 bug（AI 代码单词间空格全丢） (#227) *(ai-panel)*
+- 抽屉 aside 加 w-full 根治各 tab 内容宽度漂移 (#224) *(policy-editor)*
+- 统一抽屉各 tab 内容内边距（决策预览/模板对齐关键词别名） (#223) *(policy-editor)*
+- 抽屉各 tab 内容统一全宽卡片（决策预览/模板对齐关键词别名） (#222) *(policy-editor)*
+- 策略编辑抽屉细节修复（固定宽度 + header 统一） (#221) *(policy-editor)*
+- 编辑/新建 CTA 用 lg 断点 + 不可编辑时隐藏「编辑」 (#219) *(policies)*
+- 多选按钮随分组侧栏显隐（同 lg 断点） (#218) *(policies)*
+- 移动端策略行精简（隐藏分组信息 + 执行次数） (#217) *(policies)*
+- 移动端隐藏 New Policy/Edit + 修版本卡片按钮溢出 (#216) *(policies)*
+- 移动端隐藏策略分组侧栏（分组操作仅桌面端可用） (#214) *(policies)*
+- BYOK allowlist 卡片字号/layout 对齐其他 admin 卡片 (#212) *(admin)*
+- 修 React #418 hydration mismatch（日期/数字 locale 格式化） (#209) *(ai-keys)*
+- 客户端 provider fail-open — 缺 key 降级不崩页（修 MISSING_MESSAGE 白屏） (#207) *(i18n)*
+- Apex↔www Origin 互认，修 www.<domain> 撤销 key 时 403 CSRF (#203) *(csrf)*
 - Build 期无 DB binding 时安静短路，消除 CI 日志刷屏 (#191) (#193) *(db-bootstrap)*
 - Label 非致命（先建 PR 再加 label） (#199) *(image-pin)*
 - Push-to-main 不再直推 main，改开 changelog PR (digest-pin freshness 根治) (#197) *(changelog)*
