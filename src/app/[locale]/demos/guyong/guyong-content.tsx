@@ -3,13 +3,13 @@
 /**
  * 「原创歌词即源码」demo（《孤勇》，中文彩蛋）——原创叙事体歌词逐字即 `.aster` 源码。
  *
- * 范式 = decision + LayoutMap：三个「信物」当前提，用户拨动即在「匹配串/不匹配串」间切换传给引擎；
- * 引擎用「等于」比较逐一确定真值、并且 合成 归心，再 如果/否则 真判定输出裁决。翻任一信物裁决即变——
- * 引擎**真推导**，非查表。LayoutMap 让源码**显示**为无空格流动歌词、**编译**走带空格规范源码。
- * 一键切「看规范版」佐证歌词体 ≡ 规范版（别名只在表层）。
+ * 范式 = 布尔 decision + LayoutMap：三个前提（守/进/记）是**布尔入参**，用户拨动 toggle 即把
+ * true/false 直接传给引擎；引擎 令 归心 = 守 并且 进 并且 记，再 如果/否则 真判定输出裁决。
+ * 翻任一前提裁决即变——引擎**真推导**，非查表。LayoutMap 让源码**显示**为有意境的中文（语法脚手架
+ * 隐进标点/换行）、**编译**走带空格规范源码。一键切「看规范版」佐证歌词体 ≡ 规范版（别名只在表层）。
  *
- * 诚实边界：**裁决**由 evaluate 给出（前端只把信物对应的字符串传进去，不实现裁决逻辑）；
- * **中间值展示**（守/进/记/归心）是前端按 tokens/derived 镜像复算，仅供解释推导链，非 evaluate 输出。
+ * 诚实边界：**裁决**由 evaluate 给出（前端只把布尔前提传进去，不实现裁决逻辑）；
+ * **中间值展示**（归心）是前端按 tokens/derived 镜像复算，仅供解释推导链，非 evaluate 输出。
  */
 import { useMemo, useState } from 'react';
 import { compile, evaluate, canonicalize } from '@aster-cloud/aster-lang-ts/browser';
@@ -37,12 +37,12 @@ export function GuyongDemoContent() {
   // 显示层：LayoutMap 的 toDisplay（无空格流动歌词）；规范版按需展示。
   const displaySource = toDisplay(GUYONG.layout);
 
-  // 引擎实时裁决：把每个信物按拨动状态映射成「匹配串/不匹配串」传给 evaluate，拿真实返回。
+  // 引擎实时裁决：把每个前提的拨动布尔直接传给 evaluate（真布尔 decision，无字符串映射），拿真实返回。
   const verdict = useMemo(() => {
     if (!core) return null;
-    const inputs: Record<string, string> = {};
+    const inputs: Record<string, boolean> = {};
     for (const tk of GUYONG.tokens) {
-      inputs[tk.name] = held[tk.name] ? tk.matchValue : tk.missValue;
+      inputs[tk.name] = held[tk.name];
     }
     const ev = evaluate(core, GUYONG.entry, inputs);
     return ev.success ? String(ev.value) : '—';
@@ -92,9 +92,9 @@ export function GuyongDemoContent() {
 
       {/* 拨动信物 */}
       <section className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-fg">拨动三个信物，看引擎真推导裁决</h2>
+        <h2 className="mb-2 text-sm font-semibold text-fg">拨动三个前提，看引擎真推导裁决</h2>
         <p className="mb-4 text-sm text-fg-muted">
-          每个信物拨到「在」= 把匹配的字传给引擎；拨到「失」= 传不匹配的字。裁决由引擎当场比较、合成、判定。
+          每个前提拨到「在」= 把 true 传给引擎；拨到「失」= 传 false。裁决由引擎当场以 并且 合成、如果/否则 判定。
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           {GUYONG.tokens.map((tk) => (
@@ -115,7 +115,7 @@ export function GuyongDemoContent() {
             >
               <span className="font-display">{tk.label}</span>
               <span className="text-xs text-fg-subtle">
-                {held[tk.name] ? `在 · 「${tk.matchValue}」` : `失 · 「${tk.missValue}」`}
+                {held[tk.name] ? '在 · 真' : '失 · 假'}
               </span>
             </button>
           ))}
@@ -147,8 +147,8 @@ export function GuyongDemoContent() {
         </p>
 
         <p className="mt-5 text-sm text-fg-muted">
-          三信物全「在」→ 归心为真 → 裁决「归途」；拨失任一 → 归心为假 → 裁决「坠落」。这是引擎当场比较、
-          合成、判定的结论，不是页面预置的固定文案。
+          三个前提全「在」→ 归心为真 → 裁决「归途」；拨失任一 → 归心为假 → 裁决「坠落」。这是引擎当场以
+          并且 合成、如果/否则 判定的结论，不是页面预置的固定文案。
         </p>
       </section>
 
@@ -165,9 +165,10 @@ export function GuyongDemoContent() {
       <footer className="mt-8 rounded-lg border border-border bg-bg-subtle p-4 text-xs leading-relaxed text-fg-muted">
         <p>
           这段源码是<strong className="text-fg">本项目原创的叙事体歌词</strong>（非任何既有歌曲）——
-          关键词别名把每句领字变结构关键词，三个「信物」当字符串前提，引擎用「等于」比较逐一确定真值、
-          <strong className="text-fg">并且</strong> 合成 归心，再 如果/否则 真判定输出裁决。
-          <strong className="text-fg">LayoutMap</strong> 让你读到的是无空格流动歌词，引擎编译的是带空格规范源码——
+          关键词别名把每句领字变结构关键词，三个前提（守/进/记）是<strong className="text-fg">布尔入参</strong>，
+          引擎 令 归心 = 守 <strong className="text-fg">并且</strong> 进 并且 记，再 如果/否则 真判定输出裁决。
+          <strong className="text-fg">LayoutMap</strong> 把 <code>作为 布尔</code>/<code>定义为</code>/<code>并且</code> 等语法脚手架隐进标点换行，
+          让你读到的是有意境的中文，引擎编译的是带空格规范源码——
           二者逐字对应（<strong className="text-fg">toCanonical(layout) === source</strong>），
           歌词体版与规范关键词版编译出<strong className="text-fg">完全一致的 Core IR</strong>。
           底层与信贷 demo 同一套可证明的执行链。

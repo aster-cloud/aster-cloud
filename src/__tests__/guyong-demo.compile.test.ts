@@ -32,11 +32,11 @@ function stripOrigin(o: unknown): unknown {
   return o;
 }
 
-/** 把「拨动状态」映射成引擎入参（真→matchValue，假→missValue），跑 evaluate 拿裁决。 */
+/** 把「拨动状态」布尔直接传给引擎（真布尔 decision，无字符串映射），跑 evaluate 拿裁决。 */
 function runVerdict(core: NonNullable<ReturnType<typeof compile>['core']>, held: Record<string, boolean>): string {
-  const inputs: Record<string, string> = {};
+  const inputs: Record<string, boolean> = {};
   for (const tk of GUYONG.tokens) {
-    inputs[tk.name] = held[tk.name] ? tk.matchValue : tk.missValue;
+    inputs[tk.name] = held[tk.name];
   }
   const ev = evaluate(core, GUYONG.entry, inputs);
   return ev.success ? String(ev.value) : 'ERR:' + (ev.error ?? '');
@@ -65,9 +65,10 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     expect(toCanonical(GUYONG.layout)).toBe(GUYONG.source);
   });
 
-  it('3b. LayoutMap — toDisplay 隐去关键词间空格且逐字保留全部内容（按顺序、按次数）', () => {
+  it('3b. LayoutMap — toDisplay 逐字保留全部意象内容 span（按顺序、按次数）', () => {
+    // 注：本 demo 是布尔 decision，display 为流动中文短句（会有自然空格，不同于静夜思的无空格诗），
+    // 故不断言「无空格」；断言的核心是意象内容 span 逐段按序按次保留（防显示欺骗）。
     const display = toDisplay(GUYONG.layout);
-    expect(display.includes(' '), 'display must have no keyword-space').toBe(false);
     const contentPieces = GUYONG.layout
       .filter((s): s is { text: string } => 'text' in s)
       .map((s) => s.text);
@@ -114,14 +115,10 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
 
   // 6. config 自洽断言（Codex 审查改进 #3）：把「拨失不翻转」类的隐性配置错误从「裁决错误」
   //    提前成明确的配置断言失败，定位更直接。
-  it('6. config 自洽：token name 唯一 / matchValue≠missValue / derived.from 引用存在的 token', () => {
+  it('6. config 自洽：token name 唯一 / derived.from 引用存在的 token', () => {
     const tokenNames = GUYONG.tokens.map((tk) => tk.name);
     // token name 唯一（重名会让 held 映射相互覆盖）。
     expect(new Set(tokenNames).size, `token names must be unique: ${JSON.stringify(tokenNames)}`).toBe(tokenNames.length);
-    // 每个 token 的匹配值与失配值必须不同，否则拨失后引擎不会翻转（裁决恒真）。
-    for (const tk of GUYONG.tokens) {
-      expect(tk.matchValue, `token '${tk.name}' matchValue must differ from missValue`).not.toBe(tk.missValue);
-    }
     // derived.from 只能引用存在的 token 名（前端镜像复算引用不存在的输入会静默为 falsy）。
     const nameSet = new Set(tokenNames);
     for (const d of GUYONG.derived) {
