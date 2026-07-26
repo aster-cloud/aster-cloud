@@ -69,29 +69,6 @@ export default async function DemosIndexPage({ params }: Props) {
               </Link>
             </li>
           ))}
-          {/* 「流行歌曲即源码」——中文专属彩蛋(周杰伦歌名即源码)。文案内联(不进共享
-              ui-messages),仅 zh locale 展示;非 zh 不列(歌词是中文的)。 */}
-          {locale.toLowerCase().startsWith('zh') && (
-            <li key="pop-song">
-              <Link href="/demos/pop-song" className="block h-full focus:outline-none">
-                <Card className="h-full transition-shadow hover:shadow-brand">
-                  <CardBody className="flex h-full flex-col gap-3 pt-6">
-                    <span className="text-3xl" aria-hidden>🎤</span>
-                    <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
-                      流行歌曲即源码
-                    </h2>
-                    <p className="flex-1 text-sm text-fg-muted">
-                      周杰伦歌名即前提，源码即歌——浏览器内真编译真裁决，决策驱动一幅程序化简笔画。
-                    </p>
-                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                      {t('enter')}
-                      <span aria-hidden>→</span>
-                    </span>
-                  </CardBody>
-                </Card>
-              </Link>
-            </li>
-          )}
           {/* 「原创歌词即源码」——中文专属彩蛋(《孤勇》原创词 + decision + LayoutMap)。文案内联,
               仅 zh locale 展示;非 zh 不列(歌词是中文的)。 */}
           {locale.toLowerCase().startsWith('zh') && (
