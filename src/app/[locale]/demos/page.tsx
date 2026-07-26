@@ -69,7 +69,7 @@ export default async function DemosIndexPage({ params }: Props) {
               </Link>
             </li>
           ))}
-          {/* 「原创歌词即源码」——中文专属彩蛋(《孤勇》原创词 + decision + LayoutMap)。文案内联,
+          {/* 「原创歌词即源码」——中文专属彩蛋(《孤勇》原创词 + alias-literal 字面量宏 + LayoutMap)。文案内联,
               仅 zh locale 展示;非 zh 不列(歌词是中文的)。 */}
           {locale.toLowerCase().startsWith('zh') && (
             <li key="guyong">

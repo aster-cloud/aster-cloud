@@ -96,7 +96,7 @@
       "owner": "marketing",
       "source": "src/app/[locale]/demos/guyong/page.tsx",
       "locales": "zh",
-      "notes": "Fun demo (zh-only easter egg) — \"original lyrics as source\" (project-original verse, decision paradigm + LayoutMap); three string tokens as premises, in-browser compile + engine-derived verdict (归途/坠落); display spaceless via LayoutMap, compile space-bearing canonical"
+      "notes": "Fun demo (zh-only easter egg) — \"original verse as source\" (project-original rhyming poem, alias-literal + literal-macro + LayoutMap); switch the final trigger word, run to have the engine expand it into a rhyming theme line; display reads as a poem, compiles space-bearing canonical"
     },
     {
       "path": "/privacy",
