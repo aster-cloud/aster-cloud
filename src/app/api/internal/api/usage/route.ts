@@ -124,8 +124,11 @@ export async function POST(req: Request) {
           )
         );
     } catch (e) {
+      // body.apiKeyId 直接来自请求 body（用户可控）——不拼进 console.warn 首参（会被当
+      // 格式串解析 %s/%d/%o 等）；改用 %s 占位参数化传入，规避格式串注入。
       console.warn(
-        `[usage] failed to update apiKeys.lastUsedAt for apiKeyId=${body.apiKeyId}:`,
+        '[usage] failed to update apiKeys.lastUsedAt for apiKeyId=%s:',
+        body.apiKeyId,
         e
       );
     }

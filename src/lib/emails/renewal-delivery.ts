@@ -250,8 +250,15 @@ function renderInviteText(input: RenewalInviteEmailInput): string {
 }
 
 function renderInviteHtml(input: RenewalInviteEmailInput): string {
+  // 对 HTML 属性上下文安全的转义：除文本节点必须的 & < >，还须转义引号（"→&quot; '→&#39;），
+  // 否则放进 href="..." 的 portalUrl 若含 " 可闭合属性并注入 onclick 等属性（属性注入）。
   const escape = (s: string) =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   const expiryStr = input.expiresAt.toISOString().slice(0, 10);
   const urgency =
     input.daysRemaining <= 1
