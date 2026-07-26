@@ -42,7 +42,7 @@ const K = {
 
 /** 一个布尔前提：用户拨动即把 true/false 直接传给引擎（真布尔 decision，无比较字面量）。 */
 export interface GuyongToken {
-  /** 规范入参名（= 布尔入参名，传给 evaluate，如 '守'）。 */
+  /** 规范入参名（= 布尔入参名，传给 evaluate，如 '孤光'）。 */
   name: string;
   /** 展示给用户的意象短语（如 '守着心里那点光'）。 */
   label: string;
@@ -134,7 +134,7 @@ export const GUYONG: GuyongConfig = {
     aliases: {
       [K.MODULE_DECL]: ['孤身'], // 「孤身 入夜的城」→ 模块
       [K.FUNC_TO]: ['我问'], // 「我问 裁决」→ 规则
-      [K.FUNC_GIVEN]: ['凭'], // 「凭 守, 进, 记 作为 布尔」→ 给定（布尔入参表）
+      [K.FUNC_GIVEN]: ['凭'], // 「凭 孤光, 未退, 来路, 不灭, 彼岸 作为 布尔」→ 给定（布尔入参表）
       [K.FUNC_PRODUCE]: ['我说'], // 「…我说:」→ 产出（块起始，紧贴冒号）
       [K.LET]: ['是否'], // 「是否 归心 定义为…」→ 令
       [K.IF]: ['倘若'], // 「倘若 归心」→ 如果
