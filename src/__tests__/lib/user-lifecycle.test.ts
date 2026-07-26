@@ -35,9 +35,11 @@ describe('user-lifecycle', () => {
       expect(encoded.startsWith(`${original}#deleted-`)).toBe(true);
       // splitting recovers original (used by cron purge audit-log writer)
       expect(encoded.split('#deleted-')[0]).toBe(original);
-      // LIKE pattern that findTombstonedUserByNormalizedEmail uses
-      const likePattern = `${original}#deleted-%`;
-      expect(encoded).toMatch(new RegExp('^' + likePattern.replace('%', '.*') + '$'));
+      // LIKE pattern that findTombstonedUserByNormalizedEmail uses.
+      // 转义 original 里的正则元字符（邮箱含 . + 等）后再拼 `.*`，避免把字面量当模式
+      // （CodeQL incomplete-sanitization）；断言意图不变。
+      const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(encoded).toMatch(new RegExp('^' + escaped + '#deleted-.*$'));
     });
 
     it('encoding survives gmail-style normalization', () => {
