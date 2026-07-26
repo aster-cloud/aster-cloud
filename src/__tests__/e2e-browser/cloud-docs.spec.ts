@@ -404,7 +404,9 @@ test.describe('Cloud docs - sitemap + robots', () => {
       for (const prefix of ['', '/zh', '/de']) {
         const path = `${prefix}/${seg}`;
         // Either bare or trailing-slash form satisfies the requirement.
-        const re = new RegExp(`Disallow:\\s*${path.replace(/\//g, '\\/')}(\\/)?\\s*$`, 'm');
+        // 完整转义 path 的正则元字符（原仅转义 `/` = 不完整）（CodeQL incomplete-sanitization）。
+        const escapedPath = path.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+        const re = new RegExp(`Disallow:\\s*${escapedPath}(\\/)?\\s*$`, 'm');
         expect(body).toMatch(re);
       }
     }

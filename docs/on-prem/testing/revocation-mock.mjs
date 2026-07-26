@@ -50,8 +50,10 @@ const server = createServer(async (req, res) => {
     res.end(body);
     console.error(`[revocation-mock] 200 ${req.method} ${req.url} (${body.length} bytes)`);
   } catch (err) {
+    // 不把错误详情（可能含路径/堆栈）回给客户端（CodeQL js/stack-trace-exposure）；
+    // 诊断信息仅进服务端日志。
     res.writeHead(500, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: 'manifest read failed', detail: String(err) }));
+    res.end(JSON.stringify({ error: 'manifest read failed' }));
     console.error(`[revocation-mock] 500 ${req.url}: ${err}`);
   }
 });

@@ -55,8 +55,15 @@ function convert(content, filePath) {
         continue;
       }
       stack.push('Callout');
-      // Escape double quotes in title for JSX attribute.
-      const titleAttr = title ? ` title="${title.replace(/"/g, '\\"')}"` : '';
+      // JSX 属性值完整实体编码（原 `\"` 反斜杠转义对 JSX/HTML 属性不正确、且漏了 & < >）
+      // （CodeQL incomplete-html-attribute-sanitization）：& → &amp; 先行，再 < > "。
+      const titleAttr = title
+        ? ` title="${title
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')}"`
+        : '';
       out.push(`<Callout type="${type}"${titleAttr}>`);
       continue;
     }

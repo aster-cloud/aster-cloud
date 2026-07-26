@@ -82,7 +82,9 @@ describe('buildDocsSeeds', () => {
       // rewrite recovers the slug. We can't verify it round-trips
       // perfectly because slugs may contain `-` natively, but we
       // can at least pin the prefix and structure.
-      expect(seed.id).toMatch(/^docs-[a-z0-9-]+(?:-[a-z0-9-]+)*$/);
+      // `[a-z0-9-]+` 已覆盖含 `-` 的 slug；原 `(?:-[a-z0-9-]+)*` 与前段重叠 → 多项式回溯
+      // （CodeQL js/redos）。等价简化为单量词，断言意图不变（前缀 docs- + 允许字符集）。
+      expect(seed.id).toMatch(/^docs-[a-z0-9-]+$/);
     }
   });
 });
