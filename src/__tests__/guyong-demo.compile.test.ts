@@ -88,12 +88,12 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
 
   it('3b-2. LayoutMap 语义诚实：领域 token 在 display 与 source 出现次数一致（防把操作数塞进结构 span）', () => {
     // ★Codex 审查退回修复：仅遍历 {text} span 有盲区——若把参与求值的语义内容（如 AND 操作数
-    //   孤光/未退/来路/不灭/彼岸 的第二次出现）错误塞进**结构 span** 的 canonical，contentPieces 根本看不见它。
+    //   微光/闯关/破浪/望岸/不忘 的第二次出现）错误塞进**结构 span** 的 canonical，contentPieces 根本看不见它。
     //   这里改为**独立**列出领域语义 token（参数/变量/字面量/意象名），断言其在 toDisplay 的出现
     //   次数 == 在实际编译源码 toCanonical 的出现次数——真正防显示欺骗（隐藏真实数据流）。
     const canon = toCanonical(GUYONG.layout);
     const display = toDisplay(GUYONG.layout);
-    const SEMANTIC_TOKENS = ['孤身', '入夜的城', '裁决', '孤光', '未退', '来路', '不灭', '彼岸', '归心', '「归途」', '「坠落」'];
+    const SEMANTIC_TOKENS = ['孤身', '入夜的城', '裁决', '微光', '闯关', '破浪', '望岸', '不忘', '归心', '「归途」', '「坠落」'];
     const count = (haystack: string, needle: string) => haystack.split(needle).length - 1;
     for (const tk of SEMANTIC_TOKENS) {
       const inSource = count(canon, tk);
@@ -143,7 +143,7 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     const nameSet = new Set(tokenNames);
     for (const d of GUYONG.derived) {
       for (const from of d.from) {
-        // derived 既可引用 token（孤光/未退/来路/不灭/彼岸 五个布尔前提名），也可引用同为 token 名的推导域；
+        // derived 既可引用 token（微光/闯关/破浪/望岸/不忘 五个布尔前提名），也可引用同为 token 名的推导域；
         // 这里只校验非 token 名的 from 至少是另一个 derived 名（不引用凭空的名字）。
         const derivedNames = new Set(GUYONG.derived.map((x) => x.name));
         expect(
