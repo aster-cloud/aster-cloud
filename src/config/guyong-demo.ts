@@ -98,9 +98,11 @@ const GUYONG_LAYOUT: readonly LayoutSpan[] = [
   { canonical: '我问 ', display: '我把' }, { text: '裁决' }, { canonical: ' 凭 ', display: '，交给' },
   { text: '守' }, { canonical: ' 作为 布尔, ', display: '、' }, { text: '进' }, { canonical: ' 作为 布尔, ', display: '、' },
   { text: '记' }, { canonical: ' 作为 布尔 我说', display: ' 三样' }, { canonical: ':\n  ', display: '：\n' },
-  // let 归心：`定义为 守 并且 进 并且 记` 全隐，只露 归心 + 意境说明。
-  { canonical: '是否 ', display: '' }, { text: '归心' },
-  { canonical: ' 定义为 守 并且 进 并且 记', display: '，是三样都在时才有' }, { canonical: '。\n  ', display: '。\n' },
+  // let 归心：只隐语法脚手架（定义为/并且），★AND 操作数 守/进/记 是真实语义,必须保留为内容 span
+  //   （否则=显示欺骗:隐藏参与求值的变量引用）。定义为→「是」、并且→「、」。
+  { canonical: '是否 ', display: '' }, { text: '归心' }, { canonical: ' 定义为 ', display: '，是' },
+  { text: '守' }, { canonical: ' 并且 ', display: '、' }, { text: '进' }, { canonical: ' 并且 ', display: '、' },
+  { text: '记' }, { canonical: '', display: '三样都在时才有' }, { canonical: '。\n  ', display: '。\n' },
   // if/else：`倘若/答/否则` 隐成连接词，露 归心/「归途」/「坠落」。
   { canonical: '倘若 ', display: '' }, { text: '归心' }, { canonical: ':\n    答 ', display: '还在，我便循着' },
   { text: '「归途」' }, { canonical: '。\n  ', display: '；\n' },

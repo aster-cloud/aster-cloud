@@ -32,10 +32,19 @@ export function GuyongDemoContent() {
   const [held, setHeld] = useState<Record<string, boolean>>(
     () => Object.fromEntries(GUYONG.tokens.map((tk) => [tk.name, true])),
   );
-  const [showCanonical, setShowCanonical] = useState(false);
-
-  // 显示层：LayoutMap 的 toDisplay（无空格流动歌词）；规范版按需展示。
+  // 三种视图（诚实分离，承 Codex 审查）：
+  //   意境展示 = toDisplay(layout)（脚手架隐后的中文，非逐字源码）；
+  //   实际编译源码 = toCanonical(layout)（= GUYONG.source，真正喂给 compile 的）；
+  //   规范关键词等价版 = GUYONG.canonical（证明语义等价，非实际编译输入）。
   const displaySource = toDisplay(GUYONG.layout);
+  const compileSource = toCanonical(GUYONG.layout);
+  const [view, setView] = useState<'display' | 'compile' | 'canonical'>('display');
+  const VIEW_LABEL = {
+    display: '意境展示（LayoutMap 渲染，非逐字源码）',
+    compile: '实际编译源码（toCanonical，真正喂给引擎的）',
+    canonical: '规范关键词等价版（证明语义等价，非实际编译输入）',
+  } as const;
+  const VIEW_TEXT = { display: displaySource, compile: compileSource, canonical: GUYONG.canonical };
 
   // 引擎实时裁决：把每个前提的拨动布尔直接传给 evaluate（真布尔 decision，无字符串映射），拿真实返回。
   const verdict = useMemo(() => {
@@ -69,20 +78,26 @@ export function GuyongDemoContent() {
 
       {/* 歌词体源码 / 规范版 */}
       <div className="rounded-lg border border-border bg-bg-subtle p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium text-fg-muted">
-            {showCanonical ? '规范关键词版' : '歌词体源码（原创词，逐字即源码）'}
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowCanonical((v) => !v)}
-            className="text-xs text-accent hover:underline"
-          >
-            {showCanonical ? '看歌词体' : '看规范版'}
-          </button>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-medium text-fg-muted">{VIEW_LABEL[view]}</span>
+          <div className="flex gap-1">
+            {(['display', 'compile', 'canonical'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  'rounded px-2 py-0.5 text-xs',
+                  view === v ? 'bg-accent/15 text-accent' : 'text-fg-muted hover:text-accent',
+                )}
+              >
+                {v === 'display' ? '意境' : v === 'compile' ? '编译源码' : '规范版'}
+              </button>
+            ))}
+          </div>
         </div>
         <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-relaxed text-fg">
-          {showCanonical ? GUYONG.canonical : displaySource}
+          {VIEW_TEXT[view]}
         </pre>
       </div>
 
@@ -155,7 +170,8 @@ export function GuyongDemoContent() {
       {/* canonicalize 实况 */}
       <section className="mt-6 rounded-lg border border-border bg-bg-subtle p-4">
         <p className="mb-2 text-xs font-semibold text-fg-subtle">
-          canonicalize 真实输出（引擎产物）——别名 孤身/我问/凭/我说/是否/再问/倘若/答 在表层归一成规范关键词
+          canonicalize 真实输出（引擎产物）——对实际编译源码做表层归一（部分别名如 孤身/我问/凭/我说/
+          是否/倘若/答 由后续 token translation 层解析成规范关键词，此产物展示表层归一实况）
         </p>
         <pre className="overflow-x-auto rounded-lg border border-border bg-bg p-4 font-mono text-xs leading-relaxed text-fg-muted">
           {canonicalizeOutput}

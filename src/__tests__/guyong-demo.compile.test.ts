@@ -86,6 +86,26 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     }
   });
 
+  it('3b-2. LayoutMap 语义诚实：领域 token 在 display 与 source 出现次数一致（防把操作数塞进结构 span）', () => {
+    // ★Codex 审查退回修复：仅遍历 {text} span 有盲区——若把参与求值的语义内容（如 AND 操作数
+    //   守/进/记 的第二次出现）错误塞进**结构 span** 的 canonical，contentPieces 根本看不见它。
+    //   这里改为**独立**列出领域语义 token（参数/变量/字面量/意象名），断言其在 toDisplay 的出现
+    //   次数 == 在实际编译源码 toCanonical 的出现次数——真正防显示欺骗（隐藏真实数据流）。
+    const canon = toCanonical(GUYONG.layout);
+    const display = toDisplay(GUYONG.layout);
+    const SEMANTIC_TOKENS = ['孤身', '入夜的城', '裁决', '守', '进', '记', '归心', '「归途」', '「坠落」'];
+    const count = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+    for (const tk of SEMANTIC_TOKENS) {
+      const inSource = count(canon, tk);
+      const inDisplay = count(display, tk);
+      expect(
+        inDisplay,
+        `语义 token '${tk}' 在 display 出现 ${inDisplay} 次，但在编译源码出现 ${inSource} 次——` +
+          `不一致=某处操作数/引用被结构 span 隐藏（显示欺骗）`,
+      ).toBe(inSource);
+    }
+  });
+
   it('3c. LayoutMap — verifyContentParity 通过（结构 span 未偷塞字面量）', () => {
     const v = verifyContentParity(GUYONG.layout);
     expect(v.ok, v.reason ?? '').toBe(true);
