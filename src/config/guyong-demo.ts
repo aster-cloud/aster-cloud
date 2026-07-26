@@ -20,7 +20,7 @@
  *  1. 歌词体源码用《孤勇》别名词典编译成功（无诊断错误）。
  *  2. 歌词体版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——别名只在 canonicalize 表层。
  *  3. LayoutMap 不变式：toCanonical(layout) 逐字 === source；toDisplay 保留全部意象内容 span。
- *  4. 裁决真推导：三前提全真 → 「归途」；翻任一 → 「坠落」（引擎真判定，翻转随前提）。
+ *  4. 裁决真推导：五前提全真 → 「归途」；翻任一 → 「坠落」（引擎真判定，翻转随前提）。
  *
  * 别名：孤身→模块 / 我问→规则 / 凭→给定 / 我说→产出(produce) / 是否→令 / 倘若→如果 / 答→返回。
  */
@@ -53,7 +53,7 @@ export interface GuyongDerived {
   name: string;
   /** 展示标签（如 '归心 = 守 且 进 且 记'）。 */
   label: string;
-  /** 由哪些信物名以 AND 组合得出（前端复算展示用，非引擎真值——真值仍由 evaluate 给）。 */
+  /** 由哪些前提名以 AND 组合得出（前端复算展示用，非引擎真值——真值仍由 evaluate 给）。 */
   from: string[];
 }
 
@@ -73,13 +73,13 @@ export interface GuyongConfig {
   layout: readonly LayoutSpan[];
   /** 入口 rule 名（规范名；歌词体与规范版共用）。 */
   entry: string;
-  /** 三个信物前提。 */
+  /** 五个布尔前提。 */
   tokens: GuyongToken[];
   /** 引擎推导的中间值。 */
   derived: GuyongDerived[];
-  /** 全部信物匹配时的裁决（= evaluate 结果，CI 锁定）。 */
+  /** 全部前提为真时的裁决（= evaluate 结果，CI 锁定）。 */
   verdictAll: string;
-  /** 任一信物不匹配时的裁决（= evaluate 结果，CI 锁定）。 */
+  /** 任一前提为假时的裁决（= evaluate 结果，CI 锁定）。 */
   verdictElse: string;
 }
 

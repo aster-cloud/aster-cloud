@@ -3,10 +3,10 @@
  * 钉死不变式，任一失败 = CI 硬失败：
  *  1. 歌词体源码用《孤勇》别名词典编译成功（无诊断错误）。
  *  2. 别名不变式：歌词体版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——别名只在 canonicalize 表层。
- *  3. LayoutMap 不变式：toCanonical(layout) 逐字 === source（编译零漂移）；toDisplay 无关键词空格且
- *     逐字保留全部内容 span；verifyContentParity 通过。
- *  4. 裁决真推导：三信物全匹配 → verdictAll「归途」；翻任一 → verdictElse「坠落」（引擎真判定，
- *     翻转随信物，非查表）。且两裁决确实不同。
+ *  3. LayoutMap 不变式：toCanonical(layout) 逐字 === source（编译零漂移）；toDisplay 按序按次
+ *     逐字保留全部语义内容 span（含 AND 操作数）；verifyContentParity 通过。
+ *  4. 裁决真推导：五前提全真 → verdictAll「归途」；翻任一 → verdictElse「坠落」（引擎真判定，
+ *     翻转随前提，非查表）。且两裁决确实不同。
  */
 import { describe, it, expect } from 'vitest';
 import { compile, evaluate, ZH_CN } from '@aster-cloud/aster-lang-ts/browser';
@@ -111,12 +111,12 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     expect(v.ok, v.reason ?? '').toBe(true);
   });
 
-  it('4. 裁决真推导：三信物全匹配 → 归途；翻任一 → 坠落（引擎真判定）', () => {
+  it('4. 裁决真推导：五前提全真 → 归途；翻任一 → 坠落（引擎真判定）', () => {
     const r = compileLyric();
     expect(r.core).toBeTruthy();
     const allHeld = Object.fromEntries(GUYONG.tokens.map((tk) => [tk.name, true]));
     expect(runVerdict(r.core!, allHeld), 'all held → verdictAll').toBe(GUYONG.verdictAll);
-    // 逐个拨失某信物，其余为真——每种都应翻成 verdictElse。
+    // 逐个拨失某前提，其余为真——每种都应翻成 verdictElse。
     for (const flip of GUYONG.tokens) {
       const held = { ...allHeld, [flip.name]: false };
       expect(runVerdict(r.core!, held), `flip '${flip.name}' → verdictElse`).toBe(GUYONG.verdictElse);
@@ -143,7 +143,7 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     const nameSet = new Set(tokenNames);
     for (const d of GUYONG.derived) {
       for (const from of d.from) {
-        // derived 既可引用 token（守/进/记←光/步/路 的输入名），也可引用同为 token 名的推导域；
+        // derived 既可引用 token（守/进/记/灯/岸 五个布尔前提名），也可引用同为 token 名的推导域；
         // 这里只校验非 token 名的 from 至少是另一个 derived 名（不引用凭空的名字）。
         const derivedNames = new Set(GUYONG.derived.map((x) => x.name));
         expect(

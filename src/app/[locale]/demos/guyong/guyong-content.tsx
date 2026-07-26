@@ -28,7 +28,7 @@ function useCompiledCore() {
 
 export function GuyongDemoContent() {
   const { core, ok, errs } = useCompiledCore();
-  // 每个信物一个布尔，初值全真（「都还在」情形）。
+  // 每个前提一个布尔，初值全真（「都还在」情形）。
   const [held, setHeld] = useState<Record<string, boolean>>(
     () => Object.fromEntries(GUYONG.tokens.map((tk) => [tk.name, true])),
   );
@@ -65,7 +65,7 @@ export function GuyongDemoContent() {
     });
   }, []);
 
-  // 中间值镜像复算：某信物拨到真 <=> 该 let 绑定为真（前端展示推导链，非 evaluate 输出）。
+  // 中间值镜像复算：某前提拨到真 <=> 该 let 绑定为真（前端展示推导链，非 evaluate 输出）。
   const derivedTrue = (from: string[]) => from.every((n) => held[n]);
   const allHeld = GUYONG.tokens.every((tk) => held[tk.name]);
 
@@ -105,7 +105,7 @@ export function GuyongDemoContent() {
         <p className="mt-3 text-xs text-danger">源码编译失败：{errs.map((e) => e.message).join('; ')}</p>
       )}
 
-      {/* 拨动信物 */}
+      {/* 拨动前提 */}
       <section className="mt-6">
         <h2 className="mb-2 text-sm font-semibold text-fg">拨动五个前提，看引擎真推导裁决</h2>
         <p className="mb-4 text-sm text-fg-muted">
