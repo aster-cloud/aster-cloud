@@ -3,8 +3,8 @@
 /**
  * 「原创歌词即源码」demo（《孤勇》，中文彩蛋）——原创叙事体歌词逐字即 `.aster` 源码。
  *
- * 范式 = 布尔 decision + LayoutMap：三个前提（守/进/记）是**布尔入参**，用户拨动 toggle 即把
- * true/false 直接传给引擎；引擎 令 归心 = 守 并且 进 并且 记，再 如果/否则 真判定输出裁决。
+ * 范式 = 布尔 decision + LayoutMap：五个前提（守/进/记/灯/岸）是**布尔入参**，用户拨动 toggle 即把
+ * true/false 直接传给引擎；引擎 令 归心 = 守 并且 进 并且 记 并且 灯 并且 岸，再 如果/否则 真判定输出裁决。
  * 翻任一前提裁决即变——引擎**真推导**，非查表。LayoutMap 让源码**显示**为有意境的中文（语法脚手架
  * 隐进标点/换行）、**编译**走带空格规范源码。一键切「看规范版」佐证歌词体 ≡ 规范版（别名只在表层）。
  *
@@ -107,11 +107,11 @@ export function GuyongDemoContent() {
 
       {/* 拨动信物 */}
       <section className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-fg">拨动三个前提，看引擎真推导裁决</h2>
+        <h2 className="mb-2 text-sm font-semibold text-fg">拨动五个前提，看引擎真推导裁决</h2>
         <p className="mb-4 text-sm text-fg-muted">
           每个前提拨到「在」= 把 true 传给引擎；拨到「失」= 传 false。裁决由引擎当场以 并且 合成、如果/否则 判定。
         </p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {GUYONG.tokens.map((tk) => (
             <button
               key={tk.name}
@@ -162,7 +162,7 @@ export function GuyongDemoContent() {
         </p>
 
         <p className="mt-5 text-sm text-fg-muted">
-          三个前提全「在」→ 归心为真 → 裁决「归途」；拨失任一 → 归心为假 → 裁决「坠落」。这是引擎当场以
+          五个前提全「在」→ 归心为真 → 裁决「归途」；拨失任一 → 归心为假 → 裁决「坠落」。这是引擎当场以
           并且 合成、如果/否则 判定的结论，不是页面预置的固定文案。
         </p>
       </section>
@@ -181,8 +181,8 @@ export function GuyongDemoContent() {
       <footer className="mt-8 rounded-lg border border-border bg-bg-subtle p-4 text-xs leading-relaxed text-fg-muted">
         <p>
           这段源码是<strong className="text-fg">本项目原创的叙事体歌词</strong>（非任何既有歌曲）——
-          关键词别名把每句领字变结构关键词，三个前提（守/进/记）是<strong className="text-fg">布尔入参</strong>，
-          引擎 令 归心 = 守 <strong className="text-fg">并且</strong> 进 并且 记，再 如果/否则 真判定输出裁决。
+          关键词别名把每句领字变结构关键词，五个前提（守/进/记/灯/岸）是<strong className="text-fg">布尔入参</strong>，
+          引擎 令 归心 = 守 <strong className="text-fg">并且</strong> 进 并且 记 并且 灯 并且 岸，再 如果/否则 真判定输出裁决。
           <strong className="text-fg">LayoutMap</strong> 把 <code>作为 布尔</code>/<code>定义为</code>/<code>并且</code> 等语法脚手架隐进标点换行，
           让你读到的是有意境的中文，引擎编译的是带空格规范源码——
           二者逐字对应（<strong className="text-fg">toCanonical(layout) === source</strong>），

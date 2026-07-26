@@ -93,7 +93,7 @@ describe('guyong demo: 孤勇 · 原创歌词即源码（decision + LayoutMap �
     //   次数 == 在实际编译源码 toCanonical 的出现次数——真正防显示欺骗（隐藏真实数据流）。
     const canon = toCanonical(GUYONG.layout);
     const display = toDisplay(GUYONG.layout);
-    const SEMANTIC_TOKENS = ['孤身', '入夜的城', '裁决', '守', '进', '记', '归心', '「归途」', '「坠落」'];
+    const SEMANTIC_TOKENS = ['孤身', '入夜的城', '裁决', '守', '进', '记', '灯', '岸', '归心', '「归途」', '「坠落」'];
     const count = (haystack: string, needle: string) => haystack.split(needle).length - 1;
     for (const tk of SEMANTIC_TOKENS) {
       const inSource = count(canon, tk);
