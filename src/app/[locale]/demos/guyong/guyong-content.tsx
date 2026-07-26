@@ -1,74 +1,91 @@
 'use client';
 
 /**
- * 「原创歌词即源码」demo（《孤勇》，中文彩蛋）——原创叙事体歌词逐字即 `.aster` 源码。
+ * 「原创歌词即源码」demo（《孤勇》，中文彩蛋）——原创押韵短诗逐字即 `.aster` 源码。
  *
- * 范式 = 布尔 decision + LayoutMap：五个前提（微光/闯关/破浪/望岸/不忘，双字意象词即变量名）是**布尔入参**，
- * 用户拨动 toggle 即把 true/false 直接传给引擎；引擎 令 归心 = 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘，
- * 再 如果/否则 真判定输出裁决。
- * 翻任一前提裁决即变——引擎**真推导**，非查表。LayoutMap 让源码**显示**为有意境的中文（语法脚手架
- * 隐进标点/换行）、**编译**走带空格规范源码。一键切「看规范版」佐证歌词体 ≡ 规范版（别名只在表层）。
+ * 范式 = alias-literal（源码即诗 + 字面量宏）+ LayoutMap（显示/编译解耦）（同静夜思）：
+ * 一段**原创**押韵短诗按词序即源码；关键词别名把每句领字变结构关键词，**字面量宏**把末句触发词
+ * 就地展开成一句押韵主题句；运行入口规则输出该句。LayoutMap 让源码**显示**为工整押韵短诗（语法
+ * 脚手架隐进标点/换行）、**编译**走带空格规范源码。
  *
- * 诚实边界：**裁决**由 evaluate 给出（前端只把布尔前提传进去，不实现裁决逻辑）；
- * **中间值展示**（归心）是前端按 tokens/derived 镜像复算，仅供解释推导链，非 evaluate 输出。
+ * 保留一点互动：三个原创触发词变体（不回头/不停走/不弃守）可切换——切换即换源码末词与对应字面量宏，
+ * 点运行后引擎真编译 + 真展开该变体的主题句。每个都是真实字面量宏（引擎真展开），非页面预置文案。
+ *
+ * 诚实分离：三视图（意境展示 / 实际编译源码 toCanonical / 规范关键词等价版），佐证「读的是诗、跑的是规范源码」。
  */
 import { useMemo, useState } from 'react';
-import { compile, evaluate, canonicalize } from '@aster-cloud/aster-lang-ts/browser';
+import {
+  compile,
+  evaluate,
+  canonicalize,
+  vocabularyRegistry,
+  initBuiltinVocabularies,
+} from '@aster-cloud/aster-lang-ts/browser';
 import { GUYONG } from '@/config/guyong-demo';
 import { toCanonical, toDisplay } from '@/lib/layout-map';
 import { cn } from '@/components/ui';
 
-/** 编译一次歌词体源码（走 LayoutMap 的 toCanonical=带空格规范源码），memo 避免重复编译。 */
-function useCompiledCore() {
-  return useMemo(() => {
-    const r = compile(toCanonical(GUYONG.layout), { lexicon: GUYONG.lexicon });
-    const errs = (r as { parseErrors?: { message?: string }[] }).parseErrors ?? [];
-    return { core: r.core, ok: r.success && errs.length === 0, errs };
-  }, []);
+interface RunResult {
+  trigger: string;
+  /** evaluate 入口规则的真实返回（= 字面量宏展开的主题句）。 */
+  woven: string;
+  /** 诗体源码经 canonicalize 的真实输出（字面量宏就地展开的引擎产物，非 config 手写）。 */
+  canonicalized: string;
 }
 
 export function GuyongDemoContent() {
-  const { core, ok, errs } = useCompiledCore();
-  // 每个前提一个布尔，初值全真（「都还在」情形）。
-  const [held, setHeld] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(GUYONG.tokens.map((tk) => [tk.name, true])),
-  );
-  // 三种视图（诚实分离，承 Codex 审查）：
-  //   意境展示 = toDisplay(layout)（脚手架隐后的中文，非逐字源码）；
-  //   实际编译源码 = toCanonical(layout)（= GUYONG.source，真正喂给 compile 的）；
-  //   规范关键词等价版 = GUYONG.canonical（证明语义等价，非实际编译输入）。
-  const displaySource = toDisplay(GUYONG.layout);
-  const compileSource = toCanonical(GUYONG.layout);
+  // 当前触发词变体（保留一点互动）。
+  const [variantIdx, setVariantIdx] = useState(0);
+  const variant = GUYONG.variants[variantIdx]!;
+
+  // 三视图（诚实分离）：意境展示 = toDisplay / 实际编译源码 = toCanonical(= source) / 规范关键词等价版。
+  const layout = GUYONG.layoutFor(variant);
+  const displaySource = toDisplay(layout);
+  const compileSource = toCanonical(layout);
+  const canonicalKeyword = GUYONG.canonicalFor(variant);
   const [view, setView] = useState<'display' | 'compile' | 'canonical'>('display');
   const VIEW_LABEL = {
     display: '意境展示（LayoutMap 渲染，非逐字源码）',
     compile: '实际编译源码（toCanonical，真正喂给引擎的）',
     canonical: '规范关键词等价版（证明语义等价，非实际编译输入）',
   } as const;
-  const VIEW_TEXT = { display: displaySource, compile: compileSource, canonical: GUYONG.canonical };
+  const VIEW_TEXT = { display: displaySource, compile: compileSource, canonical: canonicalKeyword };
 
-  // 引擎实时裁决：把每个前提的拨动布尔直接传给 evaluate（真布尔 decision，无字符串映射），拿真实返回。
-  const verdict = useMemo(() => {
-    if (!core) return null;
-    const inputs: Record<string, boolean> = {};
-    for (const tk of GUYONG.tokens) {
-      inputs[tk.name] = held[tk.name];
-    }
-    const ev = evaluate(core, GUYONG.entry, inputs);
-    return ev.success ? String(ev.value) : '—';
-  }, [core, held]);
-
-  // canonicalize 的引擎实况（表层归一，别名解析成规范关键词）——证明「读的是歌、跑的是规范源码」。
-  const canonicalizeOutput = useMemo(() => {
-    return canonicalize(toCanonical(GUYONG.layout), {
+  // 编译当前变体（先注册该变体的字面量宏词汇，再带 domain 编译）。变体切换即重编译。
+  const compiled = useMemo(() => {
+    initBuiltinVocabularies();
+    const vocab = GUYONG.vocabFor(variant);
+    vocabularyRegistry.registerCustom(vocab.id, vocab);
+    const r = compile(compileSource, {
       lexicon: GUYONG.lexicon,
-      locale: GUYONG.lexicon.id,
+      domain: GUYONG.domain,
+      tenantId: GUYONG.domain,
     });
-  }, []);
+    const errs = (r as { parseErrors?: { message?: string }[] }).parseErrors ?? [];
+    return { core: r.core, ok: r.success && errs.length === 0, errs };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variantIdx]);
 
-  // 中间值镜像复算：某前提拨到真 <=> 该 let 绑定为真（前端展示推导链，非 evaluate 输出）。
-  const derivedTrue = (from: string[]) => from.every((n) => held[n]);
-  const allHeld = GUYONG.tokens.every((tk) => held[tk.name]);
+  const [run, setRun] = useState<RunResult | null>(null);
+  // 结果绑定其所属触发词：切换变体后旧结果失效（render 期守卫，避免 set-state-in-effect）。
+  const result = run && run.trigger === variant.trigger ? run : null;
+
+  // alias-literal 单次运行：① canonicalize 真实输出（字面量宏就地展开的引擎产物）② evaluate 真实返回。
+  function runOnce() {
+    if (!compiled.core) return;
+    const canonicalized = canonicalize(compileSource, {
+      lexicon: GUYONG.lexicon,
+      domain: GUYONG.domain,
+      locale: GUYONG.lexicon.id,
+      tenantId: GUYONG.domain,
+    });
+    const ev = evaluate(compiled.core, GUYONG.entry, {});
+    setRun({
+      trigger: variant.trigger,
+      woven: ev.success ? String(ev.value) : '—',
+      canonicalized,
+    });
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
@@ -77,7 +94,7 @@ export function GuyongDemoContent() {
         <p className="mt-2 text-sm text-fg-muted">{GUYONG.attribution}</p>
       </header>
 
-      {/* 歌词体源码 / 规范版 */}
+      {/* 诗体源码 · 三视图 */}
       <div className="rounded-lg border border-border bg-bg-subtle p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-medium text-fg-muted">{VIEW_LABEL[view]}</span>
@@ -102,90 +119,83 @@ export function GuyongDemoContent() {
         </pre>
       </div>
 
-      {!ok && (
-        <p className="mt-3 text-xs text-danger">源码编译失败：{errs.map((e) => e.message).join('; ')}</p>
+      {!compiled.ok && (
+        <p className="mt-3 text-xs text-danger">
+          源码编译失败：{compiled.errs.map((e) => e.message).join('; ')}
+        </p>
       )}
 
-      {/* 拨动前提 */}
+      {/* 切换触发词（保留一点互动） */}
       <section className="mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-fg">拨动五个前提，看引擎真推导裁决</h2>
+        <h2 className="mb-2 text-sm font-semibold text-fg">切换末句的触发词，运行看引擎真展开</h2>
         <p className="mb-4 text-sm text-fg-muted">
-          每个前提拨到「在」= 把 true 传给引擎；拨到「失」= 传 false。裁决由引擎当场以 并且 合成、如果/否则 判定。
+          每个触发词都是一个<strong className="text-fg">字面量宏</strong>：源码里只有触发词，运行时引擎把它
+          就地展开成一句押韵主题句。切换后点「运行」，看引擎当场编译并展开。
         </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {GUYONG.tokens.map((tk) => (
+        <div className="flex flex-wrap gap-3">
+          {GUYONG.variants.map((v, i) => (
             <button
-              key={tk.name}
+              key={v.trigger}
               type="button"
-              role="switch"
-              aria-checked={held[tk.name]}
-              onClick={() => setHeld((v) => ({ ...v, [tk.name]: !v[tk.name] }))}
-              disabled={!core}
+              onClick={() => setVariantIdx(i)}
               className={cn(
-                'flex flex-col gap-1 rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors',
-                held[tk.name]
+                'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
+                i === variantIdx
                   ? 'border-accent bg-accent/10 text-fg'
                   : 'border-border bg-bg-subtle text-fg-muted hover:border-accent/50',
-                !core && 'cursor-not-allowed opacity-50',
               )}
             >
-              <span className="font-display">{tk.label}</span>
-              <span className="text-xs text-fg-subtle">
-                {held[tk.name] ? '在 · 真' : '失 · 假'}
-              </span>
+              {v.trigger}
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={runOnce}
+          disabled={!compiled.core}
+          className={cn(
+            'mt-4 rounded-lg border px-6 py-3 text-sm font-medium transition-colors',
+            result
+              ? 'border-accent bg-accent/10 text-accent'
+              : 'border-border bg-bg-subtle text-fg hover:border-accent/50',
+            !compiled.core && 'cursor-not-allowed opacity-50',
+          )}
+        >
+          运行《孤勇》· {variant.trigger}
+        </button>
       </section>
 
-      {/* 引擎推导 + 裁决 */}
-      <section className="mt-6 rounded-xl border border-border bg-bg-subtle p-6">
-        <p className="mb-4 text-sm font-semibold text-fg">引擎实况：推导 → 裁决</p>
+      {/* 运行结果 · 引擎实况 */}
+      {result && (
+        <section className="mt-6 rounded-xl border border-border bg-bg-subtle p-6">
+          <p className="mb-4 text-sm font-semibold text-fg">引擎实况：编译 → 求值</p>
 
-        {/* 中间值（let 绑定镜像） */}
-        <p className="mb-2 text-xs font-semibold text-fg-subtle">① 引擎推导的中间值（let 绑定）</p>
-        <div className="space-y-1 font-mono text-xs text-fg-muted">
-          {GUYONG.derived.map((d) => (
-            <p key={d.name}>
-              <span className="text-fg">{d.label}</span>
-              {' → '}
-              <span className={derivedTrue(d.from) ? 'text-accent' : 'text-fg-subtle'}>
-                {derivedTrue(d.from) ? '真' : '假'}
-              </span>
-            </p>
-          ))}
-        </div>
+          {/* ① canonicalize 真实展开（引擎产物） */}
+          <p className="mb-2 text-xs font-semibold text-fg-subtle">
+            ① canonicalize 的真实输出（引擎产物，非写死）——末句触发词「{variant.trigger}」已被字面量宏就地展开
+          </p>
+          <pre className="overflow-x-auto rounded-lg border border-border bg-bg p-4 font-mono text-xs leading-relaxed text-fg-muted">
+            {result.canonicalized}
+          </pre>
 
-        {/* 裁决（引擎真返回） */}
-        <p className="mt-5 mb-2 text-xs font-semibold text-fg-subtle">② evaluate 入口规则「裁决」的真实返回</p>
-        <p className={cn('font-display text-3xl leading-relaxed', allHeld ? 'text-accent' : 'text-fg')}>
-          {verdict}
-        </p>
+          {/* ② evaluate 入口规则的真实返回 */}
+          <p className="mt-5 mb-2 text-xs font-semibold text-fg-subtle">② evaluate 入口规则「归途」的真实返回</p>
+          <p className="font-display text-2xl leading-relaxed text-fg">{result.woven}</p>
 
-        <p className="mt-5 text-sm text-fg-muted">
-          五个前提全「在」→ 归心为真 → 裁决「归途」；拨失任一 → 归心为假 → 裁决「坠落」。这是引擎当场以
-          并且 合成、如果/否则 判定的结论，不是页面预置的固定文案。
-        </p>
-      </section>
-
-      {/* canonicalize 实况 */}
-      <section className="mt-6 rounded-lg border border-border bg-bg-subtle p-4">
-        <p className="mb-2 text-xs font-semibold text-fg-subtle">
-          canonicalize 真实输出（引擎产物）——对实际编译源码做表层归一（部分别名如 孤身/我问/凭/我说/
-          是否/倘若/答 由后续 token translation 层解析成规范关键词，此产物展示表层归一实况）
-        </p>
-        <pre className="overflow-x-auto rounded-lg border border-border bg-bg p-4 font-mono text-xs leading-relaxed text-fg-muted">
-          {canonicalizeOutput}
-        </pre>
-      </section>
+          <p className="mt-5 text-sm text-fg-muted">
+            这句主题句由字面量宏在表层把触发词「{variant.trigger}」展开而来（见上方 canonicalize 产物），
+            再由规则当场求值输出——不是页面预置的固定文案。
+          </p>
+        </section>
+      )}
 
       <footer className="mt-8 rounded-lg border border-border bg-bg-subtle p-4 text-xs leading-relaxed text-fg-muted">
         <p>
-          这段源码是<strong className="text-fg">本项目原创的叙事体歌词</strong>（非任何既有歌曲）——
-          关键词别名把每句领字变结构关键词，五个前提（微光/闯关/破浪/望岸/不忘）是<strong className="text-fg">布尔入参</strong>，
-          引擎 令 归心 = 微光 <strong className="text-fg">并且</strong> 闯关 并且 破浪 并且 望岸 并且 不忘，再 如果/否则 真判定输出裁决。
-          <strong className="text-fg">LayoutMap</strong> 把 <code>作为 布尔</code>/<code>定义为</code>/<code>并且</code> 等语法脚手架隐进标点换行，
-          让你读到的是有意境的中文，引擎编译的是带空格规范源码——
+          这段源码是<strong className="text-fg">本项目原创的押韵短诗</strong>（从零创作，非任何既有歌曲）——
+          关键词别名把每句领字变结构关键词，<strong className="text-fg">字面量宏</strong>把末句触发词就地展开成
+          一句押韵主题句，运行入口规则输出该句。
+          <strong className="text-fg">LayoutMap</strong> 把 <code>记着</code>/<code>是</code>/<code>答一句</code> 等语法脚手架隐进标点换行，
+          让你读到的是工整押韵的短诗，引擎编译的是带空格规范源码——
           二者逐字对应（<strong className="text-fg">toCanonical(layout) === source</strong>），
           歌词体版与规范关键词版编译出<strong className="text-fg">完全一致的 Core IR</strong>。
           底层与信贷 demo 同一套可证明的执行链。

@@ -1,64 +1,50 @@
 /**
- * 「原创歌词即源码」demo 配置（中文 zh 专属）——《孤勇》(原创词/曲：本项目原创，非任何既有歌曲)。
+ * 「原创歌词即源码」demo 配置（中文 zh 专属）——《孤勇》(原创词：本项目原创，非任何既有歌曲)。
  *
- * 范式 = **布尔 decision（裁决规则）+ LayoutMap（显示/编译解耦）**：一段**原创**叙事体歌词按词序即
- * 源码。五个前提是**布尔入参**（微光/闯关/破浪/望岸/不忘，双字意象词即变量名），用户拨动 toggle 即把
- * true/false 直接传给引擎，引擎 令 归心 = 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘，再 如果/否则
- * 真判定输出裁决——翻任一前提裁决即变，引擎**真推导**。
+ * 范式 = **alias-literal（源码即诗 + 字面量宏）+ LayoutMap（显示/编译解耦）**（同静夜思）：
+ * 一段**原创**押韵短诗按词序即源码。关键词别名（ADR 0022）把每句领字变结构关键词，
+ * **字面量宏**（IdentifierKind.LITERAL）把末句触发词就地展开成一句主题句；运行入口规则输出该句。
  *
- * ★为什么用布尔（不用字符串比较）：早期版把前提当字符串、引擎「等于」比较确定真值，
- *   但比较字面量「守/进/记」是引擎真求值的内容 span，LayoutMap 不能隐（否则=显示欺骗），
- *   会在意象词后回声（如「守着『守』」）读不成中文。改真布尔后**无比较字面量**，
- *   `作为 布尔`/`定义为`/`并且`/`如果` 等语法脚手架经 LayoutMap 隐进结构 span，
- *   显示层只露意象词，读成有意境的中文；真值由 toggle 携带，诚实不变。
+ * ★保留一点互动：提供三个**原创**触发词变体（不回头/不停走/不弃守），各经字面量宏展开成一句
+ *   押韵主题句。用户切换触发词 → 源码末词随之变 → 点运行，引擎真编译 + 真展开对应主题句输出。
+ *   每个变体都是真实字面量宏（引擎真展开），诚实可验，非页面预置文案。
  *
- * ★歌词原创声明：全部歌词为本项目原创，不取自任何既有歌曲；主题「孤勇与救赎」。
+ * ★歌词原创声明：全部歌词为本项目原创，从零创作，不取自任何既有歌曲；主题「孤勇与救赎」。
  *
- * ★LayoutMap：页面**显示** toDisplay（脚手架隐成标点/换行，只露意象），引擎**编译** toCanonical
- *   （语法必需的带空格规范源码）。不变式：toCanonical(GUYONG_LAYOUT) === source。
+ * ★LayoutMap：页面**显示** toDisplay（脚手架隐成标点/换行，读成工整押韵短诗），引擎**编译**
+ *   toCanonical（语法必需的带空格规范源码）。不变式：toCanonical(GUYONG_LAYOUT) === activeSource。
  *
  * ★诚实契约（已用生产同款 TS 引擎实证，见 guyong-demo.compile.test.ts）：
- *  1. 歌词体源码用《孤勇》别名词典编译成功（无诊断错误）。
- *  2. 歌词体版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——别名只在 canonicalize 表层。
- *  3. LayoutMap 不变式：toCanonical(layout) 逐字 === source；toDisplay 保留全部意象内容 span。
- *  4. 裁决真推导：五前提全真 → 「归途」；翻任一 → 「坠落」（引擎真判定，翻转随前提）。
+ *  1. 每个触发词变体的诗体源码用《孤勇》别名词典 + 字面量宏词汇编译成功（无诊断错误）。
+ *  2. 歌词体版 ≡ 规范关键词版（剥 origin 后结构一致 Core IR）——别名/宏只在 canonicalize 表层。
+ *  3. 字面量宏真实生效：源码含触发词但不含展开主题句，规范版含主题句，运行输出 = 宏内容。
+ *  4. LayoutMap 不变式：toCanonical(layout) 逐字 === activeSource；toDisplay 保留全部意象内容 span。
  *
- * 别名：孤身→模块 / 我问→规则 / 凭→给定 / 我说→产出(produce) / 是否→令 / 倘若→如果 / 答→返回。
+ * 别名：孤身→模块 / 我曾问→规则 / 心里→产出(produce) / 记着→令 / 是→定义为 / 答一句→返回。
  */
-import { ZH_CN } from '@aster-cloud/aster-lang-ts/browser';
-import type { Lexicon } from '@aster-cloud/aster-lang-ts/browser';
+import { ZH_CN, IdentifierKind } from '@aster-cloud/aster-lang-ts/browser';
+import type { Lexicon, DomainVocabulary } from '@aster-cloud/aster-lang-ts/browser';
 import { toCanonical, type LayoutSpan } from '@/lib/layout-map';
 
 /** SemanticTokenKind 字面量（与 poem-demo 的 K 对齐，避免运行时依赖内部枚举）。 */
 const K = {
   MODULE_DECL: 'MODULE_DECL',
   FUNC_TO: 'FUNC_TO',
-  FUNC_GIVEN: 'FUNC_GIVEN',
   FUNC_PRODUCE: 'FUNC_PRODUCE',
-  IF: 'IF',
   LET: 'LET',
+  BE: 'BE',
   RETURN: 'RETURN',
 } as const;
 
-/** 一个布尔前提：用户拨动即把 true/false 直接传给引擎（真布尔 decision，无比较字面量）。 */
-export interface GuyongToken {
-  /** 规范入参名（= 布尔入参名，传给 evaluate，如 '微光'）。 */
-  name: string;
-  /** 展示给用户的意象短语（如 '守着心里那点光'）。 */
-  label: string;
+/** 一个触发词变体：触发词（源码里出现）+ 字面量宏展开的押韵主题句（运行输出）。 */
+export interface GuyongVariant {
+  /** 触发词（源码末句可见，如 '不回头'）。展示为可切换按钮。 */
+  trigger: string;
+  /** 字面量宏展开的主题句（= evaluate 结果，CI 锁定）。源码里**不含**它。 */
+  themeLine: string;
 }
 
-/** 引擎推导的中间值（let 绑定，供展示推导链）。 */
-export interface GuyongDerived {
-  /** 中间值名（规范，如 '归心'）。 */
-  name: string;
-  /** 展示标签（如 '归心 = 微光 且 闯关 且 破浪 且 望岸 且 不忘'）。 */
-  label: string;
-  /** 由哪些前提名以 AND 组合得出（前端复算展示用，非引擎真值——真值仍由 evaluate 给）。 */
-  from: string[];
-}
-
-/** 《孤勇》decision demo 的完整配置。 */
+/** 《孤勇》alias-literal demo 的完整配置。 */
 export interface GuyongConfig {
   /** 标题（展示）。 */
   title: string;
@@ -66,22 +52,26 @@ export interface GuyongConfig {
   attribution: string;
   /** 叠加《孤勇》别名的 Lexicon。 */
   lexicon: Lexicon;
-  /** 歌词体源码（原创歌词逐字即源码，带语法必需空格；= toCanonical(layout)）。 */
-  source: string;
-  /** 规范关键词版（证明歌词体 ≡ 规范版，结构一致 Core IR）。 */
-  canonical: string;
-  /** LayoutMap：显示走 toDisplay（无空格流动歌词），编译走 toCanonical（= source）。 */
-  layout: readonly LayoutSpan[];
-  /** 入口 rule 名（规范名；歌词体与规范版共用）。 */
+  /** 词汇表 id（= lexicon.id = domain = tenantId；compile 用 lexicon.id 查字面量宏）。 */
+  domain: string;
+  /** 三个触发词变体（各含触发词 + 展开主题句）。 */
+  variants: GuyongVariant[];
+  /**
+   * 给定触发词，产出该变体的**字面量宏词汇表**（IdentifierKind.LITERAL）。compile 前 registerCustom，
+   * 并以 domain/tenantId 触发展开。vocab.locale 须 = lexicon.id。
+   */
+  vocabFor: (variant: GuyongVariant) => DomainVocabulary;
+  /**
+   * 给定触发词，产出该变体的**歌词体源码**（带语法必需空格；= toCanonical(layoutFor(变体))）。
+   * 源码含触发词但不含展开主题句（字面量宏未展开）。
+   */
+  sourceFor: (variant: GuyongVariant) => string;
+  /** 给定触发词，产出该变体的**规范关键词版**（证明歌词体 ≡ 规范版；含展开主题句）。 */
+  canonicalFor: (variant: GuyongVariant) => string;
+  /** 给定触发词，产出该变体的 LayoutMap（显示走 toDisplay=工整押韵短诗，编译走 toCanonical=source）。 */
+  layoutFor: (variant: GuyongVariant) => readonly LayoutSpan[];
+  /** 入口 rule 名（规范名；各变体共用）。 */
   entry: string;
-  /** 五个布尔前提。 */
-  tokens: GuyongToken[];
-  /** 引擎推导的中间值。 */
-  derived: GuyongDerived[];
-  /** 全部前提为真时的裁决（= evaluate 结果，CI 锁定）。 */
-  verdictAll: string;
-  /** 任一前提为假时的裁决（= evaluate 结果，CI 锁定）。 */
-  verdictElse: string;
 }
 
 const GUYONG_ZH = 'guyong-zh';
@@ -89,95 +79,93 @@ const GUYONG_ZH = 'guyong-zh';
 const SP: LayoutSpan = { canonical: ' ', display: '' };
 
 /**
- * 《孤勇》LayoutMap：`toCanonical` 精确复原 source（带空格规范源码），`toDisplay` 隐去关键词间
- * 空格、把结构标点换回歌词标点，呈现无空格流动歌词。不变式（compile 测试钉死）：
- * toCanonical(GUYONG_LAYOUT) === GUYONG.source。
+ * 三个**原创**触发词变体。三句主题句工整对仗（纵…，纵…，我亦不…）、押 -ou 韵（头/走/守），
+ * 供「保留一点互动」的切换。全部本项目原创，从零创作。
  */
-const GUYONG_LAYOUT: readonly LayoutSpan[] = [
-  { text: '孤身' }, SP, { text: '入夜的城' }, { canonical: '。\n', display: '，\n' },
-  // 规则头：语法脚手架（我问/凭/作为 布尔/我说）全隐进结构 span，只露意象词 裁决/微光/闯关/破浪/望岸/不忘。
-  // 五意象押 ang/an 韵（光/关/浪/岸/忘）、互不重字，句式尽量工整以便谱曲（诚实约束下：五词须各出现两次）。
-  { canonical: '我问 ', display: '我问一纸' }, { text: '裁决' }, { canonical: ' 凭 ', display: '，凭' },
-  { text: '微光' }, { canonical: ' 作为 布尔, ', display: '、' }, { text: '闯关' }, { canonical: ' 作为 布尔, ', display: '、' },
-  { text: '破浪' }, { canonical: ' 作为 布尔, ', display: '、' }, { text: '望岸' }, { canonical: ' 作为 布尔, ', display: '、' },
-  { text: '不忘' }, { canonical: ' 作为 布尔 我说', display: '这五桩' }, { canonical: ':\n  ', display: '；\n' },
-  // let 归心：只隐语法脚手架（定义为/并且），★AND 操作数 微光/闯关/破浪/望岸/不忘 是真实语义,必须保留为内容 span
-  //   （否则=显示欺骗:隐藏参与求值的变量引用）。定义为→「：」、并且→「、」。
-  { canonical: '是否 ', display: '五者俱在，方称' }, { text: '归心' }, { canonical: ' 定义为 ', display: '：' },
-  { text: '微光' }, { canonical: ' 并且 ', display: '、' }, { text: '闯关' }, { canonical: ' 并且 ', display: '、' },
-  { text: '破浪' }, { canonical: ' 并且 ', display: '、' }, { text: '望岸' }, { canonical: ' 并且 ', display: '、' },
-  { text: '不忘' }, { canonical: '', display: '' }, { canonical: '。\n  ', display: '。\n' },
-  // if/else：裁决对仗押韵——「归心若在，循「归途」；一念若散，坠「坠落」」。归心/「归途」/「坠落」皆可见。
-  { canonical: '倘若 ', display: '' }, { text: '归心' }, { canonical: ':\n    答 ', display: '若在，循' },
-  { text: '「归途」' }, { canonical: '。\n  ', display: '；\n' },
-  { canonical: '否则', display: '一念若散，坠' }, { canonical: ':\n    答 ', display: '' },
-  { text: '「坠落」' }, { canonical: '。', display: '。' },
+const VARIANTS: GuyongVariant[] = [
+  { trigger: '不回头', themeLine: '纵长夜无灯，纵四野无声，我亦不回头' },
+  { trigger: '不停走', themeLine: '纵霜雪封城，纵千山万壑，我亦不停走' },
+  { trigger: '不弃守', themeLine: '纵孤影独行，纵前路无人，我亦不弃守' },
 ];
 
 /**
- * 《孤勇》——原创叙事体歌词逐字即源码（本项目原创，非任何既有歌曲）。
- * 显示层（toDisplay，脚手架经 LayoutMap 隐去后）读作（押 ang/an 韵、句式尽量工整以便谱曲）：
+ * 《孤勇》LayoutMap 生成器：给定触发词，`toCanonical` 精确复原该变体 source（带空格规范源码），
+ * `toDisplay` 隐去语法脚手架、把结构标点换回诗歌标点，呈现工整押韵短诗。
+ * 意象内容 span（孤身/入夜的城/归途/远方的灯/脚下的路/触发词）逐字保留（诚实，不隐语义）。
+ * 不变式（compile 测试钉死）：toCanonical(layoutFor(v)) === sourceFor(v)。
+ */
+function layoutForTrigger(trigger: string): readonly LayoutSpan[] {
+  return [
+    { text: '孤身' }, SP, { text: '入夜的城' }, { canonical: '。\n', display: '，\n' },
+    // 规则头：`我曾问 归途 心里:`（我曾问→规则、心里→produce 隐；归途 是意象内容，露）。
+    { canonical: '我曾问 ', display: '我曾问' }, { text: '归途' }, { canonical: ' 心里', display: '，心里记着' },
+    { canonical: ':\n  ', display: '：\n' },
+    // let 灯：`记着 灯 是 「远方的灯」`（记着/是 隐；灯 与「远方的灯」是意象内容，露）。
+    { canonical: '记着 ', display: '' }, { text: '灯' }, { canonical: ' 是 ', display: '，是那盏' },
+    { text: '「远方的灯」' }, { canonical: '。\n  ', display: '；\n' },
+    // let 路：`记着 路 是 「脚下的路」`
+    { canonical: '记着 ', display: '' }, { text: '路' }, { canonical: ' 是 ', display: '，是这条' },
+    { text: '「脚下的路」' }, { canonical: '。\n  ', display: '。\n' },
+    // return：`答一句 <触发词>`（答一句→返回 隐；触发词是意象内容，露）。
+    { canonical: '答一句 ', display: '我只答一句：' }, { text: trigger }, { canonical: '。', display: '。' },
+  ];
+}
+
+/**
+ * 《孤勇》——原创押韵短诗逐字即源码（本项目原创，从零创作，非任何既有歌曲）。
+ * 显示层（toDisplay，脚手架经 LayoutMap 隐去后，以「不回头」变体为例）读作：
  *   孤身入夜的城，
- *   我问一纸裁决，凭微光、闯关、破浪、望岸、不忘这五桩；
- *   五者俱在，方称归心：微光、闯关、破浪、望岸、不忘。
- *   归心若在，循「归途」；
- *   一念若散，坠「坠落」。
- * 领字经别名变结构关键词；微光/闯关/破浪/望岸/不忘 是五个**布尔前提**（双字意象词即变量名，
- * toggle 传 true/false），引擎 令 归心 = 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘，再 如果/否则 真判定裁决。
- * 诚实约束下五意象词须各出现两次（声明+AND 操作数），故用顿号列举 + 首尾行押韵对仗，兼顾诚实与韵律。
+ *   我曾问归途，心里记着：
+ *   灯，是那盏「远方的灯」；
+ *   路，是这条「脚下的路」。
+ *   我只答一句：不回头。
+ * 领字经别名变结构关键词；末句触发词经字面量宏展开成一句押韵主题句，运行输出该句。
  */
 export const GUYONG: GuyongConfig = {
   title: '孤勇 · 原创歌词即源码',
-  attribution: '本项目原创词（非既有歌曲）· 五个布尔前提，引擎真推导裁决：归途 / 坠落',
+  attribution: '本项目原创词（从零创作，非既有歌曲）· 源码即诗，切换触发词、运行输出主题句',
   lexicon: {
     ...ZH_CN,
     id: GUYONG_ZH,
     name: '孤勇（中文）',
     aliases: {
       [K.MODULE_DECL]: ['孤身'], // 「孤身 入夜的城」→ 模块
-      [K.FUNC_TO]: ['我问'], // 「我问 裁决」→ 规则
-      [K.FUNC_GIVEN]: ['凭'], // 「凭 微光, 闯关, 破浪, 望岸, 不忘 作为 布尔」→ 给定（布尔入参表）
-      [K.FUNC_PRODUCE]: ['我说'], // 「…我说:」→ 产出（块起始，紧贴冒号）
-      [K.LET]: ['是否'], // 「是否 归心 定义为…」→ 令
-      [K.IF]: ['倘若'], // 「倘若 归心」→ 如果
-      [K.RETURN]: ['答'], // 「答 …」→ 返回
+      [K.FUNC_TO]: ['我曾问'], // 「我曾问 归途」→ 规则
+      [K.FUNC_PRODUCE]: ['心里'], // 「…心里:」→ 产出（块起始，紧贴冒号）
+      [K.LET]: ['记着'], // 「记着 灯 是…」→ 令
+      [K.BE]: ['是'], // 「记着 灯 是 …」→ 定义为（绑定运算符）
+      [K.RETURN]: ['答一句'], // 「答一句 <触发词>」→ 返回
     },
   } as Lexicon,
-  source: `孤身 入夜的城。
-我问 裁决 凭 微光 作为 布尔, 闯关 作为 布尔, 破浪 作为 布尔, 望岸 作为 布尔, 不忘 作为 布尔 我说:
-  是否 归心 定义为 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘。
-  倘若 归心:
-    答 「归途」。
-  否则:
-    答 「坠落」。`,
-  canonical: `模块 入夜的城。
-规则 裁决 给定 微光 作为 布尔, 闯关 作为 布尔, 破浪 作为 布尔, 望岸 作为 布尔, 不忘 作为 布尔 产出:
-  令 归心 定义为 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘。
-  如果 归心:
-    返回 「归途」。
-  否则:
-    返回 「坠落」。`,
-  layout: GUYONG_LAYOUT,
-  entry: '裁决',
-  tokens: [
-    { name: '微光', label: '微光 · 守着心里那点微光' },
-    { name: '闯关', label: '闯关 · 一路闯过的每道关' },
-    { name: '破浪', label: '破浪 · 逆风也要破的浪' },
-    { name: '望岸', label: '望岸 · 望得见的那道岸' },
-    { name: '不忘', label: '不忘 · 来时的路一直不忘' },
-  ],
-  derived: [
-    {
-      name: '归心',
-      label: '归心 = 微光 且 闯关 且 破浪 且 望岸 且 不忘',
-      from: ['微光', '闯关', '破浪', '望岸', '不忘'],
-    },
-  ],
-  verdictAll: '归途',
-  verdictElse: '坠落',
+  domain: GUYONG_ZH,
+  variants: VARIANTS,
+  vocabFor: (v) => ({
+    id: GUYONG_ZH,
+    name: '孤勇',
+    locale: GUYONG_ZH,
+    version: '1.0.0',
+    structs: [],
+    fields: [],
+    functions: [],
+    enumValues: [],
+    // 字面量宏：触发词 → 押韵主题句。locale 须 = lexicon.id（compile 用 lexicon.id 查词汇）。
+    literals: [{ localized: v.trigger, canonical: v.themeLine, kind: IdentifierKind.LITERAL }],
+  }),
+  sourceFor: (v) => `孤身 入夜的城。
+我曾问 归途 心里:
+  记着 灯 是 「远方的灯」。
+  记着 路 是 「脚下的路」。
+  答一句 ${v.trigger}。`,
+  canonicalFor: (v) => `模块 入夜的城。
+规则 归途 产出:
+  令 灯 定义为 「远方的灯」。
+  令 路 定义为 「脚下的路」。
+  返回 「${v.themeLine}」。`,
+  layoutFor: (v) => layoutForTrigger(v.trigger),
+  entry: '归途',
 };
 
-/** 供测试断言 LayoutMap 不变式：编译源码 = toCanonical(layout)。 */
-export function guyongCompileSource(): string {
-  return toCanonical(GUYONG.layout);
+/** 供测试断言 LayoutMap 不变式：某变体的编译源码 = toCanonical(layoutFor(变体))。 */
+export function guyongCompileSource(variant: GuyongVariant): string {
+  return toCanonical(GUYONG.layoutFor(variant));
 }
