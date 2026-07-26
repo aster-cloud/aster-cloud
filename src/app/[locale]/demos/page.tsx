@@ -81,8 +81,8 @@ export default async function DemosIndexPage({ params }: Props) {
                       原创歌词即源码
                     </h2>
                     <p className="flex-1 text-sm text-fg-muted">
-                      一段原创叙事体歌词即源码——三个信物即前提，引擎真推导裁决出「归途」或「坠落」；
-                      显示无空格流动歌词，编译带空格规范源码。
+                      一段原创押韵短诗即源码——切换末句触发词、运行，引擎把它就地展开成一句押韵主题句；
+                      LayoutMap 让源码读成工整短诗、编译带空格规范源码。
                     </p>
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
                       {t('enter')}
