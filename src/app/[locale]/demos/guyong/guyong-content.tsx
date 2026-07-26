@@ -101,6 +101,16 @@ export function GuyongDemoContent() {
     }
   }
 
+  // 切换触发词：★若正在播放先 stop（否则旧变体的定时器/TTS 闭包会继续念旧歌词——Codex 复审退回项）。
+  function selectVariant(i: number) {
+    if (i === variantIdx) return;
+    if (playerRef.current?.isPlaying) {
+      playerRef.current.stop();
+      setPlaying(false);
+    }
+    setVariantIdx(i);
+  }
+
   // alias-literal 单次运行：① canonicalize 真实输出（字面量宏就地展开的引擎产物）② evaluate 真实返回。
   // 同时从头播放原创旋律（用户在此手势内触发，满足浏览器 autoplay 策略）——「点运行 = 编译并唱」。
   function runOnce() {
@@ -202,7 +212,7 @@ export function GuyongDemoContent() {
             <button
               key={v.trigger}
               type="button"
-              onClick={() => setVariantIdx(i)}
+              onClick={() => selectVariant(i)}
               className={cn(
                 'rounded-lg border px-5 py-3 text-sm font-medium transition-colors',
                 i === variantIdx
