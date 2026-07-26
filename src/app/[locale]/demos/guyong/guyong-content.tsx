@@ -13,7 +13,7 @@
  *
  * 诚实分离：三视图（意境展示 / 实际编译源码 toCanonical / 规范关键词等价版），佐证「读的是诗、跑的是规范源码」。
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   compile,
   evaluate,
@@ -23,6 +23,7 @@ import {
 } from '@aster-cloud/aster-lang-ts/browser';
 import { GUYONG } from '@/config/guyong-demo';
 import { toCanonical, toDisplay } from '@/lib/layout-map';
+import { GuyongMelodyPlayer } from './guyong-melody';
 import { cn } from '@/components/ui';
 
 interface RunResult {
@@ -70,6 +71,35 @@ export function GuyongDemoContent() {
   // 结果绑定其所属触发词：切换变体后旧结果失效（render 期守卫，避免 set-state-in-effect）。
   const result = run && run.trigger === variant.trigger ? run : null;
 
+  // ── 原创旋律播放（纯 Web Audio，零外部资源）──────────────────────────────────
+  // 播放器持久于 ref（跨 render 不重建）；singingLine = 当前正在唱的诗行（跟唱高亮），null = 未播放。
+  const playerRef = useRef<GuyongMelodyPlayer | null>(null);
+  const [singingLine, setSingingLine] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  // 客户端挂载后惰性建播放器（不在 render 期碰 ref）；卸载时停止音频（防残响 / 泄漏 AudioContext）。
+  useEffect(() => {
+    playerRef.current = new GuyongMelodyPlayer((line) => {
+      setSingingLine(line);
+      if (line === null) setPlaying(false);
+    });
+    return () => playerRef.current?.stop();
+  }, []);
+
+  function toggleMelody() {
+    const p = playerRef.current;
+    if (!p) return;
+    if (p.isPlaying) {
+      p.stop();
+      setPlaying(false);
+    } else {
+      p.play();
+      setPlaying(true);
+    }
+  }
+
+  // 显示层按行拆分，供跟唱高亮（仅「意境展示」视图有诗行结构；其余视图不高亮）。
+  const displayLines = displaySource.split('\n');
+
   // alias-literal 单次运行：① canonicalize 真实输出（字面量宏就地展开的引擎产物）② evaluate 真实返回。
   function runOnce() {
     if (!compiled.core) return;
@@ -113,10 +143,40 @@ export function GuyongDemoContent() {
               </button>
             ))}
           </div>
+          {/* 原创旋律播放（纯 Web Audio，零外部资源）。播放时「意境」视图逐行跟唱高亮。 */}
+          <button
+            type="button"
+            onClick={toggleMelody}
+            aria-pressed={playing}
+            className={cn(
+              'inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs',
+              playing ? 'bg-accent/15 text-accent' : 'text-fg-muted hover:text-accent',
+            )}
+          >
+            <span aria-hidden>{playing ? '⏸' : '♪'}</span>
+            {playing ? '停止旋律' : '播放旋律'}
+          </button>
         </div>
-        <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-relaxed text-fg">
-          {VIEW_TEXT[view]}
-        </pre>
+        {view === 'display' ? (
+          // 意境视图：按诗行渲染，播放时高亮当前唱到的行（跟唱）。
+          <div className="overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-relaxed">
+            {displayLines.map((line, i) => (
+              <div
+                key={i}
+                className={cn(
+                  'transition-colors',
+                  singingLine === i ? 'rounded bg-accent/15 text-accent' : 'text-fg',
+                )}
+              >
+                {line || ' '}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-relaxed text-fg">
+            {VIEW_TEXT[view]}
+          </pre>
+        )}
       </div>
 
       {!compiled.ok && (
