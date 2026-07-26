@@ -2,8 +2,8 @@
  * 「原创歌词即源码」demo 配置（中文 zh 专属）——《孤勇》(原创词/曲：本项目原创，非任何既有歌曲)。
  *
  * 范式 = **布尔 decision（裁决规则）+ LayoutMap（显示/编译解耦）**：一段**原创**叙事体歌词按词序即
- * 源码。五个前提是**布尔入参**（孤光/未退/来路/不灭/彼岸，双字意象词即变量名），用户拨动 toggle 即把
- * true/false 直接传给引擎，引擎 令 归心 = 孤光 并且 未退 并且 来路 并且 不灭 并且 彼岸，再 如果/否则
+ * 源码。五个前提是**布尔入参**（微光/闯关/破浪/望岸/不忘，双字意象词即变量名），用户拨动 toggle 即把
+ * true/false 直接传给引擎，引擎 令 归心 = 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘，再 如果/否则
  * 真判定输出裁决——翻任一前提裁决即变，引擎**真推导**。
  *
  * ★为什么用布尔（不用字符串比较）：早期版把前提当字符串、引擎「等于」比较确定真值，
@@ -42,7 +42,7 @@ const K = {
 
 /** 一个布尔前提：用户拨动即把 true/false 直接传给引擎（真布尔 decision，无比较字面量）。 */
 export interface GuyongToken {
-  /** 规范入参名（= 布尔入参名，传给 evaluate，如 '孤光'）。 */
+  /** 规范入参名（= 布尔入参名，传给 evaluate，如 '微光'）。 */
   name: string;
   /** 展示给用户的意象短语（如 '守着心里那点光'）。 */
   label: string;
@@ -52,7 +52,7 @@ export interface GuyongToken {
 export interface GuyongDerived {
   /** 中间值名（规范，如 '归心'）。 */
   name: string;
-  /** 展示标签（如 '归心 = 孤光 且 未退 且 来路 且 不灭 且 彼岸'）。 */
+  /** 展示标签（如 '归心 = 微光 且 闯关 且 破浪 且 望岸 且 不忘'）。 */
   label: string;
   /** 由哪些前提名以 AND 组合得出（前端复算展示用，非引擎真值——真值仍由 evaluate 给）。 */
   from: string[];
@@ -95,34 +95,36 @@ const SP: LayoutSpan = { canonical: ' ', display: '' };
  */
 const GUYONG_LAYOUT: readonly LayoutSpan[] = [
   { text: '孤身' }, SP, { text: '入夜的城' }, { canonical: '。\n', display: '，\n' },
-  // 规则头：语法脚手架（我问/凭/作为 布尔/我说）全隐进结构 span，只露意象词 裁决/孤光/未退/来路/不灭/彼岸。
-  { canonical: '我问 ', display: '我把' }, { text: '裁决' }, { canonical: ' 凭 ', display: '，交给' },
-  { text: '孤光' }, { canonical: ' 作为 布尔, ', display: '、' }, { text: '未退' }, { canonical: ' 作为 布尔, ', display: '、' },
-  { text: '来路' }, { canonical: ' 作为 布尔, ', display: '、' }, { text: '不灭' }, { canonical: ' 作为 布尔, ', display: '、' },
-  { text: '彼岸' }, { canonical: ' 作为 布尔 我说', display: '，这五样' }, { canonical: ':\n  ', display: '：\n' },
-  // let 归心：只隐语法脚手架（定义为/并且），★AND 操作数 孤光/未退/来路/不灭/彼岸 是真实语义,必须保留为内容 span
-  //   （否则=显示欺骗:隐藏参与求值的变量引用）。定义为→「是」、并且→「、」。
-  { canonical: '是否 ', display: '' }, { text: '归心' }, { canonical: ' 定义为 ', display: '，是' },
-  { text: '孤光' }, { canonical: ' 并且 ', display: '、' }, { text: '未退' }, { canonical: ' 并且 ', display: '、' },
-  { text: '来路' }, { canonical: ' 并且 ', display: '、' }, { text: '不灭' }, { canonical: ' 并且 ', display: '、' },
-  { text: '彼岸' }, { canonical: '', display: '俱在时才有' }, { canonical: '。\n  ', display: '。\n' },
-  // if/else：`倘若/答/否则` 隐成连接词，露 归心/「归途」/「坠落」。
-  { canonical: '倘若 ', display: '' }, { text: '归心' }, { canonical: ':\n    答 ', display: '还在，我便循着' },
+  // 规则头：语法脚手架（我问/凭/作为 布尔/我说）全隐进结构 span，只露意象词 裁决/微光/闯关/破浪/望岸/不忘。
+  // 五意象押 ang/an 韵（光/关/浪/岸/忘）、互不重字，句式尽量工整以便谱曲（诚实约束下：五词须各出现两次）。
+  { canonical: '我问 ', display: '我问一纸' }, { text: '裁决' }, { canonical: ' 凭 ', display: '，凭' },
+  { text: '微光' }, { canonical: ' 作为 布尔, ', display: '、' }, { text: '闯关' }, { canonical: ' 作为 布尔, ', display: '、' },
+  { text: '破浪' }, { canonical: ' 作为 布尔, ', display: '、' }, { text: '望岸' }, { canonical: ' 作为 布尔, ', display: '、' },
+  { text: '不忘' }, { canonical: ' 作为 布尔 我说', display: '这五桩' }, { canonical: ':\n  ', display: '；\n' },
+  // let 归心：只隐语法脚手架（定义为/并且），★AND 操作数 微光/闯关/破浪/望岸/不忘 是真实语义,必须保留为内容 span
+  //   （否则=显示欺骗:隐藏参与求值的变量引用）。定义为→「：」、并且→「、」。
+  { canonical: '是否 ', display: '五者俱在，方称' }, { text: '归心' }, { canonical: ' 定义为 ', display: '：' },
+  { text: '微光' }, { canonical: ' 并且 ', display: '、' }, { text: '闯关' }, { canonical: ' 并且 ', display: '、' },
+  { text: '破浪' }, { canonical: ' 并且 ', display: '、' }, { text: '望岸' }, { canonical: ' 并且 ', display: '、' },
+  { text: '不忘' }, { canonical: '', display: '' }, { canonical: '。\n  ', display: '。\n' },
+  // if/else：裁决对仗押韵——「归心若在，循「归途」；一念若散，坠「坠落」」。归心/「归途」/「坠落」皆可见。
+  { canonical: '倘若 ', display: '' }, { text: '归心' }, { canonical: ':\n    答 ', display: '若在，循' },
   { text: '「归途」' }, { canonical: '。\n  ', display: '；\n' },
-  { canonical: '否则', display: '五样缺一' }, { canonical: ':\n    答 ', display: '，就是' },
+  { canonical: '否则', display: '一念若散，坠' }, { canonical: ':\n    答 ', display: '' },
   { text: '「坠落」' }, { canonical: '。', display: '。' },
 ];
 
 /**
  * 《孤勇》——原创叙事体歌词逐字即源码（本项目原创，非任何既有歌曲）。
- * 显示层（toDisplay，脚手架经 LayoutMap 隐去后）读作：
+ * 显示层（toDisplay，脚手架经 LayoutMap 隐去后）读作（押 ang/an 韵、句式尽量工整以便谱曲）：
  *   孤身入夜的城，
- *   我把裁决，交给孤光、未退、来路、不灭、彼岸，这五样：
- *   归心，是孤光、未退、来路、不灭、彼岸俱在时才有。
- *   归心还在，我便循着「归途」；
- *   五样缺一，就是「坠落」。
- * 领字经别名变结构关键词；孤光/未退/来路/不灭/彼岸 是五个**布尔前提**（双字意象词即变量名，
- * toggle 传 true/false），引擎 令 归心 = 孤光 并且 未退 并且 来路 并且 不灭 并且 彼岸，再 如果/否则 真判定裁决。
+ *   我问一纸裁决，凭微光、闯关、破浪、望岸、不忘这五桩；
+ *   五者俱在，方称归心：微光、闯关、破浪、望岸、不忘。
+ *   归心若在，循「归途」；
+ *   一念若散，坠「坠落」。
+ * 领字经别名变结构关键词；微光/闯关/破浪/望岸/不忘 是五个**布尔前提**（双字意象词即变量名，
+ * toggle 传 true/false），引擎 令 归心 = 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘，再 如果/否则 真判定裁决。
+ * 诚实约束下五意象词须各出现两次（声明+AND 操作数），故用顿号列举 + 首尾行押韵对仗，兼顾诚实与韵律。
  */
 export const GUYONG: GuyongConfig = {
   title: '孤勇 · 原创歌词即源码',
@@ -134,7 +136,7 @@ export const GUYONG: GuyongConfig = {
     aliases: {
       [K.MODULE_DECL]: ['孤身'], // 「孤身 入夜的城」→ 模块
       [K.FUNC_TO]: ['我问'], // 「我问 裁决」→ 规则
-      [K.FUNC_GIVEN]: ['凭'], // 「凭 孤光, 未退, 来路, 不灭, 彼岸 作为 布尔」→ 给定（布尔入参表）
+      [K.FUNC_GIVEN]: ['凭'], // 「凭 微光, 闯关, 破浪, 望岸, 不忘 作为 布尔」→ 给定（布尔入参表）
       [K.FUNC_PRODUCE]: ['我说'], // 「…我说:」→ 产出（块起始，紧贴冒号）
       [K.LET]: ['是否'], // 「是否 归心 定义为…」→ 令
       [K.IF]: ['倘若'], // 「倘若 归心」→ 如果
@@ -142,15 +144,15 @@ export const GUYONG: GuyongConfig = {
     },
   } as Lexicon,
   source: `孤身 入夜的城。
-我问 裁决 凭 孤光 作为 布尔, 未退 作为 布尔, 来路 作为 布尔, 不灭 作为 布尔, 彼岸 作为 布尔 我说:
-  是否 归心 定义为 孤光 并且 未退 并且 来路 并且 不灭 并且 彼岸。
+我问 裁决 凭 微光 作为 布尔, 闯关 作为 布尔, 破浪 作为 布尔, 望岸 作为 布尔, 不忘 作为 布尔 我说:
+  是否 归心 定义为 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘。
   倘若 归心:
     答 「归途」。
   否则:
     答 「坠落」。`,
   canonical: `模块 入夜的城。
-规则 裁决 给定 孤光 作为 布尔, 未退 作为 布尔, 来路 作为 布尔, 不灭 作为 布尔, 彼岸 作为 布尔 产出:
-  令 归心 定义为 孤光 并且 未退 并且 来路 并且 不灭 并且 彼岸。
+规则 裁决 给定 微光 作为 布尔, 闯关 作为 布尔, 破浪 作为 布尔, 望岸 作为 布尔, 不忘 作为 布尔 产出:
+  令 归心 定义为 微光 并且 闯关 并且 破浪 并且 望岸 并且 不忘。
   如果 归心:
     返回 「归途」。
   否则:
@@ -158,17 +160,17 @@ export const GUYONG: GuyongConfig = {
   layout: GUYONG_LAYOUT,
   entry: '裁决',
   tokens: [
-    { name: '孤光', label: '孤光 · 守着心里那点光' },
-    { name: '未退', label: '未退 · 一步也不曾退' },
-    { name: '来路', label: '来路 · 记得来时那条路' },
-    { name: '不灭', label: '不灭 · 心里那盏灯不灭' },
-    { name: '彼岸', label: '彼岸 · 望得见彼岸的轮廓' },
+    { name: '微光', label: '微光 · 守着心里那点微光' },
+    { name: '闯关', label: '闯关 · 一路闯过的每道关' },
+    { name: '破浪', label: '破浪 · 逆风也要破的浪' },
+    { name: '望岸', label: '望岸 · 望得见的那道岸' },
+    { name: '不忘', label: '不忘 · 来时的路一直不忘' },
   ],
   derived: [
     {
       name: '归心',
-      label: '归心 = 孤光 且 未退 且 来路 且 不灭 且 彼岸',
-      from: ['孤光', '未退', '来路', '不灭', '彼岸'],
+      label: '归心 = 微光 且 闯关 且 破浪 且 望岸 且 不忘',
+      from: ['微光', '闯关', '破浪', '望岸', '不忘'],
     },
   ],
   verdictAll: '归途',
