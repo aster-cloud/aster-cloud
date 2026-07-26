@@ -14,6 +14,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# 最小权限：CI 的多数 job 只 checkout+build+test，仅需只读 GITHUB_TOKEN。
+# 顶层默认收紧为 contents: read，覆盖 build / e2e / on-prem-build / image-pin-pr
+# 四个 job（后者的跨 org 写操作用的是自铸的 image-pin App token，非 GITHUB_TOKEN）。
+# 需要额外权限的 build-migrate-image 用 job 级 permissions 覆盖本默认（加 id-token: write）。
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
