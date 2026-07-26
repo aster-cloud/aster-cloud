@@ -101,6 +101,7 @@ export function GuyongDemoContent() {
   const displayLines = displaySource.split('\n');
 
   // alias-literal 单次运行：① canonicalize 真实输出（字面量宏就地展开的引擎产物）② evaluate 真实返回。
+  // 同时从头播放原创旋律（用户在此手势内触发，满足浏览器 autoplay 策略）——「点运行 = 编译并唱」。
   function runOnce() {
     if (!compiled.core) return;
     const canonicalized = canonicalize(compileSource, {
@@ -115,6 +116,9 @@ export function GuyongDemoContent() {
       woven: ev.success ? String(ev.value) : '—',
       canonicalized,
     });
+    // 运行即播放旋律（从头）。play() 幂等：若正在播放会先停再从头起。
+    playerRef.current?.play();
+    setPlaying(true);
   }
 
   return (
@@ -221,7 +225,7 @@ export function GuyongDemoContent() {
             !compiled.core && 'cursor-not-allowed opacity-50',
           )}
         >
-          运行《孤勇》· {variant.trigger}
+          运行 · 唱《孤勇》· {variant.trigger}
         </button>
       </section>
 

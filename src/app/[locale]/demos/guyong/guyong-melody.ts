@@ -62,6 +62,17 @@ const CHORD_OFFSETS = [0, 4, 7];
 /** 合唱 pad 每个声部的 unison 失谐（分音，cents），叠出宽厚合唱感。 */
 const CHOIR_DETUNE_CENTS = [-7, 0, 7];
 
+/**
+ * 男声「啊」元音的共振峰（formant）——F1/F2/F3 中心频率(Hz)、带宽(Hz)、相对增益。
+ * 用三条并联带通滤波把锯齿声源塑成人声色（近似 /a/ 元音，男声偏低）。这是**无词人声**合成：
+ * 出「啊」的元音音色，不唱真实字词（真实字词需声样=外部资源，与零资源矛盾）。
+ */
+const VOICE_FORMANTS: { freq: number; bw: number; gain: number }[] = [
+  { freq: 700, bw: 110, gain: 1.0 }, // F1
+  { freq: 1180, bw: 130, gain: 0.55 }, // F2
+  { freq: 2600, bw: 180, gain: 0.35 }, // F3
+];
+
 /** 播放器状态回调：当前正在唱第几行诗（0-based），停止时为 null。 */
 export type LineCallback = (lineIndex: number | null) => void;
 
@@ -150,31 +161,55 @@ export class GuyongMelodyPlayer {
     if (wasPlaying) this.onLine(null);
   }
 
-  /** 主旋律单音（男声独唱色）：锯齿波 + 低通滤波（做暖 formant）+ ADSR，接 master。 */
+  /**
+   * 主旋律单音——**无词人声**（男声「啊」元音）：锯齿声源(近似声带谐波) → 三条并联带通共振峰
+   * (F1/F2/F3) 塑元音色 → ADSR。加轻微 vibrato(~5.5Hz)使更像真人歌唱。接 master。
+   * 出的是人声「啊」的音色（明显像人声而非乐器），不唱真实字词。所有振荡器 stop > start，时间单调。
+   */
   private scheduleLead(freq: number, start: number, dur: number): void {
     if (!this.ctx || !this.master) return;
-    const osc = this.ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(freq, start);
+    const stopAt = start + dur + 0.02;
 
-    // 低通滤波：截频跟随音高上移，模拟人声共振峰的暖色（去掉锯齿的尖锐高次谐波）。
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(Math.min(3200, freq * 3.2), start);
-    lp.Q.setValueAtTime(6, start);
+    // 声带谐波源：锯齿富含谐波，供共振峰塑形。
+    const source = this.ctx.createOscillator();
+    source.type = 'sawtooth';
+    source.frequency.setValueAtTime(freq, start);
 
-    const g = this.ctx.createGain();
-    const attack = 0.02, release = Math.min(0.14, dur * 0.45), peak = 0.9;
-    g.gain.setValueAtTime(0, start);
-    g.gain.linearRampToValueAtTime(peak, start + attack);
-    g.gain.setValueAtTime(peak, start + Math.max(attack, dur - release));
-    g.gain.linearRampToValueAtTime(0, start + dur);
+    // 轻微 vibrato：LFO 调制 source.frequency（人声歌唱的自然颤音）。
+    const vibrato = this.ctx.createOscillator();
+    vibrato.type = 'sine';
+    vibrato.frequency.setValueAtTime(5.5, start);
+    const vibratoDepth = this.ctx.createGain();
+    vibratoDepth.gain.setValueAtTime(freq * 0.006, start); // ~±0.6% 音高
+    vibrato.connect(vibratoDepth);
+    vibratoDepth.connect(source.frequency);
 
-    osc.connect(lp);
-    lp.connect(g);
-    g.connect(this.master);
-    osc.start(start);
-    osc.stop(start + dur + 0.02);
+    // ADSR 包络（人声起收：稍慢起、明显收）。
+    const env = this.ctx.createGain();
+    const attack = 0.045, release = Math.min(0.18, dur * 0.5), peak = 0.85;
+    env.gain.setValueAtTime(0, start);
+    env.gain.linearRampToValueAtTime(peak, start + attack);
+    env.gain.setValueAtTime(peak, start + Math.max(attack, dur - release));
+    env.gain.linearRampToValueAtTime(0, start + dur);
+    env.connect(this.master);
+
+    // 三条并联共振峰带通：把锯齿塑成「啊」元音的人声色。
+    for (const f of VOICE_FORMANTS) {
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(f.freq, start);
+      bp.Q.setValueAtTime(f.freq / f.bw, start); // Q = 中心频率 / 带宽
+      const fg = this.ctx.createGain();
+      fg.gain.setValueAtTime(f.gain, start);
+      source.connect(bp);
+      bp.connect(fg);
+      fg.connect(env);
+    }
+
+    source.start(start);
+    source.stop(stopAt);
+    vibrato.start(start);
+    vibrato.stop(stopAt);
   }
 
   /** 背景合唱单音（宽 pad 的一个声部）：三角波 × unison 失谐叠加，柔起收，音量低。 */
