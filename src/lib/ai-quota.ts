@@ -308,7 +308,9 @@ export async function recordAiUsage(params: {
           )
         );
     } catch (e) {
-      console.warn(`[ai-usage] stamp AiKeyBinding.lastUsedAt failed for binding=${params.aiKeyBindingId}:`, e);
+      // 不把用户可控的 aiKeyBindingId 拼进格式串——console.warn 首参会被当格式串解析
+      // （%s/%d/%o 等）→ 用 %s 占位以参数化传入，规避格式串注入。
+      console.warn('[ai-usage] stamp AiKeyBinding.lastUsedAt failed for binding=%s:', params.aiKeyBindingId, e);
     }
   }
 }
