@@ -96,8 +96,13 @@ export class GuyongMelodyPlayer {
     return this.playing;
   }
 
-  /** 播放整段（主旋律 + 合唱背景）。若已在播放则先停。 */
-  play(): void {
+  /**
+   * 播放整段（主旋律 + 合唱背景）。若已在播放则先停。
+   * @param lyricLines 可选：五行歌词（= 显示层五行）。传入时用浏览器 SpeechSynthesis 逐行**朗读**歌词
+   *   （有词人声，零外部资源=系统内置 TTS）。诚实边界：TTS 是「读/念」非「唱」，不跟旋律音高；
+   *   与器乐旋律 + 无词 formant 人声同时播放，形成「有词人声 + 配乐」。为空则只播旋律（无词）。
+   */
+  play(lyricLines?: string[]): void {
     this.teardown(); // 清掉上一次的残留（幂等）
     const Ctor =
       window.AudioContext ||
@@ -114,7 +119,14 @@ export class GuyongMelodyPlayer {
     PHRASES.forEach((phrase, lineIndex) => {
       const phraseStart = t;
       const delayMs = (phraseStart - this.ctx!.currentTime) * 1000;
-      this.timers.push(window.setTimeout(() => this.onLine(lineIndex), Math.max(0, delayMs)));
+      this.timers.push(
+        window.setTimeout(() => {
+          this.onLine(lineIndex);
+          // 有词人声：该乐句开始时朗读对应歌词行（与旋律同步）。
+          const line = lyricLines?.[lineIndex];
+          if (line) this.speakLine(line);
+        }, Math.max(0, delayMs)),
+      );
 
       for (const note of phrase) {
         const dur = note.beats * SECONDS_PER_BEAT;
@@ -147,6 +159,10 @@ export class GuyongMelodyPlayer {
   private teardown(): void {
     for (const id of this.timers) window.clearTimeout(id);
     this.timers = [];
+    // 取消任何在读的歌词 TTS（防停止后仍念完残句）。
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     if (this.master && this.ctx) {
       this.master.gain.cancelScheduledValues(this.ctx.currentTime);
       this.master.gain.setValueAtTime(this.master.gain.value, this.ctx.currentTime);
@@ -159,6 +175,24 @@ export class GuyongMelodyPlayer {
     const wasPlaying = this.playing;
     this.playing = false;
     if (wasPlaying) this.onLine(null);
+  }
+
+  /**
+   * 有词人声：用浏览器 SpeechSynthesis 朗读一行歌词（零外部资源=系统内置 TTS）。
+   * 诚实边界：这是「读/念」非「唱」——不跟旋律音高、语调受系统嗓音限制、各浏览器嗓音不一；
+   * 与器乐旋律 + 无词 formant 人声同时播，构成「有词人声 + 配乐」。选中文嗓音，语速略慢配诗句。
+   */
+  private speakLine(line: string): void {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(line);
+    u.lang = 'zh-CN';
+    u.rate = 0.85; // 略慢，贴合诗句吟诵
+    u.pitch = 0.9; // 稍低，偏男声
+    u.volume = 1;
+    // 优先选中文嗓音（有则用；无则用系统默认，仍按 zh-CN 尽力发音）。
+    const zh = window.speechSynthesis.getVoices().find((v) => /zh|cmn|Chinese/i.test(v.lang));
+    if (zh) u.voice = zh;
+    window.speechSynthesis.speak(u);
   }
 
   /**

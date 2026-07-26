@@ -85,6 +85,9 @@ export function GuyongDemoContent() {
     return () => playerRef.current?.stop();
   }, []);
 
+  // 显示层按行拆分：供跟唱高亮，也作有词人声 TTS 的逐行朗读文本（= 意境展示五行诗）。
+  const displayLines = displaySource.split('\n');
+
   function toggleMelody() {
     const p = playerRef.current;
     if (!p) return;
@@ -92,13 +95,11 @@ export function GuyongDemoContent() {
       p.stop();
       setPlaying(false);
     } else {
-      p.play();
+      // 传入歌词行 → 旋律 + 逐行有词人声（TTS）同步播放。
+      p.play(displayLines);
       setPlaying(true);
     }
   }
-
-  // 显示层按行拆分，供跟唱高亮（仅「意境展示」视图有诗行结构；其余视图不高亮）。
-  const displayLines = displaySource.split('\n');
 
   // alias-literal 单次运行：① canonicalize 真实输出（字面量宏就地展开的引擎产物）② evaluate 真实返回。
   // 同时从头播放原创旋律（用户在此手势内触发，满足浏览器 autoplay 策略）——「点运行 = 编译并唱」。
@@ -116,8 +117,8 @@ export function GuyongDemoContent() {
       woven: ev.success ? String(ev.value) : '—',
       canonicalized,
     });
-    // 运行即播放旋律（从头）。play() 幂等：若正在播放会先停再从头起。
-    playerRef.current?.play();
+    // 运行即从头播放旋律 + 逐行有词人声（TTS）。play() 幂等：若正在播放会先停再从头起。
+    playerRef.current?.play(displayLines);
     setPlaying(true);
   }
 
