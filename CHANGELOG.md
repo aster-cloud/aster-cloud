@@ -306,6 +306,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#294) *(changelog)*
 - Refresh unreleased [skip ci] (#292) *(changelog)*
 - Refresh unreleased [skip ci] (#291) *(changelog)*
 - Refresh unreleased [skip ci] (#289) *(changelog)*
