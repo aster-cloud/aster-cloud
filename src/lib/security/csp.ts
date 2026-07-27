@@ -184,6 +184,9 @@ export function buildCspHeader(nonce: string): string {
     // OAuth 头像两个主机；data:/blob: 防御性保留（base64 图标 / canvas 导出）。
     'img-src': ["'self'", 'data:', 'blob:', ...AVATAR_IMAGE_DOMAINS],
     'font-src': ["'self'", 'data:'],
+    // media-src：<audio>/<video> 媒体源。仅自托管（public/audio/*.mp3，'self' 覆盖）——
+    // guyong demo 的项目自有/已授权录音。无远程媒体源。
+    'media-src': ["'self'"],
     'connect-src': [
       "'self'",
       ...ALL_TRUSTED_CONNECT_SRC,
