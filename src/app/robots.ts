@@ -69,6 +69,10 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           // Server endpoints — never crawl.
           '/api/',
+          // 自托管媒体（demo 录音等)——请求遵循规范的爬虫（含守规矩的 AI 爬虫）不要抓取
+          // 音频本体。注意：robots.txt 是"偏好表达"、依赖爬虫自愿遵守，非访问控制，也不阻止
+          // 下载；不遵守规范的爬虫需靠 Cloudflare AI Crawl Control / WAF 在边缘强制阻断（面板配置）。
+          '/audio/',
           // Auth + dashboard surfaces, expanded per locale.
           ...expandPrivateAcrossLocales(),
           // Next.js route-group folder names (defense-in-depth — these

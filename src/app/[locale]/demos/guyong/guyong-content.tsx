@@ -282,6 +282,11 @@ export function GuyongDemoContent() {
           歌词体版与规范关键词版编译出<strong className="text-fg">完全一致的 Core IR</strong>。
           底层与信贷 demo 同一套可证明的执行链。
         </p>
+        <p className="mt-3 border-t border-border pt-3">
+          <strong className="text-fg">© Aster · 版权与使用</strong>：本页录音与原创歌词
+          <strong className="text-fg">仅供本站在线试听</strong>。除实现播放所必需的临时传输外，
+          未经书面许可，不得另行下载、提取、复制、转载、二次分发或用于 AI 训练；相关权利由权利人保留。
+        </p>
       </footer>
     </div>
   );
