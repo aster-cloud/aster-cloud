@@ -42,6 +42,13 @@ describe('buildCspHeader', () => {
     expect(csp).toContain("object-src 'none'");
   });
 
+  it("restricts media-src to exactly 'self' (self-hosted audio only, e.g. guyong demo)", () => {
+    const csp = buildCspHeader(NONCE);
+    // 精确锁定整条 directive（同 img-src 模式）：仅 'self'，无远程媒体源。防 default-src
+    // 未来放宽时连带放宽媒体来源，也防某远程 host 漂进 media-src 仍被弱 toContain 误判通过。
+    expect(getDirective(csp, 'media-src')).toBe("media-src 'self'");
+  });
+
   it('allows Stripe origins for payment integration', () => {
     const csp = buildCspHeader(NONCE);
     expect(csp).toContain('https://js.stripe.com');

@@ -12,6 +12,9 @@
  * 点运行后引擎真编译 + 真展开该变体的主题句。每个都是真实字面量宏（引擎真展开），非页面预置文案。
  *
  * 诚实分离：三视图（意境展示 / 实际编译源码 toCanonical / 规范关键词等价版），佐证「读的是诗、跑的是规范源码」。
+ *
+ * 音频：一段**录音**（自托管 MP3，本项目自有/已授权录音，完整录制，原生 <audio> 播放）。
+ * 录音是完整录制，长度与诗行不定长对应，故不做逐行同步高亮；仅原生播放/停止。卸载时停止。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -23,7 +26,6 @@ import {
 } from '@aster-cloud/aster-lang-ts/browser';
 import { GUYONG } from '@/config/guyong-demo';
 import { toCanonical, toDisplay } from '@/lib/layout-map';
-import { GuyongMelodyPlayer } from './guyong-melody';
 import { cn } from '@/components/ui';
 
 interface RunResult {
@@ -51,6 +53,7 @@ export function GuyongDemoContent() {
     canonical: '规范关键词等价版（证明语义等价，非实际编译输入）',
   } as const;
   const VIEW_TEXT = { display: displaySource, compile: compileSource, canonical: canonicalKeyword };
+  const displayLines = displaySource.split('\n');
 
   // 编译当前变体（先注册该变体的字面量宏词汇，再带 domain 编译）。变体切换即重编译。
   const compiled = useMemo(() => {
@@ -71,48 +74,50 @@ export function GuyongDemoContent() {
   // 结果绑定其所属触发词：切换变体后旧结果失效（render 期守卫，避免 set-state-in-effect）。
   const result = run && run.trigger === variant.trigger ? run : null;
 
-  // ── 原创旋律播放（纯 Web Audio，零外部资源）──────────────────────────────────
-  // 播放器持久于 ref（跨 render 不重建）；singingLine = 当前正在唱的诗行（跟唱高亮），null = 未播放。
-  const playerRef = useRef<GuyongMelodyPlayer | null>(null);
-  const [singingLine, setSingingLine] = useState<number | null>(null);
-  const [playing, setPlaying] = useState(false);
-  // 客户端挂载后惰性建播放器（不在 render 期碰 ref）；卸载时停止音频（防残响 / 泄漏 AudioContext）。
+  // ── 录音播放（自托管 MP3，本项目自有/已授权录音）─────────────────────────────
+  // 录音是完整录制（原生 <audio>），无逐行同步。卸载时暂停，防后台继续播放。
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [recPlaying, setRecPlaying] = useState(false);
+
   useEffect(() => {
-    playerRef.current = new GuyongMelodyPlayer((line) => {
-      setSingingLine(line);
-      if (line === null) setPlaying(false);
-    });
-    return () => playerRef.current?.stop();
+    // 快照 <audio> 元素供 cleanup 用（ref 在 effect 运行前已挂载；避免 cleanup 读到已变更的 ref）。
+    const audioEl = audioRef.current;
+    return () => {
+      if (audioEl && !audioEl.paused) audioEl.pause();
+    };
   }, []);
 
-  // 显示层按行拆分：供跟唱高亮，也作有词人声 TTS 的逐行朗读文本（= 意境展示五行诗）。
-  const displayLines = displaySource.split('\n');
+  // 停止录音（把 <audio> 归零 + 复位状态）。无条件归零：即便录音已被外部（系统媒体控件 /
+  // 页面生命周期）在中途暂停，切换变体也应回到开头，不从中途续播（Codex 审查边界项）。
+  function stopRecording() {
+    const a = audioRef.current;
+    if (a) {
+      if (!a.paused) a.pause();
+      a.currentTime = 0;
+    }
+    setRecPlaying(false);
+  }
 
-  function toggleMelody() {
-    const p = playerRef.current;
-    if (!p) return;
-    if (p.isPlaying) {
-      p.stop();
-      setPlaying(false);
+  // 播放/停止录音（自托管 MP3）。
+  function toggleRecording() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (!a.paused) {
+      stopRecording();
     } else {
-      // 传入歌词行 → 旋律 + 逐行有词人声（TTS）同步播放。
-      p.play(displayLines);
-      setPlaying(true);
+      // play() 返回 Promise：autoplay 被拒时不留下「已播放」的假状态。
+      void a.play().then(() => setRecPlaying(true)).catch(() => setRecPlaying(false));
     }
   }
 
-  // 切换触发词：★若正在播放先 stop（否则旧变体的定时器/TTS 闭包会继续念旧歌词——Codex 复审退回项）。
+  // 切换触发词：切换是「重来」语义，先停录音归零最不意外。
   function selectVariant(i: number) {
     if (i === variantIdx) return;
-    if (playerRef.current?.isPlaying) {
-      playerRef.current.stop();
-      setPlaying(false);
-    }
+    stopRecording();
     setVariantIdx(i);
   }
 
   // alias-literal 单次运行：① canonicalize 真实输出（字面量宏就地展开的引擎产物）② evaluate 真实返回。
-  // 同时从头播放原创旋律（用户在此手势内触发，满足浏览器 autoplay 策略）——「点运行 = 编译并唱」。
   function runOnce() {
     if (!compiled.core) return;
     const canonicalized = canonicalize(compileSource, {
@@ -127,9 +132,6 @@ export function GuyongDemoContent() {
       woven: ev.success ? String(ev.value) : '—',
       canonicalized,
     });
-    // 运行即从头播放旋律 + 逐行有词人声（TTS）。play() 幂等：若正在播放会先停再从头起。
-    playerRef.current?.play(displayLines);
-    setPlaying(true);
   }
 
   return (
@@ -158,32 +160,37 @@ export function GuyongDemoContent() {
               </button>
             ))}
           </div>
-          {/* 原创旋律播放（纯 Web Audio，零外部资源）。播放时「意境」视图逐行跟唱高亮。 */}
+          {/* 录音播放（自托管 MP3，本项目自有/已授权录音）。 */}
           <button
             type="button"
-            onClick={toggleMelody}
-            aria-pressed={playing}
+            onClick={toggleRecording}
+            aria-pressed={recPlaying}
             className={cn(
               'inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs',
-              playing ? 'bg-accent/15 text-accent' : 'text-fg-muted hover:text-accent',
+              recPlaying ? 'bg-accent/15 text-accent' : 'text-fg-muted hover:text-accent',
             )}
           >
-            <span aria-hidden>{playing ? '⏸' : '♪'}</span>
-            {playing ? '停止旋律' : '播放旋律'}
+            <span aria-hidden>{recPlaying ? '⏸' : '🎧'}</span>
+            {recPlaying ? '停止录音' : '播放录音'}
           </button>
         </div>
+        {/* 自托管录音元素：完整录制，原生播放；结束/暂停时复位状态。preload=none 省首屏带宽。
+            ★文件名带版本号（-v1）：配合 _headers 的一年 immutable 边缘缓存，内容若变必须换 URL
+            （改 -v2），换名才能可靠让浏览器/边缘失效——CDN purge 清不掉已 fresh 的浏览器缓存。 */}
+        <audio
+          ref={audioRef}
+          src="/audio/guyong-v1.mp3"
+          preload="none"
+          onEnded={() => setRecPlaying(false)}
+          onPause={() => setRecPlaying(false)}
+          className="hidden"
+        />
         {view === 'display' ? (
-          // 意境视图：按诗行渲染，播放时高亮当前唱到的行（跟唱）。
+          // 意境视图：按诗行渲染成工整短诗。
           <div className="overflow-x-auto whitespace-pre-wrap font-mono text-sm leading-relaxed">
             {displayLines.map((line, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'transition-colors',
-                  singingLine === i ? 'rounded bg-accent/15 text-accent' : 'text-fg',
-                )}
-              >
-                {line || ' '}
+              <div key={i} className="text-fg">
+                {line || ' '}
               </div>
             ))}
           </div>
@@ -236,7 +243,7 @@ export function GuyongDemoContent() {
             !compiled.core && 'cursor-not-allowed opacity-50',
           )}
         >
-          运行 · 唱《孤勇》· {variant.trigger}
+          运行 · {variant.trigger}
         </button>
       </section>
 
