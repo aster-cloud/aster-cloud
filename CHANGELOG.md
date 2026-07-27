@@ -306,6 +306,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#319) *(changelog)*
 - Refresh unreleased [skip ci] (#294) *(changelog)*
 - Refresh unreleased [skip ci] (#292) *(changelog)*
 - Refresh unreleased [skip ci] (#291) *(changelog)*
@@ -598,6 +599,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- 多语站 CJK 页关掉 latin 字体 eager preload（消除 preload 告警） (#320) *(fonts)*
 - CodeQL 测试/脚本告警(redos + 不完整转义 + 堆栈暴露) (#301) *(security)*
 - 修复 CodeQL 生产代码安全告警（格式串注入 + 邮件属性注入） (#300) *(security)*
 - 为 CI workflow 补最小权限 permissions 块 (#299) *(ci)*
