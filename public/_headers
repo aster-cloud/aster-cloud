@@ -14,3 +14,10 @@
 #     带 immutable 的旧副本；只有换 URL 才能让浏览器与边缘同时可靠失效。
 /audio/*
   Cache-Control: public, max-age=31536000, immutable
+  # X-Robots-Tag: noindex —— 请求（遵循规范的）搜索引擎在**仍抓取到**该资源时不要索引它。
+  # 仅此一项是标准且对非 HTML 资源有效的指令；不加 noai/noimageai——那两个是非标准、
+  # 主流 AI 爬虫（GPTBot/Google-Extended/CCBot）并不遵循的安慰剂（noimageai 还只针对图片）。
+  # ★这不是访问控制，也不"阻止下载"——能播放=能下载（见页面版权声明）；且爬虫若遵守
+  #   robots.txt 的 Disallow:/audio/ 而不请求 MP3，就根本看不到这个响应头（二者非"双保险"）。
+  #   真要强制阻断不遵守规范的爬虫，须靠 Cloudflare AI Crawl Control / WAF（面板配置）。
+  X-Robots-Tag: noindex
