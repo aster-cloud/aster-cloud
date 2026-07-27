@@ -60,7 +60,9 @@
  * src/app/[locale]/layout.tsx). next/font emits CSS variables
  * --aster-font-{display,sans,mono}-loaded which the :root overrides
  * below splice into the Aster token names. Benefits:
- *   - Subsetted, preloaded, no FOUT/CLS at first paint
+ *   - Subsetted + 按需加载（preload:false，见 layout.tsx 注释——多语站 CJK 页
+ *     的 eager preload 适得其反）；display:'swap' + 度量校准回退字体降低（非消除）
+ *     字体交换 CLS
  *   - Works in mainland China (no Google CDN dependency)
  *   - No traffic leaked to Google for users who never see Latin glyphs
  * Family names ("Fraunces", "Inter", "JetBrains Mono") are kept in the

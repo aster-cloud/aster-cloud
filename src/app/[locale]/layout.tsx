@@ -18,22 +18,35 @@ import "../globals.css";
 // CSS-variable wiring automatically. The `variable` value is consumed
 // inside tokens.css via the --aster-font-{display,sans,mono} tokens
 // (see globals.css :root override block).
+//
+// preload: false —— 三款字体都只含 latin subset，但本站是**多语**（zh/en/de）：
+// 在中文优先的页面（如 /zh/demos/*）首屏可见文本是 CJK，浏览器却会预加载这三个
+// latin woff2 且短时间内用不上，触发控制台告警
+// “The resource <font>.woff2 was preloaded using link preload but not used within
+// a few seconds…”。关掉 eager preload：字体仍按需加载（display:'swap' + next/font
+// 默认 adjustFontFallback 注入度量校准的回退字体，首屏立即以回退字渲染、**降低**字体
+// 交换造成的 CLS——非消除），只是不再发那条在 CJK 页上适得其反的预加载链接。
+// 取舍：英文优先页（landing）冷缓存/慢网下字体请求略晚、可能出现一次可见字体交换，
+// 换取全站 CJK 页不再有无效高优先级预加载与该告警。
 const fraunces = Fraunces({
   subsets: ['latin'],
   variable: '--aster-font-display-loaded',
   display: 'swap',
+  preload: false,
   weight: ['400', '500', '600', '700'],
 });
 const inter = Inter({
   subsets: ['latin'],
   variable: '--aster-font-sans-loaded',
   display: 'swap',
+  preload: false,
   weight: ['400', '500', '600', '700'],
 });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--aster-font-mono-loaded',
   display: 'swap',
+  preload: false,
   weight: ['400', '500'],
 });
 
