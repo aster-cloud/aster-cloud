@@ -6,6 +6,11 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- 孤勇集成自托管录音 MP3 + CF 边缘缓存，删合成旋律引擎 (#318) *(demos)*
+- 孤勇加原创旋律（纯 Web Audio 合成，零外部资源） (#308) *(demos)*
+- 孤勇歌词扩到 5 前提（更长，谱曲可唱约 30s） (#303) *(demos)*
+- 孤勇 · 原创歌词即源码(decision + LayoutMap 范式) (#297) *(demos)*
+- LayoutMap 显示/编译解耦 + 静夜思无空格排版 (#296) *(demos)*
 - 流行歌曲即源码(周杰伦歌名→简笔画,中文彩蛋) (#290) *(demos)*
 - 管理员 UI 卡片（mode 三模式 + sample_pct） (#283) *(runner-parity)*
 - Manual verify-parity endpoint + logs UI 徽章 — PR-4/4 (#282) *(runner-parity)*
@@ -274,6 +279,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- 孤勇改 alias-literal（源码即诗+字面量宏，放弃 decision） (#307) *(demos)*
+- 孤勇歌词改押韵工整版(便于谱曲) (#305) *(demos)*
+- 孤勇布尔前提改双字意象词（单字缺意境→更好理解） (#304) *(demos)*
+- 孤勇改真布尔 decision + LayoutMap 隐脚手架（消回声、显示成中文） (#302) *(demos)*
 - Flatten nested If/Otherwise ladders into flat guard clauses (#148) *(demos)*
 - 三个 demo 统一到 /demos/ 前缀 + 新建索引落地页 (#116) *(demos)*
 - Single source of truth — consume @aster-cloud/ui-messages npm, drop messages/* (#109) *(i18n)*
@@ -297,6 +306,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#292) *(changelog)*
 - Refresh unreleased [skip ci] (#291) *(changelog)*
 - Refresh unreleased [skip ci] (#289) *(changelog)*
 - Refresh unreleased [skip ci] (#204) *(changelog)*
@@ -587,6 +597,11 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- CodeQL 测试/脚本告警(redos + 不完整转义 + 堆栈暴露) (#301) *(security)*
+- 修复 CodeQL 生产代码安全告警（格式串注入 + 邮件属性注入） (#300) *(security)*
+- 为 CI workflow 补最小权限 permissions 块 (#299) *(ci)*
+- 修 dompurify 告警(override >=3.4.11 → >=3.4.12) (#298) *(security)*
+- Migrate cosign sign 幂等 + retry(消 Rekor 抖动噪声红) (#293) *(ci)*
 - 重建快照基线恢复 db:generate 增量能力 (#287) *(drizzle)*
 - Bump next/next-auth + 补 override 消 3 critical + 10 high (#286) *(security)*
 - 独立审查发现的两个签字级 defense-in-depth 加固（F1/F2） (#267) *(p0a)*
