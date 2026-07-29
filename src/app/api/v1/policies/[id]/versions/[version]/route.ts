@@ -7,7 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 
-import { getVersionDetail } from '@/services/policy/version-manager';
+import {
+  PolicyAccessDeniedError,
+  getVersionDetail,
+} from '@/services/policy/version-manager';
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +28,11 @@ export async function GET(
   }
 
   try {
-    const detail = await getVersionDetail({ policyId, version });
+    const detail = await getVersionDetail({
+      policyId,
+      version,
+      userId: session.user.id,
+    });
 
     if (!detail) {
       return NextResponse.json({ error: '版本不存在' }, { status: 404 });
@@ -33,6 +40,10 @@ export async function GET(
 
     return NextResponse.json(detail);
   } catch (error) {
+    // 非所有者与「策略不存在」返回同一 404，避免泄露该 policyId 是否存在
+    if (error instanceof PolicyAccessDeniedError) {
+      return NextResponse.json({ error: '版本不存在' }, { status: 404 });
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : '获取版本详情失败' },
       { status: 500 }

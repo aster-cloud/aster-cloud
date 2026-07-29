@@ -14,7 +14,10 @@ import { auth } from '@/auth';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { db, users, teams, teamMembers, policyVersions } from '@/lib/prisma';
-import { approveVersion } from '@/services/policy/version-manager';
+import {
+  PolicyAccessDeniedError,
+  approveVersion,
+} from '@/services/policy/version-manager';
 import { getEffectiveLimits } from '@/lib/plans';
 
 export async function POST(
@@ -54,6 +57,10 @@ export async function POST(
     });
     return NextResponse.json({ success: true });
   } catch (error) {
+    // 非所有者与「策略不存在」返回同一 404，避免泄露该 policyId 是否存在
+    if (error instanceof PolicyAccessDeniedError) {
+      return NextResponse.json({ error: '策略不存在' }, { status: 404 });
+    }
     const message = error instanceof Error ? error.message : '批准失败';
     return NextResponse.json({ error: 'approve_failed', message }, { status: 400 });
   }

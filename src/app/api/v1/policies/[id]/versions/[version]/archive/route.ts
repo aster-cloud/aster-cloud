@@ -7,7 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 
-import { archiveVersion } from '@/services/policy/version-manager';
+import {
+  PolicyAccessDeniedError,
+  archiveVersion,
+} from '@/services/policy/version-manager';
 
 interface RouteParams {
   params: Promise<{ id: string; version: string }>;
@@ -47,6 +50,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    // 非所有者与「策略不存在」返回同一 404，避免泄露该 policyId 是否存在
+    if (error instanceof PolicyAccessDeniedError) {
+      return NextResponse.json({ error: '策略不存在' }, { status: 404 });
+    }
     console.error('[Archive] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : '归档版本失败' },
