@@ -103,15 +103,17 @@ describe('版本操作归属校验（跨租户 IDOR 修复）', () => {
     expect(mockVersionFindFirst).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['setDefaultVersion', (m: Record<string, Function>) => m.setDefaultVersion({ policyId: POLICY, version: 1, userId: ATTACKER })],
-    ['deprecateVersion', (m: Record<string, Function>) => m.deprecateVersion({ policyId: POLICY, version: 1, userId: ATTACKER })],
-    ['archiveVersion', (m: Record<string, Function>) => m.archiveVersion({ policyId: POLICY, version: 1, userId: ATTACKER })],
-    ['getVersionDetail', (m: Record<string, Function>) => m.getVersionDetail({ policyId: POLICY, version: 1, userId: ATTACKER })],
+  type VersionManagerModule = typeof import('../version-manager');
+  const attackerArgs = { policyId: POLICY, version: 1, userId: ATTACKER };
+
+  it.each<[string, (m: VersionManagerModule) => Promise<unknown>]>([
+    ['setDefaultVersion', (m) => m.setDefaultVersion(attackerArgs)],
+    ['deprecateVersion', (m) => m.deprecateVersion(attackerArgs)],
+    ['archiveVersion', (m) => m.archiveVersion(attackerArgs)],
+    ['getVersionDetail', (m) => m.getVersionDetail(attackerArgs)],
   ])('攻击者调用 %s → 拒绝', async (_name, invoke) => {
     const mod = await import('../version-manager');
-    await expect(invoke(mod as unknown as Record<string, Function>))
-      .rejects.toBeInstanceOf(mod.PolicyAccessDeniedError);
+    await expect(invoke(mod)).rejects.toBeInstanceOf(mod.PolicyAccessDeniedError);
   });
 
   it('所有者本人调用 → 通过归属校验，继续走到版本查询', async () => {
