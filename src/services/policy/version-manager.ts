@@ -10,8 +10,8 @@
  * - ARCHIVED: 已归档，不可执行
  */
 
-import { db, policyVersions, policyApprovals } from '@/lib/prisma';
-import { eq, and, inArray, desc, sql } from 'drizzle-orm';
+import { db, policies, policyVersions, policyApprovals } from '@/lib/prisma';
+import { eq, and, inArray, isNull, desc, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 import { computeChainedHash, computeSourceHash } from '../security/policy-security';
 import { logSecurityEvent } from '../security/security-event-service';
@@ -29,6 +29,49 @@ import {
 type PolicyVersion = InferSelectModel<typeof policyVersions>;
 type PolicyVersionStatus = PolicyVersion['status'];
 type VersionDbClient = Pick<typeof db, 'query' | 'insert'>;
+
+/**
+ * 调用方不是该策略的所有者（或策略不存在/已软删）。路由 catch 后返回 404——
+ * 刻意不用 403，避免把「该 policyId 存在」这一事实泄露给非所有者（枚举探测）。
+ */
+export class PolicyAccessDeniedError extends Error {
+  constructor(message = '策略不存在') {
+    super(message);
+    this.name = 'PolicyAccessDeniedError';
+  }
+}
+
+/**
+ * 版本操作的**归属校验单一入口**。
+ *
+ * <h3>为什么放在服务层而不是各路由</h3>
+ *
+ * 此前 8 个版本路由（submit/approve/reject/set-default/archive/deprecate/
+ * 版本详情/secure-execute）只校验登录态，`policyId` 从 URL 直接进服务层，
+ * 而本文件的查询只按 `policyId + version + status` 过滤——**任何登录用户可操作
+ * 任意租户的策略版本**。同目录 `versions/route.ts` 早有正确写法，只是没传播到这 8 处。
+ *
+ * ★最危险的是审批链：`approveVersion` 的四眼原则判的是
+ * `targetVersion.createdBy === approverId`，对**外部攻击者恒为 false**
+ * （攻击者本就不是创建者）→ SOX 守护不但拦不住，反而主动放行。
+ * 配合 submit 可把他人策略从 DRAFT 一路推到 APPROVED。
+ *
+ * 收口到服务层而非补 8 处路由：路由是会增加的，服务函数是收敛的；
+ * 任何新入口只要走这些函数就自动带上校验。
+ */
+async function assertPolicyOwnership(policyId: string, userId: string): Promise<void> {
+  const owned = await db.query.policies.findFirst({
+    where: and(
+      eq(policies.id, policyId),
+      eq(policies.userId, userId),
+      isNull(policies.deletedAt),
+    ),
+    columns: { id: true },
+  });
+  if (!owned) {
+    throw new PolicyAccessDeniedError();
+  }
+}
 
 /**
  * 源码存在解析/编译错误——不允许落库。路由 catch 此异常返回 400。
@@ -280,6 +323,8 @@ export async function submitForApproval(params: {
 }): Promise<void> {
   const { policyId, version, userId } = params;
 
+  await assertPolicyOwnership(policyId, userId);
+
   const targetVersion = await db.query.policyVersions.findFirst({
     where: and(
       eq(policyVersions.policyId, policyId),
@@ -316,6 +361,10 @@ export async function approveVersion(params: {
   comment?: string;
 }): Promise<void> {
   const { policyId, version, approverId, decision, comment } = params;
+
+  // ★必须在四眼原则之前：四眼原则判 createdBy === approverId，
+  // 对外部攻击者恒为 false，反而会放行。归属校验是它成立的前提。
+  await assertPolicyOwnership(policyId, approverId);
 
   const targetVersion = await db.query.policyVersions.findFirst({
     where: and(
@@ -409,6 +458,8 @@ export async function setDefaultVersion(params: {
 }): Promise<void> {
   const { policyId, version, userId } = params;
 
+  await assertPolicyOwnership(policyId, userId);
+
   // 验证目标版本存在且已批准
   const targetVersion = await db.query.policyVersions.findFirst({
     where: and(
@@ -456,6 +507,8 @@ export async function deprecateVersion(params: {
 }): Promise<void> {
   const { policyId, version, userId, reason } = params;
 
+  await assertPolicyOwnership(policyId, userId);
+
   const targetVersion = await db.query.policyVersions.findFirst({
     where: and(
       eq(policyVersions.policyId, policyId),
@@ -500,6 +553,8 @@ export async function archiveVersion(params: {
   reason?: string;
 }): Promise<void> {
   const { policyId, version, userId, reason } = params;
+
+  await assertPolicyOwnership(policyId, userId);
 
   const targetVersion = await db.query.policyVersions.findFirst({
     where: and(
@@ -603,8 +658,13 @@ export async function listExecutableVersions(policyId: string) {
 export async function getVersionDetail(params: {
   policyId: string;
   version: number;
+  userId: string;
 }) {
-  const { policyId, version } = params;
+  const { policyId, version, userId } = params;
+
+  // 版本详情含策略源码与完整审批历史，必须限定所有者——
+  // 此前仅凭 policyId 即可读取任意租户的版本详情。
+  await assertPolicyOwnership(policyId, userId);
 
   return db.query.policyVersions.findFirst({
     where: and(
@@ -625,8 +685,11 @@ export async function getVersionDetail(params: {
 export async function getVersionSource(params: {
   policyId: string;
   version: number;
+  userId: string;
 }): Promise<{ source: string; sourceHash: string } | null> {
-  const { policyId, version } = params;
+  const { policyId, version, userId } = params;
+
+  await assertPolicyOwnership(policyId, userId);
 
   const result = await db.query.policyVersions.findFirst({
     where: and(
