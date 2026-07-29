@@ -8,7 +8,7 @@
  * 返回 aster-api ApiQuotaGuard.check() 需要的所有字段。
  */
 import { NextResponse } from 'next/server';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { verifyInternalSignature } from '@/lib/api-signing';
 import { db, users, apiCallRecords } from '@/lib/prisma';
 import { eq, and, sql } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
@@ -23,25 +23,13 @@ export async function GET(req: Request) {
   if (!sharedKey) {
     return NextResponse.json({ error: 'Internal verification unavailable' }, { status: 503 });
   }
-  {
-    const timestamp = req.headers.get('X-Aster-Timestamp');
-    const signature = req.headers.get('X-Aster-Signature');
-    if (!timestamp || !signature) {
-      return NextResponse.json({ error: 'Missing signature headers' }, { status: 401 });
-    }
-    const ts = Number.parseInt(timestamp, 10);
-    if (Number.isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
-      return NextResponse.json({ error: 'Stale timestamp' }, { status: 401 });
-    }
-    const url = new URL(req.url);
-    const expected = createHmac('sha256', sharedKey)
-      .update(`GET\n${url.pathname}\n${timestamp}`)
-      .digest('hex');
-    const sigBuf = Buffer.from(signature, 'utf8');
-    const expBuf = Buffer.from(expected, 'utf8');
-    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
+  // 入站验签收敛到 verifyInternalSignature（2026-07-29 审计修复）：原 canonical
+  // 只有 method/path/timestamp 三段——不绑定 body 与 query、无 nonce，一次签名
+  // 可在 300s 窗口内重放。共享实现优先按 v2（绑定 bodyHash + nonce）校验，
+  // 并在迁移窗口内兼容 v1；待 aster-api 全部切换后由 env 关掉 v1。
+  const verified = await verifyInternalSignature(req, '', sharedKey);
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.reason }, { status: 401 });
   }
 
   const url = new URL(req.url);

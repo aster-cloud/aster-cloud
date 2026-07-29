@@ -7,40 +7,37 @@
  * 由 aster-api PolicyEvaluationResource 调用（HMAC 验签）。
  */
 import { NextResponse } from 'next/server';
-import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { verifyInternalSignature } from '@/lib/api-signing';
 import { db, apiCallRecords, apiKeys } from '@/lib/prisma';
 import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 
-function verifyHmac(req: Request, method: string): NextResponse | null {
+/**
+ * 入站验签，收敛到 verifyInternalSignature（2026-07-29 审计修复）。
+ *
+ * 原实现 canonical 只有 `method\npath\ntimestamp` —— 不绑定 body、无 nonce，
+ * 攻击者拿到一次签名即可在 300s 内**换掉 body 无限重放**。本路由的 body
+ * 完全由调用方控制，重放可为任意 userId 伪造用量记录、篡改计费归属。
+ *
+ * rawBody 由调用方先 text() 读出后传入：v2 canonical 绑定 bodyHash，
+ * 而 Request body 只能读一次。GET 传空串。
+ */
+async function verifyHmac(req: Request, rawBody: string): Promise<NextResponse | null> {
   const sharedKey = process.env.ASTER_PLAN_GATE_HMAC_KEY;
   // Fail-closed: without the shared HMAC key we cannot authenticate the
   // caller, so refuse to serve rather than leak/mutate data (audit #168).
   if (!sharedKey) {
     return NextResponse.json({ error: 'Internal verification unavailable' }, { status: 503 });
   }
-  const timestamp = req.headers.get('X-Aster-Timestamp');
-  const signature = req.headers.get('X-Aster-Signature');
-  if (!timestamp || !signature) {
-    return NextResponse.json({ error: 'Missing signature headers' }, { status: 401 });
-  }
-  const ts = Number.parseInt(timestamp, 10);
-  if (Number.isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
-    return NextResponse.json({ error: 'Stale timestamp' }, { status: 401 });
-  }
-  const url = new URL(req.url);
-  const expected = createHmac('sha256', sharedKey)
-    .update(`${method}\n${url.pathname}\n${timestamp}`)
-    .digest('hex');
-  const sigBuf = Buffer.from(signature, 'utf8');
-  const expBuf = Buffer.from(expected, 'utf8');
-  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  const verified = await verifyInternalSignature(req, rawBody, sharedKey);
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.reason }, { status: 401 });
   }
   return null;
 }
 
 export async function GET(req: Request) {
-  const err = verifyHmac(req, 'GET');
+  const err = await verifyHmac(req, '');
   if (err) return err;
 
   const url = new URL(req.url);
@@ -69,10 +66,12 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const err = verifyHmac(req, 'POST');
+  // ★先读原始文本再验签再解析：v2 绑定 bodyHash，body 只能读一次
+  const rawBody = await req.text();
+  const err = await verifyHmac(req, rawBody);
   if (err) return err;
 
-  const body = (await req.json()) as {
+  const body = JSON.parse(rawBody) as {
     userId: string;
     tenantId?: string;
     apiKeyId?: string;

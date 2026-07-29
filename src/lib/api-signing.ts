@@ -271,3 +271,96 @@ export async function signRunnerLauncherHeaders(
     'X-Internal-Signature': signature,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 入站验签：/api/internal/* 的**单一实现**（2026-07-29 审计修复）
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 入站验签结果。`ok: false` 时 `reason` 用于返回体与日志，不含任何密钥材料。 */
+export type InternalVerifyResult =
+  | { ok: true; usedLegacyCanonical: boolean }
+  | { ok: false; reason: string };
+
+/** 时间戳窗口（秒）。与 aster-api 侧 InternalCallerFilter 的 300s 保持一致。 */
+const INTERNAL_TS_WINDOW_SEC = 300;
+
+/**
+ * 校验 aster-api → aster-cloud 的内部调用签名。
+ *
+ * <h3>为什么需要它</h3>
+ *
+ * 此前 8 个 `/api/internal/*` 路由各自手写验签，canonical 一律是
+ * `method\npath\ntimestamp` —— **不绑定 body、不绑定 query、无 nonce**。
+ * 后果：攻击者拿到任意一次签名（代理日志、SSRF、镜像流量），可在 300s 窗口内
+ * **换掉 body 无限重放**。打 `/api/internal/api/usage` 即可为任意 userId 伪造
+ * 用量记录、篡改计费；打 `/api/internal/apikey/verify` 可枚举 key。
+ *
+ * 与之对照，**出站**签名器（signInternalCallerHeaders）早已加固为 7 字段
+ * canonical（含 nonce + bodyHash + tenant + role）——加固只做了发送侧，
+ * 接收侧从未同步。本函数补齐接收侧。
+ *
+ * <h3>为什么支持双接受（migration window）</h3>
+ *
+ * aster-api 侧同一时刻仍在用旧的 3 字段签名（5 处调用点），且**不发送 nonce 头**。
+ * 若接收侧直接只认新格式，跨服务认证会在部署瞬间全断。故本函数按序尝试：
+ *
+ *   1. **v2**（首选）：`method\npath\ntimestamp\nnonce\nbodyHash` —— 绑定 body 与 nonce；
+ *   2. **v1**（兼容）：`method\npath\ntimestamp` —— 仅在 `allowLegacy` 为真时接受。
+ *
+ * 上线顺序：本函数先随 cloud 发布（双接受）→ aster-api 切到 v2 → 观察
+ * `usedLegacyCanonical` 归零 → 把 `ASTER_INTERNAL_ALLOW_LEGACY_SIG` 置 false
+ * 下线 v1。★这是**必须的三步**，跳过任何一步都会打断线上认证。
+ *
+ * 注意：v1 的重放窗口是固有缺陷，兼容期内无法消除——这正是要尽快走完第三步的理由。
+ *
+ * @param req      入站请求；body 需由调用方先读出（Request body 只能读一次）
+ * @param rawBody  已读出的原始 body 文本；GET 传空串
+ * @param secret   共享密钥
+ */
+export async function verifyInternalSignature(
+  req: Request,
+  rawBody: string,
+  secret: string,
+  opts?: { allowLegacy?: boolean },
+): Promise<InternalVerifyResult> {
+  const timestamp = req.headers.get('X-Aster-Timestamp');
+  const signature = req.headers.get('X-Internal-Signature')
+    ?? req.headers.get('X-Aster-Signature');
+
+  if (!timestamp || !signature) {
+    return { ok: false, reason: 'missing_signature_headers' };
+  }
+
+  const ts = Number.parseInt(timestamp, 10);
+  if (!Number.isFinite(ts)) {
+    return { ok: false, reason: 'invalid_timestamp' };
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - ts) > INTERNAL_TS_WINDOW_SEC) {
+    return { ok: false, reason: 'stale_timestamp' };
+  }
+
+  const url = new URL(req.url);
+  const method = req.method.toUpperCase();
+  const nonce = req.headers.get('X-Aster-Nonce') ?? '';
+
+  // v2：绑定 body 与 nonce
+  if (nonce) {
+    const bodyHash = await sha256Hex(new TextEncoder().encode(rawBody).buffer as ArrayBuffer);
+    const canonicalV2 = `${method}\n${url.pathname}\n${ts}\n${nonce}\n${bodyHash}`;
+    if (await hmacVerify(secret, canonicalV2, signature)) {
+      return { ok: true, usedLegacyCanonical: false };
+    }
+  }
+
+  // v1：兼容窗口内的旧格式（不绑定 body/nonce → 可换 body 重放）
+  const allowLegacy = opts?.allowLegacy ?? (process.env.ASTER_INTERNAL_ALLOW_LEGACY_SIG !== 'false');
+  if (allowLegacy) {
+    const canonicalV1 = `${method}\n${url.pathname}\n${ts}`;
+    if (await hmacVerify(secret, canonicalV1, signature)) {
+      return { ok: true, usedLegacyCanonical: true };
+    }
+  }
+
+  return { ok: false, reason: 'invalid_signature' };
+}

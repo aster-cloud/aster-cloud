@@ -9,8 +9,8 @@
  * 单条 SQL JOIN，期望响应 < 10ms。
  */
 import { NextResponse } from 'next/server';
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db, apiKeys, users } from '@/lib/prisma';
+import { verifyInternalSignature } from '@/lib/api-signing';
 import { eq } from 'drizzle-orm';
 import { SOLO_TENANT_ROLE } from '@/lib/team-permissions';
 
@@ -25,30 +25,18 @@ export async function POST(req: Request) {
   if (!sharedKey) {
     return NextResponse.json({ error: 'Internal verification unavailable' }, { status: 503 });
   }
-  {
-    const timestamp = req.headers.get('X-Aster-Timestamp');
-    const signature = req.headers.get('X-Aster-Signature');
-    if (!timestamp || !signature) {
-      return NextResponse.json({ error: 'Missing signature headers' }, { status: 401 });
-    }
-    const ts = Number.parseInt(timestamp, 10);
-    if (Number.isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
-      return NextResponse.json({ error: 'Stale timestamp' }, { status: 401 });
-    }
-    const url = new URL(req.url);
-    const expected = createHmac('sha256', sharedKey)
-      .update(`POST\n${url.pathname}\n${timestamp}`)
-      .digest('hex');
-    const sigBuf = Buffer.from(signature, 'utf8');
-    const expBuf = Buffer.from(expected, 'utf8');
-    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
+  // ★body 必须先以文本读出：v2 canonical 绑定 bodyHash，而 Request body 只能读一次。
+  // 先 text() 再 JSON.parse，顺序不可颠倒。
+  const rawBody = await req.text();
+
+  const verified = await verifyInternalSignature(req, rawBody, sharedKey);
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.reason }, { status: 401 });
   }
 
   let body: { keyHash?: string };
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody) as { keyHash?: string };
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
