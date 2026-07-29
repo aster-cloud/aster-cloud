@@ -13,7 +13,15 @@ const prismaMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/services/policy/version-manager', () => ({ approveVersion: vi.fn() }));
+// 必须同时导出 PolicyAccessDeniedError：路由用 `error instanceof PolicyAccessDeniedError`
+// 区分「非所有者 → 404」与其他失败「→ 400」。mock 若漏掉它，该标识符在路由里是
+// undefined，instanceof 会抛 TypeError 并被外层 catch 吞成误导性的错误响应。
+vi.mock('@/services/policy/version-manager', async () => {
+  const actual = await vi.importActual<typeof import('@/services/policy/version-manager')>(
+    '@/services/policy/version-manager',
+  );
+  return { approveVersion: vi.fn(), PolicyAccessDeniedError: actual.PolicyAccessDeniedError };
+});
 vi.mock('@/lib/prisma', () => ({
   db: {
     query: {
