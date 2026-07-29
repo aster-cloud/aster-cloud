@@ -201,9 +201,17 @@ export function useAsterLSP({
     if (typeof window === 'undefined') return '';
 
     const lspHost = process.env.NEXT_PUBLIC_LSP_HOST;
-    // Shared-secret token for the standalone LSP WS gate (#98). Browsers can't
-    // set custom WS headers, so it's appended as a query param. Optional: when
-    // unset the URL is unchanged (server enforces its own policy).
+    // LSP WS 网关的 token（#98）。浏览器无法为 WebSocket 设置自定义头，故只能作为
+    // query param 附加——这是该协议的固有约束，不是可以简单去掉的实现选择。
+    //
+    // ★因此这个值**不是密钥，也不能当密钥用**：NEXT_PUBLIC_ 前缀在构建期内联，
+    // 任何访客都能在 devtools / 打包产物里读到它，它还会进代理与访问日志。
+    // 它能提供的只是「挡住无差别扫描」这种程度的门槛。
+    //
+    // 结论：LSP 服务端**不得**把它当作唯一鉴权依据。真正的访问控制应放在
+    // 网络层（只允许来自应用域的 Origin / 内网可达性 / 反向代理鉴权），
+    // 或改用一次性、短时效、由服务端签发并与会话绑定的 ticket。
+    // 见审计报告 2026-07-29。
     const lspToken = process.env.NEXT_PUBLIC_LSP_TOKEN;
     const tokenParam = lspToken ? `&token=${encodeURIComponent(lspToken)}` : '';
 

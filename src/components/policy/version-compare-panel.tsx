@@ -174,6 +174,14 @@ export function VersionComparePanel({
   );
 
   useEffect(() => {
+    // 快速切换比较版本会并发多轮 loadSources：没有取消标志时，**先发后到**的
+    // 那一轮会覆盖后发起的结果——界面标题写着「v1 vs v5」，左侧却是 v3 的源码，
+    // 连带 diff 行数与增删统计全错，且无任何提示。审计发现（2026-07-29）。
+    //
+    // 这里用 cancelled 标志而非 AbortController：两个请求要成对写入状态，
+    // 只要本轮已作废就整体丢弃，比逐个取消更贴合语义。
+    let cancelled = false;
+
     async function loadSources() {
       setLoading(true);
       setError(null);
@@ -184,6 +192,8 @@ export function VersionComparePanel({
           fetchSource(rightVersion),
         ]);
 
+        if (cancelled) return;
+
         if (left === null || right === null) {
           setError('无法加载版本源码');
         } else {
@@ -191,13 +201,17 @@ export function VersionComparePanel({
           setRightSource(right);
         }
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : '未知错误');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     loadSources();
+    return () => {
+      cancelled = true;
+    };
   }, [leftVersion, rightVersion, fetchSource]);
 
   const diffLines = useMemo(() => {
