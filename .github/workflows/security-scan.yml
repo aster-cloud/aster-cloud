@@ -58,16 +58,45 @@ jobs:
           path: nuclei-*.jsonl
           if-no-files-found: warn
 
-      # Gate runs against the captured JSONL output. JSONL has one finding
-      # per line, so a simple grep -c gives the count without needing jq.
-      # Missing files = no findings (the scan still completed with zero
-      # hits at this severity).
+      # Gate runs against the captured JSONL output.
+      #
+      # ★2026-07-29 审计修复：原实现有两条独立的假阴性通路，且两条都指向「通过」。
+      #
+      #   1. 扫描步是 continue-on-error，扫描崩溃/超时/目标不可达时不产出文件；
+      #      而 gate 用 `[ -f "$f" ] || continue` 把「文件不存在」当成「没有发现」
+      #      —— 一次什么都没扫的运行会报告 PASS。安全 gate 无法失败比没有 gate
+      #      更糟：它制造的是虚假信心。现在改为**先校验产出存在**，缺文件即失败。
+      #
+      #   2. `"severity":"high"` 这个 grep 不容忍空格。nuclei 若输出
+      #      `"severity": "high"`（冒号后带空格）或把 severity 嵌在 info 下，
+      #      计数恒为 0 —— 有真实 critical 发现也照样放行。改用 jq 按结构取值
+      #      （runner 自带 jq），并对解析失败本身报错。
       - name: Fail on critical/high
         run: |
+          set -euo pipefail
+
+          expected="nuclei-aster-cloud.jsonl nuclei-aster-api.jsonl"
+          missing=""
+          for f in $expected; do
+            [ -f "$f" ] || missing="$missing $f"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::扫描产出缺失:$missing —— 扫描很可能未真正执行"
+            echo "::error::缺产出一律判失败：不能把「没扫」当成「没问题」"
+            exit 1
+          fi
+
           fail=0
-          for f in nuclei-*.jsonl; do
-            [ -f "$f" ] || continue
-            count=$(grep -cE '"severity":"(critical|high)"' "$f" || true)
+          for f in $expected; do
+            # .info.severity 是 nuclei JSONL 的规范位置；解析失败要报错而非静默计 0
+            # -c 让每条发现压成一行，再数行数；否则 jq 默认多行输出会把
+            # 「1 条发现」数成它的字段行数（实测 1 条被数成 6）。
+            if ! count=$(jq -c 'select((.info.severity // .severity) |
+                          ascii_downcase | . == "critical" or . == "high")' "$f" | wc -l | tr -d ' '); then
+              echo "::error::$f 解析失败——无法判定发现数，按失败处理"
+              exit 1
+            fi
+            echo "$f: $count critical/high"
             if [ "$count" -gt 0 ]; then
               echo "::error::$f has $count critical/high findings"
               fail=1
