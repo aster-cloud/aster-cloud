@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { db, users, teams, teamMembers } from '@/lib/prisma';
+import { db, users, teams } from '@/lib/prisma';
 import { eq } from 'drizzle-orm';
 import { getEffectiveLimits, type PlanType } from '@/lib/plans';
 
@@ -62,13 +62,16 @@ export async function GET(
 
   const team = await db.query.teams.findFirst({ where: eq(teams.id, tenantId) });
   if (team) {
-    // 用 team owner 的 plan 表示 team 档位
-    const ownerMembership = await db.query.teamMembers.findFirst({
-      where: eq(teamMembers.teamId, team.id),
-    });
-    if (ownerMembership) {
-      user = await db.query.users.findFirst({ where: eq(users.id, ownerMembership.userId) }) ?? null;
-    }
+    // 用 team owner 的 plan 表示 team 档位。
+    //
+    // ★此前这里查的是 teamMembers（只按 teamId 过滤、无 role 条件、无排序），
+    // Postgres 返回哪一行是任意的——于是「owner 是 Enterprise、首个返回的成员是
+    // Free」的团队会被判成 free，且**同一租户多次调用可能得到不同结果**。
+    // aster-api 的 PlanGateService 据此做审批门禁与用量上限，档位取错即整队被
+    // 错误限流或错误放行。
+    //
+    // teams.ownerId 是 notNull 的权威字段，直接用它，不必绕经成员表。
+    user = await db.query.users.findFirst({ where: eq(users.id, team.ownerId) }) ?? null;
   }
 
   if (!user) {

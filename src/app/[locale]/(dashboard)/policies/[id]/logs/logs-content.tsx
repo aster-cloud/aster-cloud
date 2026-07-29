@@ -227,7 +227,10 @@ export function LogsContent({
   // 跟踪是否为首次挂载，避免重复获取服务端已提供的数据
   const isInitialMount = useRef(true);
 
-  const fetchLogs = useCallback(async () => {
+  // signal 由调用方的 useEffect 提供：切换筛选条件会连发多个请求，
+  // 没有取消机制时**先发后到**的旧响应会覆盖新结果——表格显示的数据与
+  // 下拉框显示的筛选条件不一致，且没有任何错误提示。审计发现（2026-07-29）。
+  const fetchLogs = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError('');
 
@@ -242,17 +245,20 @@ export function LogsContent({
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const res = await fetch(`/api/policies/${policyId}/logs?${params}`);
+      const res = await fetch(`/api/policies/${policyId}/logs?${params}`, { signal });
       if (!res.ok) throw new Error('Failed to fetch logs');
 
       const data = await res.json();
       setLogs(data.items || []);
       setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
+      // 被取消不是错误：这是更新的请求接手了，静默返回并把 loading
+      // 留给那个请求收尾，避免闪一下错误态。
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setError(t.logs.loadError);
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [policyId, page, successFilter, sourceFilter, startDate, endDate, t.logs.loadError]);
 
@@ -275,7 +281,9 @@ export function LogsContent({
       isInitialMount.current = false;
       return;
     }
-    fetchLogs();
+    const controller = new AbortController();
+    fetchLogs(controller.signal);
+    return () => controller.abort();
   }, [fetchLogs]);
 
   // Stats 已在服务端获取，无需客户端重新获取
