@@ -13,6 +13,25 @@ name: Deploy Worker
 # 搬进 CI 后：部署与 main push 同源可见、失败会红、回滚就是 revert + 重跑。
 # 这与本仓 aster-api 侧「发布真相 = image-pin PR 进 git」的做法一致。
 #
+# ★★★ 当前**默认关闭**（需显式开启）—— 2026-07-30 复审发现双路部署 ★★★
+#   实测：CI 于 11:28:03 部署完成，而 Worker 的 modified_on 在 11:29:43 又变了一次
+#   （晚 100 秒），且 main 上重新出现 `Workers Builds: aster-cloud: success` 检查
+#   → **Cloudflare Git 集成在 GitHub App 授权恢复后又活了**，与本 workflow 形成双路。
+#
+#   双路部署的危害：
+#     1. 竞态——两条路各自 build 后 deploy，上线版本取决于谁后完成，不确定；
+#     2. 回滚失效——revert 后一条部署旧版、另一条可能又推新版；
+#     3. 配置漂移——dashboard 的 build 命令与 package.json 的 deploy 脚本若不一致，
+#        产物就不一致，且**没有任何红灯**；
+#     4. 双倍 Next.js 构建开销。
+#
+#   故本 workflow 现由 `vars.ENABLE_CI_WORKER_DEPLOY` 显式门控，默认不跑。
+#   ☐ 启用步骤（二者必须同时做，否则又变双路）：
+#     1. 在 Cloudflare dashboard 断开 Git 集成：
+#        Workers & Pages → aster-cloud → Settings → Build → 断开 GitHub 连接
+#     2. 设 repo variable：`gh variable set ENABLE_CI_WORKER_DEPLOY --body true`
+#   在第 1 步完成前**不要**开启本 workflow。
+#
 # 前置 secret / vars（转仓时 repo 级 secret 已保留，environment 级不会）：
 #   secrets.CF_API_TOKEN           —— 需 Workers Scripts:Edit + Workers KV:Edit
 #                                     （OpenNext 上传 assets 需要）
@@ -43,6 +62,10 @@ concurrency:
 
 jobs:
   deploy:
+    # ★门控：仅当显式设 vars.ENABLE_CI_WORKER_DEPLOY=true 才部署。
+    #   目的是杜绝与 Cloudflare Git 集成的双路部署（见文件头说明）。
+    #   未设时本 job 直接 skip——不是失败，因为"没启用"是当前的预期状态。
+    if: ${{ vars.ENABLE_CI_WORKER_DEPLOY == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
