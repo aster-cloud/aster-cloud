@@ -6,6 +6,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- 内部验签收敛为共享实现 + v2 绑定 body/nonce（双接受） (#328) *(security)*
 - 孤勇集成自托管录音 MP3 + CF 边缘缓存，删合成旋律引擎 (#318) *(demos)*
 - 孤勇加原创旋律（纯 Web Audio 合成，零外部资源） (#308) *(demos)*
 - 孤勇歌词扩到 5 前提（更长，谱曲可唱约 30s） (#303) *(demos)*
@@ -306,6 +307,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#323) *(changelog)*
 - Refresh unreleased [skip ci] (#321) *(changelog)*
 - Refresh unreleased [skip ci] (#319) *(changelog)*
 - Refresh unreleased [skip ci] (#294) *(changelog)*
@@ -600,6 +602,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- 安全事件统计补租户隔离（审计 P0，漏修补齐） (#329) *(security)*
+- Team 档位取 owner + 两处前端竞态 + 移除客户端签名密钥 (#327)
+- 版本操作与安全事件补租户归属校验（跨租户 IDOR） (#325) *(security)*
 - 多语站 CJK 页关掉 latin 字体 eager preload（消除 preload 告警） (#320) *(fonts)*
 - CodeQL 测试/脚本告警(redos + 不完整转义 + 堆栈暴露) (#301) *(security)*
 - 修复 CodeQL 生产代码安全告警（格式串注入 + 邮件属性注入） (#300) *(security)*
