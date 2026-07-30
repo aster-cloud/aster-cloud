@@ -67,7 +67,7 @@
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.10.1",
     "mixpanel-browser": "^2.81.0",
-    "monaco-editor": "^0.55.1",
+    "monaco-editor": "^0.56.0",
     "next": "16.2.12",
     "next-auth": "5.0.0-beta.32",
     "next-intl": "^4.13.4",
