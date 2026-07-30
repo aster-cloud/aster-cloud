@@ -31,7 +31,7 @@ importers:
     dependencies:
       '@aster-cloud/aster-lang-ts':
         specifier: 1.0.13
-        version: 1.0.13(cac@6.7.14)(ora@9.4.0)(p-limit@7.3.0)(vscode-languageserver-textdocument@1.0.12)(vscode-languageserver-types@3.17.5)(vscode-languageserver@9.0.1)(ws@8.21.0)(zod@4.4.3)
+        version: 1.0.13(cac@6.7.14)(ora@9.4.0)(p-limit@7.3.0)(vscode-languageserver-textdocument@1.0.12)(vscode-languageserver-types@3.17.5)(vscode-languageserver@9.0.1)(ws@8.21.1)(zod@4.4.3)
       '@aster-cloud/tokens':
         specifier: ^0.2.0
         version: 0.2.0
@@ -133,7 +133,7 @@ importers:
         version: 3.5.0
       ws:
         specifier: '>=8.20.1'
-        version: 8.21.0
+        version: 8.21.1
     devDependencies:
       '@aster-cloud/glossary':
         specifier: ^0.1.2
@@ -5744,8 +5744,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.21.0:
-    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
+  ws@8.21.1:
+    resolution: {integrity: sha512-+0NTnW77fFN/DjQi6k/Sq/Yvk4Sgajw7urW8V+asjXnRgDs9gyGkdb7EzgfhA4goXsRIZKE28fzIXBHEzhuiWw==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -5900,7 +5900,7 @@ snapshots:
       '@ast-grep/napi-win32-ia32-msvc': 0.40.5
       '@ast-grep/napi-win32-x64-msvc': 0.40.5
 
-  '@aster-cloud/aster-lang-ts@1.0.13(cac@6.7.14)(ora@9.4.0)(p-limit@7.3.0)(vscode-languageserver-textdocument@1.0.12)(vscode-languageserver-types@3.17.5)(vscode-languageserver@9.0.1)(ws@8.21.0)(zod@4.4.3)':
+  '@aster-cloud/aster-lang-ts@1.0.13(cac@6.7.14)(ora@9.4.0)(p-limit@7.3.0)(vscode-languageserver-textdocument@1.0.12)(vscode-languageserver-types@3.17.5)(vscode-languageserver@9.0.1)(ws@8.21.1)(zod@4.4.3)':
     dependencies:
       '@types/semver': 7.7.1
       decimal.js: 10.4.3
@@ -5908,7 +5908,7 @@ snapshots:
     optionalDependencies:
       '@anthropic-ai/sdk': 0.71.2(zod@4.4.3)
       cac: 6.7.14
-      openai: 6.39.0(ws@8.21.0)(zod@4.4.3)
+      openai: 6.39.0(ws@8.21.1)(zod@4.4.3)
       ora: 9.4.0
       p-limit: 7.3.0
       vscode-languageserver: 9.0.1
@@ -10635,7 +10635,7 @@ snapshots:
       sharp: 0.35.3(@types/node@25.9.3)
       undici: 7.28.0
       workerd: 1.20260722.1
-      ws: 8.21.0
+      ws: 8.21.1
       youch: 4.1.0-beta.10
     transitivePeerDependencies:
       - '@types/node'
@@ -10852,9 +10852,9 @@ snapshots:
       regex: 6.1.0
       regex-recursion: 6.0.2
 
-  openai@6.39.0(ws@8.21.0)(zod@4.4.3):
+  openai@6.39.0(ws@8.21.1)(zod@4.4.3):
     optionalDependencies:
-      ws: 8.21.0
+      ws: 8.21.1
       zod: 4.4.3
     optional: true
 
@@ -12291,7 +12291,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.21.0: {}
+  ws@8.21.1: {}
 
   xml-name-validator@5.0.0: {}
 

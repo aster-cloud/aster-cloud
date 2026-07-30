@@ -84,7 +84,7 @@
     "tailwind-merge": "^3.6.0",
     "uuid": "^14.0.1",
     "vscode-ws-jsonrpc": "^3.5.0",
-    "ws": "8.21.0"
+    "ws": "8.21.1"
   },
   "devDependencies": {
     "@aster-cloud/glossary": "^0.1.2",
