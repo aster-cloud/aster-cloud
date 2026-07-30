@@ -30,6 +30,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const stats = await getSecurityEventStats({
+      // ★租户隔离：此前校验了登录态却丢弃 userId，任意登录用户可读取全平台的
+      // 安全事件统计（总数 + 按 severity/type 分布 + 错误率）。与兄弟端点
+      // events/route.ts 是同一缺陷，那边已修、这边漏修。
+      userId: session.user.id,
       startDate: start,
       endDate: end,
       policyId: policyId ?? undefined,

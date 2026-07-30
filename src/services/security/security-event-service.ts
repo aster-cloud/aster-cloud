@@ -143,8 +143,16 @@ export async function getSecurityEvents(
 
 /**
  * 获取安全事件统计（用于监控仪表盘）
+ *
+ * ★租户隔离：`userId` 为**必填**。此前本函数签名里没有 userId，路由校验了登录态却
+ * 从不传租户维度，任意登录用户都能拿到全平台按 severity/type 的安全事件统计
+ * （与兄弟函数 getSecurityEvents 曾犯的是同一个错，那边已修、这边漏修）。
+ *
+ * 这里刻意做成**必填而非可选**：可选参数正是上一次漏修的成因——调用方少传一个字段
+ * 就静默退化成跨租户全表聚合，且类型检查不报错。必填后漏传即编译失败。
  */
 export async function getSecurityEventStats(options: {
+  userId: string;
   startDate: Date;
   endDate: Date;
   policyId?: string;
@@ -154,9 +162,14 @@ export async function getSecurityEventStats(options: {
   byType: Record<string, number>;
   errorRate: number;
 }> {
+  if (!options.userId) {
+    throw new Error('userId 必需：安全事件统计不支持跨租户聚合（防越权读）');
+  }
+
   const conditions = [
     gte(securityEvents.createdAt, options.startDate),
     lte(securityEvents.createdAt, options.endDate),
+    eq(securityEvents.userId, options.userId),
   ];
 
   if (options.policyId) {
