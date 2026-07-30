@@ -113,7 +113,7 @@
     "eslint-config-next": "^16.2.12",
     "eslint-plugin-react": "^7.37.0",
     "eslint-plugin-react-hooks": "7.1.1",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "lucide-react": "^1.27.0",
     "rehype-autolink-headings": "7.1.0",
     "rehype-pretty-code": "0.14.3",
