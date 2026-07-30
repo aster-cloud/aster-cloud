@@ -307,6 +307,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#326) *(changelog)*
 - Refresh unreleased [skip ci] (#323) *(changelog)*
 - Refresh unreleased [skip ci] (#321) *(changelog)*
 - Refresh unreleased [skip ci] (#319) *(changelog)*
@@ -602,6 +603,9 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- CI Worker 部署改为显式门控（阻止与 Git 集成的双路部署） (#341) *(deploy)*
+- 补齐 staging ArgoCD + 用户可见链接 + runbook 的旧 org 引用 (#339) *(org-migration)*
+- Worker 部署搬进 CI（转仓后 Cloudflare Git 集成静默失效） *(deploy)*
 - 安全事件统计补租户隔离（审计 P0，漏修补齐） (#329) *(security)*
 - Team 档位取 owner + 两处前端竞态 + 移除客户端签名密钥 (#327)
 - 版本操作与安全事件补租户归属校验（跨租户 IDOR） (#325) *(security)*
@@ -1005,4 +1009,8 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 ### Polish
 
 - Tarball SLA call-site precision + class expression coverage (P0-R13)
+
+### Security
+
+- Secure-execute 补归属校验（跨租户 IDOR，漏修的第 8 条路由） (#340)
 
