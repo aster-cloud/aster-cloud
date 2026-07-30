@@ -15,7 +15,7 @@ Both apps deploy via ArgoCD auto-sync. A `git push` to main is enough — but fo
 git push origin main
 
 # 2. CI builds the Docker image and pushes to wontlost/aster-cloud:staging-latest (or aster-api:jvm-latest)
-gh run watch --repo aster-cloud/aster-cloud  # in another shell
+gh run watch --repo wontlost-ltd/aster-cloud  # in another shell
 
 # 3. ArgoCD detects the new image (image puller polls every 3 min) and starts rolling update
 KUBECONFIG=~/.kube/k3s-config argocd app get aster-cloud-staging

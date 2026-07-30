@@ -55,7 +55,7 @@ aster-api ships via ArgoCD auto-sync. Rollback by reverting the source commit.
 KUBECONFIG=~/.kube/k3s-config kubectl -n aster-cloud describe deploy/aster-api \
   | grep -E "Image|Updated"
 # This shows the docker image tag (= git SHA). Find the previous one:
-gh run list --workflow ci.yml --repo aster-cloud/aster-api --limit 10
+gh run list --workflow ci.yml --repo wontlost-ltd/aster-api --limit 10
 
 # 2. Revert the commit on main (creates a NEW commit)
 git revert <bad-sha>

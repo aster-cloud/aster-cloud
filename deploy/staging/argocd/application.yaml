@@ -15,7 +15,7 @@ metadata:
 spec:
   description: Aster staging environment (staging.aster-lang.cloud)
   sourceRepos:
-    - https://github.com/aster-cloud/aster-cloud.git
+    - https://github.com/wontlost-ltd/aster-cloud.git
   destinations:
     - namespace: aster-cloud-staging
       server: https://kubernetes.default.svc
@@ -40,7 +40,7 @@ metadata:
 spec:
   project: aster-staging
   source:
-    repoURL: https://github.com/aster-cloud/aster-cloud.git
+    repoURL: https://github.com/wontlost-ltd/aster-cloud.git
     targetRevision: main
     path: deploy/staging/aster-cloud
     helm:
@@ -77,7 +77,7 @@ metadata:
 spec:
   project: aster-staging
   source:
-    repoURL: https://github.com/aster-cloud/aster-cloud.git
+    repoURL: https://github.com/wontlost-ltd/aster-cloud.git
     targetRevision: main
     path: deploy/staging/aster-api
     helm:
@@ -113,7 +113,7 @@ metadata:
 spec:
   project: aster-staging
   source:
-    repoURL: https://github.com/aster-cloud/aster-cloud.git
+    repoURL: https://github.com/wontlost-ltd/aster-cloud.git
     targetRevision: main
     path: deploy/staging/postgres
     directory:

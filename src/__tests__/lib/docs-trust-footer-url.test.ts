@@ -17,7 +17,7 @@ import {
 describe('DocsTrustFooter — buildSuggestEditUrl', () => {
   it('returns an https GitHub issue URL', () => {
     const url = buildSuggestEditUrl('/docs/api/policies/evaluate', 'en');
-    expect(url.startsWith('https://github.com/aster-cloud/aster-cloud/issues/new?')).toBe(true);
+    expect(url.startsWith('https://github.com/wontlost-ltd/aster-cloud/issues/new?')).toBe(true);
   });
 
   it('includes the route slug in the title and body', () => {
