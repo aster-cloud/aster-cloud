@@ -61,7 +61,7 @@ NEW=$(openssl rand -base64 32)
 echo "$NEW" | wrangler secret put CRON_SECRET --name aster-cloud
 
 # 3. Update GitHub Actions secret (used by aster-api cron caller):
-gh secret set CRON_SECRET --repo aster-cloud/aster-api --body "$NEW"
+gh secret set CRON_SECRET --repo wontlost-ltd/aster-api --body "$NEW"
 
 # 4. Trigger one cron manually to verify both sides agree:
 curl -X POST https://aster-lang.cloud/api/cron/license-revocation-refresh \
@@ -182,11 +182,11 @@ GitHub-Actions-only secrets, no runtime impact:
 
 ```bash
 # ARGOCD: generate via ArgoCD UI → User Info → Generate Token
-gh secret set ARGOCD_AUTH_TOKEN --repo aster-cloud/aster-cloud --body "<token>"
+gh secret set ARGOCD_AUTH_TOKEN --repo wontlost-ltd/aster-cloud --body "<token>"
 
 # ZAP_SCAN_USER_PASSWORD: rotate the DB user row too
 psql "$DATABASE_URL" -c "UPDATE \"User\" SET password_hash='<new bcrypt>' WHERE email='security-scan@aster-lang.cloud';"
-gh secret set ZAP_SCAN_USER_PASSWORD --repo aster-cloud/aster-cloud --body "<new>"
+gh secret set ZAP_SCAN_USER_PASSWORD --repo wontlost-ltd/aster-cloud --body "<new>"
 ```
 
 ## Post-rotation

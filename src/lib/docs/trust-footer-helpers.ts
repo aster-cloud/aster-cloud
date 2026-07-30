@@ -28,7 +28,7 @@ export function buildSuggestEditUrl(routeSlug: string, locale: string): string {
     ].join('\n'),
     labels: 'docs,suggestion',
   });
-  return `https://github.com/aster-cloud/aster-cloud/issues/new?${params.toString()}`;
+  return `https://github.com/wontlost-ltd/aster-cloud/issues/new?${params.toString()}`;
 }
 
 /**
