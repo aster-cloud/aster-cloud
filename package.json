@@ -116,7 +116,7 @@
     "jsdom": "^29.1.1",
     "lucide-react": "^1.27.0",
     "rehype-autolink-headings": "7.1.0",
-    "rehype-pretty-code": "0.14.3",
+    "rehype-pretty-code": "0.14.5",
     "rehype-slug": "6.0.0",
     "remark-frontmatter": "5.0.0",
     "remark-mdx-frontmatter": "5.2.0",
