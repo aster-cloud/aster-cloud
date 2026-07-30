@@ -22,6 +22,7 @@ import {
 } from './policy-security';
 import { checkAndRecordNonce } from './nonce-service';
 import { logSecurityEvent } from './security-event-service';
+import { assertPolicyOwnership } from '../policy/version-manager';
 import { createPolicyApiClient } from '../policy/policy-api';
 import { loadVocabularyForExecution } from '@/lib/domain-vocabulary-snapshot';
 import { safeEnv } from '@/lib/runtime/safe-env';
@@ -89,6 +90,24 @@ export async function executeSecurely(
     userAgent,
     requestId,
   };
+
+  // 0. 归属校验（★必须最先做）
+  //
+  // 此前本函数只校验登录态：`policyId` 从 URL 直接进来，而下面所有查询只按
+  // `policyId + version + status` 过滤 → **任何登录用户可执行任意租户的策略**。
+  // version-manager.ts 的 IDOR 修复注释列了 8 个受影响路由并明确点名
+  // secure-execute，但那次只收口了走 version-manager 的 7 个；本函数有自己的
+  // 服务层，被漏下了。
+  //
+  // 为何放在签名校验**之前**：下面 409 分支会把 `expectedHash`/`expectedVersion`
+  // 回给调用方，那是攻击者补齐重放所需的最后一块拼图。先判归属，非所有者
+  // 拿不到任何信息。
+  //
+  // 也不能依赖签名当门禁：SIGNING_SECRET 取自 POLICY_SIGNING_SECRET，而该变量
+  // 在全仓任何配置里都不存在（只有本文件读它），`|| ''` 使其退化为空串——
+  // 任何人都能用空密钥算出合法签名。密钥即便配上也是**全局单一**，不区分
+  // user/tenant/policy，故本质上无法充当归属证明。
+  await assertPolicyOwnership(request.policyId, userId);
 
   // 1. 验证签名
   if (!verifySignature(request, SIGNING_SECRET)) {

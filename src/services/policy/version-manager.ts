@@ -59,7 +59,7 @@ export class PolicyAccessDeniedError extends Error {
  * 收口到服务层而非补 8 处路由：路由是会增加的，服务函数是收敛的；
  * 任何新入口只要走这些函数就自动带上校验。
  */
-async function assertPolicyOwnership(policyId: string, userId: string): Promise<void> {
+export async function assertPolicyOwnership(policyId: string, userId: string): Promise<void> {
   const owned = await db.query.policies.findFirst({
     where: and(
       eq(policies.id, policyId),

@@ -8,8 +8,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/prisma', () => ({
-  db: { query: { policyVersions: { findFirst: vi.fn() } } },
-  policies: {},
+  db: {
+    query: {
+      policyVersions: { findFirst: vi.fn() },
+      // ★2026-07-31 起 executeSecurely 会先做归属校验（assertPolicyOwnership），
+      //   故必须桩上 policies.findFirst；返回非 null = 本测试的调用者是所有者。
+      //   本文件测的是别名透传与哈希口径，不是归属，故一律放行。
+      policies: { findFirst: vi.fn(async () => ({ id: 'p1' })) },
+    },
+  },
+  policies: { id: {}, userId: {}, deletedAt: {} },
   policyVersions: { policyId: {}, version: {}, status: {}, isDefault: {} },
 }));
 vi.mock('@/services/security/policy-security', () => ({

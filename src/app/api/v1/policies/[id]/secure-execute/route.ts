@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 
 import { executeSecurely } from '@/services/security/secure-executor';
+import { PolicyAccessDeniedError } from '@/services/policy/version-manager';
 import type { SignedRequest } from '@/services/security/policy-security';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -149,6 +150,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { status }
     );
   } catch (error) {
+    // 归属校验失败一律回 404（不是 403）——与兄弟版本路由一致，
+    // 刻意不泄露「该 policyId 是否存在」，避免被用来枚举他人策略 ID。
+    if (error instanceof PolicyAccessDeniedError) {
+      return NextResponse.json(
+        { success: false, error: '策略不存在', requestId },
+        { status: 404 }
+      );
+    }
     console.error(`[SecureExecute] Request ${requestId} failed:`, error);
     return NextResponse.json(
       {
