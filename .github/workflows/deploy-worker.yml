@@ -1,0 +1,96 @@
+name: Deploy Worker
+
+# 把 Cloudflare Worker 的部署从「dashboard 里的 Git 集成」搬进 CI。
+#
+# ★为什么必须搬（2026-07-30 实测事故）：本仓从 aster-cloud org 转到 wontlost-ltd 后，
+#   Cloudflare 的 Git 集成**静默失效**——它绑定的是「GitHub App 安装 + 具体 repo」，
+#   换 owner 后原绑定不再生效，webhook 不再触发构建。
+#   证据：转仓前每个 main commit 都有 `Workers Builds: aster-cloud: success` 检查，
+#   转仓后 8 个 commit **一个都没有**；Worker 的 modified_on 停在 07-30T00:39Z，
+#   而此后 10+ 小时合并的 9 个 PR 全部未上线。
+#   最危险的是**CI 全绿但没部署**——部署真相不在 git 里，没人会发现。
+#
+# 搬进 CI 后：部署与 main push 同源可见、失败会红、回滚就是 revert + 重跑。
+# 这与本仓 aster-api 侧「发布真相 = image-pin PR 进 git」的做法一致。
+#
+# 前置 secret / vars（转仓时 repo 级 secret 已保留，environment 级不会）：
+#   secrets.CF_API_TOKEN           —— 需 Workers Scripts:Edit + Workers KV:Edit
+#                                     （OpenNext 上传 assets 需要）
+#   vars.CLOUDFLARE_ACCOUNT_ID     —— 非敏感，用 vars 而非 secret，便于日志排查
+#
+# ★不设 paths 过滤：Worker 部署的是**整个构建产物**，任何源码/依赖/配置改动都可能影响它。
+#   加 paths 白名单会出现"改了没在白名单里的文件 → 不部署 → 线上与 main 不一致"的静默漂移，
+#   与 aster-api deploy.yml 顶部记录的同类死角一致。
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      # 仅忽略确定不进构建产物的路径（文档/AI 工作区）。其余一律触发。
+      - '**.md'
+      - '.claude/**'
+  # 手动补部署（如本次转仓后需要把积压的提交推上线）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一时刻只允许一个部署在跑；不取消进行中的（部署不可中途打断，
+# 半途取消可能留下 assets 已上传而 script 未切换的中间态）。
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # fail-loud 前置：缺凭据时立刻停，而不是让 wrangler 报难懂的 401/404。
+      - name: Assert deploy credentials present
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          [ -n "$CF_API_TOKEN" ] || { echo "::error::缺 secrets.CF_API_TOKEN（需 Workers Scripts:Edit + Workers KV:Edit）"; exit 1; }
+          [ -n "$CF_ACCOUNT_ID" ] || { echo "::error::缺 vars.CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          echo "凭据就绪，account=$CF_ACCOUNT_ID"
+
+      # 复用 package.json 的 deploy 脚本（docs-index → next build → pii-scan →
+      # opennextjs build → wrangler deploy）。不在此重写构建步骤，避免与本地
+      # `pnpm deploy` 行为漂移——单一真相源在 package.json。
+      - name: Build + deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          NODE_ENV: production
+        run: pnpm run deploy
+
+      # 部署后核实线上版本确实变了。只看 wrangler 退出码不够——曾有"命令成功但
+      # 产物未切换"的形态，故显式打印部署后的 script 元数据供人工核对。
+      - name: Verify deployment landed
+        if: success()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          out="$(npx wrangler deployments list --name aster-cloud 2>&1 | head -20 || true)"
+          echo "$out"
+          echo "### Worker 部署结果" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$out" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
