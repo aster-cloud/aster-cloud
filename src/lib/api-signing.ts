@@ -354,7 +354,17 @@ export async function verifyInternalSignature(
   }
 
   // v1：兼容窗口内的旧格式（不绑定 body/nonce → 可换 body 重放）
-  const allowLegacy = opts?.allowLegacy ?? (process.env.ASTER_INTERNAL_ALLOW_LEGACY_SIG !== 'false');
+  // ★默认 **不再接受** v1（2026-08-01 完成上线顺序第三步）。
+  //   v1 canonical 不绑 body/nonce，300s 时钟窗内可原样换 body 重放
+  //   （影响 /api/internal/api/usage 等计费归因写入）。
+  //   此前默认值是 `!== 'false'`，即**默认开启**，而该环境变量在
+  //   wrangler.toml [vars]、K8s Secret、任何部署配置中**都未设置** —— 也就是说
+  //   兼容窗口从未真正关闭，可重放路径一直活在生产。
+  //   已实证零调用方：aster-api 侧唯一签名实现 InternalCallSigner 只产 v2
+  //   （nonce + bodySha256），cloud 侧 signInternalCallerHeaders 同样只产 v2，
+  //   aster-deploy 的 42 处 /api/internal 引用全是文档、无运行时调用。
+  //   如需临时回退（仅限紧急排障）：设 ASTER_INTERNAL_ALLOW_LEGACY_SIG=true。
+  const allowLegacy = opts?.allowLegacy ?? (process.env.ASTER_INTERNAL_ALLOW_LEGACY_SIG === 'true');
   if (allowLegacy) {
     const canonicalV1 = `${method}\n${url.pathname}\n${ts}`;
     if (await hmacVerify(secret, canonicalV1, signature)) {
