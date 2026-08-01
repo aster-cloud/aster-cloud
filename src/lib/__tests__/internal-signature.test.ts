@@ -71,6 +71,32 @@ describe('verifyInternalSignature', () => {
     expect(r).toEqual({ ok: false, reason: 'invalid_signature' });
   });
 
+  it('★不传 opts 时默认拒绝 v1 —— 钉死迁移第三步已完成', async () => {
+    // 既有用例都显式传 allowLegacy，因此**没有一个覆盖默认值**。
+    // 而默认值恰恰是生产实际走的分支：ASTER_INTERNAL_ALLOW_LEGACY_SIG
+    // 在 wrangler.toml / K8s Secret / 任何部署配置中都未设置。
+    // 此前默认是 `!== 'false'`（默认开启），可重放路径一直活在生产。
+    delete process.env.ASTER_INTERNAL_ALLOW_LEGACY_SIG;
+    const ts = now();
+    const r = await verifyInternalSignature(
+      makeReq({ 'X-Aster-Timestamp': String(ts), 'X-Aster-Signature': v1(ts) }),
+      BODY, SECRET);   // ← 故意不传 opts，走默认分支
+    expect(r.ok).toBe(false);
+  });
+
+  it('紧急回退：显式设 ASTER_INTERNAL_ALLOW_LEGACY_SIG=true 仍可临时接受 v1', async () => {
+    process.env.ASTER_INTERNAL_ALLOW_LEGACY_SIG = 'true';
+    try {
+      const ts = now();
+      const r = await verifyInternalSignature(
+        makeReq({ 'X-Aster-Timestamp': String(ts), 'X-Aster-Signature': v1(ts) }),
+        BODY, SECRET);
+      expect(r).toEqual({ ok: true, usedLegacyCanonical: true });
+    } finally {
+      delete process.env.ASTER_INTERNAL_ALLOW_LEGACY_SIG;
+    }
+  });
+
   it('过期时间戳拒绝（300s 窗口）', async () => {
     const ts = now() - 400, nonce = 'n-1';
     const r = await verifyInternalSignature(

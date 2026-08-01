@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createHmac } from 'node:crypto';
+import { createHmac, createHash } from 'node:crypto';
 
 /**
  * /api/internal/snapshot/full 路由级回归：
@@ -43,10 +43,16 @@ const originalKey = process.env.ASTER_PLAN_GATE_HMAC_KEY;
 const TEST_KEY = 'test-shared-hmac-key';
 const PATH = '/api/internal/snapshot/full';
 
+// ★v2 签名（绑定 nonce + bodyHash）。GET 无 body，bodyHash 取空串的 sha256。
+// v1 已于 2026-08-01 默认关闭——它不绑 body/nonce，可在时钟窗内换 body 重放。
 function signedHeaders(key: string): Record<string, string> {
   const ts = String(Math.floor(Date.now() / 1000));
-  const sig = createHmac('sha256', key).update(`GET\n${PATH}\n${ts}`).digest('hex');
-  return { 'X-Aster-Timestamp': ts, 'X-Aster-Signature': sig };
+  const nonce = `n-${Math.floor(Date.now() / 1000)}-${Math.random().toString(36).slice(2)}`;
+  const bodyHash = createHash('sha256').update('').digest('hex');
+  const sig = createHmac('sha256', key)
+    .update(`GET\n${PATH}\n${ts}\n${nonce}\n${bodyHash}`)
+    .digest('hex');
+  return { 'X-Aster-Timestamp': ts, 'X-Aster-Nonce': nonce, 'X-Internal-Signature': sig };
 }
 
 function makeReq(query: string, headers?: Record<string, string>): Request {
