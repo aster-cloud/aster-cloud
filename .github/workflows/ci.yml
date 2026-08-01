@@ -437,7 +437,7 @@ jobs:
       # :latest 拉取，只是该 tag 现在保证已验签）——admission + by-digest GitOps 是统一设计的
       # Phase 1-3（k3s image-lock + verify workflow + 分支保护），单独立项。不声称"部署链已闭合"。
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Sign migrate image digest (keyless)
         env:
