@@ -22,8 +22,41 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  # ── 探测本地 self-hosted runner 是否可用（省托管额度）─────────────────────
+  # ★不采用 aster-api 的 build-local/build-hosted 双 job 拆分：本仓的 `build` 与
+  #   `on-prem-build` 既是**分支保护的 required check**，又是 `e2e` /
+  #   `build-migrate-image` 的 `needs:` 目标。改名会同时打断这两处，
+  #   而 skipped 的 job 会被 required check 当成"未完成"卡住合并。
+  #   故改为**保持 job 名不变、只让 runs-on 动态取值**——收益相同，爆炸半径小得多。
+  #
+  # ★已知取舍（与 aster-api 的差异）：本设计**没有 hosted 兜底**。
+  #   aster-api 用 build-local/build-hosted 双 job + `always() && result != 'success'`
+  #   能在本地 job 真的失败时自动重跑到托管；本仓为保住 required check 名而用单 job，
+  #   代价是「探测通过后 runner 中途崩溃（VM OOM / 磁盘满 / 断网）」会直接让 build 变红。
+  #   缓解：pick-runner 已排除 offline/busy 的 runner，覆盖绝大多数情况；
+  #   真遇到中途崩溃时**重跑一次**即可（届时探测会判本地不可用 → 自动走 hosted）。
+  #   若这类中断变得频繁，再考虑按 aster-api 的方式拆 job 并同步更新分支保护的
+  #   required check 名（那是个需要一并改 branch protection 的动作，不能只改 workflow）。
+  pick-runner:
     runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.pick.outputs.target }}
+      labels: ${{ steps.pick.outputs.target == 'local' && '["self-hosted","linux","ARM64","local-linux"]' || '["ubuntu-latest"]' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: pick
+        uses: ./.github/actions/pick-runner
+        with:
+          labels: self-hosted,linux,ARM64,local-linux
+          # 只读 runner 状态的最小权限 token。未配置/无权限/API 出错时一律保守
+          # 回落 hosted——探测器绝不能成为 CI 的故障点。
+          token: ${{ secrets.RUNNER_PROBE_TOKEN }}
+
+  build:
+    needs: pick-runner
+    runs-on: ${{ fromJSON(needs.pick-runner.outputs.labels) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -345,7 +378,8 @@ jobs:
   #                              wrap CLIENT_CAPABILITIES.billing
   # 详见 .claude/plan/saas-only-inventory.md §17 PR-4 checklist。
   on-prem-build:
-    runs-on: ubuntu-latest
+    needs: pick-runner
+    runs-on: ${{ fromJSON(needs.pick-runner.outputs.labels) }}
     steps:
       - uses: actions/checkout@v7
 
