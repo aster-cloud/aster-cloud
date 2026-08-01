@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       target: ${{ steps.pick.outputs.target }}
-      labels: ${{ steps.pick.outputs.target == 'local' && '["self-hosted","linux","ARM64","local-linux"]' || '["ubuntu-latest"]' }}
+      labels: ${{ steps.pick.outputs.target == 'local' && '["self-hosted","linux","ARM64","local-node"]' || '["ubuntu-latest"]' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,7 +49,15 @@ jobs:
       - id: pick
         uses: ./.github/actions/pick-runner
         with:
-          labels: self-hosted,linux,ARM64,local-linux
+          # ★用 local-node 而非 local-linux：本机跑两个 runner，它们共享 podman VM
+          #   的网络命名空间（network=host 是 services: 可达的前提）。若两个 runner
+          #   都能接 aster-api 的 job，两个 postgres service 会同时抢 5432 →
+          #   `cannot bind tcp port :5432: address already in use`（实测踩过）。
+          #   故按用途隔离标签：
+          #     local-linux → pang-linux-podman    专供 aster-api（有 services:）
+          #     local-node  → pang-linux-podman-2  专供本仓（零 services:，纯 Node/pnpm）
+          #   代价：两个 runner 不再互为备份；本仓 runner 忙时直接回落 hosted。
+          labels: self-hosted,linux,ARM64,local-node
           # 只读 runner 状态的最小权限 token。未配置/无权限/API 出错时一律保守
           # 回落 hosted——探测器绝不能成为 CI 的故障点。
           token: ${{ secrets.RUNNER_PROBE_TOKEN }}
