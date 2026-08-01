@@ -18,7 +18,18 @@ export async function POST(req: Request) {
     }
 
     // 验证所有分组都属于当前用户或其团队
-    const groupIds = orders.map((o: { id: string }) => o.id);
+    //
+    // ★ parentId 必须与 id 一同校验：它同样是一个分组 ID，且会被直接写入
+    //   （见下方 updateData.parentId）。此前只校验 orders[].id，导致攻击者可用
+    //   自己的分组作为 id、把受害者的分组 ID 塞进 parentId，将自己的分组挂到
+    //   对方的分组树下。policyGroups.parentId 是裸 text 列、无 FK 无约束，
+    //   DB 不会兜底；而 DELETE [id] 的级联按 parentId 改写且**无 owner 谓词**，
+    //   受害者删除分组时会连带改写攻击者的行（反之亦然）。
+    const orderIds = orders.map((o: { id: string }) => o.id);
+    const parentIds = orders
+      .map((o: { parentId?: string | null }) => o.parentId)
+      .filter((p: string | null | undefined): p is string => typeof p === 'string' && p.length > 0);
+    const groupIds = Array.from(new Set<string>([...orderIds, ...parentIds]));
 
     // 查询用户自己的分组
     const userGroups = await db.query.policyGroups.findMany({
@@ -61,8 +72,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // 检查是否有系统分组
-    const systemGroups = groups.filter((g) => g.isSystem);
+    // 检查是否有系统分组（只针对被**改写**的分组；作为 parent 引用系统分组是允许的）
+    const orderIdSet = new Set<string>(orderIds);
+    const systemGroups = groups.filter((g) => g.isSystem && orderIdSet.has(g.id));
     if (systemGroups.length > 0) {
       return NextResponse.json({ error: 'Cannot reorder system groups' }, { status: 403 });
     }

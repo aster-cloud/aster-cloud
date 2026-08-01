@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, policies, policyVersions, executions } from '@/lib/prisma';
+import { db, policies, policyVersions, executions, policyGroups } from '@/lib/prisma';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { detectPII } from '@/services/pii/detector';
 import {
@@ -236,6 +236,23 @@ export async function PUT(req: Request, { params }: RouteParams) {
     if (content !== undefined) updateData.content = content;
     if (description !== undefined) updateData.description = description;
     if (isPublic !== undefined) updateData.isPublic = isPublic;
+    // ★ 移动到分组时必须校验目标分组归属 —— 与 POST /api/policies 保持一致。
+    //   此前 PUT 未校验：攻击者可把自己的策略的 groupId 指向受害者的分组。
+    //   危害不止于"挂错位置"：DELETE /api/policy-groups/[id] 的级联按 groupId
+    //   改写策略且**无 owner 谓词**，受害者（或团队管理员）删除分组时会连带
+    //   改写其他用户拥有的行。
+    if (groupId) {
+      const targetGroup = await db.query.policyGroups.findFirst({
+        where: and(
+          eq(policyGroups.id, groupId),
+          eq(policyGroups.userId, session.user.id)
+        ),
+        columns: { id: true },
+      });
+      if (!targetGroup) {
+        return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+      }
+    }
     if (groupId !== undefined) updateData.groupId = groupId || null;
 
     if (newVersion) {
