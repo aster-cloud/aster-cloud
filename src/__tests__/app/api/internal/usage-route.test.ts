@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createHmac } from 'node:crypto';
+import { createHmac, createHash } from 'node:crypto';
 
 /**
  * /api/internal/api/usage 路由级回归。
@@ -48,20 +48,29 @@ const originalKey = process.env.ASTER_PLAN_GATE_HMAC_KEY;
 const TEST_KEY = 'test-shared-hmac-key';
 const PATH = '/api/internal/api/usage';
 
-function signedHeaders(key: string): Record<string, string> {
+// ★v2 签名（绑定 nonce + bodyHash）。此前用 v1（method\npath\nts），
+// 而 v1 已于 2026-08-01 默认关闭——它不绑 body/nonce，可在时钟窗内换 body 重放。
+// 生产早已只发 v2（aster-api InternalCallSigner / cloud signInternalCallerHeaders），
+// 这些用例是最后残留的 v1 调用方。
+function signedHeaders(key: string, rawBody = ''): Record<string, string> {
   const ts = String(Math.floor(Date.now() / 1000));
-  const sig = createHmac('sha256', key).update(`POST\n${PATH}\n${ts}`).digest('hex');
+  const nonce = `n-${Math.floor(Date.now() / 1000)}-${Math.random().toString(36).slice(2)}`;
+  const bodyHash = createHash('sha256').update(rawBody).digest('hex');
+  const sig = createHmac('sha256', key)
+    .update(`POST\n${PATH}\n${ts}\n${nonce}\n${bodyHash}`)
+    .digest('hex');
   return {
     'Content-Type': 'application/json',
     'X-Aster-Timestamp': ts,
-    'X-Aster-Signature': sig,
+    'X-Aster-Nonce': nonce,
+    'X-Internal-Signature': sig,
   };
 }
 
 function post(body: unknown, headers?: Record<string, string>): Request {
   return new Request(`http://cloud.test${PATH}`, {
     method: 'POST',
-    headers: headers ?? signedHeaders(TEST_KEY),
+    headers: headers ?? signedHeaders(TEST_KEY, JSON.stringify(body)),   // ★body 参与 v2 签名
     body: JSON.stringify(body),
   });
 }
