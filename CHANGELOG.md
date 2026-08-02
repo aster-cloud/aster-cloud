@@ -307,6 +307,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#338) *(changelog)*
 - Refresh unreleased [skip ci] (#326) *(changelog)*
 - Refresh unreleased [skip ci] (#323) *(changelog)*
 - Refresh unreleased [skip ci] (#321) *(changelog)*
@@ -603,6 +604,10 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Stale gate 改用 gh api（转私后匿名 ls-remote 失败） (#350) *(ci)*
+- Pin cosign-release=v2.5.2（installer 升级打断了 migrate 镜像签名） (#349) *(ci)*
+- 内部签名默认不再接受可重放的 v1（迁移第三步） (#343) *(security)*
+- ParentId / groupId 写入前必须校验归属（跨租户写） (#342) *(policy-groups)*
 - CI Worker 部署改为显式门控（阻止与 Git 集成的双路部署） (#341) *(deploy)*
 - 补齐 staging ArgoCD + 用户可见链接 + runbook 的旧 org 引用 (#339) *(org-migration)*
 - Worker 部署搬进 CI（转仓后 Cloudflare Git 集成静默失效） *(deploy)*
