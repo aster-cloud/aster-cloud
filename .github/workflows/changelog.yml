@@ -53,15 +53,40 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # ── tag 事件：直推（release 刻意动作；不驱动 image-pin 链）──
-      - name: Commit changelog on tag (direct)
+      # ── tag 事件：优先直推（release 刻意动作；不驱动 image-pin 链），推不动则退化为 PR ──
+      #
+      # ★2026-08-02：main 已启用分支保护（禁直推）。${{ github.token }} 是 GitHub Actions App
+      #   的安装令牌，直推会被 `GH006: Protected branch update failed` 拒绝。
+      #   GitHub Actions **不能**作为 ruleset 的 bypass actor（repo 级与 org 级均报
+      #   "Actor GitHub Actions integration must be part of the ruleset source or owner
+      #   organization"，team plan 也一样），故无法靠放行令牌解决。
+      #   本仓也没有 admin PAT（对比 aster-lang-test 用 CROSS_REPO_TOKEN 直推）。
+      #
+      #   处理：直推失败**不让发版流水线变红**，自动退化为开 PR。CHANGELOG 是派生物，
+      #   晚几分钟合入不影响发版本身；但绝不静默丢弃——退化路径会留下可见的 PR。
+      - name: Commit changelog on tag (direct, fallback to PR)
         if: ${{ steps.diff.outputs.changed == 'true' && startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md
           git commit -m "docs(changelog): release ${GITHUB_REF_NAME} [skip ci]"
-          git push origin HEAD:main
+          if git push origin HEAD:main 2>/tmp/push-err; then
+            echo "✓ changelog 已直推 main"
+            exit 0
+          fi
+          echo "::warning::直推 main 失败（分支保护），退化为开 PR："
+          cat /tmp/push-err
+          BRANCH="chore/changelog-${GITHUB_REF_NAME}"
+          git push --force-with-lease origin "HEAD:${BRANCH}"
+          if [ -z "$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')" ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "docs(changelog): release ${GITHUB_REF_NAME}" \
+              --body "发版 ${GITHUB_REF_NAME} 的 CHANGELOG 版本化小节。因 main 启用分支保护、且 GitHub Actions 无法作为 ruleset bypass actor，改由本 PR 合入。"
+          fi
 
       # ── push-to-main 事件：开/更新 changelog PR（★不直推 main，避免污染 tip）──
       - name: Open/update changelog PR (push to main)
