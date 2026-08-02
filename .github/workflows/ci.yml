@@ -565,9 +565,13 @@ jobs:
     steps:
       - name: Final stale gate (再确认 github.sha 仍是 origin/main tip)
         id: stalegate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tip="$(git ls-remote https://github.com/${{ github.repository }}.git refs/heads/main | cut -f1)"
+          # 转私后匿名 ls-remote 会索要用户名 → exit 128（aster-api 实测）。
+          # 改用 gh api，并显式传 GH_TOKEN。
+          tip="$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)"
           echo "this run: ${GITHUB_SHA}  origin/main tip: ${tip}"
           if [ "${GITHUB_SHA}" != "${tip}" ]; then
             echo "::notice::main 已前进，本 run 过时 → 跳过 image-pin PR（下次 push 重建固定分支）"
