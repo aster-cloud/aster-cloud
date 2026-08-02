@@ -307,6 +307,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 
+- Refresh unreleased [skip ci] (#344) *(changelog)*
 - Refresh unreleased [skip ci] (#338) *(changelog)*
 - Refresh unreleased [skip ci] (#326) *(changelog)*
 - Refresh unreleased [skip ci] (#323) *(changelog)*
@@ -604,6 +605,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- Changelog tag 路径直推失败时退化为 PR（分支保护 + 发版前置） (#351) *(ci)*
 - Stale gate 改用 gh api（转私后匿名 ls-remote 失败） (#350) *(ci)*
 - Pin cosign-release=v2.5.2（installer 升级打断了 migrate 镜像签名） (#349) *(ci)*
 - 内部签名默认不再接受可重放的 v1（迁移第三步） (#343) *(security)*
