@@ -33,6 +33,7 @@ import {
 } from '@/components/ui';
 import {
   LocaleDetectionToggle,
+  AssistantToggle,
   SignOutButton,
   DeleteAccountFlow,
 } from './settings-client';
@@ -51,6 +52,8 @@ export default async function SettingsPage({ params }: PageProps) {
   }
 
   const t = await getTranslations('settings');
+  // 助手文案是顶层命名空间（面板/设置共用同一套），故单独绑一个 translator。
+  const tAssistant = await getTranslations('assistant');
 
   // Seed the toggle's initial state on the server so it doesn't flip
   // after hydration. Cookie absent ⇒ feature off (matches prior client
@@ -134,6 +137,29 @@ export default async function SettingsPage({ params }: PageProps) {
                   ariaLabel={t('language.autoDetect')}
                   enabledHint={t('language.enabled')}
                   disabledHint={t('language.disabled')}
+                />
+              </Stack>
+            </Stack>
+          </CardBody>
+        </Card>
+
+        {/* 站内助手开关（client island）。
+            ★这是助手停用后唯一的重新激活入口——面板自身的关闭按钮只是收起。 */}
+        <Card>
+          <CardBody className="pt-6">
+            <Stack gap={4}>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-fg">
+                {tAssistant('settingsLabel')}
+              </h2>
+              <Stack direction="row" justify="between" align="center" gap={4}>
+                <Stack gap={1}>
+                  <p className="text-sm font-medium text-fg">{tAssistant('title')}</p>
+                  <p className="text-sm text-fg-muted">{tAssistant('settingsHint')}</p>
+                </Stack>
+                <AssistantToggle
+                  ariaLabel={tAssistant('settingsLabel')}
+                  enabledHint={tAssistant('settingsOn')}
+                  disabledHint={tAssistant('settingsOff')}
                 />
               </Stack>
             </Stack>

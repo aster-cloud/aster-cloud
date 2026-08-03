@@ -31,6 +31,28 @@ const INDEXES: Record<string, SearchIndex> = {
   de: deIndex as SearchIndex,
 };
 
+/**
+ * 取某 locale 的文档搜索索引（未知 locale 回退 en，与 buildDocsSeeds 同口径）。
+ *
+ * <p>站内助手复用同一份索引做检索——不另建索引，避免两处内容漂移。
+ * hi 暂无独立文档索引，回退 en（文档站尚未出 hi 版）。
+ */
+export function getDocsSearchIndex(locale: string): SearchIndex {
+  return INDEXES[locale] ?? INDEXES.en;
+}
+
+/**
+ * 文档路由前缀（`''` 表示 en 无前缀）。
+ *
+ * <p>★必须与 {@link getDocsSearchIndex} 的回退**同步**：hi 没有文档索引，
+ * 内容回退到 en，路由也只有 `/docs/...` 而没有 `/hi/docs/...`。
+ * 若前缀仍按原 locale 拼，hi 用户点开每条文档结果都是 404。
+ */
+export function getDocsRoutePrefix(locale: string): string {
+  const resolved = INDEXES[locale] ? locale : 'en';
+  return resolved === 'en' ? '' : `/${resolved}`;
+}
+
 /** Max number of docs commands surfaced in the dashboard palette. */
 const MAX_SEEDS = 12;
 
