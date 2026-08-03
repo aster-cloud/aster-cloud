@@ -170,18 +170,26 @@ export function getKeywordsByCategory(lexicon: Lexicon) {
       kw[SemanticTokenKind.MODULE_DECL],
       kw[SemanticTokenKind.IMPORT],
       kw[SemanticTokenKind.IMPORT_ALIAS],
+      kw[SemanticTokenKind.IMPORT_VERSION],
     ],
     type: [
       kw[SemanticTokenKind.TYPE_DEF],
       kw[SemanticTokenKind.TYPE_WITH],
       kw[SemanticTokenKind.TYPE_HAS],
       kw[SemanticTokenKind.TYPE_ONE_OF],
+      kw[SemanticTokenKind.MAYBE],
+      kw[SemanticTokenKind.OPTION_OF],
+      kw[SemanticTokenKind.RESULT_OF],
+      kw[SemanticTokenKind.OK_OF],
+      kw[SemanticTokenKind.ERR_OF],
+      kw[SemanticTokenKind.SOME_OF],
     ],
     function: [
       kw[SemanticTokenKind.FUNC_TO],
       kw[SemanticTokenKind.FUNC_GIVEN],
       kw[SemanticTokenKind.FUNC_PRODUCE],
       kw[SemanticTokenKind.FUNC_PERFORMS],
+      kw[SemanticTokenKind.APPLY],
     ],
     control: [
       kw[SemanticTokenKind.IF],
@@ -209,6 +217,8 @@ export function getKeywordsByCategory(lexicon: Lexicon) {
       kw[SemanticTokenKind.MINUS_WORD],
       kw[SemanticTokenKind.TIMES],
       kw[SemanticTokenKind.DIVIDED_BY],
+      kw[SemanticTokenKind.INTEGER_DIVIDED_BY],
+      kw[SemanticTokenKind.MODULO],
       kw[SemanticTokenKind.LESS_THAN],
       kw[SemanticTokenKind.GREATER_THAN],
       kw[SemanticTokenKind.EQUALS_TO],
@@ -248,6 +258,12 @@ export function getKeywordsByCategory(lexicon: Lexicon) {
       kw[SemanticTokenKind.AWAIT],
       kw[SemanticTokenKind.WAIT_FOR],
     ],
+    // 效果标注（io / cpu）——tokenizer 里原有一条硬编码 /输入输出/ 规则，
+    // 但从未有对应分类，故 en/de/hi 的 io/cpu 一直不高亮。
+    effect: [
+      kw[SemanticTokenKind.IO],
+      kw[SemanticTokenKind.CPU],
+    ],
     constraint: [
       kw[SemanticTokenKind.REQUIRED],
       kw[SemanticTokenKind.BETWEEN],
@@ -257,4 +273,61 @@ export function getKeywordsByCategory(lexicon: Lexicon) {
       kw[SemanticTokenKind.PATTERN],
     ],
   };
+}
+
+/** 分类名 → Monaco token 类型（与 tokenizer 的 cases 一一对应）。 */
+const CATEGORY_TOKEN: Record<string, string> = {
+  module: 'keyword.module',
+  type: 'keyword.type',
+  function: 'keyword.function',
+  control: 'keyword.control',
+  variable: 'keyword.variable',
+  boolean: 'keyword.boolean',
+  operator: 'keyword.operator',
+  literal: 'constant.language',
+  primitiveType: 'type',
+  workflow: 'keyword.workflow',
+  async: 'keyword.async',
+  constraint: 'keyword.constraint',
+  effect: 'keyword.effect',
+};
+
+/** 正则元字符转义（关键词里可能含 `.`/`(` 等）。 */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 从词表**动态生成**多词关键词的 Monarch 规则（含空格的关键词，如
+ * `for each` / `als eines von` / `इनमें से एक`）。
+ *
+ * <p><b>为什么必须动态生成</b>：Monarch 是「自上而下、首个匹配即用」，而标识符
+ * 规则 `[A-Za-z_…]+` 只吃到 `for` 就落 `@default=identifier`，后面的 `/for each/`
+ * 永远轮不到——所以多词规则必须排在标识符之前。此前那份规则是**手抄硬编码**的
+ * 14 条，已与词表漂移（漏了 the result is / integer divided by / more than /
+ * at least / at most 等），且新增关键词不会自动进来。改为从 getKeywordsByCategory
+ * 派生，词表变则规则自动跟随。
+ *
+ * <p>按长度降序：`integer divided by` 必须排在 `divided by` 之前，否则前者会被
+ * 后者的子串先匹配掉。
+ */
+export function buildMultiWordRules(lexicon: Lexicon): Array<[RegExp, string]> {
+  const cats = getKeywordsByCategory(lexicon) as Record<string, Array<string | undefined>>;
+  const seen = new Set<string>();
+  const entries: Array<{ word: string; token: string }> = [];
+  for (const [cat, words] of Object.entries(cats)) {
+    const token = CATEGORY_TOKEN[cat];
+    if (!token) continue;
+    for (const w of words) {
+      if (!w || !/\s/.test(w) || seen.has(w)) continue;
+      seen.add(w);
+      entries.push({ word: w, token });
+    }
+  }
+  entries.sort((a, b) => b.word.length - a.word.length);
+  // 空白宽松匹配（源码里多词之间可能是多个空格/换行前的对齐空格）。
+  return entries.map(({ word, token }) => [
+    new RegExp(escapeRegex(word).replace(/\s+/g, '\\s+'), 'i'),
+    token,
+  ]);
 }

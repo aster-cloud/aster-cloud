@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocale } from 'next-intl';
 import type { SecurityEventType, EventSeverity } from '@/lib/prisma';
 
 interface SecurityStats {
@@ -60,6 +61,9 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 type TimeRange = '1h' | '24h' | '7d' | '30d';
 
 export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
+  // 事件时间按当前 locale 格式化（原硬编码 'zh-CN'，德语/印地语用户看到中文格式）。
+  // ★本组件其余文案仍是硬编码中文（约 40 处），属独立的 i18n 工作，不在本次范围。
+  const locale = useLocale();
   const [stats, setStats] = useState<SecurityStats | null>(null);
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -349,7 +353,7 @@ export function SecurityDashboard({ policyId }: SecurityDashboardProps) {
                     )}
                   </div>
                   <div className="ml-4 text-sm text-fg-muted dark:text-fg-subtle whitespace-nowrap">
-                    {new Date(event.createdAt).toLocaleString('zh-CN')}
+                    {new Date(event.createdAt).toLocaleString(locale)}
                   </div>
                 </div>
               </div>

@@ -1784,12 +1784,36 @@ export const policyVersionsRelations = relations(policyVersions, ({ one, many })
     references: [policies.id],
   }),
   approvals: many(policyApprovals),
+  // 「谁做的」三个字段存的是 User.id（**刻意存 ID 不存姓名**：不可变记录不能因用户
+  // 改名而漂移，与审计链同口径）。展示层要显示姓名就必须在读取时 join 出来——
+  // 此前没有这层 relation，版本详情面板于是直接渲染裸 UUID。
+  createdByUser: one(users, {
+    fields: [policyVersions.createdBy],
+    references: [users.id],
+    relationName: 'policyVersionCreatedBy',
+  }),
+  deprecatedByUser: one(users, {
+    fields: [policyVersions.deprecatedBy],
+    references: [users.id],
+    relationName: 'policyVersionDeprecatedBy',
+  }),
+  archivedByUser: one(users, {
+    fields: [policyVersions.archivedBy],
+    references: [users.id],
+    relationName: 'policyVersionArchivedBy',
+  }),
 }));
 
 export const policyApprovalsRelations = relations(policyApprovals, ({ one }) => ({
   version: one(policyVersions, {
     fields: [policyApprovals.versionId],
     references: [policyVersions.id],
+  }),
+  // 同 policyVersions 的三个 actor：存 ID，展示时 join 出姓名。
+  approverUser: one(users, {
+    fields: [policyApprovals.approverId],
+    references: [users.id],
+    relationName: 'policyApprovalApprover',
   }),
 }));
 

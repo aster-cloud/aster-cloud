@@ -259,13 +259,13 @@ export function PolicyVersionList({
 
                 {version.deprecatedAt && (
                   <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
-                    废弃于 {new Date(version.deprecatedAt).toLocaleString('zh-CN')}
+                    {t('deprecatedOn', { date: new Date(version.deprecatedAt).toLocaleString(locale) })}
                   </p>
                 )}
 
                 {version.archivedAt && (
                   <p className="mt-1 text-xs text-fg-muted dark:text-fg-muted">
-                    归档于 {new Date(version.archivedAt).toLocaleString('zh-CN')}
+                    {t('archivedOn', { date: new Date(version.archivedAt).toLocaleString(locale) })}
                   </p>
                 )}
               </div>
