@@ -51,8 +51,13 @@ if (!serverReachable) {
  *   保持原有断言——避免后端抖动把真回归悄悄放过去（fail-loud 优先）。
  */
 async function probeEnabledLocales(): Promise<Set<string> | null> {
+  // ★问**后端** aster-api，不是 BASE_URL（cloud 自己没有 /api/v1/lexicons 路由，
+  //   打过去必 404 → 探测返回 null → 不跳过）。与 messages-loader / lexicon-availability
+  //   同一 env 约定。
+  const apiBase =
+    process.env.NEXT_PUBLIC_ASTER_POLICY_API_URL || 'https://policy.aster-lang.dev';
   try {
-    const res = await fetch(`${BASE_URL}/api/v1/lexicons`, {
+    const res = await fetch(`${apiBase}/api/v1/lexicons`, {
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
