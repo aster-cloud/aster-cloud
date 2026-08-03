@@ -7,6 +7,8 @@ import { Toaster } from '@aster-cloud/ui';
 import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
 import { AuthProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { AssistantProvider } from '@/components/assistant/assistant-context';
+import { AssistantPanel } from '@/components/assistant/assistant-panel';
 import { DocsCommandPalette } from "@/components/docs/DocsCommandPalette";
 import { locales, type Locale } from '@/i18n/config';
 import "../globals.css";
@@ -136,7 +138,12 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body className="antialiased">
         <IntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider nonce={nonce}>
-            <AuthProvider>{children}</AuthProvider>
+            {/* AssistantProvider 包住 children：面板要**全站驻留**，且在
+                marketing/dashboard/docs 之间跳转时保持开合状态与问答记录。
+                App Router 下同一 layout 内的客户端组件跨路由不会重新挂载，
+                所以状态挂在这一层即可"不随导航丢失"。 */}
+            <AssistantProvider>
+              <AuthProvider>{children}</AuthProvider>
             {/* Global docs search. The palette mounts here (not just
                 in the docs layout) so Cmd+K opens it from marketing,
                 dashboard, and admin surfaces too. It returns null
@@ -144,7 +151,12 @@ export default async function LocaleLayout({ children, params }: Props) {
                 fetched on first invocation. The dashboard palette
                 uses event-capture + stopPropagation to keep its own
                 Cmd+K binding on /dashboard routes. */}
-            <DocsCommandPalette />
+              <DocsCommandPalette />
+              {/* 站内助手面板 —— 放在 Provider 内部、children 之后，
+                  这样它渲染在最上层且能读到共享状态。用户在设置里关闭后
+                  自身返回 null，不占任何 DOM。 */}
+              <AssistantPanel />
+            </AssistantProvider>
             {/* Global toast outlet. The @aster-cloud/ui Toaster wraps
                 sonner with our brand defaults (position, theme="system",
                 richColors, closeButton, font-sans). Mounted once at

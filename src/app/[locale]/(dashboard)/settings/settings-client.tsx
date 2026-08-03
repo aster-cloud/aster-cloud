@@ -26,6 +26,7 @@ import { signOut } from 'next-auth/react';
 import { ConfirmDialog } from '@/components/ui';
 import { Alert, AlertDescription, Button, cn } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
+import { useAssistant } from '@/components/assistant/assistant-context';
 
 const LOCALE_DETECTION_COOKIE = 'aster-locale-detection';
 
@@ -90,6 +91,69 @@ export function LocaleDetectionToggle({
       {/* Hint paragraph is sibling so the toggle row stays tight. The
           parent server card supplies the row layout. */}
       <p className="text-xs text-fg-subtle" data-locale-detection-hint>
+        {checked ? enabledHint : disabledHint}
+      </p>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* AssistantToggle                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 站内助手开关。
+ *
+ * <p>与 {@link LocaleDetectionToggle} 的差别：那个存 cookie（中间件要在服务端读），
+ * 助手是纯客户端 UI，状态存 localStorage，故这里直接读写
+ * {@link useAssistant}，无需 router.refresh()。
+ *
+ * <p><b>这是唯一的重新激活入口</b>——面板上的「关闭」只是收起，
+ * 真正停用后必须回到这里打开（见 assistant-context 的设计说明）。
+ */
+export function AssistantToggle({
+  ariaLabel,
+  enabledHint,
+  disabledHint,
+}: {
+  ariaLabel: string;
+  enabledHint: string;
+  disabledHint: string;
+}) {
+  const assistant = useAssistant();
+  // Provider 缺失（理论上不会——挂在 locale layout）时不渲染半死的开关。
+  if (!assistant) return null;
+  const checked = assistant.enabled;
+
+  return (
+    <>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={ariaLabel}
+        // hydrating 期间禁用：此刻 checked 还是默认值，未读到 localStorage，
+        // 点下去会把用户真实设置覆盖掉。
+        disabled={assistant.hydrating}
+        onClick={() => assistant.setEnabled(!checked)}
+        className={cn(
+          'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent',
+          'transition-colors duration-fast ease-standard',
+          'focus-visible:outline-none focus-visible:shadow-ring',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          checked ? 'bg-primary' : 'bg-bg-muted',
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'pointer-events-none inline-block size-5 transform rounded-full bg-bg shadow ring-0',
+            'transition-transform duration-fast ease-standard',
+            checked ? 'translate-x-5' : 'translate-x-0',
+          )}
+        />
+      </button>
+      <p className="text-xs text-fg-subtle" data-assistant-hint>
         {checked ? enabledHint : disabledHint}
       </p>
     </>
