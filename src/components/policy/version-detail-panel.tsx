@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import type { PolicyVersionStatus } from '@/lib/prisma';
 import { VersionStatusBadge } from './version-status-badge';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
@@ -58,6 +59,7 @@ export function buildAliasCanonicalRows(aliasSetJson: string): AliasCanonicalRow
  * 详情面板 bundle）：每条别名旁标注它实际归一到的规范结构词，审批者一眼可辨。
  */
 function AliasCanonicalMap({ aliasSetJson }: { aliasSetJson: string }) {
+  const t = useTranslations('policies.versions.detail.alias');
   const rows = useMemo(() => buildAliasCanonicalRows(aliasSetJson), [aliasSetJson]);
 
   if (!rows) return null;
@@ -66,18 +68,18 @@ function AliasCanonicalMap({ aliasSetJson }: { aliasSetJson: string }) {
   return (
     <div className="rounded-lg border border-border dark:border-gray-700 overflow-hidden">
       <div className="bg-bg-subtle dark:bg-gray-900 px-3 py-2 text-sm font-medium text-fg dark:text-gray-200">
-        规范化结构对照（审批依据）
+        {t('mapTitle')}
       </div>
       {hasStructural && (
         <div className="border-b border-border dark:border-gray-700 bg-red-50 px-3 py-2 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-200">
-          ⚠ 本版本对<strong>结构关键词</strong>使用了别名。请逐条确认下表右列的规范结构与源码意图一致后再批准。
+          ⚠ {t('structuralWarning')}
         </div>
       )}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border dark:border-gray-700 text-left text-xs text-fg-muted dark:text-fg-subtle">
-            <th className="px-3 py-2 font-medium">别名短语（源码中所见）</th>
-            <th className="px-3 py-2 font-medium">实际规范结构</th>
+            <th className="px-3 py-2 font-medium">{t('colPhrase')}</th>
+            <th className="px-3 py-2 font-medium">{t('colCanonical')}</th>
           </tr>
         </thead>
         <tbody>
@@ -95,7 +97,7 @@ function AliasCanonicalMap({ aliasSetJson }: { aliasSetJson: string }) {
                 <span className="font-mono font-medium text-fg dark:text-gray-100">{r.canonical}</span>
                 {r.structural && (
                   <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-900/50 dark:text-red-200">
-                    结构词
+                    {t('structuralBadge')}
                   </span>
                 )}
               </td>
@@ -110,6 +112,8 @@ function AliasCanonicalMap({ aliasSetJson }: { aliasSetJson: string }) {
 interface ApprovalRecord {
   id: string;
   approverId: string;
+  /** 由 getVersionDetail join User 得出（name→email）；null = 用户已删 → 回退显示 ID。 */
+  approverName?: string | null;
   decision: 'APPROVED' | 'REJECTED' | 'REQUESTED_CHANGES';
   comment: string | null;
   createdAt: string;
@@ -132,7 +136,23 @@ interface VersionDetail {
   deprecatedBy: string | null;
   archivedAt: string | null;
   archivedBy: string | null;
+  // 由 getVersionDetail join User 展平而来（name→email→null）。
+  // null = 用户已删或历史数据无此记录 → 前端回退显示原始 ID。
+  createdByName?: string | null;
+  deprecatedByName?: string | null;
+  archivedByName?: string | null;
   approvals: ApprovalRecord[];
+}
+
+/**
+ * 「谁做的」字段的显示值：有姓名显姓名，否则回退到原始 ID。
+ *
+ * <p>★不把 ID 换成「未知」：ID 本身是可追溯的审计线索，用户已删时它仍是
+ * 唯一能对上记录的凭据；显示「未知」等于丢信息。
+ */
+function actorLabel(id: string | null, name: string | null | undefined, unknown: string): string {
+  if (name) return name;
+  return id || unknown;
 }
 
 interface VersionDetailPanelProps {
@@ -141,10 +161,14 @@ interface VersionDetailPanelProps {
   onClose?: () => void;
 }
 
-const decisionLabels: Record<string, { label: string; color: string }> = {
-  APPROVED: { label: '批准', color: 'text-green-600 dark:text-green-400' },
-  REJECTED: { label: '拒绝', color: 'text-red-600 dark:text-red-400' },
-  REQUESTED_CHANGES: { label: '需修改', color: 'text-yellow-600 dark:text-yellow-400' },
+/**
+ * 审批决定的**配色**。文案复用既有 policies.versions.approvalDecision.*（已有三语），
+ * 不重复造 key——同一概念两处文案会漂移。
+ */
+const decisionColors: Record<string, string> = {
+  APPROVED: 'text-green-600 dark:text-green-400',
+  REJECTED: 'text-red-600 dark:text-red-400',
+  REQUESTED_CHANGES: 'text-yellow-600 dark:text-yellow-400',
 };
 
 export function VersionDetailPanel({
@@ -152,6 +176,9 @@ export function VersionDetailPanel({
   version,
   onClose,
 }: VersionDetailPanelProps) {
+  const t = useTranslations('policies.versions.detail');
+  const tDecision = useTranslations('policies.versions.approvalDecision');
+  const locale = useLocale();
   const [detail, setDetail] = useState<VersionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,14 +195,16 @@ export function VersionDetailPanel({
       if (response.ok) {
         setDetail(data);
       } else {
-        setError(extractErrorMessage(data) || '获取版本详情失败');
+        setError(extractErrorMessage(data) || t('errors.fetchFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '未知错误');
+      setError(err instanceof Error ? err.message : t('errors.unknown'));
     } finally {
       setLoading(false);
     }
-  }, [policyId, version]);
+    // t 进依赖：next-intl 的 t 随 locale/messages 变化而变，漏掉会让切语言后
+    // 的错误提示停留在旧语言（useTranslations 返回值本身是稳定的，不会额外重取）。
+  }, [policyId, version, t]);
 
   useEffect(() => {
     // 依赖变化时异步拉取版本详情；setState 均在 await 之后触发，
@@ -235,9 +264,9 @@ export function VersionDetailPanel({
       <div className="border-b border-border dark:border-gray-700">
         <nav className="flex -mb-px px-6">
           {[
-            { id: 'source' as const, label: '源码' },
-            { id: 'metadata' as const, label: '元数据' },
-            { id: 'approvals' as const, label: `审批记录 (${detail.approvals.length})` },
+            { id: 'source' as const, label: t('tabs.source') },
+            { id: 'metadata' as const, label: t('tabs.metadata') },
+            { id: 'approvals' as const, label: t('tabs.approvals', { count: detail.approvals.length }) },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -270,7 +299,7 @@ export function VersionDetailPanel({
             {detail.aliasSet && (
               <>
                 <div className="rounded-lg border border-amber-300/40 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/30 dark:text-amber-100">
-                  此版本使用了关键词别名。源码中的措辞经下表归一到真实结构后再编译执行——请对照确认。
+                  {t('alias.banner')}
                 </div>
                 <AliasCanonicalMap aliasSetJson={detail.aliasSet} />
               </>
@@ -280,33 +309,33 @@ export function VersionDetailPanel({
 
         {activeTab === 'metadata' && (
           <div className="space-y-4">
-            <MetadataItem label="版本 ID" value={detail.id} mono />
-            <MetadataItem label="版本号" value={`v${detail.version}`} />
-            <MetadataItem label="状态" value={detail.status} />
-            <MetadataItem label="是否默认" value={detail.isDefault ? '是' : '否'} />
-            <MetadataItem label="源码哈希" value={detail.sourceHash || '无'} mono />
-            <MetadataItem label="前一版本哈希" value={detail.prevHash || '无'} mono />
-            <MetadataItem label="关键词别名" value={detail.aliasSet || '无'} mono />
-            <MetadataItem label="创建者" value={detail.createdBy} />
+            <MetadataItem label={t('meta.versionId')} value={detail.id} mono />
+            <MetadataItem label={t('meta.versionNumber')} value={`v${detail.version}`} />
+            <MetadataItem label={t('meta.status')} value={detail.status} />
+            <MetadataItem label={t('meta.isDefault')} value={detail.isDefault ? t('meta.yes') : t('meta.no')} />
+            <MetadataItem label={t('meta.sourceHash')} value={detail.sourceHash || t('meta.none')} mono />
+            <MetadataItem label={t('meta.prevHash')} value={detail.prevHash || t('meta.none')} mono />
+            <MetadataItem label={t('meta.aliasSet')} value={detail.aliasSet || t('meta.none')} mono />
+            <MetadataItem label={t('meta.createdBy')} value={actorLabel(detail.createdBy, detail.createdByName, t('meta.unknownActor'))} />
             <MetadataItem
-              label="创建时间"
-              value={new Date(detail.createdAt).toLocaleString('zh-CN')}
+              label={t('meta.createdAt')}
+              value={new Date(detail.createdAt).toLocaleString(locale)}
             />
             {detail.deprecatedAt && (
               <>
-                <MetadataItem label="废弃者" value={detail.deprecatedBy || '未知'} />
+                <MetadataItem label={t('meta.deprecatedBy')} value={actorLabel(detail.deprecatedBy, detail.deprecatedByName, t('meta.unknownActor'))} />
                 <MetadataItem
-                  label="废弃时间"
-                  value={new Date(detail.deprecatedAt).toLocaleString('zh-CN')}
+                  label={t('meta.deprecatedAt')}
+                  value={new Date(detail.deprecatedAt).toLocaleString(locale)}
                 />
               </>
             )}
             {detail.archivedAt && (
               <>
-                <MetadataItem label="归档者" value={detail.archivedBy || '未知'} />
+                <MetadataItem label={t('meta.archivedBy')} value={actorLabel(detail.archivedBy, detail.archivedByName, t('meta.unknownActor'))} />
                 <MetadataItem
-                  label="归档时间"
-                  value={new Date(detail.archivedAt).toLocaleString('zh-CN')}
+                  label={t('meta.archivedAt')}
+                  value={new Date(detail.archivedAt).toLocaleString(locale)}
                 />
               </>
             )}
@@ -317,29 +346,30 @@ export function VersionDetailPanel({
           <div className="space-y-4">
             {detail.approvals.length === 0 ? (
               <div className="text-center py-8 text-fg-muted dark:text-fg-subtle">
-                暂无审批记录
+                {t('approvals.empty')}
               </div>
             ) : (
               detail.approvals.map((approval) => {
-                const decisionInfo = decisionLabels[approval.decision] || {
-                  label: approval.decision,
-                  color: 'text-fg-muted',
-                };
+                // 文案复用既有 approvalDecision.*；未知枚举回退显示原始值（不吞信息）。
+                const decisionColor = decisionColors[approval.decision] ?? 'text-fg-muted';
+                const decisionLabel = decisionColors[approval.decision]
+                  ? tDecision(approval.decision)
+                  : approval.decision;
                 return (
                   <div
                     key={approval.id}
                     className="border border-border dark:border-gray-700 rounded-lg p-4"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`font-medium ${decisionInfo.color}`}>
-                        {decisionInfo.label}
+                      <span className={`font-medium ${decisionColor}`}>
+                        {decisionLabel}
                       </span>
                       <span className="text-xs text-fg-muted dark:text-fg-muted">
-                        {new Date(approval.createdAt).toLocaleString('zh-CN')}
+                        {new Date(approval.createdAt).toLocaleString(locale)}
                       </span>
                     </div>
                     <div className="text-sm text-fg-muted dark:text-fg-subtle">
-                      审批人: {approval.approverId}
+                      {t('approvals.approver')}: {approval.approverName || approval.approverId}
                     </div>
                     {approval.comment && (
                       <div className="mt-2 text-sm text-fg dark:text-gray-300 bg-bg-subtle dark:bg-gray-900 p-2 rounded">

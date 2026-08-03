@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import {
   getLexicon,
   getKeywordsByCategory,
+  buildMultiWordRules,
   getVocabulary,
   extractVocabularyTerms,
   initBuiltinVocabularies,
@@ -106,6 +107,8 @@ function registerAsterLanguage(
   }
 
   const keywords = getKeywordsByCategory(lexicon);
+  // 多词关键词规则（从词表派生，见 buildMultiWordRules 的说明）。
+  const multiWordRules = buildMultiWordRules(lexicon);
 
   // 提取领域词汇表术语
   const domainTerms = vocabulary ? extractVocabularyTerms(vocabulary) : [];
@@ -124,6 +127,8 @@ function registerAsterLanguage(
     primitiveTypeKeywords: keywords.primitiveType,
     workflowKeywords: keywords.workflow,
     asyncKeywords: keywords.async,
+    constraintKeywords: keywords.constraint,
+    effectKeywords: keywords.effect,
     domainTerms,
 
     // Token 化规则
@@ -145,9 +150,16 @@ function registerAsterLanguage(
         [/\.\d+/, 'number.float'],
         [/\d+/, 'number'],
 
+        // ★多词关键词必须排在标识符规则**之前**：Monarch 自上而下首个匹配即用，
+        //   标识符规则 [A-Za-z_…]+ 只吃到 "for" 就落 @default=identifier，
+        //   排在后面的 /for each/ 永远轮不到（这是「英文/德文多词关键词从不高亮」的根因）。
+        //   规则由 buildMultiWordRules 从词表**动态生成**（含长度降序，
+        //   使 "integer divided by" 不被 "divided by" 抢先匹配），词表新增自动跟随。
+        ...multiWordRules,
+
         // 标识符和关键词
         [
-          /[a-zA-Z_\u4e00-\u9fa5][\w\u4e00-\u9fa5]*/,
+          /[a-zA-Z_\u4e00-\u9fa5\u0900-\u097f][\w\u4e00-\u9fa5\u0900-\u097f]*/,
           {
             cases: {
               '@moduleKeywords': 'keyword.module',
@@ -161,33 +173,13 @@ function registerAsterLanguage(
               '@primitiveTypeKeywords': 'type',
               '@workflowKeywords': 'keyword.workflow',
               '@asyncKeywords': 'keyword.async',
+                '@constraintKeywords': 'keyword.constraint',
+                '@effectKeywords': 'keyword.effect',
               '@domainTerms': 'variable.domain',
               '@default': 'identifier',
             },
           },
         ],
-
-        // 多词关键词匹配
-        [/as one of/i, 'keyword.type'],
-        [/it performs/i, 'keyword.function'],
-        [/for each/i, 'keyword.control'],
-        [/divided by/i, 'keyword.operator'],
-        [/less than/i, 'keyword.operator'],
-        [/greater than/i, 'keyword.operator'],
-        [/equals to/i, 'keyword.operator'],
-        [/option of/i, 'keyword.type'],
-        [/result of/i, 'keyword.type'],
-        [/ok of/i, 'keyword.type'],
-        [/err of/i, 'keyword.type'],
-        [/some of/i, 'keyword.type'],
-        [/wait for/i, 'keyword.async'],
-        [/max attempts/i, 'keyword.workflow'],
-
-        // 中文多词关键词
-        [/为以下之一/, 'keyword.type'],
-        [/对每个/, 'keyword.control'],
-        [/最多尝试/, 'keyword.workflow'],
-        [/输入输出/, 'keyword.effect'],
 
         // 运算符
         [/[+\-*/<>=!]+/, 'operator'],

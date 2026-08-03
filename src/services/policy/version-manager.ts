@@ -666,7 +666,7 @@ export async function getVersionDetail(params: {
   // 此前仅凭 policyId 即可读取任意租户的版本详情。
   await assertPolicyOwnership(policyId, userId);
 
-  return db.query.policyVersions.findFirst({
+  const row = await db.query.policyVersions.findFirst({
     where: and(
       eq(policyVersions.policyId, policyId),
       eq(policyVersions.version, version)
@@ -674,9 +674,38 @@ export async function getVersionDetail(params: {
     with: {
       approvals: {
         orderBy: [desc(policyApprovals.createdAt)],
+        with: { approverUser: { columns: { name: true, email: true } } },
       },
+      // 只取展示所需字段，不整行带出 User（避免把 passwordHash 等敏感列
+      // 顺着版本详情 API 泄出去）。
+      createdByUser: { columns: { name: true, email: true } },
+      deprecatedByUser: { columns: { name: true, email: true } },
+      archivedByUser: { columns: { name: true, email: true } },
     },
   });
+
+  if (!row) return null;
+
+  // 展平成 *Name 字段给前端：优先 name，其次 email，都没有（用户已删/历史数据）
+  // 则为 null —— 前端此时回退显示原始 ID，**不假装知道是谁**。
+  const { createdByUser, deprecatedByUser, archivedByUser, ...rest } = row;
+  const displayName = (u: { name: string | null; email: string | null } | null | undefined) =>
+    u?.name?.trim() || u?.email?.trim() || null;
+
+  return {
+    ...rest,
+    createdByName: displayName(createdByUser),
+    deprecatedByName: displayName(deprecatedByUser),
+    archivedByName: displayName(archivedByUser),
+    // 审批记录同样展平：审批人此前也直接渲染裸 UUID。
+    // ★兜 undefined：`with.approvals` 理论上恒为数组，但调用方可能注入精简了
+    //   relation 的 db（如归属校验单测的 mock）——不能让展示层的姓名解析把
+    //   安全相关的调用路径整个打挂。
+    approvals: (rest.approvals ?? []).map(({ approverUser, ...a }) => ({
+      ...a,
+      approverName: displayName(approverUser),
+    })),
+  };
 }
 
 /**
