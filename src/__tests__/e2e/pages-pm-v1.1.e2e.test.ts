@@ -41,6 +41,50 @@ if (!serverReachable) {
   );
 }
 
+/**
+ * 后端**已启用**的 locale 集合（管理员可在平台控制里逐语言开关，见 admin 页
+ * 「平台语言可用性」）。禁用的语言页面会退回默认语言渲染，此时断言它显示该语言
+ * 的文案必然失败——那不是回归，是配置。
+ *
+ * ★为什么不硬编码跳过 de：de 重新启用后覆盖会**自动恢复**，不会出现
+ *   「情况变了却没人改回来」的静默盲区。探测失败（后端不可达）时**不跳过**，
+ *   保持原有断言——避免后端抖动把真回归悄悄放过去（fail-loud 优先）。
+ */
+async function probeEnabledLocales(): Promise<Set<string> | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/lexicons`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as unknown;
+    const raw = Array.isArray(body)
+      ? body
+      : ((body as { lexicons?: unknown[] }).lexicons ?? []);
+    // 条目可能是 'de-DE' 字符串或 { id: 'de-DE' }；统一取前两位语言码（de/en/zh/hi）。
+    const langs = raw
+      .map((e) => (typeof e === 'string' ? e : (e as { id?: string })?.id))
+      .filter((v): v is string => typeof v === 'string')
+      .map((id) => id.slice(0, 2));
+    return langs.length > 0 ? new Set(langs) : null;
+  } catch {
+    return null;
+  }
+}
+
+const enabledLocales = serverReachable ? await probeEnabledLocales() : null;
+
+/** 该 locale 是否应跳过（仅当探测成功且明确不含它时才跳）。 */
+function localeDisabled(locale: string): boolean {
+  const disabled = enabledLocales !== null && !enabledLocales.has(locale);
+  if (disabled) {
+    console.warn(
+      `[E2E] locale "${locale}" 在后端已禁用（/api/v1/lexicons 未列出）——跳过其断言。` +
+        `重新启用后本用例自动恢复。`
+    );
+  }
+  return disabled;
+}
+
 beforeAll(() => {
   // noop — probe done at import time
 });
@@ -99,7 +143,7 @@ describe.skipIf(!serverReachable)('E2E PM v1.1 — pages render correct content'
       expectContains(html, '无需信用卡', 'zh');
     });
 
-    it('de hero shows the "Jede Entscheidung abspielen" headline with native locale list', async () => {
+    it.skipIf(localeDisabled('de'))('de hero shows the "Jede Entscheidung abspielen" headline with native locale list', async () => {
       const { status, html } = await fetchDoc('/de');
       expect(status).toBe(200);
       expectContains(html, 'Jede Entscheidung abspielen', 'de');
@@ -156,7 +200,7 @@ describe.skipIf(!serverReachable)('E2E PM v1.1 — pages render correct content'
       expectNotContains(featuresHtml, '版本历史', 'zh');
     });
 
-    it('de home lists all 6 PM v1.1 feature titles', async () => {
+    it.skipIf(localeDisabled('de'))('de home lists all 6 PM v1.1 feature titles', async () => {
       const { html } = await fetchDoc('/de');
       for (const title of de) expectContains(html, title, 'de');
       const featuresHtml = extractFeaturesSection(html);
@@ -178,7 +222,7 @@ describe.skipIf(!serverReachable)('E2E PM v1.1 — pages render correct content'
       expectNotContains(html, '¥199', 'zh');
     });
 
-    it('/de shows €36 (postfix) and not stale €27', async () => {
+    it.skipIf(localeDisabled('de'))('/de shows €36 (postfix) and not stale €27', async () => {
       const { html } = await fetchDoc('/de');
       // German format: "36 €" (space + postfix). Either form accepted.
       const hasNew = html.includes('36 €') || html.includes('36 €') || html.includes('€36');
@@ -218,7 +262,7 @@ describe.skipIf(!serverReachable)('E2E PM v1.1 — pages render correct content'
       expectContains(html, '行业自定义 lexicon', 'zh');
     });
 
-    it('de /de/pricing shows three tiers with v1.1 de bullets', async () => {
+    it.skipIf(localeDisabled('de'))('de /de/pricing shows three tiers with v1.1 de bullets', async () => {
       const { status, html } = await fetchDoc('/de/pricing');
       expect(status).toBe(200);
       expectContains(html, '20 KI-Entwürfe', 'de');
@@ -264,7 +308,7 @@ describe.skipIf(!serverReachable)('E2E PM v1.1 — pages render correct content'
       expect(doc.documentElement.getAttribute('lang')).toBe('zh');
     });
 
-    it('/de has lang="de"', async () => {
+    it.skipIf(localeDisabled('de'))('/de has lang="de"', async () => {
       const { doc } = await fetchDoc('/de');
       expect(doc.documentElement.getAttribute('lang')).toBe('de');
     });
