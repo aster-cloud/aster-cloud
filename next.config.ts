@@ -83,6 +83,30 @@ function resolveRuntimeBuild(): string {
 }
 const RUNTIME_BUILD: string = resolveRuntimeBuild();
 
+// 「关于」弹框要显示的三个版本。build 期从 package.json 读一次并 inline 进 bundle。
+// ★不在运行时 import package.json：OpenNext 打包后该相对路径不可靠，且会把整个
+//   依赖 manifest 拖进 bundle。这里读的是**实际锁定的依赖声明**，与 npm 上的
+//   最新版无关——弹框要回答的是「这个部署在跑什么」，不是「生态最新是什么」。
+const { APP_VERSION, ENGINE_VERSION, MESSAGES_VERSION } = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pkg = require('./package.json') as {
+      version?: string;
+      dependencies?: Record<string, string>;
+    };
+    const deps = pkg.dependencies ?? {};
+    // 去掉 ^ ~ 等 range 前缀，只留数字版本（这两个依赖本就是精确 pin，防御性处理）。
+    const exact = (v?: string) => (v ?? '').replace(/^[\^~>=<\s]+/, '') || 'unknown';
+    return {
+      APP_VERSION: pkg.version ?? 'unknown',
+      ENGINE_VERSION: exact(deps['@aster-cloud/aster-lang-ts']),
+      MESSAGES_VERSION: exact(deps['@aster-cloud/ui-messages']),
+    };
+  } catch {
+    return { APP_VERSION: 'unknown', ENGINE_VERSION: 'unknown', MESSAGES_VERSION: 'unknown' };
+  }
+})();
+
 // 只在 next build 阶段做一次 warn-only 校验。
 //
 // 历史踩坑：早先在这里无条件调 validateEnvOrWarn()，
@@ -121,6 +145,12 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_DEPLOYMENT_MODE: DEPLOYMENT_MODE,
     // build 期 inline 真实 build SHA → cloudToolchainId 读到它而非 'dev'（证据溯源用）。
     ASTER_RUNTIME_BUILD: RUNTIME_BUILD,
+    // 「关于」弹框（用户菜单 → 帮助）展示用。build 期从 package.json 读并 inline——
+    // 不在运行时 import package.json：OpenNext/Worker bundle 里该路径不可靠，
+    // 且会把整个 manifest 打进 bundle。
+    NEXT_PUBLIC_APP_VERSION: APP_VERSION,
+    NEXT_PUBLIC_ENGINE_VERSION: ENGINE_VERSION,
+    NEXT_PUBLIC_MESSAGES_VERSION: MESSAGES_VERSION,
   },
 
   webpack: (config, { webpack }) => {

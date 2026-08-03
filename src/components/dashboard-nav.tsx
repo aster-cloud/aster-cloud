@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Link } from '@/i18n/navigation';
 import { clearDocsSessionCache } from '@/lib/docs/use-docs-session';
+import { AboutDialog, type AboutDialogLabels, type AboutVersions } from './about-dialog';
 
 interface NavItem {
   href: string;
@@ -19,6 +20,7 @@ interface DashboardNavClientProps {
     settings: string;
     signOut: string;
     signingOut: string;
+    help: string;
   };
   mobileMenuLabels: {
     openMenu: string;
@@ -60,15 +62,26 @@ export function MobileMenuButton({
 
 export function UserDropdown({
   userMenuLabels,
+  aboutLabels,
+  versions,
   userName,
   userEmail,
 }: {
-  userMenuLabels: { profile: string; settings: string; signOut: string; signingOut: string };
+  userMenuLabels: {
+    profile: string;
+    settings: string;
+    signOut: string;
+    signingOut: string;
+    help: string;
+  };
+  aboutLabels: AboutDialogLabels;
+  versions: AboutVersions;
   userName?: string;
   userEmail?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,12 +135,30 @@ export function UserDropdown({
           <button
             type="button"
             className="block w-full text-left px-4 py-2 text-sm text-fg hover:bg-bg-subtle"
+            onClick={() => {
+              setIsOpen(false);
+              setIsAboutOpen(true);
+            }}
+          >
+            {userMenuLabels.help}
+          </button>
+          <button
+            type="button"
+            className="block w-full text-left px-4 py-2 text-sm text-fg hover:bg-bg-subtle"
             onClick={handleSignOut}
             disabled={isSigningOut}
           >
             {isSigningOut ? userMenuLabels.signingOut : userMenuLabels.signOut}
           </button>
         </div>
+      )}
+
+      {isAboutOpen && (
+        <AboutDialog
+          labels={aboutLabels}
+          versions={versions}
+          onClose={() => setIsAboutOpen(false)}
+        />
       )}
     </div>
   );

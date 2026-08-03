@@ -5,6 +5,7 @@ import { ensureSchemaApplied } from '@/lib/db-bootstrap';
 import { getTranslations } from 'next-intl/server';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { UserDropdown } from '@/components/dashboard-nav';
+import { fetchBackendVersion } from '@/lib/backend-version';
 import { CommandPalette } from '@/components/dashboard/command-palette';
 import { buildCommands } from '@/components/dashboard/command-palette-commands';
 import { buildDocsSeeds } from '@/lib/docs/dashboard-docs-seeds';
@@ -109,6 +110,30 @@ export default async function DashboardLayout({
     settings: t('settings'),
     signOut: tSettings('signOut'),
     signingOut: tSettings('signingOut'),
+    help: t('userMenu.help'),
+  };
+
+  const aboutLabels = {
+    title: t('about.title'),
+    version: t('about.version'),
+    build: t('about.build'),
+    engine: t('about.engine'),
+    messages: t('about.messages'),
+    apiVersion: t('about.apiVersion'),
+    unavailable: t('about.unavailable'),
+    close: t('about.close'),
+  };
+
+  // 「关于」弹框的版本数据。前三项由 next.config 在 build 期从 package.json inline；
+  // 后端版本需带凭证向 aster-api 取，失败返回 null → 弹框显示「不可用」（不阻塞渲染）。
+  // ★tenantId 用 session.user.id：与 /api/llm/complete 同一约定
+  //   （R25-Major-2：不采信 caller-supplied X-Tenant-Id）。
+  const aboutVersions = {
+    app: process.env.NEXT_PUBLIC_APP_VERSION ?? 'unknown',
+    build: process.env.ASTER_RUNTIME_BUILD ?? 'dev',
+    engine: process.env.NEXT_PUBLIC_ENGINE_VERSION ?? 'unknown',
+    messages: process.env.NEXT_PUBLIC_MESSAGES_VERSION ?? 'unknown',
+    api: userId ? await fetchBackendVersion(userId) : null,
   };
 
   const showBilling = canAccess(role, 'admin') && CAN_BILLING;
@@ -243,6 +268,8 @@ export default async function DashboardLayout({
               <LanguageSwitcher allowedLocales={allowedLocales} />
               <UserDropdown
                 userMenuLabels={userMenuLabels}
+                aboutLabels={aboutLabels}
+                versions={aboutVersions}
                 userName={session?.user?.name || undefined}
                 userEmail={session?.user?.email || undefined}
               />
