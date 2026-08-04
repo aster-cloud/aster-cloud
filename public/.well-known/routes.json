@@ -260,6 +260,14 @@
       "locales": "all"
     },
     {
+      "path": "/admin/assistant",
+      "status": "canonical-here",
+      "owner": "admin",
+      "source": "src/app/[locale]/(dashboard)/admin/assistant/page.tsx",
+      "auth": "admin",
+      "locales": "all"
+    },
+    {
       "path": "/admin/ai-circuit-breaker",
       "status": "canonical-here",
       "owner": "admin",

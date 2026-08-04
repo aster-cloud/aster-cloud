@@ -28,7 +28,17 @@ export const PLATFORM_SETTING_KEYS = {
   RUNNER_PARITY_MODE: 'runner_parity.mode',
   //   sampled 模式的采样百分比（0-100 整数）。默认 5。
   RUNNER_PARITY_SAMPLE_PCT: 'runner_parity.sample_pct',
+  // 站内助手总开关。出问题（答复质量差 / 成本异常）时能立刻关掉联网问答而
+  // 不必回滚发版；关掉后助手退回纯站内检索，面板照常可用。
+  ASSISTANT_ENABLED: 'assistant.enabled',
+  // 管理员附加指令：追加到助手 prompt，用来调语气 / 加免责声明 / 引导某类问题。
+  // ★只能追加，不能覆盖"只依据站内条目作答"等硬约束（在 aster-api 侧强制，
+  //   见 PromptComposer.buildAssistantContext 与其测试）。
+  ASSISTANT_EXTRA_INSTRUCTIONS: 'assistant.extra_instructions',
 } as const;
+
+/** 管理员附加指令长度上限，与 aster-api AssistantRequest 的 @Size 对齐。 */
+export const ASSISTANT_INSTRUCTIONS_MAX_LEN = 4096;
 
 /** runner-parity trigger 模式枚举（fail-OFF 默认 'off'）。 */
 export const RUNNER_PARITY_MODES = ['off', 'sampled', 'every', 'manual'] as const;
@@ -43,6 +53,10 @@ const DEFAULTS: Record<string, unknown> = {
   [PLATFORM_SETTING_KEYS.POLICY_SHARING_ENABLED]: false,
   [PLATFORM_SETTING_KEYS.RUNNER_PARITY_MODE]: 'off',
   [PLATFORM_SETTING_KEYS.RUNNER_PARITY_SAMPLE_PCT]: 5,
+  // 默认开启：助手已上线，这个开关是**应急关闭**用的，不是 opt-in 开关。
+  [PLATFORM_SETTING_KEYS.ASSISTANT_ENABLED]: true,
+  // 默认空串 = 不附加任何指令，prompt 与未配置时逐字节一致。
+  [PLATFORM_SETTING_KEYS.ASSISTANT_EXTRA_INSTRUCTIONS]: '',
 };
 
 const CACHE_TTL_MS = 60_000;
