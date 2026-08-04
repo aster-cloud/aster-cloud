@@ -1,0 +1,108 @@
+{
+  "locale": "zh",
+  "entries": [
+    {
+      "slug": "browser-api",
+      "title": "浏览器 API",
+      "description": "@aster-cloud/aster-lang-ts 是 TypeScript 引擎。它在浏览器或 Node 中编译、类型检查、提取 schema 并对 Aster 策略求值——无需服务器往返。它与 演练场 运行的是同一套引擎。",
+      "headings": [
+        "安装",
+        "导入",
+        "快速上手（复制粘贴即可，在 Node 或浏览器中运行）",
+        "词典",
+        "核心函数",
+        "`validateSyntaxWithSpan(source, lexicon?)`",
+        "`compile(source, options?)`",
+        "`compileAndTypecheck(source, options?)`",
+        "`extractSchema(source, options?)`",
+        "`tokenize(source, lexicon?)`",
+        "`generateInputValues(parameters, lexicon?)`",
+        "`evaluate(core, functionName, context, options?)`",
+        "浏览器 API vs REST vs GraphQL",
+        "典型工作流"
+      ]
+    },
+    {
+      "slug": "deployment",
+      "title": "部署",
+      "description": "把一条策略从源码送到生产环境、跑在 Aster 引擎（aster-api）上，并带版本管理与审计地大规模调用。",
+      "headings": [
+        "策略生命周期",
+        "1. 编写",
+        "2. 本地校验",
+        "3. 提取 schema",
+        "4. 部署",
+        "5. 执行",
+        "6. 监控与审计",
+        "版本管理",
+        "检查清单"
+      ]
+    },
+    {
+      "slug": "editions",
+      "title": "版本",
+      "description": "Aster 提供三个版本。语言与引擎在三者间完全一致——区别在于由谁运行、以及有哪些能力为你托管。",
+      "headings": [
+        "一览",
+        "语言与引擎",
+        "策略执行与治理"
+      ]
+    },
+    {
+      "slug": "language-guide",
+      "title": "语言指南",
+      "description": "Aster 是一种面向规则的受控自然语言（CNL）。它读起来像英文（或中文 / Deutsch / हिन्दी），却编译成精确、确定性的中间表示。本指南讲解核心构造。",
+      "headings": [
+        "语法",
+        "类型",
+        "表达式",
+        "规则与函数",
+        "模块"
+      ]
+    },
+    {
+      "slug": "lexicons",
+      "title": "词法表",
+      "description": "的核心语法与语言无关；词法表把它映射到 English、中文、Deutsch、हिन्दी 等。所有词法表 共享同一套 Lexicon SPI 契约，因此任何语言写的策略都编译到同一核心。",
+      "headings": [
+        "工作原理",
+        "官方词法表",
+        "编写词法表"
+      ]
+    },
+    {
+      "slug": "overview",
+      "title": "什么是 Aster？",
+      "description": "Aster 是一种面向业务规则的受控自然语言（CNL）。策略读起来像句子——却编译成 确定性的核心，可经 REST、GraphQL、WebSocket 或直接在浏览器中运行，每次求值都带可 回放的决策轨迹。",
+      "headings": [
+        "核心特性",
+        "如何组合",
+        "从哪开始"
+      ]
+    },
+    {
+      "slug": "reference",
+      "title": "语言参考",
+      "description": "Aster 语法、类型与求值语义的形式参考。这是权威规范；语言指南 是教程式的入门。",
+      "headings": [
+        "语法",
+        "求值"
+      ]
+    },
+    {
+      "slug": "stdlib",
+      "title": "标准库",
+      "description": "Aster 内置的函数。全部是确定性的，在两套引擎（TypeScript 与 JVM）上运行结果一致。用括号调用，例如 List.sum(xs)。下面每个示例都按原样可编译、可运行。",
+      "headings": [
+        "Text（文本）",
+        "List（列表）",
+        "高阶（lambda）列表函数",
+        "Map（映射）",
+        "Date（日期）",
+        "Decimal（十进制）",
+        "Maybe / Option 与 Result",
+        "不提供的能力"
+      ]
+    }
+  ]
+}

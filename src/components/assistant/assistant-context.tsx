@@ -1,5 +1,6 @@
 'use client';
 
+import type { AssistantHit } from '@/lib/assistant/retrieval';
 import {
   createContext,
   useCallback,
@@ -30,8 +31,13 @@ import {
 export interface AssistantTurn {
   id: string;
   query: string;
-  /** 结果在提问那一刻就固化，之后切页面/切语言都不重算（保证记录可回溯）。 */
-  hits: Array<{ id: string; kind: 'doc' | 'action'; title: string; subtitle?: string; href: string }>;
+  /**
+   * 结果在提问那一刻就固化，之后切页面/切语言都不重算（保证记录可回溯）。
+   *
+   * <p>直接复用 {@link AssistantHit}——此前这里手写了一份结构，
+   * 加 kind='external' 时两处就漂移了。单一真相源避免下次再漏。
+   */
+  hits: AssistantHit[];
   /**
    * 联网应答器产出的自然语言答复（预留给「数字人」，见 lib/assistant/provider.ts）。
    *

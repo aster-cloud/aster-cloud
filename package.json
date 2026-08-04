@@ -47,7 +47,8 @@
     "verify:packages": "pnpm why stripe || true && pnpm why resend || true && pnpm why mixpanel-browser || true",
     "check:turbopack-readiness": "bash scripts/check-turbopack-readiness.sh",
     "test:e2e:browser": "playwright test",
-    "test:e2e:browser:ui": "playwright test --ui"
+    "test:e2e:browser:ui": "playwright test --ui",
+    "docs:external-index": "node scripts/docs-migration/fetch-external-docs-index.mjs"
   },
   "dependencies": {
     "@aster-cloud/aster-lang-ts": "1.0.13",

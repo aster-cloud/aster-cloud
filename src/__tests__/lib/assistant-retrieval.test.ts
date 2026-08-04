@@ -121,3 +121,60 @@ describe('assistant retrieve', () => {
     expect(doc!.href).toBe('/docs/policies/versions');
   });
 });
+
+describe('站外文档源（aster-lang.dev）', () => {
+  const externalIndex: SearchIndex = {
+    locale: 'zh',
+    entries: [
+      { slug: 'language-guide', title: '语言指南',
+        description: 'Aster 是用于规则的受控自然语言。', headings: ['语法', '类型'] },
+      { slug: 'stdlib', title: '标准库', description: '内置函数与集合操作。', headings: [] },
+    ],
+  };
+  const ext = { index: externalIndex, baseUrl: 'https://www.aster-lang.dev/zh', label: 'aster-lang.dev' };
+  const optsExt = { ...opts, external: ext };
+
+  it('能检索到站外文档', () => {
+    const hits = retrieve('语言指南', optsExt);
+    const e = hits.find((h) => h.kind === 'external');
+    expect(e).toBeDefined();
+    expect(e!.title).toBe('语言指南');
+  });
+
+  it('★站外 href 是绝对 URL（相对路径会被解析到本站 → 404）', () => {
+    const e = retrieve('语言指南', optsExt).find((h) => h.kind === 'external')!;
+    expect(e.href).toBe('https://www.aster-lang.dev/zh/docs/language-guide');
+  });
+
+  it('带 sourceLabel 供 UI 标注离站', () => {
+    const e = retrieve('标准库', optsExt).find((h) => h.kind === 'external')!;
+    expect(e.sourceLabel).toBe('aster-lang.dev');
+  });
+
+  it('★不传 external 时行为完全不变（向后兼容）', () => {
+    expect(retrieve('策略', optsExt.external ? opts : opts)).toEqual(retrieve('策略', opts));
+    expect(retrieve('语言指南', opts).some((h) => h.kind === 'external')).toBe(false);
+  });
+
+  it('★同分时站内文档排在站外之前', () => {
+    // 构造站内外同名条目：站内应优先（用户在本站提问，多要本站路径）
+    const both = {
+      ...opts,
+      docsIndex: { locale: 'zh', entries: [
+        { slug: 'stdlib-local', title: '标准库', description: '本站的标准库页。', headings: [] },
+      ] } as SearchIndex,
+      external: ext,
+    };
+    const hits = retrieve('标准库', both);
+    const iDoc = hits.findIndex((h) => h.kind === 'doc');
+    const iExt = hits.findIndex((h) => h.kind === 'external');
+    expect(iDoc).toBeGreaterThanOrEqual(0);
+    expect(iExt).toBeGreaterThanOrEqual(0);
+    expect(iDoc).toBeLessThan(iExt);
+  });
+
+  it('站外空索引不影响站内结果', () => {
+    const empty = { ...opts, external: { ...ext, index: { locale: 'zh', entries: [] } as SearchIndex } };
+    expect(retrieve('策略', empty)).toEqual(retrieve('策略', opts));
+  });
+})
