@@ -1,0 +1,124 @@
+{
+  "locale": "en",
+  "entries": [
+    {
+      "slug": "browser-api",
+      "title": "Browser API",
+      "description": "@aster-cloud/aster-lang-ts is the TypeScript engine. It compiles, type-checks, extracts schemas and evaluates Aster policies in the browser or Node — no server round-trip. It's the same engine the ...",
+      "headings": [
+        "Installation",
+        "Imports",
+        "Quick start (copy-paste, runs in Node or the browser)",
+        "Lexicons",
+        "Core functions",
+        "`validateSyntaxWithSpan(source, lexicon?)`",
+        "`compile(source, options?)`",
+        "`compileAndTypecheck(source, options?)`",
+        "`extractSchema(source, options?)`",
+        "`tokenize(source, lexicon?)`",
+        "`generateInputValues(parameters, lexicon?)`",
+        "`evaluate(core, functionName, context, options?)`",
+        "Browser API vs REST vs GraphQL",
+        "Typical workflow"
+      ]
+    },
+    {
+      "slug": "deployment",
+      "title": "Deployment",
+      "description": "Take a policy from source to production on the Aster engine (aster-api) and call it at scale, with versioning and audit.",
+      "headings": [
+        "Policy lifecycle",
+        "1. Author",
+        "2. Validate locally",
+        "3. Extract the schema",
+        "4. Deploy",
+        "5. Execute",
+        "6. Monitor & audit",
+        "Version management",
+        "Checklist"
+      ]
+    },
+    {
+      "slug": "editions",
+      "title": "Editions",
+      "description": "Aster comes in three editions. The language and engine are identical across all three — the difference is who runs it and what's managed for you.",
+      "headings": [
+        "At a glance",
+        "Language & engine",
+        "Policy execution & governance"
+      ]
+    },
+    {
+      "slug": "language-guide",
+      "title": "Language Guide",
+      "description": "Aster is a controlled natural language (CNL) for rules. It reads like English (or 中文 / Deutsch / हिन्दी) but compiles to a precise, deterministic intermediate representation. This guide walks the c...",
+      "headings": [
+        "Syntax",
+        "Types",
+        "Expressions",
+        "Rules & functions",
+        "Modules"
+      ]
+    },
+    {
+      "slug": "lexicons",
+      "title": "Lexicons",
+      "description": "A lexicon is a language pack — the keyword set, punctuation and canonicalization rules for one human language. Aster's core grammar is language-agnostic; a lexicon maps it onto English, 中文, Deutsch...",
+      "headings": [
+        "How it works",
+        "Official lexicons",
+        "In progress",
+        "Authoring a lexicon"
+      ]
+    },
+    {
+      "slug": "overview",
+      "title": "What is Aster?",
+      "description": "Aster is a controlled natural language (CNL) for business rules. Policies read like sentences — yet compile to a deterministic core that runs over REST, GraphQL, WebSocket, or directly in the brows...",
+      "headings": [
+        "Core properties",
+        "How it fits together",
+        "Where to start",
+        "Multi-language"
+      ]
+    },
+    {
+      "slug": "reference",
+      "title": "Language Reference",
+      "description": "The authoritative reference for Aster's grammar, type system and evaluation semantics. The Language Guide is the tutorial-style introduction; this page is the specification.",
+      "headings": [
+        "Grammar",
+        "Type system",
+        "Primitive types",
+        "Custom types (structs)",
+        "Control flow",
+        "Operators",
+        "Arithmetic",
+        "Comparison",
+        "Logical",
+        "Evaluation",
+        "Effects & purity",
+        "Multi-language",
+        "Feature stability",
+        "Stable — production-ready, dual-engine verified",
+        "Experimental — usable, but the semantics may change",
+        "Not yet available"
+      ]
+    },
+    {
+      "slug": "stdlib",
+      "title": "Standard Library",
+      "description": "The built-in functions Aster ships with. All are deterministic and run identically on both engines (TypeScript and JVM). Call them with parentheses, e.g. List.sum(xs). Every example below compiles ...",
+      "headings": [
+        "Text",
+        "List",
+        "Higher-order (lambda) list functions",
+        "Map",
+        "Date",
+        "Decimal",
+        "Maybe / Option and Result",
+        "Not available"
+      ]
+    }
+  ]
+}

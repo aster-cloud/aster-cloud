@@ -5,7 +5,12 @@ import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { useAssistant } from './assistant-context';
 import { retrieve } from '@/lib/assistant/retrieval';
-import { getDocsSearchIndex, getDocsRoutePrefix, buildDocsSeeds } from '@/lib/docs/dashboard-docs-seeds';
+import {
+  getDocsSearchIndex,
+  getDocsRoutePrefix,
+  getExternalDocs,
+  buildDocsSeeds,
+} from '@/lib/docs/dashboard-docs-seeds';
 import { buildCommands, type Command } from '@/components/dashboard/command-palette-commands';
 import { getAssistantAnswerProvider } from '@/lib/assistant/provider';
 
@@ -64,6 +69,8 @@ export function AssistantPanel() {
   );
 
   const docsIndex = useMemo(() => getDocsSearchIndex(locale), [locale]);
+  // aster-lang.dev 的文档（构建期抓取内联，非运行时请求）。
+  const external = useMemo(() => getExternalDocs(locale), [locale]);
 
   const open = state?.open ?? false;
 
@@ -106,6 +113,7 @@ export function AssistantPanel() {
       // ★用 getDocsRoutePrefix 而非当前 locale：hi 无文档索引会回退 en，
       //   前缀必须跟着回退，否则 /hi/docs/... 全 404。
       docsPrefix: getDocsRoutePrefix(locale),
+      external,
       limit: 8,
     }).map((h) =>
       h.kind === 'action'
@@ -150,7 +158,7 @@ export function AssistantPanel() {
         });
       }
     })();
-  }, [query, state, docsIndex, commands, locale, groupLabels]);
+  }, [query, state, docsIndex, commands, external, locale, groupLabels]);
 
   // 面板收起时中止在途应答，避免看不见的请求继续烧配额。
   useEffect(() => {
@@ -240,15 +248,29 @@ export function AssistantPanel() {
                           面板与记录都保留（这正是"全站驻留"的意义）。
                           href 已含 locale 前缀，直接用 next/link 即可，
                           不需要 i18n 的 Link 再包一层前缀。 */}
+                      {/* 站外结果用原生 <a> + 新标签页：next/link 只管站内路由，
+                          且用户不该因为点了一条参考资料就离开当前工作上下文。
+                          rel=noreferrer 避免把站内路径泄露给外站。 */}
                       <Link
                         href={hit.href}
+                        {...(hit.kind === 'external'
+                          ? { target: '_blank', rel: 'noreferrer' }
+                          : {})}
                         className="block rounded-md px-3 py-2 transition-colors hover:bg-bg-subtle focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         <span className="flex items-center gap-2">
                           <span className="rounded bg-bg-muted px-1.5 py-0.5 text-[10px] text-fg-muted">
-                            {hit.kind === 'doc' ? t('kindDoc') : t('kindAction')}
+                            {hit.kind === 'doc'
+                              ? t('kindDoc')
+                              : hit.kind === 'external'
+                                ? t('kindExternal')
+                                : t('kindAction')}
                           </span>
                           <span className="text-sm font-medium text-fg">{hit.title}</span>
+                          {/* 明确告知这条来自站外、会新开标签页 */}
+                          {hit.sourceLabel && (
+                            <span className="text-[10px] text-fg-subtle">↗ {hit.sourceLabel}</span>
+                          )}
                         </span>
                         {hit.subtitle && (
                           <span className="mt-0.5 block text-xs text-fg-muted">{hit.subtitle}</span>

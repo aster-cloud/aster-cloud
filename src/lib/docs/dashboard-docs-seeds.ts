@@ -22,6 +22,10 @@ import type { DocsCommandSeed } from '@/components/dashboard/command-palette-com
 import type { SearchIndex } from '@/lib/docs/search-runtime';
 import { docsSidebar } from '@/lib/docs/sidebar';
 import enIndex from '@/lib/docs/search-index.en.json';
+import extEn from '@/lib/docs/external-index.en.json';
+import extZh from '@/lib/docs/external-index.zh.json';
+import extDe from '@/lib/docs/external-index.de.json';
+import extHi from '@/lib/docs/external-index.hi.json';
 import zhIndex from '@/lib/docs/search-index.zh.json';
 import deIndex from '@/lib/docs/search-index.de.json';
 
@@ -30,6 +34,39 @@ const INDEXES: Record<string, SearchIndex> = {
   zh: zhIndex as SearchIndex,
   de: deIndex as SearchIndex,
 };
+
+/**
+ * aster-lang.dev 的文档索引（构建期抓取，见
+ * scripts/docs-migration/fetch-external-docs-index.mjs）。
+ *
+ * <p>四语齐全（de/hi 在上游按 en 回退，但保留各自 locale 字段用于拼 URL 前缀），
+ * 故这里不需要再做一次回退。
+ */
+const EXTERNAL_INDEXES: Record<string, SearchIndex> = {
+  en: extEn as SearchIndex,
+  zh: extZh as SearchIndex,
+  de: extDe as SearchIndex,
+  hi: extHi as SearchIndex,
+};
+
+/** aster-lang.dev 站点根地址（UI 与 href 共用）。 */
+export const ASTER_DEV_BASE_URL = 'https://www.aster-lang.dev';
+/** UI 上展示的站外来源名。 */
+export const ASTER_DEV_LABEL = 'aster-lang.dev';
+
+/**
+ * 取 aster-lang.dev 索引与该 locale 的绝对 URL 前缀。
+ *
+ * <p>该站 en 无前缀、其余带 /<locale>（与本站同惯例，已逐个实测确认）。
+ */
+export function getExternalDocs(locale: string): { index: SearchIndex; baseUrl: string; label: string } {
+  const resolved = EXTERNAL_INDEXES[locale] ? locale : 'en';
+  return {
+    index: EXTERNAL_INDEXES[resolved],
+    baseUrl: resolved === 'en' ? ASTER_DEV_BASE_URL : `${ASTER_DEV_BASE_URL}/${resolved}`,
+    label: ASTER_DEV_LABEL,
+  };
+}
 
 /**
  * 取某 locale 的文档搜索索引（未知 locale 回退 en，与 buildDocsSeeds 同口径）。

@@ -19,11 +19,17 @@ import type { Command } from '@/components/dashboard/command-palette-commands';
 export interface AssistantHit {
   /** 稳定去重键。 */
   id: string;
-  kind: 'doc' | 'action';
+  /** doc=站内文档；action=导航/动作；external=站外文档（aster-lang.dev）。 */
+  kind: 'doc' | 'action' | 'external';
   title: string;
   /** 文档为 description；动作为所属分组名。 */
   subtitle?: string;
   href: string;
+  /**
+   * 站外来源标识（仅 kind='external'），用于在 UI 上标注"来自 aster-lang.dev"
+   * 并让用户知道点击会离站。站内结果为 undefined。
+   */
+  sourceLabel?: string;
   /** 越大越靠前（仅同一次调用内可比）。 */
   score: number;
 }
@@ -41,16 +47,39 @@ export interface RetrieveOptions {
    * 与 DocsCommandPalette 的 buildHref 同口径。
    */
   docsPrefix: string;
+  /**
+   * 站外文档源（aster-lang.dev），可选。
+   *
+   * <p>索引在**构建期**从 aster-lang.dev 抓取并内联进 bundle——不做运行时抓站：
+   * 那会让站点改版静默失效、网络抖动就答不出，与"答案可溯源"的产品承诺相悖。
+   */
+  external?: {
+    index: SearchIndex;
+    /** 绝对 URL 前缀，例如 `https://www.aster-lang.dev/zh`。 */
+    baseUrl: string;
+    /** UI 上展示的来源名，例如 `aster-lang.dev`。 */
+    label: string;
+  };
   /** 返回条数上限。 */
   limit?: number;
 }
 
 /** 文档命中的基准分（searchDocs 的分层分数已足够区分，这里只做跨源归一）。 */
 const DOC_BASE = 1;
+/**
+ * 站外结果的分数折扣。
+ *
+ * <p>0.9 而非更低：站外文档（语言指南、stdlib 等）常常是唯一答案来源，
+ * 压太狠会让它们永远进不了 limit。同分让位、不同分不干扰。
+ */
+const EXTERNAL_PENALTY = 0.9;
 /** 动作命中的分层：完整短语 > 标签前缀 > 关键词命中。 */
 const ACTION_EXACT = 1200;
 const ACTION_PREFIX = 800;
 const ACTION_KEYWORD = 600;
+
+/** 同分排序权重：越小越靠前。 */
+const KIND_ORDER: Record<AssistantHit['kind'], number> = { doc: 0, external: 1, action: 2 };
 
 /** 归一：小写 + 去首尾空白（中文无大小写，保持原样即可）。 */
 function norm(s: string): string {
@@ -115,6 +144,23 @@ export function retrieve(query: string, opts: RetrieveOptions): AssistantHit[] {
     });
   }
 
+  if (opts.external) {
+    const { index, baseUrl, label } = opts.external;
+    for (const hit of searchDocs(q, index, { limit: limit * 2 })) {
+      hits.push({
+        id: `external:${hit.entry.slug}`,
+        kind: 'external',
+        title: hit.entry.title || hit.entry.slug,
+        subtitle: hit.entry.description || undefined,
+        href: `${baseUrl}/docs/${hit.entry.slug}`,
+        sourceLabel: label,
+        // ★站外分数打折：同等相关度下站内内容优先。用户在 aster-cloud 里提问，
+        //   多数时候想要的是本站的操作路径，而不是跳去另一个站看语言说明。
+        score: hit.score * DOC_BASE * EXTERNAL_PENALTY,
+      });
+    }
+  }
+
   for (const cmd of opts.commands) {
     const score = scoreCommand(cmd, q);
     if (score === null) continue;
@@ -130,7 +176,9 @@ export function retrieve(query: string, opts: RetrieveOptions): AssistantHit[] {
 
   hits.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    if (a.kind !== b.kind) return a.kind === 'doc' ? -1 : 1;
+    // 同分时：站内文档 > 站外文档 > 动作。用户问"怎么…"时说明性内容
+    // 比跳转按钮更可能是答案；而本站内容又比离站内容更贴近当前上下文。
+    if (a.kind !== b.kind) return KIND_ORDER[a.kind] - KIND_ORDER[b.kind];
     return a.id.localeCompare(b.id);
   });
 
