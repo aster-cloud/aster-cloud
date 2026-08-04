@@ -1,13 +1,15 @@
 # 站内助手（Aster Assistant）
 
-全站驻留的检索助手。**当前默认不联网**：不调 LLM、不发请求出站、不读用户数据。
+全站驻留的检索助手。检索本身**不联网**；登录用户额外获得基于检索结果的 RAG 自然语言答复。
 
 ## 组成
 
 | 文件 | 职责 |
 | --- | --- |
 | `retrieval.ts` | 检索核心（纯函数）。把问句映射到文档索引 + 命令面板两个既有事实源 |
-| `provider.ts` | **联网应答器注册点**（预留给「数字人」），默认未注册 |
+| `provider.ts` | 联网应答器契约与注册点 |
+| `digital-human.ts` | RAG 应答器实现（打 `/api/llm/assistant`） |
+| `../../components/assistant/assistant-provider-bootstrap.tsx` | 按登录态注册/注销应答器 |
 | `../../components/assistant/assistant-context.tsx` | 全站共享状态（挂在 `[locale]/layout.tsx`） |
 | `../../components/assistant/assistant-panel.tsx` | 面板 UI + 启动按钮 |
 
@@ -16,9 +18,18 @@
 检索结果全部来自站内已有内容，每条都带可点击的站内链接。无命中时返回空数组并显示
 「没找到」，**不编造**。
 
-## 接入「数字人」（联网能力）
+## 联网 RAG 问答（已接入）
 
-面板已经预留好流式分支，接入时**不需要改面板，也不需要改检索核心**，只做两件事：
+链路：面板 → `provider.answer()` → `/api/llm/assistant`（薄代理，内建 auth+配额）
+→ aster-api `/api/v1/ai/assistant`（内容安全 + BYOK + 计量）→ LLM。
+
+**只对登录用户启用**：`proxyLlmSse` 无 session 直接 401，若无条件注册，
+未登录访客每问一句都会看到"未能连接助手服务"——那是误导（服务没坏，只是没登录）。
+未登录时保持纯离线检索，面板照常可用。
+
+### 若要换一个应答器（如接入数字人形象/语音）
+
+不需要改面板，也不需要改检索核心，只做两件事：
 
 ### 1. 实现应答器
 
