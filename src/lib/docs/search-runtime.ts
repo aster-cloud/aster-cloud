@@ -70,6 +70,30 @@ function normalize(token: string): string {
  * resolves to the same canonical form. Unknown tokens pass through
  * verbatim so a user typing a specific identifier still finds it.
  */
+/**
+ * CJK 连写切片：对不含空格的中日韩文段，切出 2~4 字的滑动窗口。
+ *
+ * <p>★为什么需要：{@link expandQuery} 原本只按空白分词，而中文句子没有空格——
+ * 「如何开始第一个策略的编写」会变成一个 12 字的整体 token，任何标题都不
+ * 包含它，于是**整句检索零命中**（而「快速开始」单独搜是能命中的）。
+ * 用户自然提问几乎必然落进这个坑。
+ *
+ * <p>不引入分词库（体积 + 这是要打进 Worker 的代码），用 n-gram 覆盖：
+ * 2 字窗口足以命中「开始」「策略」「审批」这类领域词，4 字上限则能命中
+ * 「快速开始」「版本历史」这类完整词组；再长的窗口对召回无益只增噪声。
+ */
+function cjkNgrams(text: string): string[] {
+  const out: string[] = [];
+  // 只对连续 CJK 段做切片，英文/数字仍走空白分词（它们本来就分得开）。
+  for (const run of text.match(/[㐀-鿿぀-ヿ가-힯]+/gu) ?? []) {
+    if (run.length < 2) continue;
+    for (let n = 2; n <= 4; n++) {
+      for (let i = 0; i + n <= run.length; i++) out.push(run.slice(i, i + n));
+    }
+  }
+  return out;
+}
+
 export function expandQuery(query: string, synonyms: SynonymMap = {}): string[] {
   const rawTokens = query
     .split(/\s+/)
@@ -82,6 +106,12 @@ export function expandQuery(query: string, synonyms: SynonymMap = {}): string[] 
     if (canonical) {
       expanded.add(canonical);
     }
+    // 中文连写补 n-gram；同义词表对切片同样生效（如「登录」→「认证」）。
+    for (const gram of cjkNgrams(token)) {
+      expanded.add(gram);
+      const c = synonyms[gram];
+      if (c) expanded.add(c);
+    }
   }
   return Array.from(expanded);
 }
@@ -90,6 +120,24 @@ function fieldMatches(field: string, tokens: string[]): boolean {
   if (!field) return false;
   const low = field.toLowerCase();
   return tokens.some((tok) => low.includes(tok));
+}
+
+/**
+ * 命中的最长 token 长度（0 = 未命中）。
+ *
+ * <p>★用于同层级内排序：CJK n-gram 会产生大量 2 字碎片，若只看层级，
+ * 「版本历史」查询下「版本比较」（碎片"版本"命中）会和「获取策略版本历史」
+ * （整词命中）同分，靠 slug 字典序决定谁在前——精确匹配反而排到最后。
+ * 取最长命中长度作次级排序键，让"匹配得更完整"的条目稳定靠前。
+ */
+function longestMatchLen(field: string, tokens: string[]): number {
+  if (!field) return 0;
+  const low = field.toLowerCase();
+  let best = 0;
+  for (const tok of tokens) {
+    if (tok.length > best && low.includes(tok)) best = tok.length;
+  }
+  return best;
 }
 
 function tokenPrefixMatches(field: string, tokens: string[]): boolean {
@@ -105,6 +153,16 @@ function tokenPrefixMatches(field: string, tokens: string[]): boolean {
 
 function exactTitleMatch(title: string, tokens: string[]): boolean {
   return tokens.length === 1 && normalize(title) === tokens[0];
+}
+
+/** 条目在任一字段上的最长命中长度（跨字段取最大）。 */
+function matchStrength(entry: SearchEntry, tokens: string[]): number {
+  return Math.max(
+    longestMatchLen(entry.title, tokens),
+    longestMatchLen(entry.description, tokens),
+    longestMatchLen(entry.slug, tokens),
+    ...entry.headings.map((h) => longestMatchLen(h, tokens)),
+  );
 }
 
 /**
@@ -162,6 +220,10 @@ export function searchDocs(
   }
   hits.sort((a, b) => {
     if (a.score !== b.score) return b.score - a.score;
+    // 同层级内：命中更长的 token（更完整的匹配）优先，压住 CJK n-gram 碎片。
+    const la = matchStrength(a.entry, tokens);
+    const lb = matchStrength(b.entry, tokens);
+    if (la !== lb) return lb - la;
     return a.entry.slug.localeCompare(b.entry.slug);
   });
   const limit = opts.limit ?? 8;
