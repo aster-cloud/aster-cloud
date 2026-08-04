@@ -115,6 +115,7 @@ type OverviewCard = {
   /** i18n key under `admin.overview.*Card` */
   cardKey:
     | 'aiBreakerCard'
+    | 'assistantCard'
     | 'riskTierCard'
     | 'licenseCard'
     | 'licenseRevokeCard'
@@ -127,6 +128,12 @@ type OverviewCard = {
 };
 
 const CARDS: ReadonlyArray<OverviewCard> = [
+  {
+    href: '/admin/assistant',
+    cardKey: 'assistantCard',
+    show: true,
+    comingSoon: false,
+  },
   {
     href: '/admin/ai-circuit-breaker',
     cardKey: 'aiBreakerCard',
