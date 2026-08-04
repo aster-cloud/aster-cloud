@@ -155,3 +155,49 @@ describe('searchDocs ranking', () => {
     expect(hits[0].matchedIn).toBe('description');
   });
 });
+
+describe('CJK 连写查询（中文自然提问）', () => {
+  const zhIndex: SearchIndex = {
+    locale: 'zh',
+    entries: [
+      { slug: 'getting-started/quickstart', title: '快速开始',
+        description: '五分钟内运行第一次策略评估。', headings: ['创建第一条策略'] },
+      { slug: 'api/policies/versions', title: '获取策略版本历史',
+        description: '获取策略的完整版本历史。', headings: [] },
+      { slug: 'api/audit/compare', title: '版本比较',
+        description: '比较两个版本的差异。', headings: [] },
+    ],
+  };
+
+  // ★回归：expandQuery 原本只按空白分词，中文句子没有空格 →
+  //   整句变成一个超长 token，任何标题都不包含它 → 零命中。
+  //   用户自然提问几乎必然落进这个坑（线上实测「如何开始第一个策略的编写」返回空）。
+  it('整句中文提问不再零命中', () => {
+    const hits = searchDocs('如何开始第一个策略的编写', zhIndex);
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it('整句提问能命中其中的词组', () => {
+    const titles = searchDocs('如何开始第一个策略的编写', zhIndex).map((h) => h.entry.title);
+    expect(titles).toContain('快速开始');
+  });
+
+  // ★n-gram 会产生大量 2 字碎片；若不按命中长度排序，
+  //   精确匹配会被碎片命中挤到后面（实测「版本历史」曾把精确项排到最后）。
+  it('更完整的匹配排在碎片匹配之前', () => {
+    const hits = searchDocs('版本历史', zhIndex);
+    expect(hits[0].entry.title).toBe('获取策略版本历史');
+  });
+
+  it('英文查询行为不变（仍按空白分词）', () => {
+    const hits = searchDocs('quickstart', zhIndex);
+    expect(hits.map((h) => h.entry.slug)).toContain('getting-started/quickstart');
+  });
+
+  it('单字不生成 n-gram（窗口最小 2 字）', () => {
+    // 单字仍按原有的整串子串匹配走（这是改动前就有的行为，未变），
+    // 但不应额外炸出 n-gram 切片。这里断言切片逻辑本身的边界。
+    expect(expandQuery('的')).toEqual(['的']);
+    expect(expandQuery('版本')).toContain('版本');
+  });
+});

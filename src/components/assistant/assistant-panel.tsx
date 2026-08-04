@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { useAssistant } from './assistant-context';
 import { retrieve } from '@/lib/assistant/retrieval';
@@ -232,9 +233,14 @@ export function AssistantPanel() {
                 <ul className="space-y-1" aria-label={t('resultsLabel')}>
                   {turn.hits.map((hit) => (
                     <li key={hit.id}>
-                      {/* 用原生 <a>：目标可能跨 docs/dashboard 两套路由，
-                          交给浏览器解析最稳（next/link 需区分是否带 locale 前缀）。 */}
-                      <a
+                      {/* ★用 next/link 而非原生 <a>：原生 <a> 触发**整页导航**，
+                          React 树被销毁重建 → 面板收起、问答记录全清。用户点一条
+                          结果就丢失上下文，等于每次只能问一个问题。
+                          next/link 走客户端路由，Provider 挂在 layout 不重新挂载，
+                          面板与记录都保留（这正是"全站驻留"的意义）。
+                          href 已含 locale 前缀，直接用 next/link 即可，
+                          不需要 i18n 的 Link 再包一层前缀。 */}
+                      <Link
                         href={hit.href}
                         className="block rounded-md px-3 py-2 transition-colors hover:bg-bg-subtle focus:outline-none focus:ring-2 focus:ring-primary"
                       >
@@ -247,7 +253,7 @@ export function AssistantPanel() {
                         {hit.subtitle && (
                           <span className="mt-0.5 block text-xs text-fg-muted">{hit.subtitle}</span>
                         )}
-                      </a>
+                      </Link>
                     </li>
                   ))}
                 </ul>
