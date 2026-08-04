@@ -7,7 +7,11 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { isAdminFromSession } from '@/lib/admin-auth';
-import { PLATFORM_SETTING_KEYS, getSetting } from '@/lib/platform-settings';
+import {
+  PLATFORM_SETTING_KEYS,
+  ASSISTANT_INSTRUCTIONS_MAX_LEN,
+  getSetting,
+} from '@/lib/platform-settings';
 import { AssistantAdminContent } from './assistant-content';
 
 type Props = {
@@ -35,6 +39,9 @@ export default async function AssistantAdminPage({ params }: Props) {
     <AssistantAdminContent
       initialEnabled={enabled !== false}
       initialInstructions={typeof instructions === 'string' ? instructions : ''}
+      enabledKey={PLATFORM_SETTING_KEYS.ASSISTANT_ENABLED}
+      instructionsKey={PLATFORM_SETTING_KEYS.ASSISTANT_EXTRA_INSTRUCTIONS}
+      maxLen={ASSISTANT_INSTRUCTIONS_MAX_LEN}
       labels={{
         title: t('title'),
         subtitle: t('subtitle'),

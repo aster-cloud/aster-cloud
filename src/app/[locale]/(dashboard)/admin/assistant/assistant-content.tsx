@@ -12,10 +12,6 @@ import {
   Stack,
   cn,
 } from '@/components/ui';
-import {
-  PLATFORM_SETTING_KEYS,
-  ASSISTANT_INSTRUCTIONS_MAX_LEN,
-} from '@/lib/platform-settings';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 
 interface Labels {
@@ -41,14 +37,26 @@ interface Labels {
  *
  * <p>写入走既有的 `/api/admin/platform-settings`（`{ key, value }` upsert，
  * requireAdmin 已在路由内）——不新建端点，与 runner-parity 等设置同一条通路。
+ *
+ * <p>★设置项 key 与长度上限**由 server page 以 props 传入**，本文件不 import
+ * `@/lib/platform-settings`：那个模块依赖 drizzle/db，被 `'use client'` 组件
+ * 引用会把 `node:async_hooks` 拖进客户端与 edge bundle，on-prem 的 webpack
+ * 构建会直接失败（UnhandledSchemeError）。与 labels 由服务端下传同理。
  */
 export function AssistantAdminContent({
   initialEnabled,
   initialInstructions,
+  enabledKey,
+  instructionsKey,
+  maxLen,
   labels,
 }: {
   initialEnabled: boolean;
   initialInstructions: string;
+  /** 设置项 key 与长度上限由 server page 传入 —— 见文件头注释。 */
+  enabledKey: string;
+  instructionsKey: string;
+  maxLen: number;
   labels: Labels;
 }) {
   const [enabled, setEnabled] = useState(initialEnabled);
@@ -57,7 +65,7 @@ export function AssistantAdminContent({
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  const tooLong = instructions.length > ASSISTANT_INSTRUCTIONS_MAX_LEN;
+  const tooLong = instructions.length > maxLen;
 
   async function put(key: string, value: unknown) {
     const res = await fetch('/api/admin/platform-settings', {
@@ -76,8 +84,8 @@ export function AssistantAdminContent({
     try {
       // 两个键分别 upsert（该端点是单键接口）。开关先写：即便第二个失败，
       // 「已关闭」也已生效——止血优先于文案。
-      await put(PLATFORM_SETTING_KEYS.ASSISTANT_ENABLED, enabled);
-      await put(PLATFORM_SETTING_KEYS.ASSISTANT_EXTRA_INSTRUCTIONS, instructions.trim());
+      await put(enabledKey, enabled);
+      await put(instructionsKey, instructions.trim());
       setStatus('saved');
     } catch (e) {
       setStatus('error');
@@ -153,7 +161,7 @@ export function AssistantAdminContent({
                 className="w-full rounded-md border border-border bg-bg-soft px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <p className={cn('text-xs', tooLong ? 'text-danger' : 'text-fg-subtle')}>
-                {instructions.length} / {ASSISTANT_INSTRUCTIONS_MAX_LEN}
+                {instructions.length} / {maxLen}
                 {tooLong ? ` — ${labels.tooLong}` : ''}
               </p>
 
