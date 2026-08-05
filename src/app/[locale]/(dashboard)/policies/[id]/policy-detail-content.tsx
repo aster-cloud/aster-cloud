@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ConfirmDialog, Container, PageHeader, Breadcrumbs } from '@/components/ui';
 import { PolicyVersionsTab } from '@/components/policy/policy-versions-tab';
 import { ShareWithTeamsCard } from '@/components/policy/share-with-teams-card';
+import { PolicyAnalyticsSection } from '@/components/policy/policy-analytics-section';
 
 interface PolicyVersion {
   id: string;
@@ -287,6 +288,13 @@ export function PolicyDetailContent({
 
       {/* Version Management with Approval Workflow */}
       <PolicyVersionsTab policyId={policy.id} />
+
+      {/* 决策分析（Phase 1 条件漏斗 + Phase 4 What-if）。
+          自带 i18n，故不走 translations prop——避免详情页把每个新面板的
+          文案都摊平到 page.tsx 的预渲染对象里。 */}
+      <div className="mt-6">
+        <PolicyAnalyticsSection policyId={policy.id} currentVersion={policy.version} />
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
