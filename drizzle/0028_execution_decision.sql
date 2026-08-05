@@ -6,7 +6,9 @@
 -- 全表 UPDATE + 非 concurrent CREATE INDEX 对此规模无实质锁风险，无需分批/CONCURRENTLY。
 -- 若未来表显著增大，回填与建索引应改分批 + CREATE INDEX CONCURRENTLY（单独非事务迁移）。
 --
--- 注意：drizzle-kit migrate 按 `--> statement-breakpoint` 拆分逐条执行；每条须是独立可执行
+-- 注意：drizzle-kit migrate 按 statement-breakpoint 标记拆分逐条执行；每条须是独立可执行
+-- （此处刻意不写出该标记的完整字面量——写出来会被拆分器当成真的分隔符，
+--   把本注释从中间切断，导致后半句变成非法 SQL。这正是本文件曾经的 bug。）
 -- 语句（DO$$ 块作为单条）。勿把多条 DDL 合成一条，否则报错。
 DO $$ BEGIN
   CREATE TYPE "ExecutionDecision" AS ENUM ('approved', 'denied', 'indeterminate', 'error');
