@@ -91,13 +91,17 @@ describe('aggregateConditionFunnel', () => {
     expect(f.withSkeleton).toBe(1);
   });
 
-  it('同一 stepId 措辞变化时取较新的（策略被改过）', () => {
+  // 原本这里断言「同一 stepId 措辞变化时取较新的（策略被改过）」。
+  // 该假设已被生产数据推翻：stepId 是执行序号，措辞不同通常意味着**不同节点**
+  // 而非同一节点被改名，故必须分开统计。详见下方分支型策略回归测试。
+  it('同一 stepId 但措辞不同时分开统计，不合并', () => {
     const f = aggregateConditionFunnel([
       sk([['0.1', '旧措辞', true, 0]]),
       sk([['0.1', '新措辞', true, 0]]),
     ]);
-    expect(f.steps[0].expression).toBe('新措辞');
-    expect(f.steps[0].evaluated).toBe(2);
+    expect(f.steps).toHaveLength(2);
+    expect(f.steps.map((x) => x.expression)).toEqual(['旧措辞', '新措辞']);
+    expect(f.steps.every((x) => x.evaluated === 1)).toBe(true);
   });
 
   it('matchRate 在无求值时为 null 而非 0（无数据 ≠ 0%）', () => {
@@ -111,5 +115,46 @@ describe('aggregateConditionFunnel', () => {
   it('★口径说明必须存在（UI 需常驻展示，防止被误读为全量分析）', () => {
     expect(aggregateConditionFunnel([]).sampleNote).toBeTruthy();
     expect(aggregateConditionFunnel([], { sampleNote: '自定义' }).sampleNote).toBe('自定义');
+  });
+});
+
+// ★回归：分组键必须是 stepId + expression。
+//
+// 证据来自生产：策略 87f20dc0 的 20 次执行产生 3 种形态，其 stepId "0.1"
+// 分别落在 `if condition` / `return value` / `match no-arm` 三种节点上——
+// stepId 是**执行序号**不是源码位置，分支型策略换个输入就会错位。
+// 只按 stepId 分组会把它们静默混成一条，命中率完全失真。
+describe('★分支型策略：同一 stepId 在不同路径下是不同节点', () => {
+  it('不同 expression 不得被混为一组（生产实证场景）', () => {
+    const f = aggregateConditionFunnel([
+      sk([['0.1', 'match no-arm', false, 0]]),
+      sk([['0.1', 'return value', true, 0], ['0.2', 'return value', true, 0]]),
+      sk([['0.1', 'if condition', false, 0], ['0.2', 'return value', true, 0]]),
+    ]);
+    const s01 = f.steps.filter((x) => x.stepId === '0.1');
+    expect(s01).toHaveLength(3);
+    expect(s01.map((x) => x.expression).sort())
+      .toEqual(['if condition', 'match no-arm', 'return value']);
+    // 每个节点各自计数，不互相污染
+    expect(s01.every((x) => x.evaluated === 1)).toBe(true);
+  });
+
+  it('同 stepId 同 expression 仍正确合并（不过度拆分）', () => {
+    const f = aggregateConditionFunnel([
+      sk([['0.1', 'if condition', true, 0]]),
+      sk([['0.1', 'if condition', false, 0]]),
+    ]);
+    expect(f.steps).toHaveLength(1);
+    expect(f.steps[0]).toMatchObject({ evaluated: 2, matched: 1 });
+  });
+
+  it('★死分支判定不受错聚影响', () => {
+    // 若混为一组，'if condition'(0命中) 会被 'return value'(1命中) 掩盖，
+    // 死分支就检测不出来了
+    const f = aggregateConditionFunnel([
+      sk([['0.1', 'return value', true, 0]]),
+      sk([['0.1', 'if condition', false, 0]]),
+    ]);
+    expect(f.deadBranches.map((x) => x.expression)).toEqual(['if condition']);
   });
 });

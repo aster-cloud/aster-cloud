@@ -69,9 +69,20 @@ export const SAMPLE_NOTE_KEY = 'analytics.funnel.sampleNote';
 /**
  * 聚合一批骨架。
  *
- * <p>按 `stepId` 分组——它在 aster-api 侧构造为 `<depth>.<sequence>`，
- * 同一策略跨执行稳定，故可直接对齐。若同一 stepId 在不同执行里 expression
- * 不同（策略被改过），取**最后出现**的那个：新版本的措辞更贴近当前策略。
+ * <p><b>★分组键是 `stepId + expression`，不是单独的 stepId。</b>
+ *
+ * <p>原因（生产数据实证）：stepId 是 `<depth>.<sequence>`，即**执行序号**而非
+ * 源码位置。分支型策略在不同输入下走不同路径，同一个 stepId 会落到**不同的
+ * 源码节点**上。实测某生产策略 20 次执行产生 3 种形态，其 `0.1` 分别是
+ * `if condition` / `return value` / `match no-arm` 三种节点——只按 stepId 分组
+ * 会把它们静默混成一条，得出的命中率毫无意义。
+ *
+ * <p>联合 expression 后：不同节点各自成组，语义正确。待引擎补上真实源码文本
+ * （见 Core IR span ADR）后，分组会自动变得更精确，本函数无需再改。
+ *
+ * <p><b>已知局限</b>：当前引擎的 expression 是占位符（`if condition` 等），
+ * 故同类型的不同条件仍会被合并。这是**引擎侧的信息缺失**，不是本函数能修的——
+ * 但至少不会再把 if 和 return 混为一谈。
  *
  * <p>顺序按首次出现顺序（即执行时的实际判定顺序），不排序——漏斗的价值
  * 就在于反映真实的决策路径。
@@ -89,7 +100,9 @@ export function aggregateConditionFunnel(
     withSkeleton++;
     for (const step of sk.steps) {
       if (!step || typeof step.stepId !== 'string') continue;
-      let cur = acc.get(step.stepId);
+      // ★复合键：见函数注释。仅用 stepId 会把不同路径下的不同节点混为一组。
+      const key = `${step.stepId}\u0000${step.expression}`;
+      let cur = acc.get(key);
       if (!cur) {
         cur = {
           stepId: step.stepId,
@@ -99,11 +112,9 @@ export function aggregateConditionFunnel(
           matched: 0,
           matchRate: null,
         };
-        acc.set(step.stepId, cur);
-        order.push(step.stepId);
+        acc.set(key, cur);
+        order.push(key);
       }
-      // 策略改过措辞时以较新的为准（见函数注释）
-      cur.expression = step.expression;
       cur.evaluated++;
       if (step.matched) cur.matched++;
     }
