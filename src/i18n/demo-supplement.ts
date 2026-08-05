@@ -43,8 +43,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       matched: 'matched',
       loadFailed: 'Could not load the funnel.',
     },
-    // What-if 影响估算面板（Phase 4，本地补充；ui-messages 包尚无这些 key）。
-    // ★assumption/两档置信度/"无法估算"文案不是可选装饰——见 whatif-panel.tsx 注释。
+    // What-if 影响估算文案（Phase 4，本地补充；ui-messages 包尚无这些 key）。
+    // ★面板当前未挂载（/whatif 返回 409，见该 route 头注释）。文案先留着——
+    // 它们表达的口径（假设必须与数字同屏、两档置信度分开、"无法估算"≠0）
+    // 是重写呈现层时仍要遵守的约束，不是可丢弃的草稿。
     whatIf: {
       title: 'What-if impact estimate',
       subtitle: 'Estimated business impact of switching this policy to another version.',
