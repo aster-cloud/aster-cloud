@@ -4,7 +4,7 @@
 import { db, executions } from '@/lib/prisma';
 import { eq, and, gte, lte, desc, lt, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
-import type { PolicyReplayMetadata } from '@/services/policy/policy-api';
+import type { PolicyReplayMetadata, PolicyTraceSkeleton } from '@/services/policy/policy-api';
 
 /** 回放捕获里程碑（M1）——只落漂移检测地基 hash，trace 明文 payload 待 M2 PII envelope。 */
 export const REPLAY_CAPTURE_MILESTONE_M1 = 'p0a.m1';
@@ -94,6 +94,11 @@ export interface ExecutionReplayColumns {
   runtimeToolchainId: string | null;
   reasonCodes: unknown;
   traceJson: unknown;
+  /**
+   * 决策骨架（Phase 0）。★与 traceJson 不同轴：后者含业务值待 M2 PII envelope，
+   * 骨架结构上无值，故可常态落库。
+   */
+  traceSkeletonJson: unknown;
   traceHash: string | null;
   canonicalInputHash: string | null;
   canonicalOutputHash: string | null;
@@ -115,7 +120,12 @@ export interface ExecutionReplayColumns {
  */
 export function buildReplayColumns(
   replay: PolicyReplayMetadata | undefined,
-  refs: ReplayVersionRefs
+  refs: ReplayVersionRefs,
+  /**
+   * 决策骨架（Phase 0，可选）。★独立于 replay 参数：骨架不含业务值，
+   * 即便 replayMetadata 缺失（未开 capture）也应落库——它是零 PII 成本的分析地基。
+   */
+  traceSkeleton?: PolicyTraceSkeleton
 ): ExecutionReplayColumns {
   // 版本引用列总是可填（不依赖 replayMetadata）——即使未开 capture，记录执行时的不可变版本引用
   // 仍有审计价值。回放 hash 列则依赖 replayMetadata。
@@ -130,6 +140,7 @@ export function buildReplayColumns(
     runtimeToolchainId: null,
     reasonCodes: null,
     traceJson: null,
+    traceSkeletonJson: null,
     traceHash: null,
     canonicalInputHash: null,
     canonicalOutputHash: null,
@@ -146,6 +157,14 @@ export function buildReplayColumns(
     piiRetentionUntil: null,
     piiPolicyVersion: null,
   };
+
+  // ★骨架在 replay 早退之前赋值：它与 replayMetadata 是**独立的两条轴**。
+  // 骨架不含任何业务值，即便未开 replay capture（replay 为 undefined）也应落库——
+  // 否则条件漏斗的样本会被 capture 开关白白砍掉一大块，而那个开关管的是 PII，
+  // 与骨架无关。
+  if (traceSkeleton) {
+    base.traceSkeletonJson = traceSkeleton;
+  }
 
   // ★replayMetadata 缺失（未开 capture / 后端未返回）→ 回放列全 null，status=**null**（不是
   // NON_REPLAYABLE）。「未捕获/未评估」与「已评估但不满足」审计语义不同（Codex 复审）；两者都会被

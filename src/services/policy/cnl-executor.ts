@@ -5,7 +5,7 @@
  * 供 Dashboard 和 API v1 两个执行端点复用。
  */
 
-import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateDiagnostic, type PolicyEvaluateResponse, type PolicyReplayMetadata } from './policy-api';
+import { createPolicyApiClient, PolicyApiError, type PolicyEvaluateDiagnostic, type PolicyEvaluateResponse, type PolicyReplayMetadata, type PolicyTraceSkeleton } from './policy-api';
 import { executePolicy as executeSimplePolicy } from './executor';
 import type { Policy } from '@/lib/prisma';
 
@@ -114,6 +114,12 @@ export interface PolicyExecutionResult {
      * 算的回放地基 hash + 工具链。execute route 据此写 Execution 回放列。simple 引擎无。
      */
     replay?: PolicyReplayMetadata;
+    /**
+     * 决策骨架（Phase 0）：脱敏 trace 投影（只有条件原文 + 命中与否，无任何业务值）。
+     * execute route 据此写 Execution.traceSkeletonJson，供条件漏斗 / 死分支分析。
+     * ★与 replay 独立：不受 replayCapture 门控。
+     */
+    traceSkeleton?: PolicyTraceSkeleton;
   };
   /** CNL 引擎返回的原始结果 */
   result?: unknown;
@@ -464,6 +470,9 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
         ...(indeterminate ? { decision: 'indeterminate' as const } : {}),
         // 回放地基（ADR 0030）：aster-api replayCapture 返回的权威 hash，透传给 execute route 落 Execution。
         ...(apiResponse.replayMetadata ? { replay: apiResponse.replayMetadata } : {}),
+        // 决策骨架（Phase 0）：脱敏 trace 投影，同样透传给 execute route 落库。
+        // ★与 replay 独立：骨架不含业务值，未开 capture 时也应保留。
+        ...(apiResponse.traceSkeleton ? { traceSkeleton: apiResponse.traceSkeleton } : {}),
       },
       result: apiResponse.result,
       executedFunction: apiResponse.executedFunction,
@@ -487,6 +496,7 @@ function buildCNLResult(policy: Policy, apiResponse: PolicyEvaluateResponse): Po
       engine: 'aster-cnl',
       executionTime: apiResponse.executionTimeMs,
       ...(apiResponse.replayMetadata ? { replay: apiResponse.replayMetadata } : {}),
+      ...(apiResponse.traceSkeleton ? { traceSkeleton: apiResponse.traceSkeleton } : {}),
     },
     result: apiResponse.result,
     executedFunction: apiResponse.executedFunction,

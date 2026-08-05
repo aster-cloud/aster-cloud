@@ -97,6 +97,34 @@ export interface PolicyEvaluateResponse {
   diagnostics?: PolicyEvaluateDiagnostic[];
   /** 回放元数据（仅 replayCapture=true + HMAC 内部调用时后端返回，ADR 0030）。 */
   replayMetadata?: PolicyReplayMetadata;
+  /**
+   * 决策骨架（Phase 0）：DecisionTrace 的**脱敏**投影，只含条件原文与命中与否。
+   *
+   * <p>与 replayMetadata 同分支产出（后端只要内部构建了 DecisionTrace 就附带）。
+   * ★不含任何业务值，故不受 replayRetentionEnabled 门控——这正是它的设计目的：
+   * 零 PII 成本支撑条件漏斗 / 死分支分析。
+   */
+  traceSkeleton?: PolicyTraceSkeleton;
+}
+
+/** 决策骨架（对应 aster-api io.aster.policy.replay.TraceSkeleton）。 */
+export interface PolicyTraceSkeleton {
+  /** 骨架 schema 版本，消费侧据此判断字段语义。 */
+  schemaVersion: string;
+  moduleName?: string | null;
+  functionName?: string | null;
+  steps: PolicyTraceSkeletonStep[];
+}
+
+/** 单个判定步骤。★结构上无 result 字段——见 aster-api TraceSkeleton 类注释。 */
+export interface PolicyTraceSkeletonStep {
+  /** `<depth>.<sequence>`，同一策略跨执行稳定，供聚合对齐。 */
+  stepId: string;
+  /** 条件原文（策略源码片段，非用户数据）。 */
+  expression: string;
+  /** 该条件是否判定为真。 */
+  matched: boolean;
+  depth: number;
 }
 
 export interface PolicyEvaluateDiagnostic {
