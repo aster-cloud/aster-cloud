@@ -309,6 +309,13 @@
       "when": 1785901559665,
       "tag": "0042_trace_skeleton_column",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1785904283466,
+      "tag": "0043_execution_outcome",
+      "breakpoints": true
     }
   ]
 }
