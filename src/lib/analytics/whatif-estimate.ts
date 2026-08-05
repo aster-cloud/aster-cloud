@@ -152,9 +152,23 @@ export function estimateWhatIf(
       ? null
       : (newlyApproved - newlyRejected) * baselineAvgValue;
 
+  // ★置信度必须按**真正驱动估算的样本量**（baseApproved）判定，不是 withOutcome。
+  //
+  // 估算的两个输出（baselinePositiveRate / baselineAvgValue）都只从「原本通过
+  // 且有结局」的样本算出，与被拒样本无关。若按 withOutcome 判定，
+  // 「1 条通过 + 199 条被拒」会得出 moderate——业务人员看到中等置信度，
+  // 背后其实只有 1 条相关样本。分母必须与分子同源。
+  const relevantSamples = Math.min(withOutcome, baseApproved);
+
+  // 总结局数够多但相关基线太少时显式告知——否则「200 条结局」这个数字本身
+  // 会让人高估结论的可靠性。
+  if (withOutcome >= MIN_FOR_ESTIMATE && relevantSamples < MIN_FOR_ESTIMATE) {
+    caveats.push('BASELINE_TOO_SMALL');
+  }
+
   let confidence: Confidence = 'insufficient';
-  if (withOutcome >= MIN_FOR_MODERATE && baseApproved > 0) confidence = 'moderate';
-  else if (withOutcome >= MIN_FOR_ESTIMATE && baseApproved > 0) confidence = 'low';
+  if (relevantSamples >= MIN_FOR_MODERATE) confidence = 'moderate';
+  else if (relevantSamples >= MIN_FOR_ESTIMATE) confidence = 'low';
 
   return {
     sampleSize: samples.length,

@@ -49,6 +49,12 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('drizzle-orm', () => ({
   and: (...xs: unknown[]) => ({ op: 'and', xs }),
   eq: (col: unknown, val: unknown) => ({ op: 'eq', col, val }),
+  // 模板字面量标签：保留片段与插值，便于断言"守卫条件是否真的加上了"
+  sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
+    op: 'sql',
+    text: strings.join('?'),
+    values,
+  }),
 }));
 
 const { POST } = await import('@/app/api/v1/executions/[id]/outcome/route');
@@ -156,3 +162,34 @@ describe('POST /api/v1/executions/:id/outcome', () => {
     expect((await POST(req([1, 2]), { params })).status).toBe(400);
   });
 });
+
+  // ★P1 回归：upsert 必须带「业务时间更新才覆盖」的守卫。
+  //
+  // 原实现是无条件 last-write-wins：「A 超时 → B 更正 → A 延迟重试」时，
+  // 迟到的旧 A 会静默回滚掉 B 的更正。已用真 PostgreSQL 验证守卫生效
+  // （旧重试为 no-op），此处锁住守卫不被无意移除。
+  it('★带 occurredAt 时 upsert 必须限定业务时间更新才覆盖', async () => {
+    getSession.mockResolvedValue({ user: { id: 'u1' } });
+    execRows = [{ id: 'e1', policyId: 'p1' }];
+    captured.length = 0;
+
+    await POST(req({ outcome: 'converted', occurredAt: '2026-01-03T00:00:00Z' }), { params });
+
+    const c = captured.at(-1)?.conflict as { where?: { op: string; text: string } };
+    expect(c?.where).toBeDefined();
+    expect(c!.where!.op).toBe('sql');
+    // 守卫语义：旧值为空 或 旧值早于新值
+    expect(c!.where!.text).toContain('IS NULL');
+    expect(c!.where!.text).toContain('<');
+  });
+
+  it('未提供 occurredAt 时不加守卫（无从判断新旧，退回后到者覆盖）', async () => {
+    getSession.mockResolvedValue({ user: { id: 'u1' } });
+    execRows = [{ id: 'e1', policyId: 'p1' }];
+    captured.length = 0;
+
+    await POST(req({ outcome: 'converted' }), { params });
+
+    const c = captured.at(-1)?.conflict as { where?: unknown };
+    expect(c?.where).toBeUndefined();
+  });

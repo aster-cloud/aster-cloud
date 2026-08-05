@@ -154,3 +154,28 @@ describe('estimateWhatIf', () => {
     expect(e.baselineAvgValue).toBe(100);
   });
 });
+
+  // ★P1 回归：置信度必须按驱动估算的样本量判定，不是结局总数。
+  //
+  // 估算的两个输出都只从「原本通过且有结局」的样本算出，与被拒样本无关。
+  // 原实现按 withOutcome 判定，1 条相关基线 + 199 条无关被拒 → 报 moderate。
+  describe('★置信度：类别失衡不得虚高', () => {
+    it('1 条通过 + 199 条被拒 不得报 moderate', () => {
+      const samples = [
+        s('a', 'APPROVED', 'converted', 100),
+        ...Array.from({ length: 199 }, (_, i) =>
+          s('r' + i, 'REJECTED', 'defaulted', 0)),
+      ];
+      const e = estimateWhatIf(samples, new Map(), OPTS);
+      expect(e.confidence).toBe('insufficient');
+      expect(e.caveats).toContain('BASELINE_TOO_SMALL');
+    });
+
+    it('相关基线充足时仍应升到 moderate（不能矫枉过正）', () => {
+      const samples = Array.from({ length: 250 }, (_, i) =>
+        s(String(i), 'APPROVED', 'converted', 10));
+      const e = estimateWhatIf(samples, new Map(), OPTS);
+      expect(e.confidence).toBe('moderate');
+      expect(e.caveats).not.toContain('BASELINE_TOO_SMALL');
+    });
+  });

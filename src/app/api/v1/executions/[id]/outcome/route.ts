@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, executions, executionOutcomes } from '@/lib/prisma';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { errorEnvelope } from '@/lib/api/error-envelope';
 
 export const dynamic = 'force-dynamic';
@@ -98,10 +98,24 @@ export async function POST(
       occurredAt,
       note,
     })
-    // 幂等覆盖：同一执行只保留最新结局
+    // ★同一执行只保留**业务时间最新**的结局，而不是最后到达的那条。
+    //
+    // where 限定只有 occurredAt 更新才覆盖：客户端重试、网络乱序都很常见，
+    // 若无条件覆盖，「A 超时 → B 更正 → A 延迟重试」会让旧的 A 回滚掉 B，
+    // 业务结局被静默改错。加了这个守卫后，迟到的旧数据是 no-op。
+    //
+    // 同 occurredAt 的重复投递同样不写（连 reportedAt 也不刷新），故重复请求
+    // 真正幂等——上游可以安全地无脑重试。
+    //
+    // occurredAt 可空，故不能直接写 `旧 < 新`（NULL 比较结果是 NULL，永远不更新）：
+    //   · 新值为空 → 调用方没提供业务时间，无从判断新旧，退回「后到者覆盖」
+    //   · 旧值为空 → 已存那条没有业务时间，新的有，视为更新
     .onConflictDoUpdate({
       target: executionOutcomes.executionId,
       set: { outcome, value, occurredAt, note, reportedAt: new Date() },
+      where: occurredAt
+        ? sql`${executionOutcomes.occurredAt} IS NULL OR ${executionOutcomes.occurredAt} < ${occurredAt}`
+        : undefined,
     });
 
   return NextResponse.json({ ok: true, executionId: id, outcome });

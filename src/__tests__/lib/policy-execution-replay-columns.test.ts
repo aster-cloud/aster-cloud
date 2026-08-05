@@ -255,7 +255,7 @@ describe('★PII 边界：骨架落库前必须白名单投影', () => {
       undefined as never,
       {} as never,
       polluted as never
-    ) as Record<string, unknown>;
+    ) as unknown as Record<string, unknown>;
     const json = JSON.stringify(cols.traceSkeletonJson);
     expect(json).not.toContain('123-45-6789');
     expect(json).not.toContain('98000');
@@ -270,7 +270,7 @@ describe('★PII 边界：骨架落库前必须白名单投影', () => {
       undefined as never,
       {} as never,
       polluted as never
-    ) as Record<string, unknown>;
+    ) as unknown as Record<string, unknown>;
     expect(cols.traceSkeletonJson).toEqual({
       schemaVersion: 'trace-skeleton/v1',
       moduleName: 'M',
@@ -284,7 +284,7 @@ describe('★PII 边界：骨架落库前必须白名单投影', () => {
       undefined as never,
       {} as never,
       polluted as never
-    ) as Record<string, unknown>;
+    ) as unknown as Record<string, unknown>;
     const sk = cols.traceSkeletonJson as { steps: Record<string, unknown>[] };
     expect(Object.keys(sk.steps[0]).sort()).toEqual(
       ['depth', 'expression', 'matched', 'stepId']
