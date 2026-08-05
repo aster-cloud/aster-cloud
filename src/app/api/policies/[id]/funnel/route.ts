@@ -1,0 +1,87 @@
+/**
+ * 条件漏斗（Phase 1）：GET /api/policies/:id/funnel
+ *
+ * <p>基于 `Execution.traceSkeletonJson` 聚合出「这条策略实际怎么走的」——
+ * 每个条件被求值/命中的次数，以及**从未命中过的条件**（死分支）。
+ *
+ * <p><b>零 PII</b>：骨架只含条件原文（策略源码片段）与布尔判定，聚合只做计数。
+ * 故本端点不受 `replayRetentionEnabled`（默认关）限制，对全部租户可用。
+ *
+ * <p><b>★样本口径</b>：分母是「平台记录到的执行」，**不是客户全量业务数据**。
+ * 响应里的 `sampleNote` 必须被 UI 常驻展示（见 condition-funnel.ts 注释）。
+ */
+import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { db, policies, executions } from '@/lib/prisma';
+import { and, eq, gte, lte, desc } from 'drizzle-orm';
+import {
+  aggregateConditionFunnel,
+  type TraceSkeletonLike,
+} from '@/lib/analytics/condition-funnel';
+import { errorEnvelope } from '@/lib/api/error-envelope';
+
+export const dynamic = 'force-dynamic';
+
+/** 单次查询最多扫描的执行条数——防止大租户把 Worker 打爆。 */
+const MAX_SAMPLE = 2000;
+const DEFAULT_SAMPLE = 500;
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return errorEnvelope({ code: 'UNAUTHORIZED', message: '未登录', status: 401 });
+  }
+  const { id } = await params;
+  const url = new URL(request.url);
+
+  // ★租户隔离：必须同时按 policyId **和** userId 过滤。只按 policyId 查会让
+  //   任何登录用户读到别人的策略执行统计（本仓历史上出现过多次同类跨租户读，
+  //   见 audit-crosstenant-2026-07）。
+  const owned = await db
+    .select({ id: policies.id })
+    .from(policies)
+    .where(and(eq(policies.id, id), eq(policies.userId, session.user.id)))
+    .limit(1);
+  if (owned.length === 0) {
+    // 404 而非 403：不泄露「该 id 存在但不属于你」。
+    return errorEnvelope({ code: 'NOT_FOUND', message: '策略不存在', status: 404 });
+  }
+
+  const limit = Math.min(
+    Math.max(Number(url.searchParams.get('limit')) || DEFAULT_SAMPLE, 1),
+    MAX_SAMPLE,
+  );
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  const version = url.searchParams.get('version');
+
+  const conds = [eq(executions.policyId, id), eq(executions.userId, session.user.id)];
+  if (from) conds.push(gte(executions.createdAt, new Date(from)));
+  if (to) conds.push(lte(executions.createdAt, new Date(to)));
+  // 按具体版本筛：改策略后想只看新版本的走向
+  if (version) conds.push(eq(executions.policyVersion, Number(version)));
+
+  const rows = await db
+    .select({ skeleton: executions.traceSkeletonJson })
+    .from(executions)
+    .where(and(...conds))
+    .orderBy(desc(executions.createdAt))
+    .limit(limit);
+
+  const funnel = aggregateConditionFunnel(
+    rows.map((r) => r.skeleton as TraceSkeletonLike | null),
+  );
+
+  // 诚实回报覆盖率：withSkeleton < sampleSize 说明部分执行没采集到骨架
+  // （Phase 0 已知局限：trace collector 仅在 trace/replayCapture 时 arm）。
+  // 不静默——UI 据此提示，避免用户以为漏斗覆盖了全部执行。
+  return NextResponse.json({
+    policyId: id,
+    ...funnel,
+    coverage: funnel.sampleSize > 0 ? funnel.withSkeleton / funnel.sampleSize : null,
+    limit,
+  });
+}
