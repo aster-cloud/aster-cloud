@@ -157,7 +157,7 @@ export async function POST(
     return errorEnvelope({ code: 'NOT_FOUND', message: '执行记录不存在', status: 404 });
   }
 
-  await db
+  const written = await db
     .insert(executionOutcomes)
     .values({
       id: globalThis.crypto.randomUUID(),
@@ -187,13 +187,29 @@ export async function POST(
     //     乱序重试的危害来自**更早**的业务时间，等于不构成回滚风险。
     //   · 新值为空 → 调用方没提供业务时间，无从比较；此时**只允许覆盖同样没有
     //     业务时间的那条**，不能让一条无时间的迟到重试抹掉带时间的更正。
+    // ★同 occurredAt 的两条**不同**更正靠到达顺序决出胜负（后到者赢）。这一点
+    // 无法在单条 upsert 里消除，也不该假装消除——真正要避免的是调用方
+    // **误以为**自己的写生效了。故下面用 returning() 如实回报是否落库。
     .onConflictDoUpdate({
       target: executionOutcomes.executionId,
       set: { outcome, value, occurredAt, note, reportedAt: new Date() },
       where: occurredAt
         ? sql`${executionOutcomes.occurredAt} IS NULL OR ${executionOutcomes.occurredAt} <= ${occurredAt}`
         : sql`${executionOutcomes.occurredAt} IS NULL`,
-    });
+    })
+    .returning({ executionId: executionOutcomes.executionId });
 
-  return NextResponse.json({ ok: true, executionId: id, outcome });
+  // ★守卫拦下时 returning 为空 —— 必须如实告知，不能一律 ok:true。
+  // 否则调用方无从区分「已记录」和「被判定为过期、静默丢弃」，
+  // 而后者恰恰是它需要知道的（可能要拿更新的业务时间重试）。
+  const applied = written.length > 0;
+  return NextResponse.json({
+    ok: true,
+    executionId: id,
+    outcome,
+    applied,
+    ...(applied
+      ? {}
+      : { reason: 'STALE_OCCURRED_AT', message: '已存在业务时间更新的结局，本次回传未生效' }),
+  });
 }

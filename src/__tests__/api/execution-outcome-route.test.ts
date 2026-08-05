@@ -12,6 +12,8 @@ vi.mock('@/lib/auth', () => ({ getSession: () => getSession() }));
 
 const captured: { where?: unknown; values?: unknown; conflict?: unknown }[] = [];
 let execRows: unknown[] = [];
+// upsert 的 returning 结果：空数组 = 守卫拦下未写入
+let upsertReturns: unknown[] = [{ executionId: 'e1' }];
 
 vi.mock('@/lib/prisma', () => ({
   db: {
@@ -36,7 +38,10 @@ vi.mock('@/lib/prisma', () => ({
         return {
           onConflictDoUpdate(c: unknown) {
             ctx.conflict = c;
-            return Promise.resolve();
+            // returning() 决定 route 回报 applied 与否；默认视为写入成功
+            return {
+              returning: () => Promise.resolve(upsertReturns),
+            };
           },
         };
       },
@@ -245,5 +250,34 @@ describe('POST /api/v1/executions/:id/outcome', () => {
       expect((await post('0012.50')).values?.value).toBe('12.50');
       expect((await post(-3.5)).values?.value).toBe('-3.5');
       expect((await post('-0.0000')).values?.value).toBe('0.0000');
+    });
+  });
+
+  // ★第三轮审查：守卫拦下时不能一律 ok:true —— 调用方必须能区分
+  // 「已记录」和「被判定过期、静默丢弃」，否则它会以为自己的更正生效了。
+  describe('★applied 如实回报写入结果', () => {
+    it('正常写入 → applied: true', async () => {
+      getSession.mockResolvedValue({ user: { id: 'u1' } });
+      execRows = [{ id: 'e1', policyId: 'p1' }];
+      upsertReturns = [{ executionId: 'e1' }];
+
+      const res = await POST(req({ outcome: 'converted' }), { params });
+      const body = await res.json();
+      expect(body.applied).toBe(true);
+      expect(body.reason).toBeUndefined();
+    });
+
+    it('被守卫拦下 → applied: false 且给出原因', async () => {
+      getSession.mockResolvedValue({ user: { id: 'u1' } });
+      execRows = [{ id: 'e1', policyId: 'p1' }];
+      upsertReturns = []; // 守卫拦下，0 行受影响
+
+      const res = await POST(
+        req({ outcome: 'stale', occurredAt: '2026-01-01T00:00:00Z' }),
+        { params },
+      );
+      const body = await res.json();
+      expect(body.applied).toBe(false);
+      expect(body.reason).toBe('STALE_OCCURRED_AT');
     });
   });
