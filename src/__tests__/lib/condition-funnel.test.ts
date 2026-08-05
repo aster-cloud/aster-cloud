@@ -26,7 +26,7 @@ describe('aggregateConditionFunnel', () => {
     expect(f.sampleSize).toBe(0);
     expect(f.withSkeleton).toBe(0);
     expect(f.steps).toEqual([]);
-    expect(f.deadBranches).toEqual([]);
+    expect(f.neverMatchedInSample).toEqual([]);
   });
 
   it('按 stepId 聚合命中数与求值数', () => {
@@ -60,22 +60,22 @@ describe('aggregateConditionFunnel', () => {
       sk([['0.1', '金额>100万', false, 0]]),
       sk([['0.1', '金额>100万', false, 0]]),
     ]);
-    expect(f.deadBranches).toHaveLength(1);
-    expect(f.deadBranches[0].expression).toBe('金额>100万');
-    expect(f.deadBranches[0].evaluated).toBe(2);
+    expect(f.neverMatchedInSample).toHaveLength(1);
+    expect(f.neverMatchedInSample[0].expression).toBe('金额>100万');
+    expect(f.neverMatchedInSample[0].evaluated).toBe(2);
   });
 
   it('★"从未走到"不算死分支（evaluated=0 不出现在结果里）', () => {
     // 只有走到过的条件才会出现在骨架里，故 evaluated 恒 >0；
-    // 这条断言防止将来有人把"未出现的条件"也塞进 deadBranches。
+    // 这条断言防止将来有人把"未出现的条件"也塞进 neverMatchedInSample。
     const f = aggregateConditionFunnel([sk([['0.1', 'A', true, 0]])]);
-    expect(f.deadBranches).toEqual([]);
+    expect(f.neverMatchedInSample).toEqual([]);
     expect(f.steps.every((s) => s.evaluated > 0)).toBe(true);
   });
 
   it('全部命中 → 无死分支', () => {
     const f = aggregateConditionFunnel([sk([['0.1', 'A', true, 0], ['0.2', 'B', true, 0]])]);
-    expect(f.deadBranches).toEqual([]);
+    expect(f.neverMatchedInSample).toEqual([]);
   });
 
   it('保持执行时的判定顺序（漏斗的意义在于反映真实路径）', () => {
@@ -155,6 +155,48 @@ describe('★分支型策略：同一 stepId 在不同路径下是不同节点',
       sk([['0.1', 'return value', true, 0]]),
       sk([['0.1', 'if condition', false, 0]]),
     ]);
-    expect(f.deadBranches.map((x) => x.expression)).toEqual(['if condition']);
+    expect(f.neverMatchedInSample.map((x) => x.expression)).toEqual(['if condition']);
+  });
+});
+
+// ★采样口径回归：本聚合只看最近 N 条，必须诚实说明这一点。
+//
+// 第四轮交叉审查指出：把「样本内未命中」标成「死分支」会诱导业务人员删掉
+// 一条有用的规则（季度触发的风控规则在最近 500 条里当然不命中）。
+describe('★采样口径必须诚实', () => {
+  const one = () => sk([['0.1', 'if condition', false, 0]]);
+
+  it('total 大于扫描数 → truncated=true', () => {
+    const f = aggregateConditionFunnel([one(), one()], { total: 5000 });
+    expect(f.scanned).toBe(2);
+    expect(f.total).toBe(5000);
+    expect(f.truncated).toBe(true);
+  });
+
+  it('total 等于扫描数 → truncated=false（这就是全部）', () => {
+    const f = aggregateConditionFunnel([one(), one()], { total: 2 });
+    expect(f.truncated).toBe(false);
+  });
+
+  it('★未提供 total → truncated=null，不得猜成 false', () => {
+    // 猜 false 等于宣称"这是全量"，比承认不知道糟得多
+    const f = aggregateConditionFunnel([one()]);
+    expect(f.total).toBeNull();
+    expect(f.truncated).toBeNull();
+  });
+
+  it('★字段名不得暗示「死分支」', () => {
+    const f = aggregateConditionFunnel([one()], { total: 1 });
+    expect(f.neverMatchedInSample).toHaveLength(1);
+    // 旧名承载了「这个分支是死的」这层未经证实的结论
+    expect(f).not.toHaveProperty('deadBranches');
+  });
+
+  it('样本内未命中仍照实列出（不因谨慎而隐藏事实）', () => {
+    const f = aggregateConditionFunnel(
+      [sk([['0.1', 'if condition', false, 0], ['0.2', 'return value', true, 0]])],
+      { total: 100 },
+    );
+    expect(f.neverMatchedInSample.map((s) => s.expression)).toEqual(['if condition']);
   });
 });

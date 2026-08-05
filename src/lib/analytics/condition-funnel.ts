@@ -55,12 +55,31 @@ export interface ConditionFunnel {
   sampleNote: string;
   steps: FunnelStep[];
   /**
-   * 死分支：被求值过但**从未**判定为真的条件。
+   * **在本次样本内**从未判定为真的条件。
    *
-   * <p>这是对业务人员最直观的价值——"你写的这个条件在 N 次执行里从未命中过"，
-   * 往往意味着规则写错了、或者上游条件把它挡住了。
+   * <p><b>★刻意不叫 deadBranches。</b>本聚合只看最近 N 条执行（见
+   * {@link ConditionFunnel.truncated}），「样本内没命中」≠「这个分支是死的」——
+   * 一个季度只触发一次的风控规则，在最近 500 条里当然一次都不命中，
+   * 但它完全正常。把它标成"死分支"会诱导业务人员去删一条有用的规则。
+   *
+   * <p>真正的死分支判定需要静态可达性分析（那是 Phase 2 的
+   * RuleConflictAnalyzer 在做的事，不需要执行数据），或者全量扫描而非采样。
+   * 本字段只陈述事实：这些条件在**这批样本里**没有命中过。
    */
-  deadBranches: FunnelStep[];
+  neverMatchedInSample: FunnelStep[];
+
+  /** 本次实际扫描的执行条数（= sampleSize），与下面的 total 对照看覆盖率。 */
+  scanned: number;
+
+  /**
+   * 符合筛选条件的执行**总数**；null = 调用方未提供（纯函数无法自己查）。
+   *
+   * <p>与 {@link scanned} 不等即说明结果基于截断样本。
+   */
+  total: number | null;
+
+  /** 是否发生了截断（total > scanned）。null = total 未知。 */
+  truncated: boolean | null;
 }
 
 /** 口径说明的固定文案 key（UI 走 i18n，这里给出稳定标识）。 */
@@ -89,7 +108,7 @@ export const SAMPLE_NOTE_KEY = 'analytics.funnel.sampleNote';
  */
 export function aggregateConditionFunnel(
   skeletons: ReadonlyArray<TraceSkeletonLike | null | undefined>,
-  opts: { sampleNote?: string } = {},
+  opts: { sampleNote?: string; total?: number | null } = {},
 ): ConditionFunnel {
   const order: string[] = [];
   const acc = new Map<string, FunnelStep>();
@@ -125,12 +144,20 @@ export function aggregateConditionFunnel(
     return { ...s, matchRate: s.evaluated > 0 ? s.matched / s.evaluated : null };
   });
 
+  const scanned = skeletons.length;
+  const total = opts.total ?? null;
+
   return {
-    sampleSize: skeletons.length,
+    sampleSize: scanned,
     withSkeleton,
     sampleNote: opts.sampleNote ?? SAMPLE_NOTE_KEY,
     steps,
-    // 死分支：求值过但从未为真。evaluated=0 的不算——那是"没走到"，不是"走到了但不成立"。
-    deadBranches: steps.filter((s) => s.evaluated > 0 && s.matched === 0),
+    scanned,
+    total,
+    // total 未知时不猜——宁可返回 null 让 UI 说"未知"，也不假装没有截断
+    truncated: total === null ? null : total > scanned,
+    // 求值过但从未为真。evaluated=0 的不算——那是"没走到"，不是"走到了但不成立"。
+    // ★这只是样本内的事实陈述，不等于死分支，命名与文档都不得暗示后者。
+    neverMatchedInSample: steps.filter((s) => s.evaluated > 0 && s.matched === 0),
   };
 }

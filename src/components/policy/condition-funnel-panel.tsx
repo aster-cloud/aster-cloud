@@ -12,8 +12,11 @@ interface Labels {
   emptyHint: string;
   sampleNote: string;
   coverageNote: string;
-  deadTitle: string;
-  deadHint: string;
+  /** ★标题必须表达「样本内未命中」而非「死分支」——见下方渲染处注释 */
+  neverMatchedTitle: string;
+  neverMatchedHint: string;
+  /** 截断提示：本次只看了最近 N 条 */
+  truncatedNote: string;
   evaluated: string;
   matched: string;
   loadFailed: string;
@@ -102,6 +105,16 @@ export function ConditionFunnelPanel({
                 .replace('{total}', String(data.sampleSize))}
             </>
           )}
+          {/* ★截断必须说：不说的话，「这条件从未命中」会被读成结论，
+              而实际可能只是它没赶上最近这批样本。 */}
+          {data.truncated === true && (
+            <>
+              {' '}
+              {labels.truncatedNote
+                .replace('{scanned}', String(data.scanned))
+                .replace('{total}', String(data.total ?? '?'))}
+            </>
+          )}
         </AlertDescription>
       </Alert>
 
@@ -115,15 +128,18 @@ export function ConditionFunnelPanel({
         </CardBody>
       </Card>
 
-      {/* 死分支单独强调——这是对业务人员最直观的价值：你写的条件从未生效 */}
-      {data.deadBranches.length > 0 && (
+      {/* ★这里刻意**不**说"死分支"。本面板只看最近 N 条执行，样本内没命中
+          不代表分支是死的——一个季度触发一次的风控规则在最近 500 条里当然
+          一次都不命中，但它完全正常。说成"死分支"会诱导业务人员删掉有用的规则。
+          真正的可达性判定由 Phase 2 的静态分析负责，不需要执行数据。 */}
+      {data.neverMatchedInSample.length > 0 && (
         <Card className="border-amber-200">
           <CardBody className="pt-4">
             <Stack gap={2}>
-              <h4 className="text-sm font-medium text-fg">{labels.deadTitle}</h4>
-              <p className="text-sm text-fg-muted">{labels.deadHint}</p>
+              <h4 className="text-sm font-medium text-fg">{labels.neverMatchedTitle}</h4>
+              <p className="text-sm text-fg-muted">{labels.neverMatchedHint}</p>
               <ul className="space-y-1">
-                {data.deadBranches.map((s) => (
+                {data.neverMatchedInSample.map((s) => (
                   <li key={s.stepId} className="text-sm text-fg">
                     <span className="font-mono text-xs text-fg-muted">{s.evaluated}×</span>{' '}
                     {s.expression}

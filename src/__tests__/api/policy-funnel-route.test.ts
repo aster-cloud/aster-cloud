@@ -15,6 +15,8 @@ vi.mock('@/lib/auth', () => ({ getSession: () => getSession() }));
 const captured: { table: unknown; where: unknown }[] = [];
 let ownedRows: unknown[] = [];
 let execRows: unknown[] = [];
+/** count() 查询返回的总数——用于断言 truncated 口径 */
+let totalCount = 0;
 
 vi.mock('@/lib/prisma', () => {
   const makeChain = (rowsFor: () => unknown[]) => ({
@@ -42,7 +44,12 @@ vi.mock('@/lib/prisma', () => {
   return {
     db: {
       select: () =>
-        makeChain(() => (captured.length <= 1 ? ownedRows : execRows)),
+        makeChain(() => {
+          // 三次查询依次是：归属校验 → 执行行 → count(总数)
+          if (captured.length <= 1) return ownedRows;
+          if (captured.length === 2) return execRows;
+          return [{ value: totalCount }];
+        }),
     },
     policies: { id: 'policies.id', userId: 'policies.userId' },
     executions: {
@@ -62,6 +69,7 @@ vi.mock('drizzle-orm', () => ({
   lte: (col: unknown, val: unknown) => ({ op: 'lte', col, val }),
   desc: (col: unknown) => ({ op: 'desc', col }),
   sql: () => ({ op: 'sql' }),
+  count: () => ({ op: 'count' }),
 }));
 
 const { GET } = await import('@/app/api/policies/[id]/funnel/route');
@@ -165,5 +173,36 @@ describe('GET /api/policies/:id/funnel', () => {
       col: 'executions.policyVersion',
       val: 3,
     });
+  });
+
+  // ★截断口径必须随响应返回。没有它，「这条件从未命中」会被读成结论，
+  // 而实际可能只是它没赶上最近这批样本（第四轮交叉审查）。
+  it('★总数大于扫描数时回报 truncated', async () => {
+    getSession.mockResolvedValue({ user: { id: 'u1' } });
+    ownedRows = [{ id: 'p1' }];
+    execRows = [
+      { skeleton: { steps: [{ stepId: '0.1', expression: 'if condition', matched: false, depth: 0 }] } },
+    ];
+    totalCount = 5000;
+
+    const res = await GET(req(''), { params });
+    const body = await res.json();
+    expect(body.scanned).toBe(1);
+    expect(body.total).toBe(5000);
+    expect(body.truncated).toBe(true);
+    // 同时确认字段名不再暗示「死分支」
+    expect(body.neverMatchedInSample).toHaveLength(1);
+    expect(body.deadBranches).toBeUndefined();
+  });
+
+  it('总数等于扫描数时 truncated=false（这就是全部）', async () => {
+    getSession.mockResolvedValue({ user: { id: 'u1' } });
+    ownedRows = [{ id: 'p1' }];
+    execRows = [{ skeleton: { steps: [{ stepId: '0.1', expression: 'x', matched: true, depth: 0 }] } }];
+    totalCount = 1;
+
+    const res = await GET(req(''), { params });
+    const body = await res.json();
+    expect(body.truncated).toBe(false);
   });
 });

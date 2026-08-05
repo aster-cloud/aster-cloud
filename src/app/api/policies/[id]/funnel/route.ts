@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policies, executions } from '@/lib/prisma';
-import { and, eq, gte, lte, desc } from 'drizzle-orm';
+import { and, eq, gte, lte, desc, count } from 'drizzle-orm';
 import {
   aggregateConditionFunnel,
   type TraceSkeletonLike,
@@ -71,8 +71,17 @@ export async function GET(
     .orderBy(desc(executions.createdAt))
     .limit(limit);
 
+  // ★同时查符合条件的**总数**：只有知道总数才能说清「这是最近 N 条的样本」
+  // 还是「这就是全部」。没有它，UI 无从区分「条件从未命中」和「样本太小没赶上」——
+  // 而这两者对业务人员的含义完全相反（前者要改规则，后者什么都不该做）。
+  const [{ value: total }] = await db
+    .select({ value: count() })
+    .from(executions)
+    .where(and(...conds));
+
   const funnel = aggregateConditionFunnel(
     rows.map((r) => r.skeleton as TraceSkeletonLike | null),
+    { total },
   );
 
   // 诚实回报覆盖率：withSkeleton < sampleSize 说明部分执行没采集到骨架

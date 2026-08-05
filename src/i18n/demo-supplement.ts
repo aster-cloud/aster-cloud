@@ -37,8 +37,11 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         'Skeletons are captured when a policy runs. Execute this policy a few times and the funnel will fill in.',
       sampleNote: 'Based on {count} executions recorded by the platform — not your full business volume.',
       coverageNote: 'Only {covered} of {total} executions carried a decision skeleton.',
-      deadTitle: 'Conditions that never matched',
-      deadHint: 'These were evaluated but never came out true — they may be unreachable or misspecified.',
+      neverMatchedTitle: 'Conditions that did not match in this sample',
+      neverMatchedHint:
+        'These were evaluated but never came out true in the executions shown here. That does not by itself mean the branch is dead — a rule that fires once a quarter will not match in a recent sample either.',
+      truncatedNote:
+        'Showing the most recent {scanned} of {total} executions, so counts below are a sample, not a full tally.',
       evaluated: 'evaluated',
       matched: 'matched',
       loadFailed: 'Could not load the funnel.',
@@ -425,8 +428,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       emptyHint: '骨架在策略执行时采集。执行几次后这里就会有数据。',
       sampleNote: '基于平台记录到的 {count} 次执行——不是您的全量业务数据。',
       coverageNote: '{total} 次执行中只有 {covered} 次带决策骨架。',
-      deadTitle: '从未命中的条件',
-      deadHint: '这些条件被求值过但从未为真——可能走不到，或者写错了。',
+      neverMatchedTitle: '本次样本内未命中的条件',
+      neverMatchedHint:
+        '这些条件在上面这批执行里被求值过，但一次都没为真。这本身**不**说明分支是死的——一个季度才触发一次的规则，在最近的样本里当然也不会命中。',
+      truncatedNote: '仅统计了最近 {scanned} 条（共 {total} 条），故下方是样本而非全量。',
       evaluated: '求值',
       matched: '命中',
       loadFailed: '漏斗加载失败。',
@@ -804,8 +809,11 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       emptyHint: 'Skelette entstehen bei der Ausführung. Führen Sie die Richtlinie einige Male aus.',
       sampleNote: 'Basierend auf {count} von der Plattform erfassten Ausführungen — nicht Ihrem gesamten Geschäftsvolumen.',
       coverageNote: 'Nur {covered} von {total} Ausführungen enthielten ein Entscheidungsskelett.',
-      deadTitle: 'Nie erfüllte Bedingungen',
-      deadHint: 'Diese wurden geprüft, waren aber nie wahr — möglicherweise unerreichbar oder falsch formuliert.',
+      neverMatchedTitle: 'In dieser Stichprobe nicht erfüllte Bedingungen',
+      neverMatchedHint:
+        'Diese wurden geprüft, waren in den gezeigten Ausführungen aber nie wahr. Das allein bedeutet nicht, dass der Zweig tot ist — eine Regel, die einmal pro Quartal greift, erscheint in einer aktuellen Stichprobe ebenfalls nicht.',
+      truncatedNote:
+        'Es werden die neuesten {scanned} von {total} Ausführungen gezeigt; die Zahlen unten sind eine Stichprobe, keine Gesamtsumme.',
       evaluated: 'geprüft',
       matched: 'erfüllt',
       loadFailed: 'Funnel konnte nicht geladen werden.',
@@ -1185,8 +1193,11 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       emptyHint: 'ढाँचे निष्पादन के समय बनते हैं। नीति को कुछ बार चलाएँ।',
       sampleNote: 'प्लेटफ़ॉर्म द्वारा दर्ज {count} निष्पादनों पर आधारित — आपके पूरे व्यावसायिक डेटा पर नहीं।',
       coverageNote: '{total} में से केवल {covered} निष्पादनों में निर्णय ढाँचा था।',
-      deadTitle: 'कभी पूरी न होने वाली शर्तें',
-      deadHint: 'ये जाँची गईं पर कभी सत्य नहीं हुईं — शायद अगम्य हैं या ग़लत लिखी हैं।',
+      neverMatchedTitle: 'इस नमूने में पूरी न हुई शर्तें',
+      neverMatchedHint:
+        'ये दिखाए गए निष्पादनों में जाँची गईं पर कभी सत्य नहीं हुईं। अकेले इससे यह सिद्ध नहीं होता कि शाखा मृत है — तिमाही में एक बार चलने वाला नियम हाल के नमूने में भी नहीं दिखेगा।',
+      truncatedNote:
+        'हाल के {scanned} (कुल {total} में से) निष्पादन दिखाए जा रहे हैं; नीचे के आँकड़े नमूना हैं, पूर्ण गणना नहीं।',
       evaluated: 'जाँची गई',
       matched: 'पूरी हुई',
       loadFailed: 'फ़नल लोड नहीं हो सका।',
