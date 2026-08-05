@@ -174,3 +174,53 @@ describe('buildReplayColumns — 回放列语义（M2.1b 后）', () => {
     expect(buildReplayColumns({ ...REPLAY, reasonCodes: undefined }, REFS).reasonCodes).toBeNull();
   });
 });
+
+describe('traceSkeletonJson（Phase 0 决策骨架）', () => {
+  const refs = {
+    policyVersionRowId: 'v1', policyVersion: 1, sourceToolchainId: 'tc',
+    vocabSnapshotRef: [], locale: 'zh-CN', aliasSetJson: {}, functionName: 'f',
+  };
+  const skeleton = {
+    schemaVersion: 'trace-skeleton/v1',
+    moduleName: 'pricing',
+    functionName: 'discount',
+    steps: [
+      { stepId: '0.1', expression: '客户是 VIP', matched: true, depth: 0 },
+      { stepId: '1.1', expression: '信用分 >= 700', matched: false, depth: 1 },
+    ],
+  };
+
+  it('骨架被写入 traceSkeletonJson', () => {
+    const cols = buildReplayColumns(undefined, refs, skeleton);
+    expect(cols.traceSkeletonJson).toEqual(skeleton);
+  });
+
+  // ★核心：骨架与 replayMetadata 是独立的两条轴。未开 capture 时 replay 列全 null，
+  //   但骨架仍须落库——否则条件漏斗的样本会被一个管 PII 的开关白白砍掉。
+  it('★未开 replay capture 时骨架仍落库（两条轴独立）', () => {
+    const cols = buildReplayColumns(undefined, refs, skeleton);
+    expect(cols.replayabilityStatus).toBeNull();   // 未捕获
+    expect(cols.traceSkeletonJson).toEqual(skeleton); // 但骨架在
+  });
+
+  it('无骨架时该列为 null（不写空对象）', () => {
+    expect(buildReplayColumns(undefined, refs).traceSkeletonJson).toBeNull();
+  });
+
+  // ★PII 边界：骨架里不得出现业务值。aster-api 侧已用类型保证，
+  //   这里再钉一道——防止将来有人在 cloud 侧手工塞值进这一列。
+  it('★落库的骨架不含任何业务值', () => {
+    const cols = buildReplayColumns(undefined, refs, skeleton);
+    const json = JSON.stringify(cols.traceSkeletonJson);
+    expect(json).not.toContain('result');
+    for (const step of skeleton.steps) {
+      expect(Object.keys(step).sort()).toEqual(['depth', 'expression', 'matched', 'stepId']);
+    }
+  });
+
+  it('骨架不影响既有回放列取值', () => {
+    const withSk = buildReplayColumns(undefined, refs, skeleton);
+    const without = buildReplayColumns(undefined, refs);
+    expect({ ...withSk, traceSkeletonJson: null }).toEqual(without);
+  });
+});

@@ -1,0 +1,1 @@
+ALTER TABLE "Execution" ADD COLUMN "traceSkeletonJson" jsonb;

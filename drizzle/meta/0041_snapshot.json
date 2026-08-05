@@ -1,6 +1,6 @@
 {
-  "id": "719dee18-1fb6-4b25-9530-dc4cee140ce8",
-  "prevId": "c0364593-406b-4450-8407-7253e8644a2e",
+  "id": "10cbfc5f-4cac-4bed-8da1-10ac12f830f2",
+  "prevId": "719dee18-1fb6-4b25-9530-dc4cee140ce8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2013,6 +2013,12 @@
         "traceJson": {
           "name": "traceJson",
           "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "traceSkeletonJson": {
+          "name": "traceSkeletonJson",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

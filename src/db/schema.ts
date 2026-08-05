@@ -687,6 +687,17 @@ export const executions = pgTable(
     reasonCodes: json('reasonCodes'),
     // PII-redacted 结构 trace（原值只在加密 payload）+ trace 的 canonical hash。
     traceJson: json('traceJson'),
+    /**
+     * 决策骨架（Phase 0）：aster-api TraceSkeleton 的落库形态。
+     *
+     * <p>★与 traceJson 是**两条不同的 PII 轴**，故独立成列而非复用：
+     * traceJson 是含 result 业务值的完整 trace（M2 才落，需 PII envelope）；
+     * 骨架**结构上不含任何值**（只有 expression/matched/depth），故可常态采集，
+     * 不受 replayRetentionEnabled（默认关）门控。混用一列会让 PII 边界含糊。
+     *
+     * <p>用途：条件漏斗 / 死分支聚合——回答"这条策略实际怎么走的""哪个条件从未命中"。
+     */
+    traceSkeletonJson: jsonb('traceSkeletonJson'),
     traceHash: text('traceHash'),
     // canonical input/output hash（见 canonical-json.ts；剔除非决定性字段）。
     canonicalInputHash: text('canonicalInputHash'),
