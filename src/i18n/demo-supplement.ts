@@ -67,6 +67,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceModerate: 'moderate',
       coverageNote:
         'Only {compared} of {total} executions have been run on the target version, so the number of changed decisions is understated.',
+      notComparable:
+        'These two versions have no comparable executions, so no estimate can be given.',
       caveatsTitle: 'Why this estimate is limited',
       caveat: {
         NO_OUTCOME_DATA: 'No outcomes have been reported yet.',
@@ -450,6 +452,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceModerate: '中等',
       coverageNote:
         '{total} 条执行中只有 {compared} 条在目标版本上跑过，故「决策变化」条数被低估。',
+      notComparable: '这两个版本没有可对齐的执行记录，无法给出估算。',
       caveatsTitle: '这个估算的局限',
       caveat: {
         NO_OUTCOME_DATA: '尚未回传任何业务结局。',
@@ -828,6 +831,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceModerate: 'mittel',
       coverageNote:
         'Nur {compared} von {total} Ausführungen liefen auf der Zielversion; die Zahl geänderter Entscheidungen ist daher untertrieben.',
+      notComparable:
+        'Diese beiden Versionen haben keine vergleichbaren Ausführungen; es kann keine Schätzung erfolgen.',
       caveatsTitle: 'Grenzen dieser Schätzung',
       caveat: {
         NO_OUTCOME_DATA: 'Es wurden noch keine Ergebnisse zurückgemeldet.',
@@ -1207,6 +1212,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceModerate: 'मध्यम',
       coverageNote:
         '{total} में से केवल {compared} निष्पादन लक्ष्य संस्करण पर चले, इसलिए बदले गए निर्णयों की संख्या कम आंकी गई है।',
+      notComparable: 'इन दो संस्करणों में तुलना योग्य निष्पादन नहीं हैं, अनुमान संभव नहीं।',
       caveatsTitle: 'इस अनुमान की सीमाएँ',
       caveat: {
         NO_OUTCOME_DATA: 'अभी तक कोई परिणाम वापस नहीं भेजा गया।',

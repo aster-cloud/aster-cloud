@@ -26,16 +26,23 @@ interface Labels {
   confidenceLow: string;
   confidenceModerate: string;
   coverageNote: string;
+  /** 两版本无可对齐执行时的兜底说明（route 通常会给更具体的 message） */
+  notComparable: string;
   caveatsTitle: string;
   /** caveat 码 → 人类可读说明 */
   caveat: Record<string, string>;
 }
 
-type WhatIfResponse = WhatIfEstimate & {
+type WhatIfResponse = Partial<WhatIfEstimate> & {
   policyId: string;
   baseVersion: number;
   targetVersion: number;
   comparedAgainst: number;
+  /** false = 两版本无可对齐执行，此时不给任何数字（见 route 注释） */
+  comparable?: boolean;
+  reason?: string;
+  message?: string;
+  alignedCount?: number;
   limit: number;
 };
 
@@ -114,7 +121,18 @@ export function WhatIfPanel({
       </Alert>
     );
   }
-  if (!data || data.withOutcome === 0) {
+  // ★不可比时明确说明，绝不渲染一串 0 —— 那会被读成「改版本毫无影响」。
+  if (data && data.comparable === false) {
+    return (
+      <Stack gap={2}>
+        <h3 className="text-sm font-medium text-fg">{labels.title}</h3>
+        <Alert variant="warning">
+          <AlertDescription>{data.message ?? labels.notComparable}</AlertDescription>
+        </Alert>
+      </Stack>
+    );
+  }
+  if (!data || !data.withOutcome) {
     return (
       <Stack gap={2}>
         <p className="text-sm text-fg-muted">{labels.empty}</p>
@@ -141,44 +159,44 @@ export function WhatIfPanel({
       {/* ★假设说明：常驻、不可关闭。数字离开它就会被当成承诺。 */}
       <Alert>
         <AlertDescription>
-          <span className="font-medium">{labels.assumptionTitle}</span> {data.assumption}
+          <span className="font-medium">{labels.assumptionTitle}</span> {data.assumption ?? ''}
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardBody className="pt-4">
           <Stack gap={3}>
-            <Metric label={labels.changed} value={String(data.changed)} />
-            <Metric label={labels.newlyApproved} value={`+${data.newlyApproved}`} />
-            <Metric label={labels.newlyRejected} value={`-${data.newlyRejected}`} />
+            <Metric label={labels.changed} value={String(data.changed ?? 0)} />
+            <Metric label={labels.newlyApproved} value={`+${data.newlyApproved ?? 0}`} />
+            <Metric label={labels.newlyRejected} value={`-${data.newlyRejected ?? 0}`} />
             <Metric
               label={labels.positiveRate}
               value={
-                data.baselinePositiveRate === null
+                data.baselinePositiveRate === null || data.baselinePositiveRate === undefined
                   ? '—'
                   : `${Math.round(data.baselinePositiveRate * 100)}%`
               }
               // 正面率的置信度
-              hint={`${labels.confidenceLabel}: ${confText(data.confidence)}`}
+              hint={`${labels.confidenceLabel}: ${confText(data.confidence ?? 'insufficient')}`}
             />
             <Metric
               label={labels.valueDelta}
               // ★null 显示"无法估算"，绝不显示 0：两者结论完全不同
               value={
-                data.estimatedValueDelta === null
+                data.estimatedValueDelta === null || data.estimatedValueDelta === undefined
                   ? labels.valueUnavailable
                   : formatDelta(data.estimatedValueDelta)
               }
               // ★金额单独一档置信度，不与正面率共用
-              hint={`${labels.valueConfidenceLabel}: ${confText(data.valueConfidence)}`}
-              muted={data.estimatedValueDelta === null}
+              hint={`${labels.valueConfidenceLabel}: ${confText(data.valueConfidence ?? 'insufficient')}`}
+              muted={data.estimatedValueDelta == null}
             />
           </Stack>
         </CardBody>
       </Card>
 
       {/* 目标版本样本远少于基线时 changed 会被系统性低估——必须说明 */}
-      {data.comparedAgainst < data.sampleSize && (
+      {data.sampleSize !== undefined && data.comparedAgainst < data.sampleSize && (
         <Alert>
           <AlertDescription>
             {labels.coverageNote
@@ -188,13 +206,13 @@ export function WhatIfPanel({
         </Alert>
       )}
 
-      {data.caveats.length > 0 && (
+      {(data.caveats?.length ?? 0) > 0 && (
         <Card className="border-amber-200">
           <CardBody className="pt-4">
             <Stack gap={2}>
               <h4 className="text-sm font-medium text-fg">{labels.caveatsTitle}</h4>
               <ul className="space-y-1">
-                {data.caveats.map((c) => (
+                {(data.caveats ?? []).map((c) => (
                   <li key={c} className="text-sm text-fg-muted">
                     {/* 未知码兜底显示原码，不静默吞掉 */}
                     {labels.caveat[c] ?? c}

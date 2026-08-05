@@ -143,13 +143,41 @@ export async function GET(
     approveDecisions: APPROVE_DECISIONS,
   });
 
+  // ★可比性检查：一次执行只在**一个**版本下跑过，故两个版本的 executionId
+  // 天然不重叠——除非上游做过真回放（M2，尚未落地）把同一批输入在新版本上重跑。
+  //
+  // 不做这个检查的话，newDecisions 永远命中不了任何样本，估算会输出
+  // changed=0 / newlyRejected=0 / delta=0 —— 也就是自信地宣称「改这个版本
+  // 毫无影响」。那比报错糟得多：它看起来是个结论。
+  const alignedCount = samples.filter((s) => newDecisions.has(s.executionId)).length;
+  if (alignedCount === 0) {
+    return NextResponse.json({
+      policyId: id,
+      baseVersion,
+      targetVersion,
+      comparedAgainst: newDecisions.size,
+      sampleSize: samples.length,
+      // 明确拒绝给数字，而不是给一串 0
+      comparable: false,
+      reason: 'NO_ALIGNED_EXECUTIONS',
+      message:
+        '两个版本没有可对齐的执行记录：同一次执行只在一个版本下跑过，无法直接比较。' +
+        '需要对同一批输入在目标版本上重放后才能估算（回放能力尚未上线）。',
+      limit,
+    });
+  }
+
   return NextResponse.json({
     policyId: id,
     baseVersion,
     targetVersion,
+    comparable: true,
     // 目标版本样本数单独回报：它远小于基线时，changed 会被系统性低估
     // （没跑过新版本的执行无从比较），UI 需据此提示而不是让用户以为覆盖了全部。
     comparedAgainst: newDecisions.size,
+    // 真正参与比较的条数——comparedAgainst 只是目标版本的总量，
+    // 两者差距大说明对齐率低，结论的代表性有限。
+    alignedCount,
     ...estimate,
     limit,
   });

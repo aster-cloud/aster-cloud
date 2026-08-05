@@ -153,6 +153,7 @@ describe('GET /api/policies/:id/whatif', () => {
       outcome: 'converted',
       value: '10.0000',
     }));
+    // ★用**相同** executionId：只有回放过的执行才可比（见 route 的对齐检查）
     targetRows = (baseRows as { executionId: string }[]).map((r) => ({
       executionId: r.executionId,
       decision: 'denied',
@@ -176,7 +177,8 @@ describe('GET /api/policies/:id/whatif', () => {
     baseRows = [
       { executionId: 'e1', decision: 'approved', outcome: 'converted', value: '12.5000' },
     ];
-    targetRows = [];
+    // 需要至少一条对齐才会走到估算分支（否则是 comparable:false）
+    targetRows = [{ executionId: 'e1', decision: 'approved' }];
     const res = await GET(req('baseVersion=1&targetVersion=2&positiveOutcomes=converted'), {
       params,
     });
@@ -195,6 +197,8 @@ describe('GET /api/policies/:id/whatif', () => {
     const body = await res.json();
     expect(body.comparedAgainst).toBe(1);
     expect(body.sampleSize).toBe(2);
+    // e1 对齐、e2 未对齐
+    expect(body.alignedCount).toBe(1);
   });
 
   // ★Number(null) === 0 而非 NaN —— 缺参数曾静默变成"版本 0"返回 200。
@@ -202,5 +206,37 @@ describe('GET /api/policies/:id/whatif', () => {
     getSession.mockResolvedValue({ user: { id: 'u1' } });
     const res = await GET(req('baseVersion=0&targetVersion=2'), { params });
     expect(res.status).toBe(400);
+  });
+
+  // ★没有可对齐的执行时**必须拒绝给数字**。
+  //
+  // 一次执行只在一个版本下跑过，故两版本的 executionId 天然不重叠。若不做这个
+  // 检查，newDecisions 命中不了任何样本，估算会输出 changed=0 / delta=0——
+  // 也就是自信地宣称「改这个版本毫无影响」。那比报错糟得多：它看起来是个结论。
+  it('★两版本无可对齐执行 → comparable:false，不给任何数字', async () => {
+    getSession.mockResolvedValue({ user: { id: 'u1' } });
+    baseRows = Array.from({ length: 40 }, (_, i) => ({
+      executionId: `e-base-${i}`,
+      decision: 'approved',
+      outcome: 'converted',
+      value: '100.0000',
+    }));
+    // 目标版本是**另一批** executionId —— 与真实生产数据形态一致
+    targetRows = Array.from({ length: 40 }, (_, i) => ({
+      executionId: `e-tgt-${i}`,
+      decision: 'denied',
+    }));
+
+    const res = await GET(req('baseVersion=1&targetVersion=2&positiveOutcomes=converted'), {
+      params,
+    });
+    const body = await res.json();
+
+    expect(body.comparable).toBe(false);
+    expect(body.reason).toBe('NO_ALIGNED_EXECUTIONS');
+    // 关键：不得出现任何会被读成「无影响」的 0
+    expect(body.changed).toBeUndefined();
+    expect(body.estimatedValueDelta).toBeUndefined();
+    expect(body.newlyRejected).toBeUndefined();
   });
 });
