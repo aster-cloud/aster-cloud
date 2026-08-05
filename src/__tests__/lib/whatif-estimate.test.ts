@@ -179,3 +179,35 @@ describe('estimateWhatIf', () => {
       expect(e.caveats).not.toContain('BASELINE_TOO_SMALL');
     });
   });
+
+  // ★第二轮审查：金额估算与正面率样本量可能差很远，不得共用一档置信度。
+  describe('★金额置信度独立于正面率', () => {
+    it('250 条结局但仅 1 条带金额 → 金额置信度不得为 moderate', () => {
+      const samples = [
+        s('v0', 'APPROVED', 'converted', 100),
+        ...Array.from({ length: 249 }, (_, i) =>
+          s('n' + i, 'APPROVED', 'converted', null)),
+      ];
+      const e = estimateWhatIf(samples, new Map(), OPTS);
+      expect(e.confidence).toBe('moderate');          // 正面率样本充足
+      expect(e.valueConfidence).toBe('insufficient'); // 金额只有 1 条
+      expect(e.caveats).toContain('VALUE_SAMPLE_TOO_SMALL');
+    });
+
+    it('金额样本同样充足时两档都是 moderate', () => {
+      const samples = Array.from({ length: 250 }, (_, i) =>
+        s(String(i), 'APPROVED', 'converted', 10));
+      const e = estimateWhatIf(samples, new Map(), OPTS);
+      expect(e.confidence).toBe('moderate');
+      expect(e.valueConfidence).toBe('moderate');
+      expect(e.caveats).not.toContain('VALUE_SAMPLE_TOO_SMALL');
+    });
+
+    it('无金额数据时金额置信度为 insufficient（与 delta 返回 null 对齐）', () => {
+      const samples = Array.from({ length: 250 }, (_, i) =>
+        s(String(i), 'APPROVED', 'converted', null));
+      const e = estimateWhatIf(samples, new Map(), OPTS);
+      expect(e.estimatedValueDelta).toBeNull();
+      expect(e.valueConfidence).toBe('insufficient');
+    });
+  });

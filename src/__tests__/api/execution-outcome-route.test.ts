@@ -180,16 +180,70 @@ describe('POST /api/v1/executions/:id/outcome', () => {
     expect(c!.where!.op).toBe('sql');
     // 守卫语义：旧值为空 或 旧值早于新值
     expect(c!.where!.text).toContain('IS NULL');
-    expect(c!.where!.text).toContain('<');
+    // <= 而非 <：同业务时间的更正是合法需求，不能静默拒掉
+    expect(c!.where!.text).toContain('<=');
   });
 
-  it('未提供 occurredAt 时不加守卫（无从判断新旧，退回后到者覆盖）', async () => {
+  it('未提供 occurredAt 时只允许覆盖同样无时间的那条', async () => {
+    // 不能让一条无业务时间的迟到重试抹掉带时间的更正
     getSession.mockResolvedValue({ user: { id: 'u1' } });
     execRows = [{ id: 'e1', policyId: 'p1' }];
     captured.length = 0;
 
     await POST(req({ outcome: 'converted' }), { params });
 
-    const c = captured.at(-1)?.conflict as { where?: unknown };
-    expect(c?.where).toBeUndefined();
+    const c = captured.at(-1)?.conflict as { where?: { op: string; text: string } };
+    expect(c?.where).toBeDefined();
+    expect(c!.where!.text).toContain('IS NULL');
+    expect(c!.where!.text).not.toContain('<');
+  });
+
+  // ★P1-4 回归：value 必须按 numeric(20,4) 契约在字符串域严格校验。
+  //
+  // 原实现走 Number()，把明显不是金额的输入静默变成数字：
+  //   "" → 0、"   " → 0、false → 0、[] → 0、true → 1
+  // 金额记成 0 元比报错糟得多——它会污染 Phase 4 均值且事后查不出来。
+  // 另外 1e20 能过 Number.isFinite 但超出列范围，落库时 PG 报 overflow → 500。
+  describe('★value 严格十进制校验', () => {
+    const post = async (v: unknown) => {
+      getSession.mockResolvedValue({ user: { id: 'u1' } });
+      execRows = [{ id: 'e1', policyId: 'p1' }];
+      captured.length = 0;
+      const res = await POST(req({ outcome: 'converted', value: v }), { params });
+      return { status: res.status, values: captured.at(-1)?.values as { value?: string } };
+    };
+
+    it.each([
+      ['空字符串', ''],
+      ['纯空白', '   '],
+      ['布尔 false', false],
+      ['布尔 true', true],
+      ['空数组', []],
+      ['对象', { a: 1 }],
+      ['非数值字符串', 'abc'],
+      ['指数记法', '1e20'],
+    ])('%s → 400（不得静默转成数字）', async (_label, v) => {
+      const { status } = await post(v);
+      expect(status).toBe(400);
+    });
+
+    it('超出 numeric(20,4) 范围 → 400（而不是落库时 500）', async () => {
+      expect((await post(1e20)).status).toBe(400);
+      expect((await post('12345678901234567')).status).toBe(400); // 17 位整数
+      expect((await post('1.23456')).status).toBe(400); // 5 位小数
+    });
+
+    it('高精度十进制字符串不得被 JS number 截断', async () => {
+      // Number("1234567890123456.1234") 会丢掉小数部分
+      const { status, values } = await post('1234567890123456.1234');
+      expect(status).toBe(200);
+      expect(values?.value).toBe('1234567890123456.1234');
+    });
+
+    it('合法值正常通过并规范化', async () => {
+      expect((await post(100)).values?.value).toBe('100');
+      expect((await post('0012.50')).values?.value).toBe('12.50');
+      expect((await post(-3.5)).values?.value).toBe('-3.5');
+      expect((await post('-0.0000')).values?.value).toBe('0.0000');
+    });
   });

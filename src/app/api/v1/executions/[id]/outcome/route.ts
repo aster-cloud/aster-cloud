@@ -19,6 +19,68 @@ export const dynamic = 'force-dynamic';
 const MAX_OUTCOME_LEN = 64;
 const MAX_NOTE_LEN = 1024;
 
+/** numeric(20,4)：总位数 20、小数 4 位 ⇒ 整数部分最多 16 位。 */
+const VALUE_SCALE = 4;
+const VALUE_INT_DIGITS = 16;
+
+/** 十进制字面量：可选负号 + 整数部分 + 可选小数部分。不接受指数记法。 */
+const DECIMAL_RE = /^-?\d+(\.\d+)?$/;
+
+/**
+ * 按 `numeric(20,4)` 契约在**字符串域**解析金额。
+ *
+ * <p>只接受 number 与十进制字符串两种输入，且全程不经过 `Number()`——
+ * 见调用处注释说明为什么隐式转换在金额字段上是有害的。
+ *
+ * <p>拒绝指数记法（`1e20`）：它既容易越界，也不是人类填写金额的形式；
+ * 与其猜测意图不如让调用方显式写清楚。
+ */
+function parseDecimalValue(
+  raw: unknown,
+): { ok: true; value: string } | { ok: false; message: string } {
+  let text: string;
+  if (typeof raw === 'number') {
+    // 只挡 NaN/Infinity；位数与范围统一交给下面的字符串校验，避免两套口径。
+    if (!Number.isFinite(raw)) return { ok: false, message: 'value 必须是有限数值' };
+    text = String(raw);
+    // JS number 用 String() 可能产出指数记法（如 1e21），转成十进制再校验
+    if (!DECIMAL_RE.test(text)) {
+      return { ok: false, message: 'value 超出可精确表示的范围，请改用字符串形式' };
+    }
+  } else if (typeof raw === 'string') {
+    text = raw.trim();
+    if (text === '') return { ok: false, message: 'value 不能是空字符串' };
+  } else {
+    // boolean / 数组 / 对象一律拒绝——Number() 会把它们静默变成 0 或 1
+    return { ok: false, message: 'value 必须是数值或十进制字符串' };
+  }
+
+  if (!DECIMAL_RE.test(text)) {
+    return { ok: false, message: 'value 必须是十进制数值（不支持指数记法）' };
+  }
+
+  const negative = text.startsWith('-');
+  const digits = negative ? text.slice(1) : text;
+  const [intPart, fracPart = ''] = digits.split('.');
+
+  if (fracPart.length > VALUE_SCALE) {
+    return { ok: false, message: `value 最多保留 ${VALUE_SCALE} 位小数` };
+  }
+  // 去前导零后再数位数，"0000123" 不算超长
+  const significantInt = intPart.replace(/^0+/, '');
+  if (significantInt.length > VALUE_INT_DIGITS) {
+    return { ok: false, message: `value 整数部分最多 ${VALUE_INT_DIGITS} 位` };
+  }
+
+  // 规范化：去掉前导零和多余符号，保留原始小数位（不四舍五入、不补零，
+  // 交给 PostgreSQL 按列定义存储）
+  const normalizedInt = significantInt === '' ? '0' : significantInt;
+  const body = fracPart === '' ? normalizedInt : `${normalizedInt}.${fracPart}`;
+  // 负零归一成 0
+  const isZero = normalizedInt === '0' && /^0*$/.test(fracPart);
+  return { ok: true, value: negative && !isZero ? `-${body}` : body };
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -52,15 +114,24 @@ export async function POST(
     });
   }
 
-  // ★value 必须是有限数：NaN / Infinity 进了 numeric 列会让后续聚合全线崩坏，
-  //   且 JSON 里 Infinity 会被序列化成 null 造成静默丢数。宁可 400 也不收。
+  // ★value 在**字符串域**按 numeric(20,4) 契约严格校验，绝不走 Number() 隐式转换。
+  //
+  //   Number() 太宽松，会把明显不是金额的东西静默变成数字：
+  //     "" → 0、"   " → 0、false → 0、[] → 0、true → 1
+  //   金额字段收到这些应当是 400，而不是记一笔 0 元——后者会直接污染
+  //   Phase 4 的均值估算，且事后完全查不出来。
+  //
+  //   同时 JS number 只有 ~15-16 位有效数字，"1234567890123456.1234" 经
+  //   Number() 会被截成 1234567890123456（小数部分静默丢失）；而 1e20 能通过
+  //   Number.isFinite 却超出 numeric(20,4) 的范围，落库时 PostgreSQL 直接
+  //   报 numeric field overflow → 500。两者都必须在入口挡掉。
   let value: string | null = null;
   if (b.value !== undefined && b.value !== null) {
-    const n = typeof b.value === 'number' ? b.value : Number(b.value);
-    if (!Number.isFinite(n)) {
-      return errorEnvelope({ code: 'INVALID_VALUE', message: 'value 必须是有限数值', status: 400 });
+    const parsed = parseDecimalValue(b.value);
+    if (!parsed.ok) {
+      return errorEnvelope({ code: 'INVALID_VALUE', message: parsed.message, status: 400 });
     }
-    value = String(n);
+    value = parsed.value;
   }
 
   let occurredAt: Date | null = null;
@@ -107,15 +178,21 @@ export async function POST(
     // 同 occurredAt 的重复投递同样不写（连 reportedAt 也不刷新），故重复请求
     // 真正幂等——上游可以安全地无脑重试。
     //
-    // occurredAt 可空，故不能直接写 `旧 < 新`（NULL 比较结果是 NULL，永远不更新）：
-    //   · 新值为空 → 调用方没提供业务时间，无从判断新旧，退回「后到者覆盖」
-    //   · 旧值为空 → 已存那条没有业务时间，新的有，视为更新
+    // occurredAt 可空，故不能直接写 `旧 < 新`（NULL 比较恒为 NULL，永远不更新）。
+    // 三种情形分开处理：
+    //   · 新值非空、旧值为空 → 新的信息更全，允许覆盖
+    //   · 新值非空、旧值非空 → 只有**不早于**旧值才覆盖。用 <= 而非 <：
+    //     同一业务时间的更正是合法需求（填错了 outcome 立刻改），
+    //     若用 < 会把它一并拒掉，且接口仍返回 ok，等于静默丢弃用户的更正。
+    //     乱序重试的危害来自**更早**的业务时间，等于不构成回滚风险。
+    //   · 新值为空 → 调用方没提供业务时间，无从比较；此时**只允许覆盖同样没有
+    //     业务时间的那条**，不能让一条无时间的迟到重试抹掉带时间的更正。
     .onConflictDoUpdate({
       target: executionOutcomes.executionId,
       set: { outcome, value, occurredAt, note, reportedAt: new Date() },
       where: occurredAt
-        ? sql`${executionOutcomes.occurredAt} IS NULL OR ${executionOutcomes.occurredAt} < ${occurredAt}`
-        : undefined,
+        ? sql`${executionOutcomes.occurredAt} IS NULL OR ${executionOutcomes.occurredAt} <= ${occurredAt}`
+        : sql`${executionOutcomes.occurredAt} IS NULL`,
     });
 
   return NextResponse.json({ ok: true, executionId: id, outcome });

@@ -74,6 +74,11 @@ export interface WhatIfEstimate {
   estimatedValueDelta: number | null;
 
   confidence: Confidence;
+  /**
+   * 金额估算的置信度，与 {@link confidence}（正面率）分开给。
+   * 两者样本量可能相差很远——共用一档会让金额结论搭正面率的便车。
+   */
+  valueConfidence: Confidence;
   /** 假设说明，必须与数字一同呈现。 */
   assumption: string;
   /** 让结果不可靠的具体原因（样本少/无 outcome/…）。 */
@@ -160,15 +165,32 @@ export function estimateWhatIf(
   // 背后其实只有 1 条相关样本。分母必须与分子同源。
   const relevantSamples = Math.min(withOutcome, baseApproved);
 
+  // ★金额估算另有自己的样本量：baselineAvgValue 只由**填了 value 的**样本算出。
+  // 250 条 approved 里只有 1 条带金额时，正面率也许可信，金额均值却不可信——
+  // 两个输出共用一个 confidence 会让后者搭前者的便车。
+  const valueSamples = baseValueCount;
+  if (baselineAvgValue !== null && valueSamples < MIN_FOR_ESTIMATE) {
+    caveats.push('VALUE_SAMPLE_TOO_SMALL');
+  }
+
   // 总结局数够多但相关基线太少时显式告知——否则「200 条结局」这个数字本身
   // 会让人高估结论的可靠性。
   if (withOutcome >= MIN_FOR_ESTIMATE && relevantSamples < MIN_FOR_ESTIMATE) {
     caveats.push('BASELINE_TOO_SMALL');
   }
 
-  let confidence: Confidence = 'insufficient';
-  if (relevantSamples >= MIN_FOR_MODERATE) confidence = 'moderate';
-  else if (relevantSamples >= MIN_FOR_ESTIMATE) confidence = 'low';
+  const gradeOf = (n: number): Confidence =>
+    n >= MIN_FOR_MODERATE ? 'moderate' : n >= MIN_FOR_ESTIMATE ? 'low' : 'insufficient';
+
+  // 正面率的置信度：由「原本通过且有结局」的样本量决定。
+  const confidence = gradeOf(relevantSamples);
+
+  // ★金额估算单独给一档置信度，不与正面率共用。
+  // 两者的样本量可以差很远（250 条结局里只有 1 条填了金额），共用一档会让
+  // 金额结论搭正面率的便车，显示出与其证据不相称的可靠度。
+  // 无金额基线时为 insufficient——与 estimatedValueDelta 返回 null 对齐。
+  const valueConfidence: Confidence =
+    baselineAvgValue === null ? 'insufficient' : gradeOf(valueSamples);
 
   return {
     sampleSize: samples.length,
@@ -180,6 +202,7 @@ export function estimateWhatIf(
     baselineAvgValue,
     estimatedValueDelta,
     confidence,
+    valueConfidence,
     assumption: ASSUMPTION,
     caveats,
   };
