@@ -224,3 +224,70 @@ describe('traceSkeletonJson（Phase 0 决策骨架）', () => {
     expect({ ...withSk, traceSkeletonJson: null }).toEqual(without);
   });
 });
+
+// ★P0 回归：PII 边界必须由**运行时投影**保证，不能靠上游自觉。
+//
+// 背景：aster-api 的 TraceSkeleton 靠「没有 result 字段」做结构性保证，但那条
+// 保证止于 JVM 边界。跨服务后是一段 JSON，TS 的 interface 运行时不存在、不剥离
+// 多余字段。原实现直接把上游对象整体赋给 traceSkeletonJson，实测污染输入里的
+// SSN 会原样落库——而这一列不受 replayRetentionEnabled 管辖。
+describe('★PII 边界：骨架落库前必须白名单投影', () => {
+  const polluted = {
+    schemaVersion: 'trace-skeleton/v1',
+    moduleName: 'M',
+    functionName: 'f',
+    steps: [
+      {
+        stepId: '0.1',
+        expression: 'if condition',
+        matched: true,
+        depth: 0,
+        // 上游回归/版本漂移可能多带的业务数据
+        result: { ssn: '123-45-6789', salary: 98000 },
+        inputs: { email: 'a@b.com' },
+      },
+    ],
+    debugPayload: { rawRequest: { idCard: '440101199001011234' } },
+  };
+
+  it('污染字段不得落库（顶层与 step 两层）', () => {
+    const cols = buildReplayColumns(
+      undefined as never,
+      {} as never,
+      polluted as never
+    ) as Record<string, unknown>;
+    const json = JSON.stringify(cols.traceSkeletonJson);
+    expect(json).not.toContain('123-45-6789');
+    expect(json).not.toContain('98000');
+    expect(json).not.toContain('a@b.com');
+    expect(json).not.toContain('440101199001011234');
+    expect(json).not.toContain('result');
+    expect(json).not.toContain('debugPayload');
+  });
+
+  it('合法字段完整保留（投影不能误伤）', () => {
+    const cols = buildReplayColumns(
+      undefined as never,
+      {} as never,
+      polluted as never
+    ) as Record<string, unknown>;
+    expect(cols.traceSkeletonJson).toEqual({
+      schemaVersion: 'trace-skeleton/v1',
+      moduleName: 'M',
+      functionName: 'f',
+      steps: [{ stepId: '0.1', expression: 'if condition', matched: true, depth: 0 }],
+    });
+  });
+
+  it('step 键集合被严格限定为四字段', () => {
+    const cols = buildReplayColumns(
+      undefined as never,
+      {} as never,
+      polluted as never
+    ) as Record<string, unknown>;
+    const sk = cols.traceSkeletonJson as { steps: Record<string, unknown>[] };
+    expect(Object.keys(sk.steps[0]).sort()).toEqual(
+      ['depth', 'expression', 'matched', 'stepId']
+    );
+  });
+});
