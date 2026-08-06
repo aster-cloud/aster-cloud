@@ -43,12 +43,30 @@ const MAX_REPLAY = 200;
 /** 重跑并发度——既不让 aster-api 被打爆，也不让 200 条串行等太久。 */
 const REPLAY_CONCURRENCY = 8;
 
+/**
+ * 整批重跑的时间预算。S0 实测单条 1.35ms（简单规则），200 条约 0.3s；
+ * 真实策略更重，故留足余量但必须有上界——没有 deadline 时一批慢重跑会把
+ * 请求拖死，用户看到的是转圈而不是「样本不够」（第八轮 P0-6）。
+ */
+const REPLAY_BUDGET_MS = 20_000;
+
 /** 给数字的双判门槛（ADR 0033 §3.4）。 */
 const MIN_REPLAYED = 30;
 const MIN_COVERAGE = 0.2;
 
 /** DB enum 是小写 approved/denied/indeterminate/error，不是 estimateWhatIf 默认的大写。 */
 const APPROVE_DECISIONS = ['approved'] as const;
+
+/**
+ * outcome 词汇的平台默认值。
+ *
+ * <p>outcome 由租户自定义（见 `docs/api/outcome-ingestion.md`），平台不做枚举限制。
+ * 但调用方没指定时**不能**退化成空集合——那会让正面率恒为 0，产出一个
+ * 看起来正常的错数字。这里给一组最常见词汇兜底，并在 caveats 里标注
+ * 「用的是默认词汇」，让用户知道该配自己的。
+ */
+const DEFAULT_POSITIVE_OUTCOMES = ['converted', 'repaid', 'settled', 'approved_ok'] as const;
+const DEFAULT_NEGATIVE_OUTCOMES = ['defaulted', 'refunded', 'charged_off', 'fraud'] as const;
 
 export async function GET(
   request: NextRequest,
@@ -72,8 +90,17 @@ export async function GET(
     return errorEnvelope({ code: 'NOT_FOUND', message: '策略不存在', status: 404 });
   }
 
-  // ★显式授权开关：本端点读明文业务输入，未开启一律拒绝。
+  // ★显式授权开关：本端点读**明文业务输入**，未开启一律拒绝。
   //   返回 403 而不是空结果——静默降级会让用户以为功能坏了。
+  //
+  //   ⚠️ 语义澄清（第八轮 P0-8 指出我此前的说法有误）：
+  //   `Execution.input` 是**无条件写入**的（见 execute route），
+  //   `replayRetentionEnabled` 并不控制「是否保存明文」。它在本端点的含义是
+  //   **「是否授权把这些已存在的明文用于重跑分析」**——一个使用授权，不是存储开关。
+  //   原先的 403 文案写「未开启时平台不保存明文输入」是错的，已改。
+  //
+  //   仍复用它而不新建开关：它是仓内唯一表达「用户对明文回放的显式许可」的字段，
+  //   新建第二个会造成两个真相源。但**语义需要扩展**（ADR 0033 §7 待办）。
   const [caller] = await db
     .select({ replayRetentionEnabled: users.replayRetentionEnabled })
     .from(users)
@@ -83,7 +110,7 @@ export async function GET(
     return errorEnvelope({
       code: 'REPLAY_RETENTION_DISABLED',
       message:
-        'What-if 估算需要读取历史执行的输入数据，请先在设置中开启「保留回放明文」（replayRetentionEnabled）。未开启时平台不保存明文输入，无法重跑。',
+        'What-if 估算需要读取历史执行的明文输入数据。请先开启账户设置中的「回放明文授权」（replayRetentionEnabled）——它是对「允许用这些输入做重跑分析」的显式授权。',
       status: 403,
     });
   }
@@ -106,8 +133,19 @@ export async function GET(
   }
 
   // 目标版本的源码——重跑的另一半。带 policyId 过滤（版本号在策略内唯一）。
+  // ★关于 vocabulary（第八轮 P0-7）：`PolicyVersion.vocabularySnapshotIds` 存的是
+  //   **快照引用**（`{snapshotId, domain, locale}[]`），不是词汇内容本身。
+  //   核实两条生产 execute 路径后确认：它们同样只把这个引用存进
+  //   `Execution.vocabSnapshotRef` 供审计，**从不**向执行端传 vocabulary 内容。
+  //   故重跑与真实执行在这一点上已经等价——单独给 What-if 加一条解析链路
+  //   反而会让模拟与真实执行走不同的词汇解析，那才是真的语义漂移。
+  //   若将来生产路径开始传 vocabulary，这里必须同步（已在 ADR 0033 §7 记为待办）。
   const [target] = await db
-    .select({ source: policyVersions.source, content: policyVersions.content, aliasSet: policyVersions.aliasSet })
+    .select({
+      source: policyVersions.source,
+      content: policyVersions.content,
+      aliasSet: policyVersions.aliasSet,
+    })
     .from(policyVersions)
     .where(and(eq(policyVersions.policyId, id), eq(policyVersions.version, targetVersion)))
     .limit(1);
@@ -127,12 +165,21 @@ export async function GET(
     isNotNull(executions.decision),
   );
 
-  // ★覆盖率的分母必须是**全量**，不能被 LIMIT 截断——否则
-  //   「5000 条里只有 40 条可重跑」会被算成「200 条里 40 条」，比例虚高 6 倍。
+  // ★两个全量计数，都不能被 LIMIT 截断：
+  //   · totalCount    —— 该版本下的全部执行，用于告诉用户「样本占多少」
+  //   · replayableTotal —— 其中**可重跑**的全部条数，才是覆盖率的分母
+  //
+  //   分母用 totalCount 是错的：replayed 上限 200，而 totalCount 可能几万，
+  //   20% 的门槛在大策略上**结构上永远达不到**（第八轮 P0-9）。
+  //   覆盖率要回答的是「可重跑的那批里，我们跑了多少」，不是「占全部执行多少」。
   const [{ value: totalCount }] = await db
     .select({ value: count() })
     .from(executions)
     .where(baseWhere);
+  const [{ value: replayableTotal }] = await db
+    .select({ value: count() })
+    .from(executions)
+    .where(and(baseWhere, eq(executions.replayabilityStatus, STATUS_REPLAYABLE)));
 
   // 基线：baseVersion 下跑过的执行 + 事后回传的结局。
   // 左连接：没有 outcome 的执行也进样本。
@@ -159,8 +206,8 @@ export async function GET(
     .orderBy(desc(executions.createdAt))
     .limit(MAX_REPLAY);
 
-  // sampleSize = 符合筛选条件的**全部**执行；replayableRows 是其中可重跑的样本。
-  const sampleSize = totalCount;
+  // replayableRows：本次实际要重跑的样本（SQL 已过滤 REPLAYABLE，这里再排掉无 input 的）。
+  // 全量口径走 totalCount / replayableTotal 两个独立 count，见 counts 定义。
   const replayableRows = baseRows.filter((r) => r.input != null);
 
   // ★重跑：只跑 REPLAYABLE，失败计入 replayFailed 而**不是**当成「决策未变」——
@@ -168,15 +215,28 @@ export async function GET(
   const apiClient = createPolicyApiClient(userId, userId);
   const newDecisions = new Map<string, string>();
   let replayFailed = 0;
+  let deadlineHit = false;
+
+  // ★整体预算：单条快不代表整批快。没有 deadline 时，一批慢重跑会把请求拖死，
+  //   用户看到的是浏览器转圈而不是「样本不够」。超预算即停止并如实回报已跑条数。
+  const deadline = Date.now() + REPLAY_BUDGET_MS;
+  const targetAliasSet = target?.aliasSet ? safeParseAliasSet(target.aliasSet) : null;
 
   for (let i = 0; i < replayableRows.length; i += REPLAY_CONCURRENCY) {
+    if (Date.now() > deadline) {
+      deadlineHit = true;
+      break;
+    }
     const batch = replayableRows.slice(i, i + REPLAY_CONCURRENCY);
     const settled = await Promise.allSettled(
       batch.map((r) =>
+        // ★simulate=true：这是模拟不是真实执行，不计配额、不写指标/审计
+        //   （第八轮 P0-1：否则查一次估算就扣掉上百次配额并污染经营 KPI）
         apiClient.evaluateSource(targetSource, r.input as Record<string, unknown>, {
           locale: r.locale ?? undefined,
           functionName: r.functionName ?? undefined,
-          aliasSet: (target?.aliasSet ? safeParseAliasSet(target.aliasSet) : null) ?? undefined,
+          aliasSet: targetAliasSet ?? undefined,
+          simulate: true,
         }),
       ),
     );
@@ -186,14 +246,23 @@ export async function GET(
         return;
       }
       // ★promise resolve 不等于重跑成功：evaluateSource 可能返回 error 非空
-      //   （目标版本编译失败、函数名对不上、运行时异常）。那是失败，不是决策——
-      //   当成决策会把它算进 changed，系统性歪曲结论。
+      //   （目标版本编译失败、函数名对不上、运行时异常）。那是失败，不是决策。
       if (res.value?.error) {
         replayFailed++;
         return;
       }
+      // ★★result 为 null/undefined 同样是失败，不是「拒绝」。
+      //   Java 侧允许 result=null 仍构造 success 响应；parseApprovalFromResult 在
+      //   decision 模式下会把它归进「非 approved」，于是一次**没得到结论的重跑**
+      //   被伪造成一条 denied，直接算进 newlyRejected（第八轮 P0-5）。
+      //   宁可少一条样本，也不能凭空造一个决策。
+      const raw = res.value?.result;
+      if (raw === null || raw === undefined) {
+        replayFailed++;
+        return;
+      }
       // ★decision 模式：裸字符串永不 approve（见 cnl-executor 的 mode 语义）
-      const parsed = parseApprovalFromResult(res.value?.result, 'decision');
+      const parsed = parseApprovalFromResult(raw, 'decision');
       const decision = parsed.indeterminate
         ? 'indeterminate'
         : parsed.approved
@@ -204,17 +273,24 @@ export async function GET(
   }
 
   const replayed = newDecisions.size;
-  const coverage = sampleSize > 0 ? replayed / sampleSize : 0;
+  // ★覆盖率 = 已重跑 / **可重跑总数**，不是 / 全部执行数。见上方 replayableTotal 注释。
+  const coverage = replayableTotal > 0 ? replayed / replayableTotal : 0;
 
   // ★双判门槛（ADR 0033 §3.4）：条数与代表性比例都得够。
-  //   两个 reason 分开——「再攒些数据」与「大多不可回放」是完全不同的动作。
+  //   两个 reason 分开——「再攒些数据」和「大多不可回放，得去开开关」是不同的动作。
   const counts = {
-    sampleSize,
-    replayable: replayableRows.length,
+    /** 该版本下的全部执行数（全量，非 LIMIT 后）。 */
+    sampleSize: totalCount,
+    /** 其中可重跑的全部条数（全量）——coverage 的分母。 */
+    replayable: replayableTotal,
+    /** 实际重跑成功的条数——估算的真实分母。 */
     replayed,
     replayFailed,
     coverage,
-    truncated: baseRows.length >= MAX_REPLAY,
+    /** 可重跑数超过单次上限，本次只跑了最近的 limit 条。 */
+    truncated: replayableTotal > MAX_REPLAY,
+    /** 时间预算耗尽提前停止——与 truncated 是两回事，必须分开回报。 */
+    deadlineHit,
     limit: MAX_REPLAY,
   };
   if (replayed < MIN_REPLAYED) {
@@ -235,7 +311,7 @@ export async function GET(
       targetVersion,
       comparable: false,
       reason: 'INSUFFICIENT_COVERAGE',
-      message: `仅 ${replayed}/${sampleSize} 条执行可重跑（${Math.round(coverage * 100)}%，需要 ${Math.round(MIN_COVERAGE * 100)}%），结论不足以外推到全部执行。`,
+      message: `可重跑的 ${replayableTotal} 条里只成功重跑了 ${replayed} 条（${Math.round(coverage * 100)}%，需要 ${Math.round(MIN_COVERAGE * 100)}%），结论不足以外推。`,
       ...counts,
     });
   }
@@ -252,9 +328,17 @@ export async function GET(
     value: r.value === null || r.value === undefined ? null : Number(r.value),
   }));
 
+  // ★outcome taxonomy 缺省时**不能**当成空集合。
+  //   空 positive set 会让任何结局都进不了正面分子，正面率**恒为 0**——
+  //   一个看起来正常的错数字（第八轮 P0-4：UI 没传，正面率就一直是 0%）。
+  //   缺省时用平台默认词汇；仍拿不到就在 caveats 里说明，而不是静默算 0。
+  const positiveOutcomes = parseList(url.searchParams.get('positiveOutcomes'));
+  const negativeOutcomes = parseList(url.searchParams.get('negativeOutcomes'));
+  const usedDefaultTaxonomy = positiveOutcomes.length === 0;
+
   const estimate = estimateWhatIf(samples, newDecisions, {
-    positiveOutcomes: parseList(url.searchParams.get('positiveOutcomes')),
-    negativeOutcomes: parseList(url.searchParams.get('negativeOutcomes')),
+    positiveOutcomes: usedDefaultTaxonomy ? DEFAULT_POSITIVE_OUTCOMES : positiveOutcomes,
+    negativeOutcomes: negativeOutcomes.length === 0 ? DEFAULT_NEGATIVE_OUTCOMES : negativeOutcomes,
     approveDecisions: APPROVE_DECISIONS,
   });
 
@@ -263,8 +347,15 @@ export async function GET(
     baseVersion,
     targetVersion,
     comparable: true,
-    ...counts,
     ...estimate,
+    // 用了默认词汇就明说——否则用户会以为正面率是按他自己的口径算的
+    caveats: usedDefaultTaxonomy
+      ? [...estimate.caveats, 'DEFAULT_OUTCOME_TAXONOMY']
+      : estimate.caveats,
+    // ★counts 放在 estimate **之后**：estimate 自带一个 sampleSize
+    //   （= 可重跑样本数），会覆盖掉全量口径，导致成功响应与不可比响应报的
+    //   sampleSize 是两个不同的数，coverage 的分母也对不上（第八轮 P0-3）。
+    ...counts,
   });
 }
 

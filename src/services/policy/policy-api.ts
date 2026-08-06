@@ -433,6 +433,13 @@ export class PolicyApiClient {
        * query param 只进 fetch URL，**不进 HMAC 签名 path**（见 request()）。
        */
       replayCapture?: boolean;
+      /**
+       * ★模拟执行（What-if / ADR 0033）：拿历史输入在**另一个版本**的源码上重跑，
+       * 只为得到对照决策。true 时以 `?simulate=true` 请求，aster-api 跳过配额、
+       * 业务指标、审计事件与 API 调用统计——它不是一次真实业务执行，
+       * 按真实执行计费与记账会扣掉用户配额并污染经营 KPI。
+       */
+      simulate?: boolean;
     }
   ): Promise<PolicyEvaluateResponse> {
     const hasAliases = options?.aliasSet != null && Object.keys(options.aliasSet).length > 0;

@@ -74,6 +74,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         'Based on {replayed} of {total} executions ({percent}%) that could be re-run on the target version — a sample, not your full volume.',
       notComparable:
         'These two versions have no comparable executions, so no estimate can be given.',
+      notAuthorized:
+        'What-if needs permission to read historical execution inputs. Enable it in settings first.',
       caveatsTitle: 'Why this estimate is limited',
       caveat: {
         NO_OUTCOME_DATA: 'No outcomes have been reported yet.',
@@ -460,6 +462,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       coverageNote:
         '基于 {total} 条执行中可在目标版本上重跑的 {replayed} 条（{percent}%）——这是样本，不是您的全量业务数据。',
       notComparable: '这两个版本没有可对齐的执行记录，无法给出估算。',
+      notAuthorized: 'What-if 需要读取历史执行输入的授权，请先在设置中开启。',
       caveatsTitle: '这个估算的局限',
       caveat: {
         NO_OUTCOME_DATA: '尚未回传任何业务结局。',
@@ -843,6 +846,8 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         'Basierend auf {replayed} von {total} Ausführungen ({percent}%), die auf der Zielversion erneut ausgeführt werden konnten — eine Stichprobe, nicht Ihr Gesamtvolumen.',
       notComparable:
         'Diese beiden Versionen haben keine vergleichbaren Ausführungen; es kann keine Schätzung erfolgen.',
+      notAuthorized:
+        'What-if benötigt die Berechtigung, historische Eingaben zu lesen. Bitte zuerst in den Einstellungen aktivieren.',
       caveatsTitle: 'Grenzen dieser Schätzung',
       caveat: {
         NO_OUTCOME_DATA: 'Es wurden noch keine Ergebnisse zurückgemeldet.',
@@ -1226,6 +1231,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       coverageNote:
         '{total} में से {replayed} निष्पादन ({percent}%) लक्ष्य संस्करण पर पुनः चलाए जा सके — यह नमूना है, आपका पूर्ण डेटा नहीं।',
       notComparable: 'इन दो संस्करणों में तुलना योग्य निष्पादन नहीं हैं, अनुमान संभव नहीं।',
+      notAuthorized: 'What-if को ऐतिहासिक इनपुट पढ़ने की अनुमति चाहिए। कृपया पहले सेटिंग्स में सक्षम करें।',
       caveatsTitle: 'इस अनुमान की सीमाएँ',
       caveat: {
         NO_OUTCOME_DATA: 'अभी तक कोई परिणाम वापस नहीं भेजा गया।',

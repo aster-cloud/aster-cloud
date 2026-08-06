@@ -72,6 +72,7 @@ export function PolicyAnalyticsSection({
     confidenceModerate: tw('confidenceModerate'),
     coverageNote: tw('coverageNote'),
     notComparable: tw('notComparable'),
+    notAuthorized: tw('notAuthorized'),
     caveatsTitle: tw('caveatsTitle'),
     caveat: {
       NO_OUTCOME_DATA: tw('caveat.NO_OUTCOME_DATA'),

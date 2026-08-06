@@ -27,6 +27,8 @@ interface Labels {
   confidenceModerate: string;
   coverageNote: string;
   notComparable: string;
+  /** 未开启授权开关时的兜底文案（后端通常会给更具体的 message） */
+  notAuthorized: string;
   caveatsTitle: string;
   caveat: Record<string, string>;
 }
@@ -99,7 +101,8 @@ export function WhatIfPanel({
   labels: Labels;
 }) {
   const [data, setData] = useState<WhatIfResponse | null>(null);
-  const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
+  const [state, setState] = useState<'loading' | 'ok' | 'error' | 'denied'>('loading');
+  const [deniedMessage, setDeniedMessage] = useState('');
 
   // 数组依赖 join 成字符串，避免每次渲染都重取
   const positiveKey = positiveOutcomes?.join(',') ?? '';
@@ -118,10 +121,27 @@ export function WhatIfPanel({
     if (negativeKey) qs.set('negativeOutcomes', negativeKey);
 
     fetch(`/api/policies/${policyId}/whatif?${qs.toString()}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((json: WhatIfResponse) => {
+      .then(async (r) => {
+        if (r.ok) return { kind: 'ok' as const, json: (await r.json()) as WhatIfResponse };
+        // ★403 要把后端的「如何开启」说明透出来，不能笼统显示「加载失败」。
+        //   这个能力默认关闭且需显式授权，用户看到通用报错只会以为功能坏了
+        //   （第八轮 P0-8）。其余状态码仍走通用失败。
+        if (r.status === 403) {
+          const body = (await r.json().catch(() => null)) as
+            | { error?: { message?: string } }
+            | null;
+          return { kind: 'denied' as const, message: body?.error?.message ?? '' };
+        }
+        throw new Error(String(r.status));
+      })
+      .then((res) => {
         if (cancelled) return;
-        setData(json);
+        if (res.kind === 'denied') {
+          setDeniedMessage(res.message);
+          setState('denied');
+          return;
+        }
+        setData(res.json);
         setState('ok');
       })
       .catch(() => {
@@ -134,6 +154,17 @@ export function WhatIfPanel({
 
   if (state === 'loading') {
     return <p className="text-sm text-fg-muted">{labels.loading}</p>;
+  }
+  // ★未授权：显示后端给的「如何开启」说明，而不是通用「加载失败」
+  if (state === 'denied') {
+    return (
+      <Stack gap={2}>
+        <h3 className="text-sm font-medium text-fg">{labels.title}</h3>
+        <Alert variant="warning">
+          <AlertDescription>{deniedMessage || labels.notAuthorized}</AlertDescription>
+        </Alert>
+      </Stack>
+    );
   }
   if (state === 'error') {
     return (

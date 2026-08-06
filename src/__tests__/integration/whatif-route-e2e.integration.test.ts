@@ -10,6 +10,7 @@
 // Run: pnpm test:integration:onprem
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
 
 const getSession = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/auth', () => ({ getSession: () => getSession() }));
@@ -144,18 +145,25 @@ describe('GET /api/policies/:id/whatif —— route → 真实 PostgreSQL', () =
       expect(json.estimatedValueDelta).toBeUndefined();
     });
 
-    it('★大分母 + 小样本 → INSUFFICIENT_COVERAGE（条数够也不行）', async () => {
-      await seedExecutions(35, { replayable: true });
-      await seedExecutions(215, { replayable: false, offset: 1000 });
+    it('★可重跑总数远超已跑数 → INSUFFICIENT_COVERAGE', async () => {
+      // ★第八轮 P0-9 后覆盖率口径已修正为 replayed / **全量可重跑数**
+      //   （原先用全量执行数做分母，replayed 上限 200 会让大策略永远达不到门槛）。
+      //   这里造 250 条可重跑但只让 35 条成功：35/250 = 14% < 20%。
+      await seedExecutions(250, { replayable: true });
+      let n = 0;
+      evaluateSource.mockImplementation(async () => {
+        n += 1;
+        return n <= 35
+          ? { result: 'REJECTED', error: null, executionTimeMs: 1 }
+          : { result: null, error: 'boom', executionTimeMs: 1 };
+      });
 
       const { json } = await callRoute();
 
       expect(json.comparable).toBe(false);
       expect(json.reason).toBe('INSUFFICIENT_COVERAGE');
-      // ★35 条可重跑全部被取到——REPLAYABLE 过滤已下推到 SQL，
-      //   不会因为 215 条 NON_REPLAYABLE 更新而把它们挤出 LIMIT 窗口
       expect(json.replayed).toBe(35);
-      expect(json.sampleSize).toBe(250); // 全量，由独立 count 给出
+      expect(json.replayable).toBe(250); // 全量可重跑数，非 LIMIT 后
       expect(json.changed).toBeUndefined();
     });
   });
@@ -208,4 +216,14 @@ describe('GET /api/policies/:id/whatif —— route → 真实 PostgreSQL', () =
     const firstCallSource = evaluateSource.mock.calls[0]?.[0];
     expect(String(firstCallSource)).toContain('REJECTED');
   });
+
+  it('★重跑必须带 simulate=true（真库路径，第八轮 P0-1）', async () => {
+    await seedExecutions(40);
+    await callRoute();
+
+    // 不带它，200 条重跑会被当成 200 次真实执行：扣配额 + 污染 KPI + 写审计
+    const opts = evaluateSource.mock.calls[0]?.[2] as { simulate?: boolean };
+    expect(opts?.simulate).toBe(true);
+  });
+
 });
