@@ -87,6 +87,9 @@ export function PolicyAnalyticsSection({
     notComparable: tw('notComparable'),
     notAuthorized: tw('notAuthorized'),
     noTaxonomy: tw('noTaxonomy'),
+    successRateNote: tw('successRateNote'),
+    truncatedHint: tw('truncatedHint'),
+    deadlineHint: tw('deadlineHint'),
     caveatsTitle: tw('caveatsTitle'),
     caveat: {
       NO_OUTCOME_DATA: tw('caveat.NO_OUTCOME_DATA'),

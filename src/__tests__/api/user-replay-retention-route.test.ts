@@ -10,7 +10,10 @@ const getSession = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/auth', () => ({ getSession: () => getSession() }));
 
 const captured = vi.hoisted(() => ({ where: undefined as unknown, set: undefined as unknown }));
-const rowSets = vi.hoisted(() => ({ user: [] as unknown[] }));
+const rowSets = vi.hoisted(() => ({
+  user: [] as unknown[],
+  updated: [] as unknown[],
+}));
 
 vi.mock('@/lib/prisma', () => {
   const selectChain = {
@@ -28,8 +31,10 @@ vi.mock('@/lib/prisma', () => {
     },
     where: (w: unknown) => {
       captured.where = w;
-      return Promise.resolve();
+      return updateChain;
     },
+    // ★returning：route 据此判断是否真的写入了（零行 = 用户不存在）
+    returning: () => Promise.resolve(rowSets.updated),
   };
   return {
     db: { select: () => selectChain, update: () => updateChain },
@@ -55,6 +60,7 @@ describe('/api/user/replay-retention', () => {
     captured.where = undefined;
     captured.set = undefined;
     rowSets.user = [{ enabled: false }];
+    rowSets.updated = [{ enabled: true }];
     getSession.mockReset();
     getSession.mockResolvedValue({ user: { id: 'u1' } });
   });
@@ -80,6 +86,7 @@ describe('/api/user/replay-retention', () => {
   it('PATCH 写入并回显', async () => {
     const res = await PATCH(patchReq({ enabled: true }));
     expect(res.status).toBe(200);
+    // ★回读落库值而非回显请求值
     expect((await res.json()).enabled).toBe(true);
     expect(captured.set).toEqual({ replayRetentionEnabled: true });
   });
@@ -106,8 +113,16 @@ describe('/api/user/replay-retention', () => {
   });
 
   it('可以关闭（不是只写不读的单向开关）', async () => {
+    rowSets.updated = [{ enabled: false }];
     const res = await PATCH(patchReq({ enabled: false }));
     expect((await res.json()).enabled).toBe(false);
     expect(captured.set).toEqual({ replayRetentionEnabled: false });
+  });
+
+  it('★零行更新 → 404，不得假装成功', async () => {
+    // 用户行不存在时静默返回 200 会让前端显示「已开启」，实际什么都没写
+    rowSets.updated = [];
+    const res = await PATCH(patchReq({ enabled: true }));
+    expect(res.status).toBe(404);
   });
 });

@@ -10,7 +10,6 @@
 // Run: pnpm test:integration:onprem
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { eq } from 'drizzle-orm';
 
 const getSession = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/auth', () => ({ getSession: () => getSession() }));

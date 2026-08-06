@@ -78,6 +78,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         'What-if needs permission to read historical execution inputs. Enable it in settings first.',
       noTaxonomy:
         'Set which outcomes count as positive/negative first — the platform will not guess your business semantics.',
+      successRateNote:
+        '{succeeded} of {started} replays succeeded ({percent}%).',
+      truncatedHint: 'capped at {limit}',
+      deadlineHint: '{n} not started (time budget)',
       positiveOutcomesLabel: 'Positive outcomes',
       negativeOutcomesLabel: 'Negative outcomes',
       caveatsTitle: 'Why this estimate is limited',
@@ -468,6 +472,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       notComparable: '这两个版本没有可对齐的执行记录，无法给出估算。',
       notAuthorized: 'What-if 需要读取历史执行输入的授权，请先在设置中开启。',
       noTaxonomy: '请先指定哪些结局算正面/负面——平台不替您猜测业务语义。',
+      successRateNote: '已发起 {started} 次重跑，成功 {succeeded} 次（{percent}%）。',
+      truncatedHint: '单次上限 {limit} 条',
+      deadlineHint: '{n} 条因时间预算未发起',
       positiveOutcomesLabel: '正面结局',
       negativeOutcomesLabel: '负面结局',
       caveatsTitle: '这个估算的局限',
@@ -857,6 +864,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         'What-if benötigt die Berechtigung, historische Eingaben zu lesen. Bitte zuerst in den Einstellungen aktivieren.',
       noTaxonomy:
         'Legen Sie zuerst fest, welche Ergebnisse positiv/negativ zählen — die Plattform rät Ihre Geschäftssemantik nicht.',
+      successRateNote:
+        '{succeeded} von {started} Wiederholungen erfolgreich ({percent}%).',
+      truncatedHint: 'begrenzt auf {limit}',
+      deadlineHint: '{n} nicht gestartet (Zeitbudget)',
       positiveOutcomesLabel: 'Positive Ergebnisse',
       negativeOutcomesLabel: 'Negative Ergebnisse',
       caveatsTitle: 'Grenzen dieser Schätzung',
@@ -1244,6 +1255,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       notComparable: 'इन दो संस्करणों में तुलना योग्य निष्पादन नहीं हैं, अनुमान संभव नहीं।',
       notAuthorized: 'What-if को ऐतिहासिक इनपुट पढ़ने की अनुमति चाहिए। कृपया पहले सेटिंग्स में सक्षम करें।',
       noTaxonomy: 'पहले बताएं कौन से परिणाम सकारात्मक/नकारात्मक हैं — प्लेटफ़ॉर्म आपकी व्यावसायिक अर्थवत्ता का अनुमान नहीं लगाता।',
+      successRateNote: '{started} में से {succeeded} पुनःनिष्पादन सफल ({percent}%)।',
+      truncatedHint: 'अधिकतम {limit}',
+      deadlineHint: '{n} शुरू नहीं हुए (समय सीमा)',
       positiveOutcomesLabel: 'सकारात्मक परिणाम',
       negativeOutcomesLabel: 'नकारात्मक परिणाम',
       caveatsTitle: 'इस अनुमान की सीमाएँ',

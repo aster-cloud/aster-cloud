@@ -61,10 +61,22 @@ export async function PATCH(request: NextRequest): Promise<Response> {
   }
 
   // ★只改自己那一行——不带 userId 的 update 会改全表
-  await db
+  const written = await db
     .update(users)
     .set({ replayRetentionEnabled: enabled })
-    .where(eq(users.id, session.user.id));
+    .where(eq(users.id, session.user.id))
+    .returning({ enabled: users.replayRetentionEnabled });
 
-  return NextResponse.json({ enabled });
+  // ★零行更新必须报错而不是假装成功（第十一轮 item 7）：
+  //   用户行不存在时静默返回 200 会让前端显示「已开启」，实际什么都没写。
+  if (written.length === 0) {
+    return errorEnvelope({
+      code: 'NOT_FOUND',
+      message: '用户不存在，设置未写入',
+      status: 404,
+    });
+  }
+
+  // 回读真实落库值，不回显请求值
+  return NextResponse.json({ enabled: written[0].enabled });
 }

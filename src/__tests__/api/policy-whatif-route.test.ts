@@ -219,7 +219,8 @@ describe('GET /api/policies/:id/whatif', () => {
 
       expect(body.comparable).toBe(false);
       expect(body.reason).toBe('LOW_REPLAY_SUCCESS_RATE');
-      expect(body.attempted).toBe(200);
+      expect(body.planned).toBe(200);
+      expect(body.started).toBe(200);
       expect(body.replayed).toBe(35);
       expect(body.replaySuccessRate).toBeCloseTo(0.175, 3);
       expect(body.changed).toBeUndefined();
@@ -368,6 +369,85 @@ describe('GET /api/policies/:id/whatif', () => {
       expect(body.error.code).toBe('REPLAY_RETENTION_DISABLED');
       expect(body.error.message).not.toContain('不保存明文');
       expect(body.error.message).toContain('授权');
+    });
+  });
+
+  // ★第十一轮最致命的反例：部分重跑失败时，失败行仍进入 outcome/value 基线。
+  //   它们没有对照决策 → estimateWhatIf 当成「决策未变」→ 对 changed 无贡献，
+  //   却把自己的 outcome/value 算进基线。方向可以被直接翻转。
+  describe('★重跑失败的行不得进入估算基线', () => {
+    it('部分失败时基线只用成功的那批（否则金额方向会翻转）', async () => {
+      // 40 条成功（approved→denied，负面结局、负金额贡献）
+      // 10 条失败（正面结局、正金额）——若混进基线会把 delta 推成正数
+      rowSets.base = [
+        ...baseRows(40, { outcome: 'defaulted', value: '100.0000' }),
+        ...Array.from({ length: 10 }, (_, i) => ({
+          executionId: `fail-${i}`,
+          decision: 'approved',
+          input: { score: 900 + i },
+          locale: 'en',
+          functionName: 'assess',
+          aliasSetJson: null,
+          replayabilityStatus: 'REPLAYABLE',
+          outcome: 'converted',
+          value: '10000.0000',
+        })),
+      ];
+      rowSets.totalCount = 50;
+      rowSets.replayableTotal = 50;
+
+      let n = 0;
+      evaluateSource.mockImplementation(async () => {
+        n += 1;
+        // 前 40 条成功，后 10 条失败
+        return n <= 40
+          ? { result: 'REJECTED', error: null, executionTimeMs: 1 }
+          : { result: null, error: 'boom', executionTimeMs: 1 };
+      });
+
+      const body = await (await GET(req(), { params })).json();
+
+      expect(body.comparable).toBe(true);
+      expect(body.replayed).toBe(40);
+      expect(body.replayFailed).toBe(10);
+      // ★基线只应含成功的 40 条：它们 outcome 全是 defaulted，
+      //   故正面率为 0、平均金额 100（不是被 10000 拉高的混合值）
+      expect(body.sampleSize).toBe(50); // 全量口径不变
+      expect(body.baselineAvgValue).toBe(100);
+      expect(body.baselinePositiveRate).toBe(0);
+      // 40 条 approved→denied，金额影响为负
+      expect(body.newlyRejected).toBe(40);
+      expect(body.estimatedValueDelta).toBeLessThan(0);
+    });
+
+    it('全部成功时行为不变（不因这条修复而改变正常路径）', async () => {
+      const body = await (await GET(req(), { params })).json();
+      expect(body.replayed).toBe(50);
+      expect(body.replayFailed).toBe(0);
+      expect(body.newlyRejected).toBe(50);
+    });
+  });
+
+  // ★第十一轮 item 2/4：统计守恒 + taxonomy fail-fast
+  describe('★统计契约与 fail-fast', () => {
+    it('计数守恒：planned = started + notStarted，started = replayed + replayFailed', async () => {
+      const body = await (await GET(req(), { params })).json();
+      expect(body.planned).toBe(body.started + body.notStarted);
+      expect(body.started).toBe(body.replayed + body.replayFailed);
+    });
+
+    it('★缺 taxonomy 时零 evaluateSource 调用（重跑前就拒绝）', async () => {
+      // 缺词汇结论必然不可用，却先跑 200 次重放才告诉用户 = 白烧目标服务资源
+      const res = await GET(req('baseVersion=1&targetVersion=2'), { params });
+      const body = await res.json();
+      expect(body.reason).toBe('NO_OUTCOME_TAXONOMY');
+      expect(evaluateSource).not.toHaveBeenCalled();
+    });
+
+    it('★重跑必须带取消信号（deadline 到时真正 abort 在途请求）', async () => {
+      await GET(req(), { params });
+      const opts = evaluateSource.mock.calls[0]?.[2] as { signal?: AbortSignal };
+      expect(opts?.signal).toBeInstanceOf(AbortSignal);
     });
   });
 });

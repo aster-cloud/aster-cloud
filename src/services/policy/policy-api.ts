@@ -285,10 +285,21 @@ export class PolicyApiClient {
   private async request<T>(
     method: string,
     path: string,
-    body?: unknown
+    body?: unknown,
+    /**
+     * 外部取消信号（What-if 的整体 deadline 用）。
+     * 与内置超时**同时**生效：任一触发即 abort，真正停掉在途 fetch，
+     * 而不是让调用方空等（第十一轮 item 5）。
+     */
+    externalSignal?: AbortSignal,
   ): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const onExternalAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
 
     try {
       const url = `${this.baseUrl}${path}`;
@@ -354,6 +365,7 @@ export class PolicyApiClient {
       );
     } finally {
       clearTimeout(timeoutId);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
     }
   }
 
@@ -440,6 +452,8 @@ export class PolicyApiClient {
        * 按真实执行计费与记账会扣掉用户配额并污染经营 KPI。
        */
       simulate?: boolean;
+      /** 外部取消信号——deadline 到时真正 abort 在途请求。 */
+      signal?: AbortSignal;
     }
   ): Promise<PolicyEvaluateResponse> {
     const hasAliases = options?.aliasSet != null && Object.keys(options.aliasSet).length > 0;
@@ -454,7 +468,10 @@ export class PolicyApiClient {
     const path = qs.length
       ? `${API_ENDPOINTS.evaluateSource}?${qs.join('&')}`
       : API_ENDPOINTS.evaluateSource;
-    return this.request<PolicyEvaluateResponse>('POST', path, {
+    return this.request<PolicyEvaluateResponse>(
+      'POST',
+      path,
+      {
       source,
       context,
       locale: options?.locale || 'en-US',
@@ -463,7 +480,9 @@ export class PolicyApiClient {
       ...(options?.vocabulary ? { vocabulary: options.vocabulary } : {}),
       // 仅在有别名时携带；已发布版本冻结的别名快照。
       ...(hasAliases ? { aliasSet: options!.aliasSet } : {}),
-    });
+      },
+      options?.signal,
+    );
   }
 
   /**

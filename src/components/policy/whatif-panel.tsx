@@ -31,6 +31,10 @@ interface Labels {
   notAuthorized: string;
   /** 未配置 outcome 词汇时的兜底文案 */
   noTaxonomy: string;
+  /** 重跑成功率说明（与代表性分行展示） */
+  successRateNote: string;
+  truncatedHint: string;
+  deadlineHint: string;
   caveatsTitle: string;
   caveat: Record<string, string>;
 }
@@ -43,9 +47,12 @@ interface Counts {
   replayFailed: number;
   /** 样本代表性 = replayed / 全量可重跑数。用于 coverageNote 展示。 */
   sampleCoverage: number;
-  /** 重跑成功率 = replayed / attempted。门槛用它。 */
+  /** 重跑成功率 = succeeded / started。门槛用它。 */
   replaySuccessRate: number;
-  attempted: number;
+  planned: number;
+  started: number;
+  notStarted: number;
+  deadlineHit: boolean;
   truncated: boolean;
   limit: number;
 }
@@ -295,14 +302,23 @@ function CoverageNote({ data, labels }: { data: Counts; labels: Labels }) {
   return (
     <Alert>
       <AlertDescription>
-        {labels.coverageNote
-          .replace('{replayed}', String(data.replayed))
-          .replace('{total}', String(data.sampleSize))
-          // ★展示的是**代表性**（占全量可重跑数），不是重跑成功率——
-          //   两者语义不同，混用会让用户以为样本覆盖率很高（第十轮）
-          .replace('{percent}', String(Math.round(data.sampleCoverage * 100)))}
-        {data.replayFailed > 0 && ` (${data.replayFailed} failed)`}
-        {data.truncated && ` · ${data.limit}+`}
+        {/* ★两个比率分行展示，不拼成一句话（第十一轮 item 3）：
+            它们的分母不同——代表性看「占全部可重跑数」，
+            可靠性看「已发起的这批成功了多少」。拼在一起会让人误读。 */}
+        <div>
+          {labels.coverageNote
+            .replace('{replayed}', String(data.replayed))
+            .replace('{total}', String(data.replayable))
+            .replace('{percent}', String(Math.round(data.sampleCoverage * 100)))}
+        </div>
+        <div className="mt-1 text-xs text-fg-subtle">
+          {labels.successRateNote
+            .replace('{succeeded}', String(data.replayed))
+            .replace('{started}', String(data.started))
+            .replace('{percent}', String(Math.round(data.replaySuccessRate * 100)))}
+          {data.truncated && ` · ${labels.truncatedHint.replace('{limit}', String(data.limit))}`}
+          {data.deadlineHit && ` · ${labels.deadlineHint.replace('{n}', String(data.notStarted))}`}
+        </div>
       </AlertDescription>
     </Alert>
   );

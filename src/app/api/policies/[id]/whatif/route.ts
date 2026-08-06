@@ -129,6 +129,24 @@ export async function GET(
     });
   }
 
+  // ★taxonomy fail-fast（第十一轮 item 4）：在**任何重查询与重跑之前**校验。
+  //   缺词汇时结论必然不可用，却要先跑 200 次重放才告诉用户——白烧 CPU
+  //   与目标服务资源。这里提前拒绝，零 evaluateSource 调用。
+  const positiveOutcomes = parseList(url.searchParams.get('positiveOutcomes'));
+  const negativeOutcomes = parseList(url.searchParams.get('negativeOutcomes'));
+  if (positiveOutcomes.length === 0 && negativeOutcomes.length === 0) {
+    return NextResponse.json({
+      policyId: id,
+      baseVersion,
+      targetVersion,
+      comparable: false,
+      reason: 'NO_OUTCOME_TAXONOMY',
+      message:
+        '未配置 outcome 词汇（哪些结局算正面/负面）。平台不替租户猜测业务语义——' +
+        '请在请求中传 positiveOutcomes/negativeOutcomes 后重试。',
+    });
+  }
+
   // 目标版本的源码——重跑的另一半。带 policyId 过滤（版本号在策略内唯一）。
   // ★vocabulary 必须还原（第八/九轮 P0-7）。
   //   `vocabularySnapshotIds` 存的是引用（`{snapshotId, domain, locale}[]`），
@@ -221,15 +239,33 @@ export async function GET(
   // ★整体预算：单条快不代表整批快。没有 deadline 时，一批慢重跑会把请求拖死，
   //   用户看到的是浏览器转圈而不是「样本不够」。超预算即停止并如实回报已跑条数。
   const deadline = Date.now() + REPLAY_BUDGET_MS;
+  // ★真正的取消（第十一轮 item 5）：deadline 到时 abort 在途 fetch，
+  //   而不是只让本 route 提前返回、把请求丢在半空继续消耗目标服务资源。
+  const replayAbort = new AbortController();
+  const budgetTimer = setTimeout(() => replayAbort.abort(), REPLAY_BUDGET_MS);
   const targetAliasSet = target?.aliasSet ? safeParseAliasSet(target.aliasSet) : null;
-  // 解析失败按「无自定义词汇」处理并继续——重跑失败已有 replayFailed 如实计数，
-  // 比整个请求 500 更有用（与 secure-executor 的处理一致）。
+  // ★vocabulary fail-closed（第十一轮 item 6）：refs 非空却加载失败时**不得降级**。
+  //   降级成内置词汇会让重跑用与真实执行不同的术语解析——那不是「策略变了」，
+  //   是我们悄悄换了执行环境，产出的对照决策不可信。宁可拒绝也不给错结论。
+  const vocabRefs = target?.vocabularySnapshotIds;
   let targetVocabulary: Record<string, unknown> | undefined;
-  try {
-    const vocab = await loadVocabularyForExecution(target?.vocabularySnapshotIds);
-    targetVocabulary = vocab ? (vocab as unknown as Record<string, unknown>) : undefined;
-  } catch {
-    targetVocabulary = undefined;
+  if (vocabRefs && vocabRefs.length > 0) {
+    let vocab: unknown = null;
+    try {
+      vocab = await loadVocabularyForExecution(vocabRefs);
+    } catch {
+      vocab = null;
+    }
+    if (!vocab) {
+      return errorEnvelope({
+        code: 'VOCABULARY_UNAVAILABLE',
+        message:
+          `目标版本 v${targetVersion} 依赖自定义领域词汇，但快照加载失败。` +
+          '用内置词汇重跑会得到与真实执行不同的解析结果，故拒绝给出估算。',
+        status: 503,
+      });
+    }
+    targetVocabulary = vocab as Record<string, unknown>;
   }
 
   for (let i = 0; i < replayableRows.length; i += REPLAY_CONCURRENCY) {
@@ -254,12 +290,14 @@ export async function GET(
           aliasSet: targetAliasSet ?? undefined,
           vocabulary: targetVocabulary,
           simulate: true,
+          signal: replayAbort.signal,
         }),
       ),
       ),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), remaining)),
     ]);
-    // race 超时返回 null —— 本批全部计为失败并停止后续批次
+    // race 超时返回 null —— 本批全部计为失败并停止后续批次。
+    // abort 已由 budgetTimer 触发，在途 fetch 会真正断开。
     if (settled === null) {
       deadlineHit = true;
       replayFailed += batch.length;
@@ -297,42 +335,52 @@ export async function GET(
     });
   }
 
-  const replayed = newDecisions.size;
-  const attempted = replayableRows.length;
+  clearTimeout(budgetTimer);
 
-  // ★两个比率语义不同，必须分开命名（第十轮：一个 coverage 同时承载两种含义
-  //   是多个下游错误的根源）：
-  //
-  //   · replaySuccessRate = replayed / attempted
-  //     「本次计划跑的这批，成功了多少」——衡量重跑**可靠性**。
-  //     门槛用它：失败过半的结论不可信。
-  //
-  //   · sampleCoverage = replayed / replayableTotal
-  //     「估算用到的样本，占全部可重跑执行多少」——衡量**代表性**。
-  //     ★不做门槛：MAX_REPLAY=200 时它对大策略恒极低，用作门槛会让
-  //     越大的客户越用不了（第九轮 P0-9）。改为如实回报，让用户自己判断。
-  const replaySuccessRate = attempted > 0 ? replayed / attempted : 0;
-  const sampleCoverage = replayableTotal > 0 ? replayed / replayableTotal : 0;
+  const replayed = newDecisions.size;
+
+  // ★统计契约必须守恒（第十一轮）：planned = started + notStarted，
+  //   started = succeeded + failed。之前 attempted 同时表示「计划数」与
+  //   「已开始数」，deadline 提前退出时两者不等，数字对不上却没人发现。
+  const planned = replayableRows.length;
+  const succeeded = replayed;
+  const failed = replayFailed;
+  const started = succeeded + failed;
+  const notStarted = Math.max(planned - started, 0);
+
+  // 两个比率语义不同，必须分开（第十轮）：
+  //   · replaySuccessRate = succeeded / started —— 已开始的这批**可靠性**。
+  //     分母用 started 而非 planned：deadline 未启动的那些不是「失败」，
+  //     混进分母会把「跑得慢」误判成「跑得不对」。
+  //   · sampleCoverage = succeeded / replayableTotal —— **代表性**，
+  //     不作门槛（MAX_REPLAY 让它对大策略恒极低），仅如实回报。
+  const replaySuccessRate = started > 0 ? succeeded / started : 0;
+  const sampleCoverage = replayableTotal > 0 ? succeeded / replayableTotal : 0;
 
   // ★双判门槛（ADR 0033 §3.4）：条数与代表性比例都得够。
   //   两个 reason 分开——「再攒些数据」和「大多不可回放，得去开开关」是不同的动作。
   const counts = {
     /** 该版本下的全部执行数（全量，非 LIMIT 后）。 */
     sampleSize: totalCount,
-    /** 其中可重跑的全部条数（全量）——coverage 的分母。 */
+    /** 其中可重跑的全部条数（全量）。 */
     replayable: replayableTotal,
     /** 本次计划重跑的条数（受 MAX_REPLAY 与 input 非空约束）。 */
-    attempted,
-    /** 重跑成功率 = replayed / attempted，门槛用它。 */
+    planned,
+    /** 实际发起了重跑的条数 = succeeded + failed。 */
+    started,
+    /** 重跑成功并拿到对照决策的条数——**估算的真实分母**。 */
+    replayed: succeeded,
+    /** 重跑失败的条数（reject / error 非空 / result 为空）。 */
+    replayFailed: failed,
+    /** deadline 提前退出导致从未发起的条数。 */
+    notStarted,
+    /** succeeded / started —— 可靠性，门槛用它。 */
     replaySuccessRate,
-    /** 样本代表性 = replayed / replayableTotal，**不做门槛**，仅如实回报。 */
+    /** succeeded / replayable —— 代表性，**不作门槛**，仅如实回报。 */
     sampleCoverage,
-    /** 实际重跑成功的条数——估算的真实分母。 */
-    replayed,
-    replayFailed,
     /** 可重跑数超过单次上限，本次只跑了最近的 limit 条。 */
     truncated: replayableTotal > MAX_REPLAY,
-    /** 时间预算耗尽提前停止——与 truncated 是两回事，必须分开回报。 */
+    /** 时间预算耗尽提前停止——与 truncated 是两回事。 */
     deadlineHit,
     limit: MAX_REPLAY,
   };
@@ -354,16 +402,20 @@ export async function GET(
       targetVersion,
       comparable: false,
       reason: 'LOW_REPLAY_SUCCESS_RATE',
-      message: `本次尝试重跑 ${attempted} 条，仅 ${replayed} 条成功（${Math.round(replaySuccessRate * 100)}%，需要 ${Math.round(MIN_SUCCESS_RATE * 100)}%），失败过多，结论不可信。`,
+      message: `本次发起重跑 ${started} 条，仅 ${succeeded} 条成功（${Math.round(replaySuccessRate * 100)}%，需要 ${Math.round(MIN_SUCCESS_RATE * 100)}%），失败过多，结论不可信。`,
       ...counts,
     });
   }
 
-  // ★估算样本 = 可重跑的那批（baseRows 现已在 SQL 层过滤为 REPLAYABLE）。
-  //   不该把不可重跑的执行放进分母：它们没有对照决策，
-  //   estimateWhatIf 会把「查不到新决策」当成「决策未变」，系统性低估 changed。
-  //   全量条数由 sampleSize（独立 count 查询）单独回报，用于覆盖率口径。
-  const samples: OutcomeSample[] = baseRows.map((r) => ({
+  // ★估算样本 = **真正重跑成功**的那批，不是所有 REPLAYABLE 行（第十一轮）。
+  //
+  //   重跑失败的行没有对照决策，`estimateWhatIf` 拿不到新决策就当作
+  //   「决策未变」——它们的 outcome/value 仍然进入基线分子分母，却对
+  //   changed 毫无贡献。实测：40 成功 + 10 失败时 estimatedValueDelta=+4800，
+  //   只用成功的 40 条则是 -4000 —— **方向直接翻转**。
+  //   这不是精度问题，是把「不知道」当成「没变化」造成的系统性偏差。
+  const succeededRows = baseRows.filter((r) => newDecisions.has(r.executionId));
+  const samples: OutcomeSample[] = succeededRows.map((r) => ({
     executionId: r.executionId,
     decision: r.decision ?? '',
     outcome: r.outcome ?? null,
@@ -375,30 +427,6 @@ export async function GET(
   //   空 positive set 会让任何结局都进不了正面分子，正面率**恒为 0**——
   //   一个看起来正常的错数字（第八轮 P0-4：UI 没传，正面率就一直是 0%）。
   //   缺省时用平台默认词汇；仍拿不到就在 caveats 里说明，而不是静默算 0。
-  const positiveOutcomes = parseList(url.searchParams.get('positiveOutcomes'));
-  const negativeOutcomes = parseList(url.searchParams.get('negativeOutcomes'));
-  // ★没有 taxonomy 就**不给业务数字**（第十轮 P0-4 修正）。
-  //
-  //   上一轮我用「平台默认词汇」兜底，但那是**用平台的猜测替代租户的配置**：
-  //   outcome 词汇由租户自定义（见 docs/api/outcome-ingestion.md），
-  //   平台猜 'converted' 恰好命中只是巧合。猜错时正面率与金额全错，
-  //   而响应仍是 comparable:true —— 又一个「看起来正常的错数字」。
-  //
-  //   正确做法是拒绝给结论并告诉用户去配置，与「样本不足就不给数字」同理。
-  if (positiveOutcomes.length === 0 && negativeOutcomes.length === 0) {
-    return NextResponse.json({
-      policyId: id,
-      baseVersion,
-      targetVersion,
-      comparable: false,
-      reason: 'NO_OUTCOME_TAXONOMY',
-      message:
-        '未配置 outcome 词汇（哪些结局算正面/负面）。平台不替租户猜测业务语义——' +
-        '请在请求中传 positiveOutcomes/negativeOutcomes 后重试。',
-      ...counts,
-    });
-  }
-
   const estimate = estimateWhatIf(samples, newDecisions, {
     positiveOutcomes,
     negativeOutcomes,
