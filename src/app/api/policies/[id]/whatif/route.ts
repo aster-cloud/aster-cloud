@@ -1,49 +1,54 @@
 /**
  * What-if 影响估算（Phase 4）：GET /api/policies/:id/whatif
  *
- * <p><b>★当前状态：结构性不可用，一律返回 409 REPLAY_REQUIRED。</b>
+ * <p>回答「把这条策略换成另一个版本，业务指标会怎样」：取历史执行的**输入**，
+ * 用目标版本的源码现场重跑，得到对照决策，再乘以历史 outcome 的分布。
  *
- * <p>本端点原本要回答「把这条策略换成另一个版本，业务指标会怎样」，做法是把
- * **同一批历史执行**在两个版本下的决策逐条对齐，再乘以历史 outcome 分布。
- *
- * <p>但当前数据模型下这个对齐**在合法数据上不可能成立**：
- *
+ * <p><b>模型见 ADR 0033</b>。要点：
  * <ul>
- *   <li>{@code Execution.id} 是主键，{@code policyVersion} 是普通列 ——
- *       一行只属于一个版本</li>
- *   <li>故同一个 executionId 不可能同时出现在 base 与 target 两个版本的查询结果里，
- *       交集**恒为空**</li>
+ *   <li>关联键不是 executionId（一行只属于一个版本，跨版本 id 交集恒空），
+ *       而是「同一条 input 在两个版本下分别判成什么」</li>
+ *   <li>对照决策**按需重求值**，只在内存中存在，不落库（S0 实测单条 1.35ms）</li>
+ *   <li>只重跑 {@code replayabilityStatus = REPLAYABLE} 的执行</li>
  * </ul>
  *
- * <p>这不是「生产上大概率没有重叠」，而是**结构上不可能有重叠**。若照常计算，
- * 估算会输出 changed=0 / delta=0 —— 自信地宣称「改这个版本毫无影响」。
- * 那比报错糟得多：它看起来是个结论。
+ * <p><b>★授权：必须显式开启 {@code replayRetentionEnabled}。</b>
+ * 本端点会读取历史执行的**明文业务输入**——这是它与 Phase 1 漏斗
+ * （零 PII）的本质区别。未开启时返回 403 并说明如何开启，
+ * 而不是静默降级成空结果。
  *
- * <p><b>为什么是 409 而不是 200 + comparable:false</b>：后者把一个**永久**
- * 不可用的能力包装成一次成功的分析响应，只看状态码的调用方会当成有结论。
- * 等真正存在「可比」与「不可比」两种合法结果时，再改成有文档的
- * discriminated union 才有意义。
- *
- * <p><b>解锁条件</b>（均为独立工程，都未落地）：
- * <ul>
- *   <li><b>真回放（M2）</b>：新增 replay artifact，按
- *       {@code (sourceExecutionId, targetPolicyVersionRowId)} 对齐，
- *       而不是复用 {@code Execution.id}</li>
- *   <li><b>影子执行</b>：同一请求的主/影决策共享 correlation id</li>
- *   <li><b>A/B 分流</b>：逐条对齐本就不适用，应改比两个 cohort 的率与分布 ——
- *       那是另一种产品，需要另建 experiment/cohort 端点</li>
- * </ul>
- *
- * <p>纯函数 {@code estimateWhatIf} 保留在 {@code @/lib/analytics/whatif-estimate}，
- * 它本身逻辑正确且有测试覆盖；等上述任一能力落地后直接复用，无需重写。
+ * <p><b>★口径</b>：`replayed` 才是估算的真实分母。绝对条数与代表性比例
+ * 双判（ADR 0033 §3.4），任一不满足就不给数字。
  */
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db, policies } from '@/lib/prisma';
-import { and, eq } from 'drizzle-orm';
+import { db, policies, executions, executionOutcomes, policyVersions, users } from '@/lib/prisma';
+import { and, eq, desc, isNotNull } from 'drizzle-orm';
+import { estimateWhatIf, type OutcomeSample } from '@/lib/analytics/whatif-estimate';
+import { createPolicyApiClient } from '@/services/policy/policy-api';
+import { parseApprovalFromResult } from '@/services/policy/cnl-executor';
+import { STATUS_REPLAYABLE } from '@/lib/policy-execution-log';
 import { errorEnvelope } from '@/lib/api/error-envelope';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * 单次最多重跑的条数（ADR 0033 §4）。
+ *
+ * <p>远低于漏斗的 2000：重跑比读库贵得多。S0 实测单条 1.35ms（单条规则），
+ * 但真实策略有多模块/大 context，成本更高，故保留保守上限。
+ */
+const MAX_REPLAY = 200;
+
+/** 重跑并发度——既不让 aster-api 被打爆，也不让 200 条串行等太久。 */
+const REPLAY_CONCURRENCY = 8;
+
+/** 给数字的双判门槛（ADR 0033 §3.4）。 */
+const MIN_REPLAYED = 30;
+const MIN_COVERAGE = 0.2;
+
+/** DB enum 是小写 approved/denied/indeterminate/error，不是 estimateWhatIf 默认的大写。 */
+const APPROVE_DECISIONS = ['approved'] as const;
 
 export async function GET(
   request: NextRequest,
@@ -53,25 +58,224 @@ export async function GET(
   if (!session?.user?.id) {
     return errorEnvelope({ code: 'UNAUTHORIZED', message: '未登录', status: 401 });
   }
+  const userId = session.user.id;
   const { id } = await params;
+  const url = new URL(request.url);
 
-  // ★仍然先做租户隔离校验再拒答：否则本端点会变成一个「策略是否存在」的探针 ——
-  //   任何登录用户拿别人的 policyId 来打，都能从 409/404 的差异推断出存在性。
+  // ★租户隔离：归属校验必须带 userId（本仓多次出现同类跨租户读）。
   const owned = await db
     .select({ id: policies.id })
     .from(policies)
-    .where(and(eq(policies.id, id), eq(policies.userId, session.user.id)))
+    .where(and(eq(policies.id, id), eq(policies.userId, userId)))
     .limit(1);
   if (owned.length === 0) {
-    // 404 而非 403：不泄露「该 id 存在但不属于你」
     return errorEnvelope({ code: 'NOT_FOUND', message: '策略不存在', status: 404 });
   }
 
-  return errorEnvelope({
-    code: 'REPLAY_REQUIRED',
-    message:
-      '暂不支持跨版本 What-if 估算：一次执行只在一个版本下运行，两个版本之间没有可逐条对齐的记录。' +
-      '需要先对同一批输入在目标版本上重放（回放能力尚未上线）。',
-    status: 409,
+  // ★显式授权开关：本端点读明文业务输入，未开启一律拒绝。
+  //   返回 403 而不是空结果——静默降级会让用户以为功能坏了。
+  const [caller] = await db
+    .select({ replayRetentionEnabled: users.replayRetentionEnabled })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!caller?.replayRetentionEnabled) {
+    return errorEnvelope({
+      code: 'REPLAY_RETENTION_DISABLED',
+      message:
+        'What-if 估算需要读取历史执行的输入数据，请先在设置中开启「保留回放明文」（replayRetentionEnabled）。未开启时平台不保存明文输入，无法重跑。',
+      status: 403,
+    });
+  }
+
+  const baseVersion = parseVersion(url.searchParams.get('baseVersion'));
+  const targetVersion = parseVersion(url.searchParams.get('targetVersion'));
+  if (baseVersion === null || targetVersion === null) {
+    return errorEnvelope({
+      code: 'INVALID_VERSION',
+      message: 'baseVersion 与 targetVersion 必须是 1..2147483647 的整数',
+      status: 400,
+    });
+  }
+  if (baseVersion === targetVersion) {
+    return errorEnvelope({
+      code: 'INVALID_VERSION',
+      message: '两个版本相同，无可比较的决策变化',
+      status: 400,
+    });
+  }
+
+  // 目标版本的源码——重跑的另一半。带 policyId 过滤（版本号在策略内唯一）。
+  const [target] = await db
+    .select({ source: policyVersions.source, content: policyVersions.content, aliasSet: policyVersions.aliasSet })
+    .from(policyVersions)
+    .where(and(eq(policyVersions.policyId, id), eq(policyVersions.version, targetVersion)))
+    .limit(1);
+  const targetSource = target?.source ?? target?.content ?? null;
+  if (!targetSource) {
+    return errorEnvelope({
+      code: 'VERSION_NOT_FOUND',
+      message: `目标版本 v${targetVersion} 不存在或无源码`,
+      status: 404,
+    });
+  }
+
+  // 基线：baseVersion 下跑过的执行 + 事后回传的结局。
+  // 左连接：没有 outcome 的执行也进样本——它们决定 sampleSize（覆盖率的分母）。
+  const baseRows = await db
+    .select({
+      executionId: executions.id,
+      decision: executions.decision,
+      input: executions.input,
+      locale: executions.locale,
+      functionName: executions.functionName,
+      aliasSetJson: executions.aliasSetJson,
+      replayabilityStatus: executions.replayabilityStatus,
+      outcome: executionOutcomes.outcome,
+      value: executionOutcomes.value,
+    })
+    .from(executions)
+    .leftJoin(executionOutcomes, eq(executionOutcomes.executionId, executions.id))
+    .where(
+      and(
+        eq(executions.policyId, id),
+        eq(executions.userId, userId),
+        eq(executions.policyVersion, baseVersion),
+        isNotNull(executions.decision),
+      ),
+    )
+    .orderBy(desc(executions.createdAt))
+    .limit(MAX_REPLAY);
+
+  const sampleSize = baseRows.length;
+  const replayableRows = baseRows.filter(
+    (r) => r.replayabilityStatus === STATUS_REPLAYABLE && r.input != null,
+  );
+
+  // ★重跑：只跑 REPLAYABLE，失败计入 replayFailed 而**不是**当成「决策未变」——
+  //   后者会系统性低估 changed。
+  const apiClient = createPolicyApiClient(userId, userId);
+  const newDecisions = new Map<string, string>();
+  let replayFailed = 0;
+
+  for (let i = 0; i < replayableRows.length; i += REPLAY_CONCURRENCY) {
+    const batch = replayableRows.slice(i, i + REPLAY_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map((r) =>
+        apiClient.evaluateSource(targetSource, r.input as Record<string, unknown>, {
+          locale: r.locale ?? undefined,
+          functionName: r.functionName ?? undefined,
+          aliasSet: (target?.aliasSet ? safeParseAliasSet(target.aliasSet) : null) ?? undefined,
+        }),
+      ),
+    );
+    settled.forEach((res, k) => {
+      if (res.status !== 'fulfilled') {
+        replayFailed++;
+        return;
+      }
+      // ★promise resolve 不等于重跑成功：evaluateSource 可能返回 error 非空
+      //   （目标版本编译失败、函数名对不上、运行时异常）。那是失败，不是决策——
+      //   当成决策会把它算进 changed，系统性歪曲结论。
+      if (res.value?.error) {
+        replayFailed++;
+        return;
+      }
+      // ★decision 模式：裸字符串永不 approve（见 cnl-executor 的 mode 语义）
+      const parsed = parseApprovalFromResult(res.value?.result, 'decision');
+      const decision = parsed.indeterminate
+        ? 'indeterminate'
+        : parsed.approved
+          ? 'approved'
+          : 'denied';
+      newDecisions.set(batch[k].executionId, decision);
+    });
+  }
+
+  const replayed = newDecisions.size;
+  const coverage = sampleSize > 0 ? replayed / sampleSize : 0;
+
+  // ★双判门槛（ADR 0033 §3.4）：条数与代表性比例都得够。
+  //   两个 reason 分开——「再攒些数据」与「大多不可回放」是完全不同的动作。
+  const counts = {
+    sampleSize,
+    replayable: replayableRows.length,
+    replayed,
+    replayFailed,
+    coverage,
+    truncated: sampleSize >= MAX_REPLAY,
+    limit: MAX_REPLAY,
+  };
+  if (replayed < MIN_REPLAYED) {
+    return NextResponse.json({
+      policyId: id,
+      baseVersion,
+      targetVersion,
+      comparable: false,
+      reason: 'INSUFFICIENT_REPLAYED',
+      message: `可重跑的执行只有 ${replayed} 条（需要 ${MIN_REPLAYED} 条），样本太少无法估算。`,
+      ...counts,
+    });
+  }
+  if (coverage < MIN_COVERAGE) {
+    return NextResponse.json({
+      policyId: id,
+      baseVersion,
+      targetVersion,
+      comparable: false,
+      reason: 'INSUFFICIENT_COVERAGE',
+      message: `仅 ${replayed}/${sampleSize} 条执行可重跑（${Math.round(coverage * 100)}%，需要 ${Math.round(MIN_COVERAGE * 100)}%），结论不足以外推到全部执行。`,
+      ...counts,
+    });
+  }
+
+  const samples: OutcomeSample[] = baseRows.map((r) => ({
+    executionId: r.executionId,
+    decision: r.decision ?? '',
+    outcome: r.outcome ?? null,
+    // numeric 列以字符串返回以免丢精度；估算要做算术，此处转 number。
+    value: r.value === null || r.value === undefined ? null : Number(r.value),
+  }));
+
+  const estimate = estimateWhatIf(samples, newDecisions, {
+    positiveOutcomes: parseList(url.searchParams.get('positiveOutcomes')),
+    negativeOutcomes: parseList(url.searchParams.get('negativeOutcomes')),
+    approveDecisions: APPROVE_DECISIONS,
   });
+
+  return NextResponse.json({
+    policyId: id,
+    baseVersion,
+    targetVersion,
+    comparable: true,
+    ...counts,
+    ...estimate,
+  });
+}
+
+/** 解析版本号；缺失/非正整数/超 PG int4 上限一律 null（由调用方转 400）。 */
+function parseVersion(raw: string | null): number | null {
+  if (raw === null || raw.trim() === '') return null;
+  if (!/^\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 && n <= 2147483647 ? n : null;
+}
+
+/** 版本冻结的 aliasSet 是 text 列存的 JSON；解析失败按「无别名」处理，不炸整个请求。 */
+function safeParseAliasSet(raw: string): Record<string, string[]> | null {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, string[]>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 逗号分隔列表；空/缺省返回空数组。 */
+function parseList(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 }

@@ -71,7 +71,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceLow: 'low',
       confidenceModerate: 'moderate',
       coverageNote:
-        'Only {compared} of {total} executions have been run on the target version, so the number of changed decisions is understated.',
+        'Based on {replayed} of {total} executions ({percent}%) that could be re-run on the target version — a sample, not your full volume.',
       notComparable:
         'These two versions have no comparable executions, so no estimate can be given.',
       caveatsTitle: 'Why this estimate is limited',
@@ -458,7 +458,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceLow: '较低',
       confidenceModerate: '中等',
       coverageNote:
-        '{total} 条执行中只有 {compared} 条在目标版本上跑过，故「决策变化」条数被低估。',
+        '基于 {total} 条执行中可在目标版本上重跑的 {replayed} 条（{percent}%）——这是样本，不是您的全量业务数据。',
       notComparable: '这两个版本没有可对齐的执行记录，无法给出估算。',
       caveatsTitle: '这个估算的局限',
       caveat: {
@@ -840,7 +840,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceLow: 'niedrig',
       confidenceModerate: 'mittel',
       coverageNote:
-        'Nur {compared} von {total} Ausführungen liefen auf der Zielversion; die Zahl geänderter Entscheidungen ist daher untertrieben.',
+        'Basierend auf {replayed} von {total} Ausführungen ({percent}%), die auf der Zielversion erneut ausgeführt werden konnten — eine Stichprobe, nicht Ihr Gesamtvolumen.',
       notComparable:
         'Diese beiden Versionen haben keine vergleichbaren Ausführungen; es kann keine Schätzung erfolgen.',
       caveatsTitle: 'Grenzen dieser Schätzung',
@@ -1224,7 +1224,7 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
       confidenceLow: 'कम',
       confidenceModerate: 'मध्यम',
       coverageNote:
-        '{total} में से केवल {compared} निष्पादन लक्ष्य संस्करण पर चले, इसलिए बदले गए निर्णयों की संख्या कम आंकी गई है।',
+        '{total} में से {replayed} निष्पादन ({percent}%) लक्ष्य संस्करण पर पुनः चलाए जा सके — यह नमूना है, आपका पूर्ण डेटा नहीं।',
       notComparable: 'इन दो संस्करणों में तुलना योग्य निष्पादन नहीं हैं, अनुमान संभव नहीं।',
       caveatsTitle: 'इस अनुमान की सीमाएँ',
       caveat: {
