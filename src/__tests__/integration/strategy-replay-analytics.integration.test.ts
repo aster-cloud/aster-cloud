@@ -51,10 +51,17 @@ async function seedExecution(id: string, userId: string, over: Record<string, un
 /**
  * 复刻 route 的 upsert（含时序守卫 + RETURNING）。
  *
- * <p>刻意在测试里重写而非调用 route：route 依赖 next/server 的 Request/Response
- * 与 session，套进来会把这层测试变成又一个 mock 练习。这里要验的是**SQL 语义**，
- * 故直连 db。守卫子句与 route 逐字一致——若 route 改了这里没跟着改，
- * 下面的断言会失败，正好起到"别偷偷改守卫"的作用。
+ * <p>这里刻意直连 db 而不调 route：本文件要验的是 **PG 的数据层契约**——
+ * unique 约束、numeric 精度、NULL 比较、并发竞态。这些是 route 之下的一层。
+ *
+ * <p><b>★它不能替代接线测试。</b>先前这段注释声称「守卫子句与 route 逐字一致，
+ * route 改了这里没跟着改就会失败」——那是错的：复制版有自己的 SQL 副本，
+ * 生产 route 单独改坏时它照样全绿。第五轮交叉审查正是用这一点证明了
+ * 「复制 SQL 的 E2E = 假信心」。
+ *
+ * <p>接线的 oracle 是 {@code outcome-route-e2e.integration.test.ts}——
+ * 它直接调用生产 route 的 POST，改坏 route 会报红。两个文件职责不同，
+ * 都需要，但**不要**指望本文件能挡住 route 漂移。
  */
 async function upsertOutcome(
   executionId: string,

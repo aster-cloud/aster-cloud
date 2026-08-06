@@ -155,6 +155,23 @@ describe('POST /api/v1/executions/:id/outcome —— route → 真实 PostgreSQL
     expect(await storedOutcome()).toBeNull();
   });
 
+  it('★不存在的日历日被拒且零写入（mock DB 揭示不了这条）', async () => {
+    // 2026-02-30 会被 JS 静默归一成 2026-03-02 —— 单测的 mock DB 看不出
+    // 「错误的时间已经落库」，只有真库能证明它零写入。
+    const { status } = await callRoute({ outcome: 'converted', occurredAt: '2026-02-30' });
+    expect(status).toBe(400);
+    expect(await storedOutcome()).toBeNull();
+  });
+
+  it('闰年 2-29 与跨 UTC 日的时区偏移正常落库（校验不得误伤）', async () => {
+    const { status } = await callRoute({
+      outcome: 'converted',
+      occurredAt: '2026-03-14T23:00:00+14:00',
+    });
+    expect(status).toBe(200);
+    expect((await storedOutcome())?.outcome).toBe('converted');
+  });
+
   it('★occurredAt 传数字 0 被拒（否则会被读成 2000 年并参与时序判定）', async () => {
     const { status } = await callRoute({ outcome: 'converted', occurredAt: 0 });
     expect(status).toBe(400);
