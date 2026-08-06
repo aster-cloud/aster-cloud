@@ -55,7 +55,12 @@ export async function cleanupTestDb(): Promise<void> {
         "IssuedLicense",
         "LicenseTelemetry",
         "TelemetryAccessAudit",
-        "CronJobLease"
+        "CronJobLease",
+        -- Strategy Replay（Phase 1/3/4）。CASCADE 已处理外键依赖，
+        -- 这里按 ExecutionOutcome → Execution → Policy 顺序列出便于阅读。
+        "ExecutionOutcome",
+        "Execution",
+        "Policy"
       RESTART IDENTITY CASCADE
     `,
     new Promise((_, reject) =>

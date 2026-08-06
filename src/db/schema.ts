@@ -11,6 +11,7 @@ import {
   bigint,
   json,
   jsonb,
+  numeric,
   pgEnum,
   uniqueIndex,
   index,
@@ -749,6 +750,53 @@ export const executions = pgTable(
 // ============================================
 // P0-A 规则集升级回归工具（ADR 0030 M1，附录 B）
 // ============================================
+
+/**
+ * 业务结果回传（Phase 3）。
+ *
+ * <p>平台记录「批准/拒绝」，但**不知道该决策事后是否成交/坏账**——
+ * 没有这份数据，"改策略会少赚多少钱"这类问题永远答不了
+ * （见 docs/strategy-replay-gap-analysis.md 第二节）。本表让客户在决策落地后
+ * 回传真实结果，从而把决策与业务后果对齐。
+ *
+ * <p><b>★一次执行只允许一条有效结果</b>（unique on executionId）：
+ * 同一笔决策不该有两个互相矛盾的结局。需要更正时用 upsert 覆盖，
+ * 并靠 reportedAt + 审计日志留痕，而不是堆叠多行让下游自己猜哪条算数。
+ *
+ * <p><b>outcome 取值刻意不做成 enum</b>：不同行业的结局词汇差异极大
+ * （信贷 defaulted/repaid、电商 converted/refunded、广告 clicked/ignored）。
+ * 硬编码枚举会逼着每加一个垂直行业就改一次 schema。改用自由字符串 + 长度上限，
+ * 由租户自己定义词汇；聚合时按字符串分组即可。
+ */
+export const executionOutcomes = pgTable(
+  'ExecutionOutcome',
+  {
+    id: text('id').primaryKey().notNull(),
+    executionId: text('executionId').notNull(),
+    /** 归属用户——★与 Execution.userId 冗余存一份，用于租户隔离过滤，
+     *  避免聚合查询必须 JOIN Execution 才能确认归属。 */
+    userId: text('userId').notNull(),
+    policyId: text('policyId').notNull(),
+    /** 决策落地后的真实结果，如 'converted' / 'defaulted' / 'refunded'。 */
+    outcome: text('outcome').notNull(),
+    /** 可选的业务数值（成交额 / 损失额）。用 numeric 而非 float：金额不容浮点误差。 */
+    value: numeric('value', { precision: 20, scale: 4 }),
+    /** 结果发生的业务时间（非回传时间）——迟报不该扭曲时间序列分析。 */
+    occurredAt: timestamp('occurredAt', { mode: 'date' }),
+    /** 回传时间（服务端赋值，客户端不可伪造）。 */
+    reportedAt: timestamp('reportedAt', { mode: 'date' }).defaultNow().notNull(),
+    /** 自由备注（非 PII 承诺——不做脱敏，故文档要求客户不要放个人信息）。 */
+    note: text('note'),
+  },
+  (table) => [
+    // 一次执行一条结果
+    uniqueIndex('ExecutionOutcome_executionId_key').on(table.executionId),
+    index('ExecutionOutcome_userId_idx').on(table.userId),
+    index('ExecutionOutcome_policyId_idx').on(table.policyId),
+    index('ExecutionOutcome_outcome_idx').on(table.outcome),
+    index('ExecutionOutcome_occurredAt_idx').on(table.occurredAt),
+  ]
+);
 
 /**
  * 不可变回归 golden case。冻结即不可变（服务层无 update/delete）；进报告 hash。

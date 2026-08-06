@@ -27,6 +27,64 @@ type MessageTree = Record<string, unknown>;
  */
 export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
   en: {
+    // 条件漏斗面板（Phase 1，本地补充）。★sampleNote 必须常驻，见 condition-funnel-panel.tsx。
+    conditionFunnel: {
+      title: 'Condition funnel',
+      subtitle: 'How this policy actually ran — how often each condition was evaluated and matched.',
+      loading: 'Loading…',
+      empty: 'No decision skeletons recorded yet.',
+      emptyHint:
+        'Skeletons are captured when a policy runs. Execute this policy a few times and the funnel will fill in.',
+      sampleNote: 'Based on {count} executions recorded by the platform — not your full business volume.',
+      coverageNote: 'Only {covered} of {total} executions carried a decision skeleton.',
+      neverMatchedTitle: 'Conditions that did not match in this sample',
+      neverMatchedHint:
+        'These were evaluated but never came out true in the executions shown here. That does not by itself mean the branch is dead — a rule that fires once a quarter will not match in a recent sample either.',
+      truncatedNote:
+        'Showing the most recent {scanned} of {total} executions, so counts below are a sample, not a full tally.',
+      evaluated: 'evaluated',
+      matched: 'matched',
+      loadFailed: 'Could not load the funnel.',
+    },
+    // What-if 影响估算文案（Phase 4，本地补充；ui-messages 包尚无这些 key）。
+    // ★面板当前未挂载（/whatif 返回 409，见该 route 头注释）。文案先留着——
+    // 它们表达的口径（假设必须与数字同屏、两档置信度分开、"无法估算"≠0）
+    // 是重写呈现层时仍要遵守的约束，不是可丢弃的草稿。
+    whatIf: {
+      title: 'What-if impact estimate',
+      subtitle: 'Estimated business impact of switching this policy to another version.',
+      loading: 'Estimating…',
+      loadFailed: 'Could not load the estimate.',
+      empty: 'No estimate yet.',
+      emptyHint:
+        'This needs reported outcomes. Send real results back via the outcome endpoint, then the estimate becomes available.',
+      assumptionTitle: 'Assumption:',
+      changed: 'Decisions changed',
+      newlyApproved: 'Newly approved',
+      newlyRejected: 'Newly rejected',
+      positiveRate: 'Baseline positive rate',
+      valueDelta: 'Estimated value change',
+      valueUnavailable: 'Cannot be estimated',
+      confidenceLabel: 'Confidence',
+      valueConfidenceLabel: 'Value confidence',
+      confidenceInsufficient: 'insufficient data',
+      confidenceLow: 'low',
+      confidenceModerate: 'moderate',
+      coverageNote:
+        'Only {compared} of {total} executions have been run on the target version, so the number of changed decisions is understated.',
+      notComparable:
+        'These two versions have no comparable executions, so no estimate can be given.',
+      caveatsTitle: 'Why this estimate is limited',
+      caveat: {
+        NO_OUTCOME_DATA: 'No outcomes have been reported yet.',
+        SAMPLE_TOO_SMALL: 'Too few reported outcomes to draw a conclusion.',
+        NO_APPROVED_BASELINE: 'No previously approved executions to use as a baseline.',
+        NO_VALUE_DATA: 'No monetary values were reported, so value impact cannot be estimated.',
+        BASELINE_TOO_SMALL:
+          'Most reported outcomes were rejections; the approved baseline is too small.',
+        VALUE_SAMPLE_TOO_SMALL: 'Very few outcomes carried a value, so the amount is unreliable.',
+      },
+    },
     docs: {
       overlay: {
         openFull: 'Open full docs',
@@ -361,6 +419,57 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   zh: {
+    // 条件漏斗面板（Phase 1，本地补充）。
+    conditionFunnel: {
+      title: '条件漏斗',
+      subtitle: '这条策略实际怎么走的——每个条件被求值和命中的次数。',
+      loading: '加载中…',
+      empty: '尚未记录到决策骨架。',
+      emptyHint: '骨架在策略执行时采集。执行几次后这里就会有数据。',
+      sampleNote: '基于平台记录到的 {count} 次执行——不是您的全量业务数据。',
+      coverageNote: '{total} 次执行中只有 {covered} 次带决策骨架。',
+      neverMatchedTitle: '本次样本内未命中的条件',
+      neverMatchedHint:
+        '这些条件在上面这批执行里被求值过，但一次都没为真。这本身**不**说明分支是死的——一个季度才触发一次的规则，在最近的样本里当然也不会命中。',
+      truncatedNote: '仅统计了最近 {scanned} 条（共 {total} 条），故下方是样本而非全量。',
+      evaluated: '求值',
+      matched: '命中',
+      loadFailed: '漏斗加载失败。',
+    },
+    // What-if 影响估算面板（Phase 4，本地补充）。
+    whatIf: {
+      title: 'What-if 影响估算',
+      subtitle: '把这条策略切换到另一个版本，业务指标的估计变化。',
+      loading: '估算中…',
+      loadFailed: '估算加载失败。',
+      empty: '暂无估算结果。',
+      emptyHint:
+        '估算需要回传的业务结局。通过 outcome 接口回传真实结果后，这里就会有数据。',
+      assumptionTitle: '假设：',
+      changed: '决策发生变化',
+      newlyApproved: '新增通过',
+      newlyRejected: '新增拒绝',
+      positiveRate: '基线正面率',
+      valueDelta: '金额变化估计',
+      valueUnavailable: '无法估算',
+      confidenceLabel: '置信度',
+      valueConfidenceLabel: '金额置信度',
+      confidenceInsufficient: '数据不足',
+      confidenceLow: '较低',
+      confidenceModerate: '中等',
+      coverageNote:
+        '{total} 条执行中只有 {compared} 条在目标版本上跑过，故「决策变化」条数被低估。',
+      notComparable: '这两个版本没有可对齐的执行记录，无法给出估算。',
+      caveatsTitle: '这个估算的局限',
+      caveat: {
+        NO_OUTCOME_DATA: '尚未回传任何业务结局。',
+        SAMPLE_TOO_SMALL: '已回传的结局太少，不足以得出结论。',
+        NO_APPROVED_BASELINE: '没有历史通过的执行可作基线。',
+        NO_VALUE_DATA: '未回传金额，无法估算金额影响。',
+        BASELINE_TOO_SMALL: '回传的结局大多是拒绝，通过样本的基线太小。',
+        VALUE_SAMPLE_TOO_SMALL: '带金额的结局极少，金额结果不可靠。',
+      },
+    },
     docs: {
       overlay: {
         openFull: '打开完整文档',
@@ -691,6 +800,59 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   de: {
+    // Bedingungs-Funnel (Phase 1, lokale Ergänzung).
+    conditionFunnel: {
+      title: 'Bedingungs-Funnel',
+      subtitle: 'Wie diese Richtlinie tatsächlich lief — wie oft jede Bedingung geprüft und erfüllt wurde.',
+      loading: 'Wird geladen…',
+      empty: 'Noch keine Entscheidungsskelette erfasst.',
+      emptyHint: 'Skelette entstehen bei der Ausführung. Führen Sie die Richtlinie einige Male aus.',
+      sampleNote: 'Basierend auf {count} von der Plattform erfassten Ausführungen — nicht Ihrem gesamten Geschäftsvolumen.',
+      coverageNote: 'Nur {covered} von {total} Ausführungen enthielten ein Entscheidungsskelett.',
+      neverMatchedTitle: 'In dieser Stichprobe nicht erfüllte Bedingungen',
+      neverMatchedHint:
+        'Diese wurden geprüft, waren in den gezeigten Ausführungen aber nie wahr. Das allein bedeutet nicht, dass der Zweig tot ist — eine Regel, die einmal pro Quartal greift, erscheint in einer aktuellen Stichprobe ebenfalls nicht.',
+      truncatedNote:
+        'Es werden die neuesten {scanned} von {total} Ausführungen gezeigt; die Zahlen unten sind eine Stichprobe, keine Gesamtsumme.',
+      evaluated: 'geprüft',
+      matched: 'erfüllt',
+      loadFailed: 'Funnel konnte nicht geladen werden.',
+    },
+    // What-if-Wirkungsschätzung (Phase 4, lokale Ergänzung).
+    whatIf: {
+      title: 'What-if-Wirkungsschätzung',
+      subtitle: 'Geschätzte Auswirkung eines Wechsels dieser Richtlinie auf eine andere Version.',
+      loading: 'Schätzung läuft…',
+      loadFailed: 'Schätzung konnte nicht geladen werden.',
+      empty: 'Noch keine Schätzung.',
+      emptyHint:
+        'Dafür werden zurückgemeldete Ergebnisse benötigt. Melden Sie reale Resultate über den Outcome-Endpunkt zurück.',
+      assumptionTitle: 'Annahme:',
+      changed: 'Geänderte Entscheidungen',
+      newlyApproved: 'Neu genehmigt',
+      newlyRejected: 'Neu abgelehnt',
+      positiveRate: 'Basis-Positivrate',
+      valueDelta: 'Geschätzte Wertänderung',
+      valueUnavailable: 'Nicht schätzbar',
+      confidenceLabel: 'Konfidenz',
+      valueConfidenceLabel: 'Wert-Konfidenz',
+      confidenceInsufficient: 'unzureichende Daten',
+      confidenceLow: 'niedrig',
+      confidenceModerate: 'mittel',
+      coverageNote:
+        'Nur {compared} von {total} Ausführungen liefen auf der Zielversion; die Zahl geänderter Entscheidungen ist daher untertrieben.',
+      notComparable:
+        'Diese beiden Versionen haben keine vergleichbaren Ausführungen; es kann keine Schätzung erfolgen.',
+      caveatsTitle: 'Grenzen dieser Schätzung',
+      caveat: {
+        NO_OUTCOME_DATA: 'Es wurden noch keine Ergebnisse zurückgemeldet.',
+        SAMPLE_TOO_SMALL: 'Zu wenige zurückgemeldete Ergebnisse für eine Aussage.',
+        NO_APPROVED_BASELINE: 'Keine zuvor genehmigten Ausführungen als Basis vorhanden.',
+        NO_VALUE_DATA: 'Keine Beträge zurückgemeldet, Wertwirkung nicht schätzbar.',
+        BASELINE_TOO_SMALL: 'Überwiegend Ablehnungen; die genehmigte Basis ist zu klein.',
+        VALUE_SAMPLE_TOO_SMALL: 'Sehr wenige Ergebnisse mit Betrag, Wert daher unzuverlässig.',
+      },
+    },
     docs: {
       overlay: {
         openFull: 'Vollständige Doku öffnen',
@@ -1022,6 +1184,58 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
     },
   },
   hi: {
+    // शर्त फ़नल (Phase 1, स्थानीय पूरक)।
+    conditionFunnel: {
+      title: 'शर्त फ़नल',
+      subtitle: 'यह नीति वास्तव में कैसे चली — प्रत्येक शर्त कितनी बार जाँची और पूरी हुई।',
+      loading: 'लोड हो रहा है…',
+      empty: 'अभी तक कोई निर्णय ढाँचा दर्ज नहीं।',
+      emptyHint: 'ढाँचे निष्पादन के समय बनते हैं। नीति को कुछ बार चलाएँ।',
+      sampleNote: 'प्लेटफ़ॉर्म द्वारा दर्ज {count} निष्पादनों पर आधारित — आपके पूरे व्यावसायिक डेटा पर नहीं।',
+      coverageNote: '{total} में से केवल {covered} निष्पादनों में निर्णय ढाँचा था।',
+      neverMatchedTitle: 'इस नमूने में पूरी न हुई शर्तें',
+      neverMatchedHint:
+        'ये दिखाए गए निष्पादनों में जाँची गईं पर कभी सत्य नहीं हुईं। अकेले इससे यह सिद्ध नहीं होता कि शाखा मृत है — तिमाही में एक बार चलने वाला नियम हाल के नमूने में भी नहीं दिखेगा।',
+      truncatedNote:
+        'हाल के {scanned} (कुल {total} में से) निष्पादन दिखाए जा रहे हैं; नीचे के आँकड़े नमूना हैं, पूर्ण गणना नहीं।',
+      evaluated: 'जाँची गई',
+      matched: 'पूरी हुई',
+      loadFailed: 'फ़नल लोड नहीं हो सका।',
+    },
+    // What-if प्रभाव अनुमान (Phase 4, स्थानीय पूरक)।
+    whatIf: {
+      title: 'What-if प्रभाव अनुमान',
+      subtitle: 'इस नीति को दूसरे संस्करण पर बदलने का अनुमानित व्यावसायिक प्रभाव।',
+      loading: 'अनुमान लगाया जा रहा है…',
+      loadFailed: 'अनुमान लोड नहीं हो सका।',
+      empty: 'अभी कोई अनुमान नहीं।',
+      emptyHint:
+        'इसके लिए वापस भेजे गए परिणाम चाहिए। outcome एंडपॉइंट से वास्तविक परिणाम भेजें।',
+      assumptionTitle: 'धारणा:',
+      changed: 'बदले गए निर्णय',
+      newlyApproved: 'नए स्वीकृत',
+      newlyRejected: 'नए अस्वीकृत',
+      positiveRate: 'आधार सकारात्मक दर',
+      valueDelta: 'अनुमानित मूल्य परिवर्तन',
+      valueUnavailable: 'अनुमान संभव नहीं',
+      confidenceLabel: 'विश्वास स्तर',
+      valueConfidenceLabel: 'मूल्य विश्वास स्तर',
+      confidenceInsufficient: 'अपर्याप्त डेटा',
+      confidenceLow: 'कम',
+      confidenceModerate: 'मध्यम',
+      coverageNote:
+        '{total} में से केवल {compared} निष्पादन लक्ष्य संस्करण पर चले, इसलिए बदले गए निर्णयों की संख्या कम आंकी गई है।',
+      notComparable: 'इन दो संस्करणों में तुलना योग्य निष्पादन नहीं हैं, अनुमान संभव नहीं।',
+      caveatsTitle: 'इस अनुमान की सीमाएँ',
+      caveat: {
+        NO_OUTCOME_DATA: 'अभी तक कोई परिणाम वापस नहीं भेजा गया।',
+        SAMPLE_TOO_SMALL: 'निष्कर्ष के लिए बहुत कम परिणाम हैं।',
+        NO_APPROVED_BASELINE: 'आधार बनाने के लिए कोई पूर्व-स्वीकृत निष्पादन नहीं।',
+        NO_VALUE_DATA: 'कोई राशि नहीं भेजी गई, मूल्य प्रभाव का अनुमान संभव नहीं।',
+        BASELINE_TOO_SMALL: 'अधिकांश परिणाम अस्वीकृति थे; स्वीकृत आधार बहुत छोटा है।',
+        VALUE_SAMPLE_TOO_SMALL: 'बहुत कम परिणामों में राशि थी, इसलिए मूल्य अविश्वसनीय है।',
+      },
+    },
     docs: {
       overlay: {
         openFull: 'पूरा दस्तावेज़ खोलें',

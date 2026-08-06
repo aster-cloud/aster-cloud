@@ -116,6 +116,36 @@ export interface ExecutionReplayColumns {
 }
 
 /**
+ * 把决策骨架**按白名单重建**，只保留结构上允许的字段。
+ *
+ * <p>★这是 PII 边界的**运行时**执行点，不是类型断言。aster-api 侧的
+ * `TraceSkeleton.SkeletonStep` 通过「没有 result 字段」做结构性保证，但那条保证
+ * 止于 JVM 边界：跨服务后是一段 JSON，`response.json()` 产出的是普通对象，
+ * TypeScript 的 interface 在运行时**不存在**、不会剥离任何多余字段。
+ *
+ * <p>所以这里不做「校验 + 放行原对象」（那样多余字段仍会跟着走），而是
+ * **只挑出已知字段拼一个新对象**。上游无论多出什么（`result`、`inputs`、
+ * 调试字段），都不可能进入落库对象——白名单之外的一切默认丢弃。
+ *
+ * <p>丢弃是静默的：骨架是分析用的辅助数据，不该因为上游多塞字段就让整条
+ * 执行记录写入失败。真正的风险是「悄悄多写」，不是「悄悄少写」。
+ */
+export function projectTraceSkeleton(input: PolicyTraceSkeleton): PolicyTraceSkeleton {
+  const rawSteps = Array.isArray(input?.steps) ? input.steps : [];
+  return {
+    schemaVersion: String(input?.schemaVersion ?? ''),
+    moduleName: input?.moduleName ?? null,
+    functionName: input?.functionName ?? null,
+    steps: rawSteps.map((s) => ({
+      stepId: String(s?.stepId ?? ''),
+      expression: String(s?.expression ?? ''),
+      matched: Boolean(s?.matched),
+      depth: Number.isFinite(s?.depth) ? Number(s.depth) : 0,
+    })),
+  };
+}
+
+/**
  * 构建 Execution 回放列（M1）。见 {@link ReplayVersionRefs} doc 的 M1 语义。
  */
 export function buildReplayColumns(
@@ -162,8 +192,13 @@ export function buildReplayColumns(
   // 骨架不含任何业务值，即便未开 replay capture（replay 为 undefined）也应落库——
   // 否则条件漏斗的样本会被 capture 开关白白砍掉一大块，而那个开关管的是 PII，
   // 与骨架无关。
+  //
+  // ★必须走 projectTraceSkeleton 白名单重建，不能直接赋值上游对象：
+  // TypeScript 的 interface 只在编译期存在，运行时不会剥离多余字段。上游一次回归、
+  // 版本漂移或异常响应，业务值就会随对象整体落进 traceSkeletonJson——而这一列
+  // 不受 replayRetentionEnabled 管辖，等于绕过 PII 保留策略永久留存。
   if (traceSkeleton) {
-    base.traceSkeletonJson = traceSkeleton;
+    base.traceSkeletonJson = projectTraceSkeleton(traceSkeleton);
   }
 
   // ★replayMetadata 缺失（未开 capture / 后端未返回）→ 回放列全 null，status=**null**（不是
