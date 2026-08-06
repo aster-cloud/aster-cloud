@@ -60,7 +60,10 @@ export async function cleanupTestDb(): Promise<void> {
         -- 这里按 ExecutionOutcome → Execution → Policy 顺序列出便于阅读。
         "ExecutionOutcome",
         "Execution",
-        "Policy"
+        "PolicyVersion",
+        "Policy",
+        -- What-if 需要 User.replayRetentionEnabled 开关，故用例会插 User 行
+        "User"
       RESTART IDENTITY CASCADE
     `,
     new Promise((_, reject) =>

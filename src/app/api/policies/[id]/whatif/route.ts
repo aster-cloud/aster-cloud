@@ -23,7 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { db, policies, executions, executionOutcomes, policyVersions, users } from '@/lib/prisma';
-import { and, eq, desc, isNotNull } from 'drizzle-orm';
+import { and, eq, desc, isNotNull, count } from 'drizzle-orm';
 import { estimateWhatIf, type OutcomeSample } from '@/lib/analytics/whatif-estimate';
 import { createPolicyApiClient } from '@/services/policy/policy-api';
 import { parseApprovalFromResult } from '@/services/policy/cnl-executor';
@@ -120,8 +120,27 @@ export async function GET(
     });
   }
 
+  const baseWhere = and(
+    eq(executions.policyId, id),
+    eq(executions.userId, userId),
+    eq(executions.policyVersion, baseVersion),
+    isNotNull(executions.decision),
+  );
+
+  // ★覆盖率的分母必须是**全量**，不能被 LIMIT 截断——否则
+  //   「5000 条里只有 40 条可重跑」会被算成「200 条里 40 条」，比例虚高 6 倍。
+  const [{ value: totalCount }] = await db
+    .select({ value: count() })
+    .from(executions)
+    .where(baseWhere);
+
   // 基线：baseVersion 下跑过的执行 + 事后回传的结局。
-  // 左连接：没有 outcome 的执行也进样本——它们决定 sampleSize（覆盖率的分母）。
+  // 左连接：没有 outcome 的执行也进样本。
+  //
+  // ★REPLAYABLE 过滤必须下推到 SQL，不能查回来再 filter：
+  //   LIMIT 取的是最近 N 条，若近期执行恰好多为 NON_REPLAYABLE，
+  //   可重跑条数会塌到接近 0——即便库里有几千条可重跑的历史执行。
+  //   （真库 E2E 实测：250 条里 35 条可重跑，按旧写法 replayable=0）
   const baseRows = await db
     .select({
       executionId: executions.id,
@@ -136,21 +155,13 @@ export async function GET(
     })
     .from(executions)
     .leftJoin(executionOutcomes, eq(executionOutcomes.executionId, executions.id))
-    .where(
-      and(
-        eq(executions.policyId, id),
-        eq(executions.userId, userId),
-        eq(executions.policyVersion, baseVersion),
-        isNotNull(executions.decision),
-      ),
-    )
+    .where(and(baseWhere, eq(executions.replayabilityStatus, STATUS_REPLAYABLE)))
     .orderBy(desc(executions.createdAt))
     .limit(MAX_REPLAY);
 
-  const sampleSize = baseRows.length;
-  const replayableRows = baseRows.filter(
-    (r) => r.replayabilityStatus === STATUS_REPLAYABLE && r.input != null,
-  );
+  // sampleSize = 符合筛选条件的**全部**执行；replayableRows 是其中可重跑的样本。
+  const sampleSize = totalCount;
+  const replayableRows = baseRows.filter((r) => r.input != null);
 
   // ★重跑：只跑 REPLAYABLE，失败计入 replayFailed 而**不是**当成「决策未变」——
   //   后者会系统性低估 changed。
@@ -203,7 +214,7 @@ export async function GET(
     replayed,
     replayFailed,
     coverage,
-    truncated: sampleSize >= MAX_REPLAY,
+    truncated: baseRows.length >= MAX_REPLAY,
     limit: MAX_REPLAY,
   };
   if (replayed < MIN_REPLAYED) {
@@ -229,6 +240,10 @@ export async function GET(
     });
   }
 
+  // ★估算样本 = 可重跑的那批（baseRows 现已在 SQL 层过滤为 REPLAYABLE）。
+  //   不该把不可重跑的执行放进分母：它们没有对照决策，
+  //   estimateWhatIf 会把「查不到新决策」当成「决策未变」，系统性低估 changed。
+  //   全量条数由 sampleSize（独立 count 查询）单独回报，用于覆盖率口径。
   const samples: OutcomeSample[] = baseRows.map((r) => ({
     executionId: r.executionId,
     decision: r.decision ?? '',

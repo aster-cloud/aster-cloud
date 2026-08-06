@@ -25,20 +25,20 @@ const rowSets = vi.hoisted(() => ({
   user: [] as unknown[],
   version: [] as unknown[],
   base: [] as unknown[],
+  totalCount: 0,
 }));
 
 vi.mock('@/lib/prisma', () => {
-  // 四次查询依次是：归属校验 → users 开关 → PolicyVersion → 基线执行
+  // 五次查询依次是：归属校验 → users 开关 → PolicyVersion → count(总数) → 基线执行
   let call = 0;
   const rowsFor = () => {
     const n = call++;
-    return n === 0
-      ? rowSets.owned
-      : n === 1
-        ? rowSets.user
-        : n === 2
-          ? rowSets.version
-          : rowSets.base;
+    if (n === 0) return rowSets.owned;
+    if (n === 1) return rowSets.user;
+    if (n === 2) return rowSets.version;
+    // ★sampleSize 来自独立 count 查询（全量），不再是 base.length
+    if (n === 3) return [{ value: rowSets.totalCount }];
+    return rowSets.base;
   };
   const makeChain = () => {
     const ctx: { where: unknown } = { where: undefined };
@@ -74,6 +74,7 @@ vi.mock('drizzle-orm', () => ({
   eq: (col: unknown, val: unknown) => ({ op: 'eq', col, val }),
   desc: (c: unknown) => ({ op: 'desc', c }),
   isNotNull: (c: unknown) => ({ op: 'isNotNull', c }),
+  count: () => ({ op: 'count' }),
 }));
 
 const { GET } = await import('@/app/api/policies/[id]/whatif/route');
@@ -114,6 +115,7 @@ describe('GET /api/policies/:id/whatif', () => {
     rowSets.user = [{ replayRetentionEnabled: true }];
     rowSets.version = [{ source: 'Module M. Rule assess...', content: null, aliasSet: null }];
     rowSets.base = baseRows(50);
+    rowSets.totalCount = 50;
     getSession.mockReset();
     evaluateSource.mockReset();
     getSession.mockResolvedValue({ user: { id: 'u1' } });
@@ -179,6 +181,7 @@ describe('GET /api/policies/:id/whatif', () => {
   describe('★双判门槛：条数 + 代表性比例', () => {
     it('可重跑条数不足 → INSUFFICIENT_REPLAYED，不给数字', async () => {
       rowSets.base = baseRows(10); // < MIN_REPLAYED(30)
+      rowSets.totalCount = 10;
       const body = await (await GET(req(), { params })).json();
 
       expect(body.comparable).toBe(false);
@@ -189,17 +192,18 @@ describe('GET /api/policies/:id/whatif', () => {
     });
 
     it('★大分母 + 小样本 → INSUFFICIENT_COVERAGE（绝对条数够也不行）', async () => {
-      // 250 条基线里只有 35 条 REPLAYABLE：条数过了 30，但占比仅 14% < 20%
-      rowSets.base = [
-        ...baseRows(35),
-        ...baseRows(215).map((r) => ({ ...r, replayabilityStatus: 'NON_REPLAYABLE' })),
-      ];
+      // 250 条基线里只有 35 条 REPLAYABLE：条数过了 30，但占比仅 14% < 20%。
+      // ★REPLAYABLE 过滤已下推到 SQL，故 base 只返回可重跑的那 35 条；
+      //   总量由独立 count 查询给出。
+      rowSets.base = baseRows(35);
+      rowSets.totalCount = 250;
       const body = await (await GET(req(), { params })).json();
 
       expect(body.comparable).toBe(false);
       expect(body.reason).toBe('INSUFFICIENT_COVERAGE');
       expect(body.replayed).toBe(35);
       expect(body.sampleSize).toBe(250);
+      expect(body.coverage).toBeCloseTo(0.14, 2);
       expect(body.changed).toBeUndefined();
     });
 
@@ -234,17 +238,17 @@ describe('GET /api/policies/:id/whatif', () => {
     });
   });
 
-  it('只重跑 REPLAYABLE 的执行', async () => {
-    rowSets.base = [
-      ...baseRows(30),
-      ...baseRows(5).map((r) => ({ ...r, replayabilityStatus: 'NON_REPLAYABLE' })),
-    ];
+  it('★REPLAYABLE 过滤下推到 SQL（不是查回来再 filter）', async () => {
+    // 旧写法 LIMIT 取最近 N 条再 filter：近期恰好多为 NON_REPLAYABLE 时，
+    // 可重跑条数会塌到接近 0，即便库里有几千条可重跑历史（真库 E2E 实测过）。
     await GET(req(), { params });
-    expect(evaluateSource).toHaveBeenCalledTimes(30);
+    const where = captured[4]?.where; // 第 5 次查询 = 基线执行
+    expect(eqPairs(where)).toContain('col.replayabilityStatus=REPLAYABLE');
   });
 
   it('input 为 null 的行不参与重跑（没有输入就没法重跑）', async () => {
-    rowSets.base = [...baseRows(30), ...baseRows(5).map((r) => ({ ...r, input: null }))];
+    rowSets.base = [...baseRows(30), ...baseRows(5, { input: null })];
+    rowSets.totalCount = 35;
     await GET(req(), { params });
     expect(evaluateSource).toHaveBeenCalledTimes(30);
   });
