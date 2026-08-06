@@ -254,4 +254,51 @@ describe('Strategy Replay 数据层（真实 Postgres）', () => {
       ]);
     });
   });
+
+  // ★并发行为（第四轮交叉审查点名缺口）。单测的顺序调用证明不了锁与竞态。
+  describe('并发 upsert（真库）', () => {
+    it('新旧业务时间并发：无论到达顺序，最终都是较新的那条', async () => {
+      await seedExecution('c1', U);
+      await Promise.all([
+        upsertOutcome('c1', U, 'NEW', T('2026-01-05')),
+        upsertOutcome('c1', U, 'OLD', T('2026-01-01')),
+      ]);
+      expect((await currentOutcome('c1'))?.outcome).toBe('NEW');
+    });
+
+    it('反向到达顺序，结论必须一致（守卫在并发下仍确定）', async () => {
+      await seedExecution('c2', U);
+      await Promise.all([
+        upsertOutcome('c2', U, 'OLD', T('2026-01-01')),
+        upsertOutcome('c2', U, 'NEW', T('2026-01-05')),
+      ]);
+      expect((await currentOutcome('c2'))?.outcome).toBe('NEW');
+    });
+
+    it('10 次并发重复投递只落 1 行（unique 约束在竞态下成立）', async () => {
+      await seedExecution('c3', U);
+      await Promise.all(
+        Array.from({ length: 10 }, () => upsertOutcome('c3', U, 'DUP', T('2026-01-03'))),
+      );
+      const rows = await db
+        .select({ id: executionOutcomes.id })
+        .from(executionOutcomes)
+        .where(eq(executionOutcomes.executionId, 'c3'));
+      expect(rows).toHaveLength(1);
+    });
+
+    it('★同业务时间的两条不同更正：后写者赢，且这是已知的非确定行为', async () => {
+      // 这不是缺陷修复测试，是**行为锁定**：单条 upsert 无法为同一业务时间
+      // 决出确定胜负。route 用 applied 字段如实回报是否落库，调用方据此判断，
+      // 而不是假设自己的写一定生效。契约见 docs/api/outcome-ingestion.md。
+      await seedExecution('c4', U);
+      const results = await Promise.all([
+        upsertOutcome('c4', U, 'A', T('2026-01-03')),
+        upsertOutcome('c4', U, 'B', T('2026-01-03')),
+      ]);
+      // 两条都会落库（<= 允许同时间覆盖），最终值取决于到达顺序
+      expect(results.flat().length).toBe(2);
+      expect(['A', 'B']).toContain((await currentOutcome('c4'))?.outcome);
+    });
+  });
 });

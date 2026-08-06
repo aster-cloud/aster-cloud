@@ -10,6 +10,12 @@ import { NextRequest } from 'next/server';
 const getSession = vi.fn();
 vi.mock('@/lib/auth', () => ({ getSession: () => getSession() }));
 
+/** API Key 鉴权：默认不被调用；带 Authorization 头时才走这条路。 */
+const authenticateApiRequest = vi.fn();
+vi.mock('@/lib/api-keys', () => ({
+  authenticateApiRequest: (r: Request) => authenticateApiRequest(r),
+}));
+
 const captured: { where?: unknown; values?: unknown; conflict?: unknown }[] = [];
 let execRows: unknown[] = [];
 // upsert 的 returning 结果：空数组 = 守卫拦下未写入
@@ -65,10 +71,10 @@ vi.mock('drizzle-orm', () => ({
 const { POST } = await import('@/app/api/v1/executions/[id]/outcome/route');
 
 const params = Promise.resolve({ id: 'e1' });
-const req = (body: unknown) =>
+const req = (body: unknown, headers: Record<string, string> = {}) =>
   new NextRequest('https://x.test/api/v1/executions/e1/outcome', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
 
@@ -87,7 +93,12 @@ function flatten(node: unknown): { col: unknown; val: unknown }[] {
 beforeEach(() => {
   captured.length = 0;
   execRows = [{ id: 'e1', policyId: 'p1' }];
+  // ★清空调用记录：鉴权用例要断言「某条路径没被走过」，
+  //   累积的调用次数会让 not.toHaveBeenCalled() 恒假。
+  getSession.mockReset();
+  authenticateApiRequest.mockReset();
   getSession.mockResolvedValue({ user: { id: 'u1' } });
+  upsertReturns = [{ executionId: 'e1' }];
   vi.stubGlobal('crypto', { randomUUID: () => 'uuid-1' });
 });
 
@@ -279,5 +290,86 @@ describe('POST /api/v1/executions/:id/outcome', () => {
       const body = await res.json();
       expect(body.applied).toBe(false);
       expect(body.reason).toBe('STALE_OCCURRED_AT');
+    });
+  });
+
+  // ★Phase 3 鉴权契约（第四轮交叉审查点名：外部契约不匹配）。
+  //
+  // 本端点的主要调用方是**客户后台**——决策落地几天后才知道结局，那时早已
+  // 不是一次浏览器会话。同层 /api/v1/policies/:id/execute 用 API Key，
+  // 若本端点只认 cookie session，客户拿已有的 key 根本回传不了。
+  describe('★鉴权：API Key 优先，Session 兜底', () => {
+    it('带 Bearer 且 key 有效 → 用 key 的 userId 写入', async () => {
+      authenticateApiRequest.mockResolvedValue({
+        success: true,
+        userId: 'key-user',
+        apiKeyId: 'k1',
+      });
+      execRows = [{ id: 'e1', policyId: 'p1' }];
+      captured.length = 0;
+
+      const res = await POST(
+        req({ outcome: 'converted' }, { authorization: 'Bearer sk_live_x' }),
+        { params },
+      );
+
+      expect(res.status).toBe(200);
+      expect((captured.at(-1)?.values as { userId?: string })?.userId).toBe('key-user');
+      // 走了 key 就不该再去读 session
+      expect(getSession).not.toHaveBeenCalled();
+    });
+
+    it('★带 Bearer 但 key 无效 → 401，不得悄悄回落到 session', async () => {
+      // 否则一个拿着过期 key 的后台任务，会因为恰好带了某人的 cookie 而写成功，
+      // 且写到**那个人**名下 —— 静默的跨身份写入。
+      authenticateApiRequest.mockResolvedValue({
+        success: false,
+        error: 'Invalid API key',
+        status: 401,
+      });
+      getSession.mockResolvedValue({ user: { id: 'u1' } });
+      execRows = [{ id: 'e1', policyId: 'p1' }];
+
+      const res = await POST(
+        req({ outcome: 'converted' }, { authorization: 'Bearer expired' }),
+        { params },
+      );
+
+      expect(res.status).toBe(401);
+      expect(getSession).not.toHaveBeenCalled();
+    });
+
+    it('无 Authorization 头 → 回落 session（控制台人工补录）', async () => {
+      getSession.mockResolvedValue({ user: { id: 'u1' } });
+      execRows = [{ id: 'e1', policyId: 'p1' }];
+      captured.length = 0;
+
+      const res = await POST(req({ outcome: 'converted' }), { params });
+
+      expect(res.status).toBe(200);
+      expect((captured.at(-1)?.values as { userId?: string })?.userId).toBe('u1');
+      expect(authenticateApiRequest).not.toHaveBeenCalled();
+    });
+
+    it('两种凭据都没有 → 401', async () => {
+      getSession.mockResolvedValue(null);
+      const res = await POST(req({ outcome: 'converted' }), { params });
+      expect(res.status).toBe(401);
+    });
+
+    it('★API Key 身份同样受租户隔离约束', async () => {
+      // key 的 userId 与 execution 的 owner 不符时必须 404
+      authenticateApiRequest.mockResolvedValue({
+        success: true,
+        userId: 'key-user',
+        apiKeyId: 'k1',
+      });
+      execRows = []; // 按 (id, callerUserId) 查不到
+
+      const res = await POST(
+        req({ outcome: 'converted' }, { authorization: 'Bearer sk_live_x' }),
+        { params },
+      );
+      expect(res.status).toBe(404);
     });
   });

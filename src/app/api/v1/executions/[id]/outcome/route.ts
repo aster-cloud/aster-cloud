@@ -4,11 +4,23 @@
  * <p>平台只记录「批准/拒绝」，不知道该决策事后是否成交/坏账。本端点让客户在
  * 决策落地后回传真实结果——这是「改策略会少赚多少钱」这类问题的**唯一**数据来源。
  *
+ * <p><b>完整对外契约见 `docs/api/outcome-ingestion.md`</b>（鉴权、幂等语义、
+ * value 精度约束、错误码、并发行为）。改本文件的行为前请同步那份文档。
+ *
+ * <p><b>★鉴权：API Key 优先，Session 兜底。</b>本端点的主要调用方是**客户后台**
+ * ——决策落地几天后才知道结局，那时早已不是一次浏览器会话。同层的
+ * `/api/v1/policies/:id/execute` 用 API Key，本端点若只认 cookie session，
+ * 客户拿已有的 key 根本回传不了（第四轮交叉审查指出的契约不匹配）。
+ *
+ * <p>Session 仍然保留：控制台里人工补录/更正结局是真实需求，不该逼用户去建 key。
+ *
  * <p>幂等：同一 executionId 重复回传会**覆盖**而非堆叠（结局只有一个，
- * 更正是正常需求）。覆盖靠 reportedAt 留痕。
+ * 更正是正常需求），且只有**业务时间不早于**已存记录才覆盖；未生效时
+ * 响应 `applied:false` 如实告知。详见下方 upsert 处注释。
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { authenticateApiRequest } from '@/lib/api-keys';
 import { db, executions, executionOutcomes } from '@/lib/prisma';
 import { and, eq, sql } from 'drizzle-orm';
 import { errorEnvelope } from '@/lib/api/error-envelope';
@@ -81,14 +93,45 @@ function parseDecimalValue(
   return { ok: true, value: negative && !isZero ? `-${body}` : body };
 }
 
+/**
+ * 解析调用方身份：API Key 优先，Session 兜底。
+ *
+ * <p>顺序不是随意的——带了 `Authorization: Bearer` 就说明调用方**打算**用 key
+ * 认证，此时 key 无效就该报 401，而不是悄悄回落到浏览器 session（那会让一个
+ * 拿着过期 key 的后台任务，因为恰好带了某人的 cookie 而写成功，且写到**那个人**
+ * 名下）。回落只发生在完全没有 Authorization 头的情况。
+ *
+ * @returns ok 时带 userId 与 via（供审计区分来源）
+ */
+async function resolveCaller(
+  request: NextRequest,
+): Promise<{ ok: true; userId: string; via: 'apiKey' | 'session' } | { ok: false; message: string }> {
+  if (request.headers.get('authorization')) {
+    const res = await authenticateApiRequest(request);
+    if (!res.success) {
+      return { ok: false, message: res.error };
+    }
+    return { ok: true, userId: res.userId, via: 'apiKey' };
+  }
+
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return { ok: false, message: '未登录，且未提供 API Key' };
+  }
+  return { ok: true, userId: session.user.id, via: 'session' };
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return errorEnvelope({ code: 'UNAUTHORIZED', message: '未登录', status: 401 });
+  // ★双通道鉴权：带 Authorization: Bearer 就走 API Key，否则回落 session。
+  //   不做成「二选一」是因为两类调用方都真实存在（客户后台 / 控制台人工补录）。
+  const auth = await resolveCaller(request);
+  if (!auth.ok) {
+    return errorEnvelope({ code: 'UNAUTHORIZED', message: auth.message, status: 401 });
   }
+  const callerUserId = auth.userId;
   const { id } = await params;
 
   let body: unknown;
@@ -150,7 +193,7 @@ export async function POST(
   const rows = await db
     .select({ id: executions.id, policyId: executions.policyId })
     .from(executions)
-    .where(and(eq(executions.id, id), eq(executions.userId, session.user.id)))
+    .where(and(eq(executions.id, id), eq(executions.userId, callerUserId)))
     .limit(1);
   if (rows.length === 0) {
     // 404 而非 403：不泄露「该执行存在但不属于你」
@@ -162,7 +205,7 @@ export async function POST(
     .values({
       id: globalThis.crypto.randomUUID(),
       executionId: id,
-      userId: session.user.id,
+      userId: callerUserId,
       policyId: rows[0].policyId,
       outcome,
       value,
