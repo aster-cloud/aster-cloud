@@ -260,7 +260,12 @@ export async function POST(
       target: executionOutcomes.executionId,
       set: { outcome, value, occurredAt, note, reportedAt: new Date() },
       where: occurredAt
-        ? sql`${executionOutcomes.occurredAt} IS NULL OR ${executionOutcomes.occurredAt} <= ${occurredAt}`
+        // ★必须显式转 ISO 字符串 + ::timestamp：把裸 Date 插进 sql`` 模板时，
+        //   postgres.js 拿不到列的类型信息，会抛
+        //   "The string argument must be of type string ... Received an instance of Date"。
+        //   drizzle 的 .values() 走的是带类型的参数绑定，所以只有这里的手写
+        //   模板受影响 —— 这条是 route→真库 E2E 抓到的，复制 SQL 的测试测不出。
+        ? sql`${executionOutcomes.occurredAt} IS NULL OR ${executionOutcomes.occurredAt} <= ${occurredAt.toISOString()}::timestamp`
         : sql`${executionOutcomes.occurredAt} IS NULL`,
     })
     .returning({ executionId: executionOutcomes.executionId });
