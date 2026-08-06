@@ -53,21 +53,16 @@ const REPLAY_BUDGET_MS = 20_000;
 
 /** 给数字的双判门槛（ADR 0033 §3.4）。 */
 const MIN_REPLAYED = 30;
-const MIN_COVERAGE = 0.2;
+/**
+ * 重跑**成功率**门槛。注意它衡量的是可靠性（这批跑成功了多少），
+ * 不是代表性（样本占全量多少）——后者由 sampleCoverage 如实回报但不设门槛，
+ * 因为 MAX_REPLAY 会让它对大策略恒极低（第九/十轮）。
+ */
+const MIN_SUCCESS_RATE = 0.2;
 
 /** DB enum 是小写 approved/denied/indeterminate/error，不是 estimateWhatIf 默认的大写。 */
 const APPROVE_DECISIONS = ['approved'] as const;
 
-/**
- * outcome 词汇的平台默认值。
- *
- * <p>outcome 由租户自定义（见 `docs/api/outcome-ingestion.md`），平台不做枚举限制。
- * 但调用方没指定时**不能**退化成空集合——那会让正面率恒为 0，产出一个
- * 看起来正常的错数字。这里给一组最常见词汇兜底，并在 caveats 里标注
- * 「用的是默认词汇」，让用户知道该配自己的。
- */
-const DEFAULT_POSITIVE_OUTCOMES = ['converted', 'repaid', 'settled', 'approved_ok'] as const;
-const DEFAULT_NEGATIVE_OUTCOMES = ['defaulted', 'refunded', 'charged_off', 'fraud'] as const;
 
 export async function GET(
   request: NextRequest,
@@ -111,7 +106,8 @@ export async function GET(
     return errorEnvelope({
       code: 'REPLAY_RETENTION_DISABLED',
       message:
-        'What-if 估算需要读取历史执行的明文输入数据。请先开启账户设置中的「回放明文授权」（replayRetentionEnabled）——它是对「允许用这些输入做重跑分析」的显式授权。',
+        'What-if 估算需要读取历史执行的明文输入。请先在账户设置中开启「回放与分析授权」——' +
+        '它授权平台把执行输入用于分析用途（What-if 重跑既有输入；回归工具还会冻结明文到测试用例）。',
       status: 403,
     });
   }
@@ -302,17 +298,21 @@ export async function GET(
   }
 
   const replayed = newDecisions.size;
-  // ★覆盖率 = 已重跑 / **本次计划重跑数**，而不是 / 全量可重跑数。
-  //
-  //   用全量做分母会造成数学冲突（第九轮 P0-9）：MAX_REPLAY=200 时，
-  //   replayableTotal>1000 的策略 coverage 永远 ≤20%，门槛**结构上达不到**——
-  //   越大的客户越用不了这个功能。
-  //
-  //   这个门槛真正要挡的是「计划跑 200 条，结果大半失败」——即**重跑成功率**，
-  //   而不是「样本占全量多少」。后者由 sampleSize/replayable/limit 三个数字
-  //   如实呈现，让用户自己判断代表性，而不是用一个恒不达标的阈值替他决定。
   const attempted = replayableRows.length;
-  const coverage = attempted > 0 ? replayed / attempted : 0;
+
+  // ★两个比率语义不同，必须分开命名（第十轮：一个 coverage 同时承载两种含义
+  //   是多个下游错误的根源）：
+  //
+  //   · replaySuccessRate = replayed / attempted
+  //     「本次计划跑的这批，成功了多少」——衡量重跑**可靠性**。
+  //     门槛用它：失败过半的结论不可信。
+  //
+  //   · sampleCoverage = replayed / replayableTotal
+  //     「估算用到的样本，占全部可重跑执行多少」——衡量**代表性**。
+  //     ★不做门槛：MAX_REPLAY=200 时它对大策略恒极低，用作门槛会让
+  //     越大的客户越用不了（第九轮 P0-9）。改为如实回报，让用户自己判断。
+  const replaySuccessRate = attempted > 0 ? replayed / attempted : 0;
+  const sampleCoverage = replayableTotal > 0 ? replayed / replayableTotal : 0;
 
   // ★双判门槛（ADR 0033 §3.4）：条数与代表性比例都得够。
   //   两个 reason 分开——「再攒些数据」和「大多不可回放，得去开开关」是不同的动作。
@@ -323,10 +323,13 @@ export async function GET(
     replayable: replayableTotal,
     /** 本次计划重跑的条数（受 MAX_REPLAY 与 input 非空约束）。 */
     attempted,
+    /** 重跑成功率 = replayed / attempted，门槛用它。 */
+    replaySuccessRate,
+    /** 样本代表性 = replayed / replayableTotal，**不做门槛**，仅如实回报。 */
+    sampleCoverage,
     /** 实际重跑成功的条数——估算的真实分母。 */
     replayed,
     replayFailed,
-    coverage,
     /** 可重跑数超过单次上限，本次只跑了最近的 limit 条。 */
     truncated: replayableTotal > MAX_REPLAY,
     /** 时间预算耗尽提前停止——与 truncated 是两回事，必须分开回报。 */
@@ -344,14 +347,14 @@ export async function GET(
       ...counts,
     });
   }
-  if (coverage < MIN_COVERAGE) {
+  if (replaySuccessRate < MIN_SUCCESS_RATE) {
     return NextResponse.json({
       policyId: id,
       baseVersion,
       targetVersion,
       comparable: false,
-      reason: 'INSUFFICIENT_COVERAGE',
-      message: `本次尝试重跑 ${attempted} 条，仅 ${replayed} 条成功（${Math.round(coverage * 100)}%，需要 ${Math.round(MIN_COVERAGE * 100)}%），失败过多，结论不可信。`,
+      reason: 'LOW_REPLAY_SUCCESS_RATE',
+      message: `本次尝试重跑 ${attempted} 条，仅 ${replayed} 条成功（${Math.round(replaySuccessRate * 100)}%，需要 ${Math.round(MIN_SUCCESS_RATE * 100)}%），失败过多，结论不可信。`,
       ...counts,
     });
   }
@@ -374,11 +377,31 @@ export async function GET(
   //   缺省时用平台默认词汇；仍拿不到就在 caveats 里说明，而不是静默算 0。
   const positiveOutcomes = parseList(url.searchParams.get('positiveOutcomes'));
   const negativeOutcomes = parseList(url.searchParams.get('negativeOutcomes'));
-  const usedDefaultTaxonomy = positiveOutcomes.length === 0;
+  // ★没有 taxonomy 就**不给业务数字**（第十轮 P0-4 修正）。
+  //
+  //   上一轮我用「平台默认词汇」兜底，但那是**用平台的猜测替代租户的配置**：
+  //   outcome 词汇由租户自定义（见 docs/api/outcome-ingestion.md），
+  //   平台猜 'converted' 恰好命中只是巧合。猜错时正面率与金额全错，
+  //   而响应仍是 comparable:true —— 又一个「看起来正常的错数字」。
+  //
+  //   正确做法是拒绝给结论并告诉用户去配置，与「样本不足就不给数字」同理。
+  if (positiveOutcomes.length === 0 && negativeOutcomes.length === 0) {
+    return NextResponse.json({
+      policyId: id,
+      baseVersion,
+      targetVersion,
+      comparable: false,
+      reason: 'NO_OUTCOME_TAXONOMY',
+      message:
+        '未配置 outcome 词汇（哪些结局算正面/负面）。平台不替租户猜测业务语义——' +
+        '请在请求中传 positiveOutcomes/negativeOutcomes 后重试。',
+      ...counts,
+    });
+  }
 
   const estimate = estimateWhatIf(samples, newDecisions, {
-    positiveOutcomes: usedDefaultTaxonomy ? DEFAULT_POSITIVE_OUTCOMES : positiveOutcomes,
-    negativeOutcomes: negativeOutcomes.length === 0 ? DEFAULT_NEGATIVE_OUTCOMES : negativeOutcomes,
+    positiveOutcomes,
+    negativeOutcomes,
     approveDecisions: APPROVE_DECISIONS,
   });
 
@@ -388,10 +411,6 @@ export async function GET(
     targetVersion,
     comparable: true,
     ...estimate,
-    // 用了默认词汇就明说——否则用户会以为正面率是按他自己的口径算的
-    caveats: usedDefaultTaxonomy
-      ? [...estimate.caveats, 'DEFAULT_OUTCOME_TAXONOMY']
-      : estimate.caveats,
     // ★counts 放在 estimate **之后**：estimate 自带一个 sampleSize
     //   （= 可重跑样本数），会覆盖掉全量口径，导致成功响应与不可比响应报的
     //   sampleSize 是两个不同的数，coverage 的分母也对不上（第八轮 P0-3）。

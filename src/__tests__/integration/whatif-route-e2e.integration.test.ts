@@ -28,7 +28,9 @@ const { GET } = await import('@/app/api/policies/[id]/whatif/route');
 const U = 'user-wi-1';
 const POL = 'pol-wi-1';
 
-async function callRoute(qs = 'baseVersion=1&targetVersion=2') {
+// ★平台不再猜 outcome 词汇，故 E2E 默认带 taxonomy（第十轮 P0-4）
+const TAX = 'positiveOutcomes=converted&negativeOutcomes=defaulted';
+async function callRoute(qs = `baseVersion=1&targetVersion=2&${TAX}`) {
   const { NextRequest } = await import('next/server');
   const req = new NextRequest(`https://x.test/api/policies/${POL}/whatif?${qs}`);
   const res = await GET(req, { params: Promise.resolve({ id: POL }) });
@@ -161,7 +163,7 @@ describe('GET /api/policies/:id/whatif —— route → 真实 PostgreSQL', () =
       const { json } = await callRoute();
 
       expect(json.comparable).toBe(false);
-      expect(json.reason).toBe('INSUFFICIENT_COVERAGE');
+      expect(json.reason).toBe('LOW_REPLAY_SUCCESS_RATE');
       expect(json.replayed).toBe(35);
       expect(json.replayable).toBe(250); // 全量可重跑数，非 LIMIT 后
       expect(json.changed).toBeUndefined();
@@ -202,7 +204,7 @@ describe('GET /api/policies/:id/whatif —— route → 真实 PostgreSQL', () =
 
   it('目标版本不存在 → 404（真库查不到 PolicyVersion）', async () => {
     await seedExecutions(40);
-    const { status, json } = await callRoute('baseVersion=1&targetVersion=99');
+    const { status, json } = await callRoute(`baseVersion=1&targetVersion=99&${TAX}`);
 
     expect(status).toBe(404);
     expect((json.error as { code?: string })?.code).toBe('VERSION_NOT_FOUND');

@@ -84,7 +84,9 @@ const { GET } = await import('@/app/api/policies/[id]/whatif/route');
 const prisma = await import('@/lib/prisma');
 
 const params = Promise.resolve({ id: 'p1' });
-const req = (qs = 'baseVersion=1&targetVersion=2') =>
+// ★平台不再用默认词汇兜底，故要拿业务数字的用例必须带 taxonomy（第十轮 P0-4）
+const TAX = 'positiveOutcomes=converted&negativeOutcomes=defaulted';
+const req = (qs = `baseVersion=1&targetVersion=2&${TAX}`) =>
   new NextRequest(`http://localhost/api/policies/p1/whatif?${qs}`);
 
 function eqPairs(node: unknown, acc: string[] = []): string[] {
@@ -196,7 +198,7 @@ describe('GET /api/policies/:id/whatif', () => {
       expect(body.estimatedValueDelta).toBeUndefined();
     });
 
-    it('★重跑成功率过低 → INSUFFICIENT_COVERAGE', async () => {
+    it('★重跑成功率过低 → LOW_REPLAY_SUCCESS_RATE', async () => {
       // ★第九轮 P0-9：覆盖率分母改为「本次计划重跑数」而非全量可重跑数。
       //   用全量做分母会造成数学冲突：MAX_REPLAY=200 时 replayableTotal>1000
       //   的策略 coverage 永远 ≤20%，门槛结构上达不到——越大的客户越用不了。
@@ -216,10 +218,10 @@ describe('GET /api/policies/:id/whatif', () => {
       const body = await (await GET(req(), { params })).json();
 
       expect(body.comparable).toBe(false);
-      expect(body.reason).toBe('INSUFFICIENT_COVERAGE');
+      expect(body.reason).toBe('LOW_REPLAY_SUCCESS_RATE');
       expect(body.attempted).toBe(200);
       expect(body.replayed).toBe(35);
-      expect(body.coverage).toBeCloseTo(0.175, 3);
+      expect(body.replaySuccessRate).toBeCloseTo(0.175, 3);
       expect(body.changed).toBeUndefined();
     });
 
@@ -231,7 +233,9 @@ describe('GET /api/policies/:id/whatif', () => {
       const body = await (await GET(req(), { params })).json();
 
       expect(body.comparable).toBe(true);
-      expect(body.coverage).toBe(1); // 50 计划、50 成功
+      expect(body.replaySuccessRate).toBe(1); // 50 计划、50 成功
+      // ★代表性极低（50/3000）但**不作门槛**——如实回报，交用户判断
+      expect(body.sampleCoverage).toBeCloseTo(50 / 3000, 4);
       expect(body.replayable).toBe(3000);
       expect(body.sampleSize).toBe(100000);
     });
@@ -241,7 +245,7 @@ describe('GET /api/policies/:id/whatif', () => {
 
       expect(body.comparable).toBe(true);
       expect(body.replayed).toBe(50);
-      expect(body.coverage).toBe(1);
+      expect(body.replaySuccessRate).toBe(1);
       // 50 条 approved 全被目标版本判成 denied
       expect(body.newlyRejected).toBe(50);
     });
@@ -300,8 +304,7 @@ describe('GET /api/policies/:id/whatif', () => {
       expect(body.comparable).toBe(true);
       expect(body.sampleSize).toBe(5000);
       expect(body.replayable).toBe(50);
-      // coverage 分母是 replayable 不是 sampleSize
-      expect(body.coverage).toBe(1);
+      expect(body.replaySuccessRate).toBe(1);
     });
 
     it('★P0-5 result 与 error 同时为 null 算失败，不得伪造成 denied', async () => {
@@ -328,23 +331,27 @@ describe('GET /api/policies/:id/whatif', () => {
       rowSets.replayableTotal = 50;
       const body = await (await GET(req(), { params })).json();
 
-      expect(body.comparable).toBe(true); // 50/50 = 100% 覆盖，通过
-      expect(body.coverage).toBe(1);
+      expect(body.comparable).toBe(true); // 50/50 = 100% 成功率，通过
+      expect(body.replaySuccessRate).toBe(1);
     });
 
-    it('★P0-4 未传 taxonomy 时用默认词汇，且在 caveats 标注', async () => {
-      // 空 positive set 会让正面率恒为 0 —— 一个看起来正常的错数字
-      const body = await (await GET(req(), { params })).json();
-
-      expect(body.baselinePositiveRate).toBe(1); // converted 属默认正面词汇
-      expect(body.caveats).toContain('DEFAULT_OUTCOME_TAXONOMY');
-    });
-
-    it('显式传 taxonomy 时不加该 caveat', async () => {
+    it('★P0-4 未配 taxonomy → 拒绝给业务数字（平台不猜业务语义）', async () => {
+      // 上一轮我用「平台默认词汇」兜底，但那是用平台的猜测替代租户的配置：
+      // 猜错时正面率与金额全错，响应却仍是 comparable:true —— 又一个错数字。
       const body = await (
-        await GET(req('baseVersion=1&targetVersion=2&positiveOutcomes=converted'), { params })
+        await GET(req('baseVersion=1&targetVersion=2'), { params })
       ).json();
-      expect(body.caveats).not.toContain('DEFAULT_OUTCOME_TAXONOMY');
+
+      expect(body.comparable).toBe(false);
+      expect(body.reason).toBe('NO_OUTCOME_TAXONOMY');
+      expect(body.baselinePositiveRate).toBeUndefined();
+      expect(body.estimatedValueDelta).toBeUndefined();
+    });
+
+    it('配了 taxonomy 才给数字', async () => {
+      const body = await (await GET(req(), { params })).json();
+      expect(body.comparable).toBe(true);
+      expect(body.baselinePositiveRate).toBe(1);
     });
 
     it('P0-6 响应回报 deadlineHit 字段（与 truncated 分开）', async () => {

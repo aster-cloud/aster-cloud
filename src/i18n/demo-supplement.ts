@@ -76,6 +76,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         'These two versions have no comparable executions, so no estimate can be given.',
       notAuthorized:
         'What-if needs permission to read historical execution inputs. Enable it in settings first.',
+      noTaxonomy:
+        'Set which outcomes count as positive/negative first — the platform will not guess your business semantics.',
+      positiveOutcomesLabel: 'Positive outcomes',
+      negativeOutcomesLabel: 'Negative outcomes',
       caveatsTitle: 'Why this estimate is limited',
       caveat: {
         NO_OUTCOME_DATA: 'No outcomes have been reported yet.',
@@ -463,6 +467,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         '基于 {total} 条执行中可在目标版本上重跑的 {replayed} 条（{percent}%）——这是样本，不是您的全量业务数据。',
       notComparable: '这两个版本没有可对齐的执行记录，无法给出估算。',
       notAuthorized: 'What-if 需要读取历史执行输入的授权，请先在设置中开启。',
+      noTaxonomy: '请先指定哪些结局算正面/负面——平台不替您猜测业务语义。',
+      positiveOutcomesLabel: '正面结局',
+      negativeOutcomesLabel: '负面结局',
       caveatsTitle: '这个估算的局限',
       caveat: {
         NO_OUTCOME_DATA: '尚未回传任何业务结局。',
@@ -848,6 +855,10 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         'Diese beiden Versionen haben keine vergleichbaren Ausführungen; es kann keine Schätzung erfolgen.',
       notAuthorized:
         'What-if benötigt die Berechtigung, historische Eingaben zu lesen. Bitte zuerst in den Einstellungen aktivieren.',
+      noTaxonomy:
+        'Legen Sie zuerst fest, welche Ergebnisse positiv/negativ zählen — die Plattform rät Ihre Geschäftssemantik nicht.',
+      positiveOutcomesLabel: 'Positive Ergebnisse',
+      negativeOutcomesLabel: 'Negative Ergebnisse',
       caveatsTitle: 'Grenzen dieser Schätzung',
       caveat: {
         NO_OUTCOME_DATA: 'Es wurden noch keine Ergebnisse zurückgemeldet.',
@@ -1232,6 +1243,9 @@ export const DEMO_SUPPLEMENT: Record<Locale, MessageTree> = {
         '{total} में से {replayed} निष्पादन ({percent}%) लक्ष्य संस्करण पर पुनः चलाए जा सके — यह नमूना है, आपका पूर्ण डेटा नहीं।',
       notComparable: 'इन दो संस्करणों में तुलना योग्य निष्पादन नहीं हैं, अनुमान संभव नहीं।',
       notAuthorized: 'What-if को ऐतिहासिक इनपुट पढ़ने की अनुमति चाहिए। कृपया पहले सेटिंग्स में सक्षम करें।',
+      noTaxonomy: 'पहले बताएं कौन से परिणाम सकारात्मक/नकारात्मक हैं — प्लेटफ़ॉर्म आपकी व्यावसायिक अर्थवत्ता का अनुमान नहीं लगाता।',
+      positiveOutcomesLabel: 'सकारात्मक परिणाम',
+      negativeOutcomesLabel: 'नकारात्मक परिणाम',
       caveatsTitle: 'इस अनुमान की सीमाएँ',
       caveat: {
         NO_OUTCOME_DATA: 'अभी तक कोई परिणाम वापस नहीं भेजा गया।',

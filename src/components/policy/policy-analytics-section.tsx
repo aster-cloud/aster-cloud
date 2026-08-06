@@ -33,6 +33,19 @@ export function PolicyAnalyticsSection({
 
   // 默认与上一个版本比较；v1 没有上一版，故 What-if 不可用。
   const [baseVersion, setBaseVersion] = useState(Math.max(currentVersion - 1, 1));
+  // ★outcome 词汇必须由用户配置——平台不替租户猜业务语义（第十轮 P0-4）。
+  //   留空时后端返回 NO_OUTCOME_TAXONOMY 并说明原因，而不是拿默认词汇算出
+  //   一个看起来正常的错数字。
+  const [positiveRaw, setPositiveRaw] = useState('');
+  const [negativeRaw, setNegativeRaw] = useState('');
+  const positiveOutcomes = positiveRaw
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+  const negativeOutcomes = negativeRaw
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
   const canCompare = currentVersion > 1;
 
   const funnelLabels = {
@@ -73,6 +86,7 @@ export function PolicyAnalyticsSection({
     coverageNote: tw('coverageNote'),
     notComparable: tw('notComparable'),
     notAuthorized: tw('notAuthorized'),
+    noTaxonomy: tw('noTaxonomy'),
     caveatsTitle: tw('caveatsTitle'),
     caveat: {
       NO_OUTCOME_DATA: tw('caveat.NO_OUTCOME_DATA'),
@@ -114,6 +128,22 @@ export function PolicyAnalyticsSection({
                   ))}
                 </select>
               </label>
+              <label className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+                <span>{tw('positiveOutcomesLabel')}</span>
+                <input
+                  className="rounded border border-border bg-bg px-2 py-1 text-sm text-fg"
+                  placeholder="converted, repaid"
+                  value={positiveRaw}
+                  onChange={(e) => setPositiveRaw(e.target.value)}
+                />
+                <span>{tw('negativeOutcomesLabel')}</span>
+                <input
+                  className="rounded border border-border bg-bg px-2 py-1 text-sm text-fg"
+                  placeholder="defaulted, refunded"
+                  value={negativeRaw}
+                  onChange={(e) => setNegativeRaw(e.target.value)}
+                />
+              </label>
               <WhatIfPanel
                 // ★key 含版本对：切换基线版本时重挂组件，
                 //   使面板回到 loading 初始态（见该组件 effect 注释）
@@ -121,6 +151,8 @@ export function PolicyAnalyticsSection({
                 policyId={policyId}
                 baseVersion={baseVersion}
                 targetVersion={currentVersion}
+                positiveOutcomes={positiveOutcomes}
+                negativeOutcomes={negativeOutcomes}
                 labels={whatIfLabels}
               />
             </Stack>

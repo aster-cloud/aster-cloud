@@ -29,6 +29,8 @@ interface Labels {
   notComparable: string;
   /** 未开启授权开关时的兜底文案（后端通常会给更具体的 message） */
   notAuthorized: string;
+  /** 未配置 outcome 词汇时的兜底文案 */
+  noTaxonomy: string;
   caveatsTitle: string;
   caveat: Record<string, string>;
 }
@@ -39,7 +41,11 @@ interface Counts {
   replayable: number;
   replayed: number;
   replayFailed: number;
-  coverage: number;
+  /** 样本代表性 = replayed / 全量可重跑数。用于 coverageNote 展示。 */
+  sampleCoverage: number;
+  /** 重跑成功率 = replayed / attempted。门槛用它。 */
+  replaySuccessRate: number;
+  attempted: number;
   truncated: boolean;
   limit: number;
 }
@@ -58,7 +64,10 @@ type WhatIfResponse =
       baseVersion: number;
       targetVersion: number;
       comparable: false;
-      reason: 'INSUFFICIENT_REPLAYED' | 'INSUFFICIENT_COVERAGE';
+      reason:
+        | 'INSUFFICIENT_REPLAYED'
+        | 'LOW_REPLAY_SUCCESS_RATE'
+        | 'NO_OUTCOME_TAXONOMY';
       message: string;
     } & Counts)
   | ({
@@ -189,7 +198,12 @@ export function WhatIfPanel({
       <Stack gap={3}>
         <h3 className="text-sm font-medium text-fg">{labels.title}</h3>
         <Alert variant="warning">
-          <AlertDescription>{data.message || labels.notComparable}</AlertDescription>
+          <AlertDescription>
+            {data.message ||
+              (data.reason === 'NO_OUTCOME_TAXONOMY'
+                ? labels.noTaxonomy
+                : labels.notComparable)}
+          </AlertDescription>
         </Alert>
         <CoverageNote data={data} labels={labels} />
       </Stack>
@@ -284,7 +298,9 @@ function CoverageNote({ data, labels }: { data: Counts; labels: Labels }) {
         {labels.coverageNote
           .replace('{replayed}', String(data.replayed))
           .replace('{total}', String(data.sampleSize))
-          .replace('{percent}', String(Math.round(data.coverage * 100)))}
+          // ★展示的是**代表性**（占全量可重跑数），不是重跑成功率——
+          //   两者语义不同，混用会让用户以为样本覆盖率很高（第十轮）
+          .replace('{percent}', String(Math.round(data.sampleCoverage * 100)))}
         {data.replayFailed > 0 && ` (${data.replayFailed} failed)`}
         {data.truncated && ` · ${data.limit}+`}
       </AlertDescription>

@@ -210,14 +210,16 @@ function ReplayRetentionCard() {
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-base font-medium text-fg">Replay authorization</h2>
+        <h2 className="text-base font-medium text-fg">Replay &amp; analysis authorization</h2>
       </CardHeader>
       <CardBody>
         <Stack gap={3}>
           <p className="text-sm text-fg-muted">
-            Allow the platform to re-run your historical execution inputs for analysis
-            (What-if estimates, regression checks). This authorizes <em>use</em> of inputs
-            that are already stored — it does not change what is stored.
+            Allow the platform to use your execution inputs for analysis — What-if
+            estimates re-run inputs that are <em>already stored</em>, and regression
+            tooling may additionally freeze plaintext inputs into saved test cases.
+            Turning this off stops new plaintext from being frozen into regression
+            cases; it does not delete inputs already recorded on executions.
           </p>
           {enabled === null && !error && (
             <p className="text-sm text-fg-subtle">Loading…</p>
