@@ -205,4 +205,26 @@ describe('GET /api/policies/:id/funnel', () => {
     const body = await res.json();
     expect(body.truncated).toBe(false);
   });
+
+  // ★第五轮审查：非法查询参数不该进 Drizzle/PG 变成 Invalid Date/NaN
+  it.each([
+    ['from 非法', '?from=notadate'],
+    ['to 非法', '?to=xyz'],
+    ['version 非整数', '?version=abc'],
+    ['version 负数', '?version=-1'],
+  ])('%s → 400', async (_label, qs) => {
+    getSession.mockResolvedValue({ user: { id: 'u1' } });
+    ownedRows = [{ id: 'p1' }];
+    const res = await GET(req(qs), { params });
+    expect(res.status).toBe(400);
+  });
+
+  it('合法参数正常放行', async () => {
+    getSession.mockResolvedValue({ user: { id: 'u1' } });
+    ownedRows = [{ id: 'p1' }];
+    execRows = [];
+    totalCount = 0;
+    const res = await GET(req('?from=2026-01-01&to=2026-02-01&version=3'), { params });
+    expect(res.status).toBe(200);
+  });
 });

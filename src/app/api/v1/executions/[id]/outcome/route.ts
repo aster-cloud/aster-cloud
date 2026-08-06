@@ -177,9 +177,32 @@ export async function POST(
     value = parsed.value;
   }
 
+  // ★occurredAt 必须是 ISO 8601 **字符串**，不接受数字/布尔。
+  //
+  //   原实现走 new Date(String(x))，把非字符串输入静默变成一个合法日期：
+  //     0 → 2000-01-01（"0" 被当成年份）、1 → 2001-01-01、true → Invalid（侥幸挡住）
+  //   而 occurredAt 直接决定 last-write-wins 的胜负——一个被误读成 2000 年的
+  //   时间戳会让这条回传永远打不过已存记录，或反过来把正确记录挤掉。
+  //   文档（docs/api/outcome-ingestion.md）写的就是 ISO 字符串，实现必须一致。
   let occurredAt: Date | null = null;
   if (b.occurredAt !== undefined && b.occurredAt !== null) {
-    const d = new Date(String(b.occurredAt));
+    if (typeof b.occurredAt !== 'string') {
+      return errorEnvelope({
+        code: 'INVALID_DATE',
+        message: 'occurredAt 必须是 ISO 8601 字符串',
+        status: 400,
+      });
+    }
+    const raw = b.occurredAt.trim();
+    // 至少要有 YYYY-MM-DD 的形状——挡掉 "0"/"2026" 这类被 Date 当成年份的输入
+    if (!/^\d{4}-\d{2}-\d{2}([T ].*)?$/.test(raw)) {
+      return errorEnvelope({
+        code: 'INVALID_DATE',
+        message: 'occurredAt 必须是 ISO 8601 日期（如 2026-03-14T08:00:00Z）',
+        status: 400,
+      });
+    }
+    const d = new Date(raw);
     if (Number.isNaN(d.getTime())) {
       return errorEnvelope({ code: 'INVALID_DATE', message: 'occurredAt 不是合法时间', status: 400 });
     }

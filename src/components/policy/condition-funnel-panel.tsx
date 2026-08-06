@@ -122,7 +122,12 @@ export function ConditionFunnelPanel({
         <CardBody className="pt-4">
           <Stack gap={3}>
             {data.steps.map((s) => (
-              <FunnelRow key={s.stepId} step={s} max={maxEvaluated} labels={labels} />
+              <FunnelRow
+                key={`${s.stepId}|${s.expression}`}
+                step={s}
+                max={maxEvaluated}
+                labels={labels}
+              />
             ))}
           </Stack>
         </CardBody>
@@ -140,7 +145,7 @@ export function ConditionFunnelPanel({
               <p className="text-sm text-fg-muted">{labels.neverMatchedHint}</p>
               <ul className="space-y-1">
                 {data.neverMatchedInSample.map((s) => (
-                  <li key={s.stepId} className="text-sm text-fg">
+                  <li key={`${s.stepId}|${s.expression}`} className="text-sm text-fg">
                     <span className="font-mono text-xs text-fg-muted">{s.evaluated}×</span>{' '}
                     {s.expression}
                   </li>

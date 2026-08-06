@@ -373,3 +373,33 @@ describe('POST /api/v1/executions/:id/outcome', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  // ★第五轮审查：occurredAt 文档写的是 ISO 字符串，实现却接受数字。
+  // new Date(String(0)) === 2000-01-01（"0" 被当成年份），能过校验并直接
+  // 参与 last-write-wins 胜负判定 —— 一个被误读成 2000 年的时间戳会让
+  // 这条回传永远打不过已存记录，或反过来把正确记录挤掉。
+  describe('★occurredAt 必须是 ISO 8601 字符串', () => {
+    const post = async (v: unknown) => {
+      getSession.mockResolvedValue({ user: { id: 'u1' } });
+      execRows = [{ id: 'e1', policyId: 'p1' }];
+      const res = await POST(req({ outcome: 'converted', occurredAt: v }), { params });
+      return res.status;
+    };
+
+    it.each([
+      ['数字 0（会被读成 2000 年）', 0],
+      ['数字 1（会被读成 2001 年）', 1],
+      ['数字时间戳', 1780000000000],
+      ['布尔', true],
+      ['数组', []],
+      ['裸年份字符串', '2026'],
+      ['非日期字符串', 'yesterday'],
+    ])('%s → 400', async (_label, v) => {
+      expect(await post(v)).toBe(400);
+    });
+
+    it('合法 ISO 字符串正常接受', async () => {
+      expect(await post('2026-03-14T08:00:00Z')).toBe(200);
+      expect(await post('2026-03-14')).toBe(200);
+    });
+  });

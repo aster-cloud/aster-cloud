@@ -61,7 +61,7 @@ Content-Type: application/json
 |---|---|---|---|
 | `outcome` | string | ✅ | 非空，≤ 64 字符。**词汇由你定义**（`converted` / `defaulted` / `refunded`…），平台不做枚举限制 |
 | `value` | number \| string | — | 金额。见下方「3. value 的精度契约」 |
-| `occurredAt` | ISO 8601 string | — | **业务发生时间**，不是回传时间。它决定幂等与乱序语义，见「4」 |
+| `occurredAt` | ISO 8601 **字符串** | — | **业务发生时间**，不是回传时间。它决定幂等与乱序语义，见「4」。**只接受字符串**：数字 `0` 会被 JS 读成 2000 年、`1` 读成 2001 年，故一律 400 |
 | `note` | string | — | 自由备注，超过 1024 字符会被截断（不报错） |
 
 ---

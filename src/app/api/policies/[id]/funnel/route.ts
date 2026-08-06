@@ -54,9 +54,31 @@ export async function GET(
     Math.max(Number(url.searchParams.get('limit')) || DEFAULT_SAMPLE, 1),
     MAX_SAMPLE,
   );
+  // ★from/to/version 必须在入口校验：非法值直接进 Drizzle/PG 会变成
+  //   Invalid Date 或 NaN，产出一个语义不明的查询而不是明确的 400。
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   const version = url.searchParams.get('version');
+
+  for (const [name, raw] of [
+    ['from', from],
+    ['to', to],
+  ] as const) {
+    if (raw !== null && Number.isNaN(new Date(raw).getTime())) {
+      return errorEnvelope({
+        code: 'INVALID_PARAM',
+        message: `${name} 不是合法时间`,
+        status: 400,
+      });
+    }
+  }
+  if (version !== null && !/^\d+$/.test(version)) {
+    return errorEnvelope({
+      code: 'INVALID_PARAM',
+      message: 'version 必须是非负整数',
+      status: 400,
+    });
+  }
 
   const conds = [eq(executions.policyId, id), eq(executions.userId, session.user.id)];
   if (from) conds.push(gte(executions.createdAt, new Date(from)));
