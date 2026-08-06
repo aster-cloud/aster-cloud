@@ -163,11 +163,25 @@ describe('POST /api/v1/executions/:id/outcome —— route → 真实 PostgreSQL
     expect(await storedOutcome()).toBeNull();
   });
 
-  it('闰年 2-29 与跨 UTC 日的时区偏移正常落库（校验不得误伤）', async () => {
+  it('★真正跨 UTC 日的时区偏移不得被误拒（这是独立 probe 设计的存在理由）', async () => {
+    // ★样本必须真的跨日，否则这条测试保护不了任何东西：
+    //   2026-03-14T23:00:00+14:00 = 2026-03-14T09:00:00Z —— **同一个 UTC 日**，
+    //   即便把 probe 错写成「直接比对原始 Date 的 UTC 年月日」它也会绿。
+    //   01:00+14:00 才落到前一个 UTC 日（2026-03-13T11:00:00Z），
+    //   能真正区分「校验日历日」与「校验换算后是哪天」。
     const { status } = await callRoute({
       outcome: 'converted',
-      occurredAt: '2026-03-14T23:00:00+14:00',
+      occurredAt: '2026-03-14T01:00:00+14:00',
     });
+    expect(status).toBe(200);
+    const row = await storedOutcome();
+    expect(row?.outcome).toBe('converted');
+    // 落库的是换算后的 UTC 时刻，日期确实退到了 13 号
+    expect(row?.occurredAt?.toISOString()).toBe('2026-03-13T11:00:00.000Z');
+  });
+
+  it('闰年 2 月 29 日正常落库（校验不得误伤合法日历日）', async () => {
+    const { status } = await callRoute({ outcome: 'converted', occurredAt: '2024-02-29' });
     expect(status).toBe(200);
     expect((await storedOutcome())?.outcome).toBe('converted');
   });
