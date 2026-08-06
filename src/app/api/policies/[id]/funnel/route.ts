@@ -72,10 +72,14 @@ export async function GET(
       });
     }
   }
-  if (version !== null && !/^\d+$/.test(version)) {
+  // ★除了形状还要判范围：policyVersion 列是 PG int4，
+  //   "999999999999999999999" 能过 /^\d+$/，但 Number() 会变成 1e+21，
+  //   传给 PG 报 22P02（invalid input syntax）→ 500 而不是 400。
+  const PG_INT4_MAX = 2147483647;
+  if (version !== null && (!/^\d+$/.test(version) || Number(version) > PG_INT4_MAX)) {
     return errorEnvelope({
       code: 'INVALID_PARAM',
-      message: 'version 必须是非负整数',
+      message: `version 必须是 0..${PG_INT4_MAX} 的整数`,
       status: 400,
     });
   }

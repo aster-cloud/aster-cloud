@@ -398,8 +398,24 @@ describe('POST /api/v1/executions/:id/outcome', () => {
       expect(await post(v)).toBe(400);
     });
 
+    // ★第六轮：形状对 + Date 能解析仍不够 —— JS 把不存在的日期静默归一
+    //   （2026-02-30 → 2026-03-02），这个被改写的时间会直接参与
+    //   last-write-wins 胜负判定。
+    it.each([
+      ['2 月 30 日', '2026-02-30'],
+      ['13 月', '2026-13-01'],
+      ['非闰年 2 月 29', '2025-02-29'],
+      ['0 月', '2026-00-10'],
+    ])('不存在的日历日 %s → 400', async (_l, v) => {
+      expect(await post(v)).toBe(400);
+    });
+
     it('合法 ISO 字符串正常接受', async () => {
       expect(await post('2026-03-14T08:00:00Z')).toBe(200);
       expect(await post('2026-03-14')).toBe(200);
+      // 闰年 2/29 是合法日历日
+      expect(await post('2024-02-29')).toBe(200);
+      // ★带时区偏移可能落到另一个 UTC 日，不得被误判为非法
+      expect(await post('2026-03-14T23:00:00+14:00')).toBe(200);
     });
   });

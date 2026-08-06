@@ -195,7 +195,8 @@ export async function POST(
     }
     const raw = b.occurredAt.trim();
     // 至少要有 YYYY-MM-DD 的形状——挡掉 "0"/"2026" 这类被 Date 当成年份的输入
-    if (!/^\d{4}-\d{2}-\d{2}([T ].*)?$/.test(raw)) {
+    const shape = /^(\d{4})-(\d{2})-(\d{2})([T ].*)?$/.exec(raw);
+    if (!shape) {
       return errorEnvelope({
         code: 'INVALID_DATE',
         message: 'occurredAt 必须是 ISO 8601 日期（如 2026-03-14T08:00:00Z）',
@@ -205,6 +206,27 @@ export async function POST(
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) {
       return errorEnvelope({ code: 'INVALID_DATE', message: 'occurredAt 不是合法时间', status: 400 });
+    }
+    // ★形状对 + Date 能解析，**仍然不够**：JS 会把不存在的日期静默归一，
+    //   2026-02-30 → 2026-03-02，既不报错也不是调用方的本意，
+    //   而这个被改写的时间会直接参与 last-write-wins 的胜负判定。
+    //
+    //   校验方式：单独把「年-月-日」当 UTC 零点构造一次再回读。
+    //   **不能**直接拿原始字符串解析出的 d 做比对——带时区偏移的合法输入
+    //   （如 2026-03-14T23:00:00+14:00）本就会落到另一个 UTC 日，
+    //   那样会把正确的时间戳误判成 400。日历日的合法性与时区无关。
+    const [, yy, mm, dd] = shape;
+    const probe = new Date(Date.UTC(Number(yy), Number(mm) - 1, Number(dd)));
+    if (
+      probe.getUTCFullYear() !== Number(yy) ||
+      probe.getUTCMonth() + 1 !== Number(mm) ||
+      probe.getUTCDate() !== Number(dd)
+    ) {
+      return errorEnvelope({
+        code: 'INVALID_DATE',
+        message: `occurredAt 不是存在的日历日期：${raw}`,
+        status: 400,
+      });
     }
     occurredAt = d;
   }

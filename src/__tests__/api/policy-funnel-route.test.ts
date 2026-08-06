@@ -212,6 +212,8 @@ describe('GET /api/policies/:id/funnel', () => {
     ['to 非法', '?to=xyz'],
     ['version 非整数', '?version=abc'],
     ['version 负数', '?version=-1'],
+    // ★第六轮：能过 /^\d+$/ 但 Number() 变成 1e+21，传给 PG int4 报 22P02 → 500
+    ['version 超 int4 上限', '?version=999999999999999999999'],
   ])('%s → 400', async (_label, qs) => {
     getSession.mockResolvedValue({ user: { id: 'u1' } });
     ownedRows = [{ id: 'p1' }];
