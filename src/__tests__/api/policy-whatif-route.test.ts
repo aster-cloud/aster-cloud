@@ -196,23 +196,44 @@ describe('GET /api/policies/:id/whatif', () => {
       expect(body.estimatedValueDelta).toBeUndefined();
     });
 
-    it('★大分母 + 小样本 → INSUFFICIENT_COVERAGE（绝对条数够也不行）', async () => {
-      // 250 条基线里只有 35 条 REPLAYABLE：条数过了 30，但占比仅 14% < 20%。
-      // ★REPLAYABLE 过滤已下推到 SQL，故 base 只返回可重跑的那 35 条；
-      //   总量由独立 count 查询给出。
-      // 全量可重跑 250 条，但本次只成功重跑 35 条 → 覆盖率 14% < 20%
-      rowSets.base = baseRows(35);
-      rowSets.totalCount = 250;
-      rowSets.replayableTotal = 250;
+    it('★重跑成功率过低 → INSUFFICIENT_COVERAGE', async () => {
+      // ★第九轮 P0-9：覆盖率分母改为「本次计划重跑数」而非全量可重跑数。
+      //   用全量做分母会造成数学冲突：MAX_REPLAY=200 时 replayableTotal>1000
+      //   的策略 coverage 永远 ≤20%，门槛结构上达不到——越大的客户越用不了。
+      //   现在它衡量的是**重跑成功率**：计划 200 条只成功 35 条 = 17.5% < 20%
+      //   （35 已过 MIN_REPLAYED=30，故确实是被覆盖率挡下而非条数）。
+      rowSets.base = baseRows(200);
+      rowSets.totalCount = 5000;
+      rowSets.replayableTotal = 3000; // 远超 MAX_REPLAY，旧口径下必然不可比
+      let n = 0;
+      evaluateSource.mockImplementation(async () => {
+        n += 1;
+        return n <= 35
+          ? { result: 'REJECTED', error: null, executionTimeMs: 1 }
+          : { result: null, error: 'boom', executionTimeMs: 1 };
+      });
+
       const body = await (await GET(req(), { params })).json();
 
       expect(body.comparable).toBe(false);
       expect(body.reason).toBe('INSUFFICIENT_COVERAGE');
+      expect(body.attempted).toBe(200);
       expect(body.replayed).toBe(35);
-      expect(body.sampleSize).toBe(250);
-      expect(body.replayable).toBe(250);
-      expect(body.coverage).toBeCloseTo(0.14, 2);
+      expect(body.coverage).toBeCloseTo(0.175, 3);
       expect(body.changed).toBeUndefined();
+    });
+
+    it('★大策略（replayableTotal 远超上限）不再结构性不可比', async () => {
+      // 旧口径：200/3000 = 6.7% < 20% → 永远不可比。新口径按成功率判。
+      rowSets.base = baseRows(50);
+      rowSets.totalCount = 100000;
+      rowSets.replayableTotal = 3000;
+      const body = await (await GET(req(), { params })).json();
+
+      expect(body.comparable).toBe(true);
+      expect(body.coverage).toBe(1); // 50 计划、50 成功
+      expect(body.replayable).toBe(3000);
+      expect(body.sampleSize).toBe(100000);
     });
 
     it('两条都满足 → 给出估算，并回报口径', async () => {

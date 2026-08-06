@@ -124,4 +124,40 @@ describe('evaluateSource replayCapture — HMAC 纯路径签名不被 query 破�
     expect(resp.replayMetadata?.canonicalInputHash).toBe('aaa');
     expect(resp.replayMetadata?.replayabilityStatus).toBe('REPLAYABLE');
   });
+
+  // ★第九轮 P0-1：simulate 必须真的拼进 URL。
+  //
+  // 上一版只在 route 测试里断言「传给 client 的 options 含 simulate」——
+  // 而 client 根本没把它拼进 query，于是 aster-api 从未收到，配额照扣。
+  // 一个断言了「参数被传下去」却没断言「参数到达服务端」的测试，就是假绿。
+  it('★simulate=true：fetch URL 必须含 ?simulate=true', async () => {
+    const client = new PolicyApiClient('tenant-1', 'user-1', 'member');
+    await client.evaluateSource('Module m. Rule r given x as Int: return "OK"', { x: 1 }, {
+      simulate: true,
+    });
+
+    const fetchedUrl = fetchMock.mock.calls[0][0] as string;
+    expect(fetchedUrl).toContain('?simulate=true');
+    expect(fetchedUrl).toContain(EVAL_PATH);
+  });
+
+  it('simulate 与 replayCapture 可共存（& 拼接）', async () => {
+    const client = new PolicyApiClient('tenant-1', 'user-1', 'member');
+    await client.evaluateSource('Module m. Rule r given x as Int: return "OK"', { x: 1 }, {
+      simulate: true,
+      replayCapture: true,
+    });
+
+    const fetchedUrl = fetchMock.mock.calls[0][0] as string;
+    expect(fetchedUrl).toContain('replayCapture=true');
+    expect(fetchedUrl).toContain('simulate=true');
+  });
+
+  it('未传 simulate 时 URL 不含该参数', async () => {
+    const client = new PolicyApiClient('tenant-1', 'user-1', 'member');
+    await client.evaluateSource('Module m. Rule r given x as Int: return "OK"', { x: 1 });
+
+    const fetchedUrl = fetchMock.mock.calls[0][0] as string;
+    expect(fetchedUrl).not.toContain('simulate');
+  });
 });

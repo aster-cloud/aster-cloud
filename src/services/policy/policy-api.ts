@@ -445,8 +445,14 @@ export class PolicyApiClient {
     const hasAliases = options?.aliasSet != null && Object.keys(options.aliasSet).length > 0;
     // replayCapture 走 query param（aster-api @QueryParam("replayCapture")）；path 拼 query 供
     // fetch，但 request() 签名/精确匹配用 pathname（split('?')[0]），不受 query 影响。
-    const path = options?.replayCapture
-      ? `${API_ENDPOINTS.evaluateSource}?replayCapture=true`
+    const qs: string[] = [];
+    if (options?.replayCapture) qs.push('replayCapture=true');
+    // ★simulate：模拟执行（What-if），aster-api 据此跳过配额/指标/审计。
+    //   与 replayCapture 同理只是 query 透传——服务端会再校验 HMAC 内部调用者，
+    //   外部匿名请求传了也不生效（见 aster-api evaluateSource 的 gate）。
+    if (options?.simulate) qs.push('simulate=true');
+    const path = qs.length
+      ? `${API_ENDPOINTS.evaluateSource}?${qs.join('&')}`
       : API_ENDPOINTS.evaluateSource;
     return this.request<PolicyEvaluateResponse>('POST', path, {
       source,

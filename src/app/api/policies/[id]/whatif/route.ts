@@ -28,6 +28,7 @@ import { estimateWhatIf, type OutcomeSample } from '@/lib/analytics/whatif-estim
 import { createPolicyApiClient } from '@/services/policy/policy-api';
 import { parseApprovalFromResult } from '@/services/policy/cnl-executor';
 import { STATUS_REPLAYABLE } from '@/lib/policy-execution-log';
+import { loadVocabularyForExecution } from '@/lib/domain-vocabulary-snapshot';
 import { errorEnvelope } from '@/lib/api/error-envelope';
 
 export const dynamic = 'force-dynamic';
@@ -133,18 +134,22 @@ export async function GET(
   }
 
   // 目标版本的源码——重跑的另一半。带 policyId 过滤（版本号在策略内唯一）。
-  // ★关于 vocabulary（第八轮 P0-7）：`PolicyVersion.vocabularySnapshotIds` 存的是
-  //   **快照引用**（`{snapshotId, domain, locale}[]`），不是词汇内容本身。
-  //   核实两条生产 execute 路径后确认：它们同样只把这个引用存进
-  //   `Execution.vocabSnapshotRef` 供审计，**从不**向执行端传 vocabulary 内容。
-  //   故重跑与真实执行在这一点上已经等价——单独给 What-if 加一条解析链路
-  //   反而会让模拟与真实执行走不同的词汇解析，那才是真的语义漂移。
-  //   若将来生产路径开始传 vocabulary，这里必须同步（已在 ADR 0033 §7 记为待办）。
+  // ★vocabulary 必须还原（第八/九轮 P0-7）。
+  //   `vocabularySnapshotIds` 存的是引用（`{snapshotId, domain, locale}[]`），
+  //   需经 `loadVocabularyForExecution` 解析成词汇内容。
+  //
+  //   ⚠️ 我第八轮曾判定「无需修改」，理由是「生产 execute 路径也不传 vocabulary」——
+  //   **那是错的**：我只查了 dashboard 与 v1 两条普通路径，漏了
+  //   `secure-execute → loadVocabularyForExecution → evaluateSource(vocabulary)`
+  //   这条真实生产链路（第九轮指出）。不带 vocabulary 重跑，用户自定义术语
+  //   在规范化阶段翻译不出来，编译失败或语义漂移——那不是「策略变了」，
+  //   是我们没把执行环境还原对。
   const [target] = await db
     .select({
       source: policyVersions.source,
       content: policyVersions.content,
       aliasSet: policyVersions.aliasSet,
+      vocabularySnapshotIds: policyVersions.vocabularySnapshotIds,
     })
     .from(policyVersions)
     .where(and(eq(policyVersions.policyId, id), eq(policyVersions.version, targetVersion)))
@@ -221,6 +226,15 @@ export async function GET(
   //   用户看到的是浏览器转圈而不是「样本不够」。超预算即停止并如实回报已跑条数。
   const deadline = Date.now() + REPLAY_BUDGET_MS;
   const targetAliasSet = target?.aliasSet ? safeParseAliasSet(target.aliasSet) : null;
+  // 解析失败按「无自定义词汇」处理并继续——重跑失败已有 replayFailed 如实计数，
+  // 比整个请求 500 更有用（与 secure-executor 的处理一致）。
+  let targetVocabulary: Record<string, unknown> | undefined;
+  try {
+    const vocab = await loadVocabularyForExecution(target?.vocabularySnapshotIds);
+    targetVocabulary = vocab ? (vocab as unknown as Record<string, unknown>) : undefined;
+  } catch {
+    targetVocabulary = undefined;
+  }
 
   for (let i = 0; i < replayableRows.length; i += REPLAY_CONCURRENCY) {
     if (Date.now() > deadline) {
@@ -228,7 +242,13 @@ export async function GET(
       break;
     }
     const batch = replayableRows.slice(i, i + REPLAY_CONCURRENCY);
-    const settled = await Promise.allSettled(
+    // ★整批也要能被 deadline 打断，不能只在批次之间看表（第九轮 P0-6）：
+    //   批内 8 条并发若都卡到 client 自带的 30s timeout，20s 预算形同虚设。
+    //   Promise.race 让剩余预算一到就返回，未完成的请求结果被丢弃
+    //   （它们不会进 newDecisions，等价于计入 replayFailed）。
+    const remaining = Math.max(deadline - Date.now(), 0);
+    const settled = await Promise.race([
+      Promise.allSettled(
       batch.map((r) =>
         // ★simulate=true：这是模拟不是真实执行，不计配额、不写指标/审计
         //   （第八轮 P0-1：否则查一次估算就扣掉上百次配额并污染经营 KPI）
@@ -236,10 +256,19 @@ export async function GET(
           locale: r.locale ?? undefined,
           functionName: r.functionName ?? undefined,
           aliasSet: targetAliasSet ?? undefined,
+          vocabulary: targetVocabulary,
           simulate: true,
         }),
       ),
-    );
+      ),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), remaining)),
+    ]);
+    // race 超时返回 null —— 本批全部计为失败并停止后续批次
+    if (settled === null) {
+      deadlineHit = true;
+      replayFailed += batch.length;
+      break;
+    }
     settled.forEach((res, k) => {
       if (res.status !== 'fulfilled') {
         replayFailed++;
@@ -273,8 +302,17 @@ export async function GET(
   }
 
   const replayed = newDecisions.size;
-  // ★覆盖率 = 已重跑 / **可重跑总数**，不是 / 全部执行数。见上方 replayableTotal 注释。
-  const coverage = replayableTotal > 0 ? replayed / replayableTotal : 0;
+  // ★覆盖率 = 已重跑 / **本次计划重跑数**，而不是 / 全量可重跑数。
+  //
+  //   用全量做分母会造成数学冲突（第九轮 P0-9）：MAX_REPLAY=200 时，
+  //   replayableTotal>1000 的策略 coverage 永远 ≤20%，门槛**结构上达不到**——
+  //   越大的客户越用不了这个功能。
+  //
+  //   这个门槛真正要挡的是「计划跑 200 条，结果大半失败」——即**重跑成功率**，
+  //   而不是「样本占全量多少」。后者由 sampleSize/replayable/limit 三个数字
+  //   如实呈现，让用户自己判断代表性，而不是用一个恒不达标的阈值替他决定。
+  const attempted = replayableRows.length;
+  const coverage = attempted > 0 ? replayed / attempted : 0;
 
   // ★双判门槛（ADR 0033 §3.4）：条数与代表性比例都得够。
   //   两个 reason 分开——「再攒些数据」和「大多不可回放，得去开开关」是不同的动作。
@@ -283,6 +321,8 @@ export async function GET(
     sampleSize: totalCount,
     /** 其中可重跑的全部条数（全量）——coverage 的分母。 */
     replayable: replayableTotal,
+    /** 本次计划重跑的条数（受 MAX_REPLAY 与 input 非空约束）。 */
+    attempted,
     /** 实际重跑成功的条数——估算的真实分母。 */
     replayed,
     replayFailed,
@@ -311,7 +351,7 @@ export async function GET(
       targetVersion,
       comparable: false,
       reason: 'INSUFFICIENT_COVERAGE',
-      message: `可重跑的 ${replayableTotal} 条里只成功重跑了 ${replayed} 条（${Math.round(coverage * 100)}%，需要 ${Math.round(MIN_COVERAGE * 100)}%），结论不足以外推。`,
+      message: `本次尝试重跑 ${attempted} 条，仅 ${replayed} 条成功（${Math.round(coverage * 100)}%，需要 ${Math.round(MIN_COVERAGE * 100)}%），失败过多，结论不可信。`,
       ...counts,
     });
   }

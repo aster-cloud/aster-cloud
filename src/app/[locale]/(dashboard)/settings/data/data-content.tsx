@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { extractErrorMessage } from '@/lib/api/error-envelope';
 import {
@@ -135,6 +135,11 @@ export function DataContent() {
             </Button>
           </CardBody>
         </Card>
+
+        {/* ★回放明文授权（第九轮 P0-8：此前该开关无任何写入口，
+            依赖它的 What-if 永远无法自助开启）。
+            语义是**使用授权**不是存储开关——Execution.input 无条件写入。 */}
+        <ReplayRetentionCard />
       </Stack>
 
       <ConfirmDialog
@@ -151,5 +156,93 @@ export function DataContent() {
         onCancel={() => !isErasing && setConfirmErase(false)}
       />
     </Container>
+  );
+}
+
+/**
+ * 回放明文授权开关。
+ *
+ * <p>控制 {@code User.replayRetentionEnabled}：是否允许平台把**已存在的**
+ * 历史执行明文输入用于重跑分析（What-if / 回归工具）。
+ *
+ * <p>★措辞必须准确：它不是「是否保存明文」——`Execution.input` 是无条件
+ * 写入的。把使用授权说成存储开关会让用户以为关掉就不存数据（第九轮 P0-8）。
+ */
+function ReplayRetentionCard() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/user/replay-retention')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j: { enabled: boolean }) => {
+        if (!cancelled) setEnabled(j.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setError('load-failed');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggle = async (next: boolean) => {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/user/replay-retention', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const j = (await res.json()) as { enabled: boolean };
+      setEnabled(j.enabled);
+    } catch {
+      setError('save-failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-base font-medium text-fg">Replay authorization</h2>
+      </CardHeader>
+      <CardBody>
+        <Stack gap={3}>
+          <p className="text-sm text-fg-muted">
+            Allow the platform to re-run your historical execution inputs for analysis
+            (What-if estimates, regression checks). This authorizes <em>use</em> of inputs
+            that are already stored — it does not change what is stored.
+          </p>
+          {enabled === null && !error && (
+            <p className="text-sm text-fg-subtle">Loading…</p>
+          )}
+          {enabled !== null && (
+            <Stack direction="row" align="center" gap={3}>
+              <Button
+                variant={enabled ? 'secondary' : 'primary'}
+                disabled={saving}
+                onClick={() => toggle(!enabled)}
+              >
+                {enabled ? 'Disable' : 'Enable'}
+              </Button>
+              <span className="text-sm text-fg-muted">
+                Currently: {enabled ? 'enabled' : 'disabled'}
+              </span>
+            </Stack>
+          )}
+          {error && (
+            <p className="text-sm text-danger">
+              {error === 'load-failed' ? 'Could not load the setting.' : 'Could not save.'}
+            </p>
+          )}
+        </Stack>
+      </CardBody>
+    </Card>
   );
 }
