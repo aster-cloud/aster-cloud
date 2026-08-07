@@ -1,6 +1,6 @@
 {
   "name": "aster-cloud",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
@@ -51,7 +51,7 @@
     "docs:external-index": "node scripts/docs-migration/fetch-external-docs-index.mjs"
   },
   "dependencies": {
-    "@aster-cloud/aster-lang-ts": "1.0.13",
+    "@aster-cloud/aster-lang-ts": "1.0.19",
     "@aster-cloud/tokens": "^0.2.0",
     "@aster-cloud/ui": "^0.3.0",
     "@aster-cloud/ui-messages": "1.0.15",
