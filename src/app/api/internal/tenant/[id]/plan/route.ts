@@ -74,6 +74,8 @@ export async function GET(
       maxTeamMembers: 1,
       evaluationsLimit: 1000,
       apiCallsLimit: 0,
+      // 找不到租户按 free 处理：What-If 不提供（ADR 0034 §7.2）
+      concurrentReplayBatches: 0,
     });
   }
 
@@ -90,5 +92,7 @@ export async function GET(
     maxTeamMembers: limits.maxTeamMembers,
     evaluationsLimit: limits.evaluations,
     apiCallsLimit: limits.apiCalls,
+    // What-If 并发批次上限（ADR 0034 §7.2）：0=无此功能，-1=不限
+    concurrentReplayBatches: limits.concurrentReplayBatches,
   });
 }
