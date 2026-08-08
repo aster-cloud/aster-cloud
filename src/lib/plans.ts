@@ -430,6 +430,7 @@ export const PM_PLAN_LIMITS_V2 = {
     auditRetentionDays: 7,
     maxTeamMembers: 1,
     approvalRequired: false,
+    concurrentReplayBatches: 0,   // What-If：免费档不提供（ADR 0034 §7.2）
     minSeats: 1,
   },
   pro: {
@@ -440,6 +441,7 @@ export const PM_PLAN_LIMITS_V2 = {
     auditRetentionDays: 90,
     maxTeamMembers: -1,
     approvalRequired: true,
+    concurrentReplayBatches: 1,   // What-If：一次一个批次（ADR 0034 §7.2）
     minSeats: 1,
     /** 启用审批流需要的最低席位数（reviewer ≠ author 的硬性要求） */
     approvalSeatThreshold: 2,
@@ -452,6 +454,7 @@ export const PM_PLAN_LIMITS_V2 = {
     auditRetentionDays: -1,
     maxTeamMembers: -1,
     approvalRequired: true,
+    concurrentReplayBatches: -1,  // What-If：按合同配置，-1=不限（ADR 0034 §7.2）
     customRoles: true,
     minSeats: 1,
   },
@@ -462,10 +465,10 @@ export const PM_PLAN_LIMITS_V2 = {
  * v3：team 档已下线无客户；保留 'trial' 作为内部状态兜底
  */
 export const LEGACY_PLAN_LIMITS = {
-  free: { publishedRules: 3, evaluations: 100, apiCalls: 0, apiKeys: 0, auditRetentionDays: 7, maxTeamMembers: 1, approvalRequired: false, minSeats: 1 },
-  trial: { publishedRules: 25, evaluations: 5000, apiCalls: 1000, apiKeys: 5, auditRetentionDays: 30, maxTeamMembers: 5, approvalRequired: false, minSeats: 1 },
-  pro: { publishedRules: 25, evaluations: 5000, apiCalls: 5000, apiKeys: 5, auditRetentionDays: 90, maxTeamMembers: 5, approvalRequired: false, minSeats: 1 },
-  enterprise: { publishedRules: -1, evaluations: -1, apiCalls: -1, apiKeys: -1, auditRetentionDays: -1, maxTeamMembers: -1, approvalRequired: true, minSeats: 1 },
+  free: { publishedRules: 3, evaluations: 100, apiCalls: 0, apiKeys: 0, auditRetentionDays: 7, maxTeamMembers: 1, approvalRequired: false, concurrentReplayBatches: 0, minSeats: 1 },
+  trial: { publishedRules: 25, evaluations: 5000, apiCalls: 1000, apiKeys: 5, auditRetentionDays: 30, maxTeamMembers: 5, approvalRequired: false, concurrentReplayBatches: 1, minSeats: 1 },
+  pro: { publishedRules: 25, evaluations: 5000, apiCalls: 5000, apiKeys: 5, auditRetentionDays: 90, maxTeamMembers: 5, approvalRequired: false, concurrentReplayBatches: 1, minSeats: 1 },
+  enterprise: { publishedRules: -1, evaluations: -1, apiCalls: -1, apiKeys: -1, auditRetentionDays: -1, maxTeamMembers: -1, approvalRequired: true, concurrentReplayBatches: -1, minSeats: 1 },
 } as const;
 
 /**
@@ -494,6 +497,8 @@ export function getEffectiveLimits(user: {
   minSeats: number;
   approvalSeatThreshold?: number;
   customRoles?: boolean;
+  /** What-If 并发批次上限（ADR 0034 §7.2）。0=无此功能，-1=不限。 */
+  concurrentReplayBatches: number;
 } {
   const lockedAt = user.priceLockedAt
     ? typeof user.priceLockedAt === 'string'
