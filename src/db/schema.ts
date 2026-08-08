@@ -85,6 +85,32 @@ export const executionSourceEnum = pgEnum('ExecutionSource', [
 // approved(放行)/denied(真实拒绝)/indeterminate(执行成功但无 allow/deny 语义，如 greet
 // 返回文本值)/error(执行报错)。审计/统计据此正确分类，避免把值输出策略误计入失败。
 // **由服务端从执行结果派生，绝不信客户端输入**。
+/**
+ * What-If 批次状态（ADR 0034 §3.1）。
+ *
+ * 迁移规则（非法迁移在领域层抛错，见 replay-batch.ts）：
+ *   PENDING → RUNNING | FAILED
+ *   RUNNING → COMPLETED | FAILED
+ *   COMPLETED | FAILED → EXPIRED
+ *   ★PENDING → COMPLETED **非法**：没跑过就没有「全量成功」可言。
+ */
+export const replayBatchStatusEnum = pgEnum('ReplayBatchStatus', [
+  'PENDING',
+  'RUNNING',
+  'COMPLETED',
+  'FAILED',
+  'EXPIRED',
+]);
+
+/** 窗口口径（ADR 0034 §7.1）。窗口是**显式口径**，不是隐形抽样。 */
+export const replayWindowKindEnum = pgEnum('ReplayWindowKind', [
+  'LAST_MONTH',
+  'LAST_QUARTER',
+  'LAST_HALF_YEAR',
+  'LAST_YEAR',
+  'CUSTOM',
+]);
+
 export const executionDecisionEnum = pgEnum('ExecutionDecision', [
   'approved',
   'denied',
@@ -1882,6 +1908,91 @@ export const policyRecycleBinsRelations = relations(policyRecycleBins, ({ one })
     references: [policies.id],
   }),
 }));
+
+/**
+ * What-If 批次账本（ADR 0034）。
+ *
+ * <p><b>承载的第一性约束（§1.1）</b>：
+ * 「任何被呈现的数字，其样本必须是**某个用户能理解的总体的全量**，
+ *   而非该总体的成功子集。」
+ *
+ * <p>落地为：窗口内**全量**跑、**全部成功**才出数字，任一条失败即整批拒答。
+ * 上一版 Phase 4 允许「200 条发起、30 条成功」就出完整业务数字——
+ * 而重跑失败与输入/词汇/策略路径**相关**，成功子集不是随机样本。
+ *
+ * <p>★只存 **batch 元数据与聚合结果**，<b>不存逐条 targetDecision</b>——
+ * 后者会扩大 PII 面并带来复杂失效语义（ADR 0033 §3.2 的这条理由仍成立）。
+ */
+export const replayBatches = pgTable(
+  'ReplayBatch',
+  {
+    id: text('id').primaryKey().notNull(),
+
+    // 租户隔离：所有读写一律带 userId 条件（ADR 0034 §4.3）
+    userId: text('userId').notNull(),
+    policyId: text('policyId').notNull(),
+
+    // 版本行 id 而非版本号：版本号可重复/可变，行 id 唯一且不可变
+    baseVersionRowId: text('baseVersionRowId').notNull(),
+    targetVersionRowId: text('targetVersionRowId').notNull(),
+
+    // ── 窗口口径（§3.3）──────────────────────────────────────────────
+    windowKind: replayWindowKindEnum('windowKind').notNull(),
+    /** 呈现用文案（如「最近一个季度」），**必须与数字同屏**。 */
+    windowLabel: text('windowLabel').notNull(),
+    /** 解析「当天」所用的租户时区；未配置为 UTC 并需在结果里标注。 */
+    windowTimezone: text('windowTimezone').default('UTC').notNull(),
+    /**
+     * 窗口起点（含）。**创建时固化的绝对时刻**，不存「近 30 天」这种相对表达。
+     * 跨零点会让左边界前移一天（每天必然出现一次的窗口），
+     * 且窗口边界是**结果的一部分**——不固化则结果不可复现。
+     */
+    windowFrom: timestamp('windowFrom', { mode: 'date' }).notNull(),
+    /**
+     * 窗口终点（**不含**）。取**当天 00:00**——边界指向已封闭的过去，
+     * 正在写入的数据天然落在窗口外。
+     */
+    windowTo: timestamp('windowTo', { mode: 'date' }).notNull(),
+
+    // ── 进度 ────────────────────────────────────────────────────────
+    /** 窗口内可重跑执行总数，创建时确定且此后不变（窗口已固化，故不漂移）。 */
+    plannedCount: integer('plannedCount').notNull(),
+    completedCount: integer('completedCount').default(0).notNull(),
+    failedCount: integer('failedCount').default(0).notNull(),
+
+    status: replayBatchStatusEnum('status').default('PENDING').notNull(),
+
+    /** 失败原因分布。拒答时回报——「失败了」不够，用户要知道该做什么。 */
+    failureReasons: json('failureReasons'),
+
+    /**
+     * 聚合结果。★仅 status='COMPLETED' 时非空，由 DB CHECK 约束强制——
+     * 拒答的批次在数据库层就拿不出任何会被读成结论的数字。
+     */
+    resultSummary: json('resultSummary'),
+
+    /** 创建时的工具链身份；完成后若已变则结果标 STALE 而非静默呈现。 */
+    toolchainId: text('toolchainId'),
+
+    createdAt: timestamp('createdAt', { mode: 'date' }).defaultNow().notNull(),
+    startedAt: timestamp('startedAt', { mode: 'date' }),
+    finishedAt: timestamp('finishedAt', { mode: 'date' }),
+    /** 保留 30 天后转 EXPIRED 并清空 resultSummary（§7.3）。 */
+    expiresAt: timestamp('expiresAt', { mode: 'date' }).notNull(),
+  },
+  (table) => [
+    // 并发上限判定：查「本用户当前有几个 PENDING/RUNNING」（§7.2）。
+    // 部分索引只覆盖活跃状态，避免历史批次拖慢这个高频查询。
+    index('ReplayBatch_active_by_user_idx')
+      .on(table.userId)
+      .where(sql`status IN ('PENDING', 'RUNNING')`),
+    index('ReplayBatch_policy_createdAt_idx').on(table.policyId, table.createdAt),
+    // 过期清理定时任务扫描用
+    index('ReplayBatch_expiresAt_idx')
+      .on(table.expiresAt)
+      .where(sql`status IN ('COMPLETED', 'FAILED')`),
+  ],
+);
 
 export const executionsRelations = relations(executions, ({ one }) => ({
   user: one(users, {
