@@ -45,7 +45,7 @@ describe('What-If 并发批次权益（ADR 0034 §7.2）', () => {
     it('★PM_PLAN_LIMITS_V2 每一档都要有此字段（加新档位时不能漏）', () => {
       for (const [tier, limits] of Object.entries(PM_PLAN_LIMITS_V2)) {
         expect(
-          (limits as Record<string, unknown>).concurrentReplayBatches,
+          (limits as unknown as Record<string, unknown>).concurrentReplayBatches,
           `PM_PLAN_LIMITS_V2.${tier} 缺 concurrentReplayBatches`,
         ).toBeTypeOf('number');
       }
@@ -54,7 +54,7 @@ describe('What-If 并发批次权益（ADR 0034 §7.2）', () => {
     it('★LEGACY_PLAN_LIMITS 每一档也要有——老用户不能因缺字段变成 undefined', () => {
       for (const [tier, limits] of Object.entries(LEGACY_PLAN_LIMITS)) {
         expect(
-          (limits as Record<string, unknown>).concurrentReplayBatches,
+          (limits as unknown as Record<string, unknown>).concurrentReplayBatches,
           `LEGACY_PLAN_LIMITS.${tier} 缺 concurrentReplayBatches`,
         ).toBeTypeOf('number');
       }
@@ -84,7 +84,7 @@ describe('What-If 并发批次权益（ADR 0034 §7.2）', () => {
   describe('语义约定', () => {
     it('★值只允许 -1（不限）或 >= 0，不得出现其他负数', () => {
       for (const limits of Object.values(PM_PLAN_LIMITS_V2)) {
-        const v = (limits as Record<string, number>).concurrentReplayBatches;
+        const v: number = limits.concurrentReplayBatches;
         expect(v === -1 || v >= 0).toBe(true);
       }
     });
